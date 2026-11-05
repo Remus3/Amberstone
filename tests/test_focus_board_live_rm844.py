@@ -26,7 +26,7 @@ Grounded before writing (file:line at main 4b0bc3ce4):
   skip and unknown item -> dropped with a note (both in ``_parse_fighter``);
   unresolvable me -> ``me == ""`` and no rows (``_empty`` inside
   ``compute_focus_board``).
-* ``DataSnapshot.champions`` (``agents/daemon_slayer/data_loader.py:133``),
+* ``DataSnapshot.champions`` (``agents/daemon_slayer/data_loader.py``, class ``DataSnapshot``),
   each record carrying ``id`` / ``name``.
 * ``core.daemon_slayer_resolver.NON_INVENTORY_IDS`` (``:247``) - the shared
   trinket / consumable set ``liveclient_summary`` filters with (``:277-282``).

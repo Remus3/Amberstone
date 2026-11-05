@@ -79,9 +79,9 @@ class _StubHandler:
 
 class TestCleanseAdvisory(unittest.TestCase):
     """_compose_cleanse_advisory: routes_pickban.py:693. The per-spell
-    registry truly lives at agents.daemon_slayer._per_spell_cc:778, NOT
+    registry truly lives at agents.daemon_slayer._per_spell_cc._PER_SPELL_CC_DURATIONS, NOT
     the package root; ConditionalCcEntry carries durations_s (tuple),
-    not duration_seconds (cc_conditional.py:458)."""
+    not duration_seconds (cc_conditional.ConditionalCcEntry)."""
 
     def setUp(self):
         from agents.daemon_slayer import _per_spell_cc as psc

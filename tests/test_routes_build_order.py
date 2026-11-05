@@ -35,7 +35,8 @@ class _Handler:
 
 # Family-aware fake engine - mirrors the real rank.py contract: excludes
 # owned ids, and with filter_shared_uniques=True omits any candidate whose
-# unique-passive family is already in item_ids (rank.py:339).
+# unique-passive family is already in item_ids (`rank_items`, the
+# `shares_dead_unique` / `filter_shared_uniques` branch).
 _CAT = {
     "3078": ("Trinity Force",  60.0, "spellblade"),
     "3508": ("Essence Reaver", 55.0, "spellblade"),

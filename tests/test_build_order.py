@@ -37,7 +37,8 @@ from core.build_order import (
 #     AP item rises with target_mr) so order depends on the match
 #   - unique-passive families; with filter_shared_uniques=True a candidate
 #     colliding with a family already in item_ids is OMITTED entirely
-#     (exactly rank.py:339 `if shares_dead_unique and filter: continue`);
+#     (exactly the `rank_items` guard `if shares_dead_unique and
+#     filter_shared_uniques: continue`);
 #     with the filter off it is returned flagged.
 
 _CATALOG = {

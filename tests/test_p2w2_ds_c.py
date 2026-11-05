@@ -21,7 +21,7 @@ guarded code. Self-contained: ``_value_at_rank`` is a pure helper and
 ``_eval_heal_shield_block`` is exercised with a minimal SimpleNamespace
 block stub (it reads only ``.raw_modifiers`` plus the optional
 ``.level_scaled`` / ``.bilinear_terms`` attributes - confirmed via the
-function body at ability_hps.py lines 289-324).
+function body of ability_hps._eval_heal_shield_block).
 """
 
 import math

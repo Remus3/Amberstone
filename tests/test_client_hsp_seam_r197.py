@@ -4,7 +4,7 @@
 WHAT THIS PINS
 --------------
 ``agents/daemon_slayer/server.py`` began parsing ``assume_hsp_amp`` on BOTH
-/ehp (server.py:636) and /sustain (server.py:1761) at R197. The engine had
+/ehp (`_route_ehp`) and /sustain (`_route_sustain`) at R197. The engine had
 accepted the kwarg since ENGINE 1.171.0 (R60) on ``compute_ehp`` and
 ``compute_sustain``, but no route parsed it, so no client could arm it. Wiring
 the routes moved the gap one layer out rather than closing it: /ehp's client

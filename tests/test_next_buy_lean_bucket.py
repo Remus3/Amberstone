@@ -183,7 +183,8 @@ class BucketSelectionPropertyTests(unittest.TestCase):
         # sr / aram unchanged at 71.
         # Re-measured 2026-10-04: arena 64 -> 65. Cause is RM-513 (bfefceee7),
         # NOT the 16.19.1 DDragon bump: rank._ARENA_EXCLUDED_ITEM_IDS
-        # (agents/daemon_slayer/rank.py:277, denied at rank.py:813) drops
+        # (agents/daemon_slayer/rank.py, defined beside the SR and ARAM sets and
+        # denied in `_filter_candidates`) drops
         # 223069 Void Immolation (an augment reward) from the Arena pool, and the
         # regen removed it from 73 champions' buckets. Diverging set, 16.18.1
         # arena table at 7fbe7aead vs bfefceee7: +Camille +Vi +Volibear +Wukong,
