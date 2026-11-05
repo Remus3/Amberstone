@@ -687,6 +687,20 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   width: min(960px, 92vw);
   z-index: 9200;
   padding: var(--panel-padding) var(--space-5);
+  /* RM-1430: a fixed box never scrolls with the page, so the picker is
+   * capped at the window (less a --space-3 margin each side) and scrolls
+   * its own content. Measured before: at 768x368 (250% zoom of the
+   * 1920x920 baseline) it ran from y -38.5 to 406.5; at 480x230 (400%)
+   * only 3 of 11 queue items were reachable. The columns fold (4 -> 3 ->
+   * 2 -> 1) instead of overflowing sideways; at every width that already
+   * fit they stay 4 equal columns. Guard:
+   * tests/snapshot_panels/test_home_find_match_picker_fits.py. */
+  box-sizing: border-box;
+  max-width: calc(100vw - 2 * var(--space-3));
+  max-height: calc(100vh - 2 * var(--space-3));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
 }
 .home-find-match-picker .lq-mode-section {
   font-size: var(--fs-sm);
