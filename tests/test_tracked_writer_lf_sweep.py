@@ -186,6 +186,34 @@ def _write_mode(call: ast.Call, mode_index: int) -> str | None:
     return mode if isinstance(mode, str) else None
 
 
+# tempfile constructors that open text (not bytes) when given a literal mode
+# without "b"; the default mode is "w+b", so a bare call is binary and fine.
+_TEMPFILE_MODE_INDEX = {
+    "NamedTemporaryFile": 0,
+    "TemporaryFile": 0,
+    "SpooledTemporaryFile": 1,
+}
+
+
+def _computed_mode(call: ast.Call, fn: ast.expr, name: str) -> bool:
+    """True for the builtin ``open`` / ``io.open`` / ``os.fdopen`` called with a
+    mode that is not a string literal (a name, a conditional, a call).
+    ``Path.open`` / ``opener.open`` / ``Image.open`` / ``os.open`` are not
+    judged: their first argument is not a mode."""
+    if name == "open":
+        owner = getattr(fn, "value", None) if isinstance(fn, ast.Attribute) else None
+        if isinstance(fn, ast.Attribute) and getattr(owner, "id", None) != "io":
+            return False
+    mode = None
+    if len(call.args) > 1:
+        mode = call.args[1]
+    for kw in call.keywords:
+        if kw.arg == "mode":
+            mode = kw.value
+    return mode is not None and not (
+        isinstance(mode, ast.Constant) and isinstance(mode.value, str))
+
+
 def _violations(source: str) -> list[str]:
     out: list[str] = []
     for node in ast.walk(ast.parse(source)):
@@ -204,7 +232,19 @@ def _violations(source: str) -> list[str]:
             if not any(kw.arg == "lineterminator" for kw in node.keywords):
                 out.append(f"line {node.lineno}: csv.{name} without lineterminator=")
             continue
+        if name in _TEMPFILE_MODE_INDEX:
+            # RM-1540: a text-mode temp file translates LF like open().
+            mode = _write_mode(node, _TEMPFILE_MODE_INDEX[name])
+            if (mode and "b" not in mode and not any(
+                    kw.arg == "newline" for kw in node.keywords)):
+                out.append(f"line {node.lineno}: {name}({mode!r}) without newline=")
+            continue
         if name not in ("open", "fdopen"):
+            continue
+        if _computed_mode(node, fn, name) and not any(
+                kw.arg == "newline" for kw in node.keywords):
+            # RM-1540: a mode the AST cannot read is treated as a write.
+            out.append(f"line {node.lineno}: {name}(<computed mode>) without newline=")
             continue
         # Path.open(mode) carries mode at 0; builtins/os.fdopen at 1.
         idx = 0 if (name == "open" and isinstance(fn, ast.Attribute)
@@ -237,6 +277,40 @@ def test_guard_detects_both_shapes():
         "open('x', 'w', encoding='utf-8', newline='\\n')\n"
         "open('x', 'a', encoding='utf-8')\n"
         "open('x', 'rb')\n"
+    )
+    assert _violations(good) == []
+
+
+def test_guard_detects_a_non_literal_mode_and_tempfile_text_modes():
+    """RM-1540 (RM-481 residual): the detector read only LITERAL modes, so
+    open(p, mode) with a computed mode and a text-mode NamedTemporaryFile /
+    TemporaryFile / SpooledTemporaryFile passed it while still translating
+    LF to CRLF on Windows."""
+    bad = (
+        "import tempfile\n"
+        "open('x', mode)\n"
+        "open('x', 'a' if append else 'w', encoding='utf-8')\n"
+        "os.fdopen(3, mode=m)\n"
+        "tempfile.NamedTemporaryFile('w', delete=False)\n"
+        "tempfile.NamedTemporaryFile(mode='w+', delete=False)\n"
+        "tempfile.TemporaryFile('w+')\n"
+        "tempfile.SpooledTemporaryFile(mode='w+')\n"
+    )
+    assert len(_violations(bad)) == 7
+    good = (
+        "import tempfile\n"
+        "open('x', mode, newline='\\n')\n"
+        "open('x', 'a' if append else 'w', encoding='utf-8', newline='\\n')\n"
+        "tempfile.NamedTemporaryFile('w', newline='\\n')\n"
+        "tempfile.NamedTemporaryFile(delete=False)\n"
+        "tempfile.NamedTemporaryFile('wb')\n"
+        "tempfile.TemporaryFile()\n"
+        "tempfile.SpooledTemporaryFile(mode='w+b')\n"
+        "zf.open(info)\n"
+        "opener.open(req, timeout=3)\n"
+        "Image.open(src)\n"
+        "RoundStore.open(path, readonly=True)\n"
+        "os.open(p, os.O_WRONLY | os.O_CREAT, 420)\n"
     )
     assert _violations(good) == []
 

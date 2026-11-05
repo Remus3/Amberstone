@@ -19,6 +19,13 @@ they left the baseline. tools/ci_watchdog.py wrote a multi-line
 markdown context file and was converted (newline="\\n"). The five left are
 frozen, kit-owned or byte-pinned and are the main session's to change.
 
+RM-1540 closes the RM-481 residual by measurement: an AST walk over every
+tracked non-test .py found no text-mode writer outside this set and the swept
+lists. The detector's two blind spots are shut (a computed open() mode and a
+text-mode NamedTemporaryFile / TemporaryFile / SpooledTemporaryFile were
+invisible; tools/ci_impact_selector.py's `'a' if append else 'w'` open already
+passes newline="\\n"), and the tree stays clean under the stricter detector.
+
 Append-mode sinks stay out of scope, as the sweep module's docstring rules:
 they are gitignored runtime logs, never tracked files.
 """
