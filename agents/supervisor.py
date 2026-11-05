@@ -45,38 +45,34 @@ Standalone run:
 # `agents.supervisor.{IDLE_ANALYZE_SEC,WARM_UI_*}` and reassign
 # `sup_mod.{_PROJECT_ROOT,LOG_ROOT}`, all read by Supervisor methods - the
 # patch only reaches them while the class resolves THIS module's globals.
-# The original import block below is kept intact (F401 is ignored
-# project-wide) so `agents.supervisor.shutil`/`.subprocess` resolve for
-# `test_supervisor_stub`'s patches. Do not "tidy" it.
+# The import block below keeps `shutil` and `subprocess` (named in `__all__`)
+# so `agents.supervisor.shutil`/`.subprocess` resolve for
+# `test_supervisor_stub`'s patches. The imports nothing patched, read or
+# re-exported were dropped (RM-1408, ratchet
+# tests/test_unused_import_ratchet_s144p108.py). Do not drop those two.
 # -------------------------------------------------------------------------
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
-import http.server
 import json
 import logging
 import logging.handlers
 import os
-import re
 import shutil
 import signal
-import socket
 import socketserver
 import subprocess
-import sys
 import threading
 import time
 import traceback
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from core.log_scrub import scrub_log as _scrub_log_text
 
-from agents.agent0_gatekeeper.evaluator import Evaluator, Task as Agent0Task
-from agents.agent1_lead.scheduler import Scheduler, TaskStatus
+from agents.agent0_gatekeeper.evaluator import Evaluator
+from agents.agent1_lead.scheduler import Scheduler
 from agents.agent2_backend.db_schema import init_all as init_all_dbs
 from lib.modes import verify_modes as _verify_modes
 from agents.agent2_backend.db_migrate_kda import ensure_all as _ensure_kda_columns_all

@@ -27,7 +27,6 @@ from __future__ import annotations
 import json
 import threading
 from pathlib import Path
-from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 BENCHMARKS_PATH = ROOT / "data" / "coach_reference" / "champion_benchmarks.json"

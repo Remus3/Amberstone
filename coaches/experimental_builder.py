@@ -50,7 +50,6 @@ import logging
 import re
 import time
 from pathlib import Path
-from typing import Any
 
 from core.polled_json import atomic_write_json, atomic_write_text
 

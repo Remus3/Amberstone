@@ -22,15 +22,14 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Optional
 
 from agents.daemon_slayer._melee_ranged import (
     MELEE_RANGED_ATTACKRANGE_SPLIT,
     attackrange_is_ranged,
 )
 
-# Private constants of lcu_rune_writer, needed to translate variant rune
-# names into LCU perk IDs.
+# Rune-writer helpers, needed to translate variant rune names into LCU perk
+# IDs.
 #
 # NOT FROZEN - corrected lane 8 cycle 39. This comment used to call
 # lcu_rune_writer frozen. The CLAUDE.md frozen list carries 16 entries and
@@ -38,8 +37,7 @@ from agents.daemon_slayer._melee_ranged import (
 # LEDGER item-360 states the distinction explicitly. Four source files plus
 # one test repeated the false claim, which would have deterred exactly the
 # cycle-39 fix these imports now carry.
-from lcu.lcu_rune_writer import (_TREES, build_perk_ids, load_rune_rec,
-                                  resolve_tree_ids)
+from lcu.lcu_rune_writer import build_perk_ids, load_rune_rec, resolve_tree_ids
 
 _log = logging.getLogger("rc.loadout")
 

@@ -20,7 +20,6 @@ and `read_json` directly from `dashboard._context`.
 from __future__ import annotations
 
 import concurrent.futures
-import json
 import logging
 import os
 import threading

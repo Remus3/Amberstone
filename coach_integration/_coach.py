@@ -13,7 +13,6 @@ except ImportError:
     anthropic = None  # type: ignore[assignment]
     _APITimeoutError = Exception
     _APIConnectionError = Exception
-from collections import deque
 from datetime import datetime
 from pathlib import Path
 

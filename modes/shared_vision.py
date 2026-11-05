@@ -7,8 +7,6 @@ ARAM, Arena, Brawl, and other non-TFT game modes.
 Each mode subclasses GameVisionReader and provides its own extraction prompt.
 """
 
-import base64
-import io
 import json
 import logging
 import re

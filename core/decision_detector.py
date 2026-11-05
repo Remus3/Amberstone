@@ -38,7 +38,6 @@ import logging
 import math
 import threading
 import time
-import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable, Iterator, Optional
