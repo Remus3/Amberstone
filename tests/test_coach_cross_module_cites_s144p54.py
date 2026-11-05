@@ -101,9 +101,15 @@ def test_register_coach_claim_holds():
                and any(isinstance(o, ast.NotIn) for o in n.ops)
                for n in nodes)
     assert any(isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-               and n.func.attr == "append" for n in nodes)
-    assert any(isinstance(n, ast.Global) and "_coaches" in n.names
-               for n in nodes)
+               and n.func.attr == "append"
+               and getattr(n.func.value, "id", None) == "_coaches" for n in nodes)
+    # The module global: bound at module level, never rebound in this function
+    # (a read-only name needs no `global` statement, so none is asserted).
+    tree = ast.parse(_src(rel))
+    assert any(isinstance(n, ast.AnnAssign)
+               and getattr(n.target, "id", None) == "_coaches" for n in tree.body)
+    assert not [n for n in nodes if isinstance(n, ast.Name) and n.id == "_coaches"
+                and isinstance(n.ctx, ast.Store)]
 
 
 def test_coach_trace_append_claim_holds():
