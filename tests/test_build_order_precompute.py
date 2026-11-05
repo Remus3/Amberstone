@@ -142,7 +142,7 @@ def load_shipped_table(path: Path, label: str) -> dict:
         )
     try:
         payload = json.loads(raw)
-    except Exception as exc:  # noqa: BLE001 - a corrupt shipped table is a FAIL
+    except Exception as exc:  # a corrupt shipped table is a FAIL
         raise AssertionError(
             f"{label} exists at {path} but is not valid JSON: {exc}"
         ) from exc

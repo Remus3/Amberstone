@@ -536,7 +536,7 @@ def launch_lane(lane: str, *, run_id: str, token, base: Path | None = None,
             prog.fail(str(exc)[:160])
         lanes.release_lane(token)
         raise
-    except Exception as exc:  # noqa: BLE001 - any fault must still free the lane
+    except Exception as exc:  # any fault must still free the lane
         if prog is not None:
             prog.fail(f"launch failed: {exc}"[:160])
         lanes.release_lane(token)

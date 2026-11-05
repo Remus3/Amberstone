@@ -313,7 +313,7 @@ def decode_canvas(data_url):
         raw = base64.b64decode(data_url.split(",", 1)[1], validate=True)
         img = Image.open(io.BytesIO(raw))
         img.load()
-    except Exception as exc:  # noqa: BLE001 - any decode failure is an input error
+    except Exception as exc:  # any decode failure is an input error
         raise InputError(f"canvas_png does not decode: {type(exc).__name__}") from exc
     return img.convert("RGBA")
 

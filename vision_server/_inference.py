@@ -241,7 +241,7 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
         return out, "image/jpeg"
     except FrameRefused:
         raise
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         # RM-247: the recovery below FORWARDS the original frame, which is
         # exactly wrong for a decompression bomb or an allocation failure -
         # the most expensive frame would reach the API at full size. Those

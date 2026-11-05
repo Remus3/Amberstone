@@ -8,7 +8,7 @@ A stale suppression hides the day somebody edits that handler to swallow the
 error: the marker still says "blind except is deliberate here" when nobody
 decided that.
 
-Ten modules were cleaned in RM-1403 and fourteen more in RM-1404 (FIXED). The rest are in the shrinking
+Ten modules were cleaned in RM-1403, fourteen more in RM-1404 and seven more in RM-1405 (FIXED). The rest are in the shrinking
 _BASELINE (rel path -> why it is not in this slice). The ratchet:
 
 - a FIXED module carries no unused noqa again;
@@ -56,25 +56,25 @@ FIXED = (
     "dashboard/routes_skill_wpa.py",
     "dashboard/routes_summspell_wpa.py",
     "lib/game_data/fetch.py",
+    "ops/loop/lane_launcher.py",
+    "tests/snapshot_panels/test_settings_spend_gate_focus.py",
+    "tests/snapshot_panels/test_settings_spend_gate_residue.py",
+    "tests/test_build_order_precompute.py",
+    "tests/test_decision_detector_lane8_cycle12.py",
     "tft/tft_state_reader.py",
+    "tools/gated_lx11_minimap_check.py",
     "tools/hotkey_listener.py",
     "tools/live_write_tracer.py",
     "tools/precommit_gate.py",
     "tools/spec_watch.py",
+    "vision_server/_inference.py",
 )
 
 # rel path -> why it may keep an unused noqa. Only shrinks.
 _BASELINE = {
     "dashboard/routes_draft_score.py": "another lane branch changed it",
     "dashboard/routes_session_hygiene.py": "another lane branch changed it",
-    "ops/loop/lane_launcher.py": "later slice",
-    "tests/snapshot_panels/test_settings_spend_gate_focus.py": "later slice",
-    "tests/snapshot_panels/test_settings_spend_gate_residue.py": "later slice",
-    "tests/test_build_order_precompute.py": "later slice",
-    "tests/test_decision_detector_lane8_cycle12.py": "later slice",
-    "tools/gated_lx11_minimap_check.py": "later slice",
     "tools/upstream_drift_check.py": "another lane branch changed it",
-    "vision_server/_inference.py": "later slice",
 }
 
 

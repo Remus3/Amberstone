@@ -146,7 +146,7 @@ def _focus_gate(page, name):
 def _wait_rebuilt(page, old_handle, what):
     try:
         page.wait_for_function("e => !e.isConnected", arg=old_handle, timeout=5_000)
-    except Exception as exc:  # noqa: BLE001 - name the missing rebuild
+    except Exception as exc:  # name the missing rebuild
         raise AssertionError(f"{what}: the gate list never re-rendered") from exc
 
 

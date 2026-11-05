@@ -865,7 +865,7 @@ class TestRM318MalformedEnvelopeDoesNotRaise:
         vision = mutate(snapshot, vision)
         try:
             result = fn(snapshot, vision)
-        except Exception as exc:  # noqa: BLE001 - the assertion IS the point
+        except Exception as exc:  # the assertion IS the point
             raise AssertionError(
                 f"{name} raised {type(exc).__name__} on shape "
                 f"{shape}: {exc}") from exc

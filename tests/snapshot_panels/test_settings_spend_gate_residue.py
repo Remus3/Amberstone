@@ -166,7 +166,7 @@ def _render(page):
 def _wait_for(page, pred, what, timeout=5_000):
     try:
         page.wait_for_function(pred, timeout=timeout)
-    except Exception as exc:  # noqa: BLE001 - name what never happened
+    except Exception as exc:  # name what never happened
         raise AssertionError(what) from exc
 
 
