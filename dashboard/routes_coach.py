@@ -15,9 +15,10 @@ import logging
 import re
 from urllib.parse import parse_qs, urlparse
 
+from core.log_scrub import scrub_log
 from dashboard._context import APP_DIR
 from dashboard._dispatch import equals, prefix
-from dashboard._errors import send_error
+from dashboard._errors import GENERIC_ERROR, send_error
 from dashboard._json_flags import bad_flag_body, coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
@@ -186,10 +187,82 @@ def _serve_branch_review_runs(h) -> None:
         send_error(h, exc)
 
 
+# s144 true-audit cycle 107: True once a failed champ-select shadow pass has
+# been logged at WARNING; reset by the next pass that completes. A race between
+# two handler threads costs at most one extra WARNING line.
+_SHADOW_WARNED = False
+
+
+def _pick_view(payload) -> dict | None:
+    """The pick state coach_pick reads out of a request body, or None when
+    coach_pick refuses the body (not an object, or no usable champion).
+
+    coach_pick's OWN rules, imported rather than restated: names sanitised and
+    length-capped (`_name`), list fields only a list or tuple of at most
+    `_MAX_NAMES` entries (`_names`), and ARAM from a real `true` or from a queue
+    that maps to the ARAM mode (`_mode_key`). The deterministic advisor reads
+    this view, so it answers the request Haiku answered, not the raw body.
+
+    The shadow writer is NOT given this view: it applies the same rules to the
+    raw body itself, and the name rule is not idempotent (a marker can grow a
+    63-character name past the 64-character cap, so a second pass would refuse
+    a name the prompt carried)."""
+    from coaches.champ_select_coach import _mode_key, _name, _names
+    if not isinstance(payload, dict):
+        return None
+    my_champion = _name(payload.get("my_champion"))
+    if not my_champion:
+        return None
+    return {
+        "my_champion": my_champion,
+        "is_aram": payload.get("is_aram") is True or _mode_key(payload) == "aram",
+        "my_team": _names(payload.get("my_team")),
+        "their_team": _names(payload.get("their_team")),
+        "bench": _names(payload.get("bench")),
+    }
+
+
+def _exc_text(exc: BaseException, secret: str) -> str:
+    """Exception text for a log line: the secret removed, control characters
+    escaped so the text cannot start a log line, a broken __str__ survived."""
+    try:
+        text = str(exc)
+    except Exception:  # noqa: BLE001 - a broken __str__ must not hide the cause
+        text = "<exception text unavailable>"
+    secret = secret if isinstance(secret, str) else ""
+    # Longest first, so the bare key cannot leave a padded copy's edges behind.
+    for s in sorted({secret, secret.strip()} - {""}, key=len, reverse=True):
+        text = text.replace(s, "[redacted]")
+    return scrub_log(text)
+
+
+def _champ_select_shadow(payload, view: dict, result) -> None:
+    """Do-not-flip-blind shadow: record the deterministic pick-advisor beside
+    the live Haiku advice so the precompute path can be validated offline
+    before any flip. Never raises. A failure (both callees are fail-soft, so in
+    practice an import failure) is a WARNING once, then DEBUG until a pass
+    completes - a silent DEBUG-only failure would stop the corpus growing with
+    nothing in the log."""
+    global _SHADOW_WARNED
+    try:
+        from core.champ_select_advisor_deterministic import advise_pick
+        from core.champ_select_shadow import log_champ_select_advice
+        log_champ_select_advice(payload, native=result,
+                                deterministic=advise_pick(view))
+    except Exception as exc:  # noqa: BLE001 - never blocks the coach reply
+        level = logging.DEBUG if _SHADOW_WARNED else logging.WARNING
+        _SHADOW_WARNED = True
+        log.log(level, "champ-select shadow skipped: %s: %s",
+                type(exc).__name__, _exc_text(exc, ""))
+        return
+    _SHADOW_WARNED = False
+
+
 def _serve_champ_select_coach_post(h, payload) -> None:
     # Live champ-select coaching - Haiku call with the current pick state.
     # Dashboard POSTs whenever picks change (debounced).
     # Body: {is_aram, queue_id, my_champion, my_team, their_team, bench}
+    api_key = ""
     try:
         from coaches._base_coach import read_api_key
         from coaches.champ_select_coach import coach_pick
@@ -205,20 +278,22 @@ def _serve_champ_select_coach_post(h, payload) -> None:
         # guard and answers 200 with "(API key missing - coach disabled)".
         api_key = read_api_key(APP_DIR)
         result = coach_pick(payload or {}, api_key)
-        # Do-not-flip-blind shadow: record the deterministic pick-advisor
-        # alongside the live Haiku advice so the precompute path can be
-        # validated offline before any flip. Fail-soft; never blocks the route.
-        try:
-            from core.champ_select_advisor_deterministic import advise_pick
-            from core.champ_select_shadow import log_champ_select_advice
-            log_champ_select_advice(payload or {}, native=result,
-                                    deterministic=advise_pick(payload or {}))
-        except Exception as exc:  # noqa: BLE001
-            log.debug("champ-select shadow: %s", exc)
+        # s144 true-audit cycle 107 (RM-1381): the advisor used to get the
+        # RAW body - is_aram read with bool() (so "false" meant ARAM), queue_id
+        # ignored (so an ARAM queue meant Rift), lists uncapped and unsanitised
+        # - and the shadow row's deterministic half described another request.
+        # It now reads coach_pick's view, and runs only for a body coach_pick
+        # accepted (the shadow writes no row for any other).
+        view = _pick_view(payload)
+        if view is not None:
+            _champ_select_shadow(payload, view, result)
         _send_json(h, 200, result)
     except Exception as exc:  # noqa: BLE001
-        log.warning("api/champ-select-coach: %s", exc)
-        send_error(h, exc)
+        # One log line, the key removed: send_error would log str(exc)
+        # verbatim, and an HTTP layer can quote a header value back.
+        log.warning("api/champ-select-coach: %s: %s",
+                    type(exc).__name__, _exc_text(exc, api_key))
+        _send_json(h, 500, {"error": GENERIC_ERROR})
 
 
 def _serve_aram_comp_verdict_post(h, payload) -> None:
