@@ -7259,6 +7259,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     return _menuRendered() || modalLayerRendered();
   }
+  function _promptRendered() {
+    const input = el("input-text");
+    return !!input && input.getClientRects().length > 0;
+  }
   // RM-1366: the open menu owns a plain (or Shift+) Space on every view. A
   // right-click on a bare spot fires no click, so the menu stays open with focus
   // on the body, and the browser then scrolled the view behind it (Settings 718
@@ -7357,10 +7361,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         return;
       }
     }
-    // Ctrl+K / Cmd+K focuses the prompt input.
+    // Ctrl+K / Cmd+K focuses the prompt input. RM-1421: only a prompt the
+    // operator can see (#input-bar is display: none on every view), or the
+    // chord is taken from the browser for a focus() that does nothing.
+    // RM-1423: and never behind an open modal or menu.
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-      const input = el("input-text");
-      if (input) { input.focus(); input.select(); e.preventDefault(); }
+      if (_promptRendered() && !_menuRendered() && !modalLayerRendered()) {
+        const input = el("input-text");
+        input.focus(); input.select(); e.preventDefault();
+      }
     }
     // "?" or "H" shows a brief keybind hint toast.
     if ((e.key === "?" || e.key === "h" || e.key === "H") && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -7377,7 +7386,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       toast.innerHTML = `
         <b>Keybinds</b>
         <div><kbd>Esc</kbd> close modal / dismiss toast</div>
-        <div><kbd>Ctrl</kbd>+<kbd>K</kbd> focus prompt</div>
+        <div data-key="ctrl-k"><kbd>Ctrl</kbd>+<kbd>K</kbd> focus prompt</div>
         <div><kbd>F</kbd> toggle fullscreen</div>
         <div><kbd>A</kbd> run Analyze Now</div>
         <div><kbd>Shift</kbd>+<kbd>R</kbd> reset saved prefs</div>
@@ -7388,6 +7397,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       `;
       document.body.appendChild(toast);
     }
+    // RM-1421: list Ctrl+K only while it has a prompt to focus.
+    const ctrlK = toast.querySelector('[data-key="ctrl-k"]');
+    if (ctrlK) ctrlK.hidden = !_promptRendered();
     toast.classList.add("show");
     clearTimeout(toast._t);
     toast._t = setTimeout(() => toast.classList.remove("show"), 3500);
