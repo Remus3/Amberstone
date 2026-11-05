@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 from pathlib import Path
 from typing import Iterable, Optional
@@ -75,31 +76,110 @@ _MODE_TO_DDRAGON_MAP_ID: dict[str, str] = {
 }
 _byname_by_mode: dict[str, dict[str, str]] = {}
 
+# RM-1468: the signature of the last file whose CONTENT failed to load (or
+# loaded empty). Without it a malformed or HP-empty file was re-read, re-parsed
+# and re-warned on EVERY lookup - six names per coach tick. A changed file
+# (path, mtime_ns, size or patch) clears the memo; a transient OSError is never
+# memoized, so a sharing violation still retries on the next call.
+_index_failed_sig: Optional[tuple] = None
+_hp_failed_sig: Optional[tuple] = None
+
+# RM-1469: a patch token is ONE directory name under data/daemon_slayer.
+_PATCH_FORBIDDEN = ("/", "\\", ":", "..")
+_refused_patch: str = ""
+
+# json.loads raises RecursionError (not a ValueError) on a too-deep document.
+_PARSE_ERRORS = (UnicodeDecodeError, ValueError, RecursionError)
+
 
 def _normalize(name: str) -> str:
     return "".join(c.lower() for c in name if c.isalnum())
 
 
+def _members(values) -> Iterable:
+    """The members of a list-shaped call arg (RM-1470).
+
+    A bare ``str`` is ONE member, not a sequence of characters; None, bytes
+    and a non-iterable are no members at all.
+    """
+    if isinstance(values, str):
+        return (values,)
+    if values is None or isinstance(values, (bytes, bytearray)):
+        return ()
+    try:
+        return iter(values)
+    except TypeError:
+        return ()
+
+
+def _file_sig(path: Path, patch: str = "") -> tuple:
+    """Raises OSError when the file cannot be stat'ed."""
+    st = path.stat()
+    return (str(path), st.st_mtime_ns, st.st_size, patch)
+
+
+def _as_item_id(value) -> Optional[str]:
+    """An item id from an index value: a non-blank str or a non-bool int."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        return value.strip() or None
+    return None
+
+
+def _as_hp(value) -> Optional[float]:
+    """A finite non-negative HP number (RM-1466), else None."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        hp = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(hp) or hp < 0:
+        return None
+    return hp
+
+
 def _load_if_stale() -> None:
-    global _cache, _cache_mtime
+    global _cache, _cache_mtime, _index_failed_sig
     try:
         mtime = _INDEX_PATH.stat().st_mtime
+        sig = _file_sig(_INDEX_PATH)
     except OSError as e:
         logger.debug("items_index missing: %s", e)
         return
     if mtime == _cache_mtime and _cache:
         return
+    if sig == _index_failed_sig:
+        return
     try:
         doc = json.loads(_INDEX_PATH.read_text(encoding="utf-8"))
-    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+    except OSError as e:
+        # Transient (a sharing violation mid-replace): not memoized, retried.
         logger.warning("items_index read failed: %s", e)
         return
-    by_name = doc.get("byName") or {}
-    new_cache: dict[str, str] = {str(k): str(v) for k, v in by_name.items() if v}
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError, and is
+    # raised by read_text itself, so it must sit beside the parse errors.
+    except _PARSE_ERRORS as e:
+        logger.warning("items_index read failed: %s", e)
+        _index_failed_sig = sig
+        return
+    by_name = doc.get("byName") if isinstance(doc, dict) else None
+    if not isinstance(by_name, dict):
+        logger.warning("items_index has no byName mapping")
+        _index_failed_sig = sig
+        return
+    new_cache: dict[str, str] = {}
+    for k, v in by_name.items():
+        iid = _as_item_id(v)
+        if iid:
+            new_cache[str(k)] = iid
     with _lock:
         _cache = new_cache
         _cache_mtime = mtime
+        _index_failed_sig = None if new_cache else sig
     logger.debug("items_index refreshed: %d entries", len(new_cache))
 
 
@@ -111,10 +191,13 @@ def name_to_id(name: str, mode: Optional[str] = None) -> Optional[str]:
     (case-insensitive). When omitted, falls back to the legacy
     ``items_index.json`` byName. Post-commit 41c87bc that index returns
     canonical 4-digit IDs (the old Arena-alias leakage quirk is fixed).
+
+    A non-str ``name`` resolves to None and a non-str ``mode`` is treated as
+    omitted (RM-1470): both used to raise out of a coach tick.
     """
-    if not name:
+    if not isinstance(name, str) or not name:
         return None
-    if mode:
+    if isinstance(mode, str) and mode:
         key = mode.strip().lower()
         if key in _MODE_TO_DDRAGON_MAP_ID:
             _load_hp_if_stale()  # also populates _byname_by_mode
@@ -133,9 +216,10 @@ def resolve_many(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
     """Resolve a list of names; unknowns dropped silently. Order preserved.
 
     ``mode`` is forwarded to ``name_to_id``; see that docstring for semantics.
+    A bare string is one name; a non-iterable resolves to ``[]``.
     """
     out: list[str] = []
-    for n in names or []:
+    for n in _members(names):
         iid = name_to_id(n, mode=mode)
         if iid:
             out.append(iid)
@@ -143,11 +227,29 @@ def resolve_many(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
 
 
 def _current_patch() -> Optional[str]:
+    """The patch token from current.txt, or None (RM-1469).
+
+    utf-8-sig: a PowerShell 5.1 ``-Encoding UTF8`` write leaves a BOM that a
+    plain utf-8 read keeps inside the token, so items.json went "missing" and
+    the HP and per-mode indexes stayed silently empty. A token carrying a path
+    separator, a drive colon or ``..`` is refused: it would read an items.json
+    outside data/daemon_slayer.
+    """
+    global _refused_patch
     try:
-        return _PATCH_FILE.read_text(encoding="utf-8").strip() or None
+        patch = _PATCH_FILE.read_text(encoding="utf-8-sig").strip()
     # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
     except (OSError, UnicodeDecodeError):
         return None
+    if not patch:
+        return None
+    if any(bad in patch for bad in _PATCH_FORBIDDEN):
+        # Once per distinct token: this runs on every lookup.
+        if patch != _refused_patch:
+            _refused_patch = patch
+            logger.warning("current.txt patch token refused (path segment)")
+        return None
+    return patch
 
 
 def _items_json_path() -> Optional[Path]:
@@ -212,13 +314,19 @@ def _derive_non_inventory_ids(path: Optional[Path]) -> frozenset[str]:
     Fail-soft by contract: any missing file, OS error or malformed document
     returns the floor unchanged rather than raising, because this runs at
     import time and a throw here would take every coach down with it.
+    That covers a junk ROW too (RM-1464): a ``stats`` block that is not a
+    mapping skips the row (unknown stats keep the slot), and a ``tags`` value
+    that is not a list counts as no tags (a bare string is never substring
+    matched).
     """
     if path is None:
         return _NON_INVENTORY_BASE_IDS
     try:
         data = json.loads(path.read_text(encoding="utf-8")).get("data") or {}
     # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError, AttributeError) as e:
+    # RecursionError: a too-deep document (RM-1464).
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, AttributeError,
+            RecursionError) as e:
         logger.warning("non-inventory derivation fell back to base set: %s", e)
         return _NON_INVENTORY_BASE_IDS
     # A well-formed document whose "data" is truthy but not a mapping parses
@@ -232,9 +340,12 @@ def _derive_non_inventory_ids(path: Optional[Path]) -> frozenset[str]:
     for iid, rec in data.items():
         if not isinstance(rec, dict):
             continue
-        if any(v for v in (rec.get("stats") or {}).values()):
+        stats = rec.get("stats") or {}
+        if not isinstance(stats, dict) or any(v for v in stats.values()):
             continue
-        tags = rec.get("tags") or []
+        tags = rec.get("tags")
+        if not isinstance(tags, list):
+            tags = []
         if ("Consumable" in tags or "Trinket" in tags
                 or (rec.get("consumed") is True and rec.get("inStore") is False)):
             derived.add(str(iid))
@@ -257,7 +368,7 @@ def resolve_inventory(names: Iterable[str], mode: Optional[str] = None) -> list[
     snapshots, raw-id mirrors, etc).
     """
     out: list[str] = []
-    for n in names or []:
+    for n in _members(names):
         iid = name_to_id(n, mode=mode)
         if iid and iid not in NON_INVENTORY_IDS:
             out.append(iid)
@@ -273,54 +384,74 @@ def _load_hp_if_stale() -> None:
     byName index. Items without an HP stat are skipped from ``_hp_cache``
     but still indexed in ``_byname_by_mode``. mtime-gated refresh; same
     shape as ``_load_if_stale``.
+
+    Never raises on a malformed document (RM-1465): a non-object document
+    or a non-mapping ``data`` loads nothing, and a row whose ``stats``,
+    ``maps`` or ``name`` has the wrong type contributes nothing from that
+    field. Only a finite non-negative HP is stored (RM-1466). A content
+    failure or an HP-empty load is remembered by file signature so it is
+    parsed and warned once, not on every lookup (RM-1468).
     """
     global _hp_cache, _hp_cache_mtime, _hp_cache_patch, _byname_by_mode
+    global _hp_failed_sig
     path = _items_json_path()
     if path is None:
         logger.debug("items.json missing for current patch; HP cache empty")
         return
+    patch = _current_patch() or ""
     try:
         mtime = path.stat().st_mtime
+        sig = _file_sig(path, patch)
     except OSError:
         return
-    patch = _current_patch() or ""
     if (
         _hp_cache
         and mtime == _hp_cache_mtime
         and patch == _hp_cache_patch
     ):
         return
+    if sig == _hp_failed_sig:
+        return
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
-    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+    except OSError as e:
+        # Transient (a sharing violation mid-replace): not memoized, retried.
         logger.warning("DDragon items.json read failed: %s", e)
         return
-    data = doc.get("data") or {}
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError, and is
+    # raised by read_text itself, so it must sit beside the parse errors.
+    except _PARSE_ERRORS as e:
+        logger.warning("DDragon items.json read failed: %s", e)
+        _hp_failed_sig = sig
+        return
+    data = (doc.get("data") or {}) if isinstance(doc, dict) else None
+    if not isinstance(data, dict):
+        logger.warning("DDragon items.json has no data mapping")
+        _hp_failed_sig = sig
+        return
     new_hp: dict[str, float] = {}
     new_byname: dict[str, dict[str, str]] = {m: {} for m in _MODE_TO_DDRAGON_MAP_ID}
     for iid, rec in data.items():
         if not isinstance(rec, dict):
             continue
         stats = rec.get("stats") or {}
-        hp = stats.get("FlatHPPoolMod")
+        hp = _as_hp(stats.get("FlatHPPoolMod")) if isinstance(stats, dict) else None
         if hp is not None:
-            try:
-                new_hp[str(iid)] = float(hp)
-            except (TypeError, ValueError):
-                pass
+            new_hp[str(iid)] = hp
         # Per-mode byName index. ``maps`` is ``{ "11": True, "12": False, ... }``.
         # Skip purchasable=False; those are recipe-only / unbuyable shells
         # (e.g. starter quests) and shouldn't shadow the real legendary.
         if rec.get("purchasable") is False:
             continue
-        name = rec.get("name") or ""
-        if not name:
+        name = rec.get("name")
+        if not isinstance(name, str) or not name:
             continue
         norm = _normalize(name)
         if not norm:
             continue
-        maps = rec.get("maps") or {}
+        maps = rec.get("maps")
+        if not isinstance(maps, dict):
+            continue
         for mode, ddragon_map_id in _MODE_TO_DDRAGON_MAP_ID.items():
             if maps.get(ddragon_map_id) is True:
                 # LOWEST-NUMERIC-ID-WINS per mode. DDragon does ship name+map
@@ -353,6 +484,8 @@ def _load_hp_if_stale() -> None:
         _hp_cache_mtime = mtime
         _hp_cache_patch = patch
         _byname_by_mode = new_byname
+        # An HP-empty load fails the success gate above; remember it instead.
+        _hp_failed_sig = None if new_hp else sig
     logger.debug(
         "DDragon HP cache refreshed: %d entries (patch %s); per-mode byName: %s",
         len(new_hp), patch,
@@ -375,5 +508,8 @@ def bonus_hp_for_id(item_id: str) -> float:
 
 
 def total_bonus_hp(item_ids: Iterable[str]) -> float:
-    """Sum of ``bonus_hp_for_id`` across a list of IDs. Stable on empty."""
-    return sum(bonus_hp_for_id(i) for i in (item_ids or []))
+    """Sum of ``bonus_hp_for_id`` across a list of IDs. Stable on empty.
+
+    A bare string is one id and a non-iterable sums to 0.0 (RM-1470).
+    """
+    return sum(bonus_hp_for_id(i) for i in _members(item_ids))
