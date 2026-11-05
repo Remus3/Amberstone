@@ -257,17 +257,17 @@ def backdrop_asset(name):
 # at render time. Nothing here edits web/css/overlay.css.
 # ---------------------------------------------------------------------------
 
-# Shared carve-out note: w-trinket (overlay.css:608) and w-mmrect
-# (overlay.css:627) deliberately strip the widget frame and their selectors
-# carry a higher specificity than the generic .ovx-widget rule, so they keep
-# their transparent treatment under every variant below. That is intended - a
-# glyph cue and a minimap outline must not grow a plate.
+# Shared carve-out note: w-trinket (the `.ovx-widget[data-ovx-id="w-trinket"]` rule in
+# overlay.css) and w-mmrect (its `[data-ovx-id="w-mmrect"]` twin) deliberately strip
+# the widget frame and their selectors carry a higher specificity than the generic
+# .ovx-widget rule, so they keep their transparent treatment under every variant
+# below. That is intended - a glyph cue and a minimap outline must not grow a plate.
 #
 # SHARED PREREQUISITE, measured 2026-09-01 and true of the SHIPPED overlay:
-#   web/css/panels/active_match.css:92-100
+#   the `#view-active-match .am-pane` rule in web/css/panels/active_match.css
 #     #view-active-match .am-pane { background: var(--surface-head); }   (1,1,0)
 #   beats
-#   web/css/overlay.css:217-224
+#   the `.ovx-widget .am-pane, .ovx-widget.am-pane` rule in web/css/overlay.css
 #     body[data-shell="overlay"] .ovx-widget.am-pane { background: transparent; }
 #                                                                      (0,3,1)
 # because an id outranks any number of classes. So the three .am-pane widgets
@@ -462,25 +462,25 @@ TARGETS = [
         "key": "w-call ACTION verb",
         "sel": ('body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] '
                 '#am-call-body > div[data-call-line="action"] > span:last-child'),
-        "rule": "overlay.css:339-344 (rgb(--ovx-text), --fs-ov-call 14px/700)",
+        "rule": "overlay.css call-line action span (rgb(--ovx-text), --fs-ov-call 14px/700)",
     },
     {
         "key": "w-call ACTION verb (table path)",
         "sel": ('body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] '
                 "#am-call-body .am-call-thead"),
-        "rule": "overlay.css:417-422 (the second ACTION render path)",
+        "rule": "overlay.css .am-call-thead rule (the second ACTION render path)",
     },
     {
         "key": "w-call RIGHT-NOW",
         "sel": ('body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] '
                 '#am-call-body > div[data-call-line="right-now"] > span:last-child'),
-        "rule": "overlay.css:331-337 (rgb(--ovx-cyan), --fs-ov-chip 13px/600)",
+        "rule": "overlay.css call-line right-now span (rgb(--ovx-cyan), --fs-ov-chip 13px/600)",
     },
     {
         "key": "w-call OBJECTIVE footer",
         "sel": ('body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] '
                 '#am-call-body > div[data-call-line="objective"] > span:last-child'),
-        "rule": "overlay.css:387-396 (rgba(--ovx-text, 0.55), --fs-ov-sigil 12px)",
+        "rule": "overlay.css call-line objective span (rgba(--ovx-text, 0.55), --fs-ov-sigil 12px)",
     },
     {
         # w-call carries NO .am-pane-head in the shipped markup (measured: the
@@ -489,17 +489,17 @@ TARGETS = [
         "key": "w-build pane head",
         "sel": ('body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] '
                 ".am-pane-head"),
-        "rule": "overlay.css:206-216 (rgba(--ovx-gold, 0.90), --fs-ov-head 11px)",
+        "rule": "overlay.css w-build .am-pane-head (rgba(--ovx-gold, 0.90), --fs-ov-head 11px)",
     },
     {
         "key": "w-lead value line",
         "sel": 'body[data-shell="overlay"] #rn-lead .rc-lead-line',
-        "rule": "overlay.css:259-261 (--fs-sm; colour inherited from callouts.css)",
+        "rule": "overlay.css #rn-lead .rc-lead-line (--fs-sm; colour inherited from callouts.css)",
     },
     {
         "key": "w-lead tag",
         "sel": 'body[data-shell="overlay"] #rn-lead .rc-lead-tag',
-        "rule": "overlay.css:262-264 (rgba(--ovx-text, 0.55))",
+        "rule": "overlay.css #rn-lead .rc-lead-tag (rgba(--ovx-text, 0.55))",
     },
     {
         "key": "w-callouts row line",
@@ -509,12 +509,12 @@ TARGETS = [
     {
         "key": "w-callouts ETA chip",
         "sel": 'body[data-shell="overlay"] #rn-callouts .rc-co-eta',
-        "rule": "overlay.css:274-276 (rgba(--ovx-gold, 0.85))",
+        "rule": "overlay.css .rc-co-eta (rgba(--ovx-gold, 0.85))",
     },
     {
         "key": "w-callouts ETA chip NOW",
         "sel": 'body[data-shell="overlay"] #rn-callouts .rc-co-eta.rc-co-now',
-        "rule": "overlay.css:277-281 (rgb(--ovx-cyan) on rgba(--ovx-cyan, 0.18))",
+        "rule": "overlay.css .rc-co-eta.rc-co-now (rgb(--ovx-cyan) on rgba(--ovx-cyan, 0.18))",
     },
 ]
 
@@ -679,7 +679,8 @@ BACKDROP_JS = (
 # 2026-09-01) stamps body[data-fight="1"], so the section-6 combat shed hides
 # the w-call OBJECTIVE footer and every .am-pane-head. getComputedStyle still
 # resolves their colours (the contrast pairs below are real), but they are not
-# in the captured PNG (overlay.css:735 sheds the OBJECTIVE row in a fight).
+# in the captured PNG (the section 7 combat declutter block of overlay.css
+# sheds the OBJECTIVE row in a fight).
 # --show-shed un-hides them for the visual pass only; it
 # does not change any colour, only whether the pixel is on screen.
 UNSHED_CSS = """
@@ -903,8 +904,9 @@ def main(argv=None):
         print("  root --surface-head = "
               f"{(base.get('root_tokens') or {}).get('--surface-head', '?')}")
         print("  NOTE: w-call / w-build / w-ovds are .am-pane widgets, so")
-        print("        active_match.css:92-100 (1,1,0) outranks overlay.css:217-223")
-        print("        (0,3,1) and they paint the OPAQUE dashboard --surface-head,")
+        print("        #view-active-match .am-pane (1,1,0) outranks the overlay.css")
+        print("        .ovx-widget.am-pane rule (0,3,1) and they paint the OPAQUE")
+        print("        dashboard --surface-head,")
         print("        not the Hextech rgba(22,32,46,0.58) every other widget uses.")
 
     print()

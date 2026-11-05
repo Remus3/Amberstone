@@ -117,9 +117,9 @@ class TestOverlayLegibilityVariantsSpec(unittest.TestCase):
                 self.assertIn('body[data-shell="overlay"]', block,
                               f"{key.value} CSS is not overlay-scoped")
                 # The repair must appear on BOTH the generic widget backing and
-                # the w-call backing. active_match.css:92-100 outranks the
-                # overlay's own .am-pane rule, so a variant that repairs only
-                # one of the two leaves the other three .am-pane widgets
+                # the w-call backing. The `#view-active-match .am-pane` rule in
+                # active_match.css outranks the overlay's own .am-pane rule, so a
+                # variant that repairs only one of the two leaves the other three .am-pane widgets
                 # (w-call / w-build / w-ovds) on the opaque dashboard surface -
                 # measured 2026-09-01, see the spec section 1.3.
                 self.assertGreaterEqual(
