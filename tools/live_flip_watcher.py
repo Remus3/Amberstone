@@ -164,7 +164,7 @@ def _classify(row: dict, dsp8_row: dict | None, champ: str) -> dict:
 
 
 def _short(seam: str) -> str:
-    return seam.split("_")[0].replace("target", "").replace("preset=", "") or seam
+    return seam.split("_", 1)[0].replace("target", "").replace("preset=", "") or seam
 
 
 def _emit(champ: str, mode: str, preset: str, verdict: dict, enemies: list[str]) -> None:

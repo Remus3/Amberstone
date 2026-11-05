@@ -105,7 +105,7 @@ def _normalize_name(name: str) -> str:
     """
     if not isinstance(name, str) or not name:
         return ""
-    return name.split("#")[0].strip().lower()
+    return name.split("#", 1)[0].strip().lower()
 
 
 # ----------------------------------------------------------------------

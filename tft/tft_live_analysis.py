@@ -619,7 +619,7 @@ class TftLiveAnalysis:
             if not u or u in ("empty","unknown"): continue
             s=str(u)
             if not _is_valid_unit(s): continue
-            b=s.split()[0].lower()
+            b=s.split(maxsplit=1)[0].lower()
             if b in _NOT_UNIT_LABELS or b in trait_names: continue
             r.append(s)
         return r
@@ -840,8 +840,8 @@ def _write(path, data):
                     # Detect new game by stage comparison - reset if stage regressed to <=2
                     prev_sr = str(existing.get("stage_round", ""))
                     curr_sr = str(data.get("stage_round", ""))
-                    prev_stage = int(prev_sr.split("-")[0]) if "-" in prev_sr else 0
-                    curr_stage = int(curr_sr.split("-")[0]) if "-" in curr_sr else 0
+                    prev_stage = int(prev_sr.split("-", 1)[0]) if "-" in prev_sr else 0
+                    curr_stage = int(curr_sr.split("-", 1)[0]) if "-" in curr_sr else 0
                     if curr_stage >= prev_stage or prev_stage <= 2:
                         data["augments"] = prev_augs
             except Exception:  # noqa: BLE001

@@ -203,7 +203,7 @@ def main(argv=None) -> int:
     if args.cmd == "backup":
         snap = backup(keep=args.keep)
         problems = verify(snap)
-        print(f"snapshot {snap.name}: {'VERIFIED' if not problems else problems}")
+        print(f"snapshot {snap.name}: {problems or 'VERIFIED'}")
         return 0 if not problems else 1
     if args.cmd == "verify":
         snap = args.snapshot or (snapshots() or [None])[-1]
@@ -211,7 +211,7 @@ def main(argv=None) -> int:
             print("no snapshot to verify")
             return 1
         problems = verify(snap)
-        print(f"{snap.name}: {'VERIFIED' if not problems else problems}")
+        print(f"{snap.name}: {problems or 'VERIFIED'}")
         return 0 if not problems else 1
     restore(args.snapshot, args.name, args.dest)
     print(f"restored {args.name} -> {args.dest}")

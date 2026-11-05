@@ -104,7 +104,7 @@ def _collect_ids(payload: object) -> list:
     """
     ids: list = []
     if isinstance(payload, dict):
-        ids.extend(str(k) for k in payload.keys())
+        ids.extend(str(k) for k in payload)
     elif isinstance(payload, list):
         seen: set = set()
         for rec in payload:

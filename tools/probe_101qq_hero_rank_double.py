@@ -257,7 +257,7 @@ def extract_champion_ids(payload: object) -> list:
     Returns a sorted list of string IDs. Empty list = unfamiliar shape."""
     ids: set = set()
     if isinstance(payload, dict):
-        for k in payload.keys():
+        for k in payload:
             ids.add(str(k))
     elif isinstance(payload, list):
         for rec in payload:

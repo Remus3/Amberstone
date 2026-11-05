@@ -931,7 +931,7 @@ class Scouter:
         try:
             return self._lcu_get(endpoint) if self._lcu_get else None
         except Exception as exc:  # noqa: BLE001
-            log.debug("tft_scouting: lcu GET %s raised: %s", endpoint.split("?")[0], exc)
+            log.debug("tft_scouting: lcu GET %s raised: %s", endpoint.split("?", 1)[0], exc)
             return None
 
     def _via_lcu(self, ident: Identity):

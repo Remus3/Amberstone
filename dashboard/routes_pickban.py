@@ -1296,7 +1296,7 @@ def _serve_counter_picks(h) -> None:
         payload = {
             "ok": True,
             "role": role,
-            "enemy_ids": list(int(x) for x in enemy_ids if int(x) > 0),
+            "enemy_ids": [int(x) for x in enemy_ids if int(x) > 0],
             "counters": counters,
         }
         _send_json(h, 200, payload)

@@ -271,7 +271,7 @@ def select_for_deletion(rows: Iterable[VodRow], policy: Policy,
             staged.append([r, ACTION_CANDIDATE, ["no keep condition"]])
 
     counted = [s for s in staged
-               if s[1] not in (ACTION_ABSENT,)
+               if s[1] != ACTION_ABSENT
                and (s[0].owner or "").strip().lower() == OWNER_RC]
     out.total_bytes = sum(s[0].size_bytes or 0 for s in counted)
     out.pinned_bytes = sum(s[0].size_bytes or 0 for s in counted

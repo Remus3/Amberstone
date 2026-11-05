@@ -149,7 +149,7 @@ def validate_item(item_name: str, champion: str,
             )
 
     # -- Heavy armor vs AP-heavy team ------------------------------------
-    if any(m.lower() in item_lower for m in ARMOR_ITEMS) and item_name not in ("Warmog's Armor",):
+    if any(m.lower() in item_lower for m in ARMOR_ITEMS) and item_name != "Warmog's Armor":
         if ap_pct >= 0.75:
             return False, (
                 f"Enemy team is {ap_pct:.0%} AP - {item_name} provides armor with minimal value. "
