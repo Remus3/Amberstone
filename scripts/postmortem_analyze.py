@@ -531,7 +531,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true", help="Compute + print report, do not write")
     args = parser.parse_args(argv)
 
-    puuids = args.puuid if args.puuid else _load_default_puuids()
+    puuids = args.puuid or _load_default_puuids()
     if not puuids:
         print("No PUUIDs supplied + none in catchup state; pass --puuid", file=sys.stderr)
         return 2

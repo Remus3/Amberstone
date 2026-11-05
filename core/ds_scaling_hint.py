@@ -71,7 +71,7 @@ def build_scaling_hint(
         stage (str), verdict (str), hint (str).
     Never raises.
     """
-    safe_mode = mode if mode else "SR"
+    safe_mode = mode or "SR"
     enemies: list[str] = [e for e in (enemy_champions or []) if e and e.strip()]
 
     # my champion curve

@@ -176,7 +176,7 @@ class RateEstimator:
         return self._rate
 
     def effective_rate(self) -> float:
-        return self._rate if self._rate else FALLBACK_RATE_BPS
+        return self._rate or FALLBACK_RATE_BPS
 
 
 def trip_actions(rc_owns_record: bool, rc_owns_replay: bool) -> dict:

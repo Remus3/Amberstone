@@ -69,7 +69,7 @@ def build_antitank_hint(
     if not safe_champion:
         return _zero_result("", mode)
 
-    safe_mode = mode if mode else "SR"
+    safe_mode = mode or "SR"
 
     # --- antitank score for local player ------------------------------------
     from agents.daemon_slayer.antitank import compute_antitank  # local import keeps tests fast
@@ -132,7 +132,7 @@ def _zero_result(champion: str, mode: str) -> dict:
     return {
         "applies": False,
         "my_champion": champion,
-        "mode": mode if mode else "SR",
+        "mode": mode or "SR",
         "my_antitank_score": 0.0,
         "my_top_kind": "",
         "shreds_resist": False,

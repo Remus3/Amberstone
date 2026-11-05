@@ -549,7 +549,7 @@ def _resolve_cell_ctx(
         "data": data, "my_id": my_id, "enemy_id": enemy_id,
         "band": band_used, "mana": mana, "cd": cd, "item_state": item_state,
     }
-    return (cell if cell else None), ctx
+    return (cell or None), ctx
 
 
 def _resolve_cell(

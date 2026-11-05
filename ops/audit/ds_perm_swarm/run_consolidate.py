@@ -63,7 +63,7 @@ def _render_md(report: dict) -> str:
             f"[{v['rewind_n']}/{v['rewind_wr'] if v['rewind_wr'] is not None else '-'}]"
             for v in m["ds_top"]
         )
-        lines.append(f"  {ds if ds else '(none)'}")
+        lines.append(f"  {ds or '(none)'}")
         lines.append("")
         if m["buried_winners"]:
             lines.append("BURIED winners (item n/wr +lift):")

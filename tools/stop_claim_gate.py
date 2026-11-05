@@ -2827,7 +2827,7 @@ def _bypass_hits_rc(command, cwd, rc_common):
 
 def _absorb_result(found, runs, deferred, use, text, errored, session_start):
     """Fold one tool_result (and its paired tool_use, if any) into FOUND."""
-    _tid, name, data = use if use else (None, "", {})
+    _tid, name, data = use or (None, "", {})
     command = data.get("command") if name in ("bash", "powershell") else None
     stripped = strip_command_noise(command) if isinstance(command, str) else ""
     is_run = bool(stripped) and bool(EV_PYTEST.search(stripped) or EV_NODE_TEST.search(stripped))

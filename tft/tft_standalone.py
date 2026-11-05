@@ -582,7 +582,7 @@ def _round_state(lcu, eog, now: float) -> dict:
         # elimination only, so during planning board / HP / placement are the
         # LAST combat's (HP lags 10-20 s, placement up to 40 s). The file has
         # no round id; its own game clock is the honest "as of".
-        "as_of_game_s": game_len if game_len else None,
+        "as_of_game_s": game_len or None,
         # S136 T15: every entry still the start-of-game placeholder (no
         # player's status knowable by the ONE rule) = no round has resolved:
         # measured in both s136 games, the game's FIRST write lands during

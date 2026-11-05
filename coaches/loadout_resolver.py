@@ -275,7 +275,7 @@ def list_variants(champion: str, mode: str) -> list[dict]:
     # ARAM/SR routing the writer uses; computed once per champion.
     _wmode = "ARAM" if mode_key == "aram" else "CLASSIC"
     _auto = load_rune_rec(champion, _wmode)
-    auto_ks, auto_pri, auto_sec = _auto if _auto else ("", "", "")
+    auto_ks, auto_pri, auto_sec = _auto or ("", "", "")
 
     # Ranged-only purchasability gate (parity with rank._filter_candidates):
     # strip items a melee champion cannot buy from every served build below.

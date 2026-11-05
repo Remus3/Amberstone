@@ -181,7 +181,7 @@ def _sanitize_top8_entry(raw) -> dict | None:
         "riot_id":       rid,
         "summoner_name": sn,
         "note":          _clean_str(raw.get("note"), _MAX_NOTE_LEN),
-        "added_ts":      added if added else int(time.time()),
+        "added_ts":      added or int(time.time()),
     }
     rank = raw.get("rank")
     if isinstance(rank, dict):

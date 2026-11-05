@@ -78,7 +78,7 @@ def is_vision_server_argv(argv) -> bool:
         for j, ch in enumerate(tok[1:], start=1):
             rest = tok[j + 1:]
             if ch == "m":
-                target = rest if rest else (argv[i + 1] if i + 1 < len(argv) else "")
+                target = rest or (argv[i + 1] if i + 1 < len(argv) else "")
                 return target == MODULE
             if ch == "c":
                 return False

@@ -317,7 +317,7 @@ def build_capability_gap(
                               {axis, demand_count, severity, detail}.
     """
     safe_champion = (my_champion or "").strip()
-    safe_mode = mode if mode else "SR"
+    safe_mode = mode or "SR"
     if not safe_champion:
         return _zero_result("", safe_mode)
 
@@ -355,7 +355,7 @@ def _zero_result(champion: str, mode: str) -> dict:
     return {
         "applies": False,
         "my_champion": champion,
-        "mode": mode if mode else "SR",
+        "mode": mode or "SR",
         "top_gap": "",
         "verdict": "",
         "gaps": [],

@@ -242,7 +242,7 @@ class JsonlNotifier(Notifier):
                  use_win32: bool | None = None):
         if path is None:
             env = os.environ.get(JSONL_ENV)
-            path = env if env else DEFAULT_JSONL
+            path = env or DEFAULT_JSONL
         self.path = Path(path)
         self.use_win32 = (sys.platform == "win32") if use_win32 is None else use_win32
 

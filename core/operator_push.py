@@ -372,7 +372,7 @@ class NtfyNotifier(_on.Notifier):
         try:
             if path is None:
                 env = os.environ.get(CONFIG_ENV)
-                path = env if env else DEFAULT_CONFIG
+                path = env or DEFAULT_CONFIG
             p = Path(path)
             if not p.is_file():
                 return None

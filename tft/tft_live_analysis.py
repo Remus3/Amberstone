@@ -541,7 +541,7 @@ class TftLiveAnalysis:
         """A copy of state carrying the accepted round (none yet = 0-0 / "")
         and that round's schedule fields, so a held read leaves no label of
         its own (a misread onto a carousel round would park _loop)."""
-        st, rn = accepted if accepted else (0, 0)
+        st, rn = accepted or (0, 0)
         view = dict(state)
         view.update({"stage": st, "round": rn, "stage_round": f"{st}-{rn}" if accepted else ""})
         try:

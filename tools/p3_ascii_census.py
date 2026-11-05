@@ -91,7 +91,7 @@ def main():
     print("UTF-16 (Task XML canonical - keep):", utf16)
     risk = sorted(f for f in ps1_nonascii if not ps1_bom.get(f))
     print("\n=== .ps1 LATENT MOJIBAKE RISK (no-BOM AND non-ASCII) ===")
-    print("  ", risk if risk else "NONE")
+    print("  ", risk or "NONE")
     if bom_only:
         return
     for grp in sorted(buckets):

@@ -282,7 +282,7 @@ def linked_worktrees(root: Path = ROOT) -> list[dict]:
             cur = {}
             continue
         key, _, val = line.partition(" ")
-        cur[key] = val if val else True
+        cur[key] = val or True
     rootn = os.path.normcase(str(Path(root).resolve()))
     return [w for w in out if os.path.normcase(str(Path(w.get("worktree", "")).resolve())) != rootn]
 
