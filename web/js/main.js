@@ -5408,6 +5408,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       });
     });
   }
+  // RM-1556: the lane trigger's accessible name. Its content alone named
+  // only "-", an uppercase lane alt, the needs-pick CSS glyph or nothing,
+  // and never which slot it sets; data-tt is the app tooltip, not a name.
+  // The names match the popup cells' alts (index.html #lv-lane-popup).
+  const LANE_NAMES = {
+    TOP: "Top", JUNGLE: "Jungle", MIDDLE: "Middle",
+    BOTTOM: "Bottom", UTILITY: "Support", FILL: "Fill",
+  };
+  function _laneTriggerName(slot, pref, isFillLocked, needsPick) {
+    const head = (slot === "primary" ? "Primary" : "Secondary") + " lane: ";
+    if (isFillLocked) return head + "Fill, follows the primary lane";
+    if (needsPick) return head + "not set, pick one";
+    return head + (LANE_NAMES[pref] || "not set");
+  }
   function _renderLanePref(slot, pref, noLcuData) {
     const btn = document.getElementById(slot === "primary" ? "lv-lane-primary" : "lv-lane-secondary");
     if (!btn) return;
@@ -5420,6 +5434,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const isFillLocked = (slot === "secondary" && _LV.prefPrimary === "FILL");
     const needsPick = (slot === "secondary" && _LV.needsPick && _LV.prefPrimary !== "FILL"
                        && (!pref || pref === "UNSELECTED"));
+    btn.setAttribute("aria-label", _laneTriggerName(slot, pref, isFillLocked, needsPick));
     if (noLcuData) {
       btn.classList.add("is-disabled");
       btn.disabled = true;
@@ -5428,7 +5443,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     if (isFillLocked) {
       btn.classList.add("is-fill-locked");
-      if (img) { img.src = LANE_ICONS.FILL; img.hidden = false; }
+      if (img) { img.src = LANE_ICONS.FILL; img.alt = LANE_LABELS.FILL; img.hidden = false; }
       if (empty) empty.hidden = true;
       return;
     }
