@@ -700,6 +700,12 @@ def _handle_arm(body: dict) -> tuple[int, dict]:
     # body; otherwise it is read from the same fields the confirm will carry.
     target = (str(body["target"]).strip() if body.get("target") is not None
               else armgate.target_of(target_action, body))
+    if len(target) > armgate.MAX_TARGET:
+        # Fixed text, no echo, nothing armed (RM-1375): no lane, intent or
+        # interrupt target is this long, so the arm could never be confirmed.
+        return 400, {"ok": False, "action": "arm",
+                     "error": "arm 'target' is too long",
+                     "max_target": armgate.MAX_TARGET}
     # Read the window ONCE and hand it to arm(): window_s() is read at call
     # time, so a second read could advertise a window the record did not use
     # (RM-1373).

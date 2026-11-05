@@ -175,6 +175,13 @@ CONSUMED_RETAIN_S = 900.0
 MAX_ARMED = 64
 MAX_CONSUMED = 64
 
+# The longest target an arm may bind (RM-1375). A legitimate target is a lane
+# name, an intent id or the constant "interrupt" - the longest measured is
+# "done_continue", 13 chars - and a confirm only succeeds for a target the
+# side-effect layer accepts, so an arm past this could never be confirmed. The
+# route refuses it with a fixed 400 instead of storing and echoing it.
+MAX_TARGET = 64
+
 _LOCK = threading.RLock()
 # token -> {action, target, key, expires_at}
 _ARMED: "OrderedDict[str, dict]" = OrderedDict()
