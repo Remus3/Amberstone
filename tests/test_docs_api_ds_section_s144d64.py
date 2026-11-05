@@ -126,16 +126,22 @@ def _handler_called_names() -> set[str]:
 
 
 def _handler_top() -> int:
-    """The ``top=`` the handler's ``rank_kwargs = dict(...)`` asks the engine for."""
+    """The ``top`` the handler's ``rank_kwargs`` asks the engine for, in either spelling
+    (the repo lane's C408 ratchet turned ``dict(top=...)`` into a dict literal)."""
     for node in ast.walk(_handler()):
-        if (isinstance(node, (ast.Assign, ast.AnnAssign))
-                and isinstance(node.value, ast.Call)
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)):
+            continue
+        if (isinstance(node.value, ast.Call)
                 and isinstance(node.value.func, ast.Name)
                 and node.value.func.id == "dict"):
             for kw in node.value.keywords:
                 if kw.arg == "top":
                     return ast.literal_eval(kw.value)
-    raise AssertionError(f"{_HANDLER} builds no dict(top=...) kwargs")
+        if isinstance(node.value, ast.Dict):
+            for key, value in zip(node.value.keys, node.value.values):
+                if isinstance(key, ast.Constant) and key.value == "top":
+                    return ast.literal_eval(value)
+    raise AssertionError(f"{_HANDLER} builds no top kwarg")
 
 
 # -- the section -------------------------------------------------------------
