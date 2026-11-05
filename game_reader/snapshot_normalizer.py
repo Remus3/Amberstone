@@ -111,26 +111,27 @@ def _normalize_name(name: str) -> str:
 # ----------------------------------------------------------------------
 # Live Client subresource degradation observability (silent-except A4)
 # ----------------------------------------------------------------------
-# `_PollerMixin._get` (game_reader/poller.py:277-280) does NOT swallow - it
+# `_PollerMixin._get` (game_reader/poller.py) does NOT swallow - it
 # lets urllib raise. That makes the handlers in the rune / ability readers
 # below the SOLE swallow point for a 404, endpoint rename or auth change on
 # /activeplayerrunes, /playermainrunes and /activeplayerabilities.
 #
 # TWO CORRECTIONS to the original note (lane 8 cycle 17, both measured).
-# (1) The `_get` citation read poller.py:250-253, which is now
-#     `_normalise_events`; `_get` moved to :277-280.
-# (2) It claimed these fields "feed live coach prompts
-#     (coaches/aram_coach.py:350, 352)". They do NOT: those lines are ARAM
-#     fountain-rule prose, and a repo-wide grep finds NO production consumer
-#     of `my_runes` / `runes_full` / `stat_shards` at all. The endpoints are
-#     still read every tick, so the swallow point and its counter remain
-#     real - but the justification for paying for them is currently absent.
-#     Filed as RM-234 rather than deleted here.
+# (1) The `_get` citation pointed at a line range that had since become
+#     `_normalise_events`; it is cited by symbol now, because a line number
+#     drifts with every edit above it.
+# (2) It claimed these fields "feed live coach prompts" at two lines of
+#     coaches/aram_coach.py. They did NOT: those lines were ARAM
+#     fountain-rule prose, and a repo-wide grep then found NO production
+#     consumer of `runes_full` / `stat_shards`. RM-234 later deduped the
+#     per-tick GETs; `my_runes` DOES reach the ARAM coach prompt (the
+#     `My runes:` template line in coaches/aram_coach.py), `runes_full` and
+#     `stat_shards` still have no production consumer.
 #
 # NOTE the swallow point is not the only one over `self._get`:
-# poller.py:233-234 catches Exception and passes, wholly silently, for
-# /gamestats, /activeplayer, /allplayers and /eventdata - same failure
-# class, no counter, no log.
+# `_PollerMixin._read_game_fallback` (game_reader/poller.py) catches
+# Exception and passes, wholly silently, for /gamestats, /activeplayer,
+# /allplayers and /eventdata - same failure class, no counter, no log.
 #
 # WARNING makes the failure falsifiable; the throttle keeps a continuously
 # polling reader from emitting one record per tick. The counter is NOT
@@ -256,8 +257,8 @@ def _turret_side(turret_name) -> str:
     """Map a Live Client turret structure name to the side that LOST it.
 
     `"Turret_T1_C_05_A"` -> `"ORDER"`, `"Turret_T2_L_03_A"` -> `"CHAOS"`.
-    The token convention is authoritative at `core/district_fusion.py:85`
-    (`_SIDE_BY_TOKEN = {"T1": "ORDER", "T2": "CHAOS"}`) and names whose
+    The token convention is authoritative at `_SIDE_BY_TOKEN` in
+    core/district_fusion.py (`{"T1": "ORDER", "T2": "CHAOS"}`) and names whose
     structure DIED. Returns `""` for anything unrecognised, so an unknown
     or renamed structure credits NEITHER side rather than being laundered
     into a real count.
@@ -470,9 +471,9 @@ class _NormalizerMixin:
         if me:
             sc = me.get("scores", {})
             if not isinstance(sc, dict): sc = {}
-            # These four feed arithmetic (`cs_per_min`, :457) and the state
-            # dict's typed contract, so they are coerced at the read, not at
-            # each use site.
+            # These four feed arithmetic (`cs_per_min`, computed later in
+            # this method) and the state dict's typed contract, so they are
+            # coerced at the read, not at each use site.
             cs = _coerce_int(sc.get("creepScore", 0))
             kills = _coerce_int(sc.get("kills", 0))
             deaths = _coerce_int(sc.get("deaths", 0))
@@ -894,8 +895,9 @@ class _NormalizerMixin:
                 # the same counter as the CHAOS branch: every turret in every
                 # game was credited to CHAOS and `_order_towers_down` was
                 # structurally pinned at 0. The rest of the tree already parses
-                # the name (dashboard/_liveclient.py:348-350); the side token
-                # convention is authoritative at core/district_fusion.py:85
+                # the name (`_structure_killer_team` in core/district_fusion.py);
+                # the side token convention is authoritative at
+                # `_SIDE_BY_TOKEN` there
                 # ({"T1": "ORDER", "T2": "CHAOS"}) and names whose structure
                 # DIED. An unrecognised name credits NOBODY - laundering it
                 # into a real count is what caused this defect.
