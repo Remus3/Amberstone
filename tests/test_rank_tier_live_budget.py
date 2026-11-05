@@ -772,17 +772,75 @@ def _retaint(stmt, tainted) -> None:
         return
     if value is None:
         return
-    scan = _TaintScan(tainted)
-    scan.visit(value)
+    found = _is_tainted(value, tainted)
     for target in targets:
-        for sub in ast.walk(target):
-            if isinstance(sub, ast.Name):
-                if scan.found:
-                    tainted.add(sub.id)
-                elif not isinstance(stmt, ast.AugAssign):
-                    # `m += "!"` keeps whatever `m` already carried (RM-1443):
-                    # only a plain re-binding to a clean value clears a name.
-                    tainted.discard(sub.id)
+        # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
+        # plain re-binding to a clean value clears a name.
+        _bind_names(target, found, tainted,
+                    clear=not isinstance(stmt, ast.AugAssign))
+
+
+def _is_tainted(expr, tainted) -> bool:
+    scan = _TaintScan(tainted)
+    scan.visit(expr)
+    return bool(scan.found)
+
+
+def _bind_names(target, found, tainted, *, clear=True) -> None:
+    """Bind every name in `target` to a value that is (`found`) or is not
+    credential-bearing. `clear=False` only ever ADDS taint."""
+    for sub in ast.walk(target):
+        if isinstance(sub, ast.Name):
+            if found:
+                tainted.add(sub.id)
+            elif clear:
+                tainted.discard(sub.id)
+
+
+# RM-1557: the binding forms this walk added - `for` targets, `with ... as`
+# targets and walrus - only ever ADD taint, never clear a name. A clearing
+# model was tried in cycle 128 and four independent verifier rounds each found
+# real leaks it lost that the RM-1443 walk caught: a walrus that may not run
+# (`c or (m := 'x')`, an `assert` message, under `python -O` the assert
+# itself), a name read before its own walrus in one value (`m + (m := 'y')`),
+# a `for` over a container the taint model sees as clean (`q.append(m)`), and
+# `with open(m) as m`, whose file repr quotes its path. A leak guard is wrong
+# on the side of a miss, so the precision is given up. Plain `=` keeps its
+# RM-1443 clearing rule (`_retaint`).
+
+def _bind_walrus(nodes, tainted) -> None:
+    """`(m := url)` binds `m` for the rest of the scope. Applied BEFORE a
+    statement's sinks are checked: a sink in the same expression may run
+    after the walrus (`log.info(m) if (m := url) else None`)."""
+    for node in nodes:
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.NamedExpr):
+                _bind_names(sub.target, _is_tainted(sub.value, tainted),
+                            tainted, clear=False)
+
+
+# Context managers whose __enter__ hands back the object they were given.
+_PASSTHROUGH_CMS = frozenset({"nullcontext", "closing"})
+
+
+def _with_target_found(item, tainted) -> bool:
+    """RM-1557: a `with ... as m` target is the context manager's __enter__
+    result, usually an OBJECT (`with open_consented(req) as r:` must leave
+    `r.status` clean), so it is not tainted by the call's arguments - the
+    attribute rule covers `.url` / `.geturl` on it. The passthroughs
+    (`nullcontext(x)`, `closing(x)`) hand `x` itself back, so they taint it.
+    The binding only ever ADDS taint (see the `with` arm of `_Flow.stmt`)."""
+    expr = item.context_expr
+    if not (isinstance(expr, ast.Call) and _call_name(expr) in _PASSTHROUGH_CMS):
+        return False
+    args = list(expr.args) + [kw.value for kw in expr.keywords]
+    return any(_is_tainted(a, tainted) for a in args)
+
+
+def _join(*states):
+    """May-taint union of the live states; None (unreachable) if none is."""
+    live = [s for s in states if s is not None]
+    return set().union(*live) if live else None
 
 
 # Statement fields that hold nested statement lists. Everything else on a
@@ -819,96 +877,223 @@ def _check_sinks(nodes, stmt, tainted, report) -> None:
             report(expr, scan.found)
 
 
-def _flow_block(stmts, tainted, report):
-    """Run the taint state through `stmts`; return the state after them.
+class _Flow:
+    """Run the taint state through one scope's statements.
 
     RM-1443: branches are ALTERNATIVE paths, so each arm starts from a copy
     of the state before it and the arms are JOINED by union afterwards. The
     sequential walk this replaced visited sibling except handlers and if /
     else arms top to bottom, so a sanitized re-binding in a later arm cleared
     a raw binding made in an earlier one. The result is a may-taint state:
-    a name is tainted after a branch if ANY path into the join taints it."""
-    state = set(tainted)
-    for stmt in stmts:
-        state = _flow_stmt(stmt, state, report)
-    return state
+    a name is tainted after a branch if ANY path into the join taints it.
 
+    RM-1557: abrupt exits are modelled. A state is None where no path
+    reaches (after `break` / `continue` / `return`). `break` and `continue`
+    hand their state to the innermost loop's exit and next pass, `return` to
+    the enclosing function's flow-out, and every state seen ANYWHERE inside a
+    try body (nested blocks included) reaches its handlers, as every state in
+    the body, `else` and handlers reaches `finally`. `raise` is NOT treated as
+    ending a path: a suppressing context manager can resume after it, and
+    over-reporting is the safe side of a guard."""
 
-def _flow_loop(stmt, state, report):
-    """A loop body runs zero or more times: iterate it to a fixed point so a
-    binding made late in one pass reaches a sink early in the next."""
-    entry = set(state)
-    while True:
-        after = entry | _flow_block(stmt.body, entry, report)
-        if after == entry:
-            break
-        entry = after
-    # Checked with the converged state: a `while` test is re-evaluated after
-    # every pass, so it sees what the body bound (a `for` iterable sees a
-    # superset of its real state, which can only over-report).
-    _check_sinks(_own_nodes(stmt), stmt, entry, report)
-    # `else` runs when the loop ends without `break`; a `break` skips it.
-    return entry | _flow_block(stmt.orelse, entry, report)
+    def __init__(self, report):
+        self.report = report
+        self.loops = []     # innermost last: {"breaks": [...], "conts": [...]}
+        self.watchers = []  # per open try: every state seen inside it
+        self.returns = []   # states at `return` in this function body
 
+    def block(self, stmts, state):
+        """The state after `stmts`, or None if no path falls through them."""
+        if state is None:
+            return None
+        state = set(state)
+        for i, stmt in enumerate(stmts):
+            self._watch(state)
+            after = self.stmt(stmt, state)
+            if after is None:
+                # The rest of the block is unreachable, but every raise and
+                # logging site is still scanned, with the last live state, by
+                # a throwaway walk that feeds no loop, try or flow-out.
+                _Flow(self.report).block(stmts[i + 1:], state)
+                return None
+            state = after
+            self._watch(state)
+        return state
 
-def _flow_try(stmt, state, report):
-    """try / except / else / finally with each handler as its own path."""
-    body_states = [set(state)]
-    cur = set(state)
-    for sub in stmt.body:
-        cur = _flow_stmt(sub, cur, report)
-        body_states.append(set(cur))
-    # A handler can be entered after ANY statement of the body raised.
-    handler_entry = set().union(*body_states)
-    exits = [_flow_block(stmt.orelse, cur, report)]
-    for handler in stmt.handlers:
-        _check_sinks([handler.type] if handler.type else [], handler,
-                     handler_entry, report)
-        entry = set(handler_entry)
-        if handler.name:
-            # A third-party exception can quote the URL it was handed back at
-            # us, so it is untrusted text until it goes through a sanitizer.
-            entry.add(handler.name)
-        exits.append(_flow_block(handler.body, entry, report))
-    joined = set().union(*exits)
-    # `finally` runs on every path, the raising ones included.
-    return _flow_block(stmt.finalbody, joined | handler_entry, report)
+    def _watch(self, state):
+        for seen in self.watchers:
+            seen.append(frozenset(state))
 
+    def _expr_step(self, nodes, stmt, state):
+        """Check the sinks in `nodes` and apply their walrus bindings."""
+        state = set(state)
+        _bind_walrus(nodes, state)
+        _check_sinks(nodes, stmt, state, self.report)
+        return state
 
-def _flow_stmt(stmt, state, report):
-    """Run the taint state through one statement; return the state after it."""
-    if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-        # Decorators, defaults and bases run here. The body is ALSO walked with
-        # the enclosing state, as the walk this replaced did, and what it binds
-        # flows OUT by union (the body may or may not have run by the time a
-        # later statement does): a `global` or `self.x` set from a URL in one
-        # method must still taint a sink in the next. Each function is walked
-        # again as its own scope in `_message_leak_sites`.
-        _check_sinks(_own_nodes(stmt), stmt, state, report)
-        return state | _flow_block(stmt.body, state, report)
-    if isinstance(stmt, ast.If):
-        _check_sinks(_own_nodes(stmt), stmt, state, report)
-        return (_flow_block(stmt.body, state, report)
-                | _flow_block(stmt.orelse, state, report))
-    if isinstance(stmt, (ast.For, ast.AsyncFor, ast.While)):
-        return _flow_loop(stmt, state, report)
-    if isinstance(stmt, _TRY_TYPES):
-        return _flow_try(stmt, state, report)
-    if isinstance(stmt, ast.Match):
-        _check_sinks(_own_nodes(stmt), stmt, state, report)
-        exits = [set(state)]  # no case matched
-        for case in stmt.cases:
-            if case.guard is not None:
-                _check_sinks([case.guard], stmt, state, report)
-            exits.append(_flow_block(case.body, state, report))
-        return set().union(*exits)
-    if isinstance(stmt, (ast.With, ast.AsyncWith)):
-        _check_sinks(_own_nodes(stmt), stmt, state, report)
-        return _flow_block(stmt.body, state, report)
-    _check_sinks([stmt], stmt, state, report)
-    state = set(state)
-    _retaint(stmt, state)
-    return state
+    def stmt(self, stmt, state):
+        """The state after one statement, or None if it never falls through."""
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            # Decorators, defaults and bases run here. The body is ALSO walked
+            # with the enclosing state, as the walk this replaced did, and what
+            # it binds flows OUT by union (the body may or may not have run by
+            # the time a later statement does): a `global` or `self.x` set from
+            # a URL in one method must still taint a sink in the next. Each
+            # function is walked again as its own scope in `_message_leak_sites`.
+            _check_sinks(_own_nodes(stmt), stmt, state, self.report)
+            inner = _Flow(self.report)
+            out = inner.block(stmt.body, state)
+            return state | (_join(out, *inner.returns) or set())
+        if isinstance(stmt, ast.Return):
+            # `return (m := url)` binds before leaving, and a `finally` or a
+            # handler can still see that state.
+            state = self._expr_step([stmt], stmt, state)
+            self._watch(state)
+            self.returns.append(set(state))
+            return None
+        if isinstance(stmt, (ast.Break, ast.Continue)):
+            if not self.loops:
+                return state    # not valid Python; fall through, never drop
+            key = "breaks" if isinstance(stmt, ast.Break) else "conts"
+            self.loops[-1][key].append(set(state))
+            return None
+        if isinstance(stmt, ast.If):
+            state = self._expr_step(list(_own_nodes(stmt)), stmt, state)
+            return _join(self.block(stmt.body, state),
+                         self.block(stmt.orelse, state))
+        if isinstance(stmt, (ast.For, ast.AsyncFor)):
+            return self._for(stmt, state)
+        if isinstance(stmt, ast.While):
+            return self._while(stmt, state)
+        if isinstance(stmt, _TRY_TYPES):
+            return self._try(stmt, state)
+        if isinstance(stmt, ast.Match):
+            state = self._expr_step([stmt.subject], stmt, state)
+            exits = [set(state)]  # no case matched
+            for case in stmt.cases:
+                entry = state
+                if case.guard is not None:
+                    entry = self._expr_step([case.guard], stmt, state)
+                exits.append(self.block(case.body, entry))
+            return _join(*exits)
+        if isinstance(stmt, (ast.With, ast.AsyncWith)):
+            # Items enter left to right, each target bound before the next
+            # item is evaluated.
+            for item in stmt.items:
+                state = self._expr_step([item], stmt, state)
+                if item.optional_vars is not None:
+                    _bind_names(item.optional_vars,
+                                _with_target_found(item, state), state,
+                                clear=False)
+            # Any context manager may SUPPRESS an exception from its body
+            # (`contextlib.suppress`), so every state seen inside the body can
+            # resume after the `with` - even when the body ends in a return,
+            # break or continue.
+            inside = []
+            self.watchers.append(inside)
+            try:
+                out = self.block(stmt.body, state)
+            finally:
+                self.watchers.pop()
+            return _join(out, *inside)
+        state = self._expr_step([stmt], stmt, state)
+        _retaint(stmt, state)
+        return state
+
+    def _loop(self, entry, run_pass):
+        """Iterate a loop body to a fixed point: a binding made late in one
+        pass reaches a sink early in the next. `run_pass(entry)` runs one
+        pass and returns (state at the test, state after the body). Returns
+        (converged test state, every state handed to a `break`)."""
+        breaks = []
+        while True:
+            frame = {"breaks": [], "conts": []}
+            self.loops.append(frame)
+            try:
+                tested, out = run_pass(entry)
+            finally:
+                self.loops.pop()
+            breaks.extend(frame["breaks"])
+            after = _join(entry, out, *frame["conts"])
+            if after == entry:
+                return tested, breaks
+            entry = after
+
+    def _for(self, stmt, state):
+        # The iterable is evaluated once, before the first pass.
+        state = self._expr_step([stmt.iter], stmt, state)
+        found = _is_tainted(stmt.iter, state)
+
+        def run_pass(entry):
+            # The target is assigned once per item, so a sink in it
+            # (`for d[log.info(m)] in xs`) sees what the last pass bound.
+            body_in = self._expr_step([stmt.target], stmt, entry)
+            _bind_names(stmt.target, found, body_in, clear=False)
+            return entry, self.block(stmt.body, body_in)
+
+        exhausted, breaks = self._loop(state, run_pass)
+        # `else` runs when the loop ends without `break`; a `break` skips it.
+        return _join(self.block(stmt.orelse, exhausted), *breaks)
+
+    def _while(self, stmt, state):
+        def run_pass(entry):
+            # The test is re-evaluated before every pass, so at the fixed point
+            # it sees what the body bound.
+            tested = self._expr_step([stmt.test], stmt, entry)
+            return tested, self.block(stmt.body, tested)
+
+        # The converged test state is also the state the loop exhausts with.
+        exhausted, breaks = self._loop(state, run_pass)
+        return _join(self.block(stmt.orelse, exhausted), *breaks)
+
+    def _try(self, stmt, state):
+        """try / except / else / finally with each handler as its own path."""
+        in_body, in_any = [], []
+        marks = [(len(f["breaks"]), len(f["conts"])) for f in self.loops]
+        ret_mark = len(self.returns)
+        self.watchers.append(in_any)
+        self.watchers.append(in_body)
+        try:
+            body_out = self.block(stmt.body, state)
+        finally:
+            # Popped by position: the two lists hold equal states here, so a
+            # `remove` by value would take the wrong one.
+            self.watchers.pop()
+        try:
+            # A handler can be entered from ANY state inside the body, nested
+            # blocks included, not only between its top-level statements.
+            handler_entry = _join(state, *in_body)
+            if body_out is None and stmt.orelse:
+                # An `else` after a body that never falls through is dead,
+                # but its sites are still scanned (see `block`).
+                _Flow(self.report).block(stmt.orelse, handler_entry)
+            exits = [self.block(stmt.orelse, body_out)]
+            for handler in stmt.handlers:
+                _check_sinks([handler.type] if handler.type else [], handler,
+                             handler_entry, self.report)
+                entry = set(handler_entry)
+                if handler.name:
+                    # A third-party exception can quote the URL it was handed
+                    # back at us, so it is untrusted text until it goes through
+                    # a sanitizer.
+                    entry.add(handler.name)
+                exits.append(self.block(handler.body, entry))
+        finally:
+            self.watchers.pop()
+        joined = _join(*exits)
+        if not stmt.finalbody:
+            return None if joined is None else joined | handler_entry
+        # `finally` runs on every path, the raising and the abrupt ones too.
+        fin_out = self.block(stmt.finalbody, _join(joined, handler_entry, *in_any))
+        if fin_out is not None:
+            # A break / continue / return taken inside the try reaches its
+            # target only after `finally` ran, so whatever `finally` bound
+            # travels with it.
+            for frame, (b0, c0) in zip(self.loops, marks):
+                frame["breaks"][b0:] = [s | fin_out for s in frame["breaks"][b0:]]
+                frame["conts"][c0:] = [s | fin_out for s in frame["conts"][c0:]]
+            self.returns[ret_mark:] = [s | fin_out for s in self.returns[ret_mark:]]
+        return None if joined is None else fin_out
 
 
 def _message_leak_sites(path):
@@ -923,7 +1108,7 @@ def _message_leak_sites(path):
         leaks.add(f"{Path(path).name}:{expr.lineno}: {sorted(set(found))}")
 
     for scope in scopes:
-        _flow_block(scope.body, set(), report)
+        _Flow(report).block(scope.body, set())
     return sorted(leaks)
 
 
@@ -992,6 +1177,141 @@ _CHECKER_SAMPLES = (
     ("rebound clean after the branch",
      "def f(url, c):\n    if c:\n        m = url\n    m = 'clean'\n"
      "    raise E(m)\n", False),
+    # RM-1557: abrupt exits and the binding forms the walk did not model.
+    # Each of the next eight was misjudged by the RM-1443 walk.
+    ("break carries a mid-body binding out of the loop",
+     "def f(url, xs):\n    m = 'x'\n    for x in xs:\n        m = url\n"
+     "        if x:\n            break\n        m = 'clean'\n    raise E(m)\n",
+     True),
+    ("continue carries a mid-body binding into the next pass",
+     "def f(url, xs):\n    m = 'x'\n    for x in xs:\n        log.info(m)\n"
+     "        m = url\n        if x:\n            continue\n        m = 'clean'\n",
+     True),
+    ("handler entered from a nested block of the try body",
+     "def f(url, c):\n    m = 'x'\n    try:\n        if c:\n            m = url\n"
+     "            g()\n            m = 'clean'\n    except OSError:\n"
+     "        raise E(m)\n", True),
+    ("for target bound from a tainted iterable",
+     "def f(url):\n    for m in [url]:\n        raise E(m)\n", True),
+    ("walrus binding in an if test",
+     "def f(url):\n    if (m := 'at ' + url):\n        raise E(m)\n", True),
+    ("walrus evaluated first in the same expression feeds its sink",
+     "def f(url):\n    log.info(m) if (m := url) else None\n", True),
+    ("nullcontext passes its tainted argument through",
+     "def f(url):\n    with nullcontext(url) as m:\n        raise E(m)\n", True),
+    ("return ends the arm that never reaches the sink",
+     "def f(url, c):\n    m = url\n    if c:\n        m = 'clean'\n    else:\n"
+     "        return\n    raise E(m)\n", False),
+    # RM-1557 keep-greens: the RM-1443 walk already got these right, and
+    # modelling abrupt exits must not lose them.
+    ("break through a finally that binds the url",
+     "def f(url, xs):\n    m = 'x'\n    for x in xs:\n        try:\n"
+     "            break\n        finally:\n            m = url\n    raise E(m)\n",
+     True),
+    ("return in a handler still reaches finally",
+     "def f(url):\n    m = 'x'\n    try:\n        g()\n    except OSError:\n"
+     "        m = url\n        return\n    finally:\n        log.info(m)\n", True),
+    ("attribute set before a return, logged in another method",
+     "class C:\n    def a(self, url):\n        self.last = url\n        return\n"
+     "    def b(self):\n        log.info(self.last)\n", True),
+    ("break skips the loop else that would clear the binding",
+     "def f(url, xs):\n    m = 'x'\n    for x in xs:\n        m = url\n"
+     "        break\n    else:\n        m = 'clean'\n    raise E(m)\n", True),
+    ("walrus in a log call is still a direct leak",
+     "def f(url):\n    log.info(m := url)\n", True),
+    # Found by the cycle 128 verifier against the first draft: a walrus that
+    # may not run must not clear a name, a passthrough or attribute with-target
+    # must not clear one either, and no sink may drop out of the scan.
+    ("walrus after a short-circuit or may not run",
+     "def f(url, c):\n    m = url\n    if c or (m := 'clean'):\n        pass\n"
+     "    raise E(m)\n", True),
+    ("walrus in one arm of a conditional expression",
+     "def f(url, c):\n    m = url\n    x = (m := 'a') if c else 0\n    raise E(m)\n",
+     True),
+    ("walrus in a comprehension that may iterate zero times",
+     "def f(url, xs):\n    m = url\n    [(m := 'x') for _ in xs]\n    raise E(m)\n",
+     True),
+    ("walrus in a while test after and",
+     "def f(url, c):\n    m = url\n    while c and (m := 'x'):\n        c = 0\n"
+     "    raise E(m)\n", True),
+    ("closing passes its tainted argument through",
+     "def f(url):\n    m = url\n    with closing(m) as m:\n        raise E(m)\n", True),
+    ("closing binds a fresh name from its tainted argument",
+     "def f(url):\n    with closing(url) as m:\n        raise E(m)\n", True),
+    ("attribute with-target keeps its base name's taint",
+     "class C:\n    def a(self, url):\n        self.last = url\n    def b(self):\n"
+     "        with g() as self.conn:\n            pass\n        log.info(self.last)\n",
+     True),
+    ("sink inside a for target",
+     "def f(url, xs, d):\n    for d[log.info(url)] in xs:\n        pass\n", True),
+    ("sink in dead code after a return is still scanned",
+     "def f(url):\n    return\n    raise E(url)\n", True),
+    ("walrus in a return value reaches finally",
+     "def f(url):\n    m = 'x'\n    try:\n        return (m := url)\n    finally:\n"
+     "        log.info(m)\n", True),
+    # Found by the cycle 128 second verifier round.
+    ("walrus in an assert message may not run",
+     "def f(url, c):\n    m = url\n    assert c, (m := 'clean')\n    raise E(m)\n",
+     True),
+    ("walrus past the first link of a chained comparison may not run",
+     "def f(url, a, b):\n    m = url\n    if a < b < (m := 'clean'):\n        pass\n"
+     "    raise E(m)\n", True),
+    ("sink in a for target sees the previous pass",
+     "def f(url, xs, d):\n    m = 'x'\n    for d[log.info(m)] in xs:\n        m = url\n",
+     True),
+    ("nullcontext passthrough given by keyword",
+     "def f(url):\n    m = url\n    with nullcontext(enter_result=m) as m:\n"
+     "        raise E(m)\n", True),
+    ("keyword passthrough binds a fresh name",
+     "def f(url):\n    with nullcontext(enter_result=url) as m:\n        raise E(m)\n",
+     True),
+    ("return inside a suppressing with does not end the path",
+     "def f(url, c):\n    m = 'x'\n    if c:\n        with suppress(OSError):\n"
+     "            m = url\n            return g()\n        raise E(m)\n", True),
+    ("break inside a suppressing with does not end the path",
+     "def f(url, xs):\n    m = 'x'\n    for x in xs:\n        with suppress(OSError):\n"
+     "            m = url\n            g()\n            break\n        log.info(m)\n",
+     True),
+    ("binding inside a suppressing with before a return leaves the method",
+     "class C:\n    def a(self, url):\n        with suppress(Exception):\n"
+     "            self.last = url\n            return g()\n    def b(self):\n"
+     "        log.info(self.last)\n", True),
+    ("for iterable taint is judged before its walrus clears a name",
+     "def f(url):\n    m = url\n    for n in [m, (m := 'y')]:\n        raise E(n)\n",
+     True),
+    ("with items bind left to right",
+     "def f(url):\n    with nullcontext(url) as m, h(log.info(m)):\n        pass\n",
+     True),
+    # Found by the cycle 128 third verifier round.
+    ("with-as over a tainted name keeps its taint",
+     "def f(url):\n    m = 'cache_' + url\n    with open(m) as m:\n"
+     "        log.info('%s', m)\n", True),
+    ("with-as over an object keeps its taint",
+     "def f(url):\n    m = open(url)\n    with m as m:\n        log.info('%s', m)\n",
+     True),
+    ("attribute for-target keeps its base name's taint",
+     "class C:\n    def a(self, url):\n        self.last = url\n    def b(self, xs):\n"
+     "        for self.cur in xs:\n            log.info(self.last)\n", True),
+    # Found by the cycle 128 fourth verifier round (a differential fuzzer).
+    ("name read before its own walrus in one value",
+     "def f(url):\n    m = url\n    n = m + (m := 'y')\n    raise E(n)\n", True),
+    ("name read before its own walrus in an augmented value",
+     "def f(url):\n    m = url\n    n = ''\n    n += m + (m := 'y')\n    raise E(n)\n",
+     True),
+    ("name read before its own walrus in a passthrough",
+     "def f(url):\n    m = url\n    with nullcontext([m, (m := 'x')]) as m:\n"
+     "        log.info(m)\n", True),
+    ("for over a container the model sees as clean keeps the name",
+     "def f(url):\n    m = url\n    q = []\n    q.append(m)\n    for m in q:\n"
+     "        raise E(m)\n", True),
+    ("walrus over a container the model sees as clean keeps the name",
+     "def f(url):\n    m = url\n    q = []\n    q.append(m)\n    if (m := q[0]):\n"
+     "        raise E(m)\n", True),
+    ("walrus in an assert test is skipped under -O",
+     "def f(url):\n    m = url\n    assert (m := 'clean')\n    raise E(m)\n", True),
+    ("dead try else is still scanned",
+     "def f(url):\n    try:\n        return g()\n    except OSError:\n        pass\n"
+     "    else:\n        raise E(url)\n", True),
 )
 
 
@@ -1004,6 +1324,33 @@ def test_defect_f_leak_checker_is_not_vacuous(tmp_path, label, sample, expect_le
     p.write_text(sample, encoding="utf-8")
     found = _message_leak_sites(p)
     assert bool(found) is expect_leak, (label, found)
+
+
+# RM-1557 known gaps, shared with the RM-1443 walk: a with-as object built
+# by a non-passthrough call from the url, and a container filled by a method
+# call (`q.append(url)`), carry no taint. The RM-1443 walk flagged these
+# three only BY ACCIDENT, through code after a `break` / `return` it treated
+# as reachable. Adjudicated cycle 128 (option A): that class is not a
+# regression; the gap is filed (RM-1558). Strict, so closing it turns red.
+_KNOWN_GAP_SAMPLES = (
+    ("with-as object from a tainted call, behind a break",
+     "def f(url, xs):\n    n = 'x'\n    for x in xs:\n        with Opn(url) as n:\n"
+     "            log.info('%s', n)\n        n = url\n        break\n"),
+    ("with-as object from a tainted call, after a returning arm",
+     "def f(url, c):\n    m = 'x'\n    if c:\n        m = url\n        return\n"
+     "    with Opn(url) as m:\n        log.info('%s', m)\n"),
+    ("container filled by append, dead binding after a break",
+     "def f(url):\n    q = []\n    q.append(url)\n    n = 'x'\n    for x in [1]:\n"
+     "        break\n        n = url\n    n = n + q[0]\n    raise E(n)\n"),
+)
+
+
+@pytest.mark.xfail(strict=True, reason="RM-1558: with-as object / container taint")
+@pytest.mark.parametrize("label,sample", _KNOWN_GAP_SAMPLES)
+def test_defect_f_leak_checker_known_gaps(tmp_path, label, sample):
+    p = tmp_path / "sample.py"
+    p.write_text(sample, encoding="utf-8")
+    assert _message_leak_sites(p), label
 
 
 def test_defect_f_no_message_site_in_the_module_carries_the_raw_endpoint():
