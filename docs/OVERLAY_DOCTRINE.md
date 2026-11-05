@@ -264,3 +264,82 @@ field persists it, reload confirms it sticks.
   no flat dev-tool backings (section 5).
 - E. Combat mode strips text to preattentive channels (section 6).
 - F. The dashboard 1920 layout is untouched by all of this (overlay-scoped only).
+
+--------------------------------------------------------------------------------
+## 10. PHASE SURFACES (MAIN ORDER 2026-10-31 2215 item 9)
+--------------------------------------------------------------------------------
+
+Which surface and which widgets show in each game phase. This table is a
+MACHINE-READ CONTRACT, read off disk: `rc-shell/test/overlay_phase_contract.test.js`
+pins the window and field columns against `rc-shell/src/overlay_state.js` and
+`web/js/lib/overlay_phase.js`; `tests/snapshot_panels/test_overlay_phase_surfaces.py`
+pins the companion column against `dashboard/view_router_state.py` and the field
+column against the rendered page, one test per phase. Keep the cells canonical
+tokens and put nuance in the notes below.
+
+```
+phase          window   companion      field
+------------   ------   ------------   -----
+lobby          hide     lobby          w-launcher
+champ-select   hide     champ-select   w-launcher w-call w-choices w-build w-ovds w-arambalance
+loading        hide     active-match   w-launcher w-call w-choices w-build w-arambalance
+in-game        show     hidden         all
+post-game      hide     last-match     w-launcher
+```
+
+- `window` is the overlay window, `companion` the view the dashboard window routes
+  to, `field` the widgets the overlay page may paint. `all` is every widget of the
+  game family (the TFT set in TFT, the League set otherwise, registered extras and
+  `w-mmrect` included).
+
+How a phase is read (official APIs only: `lcu.phase` is the LCU
+`/lol-gameflow/v1/gameflow-phase` body, `liveclient` the Live Client Data API `:2999`
+block; `overlayPhaseFromState`):
+
+- lobby: `Lobby`, `Matchmaking`, `ReadyCheck`, `CheckedIntoTournament`, or `None`
+  with no `:2999` feed.
+- champ-select: `ChampSelect`.
+- loading: `GameStart` with no feed, or `InProgress` / `Reconnect` with no feed in a
+  `:2999` mode.
+- in-game: `GameStart` / `InProgress` / `Reconnect` with the feed up; `InProgress` /
+  `Reconnect` outside the `:2999` modes (TFT has none); a blank, `None` or unmodelled
+  phase with the feed up (`lcu_summary` drops snapshots older than 5 s, and a practice
+  tool or replay reports `None`).
+- post-game: `WaitingForStats`, `PreEndOfGame`, `EndOfGame`, `TerminatedInError`. It
+  holds across an LCU blink while the feed still answers (`nextOverlayPhase`).
+- unknown: no phase and no feed. Gates nothing, so a late poll never blinks a panel
+  off. This is also the state before the first tick.
+
+Gates, outermost first. A widget paints only if all of them pass:
+
+1. The rc-shell window (`liveGameFromState`), `docs/ELECTRON_OVERLAY.md` section 5.
+2. The game family (`_inGame`, League set vs TFT set).
+3. The phase (this table): `phaseOff` in `overlay_layout.js _posFor`, applied through
+   `.ovx-hidden`. Computed and never persisted. `w-mmrect` is off the registry, so
+   `overlay.css` carries its row. The launcher is never gated.
+4. The operator's per-widget hidden flag, persisted, unchanged by any phase.
+5. The widget's own data gate (`hidden` until its renderer has something to paint):
+   `w-choices` stays empty while a game is live (B4, `suppress_live_directives`), and
+   `w-arambalance` shows only in ARAM.
+
+The coach / build / threat presets are retired as a visibility gate (operator
+2026-06-28, `overlay.css` section 4d), so they do not appear in this table. Section
+4's `w-threat`, `w-spike` and `w-trinket` rows record widgets removed from the
+registry in 2026-07 and 2026-08.
+
+What this means today, plainly:
+
+- The overlay window is hidden in the lobby, champ select, the `:2999` loading screen
+  and post-game: the operator sees the companion, and the field rows for those phases
+  paint only when the overlay page is up. Moving the window into champ select or
+  loading reverses the measured S134 T1 rule in `docs/ELECTRON_OVERLAY.md` section 5
+  and needs a live session; it has not been done.
+- The field gate does observable work on the stale-feed arm: `:2999` can still answer
+  after the LCU reports the game ended, so the window stays up and the field strips to
+  the launcher over the end-of-game screen.
+- The matchup answer: in champ select it is the companion's `#view-champ-select`
+  (the draft score, `champ_select.js renderDraftScore`, and the per-ban loss-rate
+  labels, `_csvBanReasonLabel`). `w-build` hosts the DS matchup card
+  (`#csv-sugg-ds-matchup`) and the draft-elo chip, but both read the live `:2999`
+  roster (`active_match.js _amDsSyntheticCs`, `_renderDraftEloFromCtx`), so on the
+  loading screen the card has nothing to paint on either surface yet.

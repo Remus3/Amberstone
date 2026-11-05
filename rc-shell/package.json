@@ -9,7 +9,7 @@
     "start": "electron .",
     "dist:dir": "electron-builder --win --dir",
     "dist": "electron-builder --win",
-    "test": "node --test test/config.test.js test/store.test.js test/overlay_state.test.js test/overlay_state_contract.test.js test/overlay_settings_ipc.test.js test/clickthrough_zones.test.js test/drag_region.test.js test/window_controls.test.js test/active_indicator.test.js test/update_channel.test.js test/crash_guard.test.js test/overlay_layout_hide.test.js test/overlay_layout_drag.test.js test/overlay_launcher.test.js test/overlay_flash.test.js test/overlay_display_change.test.js test/overlay_toggle.test.js test/overlay_tft.test.js test/nav_guard.test.js test/rc_root.test.js test/tls_pin.test.js test/service_status.test.js test/launcher_wiring.test.js test/backend_update.test.js"
+    "test": "node --test test/config.test.js test/store.test.js test/overlay_state.test.js test/overlay_state_contract.test.js test/overlay_phase_contract.test.js test/overlay_settings_ipc.test.js test/clickthrough_zones.test.js test/drag_region.test.js test/window_controls.test.js test/active_indicator.test.js test/update_channel.test.js test/crash_guard.test.js test/overlay_layout_hide.test.js test/overlay_layout_drag.test.js test/overlay_launcher.test.js test/overlay_flash.test.js test/overlay_display_change.test.js test/overlay_toggle.test.js test/overlay_tft.test.js test/nav_guard.test.js test/rc_root.test.js test/tls_pin.test.js test/service_status.test.js test/launcher_wiring.test.js test/backend_update.test.js"
   },
   "engines": {
     "node": ">=18"

@@ -45,6 +45,7 @@
 // overlay shell. ASCII only.
 
 import { placeOverlayField, registerOverlayWidget } from "./overlay_layout.js";
+import { stampOverlayPhase } from "./overlay_phase.js";
 
 // Mount element ids. overlay_layout.js TFT_WIDGETS selects these ("#ovt-hud"
 // etc.); rc-shell/test/overlay_tft.test.js pins the two lists together.
@@ -713,8 +714,11 @@ export function renderTftOverlay(st) {
   const doc = _doc();
   if (!_isOverlayShell(doc)) return null;
   try {
+    // RC-PHASE-SURFACES: this is the one per-tick full-state seam, for the League
+    // field too (docs/OVERLAY_DOCTRINE.md section 10).
+    const phaseFlip = stampOverlayPhase(doc, st);
     const m = tftOverlayModel(st);
-    const flipped = _stampGame(doc, m.active);
+    const flipped = _stampGame(doc, m.active) || phaseFlip;
     if (!m.active) {
       _hideAll(doc);
       if (flipped) placeOverlayField();

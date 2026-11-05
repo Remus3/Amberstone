@@ -33,13 +33,15 @@ e45c455a7f7db8c7f9aa5b76a32e995ed96bde1df0ea5c6d836fd5344a8c0663  web/js/lib/ove
 
 35b5e792d021c2287f1834bb3ca84722601e5c30bc4af69d9b6095204bbdd195  web/js/lib/overlay_item_radial.js
 
-9ed1027ae36dad8314d42f34068b1ef8798acd563ede4e90ea71d7529d1e8ae1  web/js/lib/overlay_layout.js
+f3b16392e061bdfe7d065c34c012bd03cfca87cb172564eead2e3b5a92148adc  web/js/lib/overlay_layout.js
+
+b23923fae2f269130009144640a664190fc8d0e0c3c00db178d41d51fe08c15f  web/js/lib/overlay_phase.js
 
 8762f8df87f30e51eb06e2e7060d945b2199cae3a16bce17ccc9d179ecba43a3  web/js/lib/overlay_priority.js
 
 707cd8576ac3cc73bc094773e7912279828e35a041559e6e6e737f2ecc980c15  web/js/lib/overlay_settings.js
 
-3ad8fb9973a7390d986ec749be1b089a850c88ae4e8780c3fef5307c38effe8d  web/js/lib/overlay_tft.js
+d0a60f583d8f55f12991a870140a25fde7e970842fd77f530265b3f7627b6a1f  web/js/lib/overlay_tft.js
 
 4ebd55a58e8537dc9c9934abd75160d438825fca6385fc5fc1c087bf5f702659  web/js/lib/overlay_tooltip.js
 

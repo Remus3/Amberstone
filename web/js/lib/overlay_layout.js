@@ -24,6 +24,8 @@
 // wipe + hand-editable); absent the bridge it degrades to localStorage-only,
 // which already survives a reload since the overlay shares the dashboard origin.
 
+import { widgetAllowedInPhase } from "./overlay_phase.js";
+
 const LS_KEY = "rc-overlay-layout";
 
 // Widget registry: id -> mount selector + default 1080p (x,y) + tier. Defaults
@@ -193,6 +195,17 @@ function _inGame(w, tft) {
   return w.game === "tft" ? tft === true : tft !== true;
 }
 
+// Which game phase the field is in (docs/OVERLAY_DOCTRINE.md section 10).
+// lib/overlay_phase.js stamps body[data-ovx-phase] on every state tick; "" before
+// the first tick, which fails open like "unknown".
+function _phaseNow() {
+  try {
+    return (document.body.dataset || {}).ovxPhase || "";
+  } catch (_e) {
+    return "";
+  }
+}
+
 // The panel rows the launcher menu offers for a game family, in registry order.
 function _menuWidgets(tft) {
   return _registry().filter((w) => _inGame(w, tft));
@@ -316,6 +329,10 @@ function _posFor(w) {
     // outside TFT) a widget is off the field. Computed, never persisted, so the
     // operator's own per-widget hide survives a game switch untouched.
     modeOff: !_inGame(w, _isTftNow()),
+    // RC-PHASE-SURFACES: same contract as modeOff. Computed, never persisted, so
+    // the operator's hide survives every phase; the launcher (game "*") is the
+    // escape hatch and is never phase-gated.
+    phaseOff: w.game !== "*" && !widgetAllowedInPhase(w.id, _phaseNow()),
   };
 }
 
@@ -361,7 +378,7 @@ function _applyPos(el, p) {
   } else {
     el.style.opacity = ""; // standard prop - clearing the string removes it
   }
-  el.classList.toggle("ovx-hidden", p.hidden || p.modeOff === true);
+  el.classList.toggle("ovx-hidden", p.hidden || p.modeOff === true || p.phaseOff === true);
 }
 
 function _bodyZoom() {
@@ -1199,7 +1216,7 @@ export function initOverlayLayout() {
     });
     gameMo.observe(document.body, {
       attributes: true,
-      attributeFilter: ["data-ovx-game", "data-mode"],
+      attributeFilter: ["data-ovx-game", "data-mode", "data-ovx-phase"],
     });
   } catch (_e) {
     // no MutationObserver (headless stub): overlay_tft's placeOverlayField call
@@ -1248,6 +1265,7 @@ export const _internals = {
   TFT_WIDGETS,
   _registry,
   _isTftNow,
+  _phaseNow,
   _inGame,
   _menuWidgets,
   _extraWidgets,

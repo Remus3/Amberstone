@@ -690,6 +690,15 @@ body[data-shell="overlay"] .ovx-widget.ovx-dragging .ovx-handle {
 body[data-shell="overlay"] .ovx-hidden {
   display: none !important;
 }
+/* RC-PHASE-SURFACES (doctrine section 10): the phase gate is .ovx-hidden for every
+ * registry widget. w-mmrect is settings-pinned and off the registry, so it carries
+ * its row of the table here: the minimap outline is in-game only. */
+body[data-shell="overlay"][data-ovx-phase="lobby"] .ovx-widget[data-ovx-id="w-mmrect"],
+body[data-shell="overlay"][data-ovx-phase="champ-select"] .ovx-widget[data-ovx-id="w-mmrect"],
+body[data-shell="overlay"][data-ovx-phase="loading"] .ovx-widget[data-ovx-id="w-mmrect"],
+body[data-shell="overlay"][data-ovx-phase="post-game"] .ovx-widget[data-ovx-id="w-mmrect"] {
+  display: none !important;
+}
 
 /* 4e. HEX-NOTCH FLOURISH (doctrine section 5 premium). A thin chamfer bracket in
  * the top-left corner gives every widget the etched-Hextech read without a fat
