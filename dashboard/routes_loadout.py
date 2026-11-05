@@ -13,15 +13,15 @@ during start-up).
 TRUST BOUNDARY (lane 8 cycle 38, 2026-08-31)
     This module's prose used to say "the vision server also revalidates".
     That is MEASURED FALSE and the wrong component was named:
-    `vision_server/_http.py:213` routes /lcu-cmd straight into
+    `_post_lcu_cmd` in `vision_server/_http.py` routes /lcu-cmd straight into
     `vision_server/_relay.lcu_queue_command`, which appends the decoded
     dict to the pending queue VERBATIM - there is no allowlist anywhere in
     `vision_server/`. The vision server is a PIPE, not a gate.
 
     The second gate is one hop further on, in `tools/lcu_agent.py`: it
-    name-dispatches at `:422`, answers an unrecognised verb with
-    "unknown cmd" at `:1102`, coerces every field it reads (`int()` /
-    `str()`, e.g. `:657`), and catches per command at `:1693-1696`. So
+    name-dispatches in `execute_command`, answers an unrecognised verb with
+    "unknown cmd" at the end of that function, coerces every field it reads
+    (`int()` / `str()`), and catches per command in `drain_once`. So
     this edge is NOT the only defence - but it is the only one before the
     command is queued, and the agent's coercion is incidental to its
     implementation rather than a declared contract.
@@ -278,10 +278,11 @@ def _coerce_push_flag(payload, key: str):
     rune page, and a silent default is wrong in whichever direction it goes.
     Defaulting ambiguity to True is the original defect. Defaulting it to
     False is a quiet failure of the operator's intent behind a green
-    "check <label>" - `web/js/panels/item_build.js:445` already reads `ok`,
+    "check <label>" - `_ibPushItems` in `web/js/panels/item_build.js` already reads `ok`,
     so there is a live UI channel for an honest error but none for a silent
     skip. Rejecting is the resolution the sibling `dismiss` flag took at
-    `routes_diag.py:347-350` for the same wrong-type class, on the same
+    `_serve_decisions_respond_active_post` in `routes_diag.py` for the same
+    wrong-type class, on the same
     reasoning that the downstream act is irreversible.
 
     A JSON `null` is deliberately ambiguous rather than absent: a client that
@@ -623,13 +624,14 @@ def _serve_loadout_apply_post(h, payload) -> None:
                     if iid: item_ids.append(str(iid))
         # Lane 8 cycle 38: `ok` was hardcoded True, so a run in which every
         # enqueue raised still answered {"ok": true} with an empty `queued`.
-        # That is not a cosmetic inaccuracy - `web/js/panels/item_build.js:445`
-        # ALREADY reads this field (`if (!data || !data.ok) _ibSetStatus(
+        # That is not a cosmetic inaccuracy - `_ibPushItems` in
+        # `web/js/panels/item_build.js` ALREADY reads this field (`if (!data || !data.ok) _ibSetStatus(
         # "push failed", "err")`), so the operator was shown a green
         # "check <label>" for a push that never reached the League client, and
         # the panel's own failure branch could never fire. Reporting honestly
         # activates UI that was written for it and has been dead since.
-        # `failed` is additive; `champ_select.js:3366` ignores the body.
+        # `failed` is additive; the build-variant apply in `champ_select.js`
+        # ignores the body.
         h._send(200, json.dumps({
             "ok": not failed,
             "champion": champ, "variant": variant, "mode": resolved.get("mode"),
@@ -660,8 +662,8 @@ def _serve_lcu_cmd_post(h, payload) -> None:
     # :8888: {"cmd":123}, {"cmd":{"a":1}} and {"cmd":true} each returned
     # curl exit 56 - the connection closed with NO HTTP RESPONSE - while
     # {"cmd":"bogus_cmd"} correctly returned 400. The three failures left
-    # NO log line either (the 400 is logged at _handler.py:157; they die
-    # before that), and the traceback goes to stderr, which under
+    # NO log line either (the 400 is logged by `log_message` in _handler.py;
+    # they die before that), and the traceback goes to stderr, which under
     # pythonw.exe is nowhere. Invisible on the wire and in the log at once.
     cmd_name = _text(payload, "cmd")
     if cmd_name not in _LCU_ALLOWED_CMDS:
@@ -684,7 +686,7 @@ def _serve_lcu_cmd_post(h, payload) -> None:
         from web_dashboard import _VISION_TOKEN
         # Lane 8 cycle 38: the edge validated the STRIPPED name and then
         # forwarded the payload UNSTRIPPED, so `{"cmd":" accept_ready "}`
-        # passed here and reached `lcu_agent.py:422`, whose `name ==
+        # passed here and reached `execute_command` in `lcu_agent.py`, whose `name ==
         # "accept_ready"` is False - the agent answered "unknown cmd" while
         # this route had already reported acceptance. Forward the same
         # bytes that were validated (RM-296a: only the schema's keys).
@@ -712,12 +714,11 @@ def _scrub_result_err(body: bytes) -> bytes:
     path (the 404/500 bodies were already generic - that half of the finding
     was refuted). The chain is real and ends in champ select:
 
-        tools/lcu_agent.py:1694   result = {"ok": False,
+        tools/lcu_agent.py drain_once   result = {"ok": False,
                                             "err": f"{type(exc).__name__}: {exc}"}
-        vision_server/_http.py:148 self._j(200, rec)         # verbatim
-        this route                 forwarded the body verbatim
-        web/js/panels/champ_select.js:1330-1331
-                                   "X Lock failed: " + err   # rendered
+        vision_server/_http.py do_GET   self._j(200, rec)    # verbatim
+        this route                      forwarded the body verbatim
+        web/js/panels/champ_select.js   "X Lock failed: " + err   # rendered
 
     So a `PermissionError: [WinError 5] ...` from inside the LCU agent was
     painted into the champ-select lock button. The raw text is logged here
@@ -769,9 +770,10 @@ def _serve_lcu_cmd_result_get(h) -> None:
             # Lane 8 cycle 38: `e` was read and dropped, which this audit
             # first filed as a socket leak on the hot polled path. THAT WAS
             # REFUTED by the adversarial pass and the claim is corrected
-            # here rather than quietly dropped: CPython `urllib.request` (request.py lines 1333-1335)
-            # closes the socket right after `getresponse()`, and an
-            # amt-less CPython `http.client` (client.py line 505) `read()` calls `_close_conn()`,
+            # here rather than quietly dropped: CPython `urllib.request`
+            # (`AbstractHTTPHandler.do_open`) closes the socket right after
+            # `getresponse()`, and an amt-less CPython `http.client`
+            # `HTTPResponse.read()` calls `_close_conn()`,
             # so `e.fp.fp is None` by this point. 300 iterations against a
             # local 404 server moved the process handle count by ZERO.
             # The only real residue is a ResourceWarning from
@@ -801,7 +803,7 @@ def path_or_query(p: str):
     """Match exactly `p`, or `p` followed by a query string.
 
     Lane 8 cycle 38: both routes below used `prefix()`, which is a bare
-    `startswith` (`dashboard/_matchers.py:25-27`). MEASURED live:
+    `startswith` (`prefix` in `dashboard/_matchers.py`). MEASURED live:
     `GET /api/lcu-cmd-resultXYZ?id=1` was HANDLED (404 `{"error":"pending"}`
     from the vision server, not the dispatcher's 404), and
     `POST /api/loadout/listEVIL` answered 400 `champion required`. Both

@@ -532,3 +532,46 @@ def test_bad_push_flag_does_not_preempt_the_champion_check(monkeypatch):
     assert status == 400
     assert json.loads(raw.decode("utf-8"))["error"] == (
         "champion+variant required")
+
+
+# ---- RM-1347: routes_loadout.py cites its neighbours by symbol ------------
+#
+# The module prose cited `file.py:<line>` anchors in six neighbouring files;
+# every one had drifted (a line number is a measurement at one commit). The
+# prose now names the symbol, and these guards keep it that way and pin that
+# each named symbol still exists where the prose says it does.
+
+_ROUTES_LOADOUT = (
+    __import__("pathlib").Path(__file__).resolve().parents[1]
+    / "dashboard" / "routes_loadout.py"
+)
+
+
+def test_routes_loadout_cites_no_file_line_numbers():
+    import re
+
+    text = _ROUTES_LOADOUT.read_text(encoding="utf-8")
+    hits = re.findall(r"[A-Za-z_/.]+\.(?:py|js):\d+|\bsite-packages\b|\blines? \d{2,}", text)
+    assert hits == [], "cite a symbol, not a line number"
+
+
+@pytest.mark.parametrize(
+    "rel, needle",
+    [
+        ("vision_server/_http.py", "def _post_lcu_cmd("),
+        ("vision_server/_http.py", "self._j(200, rec)"),
+        ("vision_server/_relay.py", "def lcu_queue_command("),
+        ("tools/lcu_agent.py", "def execute_command("),
+        ("tools/lcu_agent.py", "def drain_once("),
+        ("tools/lcu_agent.py", 'f"unknown cmd: {name}"'),
+        ("web/js/panels/item_build.js", "function _ibPushItems("),
+        ("dashboard/routes_diag.py", "def _serve_decisions_respond_active_post("),
+        ("dashboard/_matchers.py", "def prefix("),
+        ("web/js/panels/champ_select.js", '"X Lock failed: "'),
+    ],
+)
+def test_every_symbol_routes_loadout_cites_still_exists(rel, needle):
+    root = _ROUTES_LOADOUT.parents[1]
+    assert needle in (root / rel).read_text(encoding="utf-8"), f"{rel} lost {needle}"
+    # The prose still names the file, so the pin tracks a live cite.
+    assert rel.rsplit("/", 1)[-1].rsplit(".", 1)[0] in _ROUTES_LOADOUT.read_text(encoding="utf-8")
