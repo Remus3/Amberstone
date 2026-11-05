@@ -921,7 +921,22 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
-    if (el) el.textContent = (_VIEW.manual ? "" : "AUTO · ") + (VIEW_LABELS[viewId] || viewId).toUpperCase();
+    // RM-1436: the "AUTO" prefix and the view name are two spans, so a
+    // narrow header (web/css/panels/header.css, max-width 720px) drops the
+    // whole prefix before it cuts the name. textContent is unchanged.
+    if (el) {
+      const name = document.createElement("span");
+      name.className = "title-current-name";
+      name.textContent = (VIEW_LABELS[viewId] || viewId).toUpperCase();
+      if (_VIEW.manual) {
+        el.replaceChildren(name);
+      } else {
+        const auto = document.createElement("span");
+        auto.className = "title-current-auto";
+        auto.textContent = "AUTO " + String.fromCharCode(0xB7) + " ";
+        el.replaceChildren(auto, name);
+      }
+    }
     // s162: (R) AUTO header pill removed. Operator clears manual via the
     // "(R) Auto (clear manual)" entry in the title dropdown menu.
   }

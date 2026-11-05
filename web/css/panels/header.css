@@ -3107,6 +3107,36 @@ body[data-view="lobby"]          #home-overlay { display: none; }
     min-width: 0;
     text-overflow: ellipsis;
   }
+  /* RM-1436: at 320 the label is cut to about 115px and "AUTO - " took
+   * half of it, so PRE-GAME LOBBY / ACTIVE MATCH / POST GAME REVIEW lost
+   * their name. web/js/main.js writes the prefix and the name as two spans;
+   * here the label is a one-line wrapping flex row whose FIRST line holds
+   * the name (order -1, row-reverse, packed to the left so it still reads
+   * "AUTO - NAME"). When both do not fit, the whole prefix wraps to the
+   * clipped second line, never a partial "AU"; a name wider than the label
+   * alone ellipsizes. Where both fit nothing moves. The line height is set
+   * (not "normal") because the middle dot comes from a fallback font whose
+   * normal line is 2px taller, which made the clip box shorter than the
+   * line it has to show. */
+  #view-trigger .title-current {
+    display: flex;
+    flex-flow: row-reverse wrap;
+    justify-content: flex-end;
+    align-content: flex-start;
+    line-height: 1.2;
+    height: 1.2em;
+  }
+  #view-trigger .title-current-name {
+    order: -1;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #view-trigger .title-current-auto {
+    flex: 0 0 auto;
+    white-space: pre;
+  }
 }
 /* RC2 Hextech reskin (redesign #12, the last page). Each settings card
  * adopts the hx-card frame: a plain bordered --surface body with the two
