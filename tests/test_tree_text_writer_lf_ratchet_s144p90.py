@@ -11,11 +11,13 @@ entry that stops offending fails test_baseline_is_exact until it is dropped.
 
 Measured 2026-11-04 over the git index with the sweep's own _violations:
 12 files outside both lists. ops/loop/inbox_tick.py, ops/phase3_setup.py,
-ops/rc_self_monitor.py, tools/bootstrap_env_check.py and tools/dev_cli.py write
-newline-free payloads (a lock pid, an empty placeholder, "paused", "x"), so
-the line ending is unobservable. tools/ci_watchdog.py wrote a multi-line
-markdown context file and was converted (newline="\\n"). The rest are frozen,
-kit-owned or byte-pinned and are the main session's to change.
+ops/rc_self_monitor.py, tools/bootstrap_env_check.py, tools/dev_cli.py and
+tools/run_phase2_perf.py wrote newline-free payloads (a lock pid, an empty
+placeholder, "paused", "x", one-line JSON), so the line ending was
+unobservable; RM-1528 (2026-11-05) pinned newline="\\n" on all of them and
+they left the baseline. tools/ci_watchdog.py wrote a multi-line
+markdown context file and was converted (newline="\\n"). The five left are
+frozen, kit-owned or byte-pinned and are the main session's to change.
 
 Append-mode sinks stay out of scope, as the sweep module's docstring rules:
 they are gitignored runtime logs, never tracked files.
@@ -43,15 +45,10 @@ _BASELINE = {
     "ops/fleet_kit/fleet_lanes.py": "kit-owned (MAIN)",
     "ops/loop/slots.py": "SHARED_SHA256 byte pin",
     "tools/run_packaged_smoke.py": "packaging, main session owns",
-    # Newline-free payloads: the line ending cannot be observed.
-    "ops/loop/inbox_tick.py": "lock pid json, one line",
-    "ops/phase3_setup.py": "empty placeholder files",
-    "ops/rc_self_monitor.py": "the word 'paused'",
-    "tools/bootstrap_env_check.py": "'x' write probe, unlinked at once",
-    "tools/dev_cli.py": "'x' write probe, unlinked at once",
-    # Perf-harness temp fixtures in a TemporaryDirectory: one-line JSON, and the
-    # one multi-line jsonl already passes newline="\n".
-    "tools/run_phase2_perf.py": "temp fixtures, one-line json",
+    # RM-1528: the six newline-free-payload entries (inbox_tick, phase3_setup,
+    # rc_self_monitor, bootstrap_env_check, dev_cli, run_phase2_perf) now pass
+    # newline="\n", so a later edit that adds a "\n" to a payload cannot start
+    # emitting CRLF; they left this set (sixteen call sites).
 }
 
 

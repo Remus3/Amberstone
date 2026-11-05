@@ -918,7 +918,7 @@ class SelfMonitor:
                 )
 
             elif action == "pause":
-                self._pause_flag.write_text("paused", encoding="utf-8")
+                self._pause_flag.write_text("paused", encoding="utf-8", newline="\n")
                 self._paused = True
                 result.update({"ok": True, "paused": True})
 

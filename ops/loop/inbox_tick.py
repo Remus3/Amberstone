@@ -303,7 +303,7 @@ def _take_lock(root: Path, clock=time.time) -> bool:
             with contextlib.suppress(OSError):
                 lock.unlink()
             continue
-        with os.fdopen(fd, "w", encoding="ascii") as fh:
+        with os.fdopen(fd, "w", encoding="ascii", newline="\n") as fh:
             fh.write(json.dumps({"pid": os.getpid(), "ts": clock()}))
         return True
     return False

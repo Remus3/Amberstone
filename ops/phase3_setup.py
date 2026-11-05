@@ -233,7 +233,7 @@ def main() -> int:
     for name in ("task_queue.jsonl", "lockfile"):
         f = state / name
         if not f.exists():
-            f.write_text("", encoding="utf-8")
+            f.write_text("", encoding="utf-8", newline="\n")
             created.append(f"agents/state/{name}")
         else:
             skipped.append(f"agents/state/{name}")
@@ -254,19 +254,19 @@ def main() -> int:
     for i in range(8):
         log = ROOT / "logs" / "agents" / f"agent{i}.log"
         if not log.exists():
-            log.write_text("", encoding="utf-8")
+            log.write_text("", encoding="utf-8", newline="\n")
             created.append(f"logs/agents/agent{i}.log")
 
     for name in ("site_b.log", "site_d.log"):
         p = ROOT / "logs" / "scrapers" / name
         if not p.exists():
-            p.write_text("", encoding="utf-8")
+            p.write_text("", encoding="utf-8", newline="\n")
             created.append(f"logs/scrapers/{name}")
 
     for name in ("ingest.log", "push.log"):
         p = ROOT / "logs" / "ws" / name
         if not p.exists():
-            p.write_text("", encoding="utf-8")
+            p.write_text("", encoding="utf-8", newline="\n")
             created.append(f"logs/ws/{name}")
 
     print(f"[phase3_setup] created={len(created)} skipped={len(skipped)}")

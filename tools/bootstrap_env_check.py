@@ -114,7 +114,7 @@ def _check_writable(path: Path, label: str) -> None:
         return
     try:
         tmp = path / ".bootstrap_write_test"
-        tmp.write_text("x", encoding="utf-8")
+        tmp.write_text("x", encoding="utf-8", newline="\n")
         tmp.unlink()
         _ok(label, f"writable ({path})")
     except Exception as exc:  # noqa: BLE001

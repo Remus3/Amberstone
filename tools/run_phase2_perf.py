@@ -145,19 +145,19 @@ def _bench_feature_policy(td: Path):
                            lambda: get_policy_state()))
 
     cfg = td / "fp_valid.json"
-    cfg.write_text(json.dumps({"sr": {"live_coaching": "allow"}}))
+    cfg.write_text(json.dumps({"sr": {"live_coaching": "allow"}}), newline="\n")
     fp._reload(cfg)
     def _force_valid_reload():
-        cfg.write_text(json.dumps({"sr": {"live_coaching": "allow"}}))
+        cfg.write_text(json.dumps({"sr": {"live_coaching": "allow"}}), newline="\n")
         is_allowed("sr", "live_coaching")
     results.append(_bench("is_allowed() with valid file reload",
                            _force_valid_reload, reps=20, warmup=3))
 
     cfg_bad = td / "fp_bad.json"
-    cfg.write_text(json.dumps({"sr": {"live_coaching": "allow"}}))
+    cfg.write_text(json.dumps({"sr": {"live_coaching": "allow"}}), newline="\n")
     fp._reload(cfg)
     def _force_invalid_reload():
-        cfg_bad.write_text('{"sr":{"live_coaching":"bad"}}')
+        cfg_bad.write_text('{"sr":{"live_coaching":"bad"}}', newline="\n")
         fp._cache._mtime = -1.0
         fp._cache._path = cfg_bad
         is_allowed("sr", "live_coaching")
@@ -183,14 +183,14 @@ def _bench_metrics_cache(td: Path):
     (rt / "status.json").write_text(json.dumps({
         "supervisor_state": "healthy_ready", "process_running": True,
         "awaiting_first_heartbeat": False,
-    }))
+    }), newline="\n")
     (rt / "monitor_state.json").write_text(json.dumps({
         "consecutive_fails": 0, "ladder_index": 0,
         "circuit_breaker": {"tripped": False},
-    }))
-    (rt / "health.json").write_text(json.dumps({"mode": "game"}))
+    }), newline="\n")
+    (rt / "health.json").write_text(json.dumps({"mode": "game"}), newline="\n")
     (rt / "last_coaching_ts.json").write_text(
-        json.dumps({"ts": "2026-04-13T10:00:00+00:00"}))
+        json.dumps({"ts": "2026-04-13T10:00:00+00:00"}), newline="\n")
     incidents = [
         {"ts": f"2026-04-13T10:0{i}:00Z", "severity": "WARN",
          "subsystem": "rc.super", "trigger": "restart", "detail": f"entry {i}"}
