@@ -4,6 +4,7 @@ defects - the success path always emitted a false "Bad advice flagged" INFO log
 referenced `conn` which is out of scope outside the `with self._conn()` block,
 raising NameError on any DB error instead of logging the warning."""
 import logging
+import sqlite3
 
 from modules.cache_engine import CacheEngine
 
@@ -24,8 +25,11 @@ def test_bump_confidence_success_emits_no_bad_advice_log(tmp_path, caplog):
 def test_bump_confidence_db_error_does_not_raise(tmp_path):
     eng = CacheEngine(tmp_path / "c.db")
 
+    # s144 true-audit cycle 122: the except is narrowed to sqlite3.Error /
+    # OSError (a RuntimeError is a bug and now raises), so the simulated
+    # database failure is a real database error type.
     def _boom():
-        raise RuntimeError("simulated db failure")
+        raise sqlite3.OperationalError("simulated db failure")
 
     eng._conn = _boom
     # Must not propagate (the except branch must not reference an out-of-scope conn).
