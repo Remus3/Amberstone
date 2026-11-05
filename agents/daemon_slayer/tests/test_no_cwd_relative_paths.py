@@ -294,5 +294,142 @@ class GuardBehaviourTests(unittest.TestCase):
         self.assertEqual([], self._scan('_p = "champion_block_index.json"'))
 
 
+# ---------------------------------------------------------------------------
+# RM-1031: the same defect class in the PACKAGE modules, in the base-Path shape
+# ---------------------------------------------------------------------------
+#
+# The class above walks only this tests directory and only for the literal
+# prefix "<top package>/". Neither net could see
+# ``_OVERRIDES_PATH = Path("data") / "cc_conditional_calibration.json"`` in
+# cc_conditional.py: that module is not under the tests directory, and the
+# literal "data" carries no "/" prefix. Both holes are closed here, still with
+# no skip list: a non-test package module may not hand a repo-root directory
+# name to Path() / open() as its first argument.
+
+_PATH_CALLEES = frozenset(
+    {"Path", "PurePath", "PurePosixPath", "PureWindowsPath", "open"}
+)
+
+
+def _repo_top_level_dirs() -> frozenset[str]:
+    """Names of the repo root's own directories, measured from disk (lowercase)."""
+    root = _DS_DIR.parents[1]
+    return frozenset(
+        p.name.lower()
+        for p in root.iterdir()
+        if p.is_dir() and not p.name.startswith((".", "_"))
+    )
+
+
+def _iter_package_modules() -> list[Path]:
+    """Every non-test .py module of the DS package, located CWD-independently."""
+    skip_parts = {"__pycache__", ".pytest_cache", "tests"}
+    return sorted(
+        p
+        for p in _DS_DIR.rglob("*.py")
+        if skip_parts.isdisjoint(p.relative_to(_DS_DIR).parts)
+    )
+
+
+def _callee_name(func: ast.expr) -> str | None:
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return None
+
+
+def _base_path_offenders_in_source(
+    source: bytes | str, label: str, top_dirs: frozenset[str]
+) -> list[str]:
+    """Calls whose FIRST argument is a literal naming a repo-root directory."""
+    tree = ast.parse(source, filename=label)
+    out: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        if _callee_name(node.func) not in _PATH_CALLEES:
+            continue
+        first = node.args[0]
+        if not (
+            isinstance(first, ast.Constant)
+            and isinstance(first.value, (str, bytes))
+        ):
+            continue
+        value = first.value
+        if isinstance(value, bytes):
+            try:
+                value = value.decode("utf-8")
+            except UnicodeDecodeError:
+                continue
+        text = value.replace("\\", "/")
+        while text.startswith("./") or text.startswith("../"):
+            text = text[2:] if text.startswith("./") else text[3:]
+        if text.split("/", 1)[0].lower() in top_dirs:
+            out.append(f"{label}:{node.lineno}: {first.value!r}")
+    return out
+
+
+class PackageModuleBasePathTests(unittest.TestCase):
+    """RM-1031: no package module roots a path at the CWD with a bare dir name."""
+
+    def test_scan_covers_the_package_and_the_root_listing(self) -> None:
+        files = _iter_package_modules()
+        self.assertGreater(len(files), _MIN_SCANNED_FILES)
+        self.assertIn(_DS_DIR / "cc_conditional.py", files)
+        self.assertTrue(
+            _repo_top_level_dirs() >= {"data", "agents", "core"},
+            "the repo-root directory listing is wrong, so the scan would be vacuous",
+        )
+        self.assertTrue(
+            all("tests" not in p.relative_to(_DS_DIR).parts for p in files)
+        )
+
+    def test_no_package_module_roots_a_path_at_the_cwd(self) -> None:
+        top = _repo_top_level_dirs()
+        offenders: list[str] = []
+        for path in _iter_package_modules():
+            rel = path.relative_to(_DS_DIR).as_posix()
+            offenders.extend(_base_path_offenders_in_source(path.read_bytes(), rel, top))
+        self.assertEqual(
+            [],
+            offenders,
+            "RM-1031: a package module builds a path from a repo-root directory "
+            "name, so it resolves against the process CWD. Anchor on __file__:"
+            + chr(10) + "    _REPO_ROOT = Path(__file__).resolve().parents[2]"
+            + chr(10) + "    _X = _REPO_ROOT / 'data' / 'x.json'"
+            + chr(10) + "  " + (chr(10) + "  ").join(offenders),
+        )
+
+    def _scan(self, src: str) -> list[str]:
+        return _base_path_offenders_in_source(src, "fixture.py", frozenset({"data"}))
+
+    def test_base_shape_is_caught(self) -> None:
+        self.assertTrue(self._scan('_p = Path("data") / "x.json"'))
+
+    def test_open_pathlib_dotted_bytes_and_prefixed_forms_are_caught(self) -> None:
+        for src in (
+            'open("data/x.json")',
+            'pathlib.Path("Data", "x.json")',
+            'p = Path(b"data")',
+            'p = Path("./data")',
+            'p = Path(r"data' + chr(92) + 'sub")',
+        ):
+            with self.subTest(src=src):
+                self.assertTrue(self._scan(src))
+
+    def test_anchored_and_unrelated_paths_are_not_caught(self) -> None:
+        for src in (
+            'p = Path(__file__).resolve().parents[2] / "data"',
+            'p = _REPO_ROOT / "data" / "x.json"',
+            'p = Path("not_a_root_dir") / "x.json"',
+            'p = Path(name)',
+            '# Path("data") in a comment',
+            'def f():' + chr(10) + '    """Path("data") in a docstring"""',
+        ):
+            with self.subTest(src=src):
+                self.assertEqual([], self._scan(src))
+
+
 if __name__ == "__main__":
     unittest.main()

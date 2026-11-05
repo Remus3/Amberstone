@@ -180,8 +180,12 @@ _LOG = logging.getLogger(__name__)
 
 # Per-tag + per-entry probability override file. See module docstring
 # for schema. Operator-tunable; missing/malformed file is fail-soft.
-# Gitignored as personal calibration data.
-_OVERRIDES_PATH = Path("data") / "cc_conditional_calibration.json"
+# Gitignored as personal calibration data. Anchored on this file, never on
+# the process CWD (RM-1031): a DS process started elsewhere must read the
+# same file, and must not read a decoy ``data/`` in its working directory.
+_OVERRIDES_PATH = (
+    Path(__file__).resolve().parents[2] / "data" / "cc_conditional_calibration.json"
+)
 
 
 # ---------------- condition tag taxonomy ----------------
