@@ -42,6 +42,7 @@ from tests.snapshot_panels.test_replay_space_single_action import (
     _MATCH_ROWS,
     _MEDIA_SPY,
 )
+from tests.snapshot_panels.test_space_behind_a_menu_any_view import _strip_main_hold
 
 VP = VIEWPORTS[0]
 
@@ -70,6 +71,9 @@ def _open_player(pw_browser, mock_server, hold_removed=False):
     page.route("**/panels/review_player.js*", _expose_player_state)
     if hold_removed:
         page.route("**/panels/review_player_model.js*", _remove_the_hold)
+        # RM-1366: main.js now holds the same press on every view, so the
+        # control takes out both holds.
+        page.route("**/js/main.js*", _strip_main_hold)
     page.goto(mock_server.url + "/?ui_mock=1#replay",
               wait_until="domcontentloaded", timeout=15_000)
     page.wait_for_selector(_MATCH_ROWS, timeout=10_000)

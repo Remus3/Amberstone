@@ -19,6 +19,7 @@ import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResol
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
 import { dismissStrandedLayers, registerEscapeLayer } from './lib/escape_layers.js';
+import { isSpaceActivated, isTypingTarget } from './panels/review_player_model.js';
 
 // -- Panel modules ---------------------------------------------------------
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
@@ -7229,15 +7230,39 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // trigger, or on the body after a click on a menu's label. Rendered is what
   // counts, not the class: a Lobby menu left open by a view change is not
   // displayed, and must not kill the shortcuts in the next view.
+  function _menuRendered() {
+    return Array.from(document.querySelectorAll('[role="menu"]'))
+      .some((m) => m.getClientRects().length > 0);
+  }
   function _letterShortcutsYield(tgt) {
     if (tgt) {
       const tag = tgt.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
       if (tgt.isContentEditable) return true;
     }
-    return Array.from(document.querySelectorAll('[role="menu"]'))
-      .some((m) => m.getClientRects().length > 0);
+    return _menuRendered();
   }
+  // RM-1366: the open menu owns a plain (or Shift+) Space on every view. A
+  // right-click on a bare spot fires no click, so the menu stays open with focus
+  // on the body, and the browser then scrolled the view behind it (Settings 718
+  // px at 1920x920). Held, and nothing else: the menu stays open. A control the
+  // focus activates or types into keeps its Space, and Ctrl / Alt / Meta + Space
+  // pass (the Replay player's play chord). Same test as the player's hold
+  // (review_player_model.js hotkeyAction), so the two cannot drift apart.
+  function _spaceHeldBehindMenu(e) {
+    if (e.key !== " " && e.key !== "Spacebar") return false;
+    if (e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return false;
+    const t = e.target && e.target.nodeType === 1 ? e.target : null;
+    const desc = t ? {
+      tag: t.tagName, type: t.getAttribute("type"), editable: !!t.isContentEditable,
+      role: t.getAttribute("role"), href: t.hasAttribute("href"),
+    } : null;
+    if (isTypingTarget(desc) || isSpaceActivated(desc)) return false;
+    return _menuRendered();
+  }
+  document.addEventListener("keydown", (e) => {
+    if (_spaceHeldBehindMenu(e)) e.preventDefault();
+  });
   document.addEventListener("keydown", (e) => {
     // RM-1322: a held key is one press. Each single-shot shortcut below (a
     // reload, a kickoff, a toggle) skips its ACTION on an autorepeat; the
