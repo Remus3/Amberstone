@@ -242,9 +242,11 @@ def build_exclusions(catalog: ItemCatalog) -> frozenset[int]:
         sid = str(iid)
         if sid[-4:] in seed_suffixes:
             out.add(iid)                      # mirror-namespace suffix sweep
-        elif catalog.is_ornn_masterwork(iid) or catalog.is_champion_specific(iid):
-            out.add(iid)
-        elif len(sid) == 6 and sid.startswith(_ARENA_PRISMATIC_PREFIX):
+        elif (
+            catalog.is_ornn_masterwork(iid)
+            or catalog.is_champion_specific(iid)
+            or (len(sid) == 6 and sid.startswith(_ARENA_PRISMATIC_PREFIX))
+        ):
             out.add(iid)
     return frozenset(out)
 

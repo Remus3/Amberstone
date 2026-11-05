@@ -160,9 +160,9 @@ def convert(text: str, name: str = "<src>") -> str:
                 ch = line[col]
                 if ord(ch) < 128:
                     continue
-                if tok.type == tokenize.COMMENT:
-                    plan[(row, col)] = _prose(ch)
-                elif tok.type == tokenize.STRING and row in doc_lines:
+                if tok.type == tokenize.COMMENT or (
+                    tok.type == tokenize.STRING and row in doc_lines
+                ):
                     plan[(row, col)] = _prose(ch)
                 else:
                     if tok.type == tokenize.STRING and fstring_raw:

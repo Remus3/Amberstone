@@ -533,9 +533,7 @@ def _collect_scopes(tree):
             scope.declared.update(dict.fromkeys(node.names, kind))
         elif isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
             scope.stores.add(node.id)
-        elif isinstance(node, ast.ExceptHandler) and node.name:
-            scope.stores.add(node.name)
-        elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name:
+        elif isinstance(node, (ast.ExceptHandler, ast.MatchAs, ast.MatchStar)) and node.name:
             scope.stores.add(node.name)
         elif isinstance(node, ast.MatchMapping) and node.rest:
             scope.stores.add(node.rest)

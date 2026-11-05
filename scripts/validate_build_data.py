@@ -89,11 +89,7 @@ def detect_mode(data: dict, fallback_path: Path) -> str:
 def violations_for_mode(mode: str) -> dict[str, set[str]]:
     """Return {label: forbidden_items} for the given mode."""
     out: dict[str, set[str]] = {}
-    if mode == "sr":
-        out["SR-REMOVED"] = SR_REMOVED_ITEMS
-        out["ARENA-ONLY"] = ARENA_ONLY
-        out["MAYHEM-ONLY"] = MAYHEM_ONLY
-    elif mode == "aram":
+    if mode in ("sr", "aram"):
         out["SR-REMOVED"] = SR_REMOVED_ITEMS
         out["ARENA-ONLY"] = ARENA_ONLY
         out["MAYHEM-ONLY"] = MAYHEM_ONLY

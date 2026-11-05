@@ -637,8 +637,7 @@ def _note_sha(inbox: Path, note):
 def _decode_line(chunk: bytes):
     """The line as text with ONE leading UTF-8 BOM dropped (PowerShell 5.1
     writes one; RM-689); None when the bytes are not valid UTF-8."""
-    if chunk.startswith(_BOM):
-        chunk = chunk[len(_BOM):]
+    chunk = chunk.removeprefix(_BOM)
     try:
         return chunk.decode("utf-8")
     except UnicodeDecodeError:

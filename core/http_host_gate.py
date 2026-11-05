@@ -101,8 +101,7 @@ def _norm_host_name(raw) -> str:
     name = raw.strip().lower()
     if name.startswith("[") and name.endswith("]"):
         name = name[1:-1]
-    if name.endswith("."):
-        name = name[:-1]
+    name = name.removesuffix(".")
     return _canon_host(name) if name else ""
 
 
@@ -148,8 +147,7 @@ def host_header_hostname(value: str) -> str | None:
     elif not _ascii_digits(port):
         return None
     name = name.lower()
-    if name.endswith("."):
-        name = name[:-1]
+    name = name.removesuffix(".")
     if not name or any(ch not in _HOST_NAME_CHARS for ch in name):
         return None
     return _canon_host(name)

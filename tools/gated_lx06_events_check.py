@@ -148,8 +148,7 @@ class SseParser:
         if line.startswith(":"):
             return [("comment", line[1:].strip())]
         field, _, value = line.partition(":")
-        if value.startswith(" "):
-            value = value[1:]
+        value = value.removeprefix(" ")
         if field == "data":
             self._data.append(value)
         elif field == "id" and "\x00" not in value:

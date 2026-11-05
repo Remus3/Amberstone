@@ -98,7 +98,7 @@ class _LineSink:
         self._fn = fn
 
     def write(self, text: str) -> int:
-        self._fn(text[:-1] if text.endswith("\n") else text)
+        self._fn(text.removesuffix("\n"))
         return len(text)
 
 

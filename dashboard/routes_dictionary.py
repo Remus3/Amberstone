@@ -200,8 +200,7 @@ def _cdragon_icon_url(icon_path: str) -> str:
         return ""
     low = p.lstrip("/").lower()
     marker = "lol-game-data/"
-    if low.startswith(marker):
-        low = low[len(marker):]
+    low = low.removeprefix(marker)
     return _CDRAGON_GAMEDATA_BASE + low
 
 

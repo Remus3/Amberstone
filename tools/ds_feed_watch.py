@@ -283,7 +283,7 @@ def watched_chunks(manifest: dict) -> dict:
     for k, v in src.items():
         if not isinstance(k, str) or k in (key, HASHES_KEY):
             continue
-        label = k[len(prefix):] if k.startswith(prefix) else k
+        label = k.removeprefix(prefix)
         for sub, url in _walk_urls(v, label):
             name = url[len(cdir):] if url.startswith(cdir) else ""
             if name and "/" not in name and url not in taken:

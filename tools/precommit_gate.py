@@ -252,7 +252,7 @@ def _staged_added(root: str) -> dict[str, dict]:
     for ln in diff.splitlines():
         if ln.startswith("+++ "):
             p = ln[4:].strip()
-            cur = None if p == "/dev/null" else p[2:] if p.startswith("b/") else p
+            cur = None if p == "/dev/null" else p.removeprefix("b/")
             if cur and not _skippable(cur):
                 files.setdefault(cur, {"ranges": [], "lines": []})
             else:

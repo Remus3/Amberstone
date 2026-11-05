@@ -214,8 +214,7 @@ def _under(path_norm: str, root_norm: str) -> bool:
 
 def _norm(p: str) -> str:
     p = p.strip()
-    if p.startswith("\\\\?\\"):
-        p = p[4:]
+    p = p.removeprefix("\\\\?\\")
     return p.replace("\\", "/").rstrip("/").casefold()
 
 
@@ -526,8 +525,7 @@ def scan_reparse(roots, rw: PathRewriter) -> dict:
                         if kind != "other":
                             try:
                                 target = os.readlink(e.path)
-                                if target.startswith("\\\\?\\"):
-                                    target = target[4:]
+                                target = target.removeprefix("\\\\?\\")
                                 if not os.path.isabs(target):
                                     target = os.path.normpath(os.path.join(os.path.dirname(e.path), target))
                             except OSError as exc:

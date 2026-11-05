@@ -641,9 +641,9 @@ def note_shape_ok(path, name: str, *, sink: Optional[list] = None) -> list:
         lst = os.lstat(path)
     except OSError:
         return problems or ["note-shape:linked"]
-    if stat.S_ISLNK(lst.st_mode):
-        problems.append("note-shape:linked")
-    elif os.name == "nt" and getattr(lst, "st_file_attributes", 0) & 0x400:
+    if stat.S_ISLNK(lst.st_mode) or (
+        os.name == "nt" and getattr(lst, "st_file_attributes", 0) & 0x400
+    ):
         problems.append("note-shape:linked")
     elif not stat.S_ISREG(lst.st_mode):
         # RM-385: reachable since `pending_notes` stopped dropping non-files
@@ -1501,8 +1501,7 @@ def prelude_row(cycle_id: str, ts: str, pid: int, stage: str, cls: str, dry: boo
 
 def _stripped_detail(detail: str) -> str:
     base = detail.split(";", 1)[0]
-    if base.endswith(":attempt-cap"):
-        base = base[: -len(":attempt-cap")]
+    base = base.removesuffix(":attempt-cap")
     return base
 
 

@@ -290,8 +290,7 @@ class TftLogTail:
         # small byte cap can split it, and its prefix then waits in the carry
         if self._at_start and (len(buf) >= len(_BOM) or not _BOM.startswith(buf)):
             self._at_start = False
-            if buf.startswith(_BOM):
-                buf = buf[len(_BOM):]
+            buf = buf.removeprefix(_BOM)
         parts = buf.split(b"\n")
         tail = parts.pop()
         events = []

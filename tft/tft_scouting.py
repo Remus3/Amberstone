@@ -156,8 +156,7 @@ def clean_name(api_name: Any) -> str:
     puts the set number AFTER the name) / ``TFT_Item_InfinityEdge`` -> display."""
     raw = str(api_name or "")
     s = _PREFIX_RE.sub("", raw)
-    if s.startswith("Item_"):
-        s = s[len("Item_"):]
+    s = s.removeprefix("Item_")
     s = _SET_SUFFIX_RE.sub("", s)
     s = _CAMEL_RE.sub(" ", s).replace("_", " ").strip()
     return _ascii(s or raw)

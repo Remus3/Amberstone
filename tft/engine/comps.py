@@ -132,7 +132,7 @@ def as_int(value) -> Optional[int]:
         return int(value) if math.isfinite(value) else None
     if isinstance(value, str):
         s = value.strip()
-        body = s[1:] if s.startswith("-") else s
+        body = s.removeprefix("-")
         if body and body.isascii() and body.isdigit():
             try:
                 return int(s)

@@ -283,8 +283,7 @@ _SPDX_TOKEN_RE = re.compile(r"\s*(\(|\)|[A-Za-z0-9][A-Za-z0-9.+:-]*)")
 def _classify_id(token: str) -> str:
     ident = token.upper().rstrip("+")
     for suffix in ("-OR-LATER", "-ONLY"):
-        if ident.endswith(suffix):
-            ident = ident[: -len(suffix)]
+        ident = ident.removesuffix(suffix)
     if ident in _ALLOWED_IDS or token.upper() in _ALLOWED_IDS:
         return ALLOWED
     if ident.startswith(_RESTRICTED_PREFIXES):

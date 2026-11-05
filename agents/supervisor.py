@@ -587,9 +587,7 @@ class Supervisor:
                 # Known deterministic ops bypass the owner-agent ->
                 # substrate map so they never accidentally spawn an
                 # LLM. Keep this list short and explicit.
-                if task.op in DETERMINISTIC_OPS:
-                    result = await asyncio.to_thread(self._run_deterministic, task)
-                elif agent in ("0", "1", "3"):
+                if task.op in DETERMINISTIC_OPS or agent in ("0", "1", "3"):
                     result = await asyncio.to_thread(self._run_deterministic, task)
                 elif agent in ("2", "4", "5", "6"):
                     if agent == "2" and not self.cross_machine_enabled and "push" in task.op:
