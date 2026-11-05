@@ -12,8 +12,10 @@
 // host calls on match end.
 //
 // Route contract (built in parallel - code against it):
-//   GET /api/ds-shape?champion=<canonicalId>&damage=<int -2..2>
+//   GET /api/ds-shape?champion=<name>&damage=<int -2..2>
 //       &survivability=<int -2..2>&utility=<int -2..2>
+//   <name> is sent verbatim: the Live Client display name ("Lee Sin") or a
+//   canonical id; the route resolves it to the DDragon id (RM-1447).
 //   200 -> { ok:true, champion, archetype_source,
 //            knobs:{damage,survivability,utility},
 //            baseline:{...}(fractions), shaped:{...}(fractions),
