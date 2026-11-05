@@ -810,6 +810,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   function applyView(viewId) {
     if (!VIEW_IDS.includes(viewId)) viewId = "home";
     if (viewId === _VIEW.current) {
+      // RM-1439: the view is unchanged but the manual flag may not be
+      // (a menu pick of the shown view, Auto clear while auto = shown), so
+      // the AUTO prefix is rewritten here too. A no-op when already right.
+      // Guard: tests/snapshot_panels/test_view_label_same_view_pick.py.
+      _viewUpdateTitleLabel(viewId);
       _viewUpdateMenuActive(viewId);
       return;
     }
@@ -925,15 +930,21 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // narrow header (web/css/panels/header.css, max-width 720px) drops the
     // whole prefix before it cuts the name. textContent is unchanged.
     if (el) {
+      const text = (VIEW_LABELS[viewId] || viewId).toUpperCase();
+      const prefix = "AUTO " + String.fromCharCode(0xB7) + " ";
+      // RM-1439: called on every same-view resolve too, so leave the
+      // nodes alone when the label already reads right.
+      const want = _VIEW.manual ? text : prefix + text;
+      if (el.textContent === want && el.querySelector(".title-current-name")) return;
       const name = document.createElement("span");
       name.className = "title-current-name";
-      name.textContent = (VIEW_LABELS[viewId] || viewId).toUpperCase();
+      name.textContent = text;
       if (_VIEW.manual) {
         el.replaceChildren(name);
       } else {
         const auto = document.createElement("span");
         auto.className = "title-current-auto";
-        auto.textContent = "AUTO " + String.fromCharCode(0xB7) + " ";
+        auto.textContent = prefix;
         el.replaceChildren(auto, name);
       }
     }

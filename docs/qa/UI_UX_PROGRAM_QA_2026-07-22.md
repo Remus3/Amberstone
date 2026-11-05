@@ -346,3 +346,15 @@ When the header's current-view label is too narrow for "AUTO <dot> <VIEW>", the 
 - FUTURE (NICE-TO-HAVE): a name still cut at 320 (POST GAME REVIEW) has no hover title. The open view menu marks the current row with aria-current, so the name can still be reached.
 - Guard: `tests/snapshot_panels/test_view_label_prefix_gives_way.py`, 28 tests. It checks each character with Range rects, so the same probe reads the one-text-node label at HEAD. Red against the HEAD web files: 3 failed (320x256 lobby / last-match / active-match), 25 passed. Green: 28 passed. The live-half digest rows for header.css and main.js are re-captured (code changed, no glyph added).
 - Filed, not fixed (RM-1439): `applyView` returns early when the target is the current view (main.js "if (viewId === _VIEW.current)"), so a manual pick of the view already shown, or "Auto (clear manual)" while the auto view equals the current one, never rewrites the label. The AUTO prefix then misstates the mode.
+
+## 2026-11-05 - lane 4 headless, s144 cycle 122 (RM-1439)
+
+### RULING
+
+The header's current-view label states the view mode truthfully even when the view itself does not change: a manual view reads "<VIEW>", auto reads "AUTO <dot> <VIEW>", whichever path set the flag.
+
+- Measured before the fix, headless Chromium under `?ui_mock=1&mode=sr`: `web/js/main.js` `applyView` returned early when the target was already the current view, and only the view-change path called `_viewUpdateTitleLabel`. From auto Home, a menu pick of Home saved `rc-view-manual=home` but the label kept "AUTO <dot> HOME". Opening on a saved manual Home (label "HOME") and picking "Auto (clear manual)" cleared the key but the label stayed "HOME", with no prefix.
+- Fix: the same-view branch of `applyView` calls `_viewUpdateTitleLabel` too. `_viewUpdateTitleLabel` now returns without touching the DOM when the label's text already reads right (and the name span exists), because the same-view branch runs on every resolve, including each state envelope. A repeat pick of the shown view causes 0 label mutations.
+- Default taken (recorded): a view reached by URL hash with no saved manual key still reads "AUTO <dot> <VIEW>", as before. The label follows the saved manual flag, not the hash. Not changed here. Note: `?ui_mock=1` with a `#view` hash clears `rc-view-manual` on load (the ui_mock IIFE), so a saved-manual fixture must load without a hash.
+- 5-phase audit (independent verifier on the headless render, 1920x920): STRUCTURE (same two spans, no layout change); TYPOGRAPHY (no CSS change); HIT-TARGETS (trigger and menu rows unchanged); ASCII (main.js non-ASCII 213 bytes as at HEAD, 0 added); HIERARCHY (unchanged). See the cycle report for the verifier's verdict.
+- Guard: `tests/snapshot_panels/test_view_label_same_view_pick.py`, 3 tests. Red against the HEAD web files: 3 failed. Green: 3 passed. The live-half digest row for main.js is re-captured (code changed, no glyph).
