@@ -36,6 +36,20 @@
    * vertical space the alerts/services were overflowing into. */
   flex: 1 1 auto;
   min-height: 0;
+  /* RM-1433: the panel is held to the height the header and footer
+   * leave, and body { overflow: hidden } turns off page scrolling, so in a
+   * short window its content ran under the footer and the wheel scrolled
+   * nothing (687 px of content in a 661 px box at 1366x768, 1287 in 200 at
+   * 640x307). It scrolls its own content instead; layout is unchanged, and
+   * at 1920x920 / 923x1280 the content fits, so there is no scroll and no
+   * scrollbar. Guard: tests/snapshot_panels/test_home_wheel_scroll.py.
+   * The scroll padding keeps a Tab-focused control's :focus-visible ring
+   * (2px outline + 2px offset on the launcher tiles) inside the box: without
+   * it the browser scrolls the control flush to the edge and the clip cut
+   * the ring's outer stroke (4.4px at 1366x768, audit). */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--space-2);
 }
 .home-overlay.hidden { display: none; }
 /* Round-2 fold fix: home-scoped compaction of the shared hx-card-head
