@@ -31,6 +31,11 @@ from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError, loads
 from typing import Callable, Optional
 
+# Every hop of the fetch, redirects included, asks the wiki consent gate
+# (ruling 51; RM-1441). Bound as a module name so tests fake THIS module's
+# opener only (RM-801), never the shared urllib.request.
+from lib.wiki_consent import WikiFetchRefused, open_consented
+
 _ENDPOINT = "https://faas-6831.native.qq.com/faas/6831/1371/getRankDouble"
 _REFERER = "https://101.qq.com/"
 _USER_AGENT = "Mozilla/5.0 (RC duo-synergy fetch)"
@@ -76,6 +81,13 @@ class SynergyError(RuntimeError):
     """Any fetch/parse failure - caught at the fetch_rows boundary."""
 
 
+class SynergyRefused(SynergyError):
+    """The wiki consent gate refused a hop (RM-1441, ruling 51): the url, or
+    a redirect target, names the League wiki host and no consent record
+    exists. A ruling, not a per-date data gap, so fetch_rows stops its date
+    loop on it instead of asking again for the next date."""
+
+
 # in-memory cache keyed (lane1, lane2, tier, date0) -> (fetched_monotonic, rows)
 _lock = threading.Lock()
 _cache: dict[tuple, tuple[float, list]] = {}
@@ -108,7 +120,12 @@ def _reject_non_finite(token: str):
 
 def _http_get_json(url: str, timeout_s: float = _TIMEOUT_S) -> dict:
     """One-shot GET -> JSON object. Monkey-patchable seam for tests
-    (augment_external_source pattern). Raises SynergyError on any failure."""
+    (augment_external_source pattern). Raises SynergyError on any failure.
+
+    Opens through ``lib.wiki_consent.open_consented`` (RM-1441): a url
+    naming the League wiki host, or an endpoint answering with a redirect
+    into it, raises SynergyRefused before any wiki socket opens unless a
+    consent record exists. The bare urlopen this replaced followed that 3xx."""
     req = urllib.request.Request(
         url,
         headers={
@@ -119,7 +136,7 @@ def _http_get_json(url: str, timeout_s: float = _TIMEOUT_S) -> dict:
         method="GET",
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as r:
+        with open_consented(req, timeout=timeout_s) as r:
             if r.status != 200:
                 raise SynergyError(f"{url} -> HTTP {r.status}")
             # Read at most the cap plus one byte: that one extra byte is what
@@ -132,6 +149,10 @@ def _http_get_json(url: str, timeout_s: float = _TIMEOUT_S) -> dict:
                 f"{url} response too large (> {_MAX_RESPONSE_BYTES} bytes)")
     except SynergyError:
         raise
+    except WikiFetchRefused as exc:
+        # A RuntimeError, so without this it escaped fetch_rows' fail-soft
+        # boundary (which catches SynergyError only).
+        raise SynergyRefused(f"{url} refused: {exc}") from exc
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         raise SynergyError(f"{url} fetch failed: {exc}") from exc
     try:
@@ -232,6 +253,8 @@ def fetch_rows(
             raw = _http_get_json(_build_url(lane1, lane2, tier, date),
                                  timeout_s=min(_TIMEOUT_S, remaining))
             rows = _validate_rows(raw)
+        except SynergyRefused:
+            break
         except SynergyError:
             continue
         if rows:

@@ -18,8 +18,8 @@ live-path exposures:
   3. RESPONSE SIZE CAP. _http_get_json did an uncapped r.read(), so a hostile
      or malfunctioning endpoint could stream unbounded bytes into memory.
 
-Nothing here touches the network: the _http_get_json seam and
-urllib.request.urlopen are both stubbed.
+Nothing here touches the network: the _http_get_json seam and the module's
+own opener (open_consented, RM-1441) are both stubbed.
 """
 from __future__ import annotations
 
@@ -41,7 +41,6 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core import synergy_external_source as S  # noqa: E402
-from tests._module_view import bind_urlopen  # noqa: E402
 
 _GOOD_ROW = {
     "championid1": "498", "championid2": "497",
@@ -265,15 +264,16 @@ class _FakeResponse:
 
 @contextlib.contextmanager
 def _fake_urlopen(**mock_kwargs):
-    """S's OWN urllib.request.urlopen (the `with urllib.request.urlopen(...)`
-    in core/synergy_external_source.py _http_get_json) -> a Mock built from
-    MOCK_KWARGS, never the shared urllib.request a foreign thread of the xdist
-    worker also sees (RM-801, tests/_module_view.py). A normal exit asserts
-    the fake was reached, so a None / fail-soft assertion can never pass on
-    the real network."""
+    """S's OWN opener (the `with open_consented(...)` in
+    core/synergy_external_source.py _http_get_json, RM-1441; it was
+    `urllib.request.urlopen` before) -> a Mock built from MOCK_KWARGS, bound
+    as S's module name, never the shared urllib.request a foreign thread of
+    the xdist worker also sees (RM-801, tests/_module_view.py). A normal exit
+    asserts the fake was reached, so a None / fail-soft assertion can never
+    pass on the real network."""
     fake = mock.Mock(**mock_kwargs)
     with pytest.MonkeyPatch.context() as mp:
-        bind_urlopen(mp, S, fake)
+        mp.setattr(S, "open_consented", fake)
         yield fake
     assert fake.called, "the scoped urlopen fake was never reached"
 
