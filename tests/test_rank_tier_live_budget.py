@@ -710,15 +710,18 @@ def _call_name(node) -> str:
 
 
 def _is_log_call(node) -> bool:
-    """print(...), or a <level>(...) call rooted at a log-ish name."""
+    """print(...), or a <level>(...) call rooted at a log-ish name.
+
+    RM-1562: the root walk goes through calls as well as attributes, so
+    `logging.getLogger(__name__).info(...)` is rooted at `logging`."""
     name = _call_name(node)
     if name == "print":
         return True
     if name not in _LOG_FUNCS:
         return False
     root = node.func
-    while isinstance(root, ast.Attribute):
-        root = root.value
+    while isinstance(root, (ast.Attribute, ast.Call)):
+        root = root.value if isinstance(root, ast.Attribute) else root.func
     base = root.id.lower() if isinstance(root, ast.Name) else ""
     return (base.lstrip("_").startswith("log")
             or base in {"logging", "logger", "sys", "warnings", "traceback"})
@@ -786,6 +789,10 @@ class _TaintScan(ast.NodeVisitor):
 # by the attribute rule. Residual: a non-url attribute that still carries the
 # value (a file object's `.name`) is not seen.
 _OBJ = "obj:"
+# RM-1562: a name bound to a logging function is held as `_LOGFN + name`.
+# It carries no value (a bare reference to it is clean); a CALL through it is
+# a sink (`_log_args`).
+_LOGFN = "logfn:"
 
 
 def _object_only(name, tainted) -> bool:
@@ -809,11 +816,14 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     if value is None:
         return
     found = _is_tainted(value, tainted, late)
+    is_alias = (not isinstance(stmt, ast.AugAssign)
+                and _is_log_callable(value, tainted))
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
         _bind_names(target, found, tainted,
                     clear=not isinstance(stmt, ast.AugAssign))
+        _bind_log_alias(target, is_alias, tainted)
 
 
 def _is_tainted(expr, tainted, late=frozenset()) -> bool:
@@ -844,6 +854,10 @@ def _bind_names(target, found, tainted, *, clear=True) -> None:
         elif clear:
             tainted.discard(target.id)
             tainted.discard(_OBJ + target.id)
+        if clear:
+            # A plain re-binding replaces a logging-function alias whatever
+            # the new value is (RM-1562); `_bind_log_alias` re-adds it.
+            tainted.discard(_LOGFN + target.id)
         return
     if found:
         for sub in ast.walk(target):
@@ -889,8 +903,10 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
     for node in nodes:
         for sub in ast.walk(node):
             if isinstance(sub, ast.NamedExpr):
+                is_alias = _is_log_callable(sub.value, tainted)
                 _bind_names(sub.target, _is_tainted(sub.value, tainted, late),
                             tainted, clear=False)
+                _bind_log_alias(sub.target, is_alias, tainted)
 
 
 # Context managers whose __enter__ hands back the object they were given.
@@ -973,18 +989,61 @@ def _own_nodes(stmt):
 _DEFERRED = (ast.Lambda, ast.GeneratorExp)
 
 
-def _log_args(call):
+def _is_log_callable(expr, tainted=frozenset()) -> bool:
+    """`expr` evaluates to a logging function (RM-1562): a log function
+    reference (`log.info`, `print`), a name bound to one (`_LOGFN`), or a
+    `partial` over one, nested partials included."""
+    if isinstance(expr, ast.Name) and _LOGFN + expr.id in tainted:
+        return True
+    if isinstance(expr, ast.Call) and _call_name(expr) == "partial" and expr.args:
+        return _is_log_callable(expr.args[0], tainted)
+    return _is_log_call(ast.Call(func=expr, args=[], keywords=[]))
+
+
+def _bind_log_alias(target, is_alias, tainted) -> None:
+    """RM-1562: a plain name bound to a logging function becomes a sink
+    when it is called. `is_alias` is judged BEFORE the binding clears the
+    name (`p = p` keeps it). Add-only here; a plain `=` to anything else
+    clears it through `_bind_names`. A tuple, element or attribute target is
+    not tracked (residual)."""
+    if is_alias and isinstance(target, ast.Name):
+        tainted.add(_LOGFN + target.id)
+
+
+def _log_args(call, tainted=frozenset()):
     """The message arguments of a logging sink, or None if `call` is not one.
 
     RM-1561 (d): `functools.partial(log.info, m)` evaluates `m` where the
     partial is BUILT, so the partial is the sink and is judged there (a
-    later re-binding of `m` changes nothing the partial holds)."""
-    if _is_log_call(call):
+    later re-binding of `m` changes nothing the partial holds).
+    RM-1562: a call THROUGH a logging function - an alias `p(m)`, a
+    partial called later `p = partial(log.info, '%s'); p(m)` or in place
+    `partial(log.info, '%s')(m)` - is a sink for its own arguments too."""
+    if _is_log_callable(call.func, tainted):
         return list(call.args) + [kw.value for kw in call.keywords]
     if (_call_name(call) == "partial" and call.args
-            and _is_log_call(ast.Call(func=call.args[0], args=[], keywords=[]))):
+            and _is_log_callable(call.args[0], tainted)):
         return list(call.args[1:]) + [kw.value for kw in call.keywords]
     return None
+
+
+def _default_bindings(fn, state, late=frozenset()):
+    """RM-1562: the parameters of def `fn` that a default makes carry the
+    value (or a logging function, as `_LOGFN` marks). A default is evaluated
+    where the def stands, so it is judged with the def-time state; a lambda
+    inside one reads `late`, as everywhere. Keeps the RM-1561 (c) caveat:
+    a tainted default keeps its parameter tainted however it is called."""
+    a = fn.args
+    pos = a.posonlyargs + a.args
+    pairs = list(zip(pos[len(pos) - len(a.defaults):], a.defaults))
+    pairs += [(k, d) for k, d in zip(a.kwonlyargs, a.kw_defaults) if d is not None]
+    bound = set()
+    for arg, default in pairs:
+        if _is_tainted(default, state, late):
+            bound.add(arg.arg)
+        if _is_log_callable(default, state):
+            bound.add(_LOGFN + arg.arg)
+    return bound
 
 
 def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
@@ -999,10 +1058,10 @@ def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
         deferred = {id(c) for d in ast.walk(node) if isinstance(d, _DEFERRED)
                     for c in ast.walk(d) if isinstance(c, ast.Call)}
         for call in [n for n in ast.walk(node) if isinstance(n, ast.Call)]:
-            args = _log_args(call)
+            seen = (set(tainted) | set(late) if id(call) in deferred
+                    else tainted)
+            args = _log_args(call, seen)
             if args is not None:
-                seen = (set(tainted) | set(late) if id(call) in deferred
-                        else tainted)
                 exprs.extend((a, seen) for a in args)
     for expr, seen in exprs:
         scan = _TaintScan(seen, late)
@@ -1131,13 +1190,22 @@ class _Flow:
             # late one sees what a later call reads). Add-only, like every
             # binding form but plain `=`: the body may still hold the old
             # value of the name.
+            # RM-1562: a parameter whose default carries the value is
+            # tainted inside the body. Judged by extra walks, so the def-time
+            # flow-out stays the walk without them: a parameter is local, and
+            # its default must not taint the enclosing scope's name.
             _check_sinks(_own_nodes(stmt), stmt, state, self.report, self.ever)
             out, returns, inside, hands_back = _walk_scope(
                 stmt.body, state, self.report, self.ever)
-            if (not isinstance(stmt, ast.ClassDef)
-                    and not self.ever <= state):
-                hands_back |= _walk_scope(stmt.body, state | self.ever,
-                                          self.report, self.ever)[3]
+            if not isinstance(stmt, ast.ClassDef):
+                seeded = _default_bindings(stmt, state, self.ever) - state
+                if seeded:
+                    hands_back |= _walk_scope(stmt.body, state | seeded,
+                                              self.report, self.ever)[3]
+                if not self.ever <= state:
+                    hands_back |= _walk_scope(stmt.body,
+                                              state | self.ever | seeded,
+                                              self.report, self.ever)[3]
             state = state | (_join(out, *returns, *inside) or set())
             if hands_back and not isinstance(stmt, ast.ClassDef):
                 state.add(stmt.name)
@@ -1758,6 +1826,61 @@ _CHECKER_SAMPLES = (
      "def f(url):\n    p = partial(fetch, url)\n    p()\n", False),
     ("partial takes the value at build time, not at call time",
      "def f(url):\n    m = 'x'\n    p = partial(log.info, m)\n    m = url\n    p()\n",
+     False),
+    # RM-1562: a name bound to a logging function (an alias or a partial
+    # over one) is a sink when it is CALLED, and a log call may be rooted at a
+    # call (`logging.getLogger(n).info`). A parameter default is evaluated
+    # where the def stands, so a tainted default taints its parameter.
+    ("partial over a log function given the value at call time",
+     "def f(url):\n    p = partial(log.info, '%s')\n    p(url)\n", True),
+    ("partial over a log function called in place",
+     "def f(url):\n    partial(log.info, '%s')(url)\n", True),
+    ("alias of a log function called with the value",
+     "def f(url):\n    p = log.info\n    p(url)\n", True),
+    ("alias of a log function passed through a second name",
+     "def f(url):\n    p = log.warning\n    q = p\n    q('%s', url)\n", True),
+    ("alias of a log function bound by a walrus",
+     "def f(url):\n    if (p := log.info):\n        p(url)\n", True),
+    ("alias of print read by a nested def",
+     "def f(url):\n    p = print\n    def g():\n        p(url)\n", True),
+    ("alias read late by a lambda",
+     "def f(url):\n    p = fetch\n    h = lambda: p(url)\n    p = log.info\n    h()\n",
+     True),
+    ("partial over a partial over a log function",
+     "def f(url):\n    p = partial(partial(log.info), url)\n    p()\n", True),
+    ("partial over a partial over a log function alias",
+     "def f(url):\n    p = log.info\n    q = partial(partial(p), url)\n    q()\n", True),
+    ("partial over a log method off getLogger",
+     "import logging\ndef f(url):\n"
+     "    p = partial(logging.getLogger('x').info, url)\n    p()\n", True),
+    ("log call rooted at getLogger",
+     "import logging\ndef f(url):\n"
+     "    logging.getLogger(__name__).warning('%s', url)\n", True),
+    ("default value handed back by a nested def",
+     "def f(url):\n    def g(m=url):\n        return m\n    raise E(g())\n", True),
+    ("keyword-only default logged in a nested def",
+     "def f(url):\n    def g(*, m=url):\n        log.info(m)\n", True),
+    ("positional-only default handed back by a nested def",
+     "def f(url):\n    def g(a, m=url, /):\n        return m\n    raise E(g(1))\n",
+     True),
+    ("default value aliasing a log function",
+     "def f(url):\n    def g(p=log.info):\n        p(url)\n", True),
+    # RM-1562 keep-greens.
+    ("alias re-bound to a non-log function before the call",
+     "def f(url):\n    p = log.info\n    p = fetch\n    p(url)\n", False),
+    ("alias of a log function called with a clean value",
+     "def f(url):\n    p = log.info\n    p('x')\n", False),
+    ("partial over a log function called with a sanitized value",
+     "def f(url):\n    partial(log.info, '%s')(_safe_url(url))\n", False),
+    ("attribute off a non-log name is not a log alias",
+     "def f(url):\n    p = fetch.info\n    p(url)\n", False),
+    ("log call rooted at getLogger with a clean message",
+     "import logging\ndef f(url):\n    logging.getLogger('x').info('ok')\n", False),
+    ("sanitized default handed back by a nested def",
+     "def f(url):\n    def g(m=_safe_url(url)):\n        return m\n    raise E(g())\n",
+     False),
+    ("a tainted default does not flow out of the def",
+     "def f(url):\n    m = 'x'\n    def g(m=url):\n        pass\n    log.info(m)\n",
      False),
 )
 
