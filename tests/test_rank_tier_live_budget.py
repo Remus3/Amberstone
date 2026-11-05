@@ -810,14 +810,31 @@ def _is_tainted(expr, tainted) -> bool:
 
 def _bind_names(target, found, tainted, *, clear=True) -> None:
     """Bind every name in `target` to a value that is (`found`) or is not
-    credential-bearing. `clear=False` only ever ADDS taint."""
-    for sub in ast.walk(target):
-        if isinstance(sub, ast.Name):
-            if found:
+    credential-bearing. `clear=False` only ever ADDS taint.
+
+    RM-1559: only a plain name (bare, or inside a tuple / list / starred
+    target) is REPLACED by the binding, so only it is cleared. A store into
+    an element or an attribute (`m[1] = 'x'`, `self.n = 0`) leaves the rest
+    of the container behind and only READS its index, so it only ever adds
+    taint - to every name in it, the index included, as before."""
+    if isinstance(target, (ast.Tuple, ast.List)):
+        for elt in target.elts:
+            _bind_names(elt, found, tainted, clear=clear)
+        return
+    if isinstance(target, ast.Starred):
+        _bind_names(target.value, found, tainted, clear=clear)
+        return
+    if isinstance(target, ast.Name):
+        if found:
+            tainted.add(target.id)
+        elif clear:
+            tainted.discard(target.id)
+            tainted.discard(_OBJ + target.id)
+        return
+    if found:
+        for sub in ast.walk(target):
+            if isinstance(sub, ast.Name):
                 tainted.add(sub.id)
-            elif clear:
-                tainted.discard(sub.id)
-                tainted.discard(_OBJ + sub.id)
 
 
 # RM-1558: methods that put their arguments INTO the receiver. A tainted
@@ -899,6 +916,19 @@ def _bind_objects(target, tainted) -> None:
         _bind_names(target, True, tainted, clear=False)
         return
     tainted.add(_OBJ + target.id)
+
+
+def _capture_names(pattern):
+    """Every name a `match` pattern binds (RM-1559): `case x`, `case _ as
+    x`, `case [*rest]`, `case {**kw}` and the captures nested in sequence,
+    mapping, class and or-patterns."""
+    names = []
+    for sub in ast.walk(pattern):
+        if isinstance(sub, (ast.MatchAs, ast.MatchStar)) and sub.name:
+            names.append(sub.name)
+        elif isinstance(sub, ast.MatchMapping) and sub.rest:
+            names.append(sub.rest)
+    return names
 
 
 def _join(*states):
@@ -1014,10 +1044,16 @@ class _Flow:
             # the time a later statement does): a `global` or `self.x` set from
             # a URL in one method must still taint a sink in the next. Each
             # function is walked again as its own scope in `_message_leak_sites`.
+            # RM-1559: any statement may raise out of the body, so every
+            # state seen inside it flows out too, not only the fall-through
+            # and `return` states: `G = url; g(); G = 'clean'` leaves `G`
+            # tainted on the path where `g()` raises.
             _check_sinks(_own_nodes(stmt), stmt, state, self.report)
             inner = _Flow(self.report)
+            inside = []
+            inner.watchers.append(inside)
             out = inner.block(stmt.body, state)
-            return state | (_join(out, *inner.returns) or set())
+            return state | (_join(out, *inner.returns, *inside) or set())
         if isinstance(stmt, ast.Return):
             # `return (m := url)` binds before leaving, and a `finally` or a
             # handler can still see that state.
@@ -1042,14 +1078,7 @@ class _Flow:
         if isinstance(stmt, _TRY_TYPES):
             return self._try(stmt, state)
         if isinstance(stmt, ast.Match):
-            state = self._expr_step([stmt.subject], stmt, state)
-            exits = [set(state)]  # no case matched
-            for case in stmt.cases:
-                entry = state
-                if case.guard is not None:
-                    entry = self._expr_step([case.guard], stmt, state)
-                exits.append(self.block(case.body, entry))
-            return _join(*exits)
+            return self._match(stmt, state)
         if isinstance(stmt, (ast.With, ast.AsyncWith)):
             # Items enter left to right, each target bound before the next
             # item is evaluated.
@@ -1075,6 +1104,29 @@ class _Flow:
         state = self._expr_step([stmt], stmt, state)
         _retaint(stmt, state)
         return state
+
+    def _match(self, stmt, state):
+        """RM-1559: capture patterns are bindings, and a case is tried with
+        whatever the cases before it bound. A capture taken from a tainted
+        subject carries the value (add-only; a capture off an object subject
+        is over-reported as a value, the safe side). A case whose guard fails
+        - or whose pattern fails part-way - falls through with its captures
+        and guard walrus still bound, so they reach every later case and the
+        no-match exit."""
+        state = self._expr_step([stmt.subject], stmt, state)
+        found = _is_tainted(stmt.subject, state)
+        exits = []
+        tried = set(state)
+        for case in stmt.cases:
+            entry = set(tried)
+            if found:
+                entry.update(_capture_names(case.pattern))
+            if case.guard is not None:
+                entry = self._expr_step([case.guard], stmt, entry)
+            exits.append(self.block(case.body, entry))
+            tried = entry
+        exits.append(tried)  # no case matched
+        return _join(*exits)
 
     def _loop(self, entry, run_pass):
         """Iterate a loop body to a fixed point: a binding made late in one
@@ -1468,6 +1520,64 @@ _CHECKER_SAMPLES = (
     ("container filled by a clean mutator call stays clean",
      "def f(url):\n    q = []\n    q.append(len(_safe_url(url)))\n    raise E(str(q))\n",
      False),
+    # RM-1559 (a): `match` capture patterns are bindings. A capture taken
+    # from a credential-bearing subject carries the value (add-only, like the
+    # other non-`=` bindings).
+    ("match as-capture of a tainted subject",
+     "def f(url):\n    match url:\n        case str() as m:\n            raise E(m)\n",
+     True),
+    ("match star capture of a tainted subject",
+     "def f(url):\n    match url.split('?'):\n        case [head, *rest]:\n"
+     "            log.info('%s', rest)\n", True),
+    ("match mapping value capture",
+     "def f(url):\n    match {'u': url}:\n        case {'u': v}:\n            raise E(v)\n",
+     True),
+    ("match mapping rest capture",
+     "def f(url):\n    match {'u': url}:\n        case {**kw}:\n"
+     "            raise E(str(kw))\n", True),
+    ("match class keyword capture",
+     "def f(url):\n    match Box(url):\n        case Box(src=s):\n            raise E(s)\n",
+     True),
+    ("match capture does not clear a tainted name",
+     "def f(url, c):\n    m = url\n    match c:\n        case m:\n            pass\n"
+     "    raise E(m)\n", True),
+    ("match capture of a clean subject stays clean",
+     "def f(url, c):\n    match c:\n        case [a, *b]:\n            raise E(f'{a}{b}')\n",
+     False),
+    # RM-1559 (b): a case whose guard fails falls through to the next case
+    # (and to the no-match exit) with its guard walrus and captures bound.
+    ("match guard walrus reaches a later case",
+     "def f(url, c):\n    match c:\n        case 1 if (m := url):\n            pass\n"
+     "        case _:\n            raise E(m)\n", True),
+    ("match capture under a failed guard reaches the no-match exit",
+     "def f(url):\n    a = 'x'\n    match url.split('?'):\n"
+     "        case [a, 'z'] if g():\n            return\n    raise E(a)\n", True),
+    # RM-1559 (c): any statement may raise out of a def, so a global or
+    # attribute bound from the value and cleared later in the same def still
+    # leaves it behind on that path.
+    ("global bound then cleared, a raise in between",
+     "def a(url):\n    global G\n    G = url\n    g()\n    G = 'clean'\n\n"
+     "def b():\n    log.info('%s', G)\n", True),
+    # RM-1559 (d): storing into an element or an attribute does not replace
+    # the container, so it never clears the container's name - nor the index
+    # name, which is only READ.
+    ("element store keeps the list tainted",
+     "def f(url):\n    m = [url, 'y']\n    m[1] = 'x'\n    raise E(str(m))\n", True),
+    ("attribute store keeps the object tainted",
+     "def f(url):\n    m = Box(url)\n    m.a = 'x'\n    raise E(f'{m}')\n", True),
+    ("index name read by a store is not cleared",
+     "def f(url, d):\n    k = url\n    d[k] = 'x'\n    raise E(k)\n", True),
+    ("attribute store in one method keeps self tainted for another",
+     "class C:\n    def a(self, url):\n        self.u = url\n        self.n = 0\n"
+     "    def b(self):\n        log.info('%s', self.u)\n", True),
+    ("element store in a tuple target keeps the list tainted",
+     "def f(url):\n    m = [url]\n    a, m[0] = 'x', 'y'\n    raise E(str(m))\n", True),
+    ("plain name in a tuple target is still cleared",
+     "def f(url):\n    m = url\n    m, n = 'x', 'y'\n    raise E(m)\n", False),
+    ("starred name in a tuple target is still cleared",
+     "def f(url):\n    m = url\n    *m, n = 'x', 'y'\n    raise E(str(m))\n", False),
+    ("element store into a clean list stays clean",
+     "def f(url):\n    m = []\n    m[0] = 'x'\n    raise E(str(m))\n", False),
 )
 
 
