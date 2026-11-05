@@ -60,8 +60,9 @@ def _fake_urlopen(resp_body: dict | bytes, code: int = 200):
     else:
         payload = resp_body
     class _Resp:
-        def read(self_inner):
-            return payload
+        # s144 cycle 118: the module now reads a bounded body (read(n)).
+        def read(self_inner, n=-1):
+            return payload if n is None or n < 0 else payload[:n]
         def __enter__(self_inner):
             return self_inner
         def __exit__(self_inner, *args):
