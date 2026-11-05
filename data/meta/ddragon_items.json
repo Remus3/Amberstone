@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "version": "16.21.1",
+  "version": "16.22.1",
   "basic": {
     "name": "",
     "rune": {
@@ -1407,7 +1407,7 @@
     },
     "1086": {
       "name": "Doran's Bow",
-      "description": "<mainText><stats><attention>8</attention> Attack Damage<br><attention>15%</attention> Attack Speed<br><attention>1.5%</attention> Omnivamp</stats><br><br></mainText>",
+      "description": "<mainText><stats><attention>7</attention> Attack Damage<br><attention>15%</attention> Attack Speed<br><attention>1.5%</attention> Omnivamp</stats><br><br></mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -1439,7 +1439,7 @@
         "453": true
       },
       "stats": {
-        "FlatPhysicalDamageMod": 8,
+        "FlatPhysicalDamageMod": 7,
         "PercentAttackSpeedMod": 0.15
       }
     },
@@ -11745,7 +11745,7 @@
     },
     "2501": {
       "name": "Overlord's Bloodmail",
-      "description": "<mainText><stats><attention>30</attention> Attack Damage<br><attention>550</attention> Health</stats><br><br><passive>Tyranny</passive><br>Gain 2.5% of your <healing>bonus Health</healing> as <scaleAD>Attack Damage</scaleAD>. <br><br><passive>Retribution</passive><br>Gain up to 12% increased <scaleAD>Attack Damage</scaleAD> based on your percent missing Health. </mainText>",
+      "description": "<mainText><stats><attention>40</attention> Attack Damage<br><attention>550</attention> Health</stats><br><br><passive>Tyranny</passive><br>Gain 2.5% of your <healing>bonus Health</healing> as <scaleAD>Attack Damage</scaleAD>. <br><br><passive>Retribution</passive><br>Gain up to 10% increased <scaleAD>Attack Damage</scaleAD> based on your percent missing Health. </mainText>",
       "colloq": "",
       "plaintext": "",
       "from": [
@@ -11780,7 +11780,7 @@
       },
       "stats": {
         "FlatHPPoolMod": 550,
-        "FlatPhysicalDamageMod": 30
+        "FlatPhysicalDamageMod": 40
       },
       "depth": 3
     },
