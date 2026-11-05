@@ -993,12 +993,20 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   padding: 1px 0; border-radius: 4px;
   letter-spacing: 0.04em;
 }
-.home-recent-grade.S { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
-.home-recent-grade.A { color: var(--good); background: var(--good-soft); }
-.home-recent-grade.B { color: var(--good); background: var(--good-soft); }
+/* RM-1551: on a History row the chip's own tint stacks on the row's
+ * result tint, so the plain hue tokens measured 2.75 to 4.42:1 (D / F, the
+ * worst a low grade on a WIN row), 4.07 to 4.37 (A / B on a win row) and
+ * 3.64 to 4.17 (S in arcane), under AA 4.5:1 for 16px weight 900 text.
+ * Each letter keeps its hue and its tint and mixes toward --text in oklab
+ * (the RM-1549 / -142 lift): 70 percent for S / A / B, 60 percent for
+ * D / F (65 left arcane's D-on-win at 4.38). C is already --text.
+ * Guard: tests/snapshot_panels/test_match_row_grade_chip_contrast.py. */
+.home-recent-grade.S { color: color-mix(in oklab, var(--accent) 70%, var(--text)); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.home-recent-grade.A { color: color-mix(in oklab, var(--good) 70%, var(--text)); background: var(--good-soft); }
+.home-recent-grade.B { color: color-mix(in oklab, var(--good) 70%, var(--text)); background: var(--good-soft); }
 .home-recent-grade.C { color: var(--text); background: var(--surface-2); }
-.home-recent-grade.D { color: var(--bad); background: var(--bad-soft); }
-.home-recent-grade.F { color: var(--bad); background: var(--bad-soft); }
+.home-recent-grade.D { color: color-mix(in oklab, var(--bad) 60%, var(--text)); background: var(--bad-soft); }
+.home-recent-grade.F { color: color-mix(in oklab, var(--bad) 60%, var(--text)); background: var(--bad-soft); }
 /* (HOME_QA A1: the legacy .home-services-row / -dot / -name / -detail rules
  * were removed with the services snapshot.) */
 
