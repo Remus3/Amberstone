@@ -93,6 +93,11 @@ _ALLOWED_TEST_FILES = {
     "test_cc_conditional_consumer_hybrid.py",
     "test_cc_conditional_consumer_parity.py",
     "test_cc_conditional_overrides.py",
+    # RM-1031 (RM-1031). A TEST read, not a consumer wire: it pins that the
+    # cc_conditional override path is anchored on the module, not the CWD. No
+    # SOURCE file gains an import of cc_conditional. Added after the s150
+    # landing suite read this guard red on the lane commit (LEDGER 2030, red A).
+    "test_cc_conditional_overrides_cwd_anchor.py",
 }
 _ALLOWED_SOURCE_FILES = {
     # Riot compliance 2026-08-11: cooldown_watch.py was DELETED (it joined enemy
