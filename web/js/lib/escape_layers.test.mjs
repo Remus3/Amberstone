@@ -10,8 +10,9 @@ import test from "node:test";
 import assert from "node:assert";
 
 import {
-  compareStacking, dismissStrandedLayers, modalLayerRendered, modalShowing,
-  openEntries, pickTopmost, registerEscapeLayer, stackingZ, strandedLayers,
+  compareStacking, dismissStrandedLayers, modalClosing, modalLayerRendered,
+  modalOpened, modalShowing, openEntries, pickTopmost, registerEscapeLayer,
+  stackingZ, strandedLayers, trapIndex,
 } from "./escape_layers.js";
 
 // Nodes are tree positions; `follows(a, b)` = a comes after b.
@@ -291,4 +292,35 @@ test("modalShowing: only modal === true counts, and a throw reads as closed", ()
 
 test("modalLayerRendered: no document (node) is false and never throws", () => {
   assert.strictEqual(modalLayerRendered(), false);
+});
+
+// RM-1424: the Tab cycle inside a topmost modal. The DOM half (focus on
+// open, the opener on close, the capture listener) is pinned in headless
+// Chromium by tests/snapshot_panels/test_modal_focus_open_close.py.
+test("trapIndex: Tab and Shift+Tab wrap at both ends", () => {
+  assert.strictEqual(trapIndex(3, 0, false), 1);
+  assert.strictEqual(trapIndex(3, 2, false), 0);
+  assert.strictEqual(trapIndex(3, 0, true), 2);
+  assert.strictEqual(trapIndex(3, 2, true), 1);
+  assert.strictEqual(trapIndex(1, 0, false), 0);
+  assert.strictEqual(trapIndex(1, 0, true), 0);
+});
+
+test("trapIndex: from outside the modal Tab enters first, Shift+Tab last", () => {
+  assert.strictEqual(trapIndex(3, -1, false), 0);
+  assert.strictEqual(trapIndex(3, -1, true), 2);
+  assert.strictEqual(trapIndex(3, 7, false), 0);
+});
+
+test("trapIndex: nothing to focus is -1", () => {
+  assert.strictEqual(trapIndex(0, -1, false), -1);
+  assert.strictEqual(trapIndex(0, 0, true), -1);
+  assert.strictEqual(trapIndex(undefined, 0, false), -1);
+});
+
+test("modalOpened / modalClosing: no root or no document never throws", () => {
+  assert.doesNotThrow(() => modalOpened(null, null));
+  assert.doesNotThrow(() => modalClosing(null, true));
+  assert.doesNotThrow(() => modalOpened({ contains: () => false }, null));
+  assert.doesNotThrow(() => modalClosing({ contains: () => false }, true));
 });

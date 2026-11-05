@@ -2481,7 +2481,7 @@
   <!-- Cross-session digest popout - opened by clicking #digest-icon.
        Carries cold-streak / slump / trend data that used to live inside
        an in-panel surface before the header-icon redesign. -->
-  <div id="digest-popout" class="digest-popout hidden" role="dialog" aria-labelledby="digest-popout-title">
+  <div id="digest-popout" class="digest-popout hidden" role="dialog" aria-modal="true" aria-labelledby="digest-popout-title">
     <div class="digest-popout-body">
       <div class="digest-popout-head">
         <span id="digest-popout-title">CROSS-SESSION DIGEST</span>
@@ -2501,11 +2501,11 @@
     </div>
   </div>
 
-  <div id="task-modal" class="task-modal hidden">
+  <div id="task-modal" class="task-modal hidden" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
     <div class="task-modal-body">
       <div class="task-modal-head">
         <span id="task-modal-title">Task detail</span>
-        <button id="task-modal-close" type="button">×</button>
+        <button id="task-modal-close" type="button" aria-label="close">&times;</button>
       </div>
       <div class="task-modal-kv">
         <div class="kv"><span>ID</span><span id="tm-id">-</span></div>

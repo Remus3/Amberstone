@@ -4,7 +4,7 @@ import { state } from '../lib/state.js';
 import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_priority.js';
 import { isFightCue, makeCombatLatch } from '../lib/combat_mode.js';
 import { condenseKvRows } from '../lib/condense.js';
-import { registerEscapeLayer } from '../lib/escape_layers.js';
+import { modalClosing, modalOpened, registerEscapeLayer } from '../lib/escape_layers.js';
 import { directivesAllowed, withoutLiveDirectives } from '../lib/live_directive_gate.js';
 
 // RC2 P3.3 SHADOW: the previous S0 cue across renders, for shouldPulse's
@@ -164,14 +164,25 @@ function renderDigest(p) {
       })
       .catch(() => renderInsights([]));
   }
-  const open = () => { pop.classList.remove("hidden"); refreshInsights(false); };
-  const hide = () => pop.classList.add("hidden");
+  // RM-1424: opening moves focus to the close button and remembers the
+  // opener; a keyboard close (refocus) hands focus back to it, a pointer
+  // close never parks it there.
+  const open = () => {
+    pop.classList.remove("hidden");
+    modalOpened(pop, close);
+    refreshInsights(false);
+  };
+  const hide = (refocus) => {
+    modalClosing(pop, refocus === true);
+    pop.classList.add("hidden");
+  };
   icon.addEventListener("click", open);
   icon.addEventListener("keydown", e => {
     if (e.key === "Enter" || e.key === " ") { open(); e.preventDefault(); }
   });
-  if (close) close.addEventListener("click", hide);
-  pop.addEventListener("click", e => { if (e.target === pop) hide(); });
+  // A click with detail 0 came from the keyboard (Enter / Space on the button).
+  if (close) close.addEventListener("click", e => hide(e.detail === 0));
+  pop.addEventListener("click", e => { if (e.target === pop) hide(false); });
   // RM-1068: an OPEN popover takes the Escape and consumes it, so
   // main.js's Escape chain does not also exit zen on the same press.
   // RM-1070: through the shared dispatcher, which gives one press to the
@@ -180,7 +191,7 @@ function renderDigest(p) {
     name: "digest-popover",
     el: () => pop,
     isOpen: () => !pop.classList.contains("hidden"),
-    close: hide,
+    close: () => hide(true),
     // RM-1364: a full-page scrim; the page's shortcuts stand down behind it.
     modal: true,
   });

@@ -80,6 +80,7 @@ export function registerEscapeLayer(layer) {
   if (!_bound && typeof document !== "undefined") {
     _bound = true;
     document.addEventListener("keydown", _onEscape, true);
+    document.addEventListener("keydown", _onModalTab, true);
     document.addEventListener("beforetoggle", _onBeforeToggle, true);
   }
 }
@@ -281,13 +282,96 @@ function _hasBox(node) {
   return node.getClientRects().length > 0;
 }
 
+function _topmostOpen() {
+  const open = openEntries(_layers, _hasBox)
+    .map(({ layer, node }) => ({ layer, node, path: _stackPath(node) }));
+  return pickTopmost(open, _follows);
+}
+
+// RM-1424: an open modal holds the keyboard focus, and closing it hands
+// focus back (the RM-1312 / RM-1321 menu rules applied to a modal). Before,
+// opening either modal left focus on the control behind the scrim or on the
+// body, so Tab walked the page nobody can see, and Escape dropped focus to
+// the body, losing the keyboard position.
+// - modalOpened(root, initial): call right after the modal is shown. It
+//   remembers the control that had focus (the opener; not when focus is
+//   already inside the modal, so a re-open keeps the first opener) and
+//   focuses `initial` (the close button).
+// - modalClosing(root, refocus): call BEFORE the modal is hidden. With
+//   refocus (Escape, a keyboard press on the close button) focus that was
+//   inside the modal, or on the body, goes back to the opener when it is
+//   still connected and rendered; otherwise focus inside the modal is
+//   dropped, so it never sits on a display:none control. A pointer close
+//   passes no refocus: focus parked on the opener would take the next
+//   Space from the Replay player (the RM-1321 reasoning).
+// - Tab / Shift+Tab, while the TOPMOST open layer (the Escape paint order
+//   above) is a `modal: true` one, cycle that modal's own rendered
+//   controls; from outside it (the body) the next Tab enters it. A layer
+//   painted over the modal is not held by it.
+// Guard: tests/snapshot_panels/test_modal_focus_open_close.py.
+const _openers = new WeakMap();
+
+export function modalOpened(root, initial) {
+  if (!root || typeof document === "undefined") return;
+  const ae = document.activeElement;
+  if (!root.contains(ae)) {
+    _openers.set(root, (ae && ae !== document.body) ? ae : null);
+  }
+  if (initial && typeof initial.focus === "function") initial.focus();
+}
+
+export function modalClosing(root, refocus) {
+  if (!root || typeof document === "undefined") return;
+  const ae = document.activeElement;
+  const inside = !!ae && root.contains(ae);
+  const onBody = !ae || ae === document.body;
+  const opener = _openers.get(root) || null;
+  _openers.delete(root);
+  if (refocus === true && (inside || onBody) && opener && opener.isConnected
+      && _hasBox(opener) && typeof opener.focus === "function") {
+    opener.focus();
+    return;
+  }
+  if (inside && typeof ae.blur === "function") ae.blur();
+}
+
+// Pure: the index Tab (or Shift+Tab, `back`) moves to among `n` controls
+// from index `i` (-1 = focus is not on one of them), wrapping at both ends;
+// -1 when there is nothing to move to.
+export function trapIndex(n, i, back) {
+  if (!(n > 0)) return -1;
+  if (i < 0 || i >= n) return back ? n - 1 : 0;
+  return back ? (i - 1 + n) % n : (i + 1) % n;
+}
+
+const _TABBABLE = [
+  "a[href]", "button:not([disabled])", "input:not([disabled]):not([type=hidden])",
+  "select:not([disabled])", "textarea:not([disabled])", "[tabindex]",
+].join(",");
+
+function _tabbables(root) {
+  return Array.from(root.querySelectorAll(_TABBABLE))
+    .filter((el) => el.tabIndex >= 0 && _hasBox(el));
+}
+
+function _onModalTab(e) {
+  if (e.key !== "Tab" || e.defaultPrevented) return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  const top = _topmostOpen();
+  if (!top || top.layer.modal !== true || !top.node) return;
+  e.preventDefault();
+  const list = _tabbables(top.node);
+  const ae = document.activeElement;
+  const next = trapIndex(list.length, list.indexOf(ae), e.shiftKey);
+  if (next >= 0) list[next].focus();
+  else if (ae && ae !== document.body && !top.node.contains(ae) && ae.blur) ae.blur();
+}
+
 function _onEscape(e) {
   if (e.key !== "Escape" && e.code !== "Escape") return;
   if (e.defaultPrevented) return;
   if (e.repeat) { e.preventDefault(); return; }
-  const open = openEntries(_layers, _hasBox)
-    .map(({ layer, node }) => ({ layer, node, path: _stackPath(node) }));
-  const top = pickTopmost(open, _follows);
+  const top = _topmostOpen();
   if (!top) return;
   // Consume first: a close() that throws must not leak the press to the
   // bubble-phase chain (which would then exit zen on it as well).

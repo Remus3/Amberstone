@@ -19,7 +19,8 @@ import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResol
 import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
 import {
-  dismissStrandedLayers, modalLayerRendered, registerEscapeLayer,
+  dismissStrandedLayers, modalClosing, modalLayerRendered, modalOpened,
+  registerEscapeLayer,
 } from './lib/escape_layers.js';
 import { isSpaceActivated, isTypingTarget } from './panels/review_player_model.js';
 
@@ -322,8 +323,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     events: el("tm-events"),
   };
 
-  function closeTaskModal() {
-    if (TMODAL.root) TMODAL.root.classList.add("hidden");
+  // RM-1424: refocus (Escape, a keyboard press on the close button) hands
+  // focus back to the opener; a pointer close never parks it there.
+  function closeTaskModal(refocus) {
+    if (!TMODAL.root) return;
+    modalClosing(TMODAL.root, refocus === true);
+    TMODAL.root.classList.add("hidden");
   }
 
   async function openTaskModal(taskId) {
@@ -334,6 +339,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     TMODAL.priority.textContent = TMODAL.ts.textContent = "...";
     TMODAL.events.innerHTML = "";
     TMODAL.root.classList.remove("hidden");
+    // RM-1424: focus moves into the modal; the opener is remembered.
+    modalOpened(TMODAL.root, TMODAL.closeBtn);
     try {
       const resp = await fetch(`/api/task/${encodeURIComponent(taskId)}`);
       if (!resp.ok) {
@@ -371,10 +378,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
   }
 
-  if (TMODAL.closeBtn) TMODAL.closeBtn.addEventListener("click", closeTaskModal);
+  // A click with detail 0 came from the keyboard (Enter / Space on the button).
+  if (TMODAL.closeBtn) {
+    TMODAL.closeBtn.addEventListener("click", (e) => closeTaskModal(e.detail === 0));
+  }
   if (TMODAL.root) {
     TMODAL.root.addEventListener("click", (e) => {
-      if (e.target === TMODAL.root) closeTaskModal();   // click backdrop
+      if (e.target === TMODAL.root) closeTaskModal(false);   // click backdrop
     });
   }
   // RM-1067: the Escape that closes the modal is consumed so the general
@@ -385,7 +395,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     name: "task-modal",
     el: () => TMODAL.root,
     isOpen: () => !!TMODAL.root && !TMODAL.root.classList.contains("hidden"),
-    close: closeTaskModal,
+    close: () => closeTaskModal(true),
     // RM-1364: the page's shortcuts stand down behind it.
     modal: true,
   });

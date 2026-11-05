@@ -3717,10 +3717,13 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: 25px;
   font-weight: 900;
   cursor: pointer;
-  width: 28px; height: 28px;
+  /* RM-1424: opening the popout focuses this button, so it meets the
+     hit floor (was 28x28) and paints the shared ring. */
+  width: var(--hit-min); height: var(--hit-min);
   border-radius: 4px;
 }
 .digest-popout-head button:hover { background: var(--bad-soft); color: var(--bad); }
+.digest-popout-head button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .digest-popout-content {
   padding: 14px 18px 18px 18px;
   overflow-y: auto;

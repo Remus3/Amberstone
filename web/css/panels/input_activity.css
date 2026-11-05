@@ -315,11 +315,14 @@
   border: none;
   border-radius: 999px;
   color: var(--text-dim);
-  width: 36px; height: 36px;
+  /* RM-1424: opening the modal focuses this button, so it meets the
+     hit floor (was 36x36) and paints the shared ring. */
+  width: var(--hit-min); height: var(--hit-min);
   font-family: inherit;
   font-size: 17px; cursor: pointer;
 }
 #task-modal-close:hover { background: var(--bad-soft); color: var(--bad); }
+#task-modal-close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .task-modal-kv .kv { grid-template-columns: 140px 1fr; }
 .task-modal-kv .kv span:first-child { color: var(--text-faint); }
 .task-modal-kv .kv span:last-child  {
