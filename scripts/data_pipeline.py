@@ -43,6 +43,11 @@ from core import external_sources  # noqa: E402
 from core.polled_json import atomic_write_bytes  # noqa: E402
 # RM-379: the RM-359 filename validator, applied before every icon write.
 from lib.icons.downloader import _safe_basename  # noqa: E402
+# RM-1441 (ruling 51): both fetchers open through the consent opener, so a
+# Data Dragon (or configured tier-source) url answering 3xx into the League
+# wiki host is refused before a wiki socket opens; urlopen's default opener
+# followed it with no consent record.
+from lib.wiki_consent import open_consented  # noqa: E402
 
 DATA     = ROOT / "data"
 META     = DATA / "meta"
@@ -82,15 +87,21 @@ VERSIONS_URL = f"{DDRAGON_BASE}/api/versions.json"
 
 # -- Utilities -----------------------------------------------------------------
 
+# A wiki url, or a redirect into the wiki host, raises
+# lib.wiki_consent.WikiFetchRefused (a RuntimeError, not an OSError). Every
+# caller below already catches Exception, so a refusal takes the command's
+# existing failure path: an icon is not downloaded and writes no file, a meta
+# command logs its FAILED line and writes nothing.
+
 def _fetch_json(url: str, timeout: int = 15) -> dict | list:
     req = urllib.request.Request(url, headers={"User-Agent": "Amberstone/3.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with open_consented(req, timeout=timeout) as r:
         return json.loads(r.read())
 
 
 def _fetch_bytes(url: str, timeout: int = 30) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": "Amberstone/3.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with open_consented(req, timeout=timeout) as r:
         return r.read()
 
 
