@@ -3076,6 +3076,23 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   .header-row { flex-wrap: wrap; gap: var(--space-2); }
   .hb { margin-left: 0; }
 }
+/* RM-1432: below 720px (300% zoom of the 1920x920 baseline is 640, the
+ * WCAG reflow reference is 320) the view trigger may be narrower than its
+ * 403px. Its current-view label is pinned to 230px so the trigger is the
+ * same size on every view (s218); here that label alone gives way. It keeps
+ * its 230px width (so the trigger's own size is still 403px whatever the
+ * label says) and may shrink below it only when the row is narrower, so
+ * at a given window size the trigger is one width on every view. Measured
+ * before: at 320 the trigger ran 131px past its 288px row and the caret sat
+ * outside the window. Where the trigger fits its row nothing moves. */
+@media (max-width: 720px) {
+  .header-row-1 > #view-trigger { flex: 0 1 auto; min-width: 0; }
+  #view-trigger .title-current {
+    flex-shrink: 1;
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+}
 /* RC2 Hextech reskin (redesign #12, the last page). Each settings card
  * adopts the hx-card frame: a plain bordered --surface body with the two
  * gold corner brackets (::before top-left L + ::after bottom-right L)

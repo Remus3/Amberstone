@@ -231,6 +231,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   const hbEl = el("heartbeat");
   const frameCountEl = el("frame-count");
   el("ws-url").textContent = WS_URL;
+  // RM-1432: the footer connection label ellipsizes in a narrow window
+  // (input_activity.css .footer-conn); its title keeps the whole text.
+  el("ws-url").parentElement.title = "RC | " + WS_URL;
 
   const AD = {
     root: el("adaptation"),

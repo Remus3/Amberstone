@@ -501,6 +501,27 @@ footer .frame-stat {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* RM-1432: the "RC | <ws url>" connection label gives way too, after
+ * the stamp (a lower shrink weight), so a narrow window cuts it with an
+ * ellipsis instead of pushing VOICE / CLIENT / the health dot past the
+ * right edge (measured at 480: the footer ran 48px sideways, at 320 208px).
+ * main.js copies the whole text into its title. */
+footer .footer-conn {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 10;
+}
+/* RM-1432: the voice picker (shown while voice is on) is up to 180px
+ * of option text; it may shrink like the labels rather than run the
+ * footer past the window (measured at 640 with voice on: 90px sideways). */
+footer .voice-picker { min-width: 0; }
+/* RM-1432: under 720px (300% zoom of the 1920x920 baseline is 640) the
+ * footer side padding and gaps step down so the chips keep their room. */
+@media (max-width: 720px) {
+  footer { padding: 0 12px; gap: 10px; }
+}
 footer .prefs-chip {
   font-size: var(--fs-xs);
   color: var(--gold);
