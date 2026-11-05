@@ -39,6 +39,7 @@ Writes report/live_flip_eyeball.{json,md}.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import sys
@@ -119,11 +120,9 @@ def run(champs: list[str], *, top_k: int = _TOP_K, preset: str = "tank") -> list
     for champ in champs:
         mode = _anchor_mode(champ)
 
-        def burst(**kw):
-            return rank_items_by_burst(snap, champ, _LEVEL, mode=mode, top_n=45, **kw)
-
-        def dps(**kw):
-            return rank_items(snap, champ, _LEVEL, mode=mode, top_n=45, **kw)
+        # partial, not a def: a closure over the loop's champ / mode is B023
+        burst = functools.partial(rank_items_by_burst, snap, champ, _LEVEL, mode=mode, top_n=45)
+        dps = functools.partial(rank_items, snap, champ, _LEVEL, mode=mode, top_n=45)
 
         seams: dict[str, dict] = {}
         # burst-lane seams

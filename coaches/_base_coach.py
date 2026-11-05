@@ -708,15 +708,12 @@ class BaseCoach(abc.ABC):
 
     def _init_extra(self) -> None:
         """Called in __init__ before threads start. Override for mode state."""
-        pass
 
     def _reset_extra(self) -> None:
         """Called in reset_state. Override to reset mode-specific counters."""
-        pass
 
     def _on_state_received(self, state: dict) -> None:
         """Called after _parse_raw_state, before _last_state assignment."""
-        pass
 
     def _fast_path_trigger(self, state: dict, prev: dict) -> bool:
         """Return True to bypass normal debounce (FAST_PATH_MIN_S still applies)."""

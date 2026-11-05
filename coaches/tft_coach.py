@@ -174,7 +174,6 @@ class Coach:
 
     def submit_state(self, state: dict) -> None:
         """No-op: TftWorker owns coaching submission."""
-        pass
 
     def reset_state(self) -> bool:
         """Reset TFT components and clear data files. True if both files landed.

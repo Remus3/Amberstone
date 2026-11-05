@@ -35,7 +35,6 @@ class TestRiftSnapshotTranslation(unittest.TestCase):
         result = GameReader.to_rift_snapshot({})
         # May return a default snapshot or None - must not raise
         # (None is acceptable; crash is not)
-        pass  # no exception = pass
 
 
 class TestAramSnapshotTranslation(unittest.TestCase):
