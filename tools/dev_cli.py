@@ -353,24 +353,23 @@ def main() -> int:
 
     if sub == "status":
         return cmd_status()
-    elif sub == "start":
+    if sub == "start":
         return cmd_start()
-    elif sub == "start-clean":
+    if sub == "start-clean":
         return cmd_start_clean()
-    elif sub == "preflight":
+    if sub == "preflight":
         return cmd_preflight()
-    elif sub == "smoke":
+    if sub == "smoke":
         return cmd_smoke()
-    elif sub == "perf":
+    if sub == "perf":
         return cmd_perf(rest)
-    elif sub == "snapshot":
+    if sub == "snapshot":
         return cmd_snapshot()
-    elif sub == "rollback-last":
+    if sub == "rollback-last":
         return cmd_rollback_last(rest)
-    else:
-        print(f"ERROR: unknown subcommand '{sub}'")
-        print("Run 'python tools/dev_cli.py --help' for usage.")
-        return 2
+    print(f"ERROR: unknown subcommand '{sub}'")
+    print("Run 'python tools/dev_cli.py --help' for usage.")
+    return 2
 
 
 if __name__ == "__main__":

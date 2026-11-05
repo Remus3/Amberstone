@@ -76,7 +76,7 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import tft.tft_placement as tp
-import tft.tft_set as tft_set
+from tft import tft_set
 from tft.rounds.store import (
     Env,
     RoundStore,

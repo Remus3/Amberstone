@@ -454,14 +454,13 @@ def grade(ev: dict) -> dict:
         checks["route_tie"] = None
         gaps.append("route tie not made (no ok route body): capture again")
         return result("INCONCLUSIVE")
-    else:
-        tie = (exp["tier"] == tier and abs(exp["enemy_s"] - enemy_s) <= VALUE_TOL
-               and abs(exp["ally_s"] - ally_s) <= VALUE_TOL)
-        checks["route_tie"] = tie
-        if not tie:
-            gaps.append("rendered tier / seconds differ from the route body: render lag "
-                        "or a roster change; capture again")
-            return result("INCONCLUSIVE")
+    tie = (exp["tier"] == tier and abs(exp["enemy_s"] - enemy_s) <= VALUE_TOL
+           and abs(exp["ally_s"] - ally_s) <= VALUE_TOL)
+    checks["route_tie"] = tie
+    if not tie:
+        gaps.append("rendered tier / seconds differ from the route body: render lag "
+                    "or a roster change; capture again")
+        return result("INCONCLUSIVE")
     return result("PASS")
 
 

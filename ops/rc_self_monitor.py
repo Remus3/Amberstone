@@ -857,7 +857,7 @@ class SelfMonitor:
                         "game_poll_worker_alive=False (game active age="
                         + str(worker_age) + "s)"
                     )
-                elif dead_for_s >= self._WORKER_DEAD_CLIENT_GRACE_S:
+                if dead_for_s >= self._WORKER_DEAD_CLIENT_GRACE_S:
                     return "unhealthy", (
                         f"game_poll_worker_alive=False (client mode "
                         f"dead_for={dead_for_s:.0f}s >= grace={self._WORKER_DEAD_CLIENT_GRACE_S:.0f}s)"

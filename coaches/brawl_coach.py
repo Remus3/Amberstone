@@ -182,11 +182,10 @@ def _load_brawl_build_note(champion: str, mode: str = "") -> str:
             urf_note = (f"{tier} tier - URF: abilities spam freely; rush damage items. "
                         f"Build: {build_str}. {note[:120] if note else ''}")
             return urf_note[:300]
-        else:
-            result = f"{tier} tier - {note}" if tier and note else note or tier
-            if build_str:
-                result += f" | Build: {build_str}"
-            return result[:280]
+        result = f"{tier} tier - {note}" if tier and note else note or tier
+        if build_str:
+            result += f" | Build: {build_str}"
+        return result[:280]
     except Exception:  # noqa: BLE001
         return ""
 

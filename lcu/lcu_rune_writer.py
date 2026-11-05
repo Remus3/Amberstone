@@ -372,13 +372,12 @@ def load_spell_pair(mode: str, is_aram: bool) -> tuple[int, int]:
             return (_SPELL_FLASH, _SPELL_EXHAUST)
         # snowball or ai or anything else -> Flash + Snowball
         return (_SPELL_FLASH, _SPELL_SNOWBALL)
-    else:
-        if pref == "exhaust":
-            return (_SPELL_FLASH, _SPELL_EXHAUST)
-        if pref == "ignite":
-            return (_SPELL_FLASH, _SPELL_IGNITE)
-        # teleport or ai or anything else -> Flash + Teleport
-        return (_SPELL_FLASH, _SPELL_TELEPORT)
+    if pref == "exhaust":
+        return (_SPELL_FLASH, _SPELL_EXHAUST)
+    if pref == "ignite":
+        return (_SPELL_FLASH, _SPELL_IGNITE)
+    # teleport or ai or anything else -> Flash + Teleport
+    return (_SPELL_FLASH, _SPELL_TELEPORT)
 
 
 # ARAM-family mode strings the LCU lobby / champ-select reports.
@@ -1317,15 +1316,14 @@ class RuneWriter:
                         name, page_id, selected_perk_ids
                     )
                     return True
-                else:
-                    # RM-297c: ask the client WHY (status code / transport /
-                    # json); `last_exc` was always None because the client
-                    # returns None instead of raising.
-                    why = self._lcu_last_error() or (
-                        "no page id in response" if isinstance(result, dict)
-                        else "no response")
-                    last_why = why
-                    _log.debug("POST page attempt %d failed: %s", attempt + 1, why)
+                # RM-297c: ask the client WHY (status code / transport /
+                # json); `last_exc` was always None because the client
+                # returns None instead of raising.
+                why = self._lcu_last_error() or (
+                    "no page id in response" if isinstance(result, dict)
+                    else "no response")
+                last_why = why
+                _log.debug("POST page attempt %d failed: %s", attempt + 1, why)
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
                 last_why = f"{type(exc).__name__}: {exc}"
