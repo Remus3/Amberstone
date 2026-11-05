@@ -137,27 +137,27 @@ from __future__ import annotations
 # --- Amberstone core (block 8888-8895) ---------------------------------
 
 DASHBOARD = 8888
-"""RC dashboard, HTTPS. Defined at `dashboard/server.py:28`."""
+"""RC dashboard, HTTPS. Defined as `PORT` in `dashboard/server.py`."""
 
 VISION = 8889
-"""Vision server, in-process and self-healing. `vision_server/_config.py:34`.
+"""Vision server, in-process and self-healing. Defined as `PORT` in `vision_server/_config.py`.
 
-`core/moon_proxy.py:22` MOON_PORT is the same listener seen from the client
+`core/moon_proxy.py` `MOON_PORT` is the same listener seen from the client
 side; it is a frozen file, so the duplicate literal there is expected.
 """
 
 AGENTS_SUPERVISOR = 8890
-"""Phase 3 agents supervisor. `agents/_supervisor_common.py:32` WEB_PORT.
+"""Phase 3 agents supervisor. Defined as `WEB_PORT` in `agents/_supervisor_common.py`.
 
-`:8888` proxies a fixed path list here (`dashboard/_handler.py:115`) so the
+`:8888` proxies a fixed path list here (`SUPERVISOR_PROXY_PATHS` in `dashboard/_handler.py`) so the
 dashboard never has to know this number.
 """
 
 AGENTS_WS = 8891
-"""Phase 3 WS relay / ingest. `agents/_supervisor_common.py:31` WS_PORT."""
+"""Phase 3 WS relay / ingest. Defined as `WS_PORT` in `agents/_supervisor_common.py`."""
 
 MISSION_CONTROL = 8895
-"""Mission Control, the headless-lane control plane. `mc/server.py:36`.
+"""Mission Control, the headless-lane control plane. Defined as `PORT` in `mc/server.py`.
 
 Its own process and scheduled task since S10 (2026-07-31), deliberately NOT
 served by the dashboard, so an overlay or dashboard restart cannot take the

@@ -123,6 +123,45 @@ class LiveDefinitionSitesAgreeTests(unittest.TestCase):
         )
 
 
+class DefinitionSiteCitesTests(unittest.TestCase):
+    """RM-1346: core/ports.py names each definition site by symbol.
+
+    Its docstrings cited `file.py:<line>` anchors; all seven had drifted (a line
+    number is a measurement at one commit). A symbol survives an edit, and the
+    guard below pins that every cited site still defines its symbol.
+    """
+
+    _SOURCE = (_REPO_ROOT / "core" / "ports.py").read_text(encoding="utf-8")
+
+    def test_ports_cites_no_file_line_numbers(self):
+        import re
+
+        hits = re.findall(r"[A-Za-z_/]+\.py:\d+", self._SOURCE)
+        self.assertEqual(hits, [], "cite a symbol, not a line number")
+
+    def test_every_cited_definition_site_still_defines_its_symbol(self):
+        import re
+
+        sites = {
+            "dashboard/server.py": "PORT",
+            "vision_server/_config.py": "PORT",
+            "core/moon_proxy.py": "MOON_PORT",
+            "agents/_supervisor_common.py": "WEB_PORT",
+            "mc/server.py": "PORT",
+            "dashboard/_handler.py": "SUPERVISOR_PROXY_PATHS",
+        }
+        for rel, symbol in sites.items():
+            self.assertIn(rel, self._SOURCE, f"{rel} is no longer cited")
+            text = (_REPO_ROOT / rel).read_text(encoding="utf-8")
+            self.assertIsNotNone(
+                re.search(rf"(?m)^{symbol}\s*=", text), f"{rel} lost {symbol}"
+            )
+        self.assertRegex(
+            (_REPO_ROOT / "agents/_supervisor_common.py").read_text(encoding="utf-8"),
+            r"(?m)^WS_PORT\s*=",
+        )
+
+
 class BlockReservationTests(unittest.TestCase):
 
     def test_blocks_are_pairwise_disjoint(self):
