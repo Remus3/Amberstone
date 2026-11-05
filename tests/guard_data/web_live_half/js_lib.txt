@@ -29,13 +29,13 @@ bb22e7bbc4f32eac2405229a868ae3c5e5e85757799f3cbca58c9a4808b43246  web/js/lib/liv
 
 b325067d13075d881ff0ac827de40de896f79499523c8af031444bb4e33a8dcc  web/js/lib/next_buy_model.js
 
-80f22ad4081e3611a563c47ae77c68ec1b08eb5c1af183a9db0111ebbfa97619  web/js/lib/overlay_hotkeys.js
+ef3eb959549dcbb92370d17fb72ffd8c5d84ced9d5874ec4430668ceabe77cff  web/js/lib/overlay_hotkeys.js
 
 e45c455a7f7db8c7f9aa5b76a32e995ed96bde1df0ea5c6d836fd5344a8c0663  web/js/lib/overlay_idle.js
 
 35b5e792d021c2287f1834bb3ca84722601e5c30bc4af69d9b6095204bbdd195  web/js/lib/overlay_item_radial.js
 
-0094bca93b5d1d1183aad50bf8d9d23eed35bba337811248d2346c62fda32505  web/js/lib/overlay_layout.js
+d1e3eea8b2c0f23e063492725a46085d49aa3fd65298df5cad3c629aca29941e  web/js/lib/overlay_layout.js
 
 b23923fae2f269130009144640a664190fc8d0e0c3c00db178d41d51fe08c15f  web/js/lib/overlay_phase.js
 

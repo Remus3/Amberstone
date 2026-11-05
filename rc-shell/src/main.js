@@ -1931,8 +1931,9 @@ function startActiveToggleWatch() {
 // B not C because Ctrl+Shift+C is commonly bound by other apps - Discord /
 // Overlay Platform M / DevTools)
 // and stamps an epoch here on each press. Same poll-on-advance contract as the
-// ACTIVE-toggle watch above; rotates coach -> build -> threat so the build
-// widget (hidden outside the build panelset) is reachable in-game.
+// ACTIVE-toggle watch above; reloads the overlay at the next panel set coach ->
+// build -> threat. The sets stopped gating widgets on 2026-06-28, so the reload
+// changes no widget; every panel is reachable from the launcher menu.
 function startPanelCycleWatch() {
   watchSignal("panelCycle", () => {
     applyPanelSet(ov.cyclePanelSet(panelSet));

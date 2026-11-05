@@ -355,7 +355,7 @@ reminder fails it.
 
 | Widget       | Shows                                                       | Where                                    |
 |--------------|-------------------------------------------------------------|------------------------------------------|
-| `w-launcher` | `Ctrl+Shift+A`, and every key in the open menu's foot block | under the square, above the ON/OFF icon  |
+| `w-launcher` | `Ctrl+Shift+A`, and the other keys in the open menu's foot  | under the square, above the ON/OFF icon  |
 | `w-choices`  | `Ctrl+Shift+A`, plus `Alt+1/2/3` on each chip               | a line under the chips                   |
 | `w-build`    | `Ctrl+Shift+A`                                              | top right, beside the drag handle        |
 | `w-ovds`     | `Ctrl+Shift+A`                                              | top right, beside the drag handle        |
@@ -366,6 +366,11 @@ reminder fails it.
 - The ON/OFF icon is its own window sized to the icon, so a visible line does not fit;
   its key rides the tooltip and the launcher menu. Display-only widgets carry nothing
   (rule 8).
+- The panel-cycle key (`Ctrl+Shift+B`, `Alt+Shift+C`) is deliberately not reminded of.
+  It only reloads the overlay window, since the panel sets no longer gate any widget
+  (section 10), so a reminder would invite a visible reload for nothing. If the panel
+  sets ever gate widgets again, `test_panel_sets_change_no_widget` goes red and the
+  key earns its row back.
 - The reminder reads the live binding: `web/js/lib/overlay_hotkeys.js` hydrates from
   `window.rcShell.getOverlayHotkeys` (`overlay_state.overlayHotkeyMap`) and falls back
   to a map pinned equal to it when there is no bridge. **No binding is rebindable

@@ -8,7 +8,8 @@ never breaks click-through or the combat shed. Doctrine section 11.
 The acceptance is a capture read back: this file drives the real ?overlay=1 page
 through the headless harness with mock data (?ui_mock=1) and reads computed styles
 and the DOM. It is a MOCK capture; nothing here launches the shell, the game or a
-service. The live half is a row for docs/LIVE_GAME_GATED_SYNC.md.
+service. The live half is OWED: the merger adds row RM-1272 to
+docs/LIVE_GAME_GATED_SYNC.md at landing, and it does not exist before that.
 
 Shapes, cited from the code the page runs:
 - web/js/lib/overlay_hotkeys.js WIDGET_HOTKEYS / HOTKEY_DEFAULTS /
@@ -91,7 +92,6 @@ def _authority():
 
     return {
         "active": _key("hotkeyActive"),
-        "cycle": _key("hotkeyCycleInGame"),
         "visible": _key("hotkey", toggle),
         "hide": _key("hotkeyToggle"),
         "reset": _key("hotkeyReset"),
@@ -116,7 +116,7 @@ def test_ingame_bindings_are_the_ones_the_win32_listener_owns():
     src = LISTENER.read_text(encoding="utf-8")
     hot = re.search(r"_HOTKEYS = \((.*?)^\)", src, re.S | re.M)
     assert hot, "_HOTKEYS tuple missing from the listener"
-    for name, letter in (("active", "A"), ("cycle", "B"), ("visible", "O")):
+    for name, letter in (("active", "A"), ("visible", "O")):
         assert _authority()[name] == f"Ctrl+Shift+{letter}", name
         assert f"_VK_{letter})" in hot.group(1), f"listener does not claim {letter}"
 
@@ -223,10 +223,10 @@ def test_a_registered_widget_names_its_hotkey(mock_server, pw_browser):
                     const h = m.querySelector(':scope > .ovx-hotkey-hint');
                     return h ? h.textContent : null;
                 };
-                return [add('w-extra-a', 'cycle'), add('w-extra-b', 'nope')];
+                return [add('w-extra-a', 'visible'), add('w-extra-b', 'nope')];
             }"""
         )
-        assert result == [_authority()["cycle"], None], result
+        assert result == [_authority()["visible"], None], result
     finally:
         page.close()
         ctx.close()
@@ -363,7 +363,7 @@ def test_hint_reads_the_live_binding_from_the_bridge(mock_server, pw_browser):
                 const ok = await H.hydrateOverlayHotkeys();
                 L.placeOverlayField();
                 const rebound = read();
-                window.rcShell = {getOverlayHotkeys: async () => ({active: 42, cycle: '<b>x</b>'})};
+                window.rcShell = {getOverlayHotkeys: async () => ({active: 42, visible: '<b>x</b>'})};
                 await H.hydrateOverlayHotkeys();
                 L.placeOverlayField();
                 const garbage = read();
@@ -382,9 +382,50 @@ def test_hint_reads_the_live_binding_from_the_bridge(mock_server, pw_browser):
     assert not errors, f"JS errors [bridge]: {errors[:3]}"
 
 
+@pytest.mark.parametrize("panelset", ["coach", "build", "threat"])
+def test_panel_sets_change_no_widget(panelset, mock_server, pw_browser):
+    """Why the panel-cycle key has no reminder. Its press reloads the overlay at
+    ?panelset=NAME (rc-shell/src/main.js applyPanelSet); the page stamps
+    body[data-panelset] and no CSS rule keys off it, so the panes the sets once
+    gated paint in every set. If a set ever gates a widget again this goes red, and
+    the key earns its row back."""
+    ctx, page, errors = _open_overlay(
+        pw_browser, mock_server, query=f"?ui_mock=1&mode=sr&overlay=1&panelset={panelset}"
+    )
+    try:
+        # Positive control: the parameter really landed.
+        assert page.evaluate("document.body.dataset.panelset") == panelset
+        page.wait_for_selector("#ovset #ovset-panelset", state="attached", timeout=10_000)
+        for sel in ("#view-active-match .am-pane-call",
+                    "#view-active-match .am-pane-build",
+                    "#am-pane-ovds"):
+            assert page.eval_on_selector(sel, "e => getComputedStyle(e).display") != "none", (
+                f"{sel} is gated by panelset={panelset}: the cycle key does something again"
+            )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [panelset {panelset}]: {errors[:3]}"
+
+
+def test_no_surface_promises_the_panel_cycle_key_reaches_a_panel():
+    """The old text, pinned out: the doc said the key reaches the build panel and
+    the menu row said it cycles panels."""
+    # Whitespace folded: the doc is wrapped, and a phrase split across two lines
+    # would pass a negative check and fail a positive one.
+    doc = " ".join((ROOT / "docs" / "ELECTRON_OVERLAY.md").read_text(encoding="utf-8").split())
+    assert "reach the build panel" not in doc
+    assert "cycle overlay panel" not in doc
+    assert "reloads the overlay window" in doc, "the doc must say what the key does today"
+    js = HOTKEYS_JS.read_text(encoding="utf-8")
+    assert '["cycle"' not in js and "cycle panels" not in js
+    assert "cycle" not in _mirror() and "Ctrl+Shift+B" not in _mirror().values()
+
+
 def test_launcher_menu_lists_the_bindings(mock_server, pw_browser):
     """The ON/OFF icon is a separate window sized to the icon, so its key rides its
-    tooltip and this reference block; every key an operator can press is here."""
+    tooltip and this reference block. The block holds the overlay keys worth
+    pressing, and not the panel-cycle key, which only reloads the window."""
     want = _authority()
     from tests.snapshot_panels.test_overlay_launcher_menu import _MENU_READY, _TAP_LAUNCHER
 
@@ -397,6 +438,7 @@ def test_launcher_menu_lists_the_bindings(mock_server, pw_browser):
         for key in want.values():
             assert key in text, f"{key} missing from the menu reference: {text!r}"
         assert text.isascii(), text
+        assert "Ctrl+Shift+B" not in text and "cycle" not in text, text
     finally:
         page.close()
         ctx.close()

@@ -1084,9 +1084,10 @@ function _renderMenu(menu) {
   });
   menu.appendChild(done);
 
-  // RC-HOTKEY-HINTS: every key, live, in the one surface opened on purpose. The
-  // rc-shell ON/OFF icon is its own window sized to the icon, so its key is here
-  // and in its tooltip. Text only, no control: never a focus or hit-target stop.
+  // RC-HOTKEY-HINTS: the overlay keys worth pressing, live, in the one surface
+  // opened on purpose (HOTKEY_REFERENCE says which and why). The rc-shell ON/OFF
+  // icon is its own window sized to the icon, so its key is here and in its
+  // tooltip. Text only, no control: never a focus or hit-target stop.
   const keys = document.createElement("div");
   keys.className = "ovx-menu-hotkeys";
   for (const [action, verb] of HOTKEY_REFERENCE) {

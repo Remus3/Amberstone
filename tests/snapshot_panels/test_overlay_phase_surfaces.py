@@ -20,7 +20,9 @@ Shapes, cited from the code the page runs:
 
 This is a MOCK capture (headless Chromium, ?ui_mock=1). The window column of the
 table is pinned against rc-shell/src/overlay_state.js in
-rc-shell/test/overlay_phase_contract.test.js; nothing here launches the shell.
+rc-shell/test/overlay_phase_contract.test.js; nothing here launches the shell. The
+live half is OWED: the merger adds row RM-1272 to docs/LIVE_GAME_GATED_SYNC.md at
+landing, and it does not exist before that.
 """
 import json
 import re

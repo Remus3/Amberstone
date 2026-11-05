@@ -44,7 +44,6 @@ const OVERLAY_DEFAULTS = Object.freeze({
   hotkeyActive: "Ctrl+Shift+A", // toggle overlay click-through (passive <-> active) - operator's expected combo (2026-06-27)
   hotkeyActiveAlt: "Alt+Shift+A", // legacy ACTIVE combo, registered in parallel so either modifier flips it
   hotkeyCycle: "Alt+Shift+C", // cycle overlay panel set (spec sec 5)
-  hotkeyCycleInGame: "Ctrl+Shift+B", // the in-game twin, owned by tools/hotkey_listener.py (Electron globalShortcut is dead under League focus)
   hotkeyReset: "Alt+Shift+R", // reset the movable widget field to defaults (doctrine sec 3)
   pollMs: 2000, // /api/state poll cadence (no sub-500ms per the cost rule)
   pollMaxMs: 15000, // backoff ceiling while the backend is offline
@@ -89,11 +88,11 @@ const OVERLAY_ACTIONS = Object.freeze([
 // over rc-shell:overlay-hotkeys:get. visibleHotkey is overlay_toggle's
 // TOGGLE_DEFAULTS.hotkey, passed in so this module stays free of that sibling. None
 // of these is rebindable today: they are constants here and in
-// tools/hotkey_listener.py, and a rebind feature is a separate decision.
+// tools/hotkey_listener.py, and a rebind feature is a separate decision. The
+// panel-cycle key is not here: it changes no widget today, only reloads the window.
 function overlayHotkeyMap(visibleHotkey) {
   return Object.freeze({
     active: OVERLAY_DEFAULTS.hotkeyActive,
-    cycle: OVERLAY_DEFAULTS.hotkeyCycleInGame,
     visible: typeof visibleHotkey === "string" ? visibleHotkey : "",
     hide: OVERLAY_DEFAULTS.hotkeyToggle,
     reset: OVERLAY_DEFAULTS.hotkeyReset,

@@ -13,7 +13,6 @@
 
 export const HOTKEY_DEFAULTS = Object.freeze({
   active: "Ctrl+Shift+A",
-  cycle: "Ctrl+Shift+B",
   visible: "Ctrl+Shift+O",
   hide: "Alt+Shift+O",
   reset: "Alt+Shift+R",
@@ -21,11 +20,13 @@ export const HOTKEY_DEFAULTS = Object.freeze({
 
 // The menu's reference rows, in reading order. Win32-listener keys deliver while
 // the game holds focus; the Alt+Shift pair is Electron globalShortcut, which does
-// not (docs/ELECTRON_OVERLAY.md section 5), so those say so.
+// not (docs/ELECTRON_OVERLAY.md section 5), so those say so. The panel-cycle key
+// (Ctrl+Shift+B, Alt+Shift+C) is left out on purpose: the panel sets no longer
+// gate any widget, so all it does is reload the overlay window. Telling an operator
+// to press it would cost a visible reload for nothing.
 export const HOTKEY_REFERENCE = Object.freeze([
   ["active", "interact"],
   ["visible", "overlay on/off"],
-  ["cycle", "cycle panels"],
   ["hide", "hide all (out of game)"],
   ["reset", "reset layout (out of game)"],
 ]);

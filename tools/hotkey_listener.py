@@ -89,10 +89,10 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 TOGGLE_SIGNAL_FILE = str(_REPO_ROOT / "ops" / "runtime" / "overlay_active_toggle.txt")
 
 # Overlay panel-cycle signal file. Ctrl+Shift+B (id 4) stamps this with the
-# current epoch on each press; rc-shell polls it and rotates the overlay panel
-# set coach -> build -> threat (rc-shell/src/main.js startPanelCycleWatch). The
-# in-game build panel was otherwise unreachable: its only switch (Electron
-# Alt+Shift+C) is dead while League holds foreground focus, same as Ctrl+Shift+A.
+# current epoch on each press; rc-shell polls it and reloads the overlay window at
+# the next panel set coach -> build -> threat (rc-shell/src/main.js
+# startPanelCycleWatch). The panel sets stopped gating widgets on 2026-06-28, so
+# the reload changes no widget; every panel is reachable from the launcher menu.
 PANEL_CYCLE_SIGNAL_FILE = str(_REPO_ROOT / "ops" / "runtime" / "overlay_panel_cycle.txt")
 
 # Overlay content ON/OFF signal file (S134 toggle icon). Ctrl+Shift+O (slot 6)

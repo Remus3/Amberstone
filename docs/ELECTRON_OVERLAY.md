@@ -189,8 +189,10 @@ Measured notes (these are the reasons the rows above read the way they do):
 Hotkeys override auto-behavior:
 - `Alt+Shift+O` - toggle overlay show/hide
 - `Alt+Shift+A` / `Ctrl+Shift+A` - toggle overlay PASSIVE <-> ACTIVE
-- `Alt+Shift+C` (out-of-game) / `Ctrl+Shift+B` (in-game) - cycle overlay panel
-  set (coach / build / threat)
+- `Alt+Shift+C` (out-of-game) / `Ctrl+Shift+B` (in-game) - reloads the overlay
+  window at the next panel set (coach / build / threat). That changes no widget:
+  the panel sets stopped gating visibility on 2026-06-28 (`web/css/overlay.css`
+  section 4d). All it moves is which segment the `#ovset` selector lights.
 - `Alt+Shift+R` - reset the movable widget field to its default positions
   (`OVERLAY_DEFAULTS.hotkeyReset`, `main.js:1234`)
 - `Ctrl+Shift+O` (in-game) - overlay content ON/OFF, the keyboard twin of the
@@ -202,9 +204,9 @@ Hotkeys override auto-behavior:
   binds are owned by the Win32 `tools/hotkey_listener.py` (RegisterHotKey), which
   DOES deliver in-game; it stamps a signal file under `ops/runtime/` that the
   rc-shell main process polls (`startActiveToggleWatch` / `startPanelCycleWatch`).
-  Use `Ctrl+Shift+B` in-game to reach the build panel (B not C: Ctrl+Shift+C is
-  commonly bound by other apps - Discord / Overlay Platform M / DevTools). No bind
-  is rebindable today: all of them are constants (`overlay_state.js OVERLAY_DEFAULTS`,
+  Every panel is reached from the launcher menu, not by a key. (The cycle key is B
+  not C because Ctrl+Shift+C is commonly bound by other apps - Discord / Overlay
+  Platform M / DevTools.) No bind is rebindable today: all of them are constants (`overlay_state.js OVERLAY_DEFAULTS`,
   `overlay_toggle.js TOGGLE_DEFAULTS.hotkey`, `tools/hotkey_listener.py _HOTKEYS`) and
   no Settings row writes them. The widget reminders read this map live
   (`docs/OVERLAY_DOCTRINE.md` section 11).

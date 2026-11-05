@@ -3,8 +3,9 @@
 // RC-HOTKEY-HINTS (docs/OVERLAY_DOCTRINE.md section 11): the shell is the binding
 // authority the overlay page's reminders read. The pure map is driven here; the
 // preload + ipcMain wiring only runs under Electron, so it is pinned as text, the
-// same posture as overlay_settings_ipc.test.js. The live round trip is owed in a
-// running shell (docs/LIVE_GAME_GATED_SYNC.md).
+// same posture as overlay_settings_ipc.test.js. The live round trip in a running
+// shell is OWED: the merger adds row RM-1272 to docs/LIVE_GAME_GATED_SYNC.md at
+// landing, and it does not exist before that.
 
 "use strict";
 
@@ -30,11 +31,12 @@ async function pageModule() {
 test("overlayHotkeyMap reads the constants the shell actually uses", () => {
   const map = ov.overlayHotkeyMap(tog.TOGGLE_DEFAULTS.hotkey);
   assert.strictEqual(map.active, ov.OVERLAY_DEFAULTS.hotkeyActive);
-  assert.strictEqual(map.cycle, ov.OVERLAY_DEFAULTS.hotkeyCycleInGame);
   assert.strictEqual(map.visible, tog.TOGGLE_DEFAULTS.hotkey);
   assert.strictEqual(map.hide, ov.OVERLAY_DEFAULTS.hotkeyToggle);
   assert.strictEqual(map.reset, ov.OVERLAY_DEFAULTS.hotkeyReset);
   assert.strictEqual(ov.overlayHotkeyMap(undefined).visible, "");
+  // The panel-cycle key only reloads the window today, so no reminder reads it.
+  assert.deepStrictEqual(Object.keys(map).sort(), ["active", "hide", "reset", "visible"]);
 });
 
 test("the page's fallback map is the shell's map, key for key", async () => {
@@ -51,20 +53,20 @@ test("the page refuses a malformed binding and keeps the last good one", async (
     rcShell: {
       getOverlayHotkeys: async () => ({
         active: "Ctrl+Alt+Z",
-        cycle: "<b>x</b>",
-        visible: 42,
+        visible: "<b>x</b>",
         hide: "A".repeat(33),
-        reset: "",
+        reset: 42,
       }),
     },
   };
   try {
     _internals._resetForTest();
-    const before = { cycle: hotkeyFor("cycle"), hide: hotkeyFor("hide") };
+    const before = { visible: hotkeyFor("visible"), hide: hotkeyFor("hide"), reset: hotkeyFor("reset") };
     assert.strictEqual(await hydrateOverlayHotkeys(), true);
     assert.strictEqual(hotkeyFor("active"), "Ctrl+Alt+Z");
-    assert.strictEqual(hotkeyFor("cycle"), before.cycle);
+    assert.strictEqual(hotkeyFor("visible"), before.visible);
     assert.strictEqual(hotkeyFor("hide"), before.hide);
+    assert.strictEqual(hotkeyFor("reset"), before.reset);
     // No bridge, or a bridge that rejects: false, never a throw.
     globalThis.window = {};
     assert.strictEqual(await hydrateOverlayHotkeys(), false);
@@ -84,7 +86,8 @@ test("hotkeyActionFor: the interactive set, a registered extra, nothing else", a
     assert.strictEqual(hotkeyActionFor({ id }), WIDGET_HOTKEYS[id], id);
   }
   assert.strictEqual(hotkeyActionFor({ id: "w-lead" }), "");
-  assert.strictEqual(hotkeyActionFor({ id: "w-x", hotkey: "cycle" }), "cycle");
+  assert.strictEqual(hotkeyActionFor({ id: "w-x", hotkey: "visible" }), "visible");
+  assert.strictEqual(hotkeyActionFor({ id: "w-x", hotkey: "cycle" }), "");
   assert.strictEqual(hotkeyActionFor({ id: "w-x", hotkey: "nope" }), "");
   assert.strictEqual(hotkeyActionFor(null), "");
 });
