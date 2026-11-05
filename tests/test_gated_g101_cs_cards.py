@@ -312,10 +312,10 @@ def test_mounts_and_markup_the_grader_reads_exist():
 
 def test_pbw_mode_map_matches_the_page():
     m = re.search(r"const _PBW_MODE_MAP = \{(.*?)\};", _src(PBW_JS), re.S)
-    pairs = dict((int(k), v) for k, v in re.findall(r"(\d+):\s*\"(\w+)\"", m.group(1)))
+    pairs = {int(k): v for k, v in re.findall(r"(\d+):\s*\"(\w+)\"", m.group(1))}
     assert pairs == g.PBW_MODE_MAP
     # the snippet's own non-sr subset agrees with the page map
-    snip = dict((int(k), v) for k, v in re.findall(r"(\d+): \"(\w+)\"", g.SNIPPET))
+    snip = {int(k): v for k, v in re.findall(r"(\d+): \"(\w+)\"", g.SNIPPET)}
     assert snip == {k: v for k, v in pairs.items() if v != "sr"}
 
 

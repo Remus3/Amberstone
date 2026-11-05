@@ -660,9 +660,9 @@ def test_case7_aram_excluded_and_counted():
     assert out["excluded_total"]["aram"] >= 1
     # aram champs (Annie/Caitlyn) appear in NO class matchup set
     bh = out["classes"]["back_off->hold"]
-    assert ("Annie", "Caitlyn") not in set(
+    assert ("Annie", "Caitlyn") not in {
         tuple(m) for m in []  # matchup sets are not serialized; assert via covered
-    )
+    }
     assert bh["matchups_in_class"] == 0  # the only back_off->hold was aram
 
 

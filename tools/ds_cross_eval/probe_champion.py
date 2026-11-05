@@ -209,8 +209,8 @@ def probe(champion: str) -> dict:
     secondary = arch.get("secondary")
     names = _item_names()
     db = sqlite3.connect(str(DB))
-    db_names = set(r[0] for r in db.execute(
-        "SELECT DISTINCT champion_name FROM participants"))
+    db_names = {r[0] for r in db.execute(
+        "SELECT DISTINCT champion_name FROM participants")}
     db_name = _resolve_db_name(canon, db_names)
     emp = _empirical(db, db_name, names)
     tiers = _evidence_tier(emp)

@@ -108,7 +108,7 @@ class CharacterizationTests(unittest.TestCase):
         self.assertEqual(hp[10], 120.0)  # level 11: R2
         self.assertEqual(hp[15], 160.0)  # level 16: R3
         # the three rank values are exactly the Meraki block.
-        self.assertEqual(set(v for v in hp if v > 0), {80.0, 120.0, 160.0})
+        self.assertEqual({v for v in hp if v > 0}, {80.0, 120.0, 160.0})
 
 
 class PassiveHealthStackHpTests(unittest.TestCase):

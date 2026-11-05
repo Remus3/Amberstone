@@ -251,10 +251,10 @@ def test_real_db_structure_only():
     assert out["n"] >= 0
     assert 0.0 <= out["overall_wr"] <= 1.0
     for c in out["champions"]:
-        assert set(("champion_id", "games", "wins", "wr", "wr_blended",
-                    "means", "kda_cv", "labels")) <= set(c.keys())
+        assert {"champion_id", "games", "wins", "wr", "wr_blended",
+                    "means", "kda_cv", "labels"} <= set(c.keys())
         if c["wr"] is not None:
             assert 0.0 <= c["wr"] <= 1.0
         assert 0.0 <= c["wr_blended"] <= 1.0
         for lab in c["labels"]:
-            assert set(("tag", "verdict", "basis")) <= set(lab.keys())
+            assert {"tag", "verdict", "basis"} <= set(lab.keys())

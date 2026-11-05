@@ -186,7 +186,7 @@ def test_plan_dispatch_step_order_and_branch():
 
 
 def test_plan_dispatch_claude_step_whitelist_and_no_skip_perms():
-    steps = dict((s[0], s[1]) for s in cw.plan_dispatch(1, "h"))
+    steps = {s[0]: s[1] for s in cw.plan_dispatch(1, "h")}
     claude = steps["claude_fix"]
     assert claude[0] == "claude" and "-p" in claude
     assert "--allowedTools" in claude

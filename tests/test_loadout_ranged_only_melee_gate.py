@@ -81,7 +81,7 @@ def _is_melee(champ_key: str, ranges: dict[str, float]) -> bool:
 def _served_item_ids(row: dict) -> set[str]:
     """Every item id a served variant row exposes: the collapsed top-level
     list AND every build_path row (both are user-selectable / pushable)."""
-    ids: set[str] = set(str(i) for i in (row.get("item_ids") or []))
+    ids: set[str] = {str(i) for i in (row.get("item_ids") or [])}
     for p in row.get("build_paths") or []:
         ids |= {str(i) for i in (p.get("item_ids") or [])}
     return ids

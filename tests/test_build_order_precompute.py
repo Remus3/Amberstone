@@ -165,7 +165,7 @@ def _fake_rank_fn(ranked_ids):
     direct call, so they cancel)."""
 
     def _rank(champion, archetype, **kwargs):
-        owned = set(str(i) for i in (kwargs.get("item_ids") or ()))
+        owned = {str(i) for i in (kwargs.get("item_ids") or ())}
         rows = []
         for iid in ranked_ids:
             if str(iid) in owned:

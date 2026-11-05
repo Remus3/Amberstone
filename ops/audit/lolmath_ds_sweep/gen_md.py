@@ -77,7 +77,7 @@ for cid in sorted(dsbo):
     if flags: mism.append(cid)
     cur = (lm_ult.get(cid) or {}).get("current", [])
     gold_changes = bool(cur and ub and len(ub) >= 5 and len(cur) >= 5
-        and (set(x for x in ub if x not in BOOTS) != set(x for x in cur if x not in BOOTS)))
+        and ({x for x in ub if x not in BOOTS} != {x for x in cur if x not in BOOTS}))
     if gold_changes: ult_diff.append(cid)
     rows.append((cid, kit, nb, ub, ds_mixed, bdmg(lm_best), bdmg(ds_mixed), "; ".join(overlap) or "-", fl, gold_changes))
 

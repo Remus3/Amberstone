@@ -353,7 +353,7 @@ def _counters_vs_comp(enemy_ids: tuple[int, ...],
     id_to_name = _load_champ_id_to_name()
     # Never recommend a champion already on the enemy team or already
     # picked/banned on the board.
-    skip = set(int(x) for x in exclude_ids if int(x) > 0)
+    skip = {int(x) for x in exclude_ids if int(x) > 0}
     skip.update(enemy_ids)
 
     # candidate champId -> {"name": str, "vs": [enemy display names]}

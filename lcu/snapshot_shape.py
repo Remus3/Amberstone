@@ -148,7 +148,7 @@ def _prune_summoner_lookup_cache(now: float) -> None:
     # and the dashboard reaches it from more than one handler thread, so
     # iterating the live dict could raise "dictionary changed size during
     # iteration". pop(sid, None) is likewise tolerant of a racing eviction.
-    for sid, _row in sorted(list(_summoner_lookup_cache.items()),
+    for sid, _row in sorted(_summoner_lookup_cache.items(),
                             key=lambda kv: kv[1].get("fetched_at", 0.0)):
         if len(_summoner_lookup_cache) < _SUMMONER_LOOKUP_CACHE_MAX:
             break

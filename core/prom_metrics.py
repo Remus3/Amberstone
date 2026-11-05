@@ -175,7 +175,7 @@ class Histogram(_Metric):
                  buckets: Iterable[float] = DEFAULT_BUCKETS,
                  labelnames: Iterable[str] = ()) -> None:
         super().__init__(name, help_text, labelnames)
-        self.buckets = tuple(sorted(set(float(b) for b in buckets)))
+        self.buckets = tuple(sorted({float(b) for b in buckets}))
         # labelvalues -> [bucket_counts (cumulative), sum, count]
         self._values: dict = {}
 

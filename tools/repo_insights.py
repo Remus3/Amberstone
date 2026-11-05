@@ -114,7 +114,7 @@ def gather_git(days: int, author: str | None) -> dict:
         "types": types.most_common(),
         "dirs": dirs.most_common(12),
         "authors": authors.most_common(),
-        "files_touched": len(set(n.strip() for n in names if n.strip())),
+        "files_touched": len({n.strip() for n in names if n.strip()}),
     }
 
 

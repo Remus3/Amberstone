@@ -132,7 +132,7 @@ class HydraCleaveFamilyParityR193Tests(unittest.TestCase):
                 dmg, _EXPECTED, places=3,
                 msg=f"{item_id} cleave desynced from the family melee pin",
             )
-        self.assertEqual(len(set(round(v, 6) for v in magnitudes.values())), 1)
+        self.assertEqual(len({round(v, 6) for v in magnitudes.values()}), 1)
 
     def test_arena_mirrors_match_their_sr_twins(self) -> None:
         ctx = _multi_target_ctx()
