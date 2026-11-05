@@ -49,7 +49,7 @@ from dashboard._handler import Handler
 from tests._module_view import this_thread_only
 
 # C0 control characters, DEL, and the C1 range the stdlib table also covers.
-_FORBIDDEN = (set(range(0x00, 0x20)) - {0x09, 0x0A, 0x0D}) | set(range(0x7F, 0xA0))
+_FORBIDDEN = (set(range(0x20)) - {0x09, 0x0A, 0x0D}) | set(range(0x7F, 0xA0))
 
 
 @pytest.fixture

@@ -153,7 +153,7 @@ def parse_fields(body_lines):
         stripped = line.strip()
         if not stripped:
             continue
-        if key is not None and (line.startswith("  ") or line.startswith("\t")):
+        if key is not None and (line.startswith(("  ", "\t"))):
             fields[key] = (fields[key] + " " + stripped).strip()
     return fields
 

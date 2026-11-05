@@ -45,8 +45,8 @@ class SmoothedRatesInvariants(unittest.TestCase):
     def test_laplace_bounded_unit_interval(self):
         # 0 <= wins <= games  =>  rate in [a/(g+2a), (g+a)/(g+2a)]
         # which is a strict sub-interval of [0,1] for finite g.
-        for games in range(0, 60):
-            for wins in range(0, games + 1):
+        for games in range(60):
+            for wins in range(games + 1):
                 r = S.laplace_rate(wins, games)
                 self.assertGreaterEqual(r, 0.0)
                 self.assertLessEqual(r, 1.0)
@@ -57,7 +57,7 @@ class SmoothedRatesInvariants(unittest.TestCase):
         # all-wins sample is always rated higher than a smaller one
         # (the whole point of the s238 synergy change).
         prev = -1.0
-        for n in range(0, 200):
+        for n in range(200):
             cur = S.laplace_rate(n, n)            # n wins / n games
             self.assertGreater(cur, prev)
             prev = cur
@@ -68,7 +68,7 @@ class SmoothedRatesInvariants(unittest.TestCase):
         # All losses: (0+1)/(n+2) is strictly DECREASING toward 0 - a
         # larger all-loss sample is rated lower (symmetric to all-wins).
         prev = 2.0
-        for n in range(0, 200):
+        for n in range(200):
             cur = S.laplace_rate(0, n)
             self.assertLess(cur, prev)
             prev = cur
@@ -77,8 +77,8 @@ class SmoothedRatesInvariants(unittest.TestCase):
         # laplace(w, g) and laplace(g-w, g) must be mirror images about
         # 0.5: r + r' == 1 exactly, for the default alpha. (Beta(a,a)
         # prior is symmetric.)
-        for games in range(0, 50):
-            for wins in range(0, games + 1):
+        for games in range(50):
+            for wins in range(games + 1):
                 r = S.laplace_rate(wins, games)
                 r_mirror = S.laplace_rate(games - wins, games)
                 self.assertAlmostEqual(r + r_mirror, 1.0)
@@ -111,7 +111,7 @@ class SmoothedRatesInvariants(unittest.TestCase):
 
     def test_shrink_bounded_and_monotone(self):
         prev = -1.0
-        for n in range(0, 500):
+        for n in range(500):
             w = S.shrink(n)
             self.assertGreaterEqual(w, 0.0)
             self.assertLess(w, 1.0)               # n/(n+k) < 1 for k>0
@@ -125,7 +125,7 @@ class SmoothedRatesInvariants(unittest.TestCase):
     def test_blend_is_convex_bounded(self):
         # weight in [0,1] (shrink output) => blend stays within
         # [min(own,prior), max(own,prior)].
-        for n in range(0, 80):
+        for n in range(80):
             w = S.shrink(n)
             v = S.blend(0.83, 0.21, w)
             self.assertGreaterEqual(v, 0.21 - 1e-12)

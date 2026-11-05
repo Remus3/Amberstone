@@ -236,7 +236,7 @@ def test_plan_dispatch_lands_locally_never_merges_on_github():
     # a plain fast-forward push of HEAD to main: never forced
     push = steps["land_push"]
     assert push[-3:] == ["push", "origin", "HEAD:main"]
-    assert not any(a.startswith(("--force", "-f")) or a.startswith("+") for a in push[3:])
+    assert not any(a.startswith(("--force", "-f", "+")) for a in push[3:])
     # the PR is CLOSED (not merged) once main carries the fix
     close = steps["pr_close"]
     assert close[:4] == ["gh", "pr", "close", "ci-fix/2"]

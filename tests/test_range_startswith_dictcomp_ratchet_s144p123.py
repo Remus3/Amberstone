@@ -62,12 +62,12 @@ _FIXED = (
     "tools/ci_watchdog.py",
     "tools/run_phase2_perf.py",
     "tools/sibling_name_sweep.py",
+    "docs/_rescore/tally.py",  # RM-1544
+    "docs/_rsc_score/calibrate.py",
+    "docs/_rsc_score/calibrate_rep.py",
 )
 # file -> number of findings still there. Only shrinks.
 _BASELINE = {
-    "docs/_rescore/tally.py": 1,
-    "docs/_rsc_score/calibrate.py": 1,
-    "docs/_rsc_score/calibrate_rep.py": 1,
     "ops/rc_supervisor.py": 1,
     "tools/build_portable.py": 1,
 }

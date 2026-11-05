@@ -159,6 +159,6 @@ class TestAsciiHygiene:
 
 def _gauge_line(body: str, name: str) -> str:
     for line in body.splitlines():
-        if line.startswith(name + " ") or line.startswith(name + "{"):
+        if line.startswith((name + " ", name + "{")):
             return line
     raise AssertionError(f"{name} not found in exposition")

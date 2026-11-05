@@ -82,7 +82,7 @@ def _is_arena_idspace(item_id: str) -> bool:
     catalog-wide combine-cost guard still covers this id-space.
     """
     return len(item_id) >= 6 and (
-        item_id.startswith("22") or item_id.startswith("44")
+        item_id.startswith(("22", "44"))
     )
 
 

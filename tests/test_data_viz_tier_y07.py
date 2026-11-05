@@ -297,7 +297,7 @@ def consumed_tokens(consumer_texts: dict[str, str]) -> set[str]:
     used: set[str] = set()
     for label, text in consumer_texts.items():
         body = text if not label.endswith(".css") else _strip(text)
-        if label.endswith("tokens.css") or label.endswith("overlay.css"):
+        if label.endswith(("tokens.css", "overlay.css")):
             continue  # the declaring files, not consumers
         used.update(n for n in _DATA_NAME.findall(body) if n in MANIFEST)
     return used

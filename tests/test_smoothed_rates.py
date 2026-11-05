@@ -65,7 +65,7 @@ class LaplaceRateTests(unittest.TestCase):
         # Proof for the byte-identical extraction claim: with alpha=1.0
         # denom = games + 2 >= 2 for any games >= 0, so the guard branch
         # never fires for real callers.
-        for g in range(0, 200):
+        for g in range(200):
             self.assertGreater(g + 2 * 1.0, 0)
             self.assertAlmostEqual(
                 S.laplace_rate(0, g, 1.0), 1.0 / (g + 2.0)
@@ -101,7 +101,7 @@ class ShrinkTests(unittest.TestCase):
 
     def test_monotonic_in_n(self):
         prev = -1.0
-        for n in range(0, 100):
+        for n in range(100):
             cur = S.shrink(n, 5)
             self.assertGreaterEqual(cur, prev)
             prev = cur

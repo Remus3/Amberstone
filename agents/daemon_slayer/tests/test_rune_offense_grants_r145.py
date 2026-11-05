@@ -250,7 +250,7 @@ class ConquerorStackKnobTests(unittest.TestCase):
 
     def test_the_grant_is_linear_in_the_stack_count(self) -> None:
         one = conqueror_grant(18, 1)[1]
-        for stacks in range(0, 13):
+        for stacks in range(13):
             with self.subTest(stacks=stacks):
                 self.assertAlmostEqual(
                     conqueror_grant(18, stacks)[1], one * stacks, places=9

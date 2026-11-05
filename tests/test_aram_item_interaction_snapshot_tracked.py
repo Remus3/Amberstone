@@ -106,7 +106,7 @@ def test_snapshot_path_is_not_gitignored():
     offenders = []
     for lineno, line in enumerate(text.splitlines(), start=1):
         stripped = line.strip()
-        if not stripped or stripped.startswith("#") or stripped.startswith("!"):
+        if not stripped or stripped.startswith(("#", "!")):
             continue
         pattern = stripped.lstrip("/")
         if pattern in (_REL, "aram_item_interaction.json"):

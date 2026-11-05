@@ -27,7 +27,7 @@ def _header() -> str:
     """The leading comment block: every line before the first non-comment."""
     lines = []
     for line in AHK.read_text(encoding="ascii").splitlines():
-        if line.startswith(";") or line.startswith("#Requires") or not line.strip():
+        if line.startswith((";", "#Requires")) or not line.strip():
             lines.append(line)
             continue
         break

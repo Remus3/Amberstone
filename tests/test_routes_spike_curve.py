@@ -158,8 +158,8 @@ class OutputShapeTests(SpikeCurveBase):
         body = h.parsed()
         ally_minutes = [e["minute"] for e in body["ally"]]
         enemy_minutes = [e["minute"] for e in body["enemy"]]
-        self.assertEqual(ally_minutes, list(range(0, 41)))
-        self.assertEqual(enemy_minutes, list(range(0, 41)))
+        self.assertEqual(ally_minutes, list(range(41)))
+        self.assertEqual(enemy_minutes, list(range(41)))
 
     def test_each_entry_has_minute_and_power(self):
         h = self._ok_call()

@@ -300,7 +300,7 @@ def test_do_post_actually_invokes_the_chunked_guard(server):
 # 3. Regression - RM-228 log-injection scrub for this file.
 # ---------------------------------------------------------------------------
 
-_CONTROL = set(range(0x00, 0x20)) | {0x7F} | set(range(0x80, 0xA0))
+_CONTROL = set(range(0x20)) | {0x7F} | set(range(0x80, 0xA0))
 _ALLOWED = {0x09, 0x0A, 0x0D}
 
 

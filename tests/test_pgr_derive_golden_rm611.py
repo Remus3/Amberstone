@@ -100,7 +100,7 @@ def _raw_timeline() -> dict:
          "shutdownBounty": 0, "position": {"x": 7000, "y": 7000}},
     ]
     frames = []
-    for m in range(0, 13):
+    for m in range(13):
         t = m * 60000
         frames.append({"timestamp": t, "participantFrames": _pframes(m),
                        "events": [e for e in ev

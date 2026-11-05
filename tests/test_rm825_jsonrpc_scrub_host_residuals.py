@@ -164,7 +164,7 @@ def test_scrub_log_and_scrub_controls_escape_the_extra_code_point(cp):
 
 
 def test_the_widened_scrub_stays_idempotent_and_injective():
-    sample = ("".join(chr(c) for c in range(0, 0xB0)) + "\\u2028\\"
+    sample = ("".join(chr(c) for c in range(0xB0)) + "\\u2028\\"
               + "".join(chr(c) for c in _EXTRA) + "C:\\path")
     once = log_scrub.scrub_controls(sample)
     assert log_scrub.scrub_controls(once) == once
@@ -236,7 +236,7 @@ def _js_scrub(text: str) -> str:
 def test_js_scrub_log_matches_the_python_table():
     """The JS copy must escape exactly what ``core.log_scrub.scrub_log``
     does, the extra code points included."""
-    sample = ("".join(chr(c) for c in range(0, 0xB0)) + "\\"
+    sample = ("".join(chr(c) for c in range(0xB0)) + "\\"
               + "".join(chr(c) for c in _EXTRA) + "plain")
     assert _js_scrub(sample) == log_scrub.scrub_log(sample)
 

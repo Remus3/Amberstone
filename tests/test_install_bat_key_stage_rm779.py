@@ -52,7 +52,7 @@ def _code(lines: list[str]) -> list[str]:
     for ln in lines:
         s = ln.strip()
         low = s.lower()
-        if not s or low.startswith("::") or low == "rem" or low.startswith(("rem ", "rem\t")):
+        if not s or low.startswith(("::", "rem ", "rem\t")) or low == "rem":
             continue
         out.append(s)
     return out

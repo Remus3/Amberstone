@@ -77,7 +77,7 @@ def test_spec_does_not_use_svg_icon():
     # No icon= line may reference an .svg file.
     for line in spec.splitlines():
         stripped = line.strip()
-        if stripped.startswith("icon=") or stripped.startswith("icon ="):
+        if stripped.startswith(("icon=", "icon =")):
             assert ".svg" not in stripped, f"spec feeds svg icon to PyInstaller: {stripped!r}"
 
 

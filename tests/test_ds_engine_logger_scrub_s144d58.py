@@ -155,7 +155,7 @@ for name in names:
 print(json.dumps(out))
 '''
 
-_CTRL = ({chr(c) for c in range(0x00, 0x20)}
+_CTRL = ({chr(c) for c in range(0x20)}
          | {chr(c) for c in range(0x7F, 0xA0)} | {chr(0x2028), chr(0x2029)})
 
 

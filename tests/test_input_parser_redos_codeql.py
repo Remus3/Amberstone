@@ -106,7 +106,7 @@ def test_the_rewrite_matches_the_prior_patterns_exactly():
                     diffs.append((name, text))
     alphabet = [" ", "\n", ",", ":", "-", "x"]
     for head in ("agent0", "note"):
-        for size in range(0, 7):
+        for size in range(7):
             for tail in itertools.product(alphabet, repeat=size):
                 text = head + "".join(tail)
                 for name, old in PAIRS:

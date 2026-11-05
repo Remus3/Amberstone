@@ -1590,7 +1590,7 @@ def test_real_spawner_named_once_outside_docstring_and_imports():
     assert "No test creates a process through `real_spawner`." in doc
     stripped = src.replace(doc, "", 1)
     lines = [line.split("#")[0] for line in stripped.splitlines()]
-    lines = [x for x in lines if not (x.startswith("from ") or x.startswith("import "))]
+    lines = [x for x in lines if not (x.startswith(("from ", "import ")))]
     assert sum(x.count("real_spawner") for x in lines) == 1
     assert src.count("_default_spawner(os.environ)") == 1
 

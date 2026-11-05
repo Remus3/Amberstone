@@ -51,7 +51,7 @@ ROOT = Path(__file__).resolve().parent.parent
 USAGE_JS = ROOT / "tools" / "usage-mcp-server.js"
 NODE = shutil.which("node")
 _HOST = "127.0.0.1"
-_CTRL = {chr(c) for c in range(0x00, 0x20)} | {chr(c) for c in range(0x7F, 0xA0)}
+_CTRL = {chr(c) for c in range(0x20)} | {chr(c) for c in range(0x7F, 0xA0)}
 _EVIL = "client said \x1b[31mINJECTED\r\nFAKE-LINE\x85\x7f"
 
 

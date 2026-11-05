@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-_BAD = set(range(0x00, 0x20)) - {9, 10, 13} | set(range(0x7F, 0xA0))
+_BAD = set(range(0x20)) - {9, 10, 13} | set(range(0x7F, 0xA0))
 # RM-819: a loopback Host, so the probe reaches the route on every server
 # (a foreign Host is now a 421 before any route runs).
 _PROBE = (b"GET /\x1b[31mFAKE-ADMIN-OK\x1b[0m\x08\x08\x7f HTTP/1.1\r\n"
@@ -100,6 +100,6 @@ def test_vision_server_http_scrubs():
 
 def test_core_fallback_matches_stdlib_table():
     from core.log_scrub import CONTROL_CHAR_TABLE, scrub_log
-    sample = "".join(chr(i) for i in range(0, 0xB0)) + "\\x1b"
+    sample = "".join(chr(i) for i in range(0xB0)) + "\\x1b"
     assert CONTROL_CHAR_TABLE is not None
     assert scrub_log(sample) == scrub_log(sample, None)

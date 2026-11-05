@@ -86,7 +86,7 @@ def _build_test_db(path: Path, rows: list[dict]) -> None:
 
 class TestClassifyBand(unittest.TestCase):
     def test_unknown_when_sample_below_threshold(self):
-        for n in range(0, rpv._BAND_MIN_SAMPLE):
+        for n in range(rpv._BAND_MIN_SAMPLE):
             self.assertEqual(rpv._classify_band(n, 0), "unknown")
             self.assertEqual(rpv._classify_band(n, 50), "unknown")
             self.assertEqual(rpv._classify_band(n, 100), "unknown")

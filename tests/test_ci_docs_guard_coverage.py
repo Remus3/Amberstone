@@ -160,7 +160,7 @@ def _independently_derived_md_readers():
     for rel in tracked:
         if not rel.endswith(".py"):
             continue
-        if not (rel.startswith("tests/") or rel.startswith("agents/daemon_slayer/tests/")):
+        if not (rel.startswith(("tests/", "agents/daemon_slayer/tests/"))):
             continue
         try:
             tree = ast.parse((_REPO / rel).read_text(encoding="utf-8", errors="replace"))

@@ -60,7 +60,7 @@ class TestCalculateTif(unittest.TestCase):
     def test_monotonic_non_decreasing(self):
         prev = -1.0
         # Step in 0.5 increments across the full curve.
-        for i in range(0, 121):
+        for i in range(121):
             t = i * 0.5
             v = pgs.calculate_tif(t)
             self.assertGreaterEqual(v, prev,

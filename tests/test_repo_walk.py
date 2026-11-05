@@ -50,7 +50,7 @@ def _rel_dirs(recorded: list[str], base: Path) -> list[str]:
     for raw in recorded:
         if raw == prefix:
             out.append("")
-        elif raw.startswith(prefix + os.sep) or raw.startswith(prefix + "/"):
+        elif raw.startswith((prefix + os.sep, prefix + "/")):
             out.append(raw[len(prefix) + 1:].replace("\\", "/"))
         else:
             out.append(raw.replace("\\", "/"))
@@ -233,7 +233,7 @@ def test_fallback_walk_prunes_excluded_trees_at_directory_level(
     assert "" in dirs, "os.scandir hook never saw the walk root - not intercepting"
     entered = sorted(
         d for d in dirs
-        if d.startswith(".claude") or d.startswith("ops/runtime/responder_export")
+        if d.startswith((".claude", "ops/runtime/responder_export"))
     )
     assert not entered, f"walker descended excluded trees: {entered}"
     assert all(isinstance(p, Path) and p.is_absolute() for p in got)

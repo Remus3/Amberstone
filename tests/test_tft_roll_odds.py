@@ -155,7 +155,7 @@ def test_higher_level_never_lowers_odds_when_tier_odds_do_not_fall(
 @pytest.mark.parametrize("level,cost,taken", LEVEL_COST_STATE)
 def test_more_slots_never_lowers_odds(level, cost, taken):
     prev = -1.0
-    for slots in range(0, 8):
+    for slots in range(8):
         cur = _p(level, cost, taken, slots=slots)
         assert cur >= prev - 1e-12
         prev = cur

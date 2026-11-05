@@ -7070,7 +7070,7 @@ class Batch55DDragonCoverageTests(unittest.TestCase):
         covered = set(ITEM_EFFECTS.keys())
         missing = []
         for k, v in items.items():
-            if k.startswith("9") or k.startswith("55"):
+            if k.startswith(("9", "55")):
                 continue
             if not v.get("gold", {}).get("purchasable", False):
                 continue

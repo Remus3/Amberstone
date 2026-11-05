@@ -125,7 +125,7 @@ _SEP = re.compile(r"(?<!\^)[&|]")
 
 def _is_comment(stripped: str) -> bool:
     low = stripped.lower()
-    return low.startswith("::") or low == "rem" or low.startswith(("rem ", "rem\t"))
+    return low.startswith(("::", "rem ", "rem\t")) or low == "rem"
 
 
 # The ONE "(" that is never a block open: the echo( / echo.( idiom, where

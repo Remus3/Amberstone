@@ -100,7 +100,7 @@ class LegendAlacrityMagnitudeTests(unittest.TestCase):
         )
 
     def test_it_is_linear_between_the_endpoints(self) -> None:
-        for stacks in range(0, 11):
+        for stacks in range(11):
             with self.subTest(stacks=stacks):
                 self.assertAlmostEqual(
                     legend_alacrity_grant(stacks),

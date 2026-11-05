@@ -97,7 +97,7 @@ def test_ladder_is_monotonic_non_decreasing():
 
 def test_every_tier_is_reachable_and_distinct():
     """A tier nobody can sit in is a step that does no work."""
-    seen = {P.interval_for(i * 60) for i in range(0, 60 * 48)}
+    seen = {P.interval_for(i * 60) for i in range(60 * 48)}
     assert seen == {5 * 60, 30 * 60, 4 * 3600, 12 * 3600}
 
 

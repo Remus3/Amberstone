@@ -65,7 +65,7 @@ def _ends_in_active_caret(line: str) -> bool:
 
 def _is_comment(line: str) -> bool:
     s = line.lstrip().lower()
-    return s.startswith("::") or s == "rem" or s.startswith(("rem ", "rem\t", "@rem"))
+    return s.startswith(("::", "rem ", "rem\t", "@rem")) or s == "rem"
 
 
 @pytest.mark.parametrize(("line", "expected"), [

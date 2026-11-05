@@ -61,7 +61,7 @@ def _step2() -> list[str]:
 
 def _is_comment(stripped: str) -> bool:
     low = stripped.lower()
-    return low.startswith("::") or low == "rem" or low.startswith(("rem ", "rem\t"))
+    return low.startswith(("::", "rem ", "rem\t")) or low == "rem"
 
 
 def _parse_time_errorlevel_reads(lines: list[str]) -> list[tuple[int, str]]:
