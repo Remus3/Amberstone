@@ -3560,8 +3560,13 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .zone-pill.hidden { display: none; }
 .zone-pill.zone-safe   { background: var(--good-soft); color: var(--good); }
 .zone-pill.zone-dmz    { background: var(--gold-soft); color: var(--gold); }
+/* RM-1549: --bad text on the 18 percent --bad-soft fill measured 4.11 to
+ * 4.49:1 (arcane, hextech, moonlit, ember, bloodmoon), under AA for this
+ * 16px label. The same red lifted 25 percent toward --text clears 4.5:1 in
+ * every theme; --bad, the fill and the pulse ring are unchanged. */
 .zone-pill.zone-enemy  {
-  background: var(--bad-soft); color: var(--bad);
+  background: var(--bad-soft);
+  color: color-mix(in oklab, var(--bad) 75%, var(--text));
   animation: zoneWarn 1.4s ease-in-out infinite;
 }
 @keyframes zoneWarn {
