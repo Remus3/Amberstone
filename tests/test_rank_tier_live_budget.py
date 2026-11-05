@@ -1185,20 +1185,48 @@ def _default_bindings(fn, state, late=frozenset()):
     return bound
 
 
+def _call_views(node, view, late, out) -> None:
+    """Append (call, state the call reads) for every call in `node`.
+
+    A call inside a lambda or generator (`_DEFERRED`) reads the late view
+    (`view | late`): it runs after the statement, maybe after a re-binding.
+    RM-1563: a call in a lambda BODY also reads the lambda's parameters a
+    default makes carry the value, or a logging function or logger object
+    (`lambda m=url: log.info(m)`, `lambda p=log.info: p(url)`), as a nested
+    def's body does (RM-1562). The defaults are evaluated where the lambda
+    stands, so they are judged with `view`; the parameters are local, so they
+    reach only that body and the lambdas nested in it, never a sibling or the
+    enclosing scope. The calls inside a default keep the late view."""
+    if isinstance(node, _DEFERRED):
+        late_view = set(view) | set(late)
+        if isinstance(node, ast.Lambda):
+            a = node.args
+            for d in a.defaults + [d for d in a.kw_defaults if d is not None]:
+                _call_views(d, late_view, late, out)
+            body_view = late_view | _default_bindings(node, view, late)
+            _call_views(node.body, body_view, late, out)
+            return
+        for child in ast.iter_child_nodes(node):
+            _call_views(child, late_view, late, out)
+        return
+    if isinstance(node, ast.Call):
+        out.append((node, view))
+    for child in ast.iter_child_nodes(node):
+        _call_views(child, view, late, out)
+
+
 def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
     """Flag a raise or logging call among `nodes` whose message is tainted.
-    A logging call inside a lambda or generator body is judged with the late
-    view (`tainted | late`): it runs after the statement, maybe after a
-    re-binding."""
+    Each call is judged with the state `_call_views` gives it: a logging call
+    inside a lambda or generator body reads the late view, plus a lambda's
+    default-bound parameters."""
     exprs = []
     if isinstance(stmt, ast.Raise):
         exprs = [(e, tainted) for e in (stmt.exc, stmt.cause) if e is not None]
     for node in nodes:
-        deferred = {id(c) for d in ast.walk(node) if isinstance(d, _DEFERRED)
-                    for c in ast.walk(d) if isinstance(c, ast.Call)}
-        for call in [n for n in ast.walk(node) if isinstance(n, ast.Call)]:
-            seen = (set(tainted) | set(late) if id(call) in deferred
-                    else tainted)
+        calls = []
+        _call_views(node, tainted, late, calls)
+        for call, seen in calls:
             args = _log_args(call, seen)
             if args is not None:
                 exprs.extend((a, seen) for a in args)
@@ -2138,6 +2166,46 @@ _CHECKER_SAMPLES = (
      "def f(url):\n    for p in (log.info,):\n        p(_safe_url(url))\n", False),
     ("a starred target binds a list, not a log function",
      "def f(url):\n    p, *rest = fetch, log.info\n    rest(url)\n", False),
+    # RM-1563 lambda defaults: a lambda parameter whose default carries the
+    # value, or is a logging function or a logger object, is read inside the
+    # lambda body, as a nested def's parameter is (RM-1562).
+    ("lambda parameter default carries the value",
+     "def f(url):\n    h = lambda m=url: log.info(m)\n    h()\n", True),
+    ("lambda called in place with a tainted default",
+     "def f(url):\n    (lambda m=url: log.warning('%s', m))()\n", True),
+    ("lambda keyword-only default carries the value",
+     "def f(url):\n    h = lambda *, m=url: log.info(m)\n    h()\n", True),
+    ("lambda default bound from a tainted local",
+     "def f(url):\n    m = 'at ' + url\n    h = lambda d=m: log.error(d)\n    h()\n",
+     True),
+    ("lambda default is a log function",
+     "def f(url):\n    h = lambda p=log.info: p(url)\n    h()\n", True),
+    ("lambda default is a logger object",
+     "import logging\ndef f(url):\n    h = lambda lg=logging.getLogger(): lg.info(url)\n"
+     "    h()\n", True),
+    ("inner lambda reads an outer lambda default",
+     "def f(url):\n    h = lambda m=url: (lambda: log.info(m))\n    h()()\n", True),
+    ("inner lambda default reads an outer lambda default",
+     "def f(url):\n    h = lambda m=url: (lambda d=m: log.info(d))\n    h()()\n", True),
+    ("lambda default inside a nested def default",
+     "def f(url):\n    def g(k=lambda m=url: log.info(m)):\n        k()\n", True),
+    ("log call inside a lambda default",
+     "def f(url):\n    h = lambda d=log.info(url): 0\n    h()\n", True),
+    ("lambda default read late inside a default",
+     "def f(url):\n    m = 'x'\n    h = lambda d=lambda: log.info(m): 0\n    m = url\n",
+     True),
+    # RM-1563 lambda-default keep-greens.
+    ("lambda default with a sanitized value",
+     "def f(url):\n    h = lambda m=_safe_url(url): log.info(m)\n    h()\n", False),
+    ("lambda default with a clean value",
+     "def f(url):\n    h = lambda m='x': log.info(m)\n    h()\n", False),
+    ("lambda default of a non-log function",
+     "def f(url):\n    h = lambda p=fetch: p(url)\n    h()\n", False),
+    ("a lambda default does not reach a sibling lambda",
+     "def f(url):\n    a = lambda m=url: 0\n    b = lambda m='x': log.info(m)\n    b()\n",
+     False),
+    ("a lambda default does not flow out of the lambda",
+     "def f(url):\n    m = 'x'\n    h = lambda m=url: 0\n    log.info(m)\n", False),
 )
 
 
