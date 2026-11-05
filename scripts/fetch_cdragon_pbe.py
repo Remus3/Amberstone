@@ -3,6 +3,12 @@
 Run as `python scripts/fetch_cdragon_pbe.py`. It fetches two CommunityDragon
 PBE files and rewrites files under data/meta/, so nothing runs at import:
 main() does the work (RM-1174).
+
+Both GETs open through lib.wiki_consent.open_consented, so a url to the
+League wiki host, or a CommunityDragon redirect into it, is refused before a
+wiki socket opens unless a consent record exists (ruling 51, RM-1441). A
+refusal is one section's FAILED line, like any other fetch failure: nothing
+is written and main still runs the other section.
 """
 import json
 import sys
@@ -21,6 +27,7 @@ if str(PROJECT) not in sys.path:
 # rename) instead of an in-place write.
 from core.polled_json import atomic_write_bytes  # noqa: E402
 from core.tls_policy import client_context_verified  # noqa: E402
+from lib.wiki_consent import open_consented  # noqa: E402
 
 META_DIR = PROJECT / "data" / "meta"
 TEAMPLANNER_URL = ("https://raw.communitydragon.org/pbe/plugins/"
@@ -42,7 +49,9 @@ def _ssl_context():
 
 def fetch(url):
     req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, context=_ssl_context(), timeout=30) as r:
+    # RM-1441: every hop is consent-checked, so a redirect into the wiki
+    # host raises WikiFetchRefused (caught by the caller's section handler).
+    with open_consented(req, timeout=30, context=_ssl_context()) as r:
         return r.read().decode("utf-8", "replace")
 
 

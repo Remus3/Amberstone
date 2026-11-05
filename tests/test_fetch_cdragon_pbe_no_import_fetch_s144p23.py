@@ -15,9 +15,10 @@ Set 17 extraction and the merge are importable helpers, and every write goes
 through ``core.polled_json.atomic_write_bytes``. The merged map keeps its
 bytes (indent 2, sorted keys, LF, no trailing newline). No test touches the
 network: the import is proved call-free in a CHILD process whose
-``urllib.request.urlopen`` is a recorder that raises, and in this process
-every test refuses and records the script's OWN ``urllib.request.urlopen``
-(``bind_urlopen``, never the process-wide stdlib attribute, RM-801).
+``urllib.request.urlopen`` and ``OpenerDirector.open`` are recorders that
+raise, and in this process every test refuses and records the script's OWN
+``open_consented`` (the consent opener every fetch goes through since
+RM-1441; a module attribute, never the process-wide stdlib one, RM-801).
 """
 from __future__ import annotations
 
@@ -30,8 +31,6 @@ import subprocess
 import sys
 
 import pytest
-
-from tests._module_view import bind_urlopen
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -102,6 +101,7 @@ _CHILD_IMPORT = (
     "    calls.append(args)\n"
     "    raise RuntimeError('test refuses network access')\n"
     "urllib.request.urlopen = refuse\n"
+    "urllib.request.OpenerDirector.open = refuse\n"
     "sys.path.insert(0, sys.argv[1])\n"
     "import scripts.fetch_cdragon_pbe\n"
     "print('urlopen calls at import:', len(calls))\n"
@@ -134,8 +134,8 @@ def pbe(monkeypatch):
         calls.append(args)
         raise RuntimeError("test refuses network access")
 
-    # Scoped to the script's own urllib.request.urlopen (RM-801).
-    assert bind_urlopen(monkeypatch, mod, refuse) >= 1
+    # Scoped to the script's own consent opener (RM-801, RM-1441).
+    monkeypatch.setattr(mod, "open_consented", refuse)
     yield mod
     sys.modules.pop(_MOD, None)
     assert calls == [], f"the script attempted network access: {calls}"
@@ -202,14 +202,14 @@ def test_main_with_the_network_refused_writes_nothing_and_exits_zero(
 
     def recording_fetch(url):
         seen.append(url)
-        return real_fetch(url)  # reaches the refusing urlopen
+        return real_fetch(url)  # reaches the refusing open_consented
 
     monkeypatch.setattr(pbe, "fetch", recording_fetch)
     # These two refusals are expected: route them past the fixture recorder.
     with pytest.MonkeyPatch.context() as mp:
         def refuse(*args, **kwargs):
             raise RuntimeError("test refuses network access")
-        bind_urlopen(mp, pbe, refuse)
+        mp.setattr(pbe, "open_consented", refuse)
         assert pbe.main() == 0
     out = capsys.readouterr().out
     assert "team planner FAILED" in out

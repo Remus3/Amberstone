@@ -90,7 +90,9 @@ def test_fetch_cdragon_pbe_fetches_with_a_verified_context(monkeypatch):
     mod = _fresh("scripts.fetch_cdragon_pbe")
     try:
         seen: list = []
-        assert bind_urlopen(monkeypatch, mod, _recording_urlopen(seen)) >= 1
+        # The fetch opens through the consent opener (RM-1441), which takes
+        # the context as `context=`: record it there, module-scoped (RM-801).
+        monkeypatch.setattr(mod, "open_consented", _recording_urlopen(seen))
         with pytest.raises(_Stop):
             mod.fetch(mod.TFT_EN_US_URL)
         assert len(seen) == 1
