@@ -1,26 +1,27 @@
-"""RM-1417 - four ruff rules are held at zero outside three coach files.
+"""RM-1417 - four ruff rules are held at zero across the tree.
 
 None of these is selected by ruff.toml. Measured 2026-11-05 with
 ``ruff check --isolated`` over the tree: 4 rules, 21 sites in 12 files. 10 files
-are fixed by this slice; the three coach files are the only entries in
-``_WAIVED``, so any other new site fails.
+were fixed by that slice and the three coach files by RM-1541, so ``_WAIVED``
+is empty and any new site fails.
 
 - TRY203 ``except X: raise``: a handler that only re-raises is dead code. Six DS
   test helpers and dashboard/routes_loop_control.py dropped theirs (the
   PermissionError still propagates; the comment now says so on purpose).
 - TRY201 ``raise exc`` inside a handler for ``exc``: bare ``raise`` keeps the
-  traceback honest. Same three coach files as TRY203.
+  traceback honest.
 - LOG014 ``exc_info=True`` outside a handler: it logs ``NoneType: None`` unless
   the caller happens to sit inside an except block. The anvil / augment shadow
   ``_note_failure`` helpers already receive the exception, so they pass it.
 - SIM910 ``dict.get(key, None)``: ``None`` is already the default.
 
-Waived: coaches/{aram,arena,brawl}_coach.py carry an outer
-``try: ... except Exception as exc: raise exc`` around the whole of
-``_run_coach`` (about 900 lines in all, with prompt strings inside). Dropping it
-means a dedent of every line, which is a separate slice. Reverses if: those
-three handlers are removed - then empty ``_WAIVED`` (a stale-waiver check
-fails until you do).
+Waived: nothing. coaches/{aram,arena,brawl}_coach.py used to carry an outer
+``try: ... except Exception: raise`` around the whole of ``_run_coach`` (about
+900 lines with prompt strings inside); RM-1541 removed it by an AST-checked
+dedent that leaves every string constant byte-identical. Reverses if: a handler
+that only re-raises is deliberately wanted somewhere - then add a named
+``_WAIVED`` entry with the reason (a waiver that no longer matches a live
+finding fails as stale).
 
 The ratchet runs ruff with NO config (``--isolated``) so a per-file-ignore
 cannot hide a finding, and keeps only tracked files.
@@ -44,14 +45,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 _RULES = "TRY203,TRY201,LOG014,SIM910"
-_WAIVED = {
-    ("coaches/aram_coach.py", "TRY203"),
-    ("coaches/aram_coach.py", "TRY201"),
-    ("coaches/arena_coach.py", "TRY203"),
-    ("coaches/arena_coach.py", "TRY201"),
-    ("coaches/brawl_coach.py", "TRY203"),
-    ("coaches/brawl_coach.py", "TRY201"),
-}
+_WAIVED: set[tuple[str, str]] = set()
 _FIXED = (
     "agents/daemon_slayer/tests/test_ability_dps.py",
     "agents/daemon_slayer/tests/test_burst.py",

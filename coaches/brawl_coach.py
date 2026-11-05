@@ -339,232 +339,229 @@ class Coach(BaseCoach):
             pass
         if not self._client:
             return
-        try:
-            from coach_integration import CHAMPION_PROFILES, GENERIC_PROFILE
-            champ   = state.get("champion", "Unknown")
-            profile = CHAMPION_PROFILES.get(champ, GENERIC_PROFILE)
-            mode    = state.get("game_mode", "NEXUSBLITZ").upper()
+        from coach_integration import CHAMPION_PROFILES, GENERIC_PROFILE
+        champ   = state.get("champion", "Unknown")
+        profile = CHAMPION_PROFILES.get(champ, GENERIC_PROFILE)
+        mode    = state.get("game_mode", "NEXUSBLITZ").upper()
 
-            _hint = ""
-            if os.environ.get("RC_COACH_ADAPTATION") == "1":
-                try:
-                    from coaches.adaptation_hint import format_hint_line as _fhl
-                    _hint = _fhl(champ, "brawl", state.get("enemy_comp", []))
-                except Exception:  # noqa: BLE001
-                    pass
-            if "ULTBOOK" in mode or "URF" in mode:
-                brawl_meta  = _load_brawl_build_note(champ, "URF")
-                system      = _URF_SYSTEM_PROMPT.format(profile=profile, brawl_meta=brawl_meta, adaptation_hint=_hint)
-                output_keys = _URF_OUTPUT_KEYS
-            elif "GAMEMODEX" in mode or "OFA" in mode:
-                brawl_meta  = _load_brawl_build_note(champ, "ONEFORALL")
-                system      = _OFA_SYSTEM_PROMPT.format(champion=champ, brawl_meta=brawl_meta, adaptation_hint=_hint)
-                output_keys = _OFA_OUTPUT_KEYS
-            else:
-                brawl_meta  = _load_brawl_build_note(champ, "NEXUSBLITZ")
-                system      = _NB_SYSTEM_PROMPT.format(profile=profile, brawl_meta=brawl_meta, adaptation_hint=_hint)
-                output_keys = _NB_OUTPUT_KEYS
-
-            vs = self._vision_state
-            event_ctx = ""
-            if vs.get("current_event"):
-                ev  = vs["current_event"]
-                t   = vs.get("event_timer", 0)
-                loc = vs.get("event_location", "")
-                event_ctx = f"\nACTIVE EVENT: {ev}"
-                if t:   event_ctx += f" ({t}s remaining)"
-                if loc: event_ctx += f" at {loc.upper()}"
-
-            # s182 (2026-05-13): rank_for() -> archetype dispatcher.
-            _ds_dispatch = None
-            _ds_picks_str = "unavailable"
-            _ds_label = "DPS"
+        _hint = ""
+        if os.environ.get("RC_COACH_ADAPTATION") == "1":
             try:
-                _gm_upper = mode
-                resolver_mode = self._ds_resolver_mode(_gm_upper)
-                engine_mode   = self._ds_engine_mode(_gm_upper)
-                from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
-                from coach_integration.archetype_dispatch import (
-                    dispatch_for_coach as _ds_dispatch_for_coach,
-                    display_label as _ds_display_label,
-                )
-                # Trinkets + consumables share the Live Client inventory array
-                # with shop items, so the raw list charges the engine's 6-slot
-                # budget for a slot no build item occupies - and the same list
-                # is persisted as the calibration row's owned_items below.
-                owned_ids = _ds_resolve_inventory(state.get("items", []), mode=resolver_mode)
-                target_bonus_hp = self._estimate_target_bonus_hp(state)
-                _lvl = int(state.get("level", 1)) or 1
-                # s170: replaces hardcoded target_armor=80.0 with level-aware
-                # Brawl curve. Item-aware bonus_hp estimator wins via override.
-                _es = _ds_enemy_stats(
-                    mode="brawl",
-                    game_seconds=int(state.get("game_seconds", 0) or 0),
-                    level=_lvl,
-                    bonus_hp_override=target_bonus_hp if target_bonus_hp > 0 else None,
-                    enemy_champions=state.get("enemy_comp", []),
-                )
-                _ds_dispatch = _ds_dispatch_for_coach(
-                    champion=champ,
-                    mode_engine=engine_mode,
-                    level=_lvl,
-                    item_ids=owned_ids,
-                    enemy_stats=_es,
-                    top=5,
-                    # R5 self-HP: absent -> dispatch guard yields 0.0 (OFF).
-                    caster_hp=state.get("hp"),
-                    caster_hp_max=state.get("hp_max"),
-                )
-                if _ds_dispatch is not None:
-                    _ds_picks_str = _ds_dispatch.picks_str
-                    _ds_label = _ds_display_label(_ds_dispatch.scorer)
-            except Exception as _ds_exc:  # noqa: BLE001
-                logger.debug("Brawl daemon_slayer pre-call: %s", _ds_exc)
-            if _ds_dispatch is not None and _ds_dispatch.rows:
-                try:
-                    from core.ds_calibration import log_ds_run as _ds_log
-                    # D-01b: no Live Client game_id here either - mint the
-                    # shared per-match key (same seam the metric streamer uses).
-                    _ds_mk = live_metrics.match_key(
-                        self, {"champion": champ,
-                               "game_time_s": state.get("game_seconds")},
-                        state, engine_mode)
-                    _ds_log(champion=champ, mode=engine_mode, level=int(state.get("level", 1)) or 1,
-                            owned_items=list(owned_ids), match_key=_ds_mk,
-                            ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
-                                       "delta_dps": _r["delta_dps"], "gold": _r["gold"],
-                                       "scorer": _r["scorer"]}
-                                      for _r in _ds_dispatch.display_rows])
-                except Exception:  # noqa: BLE001
-                    pass
-
-            _resp = state.get("dead_respawn_str", "")
-            # Empty string when no registered CC; trimmed below if so.
-            _cc_line = enemy_cc_threat_line(
-                state.get("enemy_comp", []),
-                state.get("game_mode", mode),
-            )
-            _cc_segment = f"\n{_cc_line}" if _cc_line else ""
-            # Aggregate enemy CC -> blended-EHP impact (item 137 carry a
-            # coach consumer). Same fail-soft contract as _cc_line.
-            _cc_blended_line = cc_blended_ehp_impact_line(
-                state.get("enemy_comp", []),
-                state.get("game_mode", mode),
-            )
-            _cc_blended_segment = (
-                f"\n{_cc_blended_line}" if _cc_blended_line else ""
-            )
-            # Aggregate enemy CONDITIONAL CC -> blended-EHP impact
-            # (item 143 follow-up; first coach-prompt consumer of the
-            # cc_conditional registry shipped item 141 Slice B
-            # `7233568`). Same fail-soft contract as `_cc_blended_line`
-            # - returns "" when no enemy carries a registered
-            # conditional CC entry (the common case at 23/172 champs).
-            _cc_conditional_line = cc_conditional_impact_line(
-                state.get("enemy_comp", []),
-                state.get("game_mode", mode),
-            )
-            _cc_conditional_segment = (
-                f"\n{_cc_conditional_line}"
-                if _cc_conditional_line else ""
-            )
-            user = (
-                f"=== {state.get('game_time','0:00')} | {mode} ===\n"
-                f"HP: {state.get('hp_pct',100)}%  Mana: {state.get('mana_pct',100)}%"
-                f"  Gold: {state.get('gold',0)}g\n"
-                f"Level: {state.get('level',1)}  KDA: {state.get('kda','0/0/0')}\n"
-                f"My abilities: {fmt_abilities(state.get('my_abilities', {}))}\n"
-                f"Items: {', '.join(state.get('items', [])) or 'none'}\n"
-                f"Your team: {', '.join(state.get('ally_comp', [])) or 'unknown'}\n"
-                f"Enemy team: {', '.join(state.get('enemy_comp', [])) or 'unknown'}"
-                f"{_cc_segment}{_cc_blended_segment}{_cc_conditional_segment}\n"
-                f"Dead enemies: {', '.join(state.get('dead_enemies', [])) or 'none'}{(' Respawns: ' + _resp) if _resp else ''}"
-                f"{event_ctx}\n"
-                + (
-                    f"My Nexus HP: {vs.get('nexus_hp_my', 100)}%  "
-                    f"Enemy Nexus HP: {vs.get('nexus_hp_enemy', 100)}%"
-                    if "NEXUSBLITZ" in mode else ""
-                )
-                + f"\nDS top items ({_ds_label} ranked, own-items-accounted): {_ds_picks_str}"
-            )
-
-            import time as _time_a
-            _t0 = _time_a.perf_counter()
-            # AUDIT 2026-04-29 (gap E): cache_control: ephemeral.
-            resp = self._client.messages.create(
-                model="claude-haiku-4-5-20251001", max_tokens=600,
-                system=[{"type": "text", "text": system,
-                         "cache_control": {"type": "ephemeral"}}],
-                messages=[{"role": "user", "content": user}],
-                timeout=20,
-            )
-            # AUDIT 2026-04-29 (gap A): cost + trace telemetry.
-            self._record_coach_call(resp, system=system, user=user,
-                                    t0_perf=_t0,
-                                    model="claude-haiku-4-5-20251001",
-                                    purpose="brawl_coach")
-            raw    = resp.content[0].text
-            fields = parse_fields(raw, output_keys)
-            if not fields:
-                logger.warning("Brawl: no fields parsed")
-                return
-
-            # Passthrough for the optional native-emit `choices` JSON array.
-            # The model returns a single-line JSON list (per the OUTPUT FORMAT
-            # block); parse_fields stores it as a string. We read the decoded
-            # list off the shared validated CoachOutput model (one seam) and
-            # write a real Python list into the artifact so the dashboard's
-            # state builder picks it up via core.coach_choices.parse_choices.
-            # from_fields routes `choices` through the model's before-validator,
-            # which silently swallows malformed/non-list input and returns []
-            # so the synthesizer fallback in _state_builder covers the tick.
-            # The choices field is OPTIONAL by contract.
-            from core.coach_output import CoachOutput
-            _choices_list = CoachOutput.from_fields(fields).choices
-
-            current = load_json(self._out)
-            _champ = state.get("champion", "")
-            current.update({
-                "action":        fields.get("action",       "").upper(),
-                "immediate":     fields.get("immediate",    ""),
-                "event_advice":  fields.get("event",        ""),
-                "fight_rule":    fields.get("fight rule",   ""),
-                "wave":          fields.get("wave",         ""),
-                "reset_item":    fields.get("reset / item", ""),
-                "objective":     fields.get("objective",    ""),
-                "risk":          fields.get("risk",         ""),
-                "comp_analysis": fields.get("comp analysis",""),
-                "choices":       _choices_list,
-                "game_time_s":   state.get("game_seconds",  0),
-                "hp_pct":        state.get("hp_pct",        100),
-                "kda":           state.get("kda",           "0/0/0"),
-                "gold":          state.get("gold",          0),
-                "game_mode":     mode,
-                # (audit cycle 4) Mirror ARAM coach: write champion +
-                # ally_spells so the dashboard's header pill flips
-                # immediately at champ-pop instead of relying on the
-                # /api/locked-champion fallback poll.
-                "champion":      _champ,
-                "ally_spells":   {_champ: [{"spell": state.get("summoner_d", ""), "cd_s": 0},
-                                           {"spell": state.get("summoner_f", ""), "cd_s": 0}]}
-                                if _champ and (state.get("summoner_d") or state.get("summoner_f")) else {},
-            })
-            mirror_live_stats(current, state)
-
-            if _ds_dispatch is not None:
-                current["daemon_slayer_picks"] = _ds_dispatch.display_rows
-
-            safe_write(self._out, current)
-            logger.debug("Brawl coaching written (%d fields)", len(fields))
-            # Live metric streaming (feature-flagged; core.live_metrics gate).
-            live_metrics.stream(self, current, state, self._MODE_NAME)
-            try:
-                from core.coaching_timestamps import write_coaching_ts as _wts
-                _wts("brawl")
+                from coaches.adaptation_hint import format_hint_line as _fhl
+                _hint = _fhl(champ, "brawl", state.get("enemy_comp", []))
             except Exception:  # noqa: BLE001
                 pass
-        except Exception:
-            raise
+        if "ULTBOOK" in mode or "URF" in mode:
+            brawl_meta  = _load_brawl_build_note(champ, "URF")
+            system      = _URF_SYSTEM_PROMPT.format(profile=profile, brawl_meta=brawl_meta, adaptation_hint=_hint)
+            output_keys = _URF_OUTPUT_KEYS
+        elif "GAMEMODEX" in mode or "OFA" in mode:
+            brawl_meta  = _load_brawl_build_note(champ, "ONEFORALL")
+            system      = _OFA_SYSTEM_PROMPT.format(champion=champ, brawl_meta=brawl_meta, adaptation_hint=_hint)
+            output_keys = _OFA_OUTPUT_KEYS
+        else:
+            brawl_meta  = _load_brawl_build_note(champ, "NEXUSBLITZ")
+            system      = _NB_SYSTEM_PROMPT.format(profile=profile, brawl_meta=brawl_meta, adaptation_hint=_hint)
+            output_keys = _NB_OUTPUT_KEYS
+
+        vs = self._vision_state
+        event_ctx = ""
+        if vs.get("current_event"):
+            ev  = vs["current_event"]
+            t   = vs.get("event_timer", 0)
+            loc = vs.get("event_location", "")
+            event_ctx = f"\nACTIVE EVENT: {ev}"
+            if t:   event_ctx += f" ({t}s remaining)"
+            if loc: event_ctx += f" at {loc.upper()}"
+
+        # s182 (2026-05-13): rank_for() -> archetype dispatcher.
+        _ds_dispatch = None
+        _ds_picks_str = "unavailable"
+        _ds_label = "DPS"
+        try:
+            _gm_upper = mode
+            resolver_mode = self._ds_resolver_mode(_gm_upper)
+            engine_mode   = self._ds_engine_mode(_gm_upper)
+            from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
+            from coach_integration.archetype_dispatch import (
+                dispatch_for_coach as _ds_dispatch_for_coach,
+                display_label as _ds_display_label,
+            )
+            # Trinkets + consumables share the Live Client inventory array
+            # with shop items, so the raw list charges the engine's 6-slot
+            # budget for a slot no build item occupies - and the same list
+            # is persisted as the calibration row's owned_items below.
+            owned_ids = _ds_resolve_inventory(state.get("items", []), mode=resolver_mode)
+            target_bonus_hp = self._estimate_target_bonus_hp(state)
+            _lvl = int(state.get("level", 1)) or 1
+            # s170: replaces hardcoded target_armor=80.0 with level-aware
+            # Brawl curve. Item-aware bonus_hp estimator wins via override.
+            _es = _ds_enemy_stats(
+                mode="brawl",
+                game_seconds=int(state.get("game_seconds", 0) or 0),
+                level=_lvl,
+                bonus_hp_override=target_bonus_hp if target_bonus_hp > 0 else None,
+                enemy_champions=state.get("enemy_comp", []),
+            )
+            _ds_dispatch = _ds_dispatch_for_coach(
+                champion=champ,
+                mode_engine=engine_mode,
+                level=_lvl,
+                item_ids=owned_ids,
+                enemy_stats=_es,
+                top=5,
+                # R5 self-HP: absent -> dispatch guard yields 0.0 (OFF).
+                caster_hp=state.get("hp"),
+                caster_hp_max=state.get("hp_max"),
+            )
+            if _ds_dispatch is not None:
+                _ds_picks_str = _ds_dispatch.picks_str
+                _ds_label = _ds_display_label(_ds_dispatch.scorer)
+        except Exception as _ds_exc:  # noqa: BLE001
+            logger.debug("Brawl daemon_slayer pre-call: %s", _ds_exc)
+        if _ds_dispatch is not None and _ds_dispatch.rows:
+            try:
+                from core.ds_calibration import log_ds_run as _ds_log
+                # D-01b: no Live Client game_id here either - mint the
+                # shared per-match key (same seam the metric streamer uses).
+                _ds_mk = live_metrics.match_key(
+                    self, {"champion": champ,
+                           "game_time_s": state.get("game_seconds")},
+                    state, engine_mode)
+                _ds_log(champion=champ, mode=engine_mode, level=int(state.get("level", 1)) or 1,
+                        owned_items=list(owned_ids), match_key=_ds_mk,
+                        ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
+                                   "delta_dps": _r["delta_dps"], "gold": _r["gold"],
+                                   "scorer": _r["scorer"]}
+                                  for _r in _ds_dispatch.display_rows])
+            except Exception:  # noqa: BLE001
+                pass
+
+        _resp = state.get("dead_respawn_str", "")
+        # Empty string when no registered CC; trimmed below if so.
+        _cc_line = enemy_cc_threat_line(
+            state.get("enemy_comp", []),
+            state.get("game_mode", mode),
+        )
+        _cc_segment = f"\n{_cc_line}" if _cc_line else ""
+        # Aggregate enemy CC -> blended-EHP impact (item 137 carry a
+        # coach consumer). Same fail-soft contract as _cc_line.
+        _cc_blended_line = cc_blended_ehp_impact_line(
+            state.get("enemy_comp", []),
+            state.get("game_mode", mode),
+        )
+        _cc_blended_segment = (
+            f"\n{_cc_blended_line}" if _cc_blended_line else ""
+        )
+        # Aggregate enemy CONDITIONAL CC -> blended-EHP impact
+        # (item 143 follow-up; first coach-prompt consumer of the
+        # cc_conditional registry shipped item 141 Slice B
+        # `7233568`). Same fail-soft contract as `_cc_blended_line`
+        # - returns "" when no enemy carries a registered
+        # conditional CC entry (the common case at 23/172 champs).
+        _cc_conditional_line = cc_conditional_impact_line(
+            state.get("enemy_comp", []),
+            state.get("game_mode", mode),
+        )
+        _cc_conditional_segment = (
+            f"\n{_cc_conditional_line}"
+            if _cc_conditional_line else ""
+        )
+        user = (
+            f"=== {state.get('game_time','0:00')} | {mode} ===\n"
+            f"HP: {state.get('hp_pct',100)}%  Mana: {state.get('mana_pct',100)}%"
+            f"  Gold: {state.get('gold',0)}g\n"
+            f"Level: {state.get('level',1)}  KDA: {state.get('kda','0/0/0')}\n"
+            f"My abilities: {fmt_abilities(state.get('my_abilities', {}))}\n"
+            f"Items: {', '.join(state.get('items', [])) or 'none'}\n"
+            f"Your team: {', '.join(state.get('ally_comp', [])) or 'unknown'}\n"
+            f"Enemy team: {', '.join(state.get('enemy_comp', [])) or 'unknown'}"
+            f"{_cc_segment}{_cc_blended_segment}{_cc_conditional_segment}\n"
+            f"Dead enemies: {', '.join(state.get('dead_enemies', [])) or 'none'}{(' Respawns: ' + _resp) if _resp else ''}"
+            f"{event_ctx}\n"
+            + (
+                f"My Nexus HP: {vs.get('nexus_hp_my', 100)}%  "
+                f"Enemy Nexus HP: {vs.get('nexus_hp_enemy', 100)}%"
+                if "NEXUSBLITZ" in mode else ""
+            )
+            + f"\nDS top items ({_ds_label} ranked, own-items-accounted): {_ds_picks_str}"
+        )
+
+        import time as _time_a
+        _t0 = _time_a.perf_counter()
+        # AUDIT 2026-04-29 (gap E): cache_control: ephemeral.
+        resp = self._client.messages.create(
+            model="claude-haiku-4-5-20251001", max_tokens=600,
+            system=[{"type": "text", "text": system,
+                     "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user}],
+            timeout=20,
+        )
+        # AUDIT 2026-04-29 (gap A): cost + trace telemetry.
+        self._record_coach_call(resp, system=system, user=user,
+                                t0_perf=_t0,
+                                model="claude-haiku-4-5-20251001",
+                                purpose="brawl_coach")
+        raw    = resp.content[0].text
+        fields = parse_fields(raw, output_keys)
+        if not fields:
+            logger.warning("Brawl: no fields parsed")
+            return
+
+        # Passthrough for the optional native-emit `choices` JSON array.
+        # The model returns a single-line JSON list (per the OUTPUT FORMAT
+        # block); parse_fields stores it as a string. We read the decoded
+        # list off the shared validated CoachOutput model (one seam) and
+        # write a real Python list into the artifact so the dashboard's
+        # state builder picks it up via core.coach_choices.parse_choices.
+        # from_fields routes `choices` through the model's before-validator,
+        # which silently swallows malformed/non-list input and returns []
+        # so the synthesizer fallback in _state_builder covers the tick.
+        # The choices field is OPTIONAL by contract.
+        from core.coach_output import CoachOutput
+        _choices_list = CoachOutput.from_fields(fields).choices
+
+        current = load_json(self._out)
+        _champ = state.get("champion", "")
+        current.update({
+            "action":        fields.get("action",       "").upper(),
+            "immediate":     fields.get("immediate",    ""),
+            "event_advice":  fields.get("event",        ""),
+            "fight_rule":    fields.get("fight rule",   ""),
+            "wave":          fields.get("wave",         ""),
+            "reset_item":    fields.get("reset / item", ""),
+            "objective":     fields.get("objective",    ""),
+            "risk":          fields.get("risk",         ""),
+            "comp_analysis": fields.get("comp analysis",""),
+            "choices":       _choices_list,
+            "game_time_s":   state.get("game_seconds",  0),
+            "hp_pct":        state.get("hp_pct",        100),
+            "kda":           state.get("kda",           "0/0/0"),
+            "gold":          state.get("gold",          0),
+            "game_mode":     mode,
+            # (audit cycle 4) Mirror ARAM coach: write champion +
+            # ally_spells so the dashboard's header pill flips
+            # immediately at champ-pop instead of relying on the
+            # /api/locked-champion fallback poll.
+            "champion":      _champ,
+            "ally_spells":   {_champ: [{"spell": state.get("summoner_d", ""), "cd_s": 0},
+                                       {"spell": state.get("summoner_f", ""), "cd_s": 0}]}
+                            if _champ and (state.get("summoner_d") or state.get("summoner_f")) else {},
+        })
+        mirror_live_stats(current, state)
+
+        if _ds_dispatch is not None:
+            current["daemon_slayer_picks"] = _ds_dispatch.display_rows
+
+        safe_write(self._out, current)
+        logger.debug("Brawl coaching written (%d fields)", len(fields))
+        # Live metric streaming (feature-flagged; core.live_metrics gate).
+        live_metrics.stream(self, current, state, self._MODE_NAME)
+        try:
+            from core.coaching_timestamps import write_coaching_ts as _wts
+            _wts("brawl")
+        except Exception:  # noqa: BLE001
+            pass
 
 
 # -- Vision reader -------------------------------------------------------------

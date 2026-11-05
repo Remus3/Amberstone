@@ -165,9 +165,11 @@ def test_rewrites_are_equivalent():
         d[key] = cur + 10
     assert d == {"p": 11, "q": 12}
     err = RuntimeError("boom")
+    handled: list = []
     with pytest.raises(RuntimeError) as bare:
         try:
             raise err
         except Exception:
+            handled.append(True)
             raise
-    assert bare.value is err
+    assert bare.value is err and handled == [True]

@@ -645,295 +645,292 @@ class Coach(BaseCoach):
             pass
         if not self._client:
             return
-        try:
-            from coach_integration import CHAMPION_PROFILES, GENERIC_PROFILE
-            champ   = state.get("champion", "Unknown")
-            profile = CHAMPION_PROFILES.get(champ, GENERIC_PROFILE)
-            arena_meta = _load_arena_build_note(champ)
-            _hint = ""
-            if os.environ.get("RC_COACH_ADAPTATION") == "1":
-                try:
-                    from coaches.adaptation_hint import format_hint_line as _fhl
-                    _hint = _fhl(champ, "arena", None)
-                except Exception:  # noqa: BLE001
-                    pass
-            system  = _SYSTEM_PROMPT.format(profile=profile, arena_meta=arena_meta, adaptation_hint=_hint)
-
-            teams = state.get("teams", [])
-            rankings = "\n".join(
-                f"  {'[YOU]' if t.get('is_you') else '     '} "
-                f"{t.get('name', '?')[:12]:12}  {t.get('hp_pct', 100):3d}%"
-                + (" [NEXT OPP]" if t.get("is_next_opponent") else "")
-                + (" [DEAD]"     if t.get("is_dead")           else "")
-                for t in sorted(teams, key=lambda x: -x.get("hp_pct", 0))
-            ) or "  Team data loading..."
-
-            partner  = next((t.get("name", "?") for t in teams if t.get("is_partner")),  "Unknown")
-            next_opp = next((t.get("name", "?") for t in teams if t.get("is_next_opponent")), "Unknown")
-            augments = ", ".join(state.get("augments", [])) or "none"
-
-            vs = self._vision_state
-            vision_ctx = ""
-            if vs.get("camp_phase"):
-                vision_ctx = "CAMP PHASE ACTIVE - buy/upgrade items and heal now."
-            elif vs.get("anvil_choices"):
-                vision_ctx = f"ITEM ANVIL available: {', '.join(vs.get('anvil_choices', []))}"
-
-            # s182 (2026-05-13): rank_for() -> archetype dispatcher.
-            _ds_dispatch = None
-            _ds_picks_str = "unavailable"
-            _ds_label = "DPS"
+        from coach_integration import CHAMPION_PROFILES, GENERIC_PROFILE
+        champ   = state.get("champion", "Unknown")
+        profile = CHAMPION_PROFILES.get(champ, GENERIC_PROFILE)
+        arena_meta = _load_arena_build_note(champ)
+        _hint = ""
+        if os.environ.get("RC_COACH_ADAPTATION") == "1":
             try:
-                from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
-                from coach_integration.archetype_dispatch import (
-                    dispatch_for_coach as _ds_dispatch_for_coach,
-                    display_label as _ds_display_label,
-                )
-                # Trinkets + consumables share the Live Client inventory array
-                # with shop items, so the raw list charges the engine's 6-slot
-                # budget for a slot no build item occupies - and the same list
-                # is persisted as the calibration row's owned_items below.
-                owned_ids = _ds_resolve_inventory(state.get("items", []), mode="arena")
-                target_bonus_hp = self._estimate_target_bonus_hp(state)
-                _lvl = int(state.get("level", 1)) or 1
-                # s170: replaces hardcoded target_armor=80.0 with level-aware
-                # Arena curve. Item-aware bonus_hp estimator wins via override
-                # when enemies show items.
-                _es = _ds_enemy_stats(
-                    mode="arena",
-                    game_seconds=int(state.get("game_seconds", 0) or 0),
-                    level=_lvl,
-                    bonus_hp_override=target_bonus_hp if target_bonus_hp > 0 else None,
-                    enemy_champions=state.get("enemy_comp", []),
-                )
-                _ds_dispatch = _ds_dispatch_for_coach(
-                    champion=champ,
-                    mode_engine="ARENA",
-                    level=_lvl,
-                    item_ids=owned_ids,
-                    enemy_stats=_es,
-                    augments=state.get("augments") or None,
-                    top=5,
-                    # R5 self-HP: absent -> dispatch guard yields 0.0 (OFF).
-                    caster_hp=state.get("hp"),
-                    caster_hp_max=state.get("hp_max"),
-                    # RM-875: DEFAULT-OFF; False sends no body key.
-                    apply_mode_modifiers=_ARENA_MODE_MODIFIERS,
-                )
-                if _ds_dispatch is not None:
-                    _ds_picks_str = _ds_dispatch.picks_str
-                    _ds_label = _ds_display_label(_ds_dispatch.scorer)
-            except Exception as _ds_exc:  # noqa: BLE001
-                logger.debug("Arena daemon_slayer pre-call: %s", _ds_exc)
-            if _ds_dispatch is not None and _ds_dispatch.rows:
-                try:
-                    from core.ds_calibration import (
-                        current_engine_version as _ds_engine_version,
-                        enemy_stats_summary as _ds_enemy_summary,
-                        log_ds_run as _ds_log,
-                    )
-                    # D-01b: Arena never surfaces a Live Client game_id, so mint
-                    # the shared per-match key (same seam the metric streamer
-                    # uses) or these rows stay permanently unjoinable.
-                    _ds_mk = live_metrics.match_key(
-                        self, {"champion": champ,
-                               "game_time_s": state.get("game_seconds")},
-                        state, "ARENA")
-                    _ds_log(champion=champ, mode="ARENA", level=int(state.get("level", 1)) or 1,
-                            owned_items=list(owned_ids), match_key=_ds_mk,
-                            ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
-                                       "delta_dps": _r["delta_dps"], "gold": _r["gold"],
-                                       "scorer": _r["scorer"]}
-                                      for _r in _ds_dispatch.display_rows],
-                            # RM-875 item 5: the re-run inputs (G5-05 CHECK B).
-                            enemy_stats=_ds_enemy_summary(_es),
-                            augments=list(state.get("augments") or []),
-                            engine_version=_ds_engine_version(),
-                            apply_mode_modifiers=_ARENA_MODE_MODIFIERS)
-                except Exception:  # noqa: BLE001
-                    pass
+                from coaches.adaptation_hint import format_hint_line as _fhl
+                _hint = _fhl(champ, "arena", None)
+            except Exception:  # noqa: BLE001
+                pass
+        system  = _SYSTEM_PROMPT.format(profile=profile, arena_meta=arena_meta, adaptation_hint=_hint)
 
-            # Arena enemy roster: every team-name that is not me, not my
-            # partner, alive or dead - drive enemy_cc_threat_line off it.
-            # Skips champion-mode placeholders ("Player0" etc) by length:
-            # championName-derived names are always non-empty alphanumerics.
-            _arena_enemies = [
-                t.get("name")
-                for t in teams
-                if not t.get("is_you") and not t.get("is_partner")
-            ]
-            user = _USER_TEMPLATE.format(
-                round         = state.get("round", 0),
-                champion      = champ,
-                partner       = partner,
-                hp_pct        = state.get("hp_pct",  100),
-                gold          = state.get("gold",    0),
-                level         = state.get("level",   1),
-                kda           = state.get("kda",     "0/0/0"),
-                items         = ", ".join(state.get("items", [])) or "none",
-                rank          = state.get("rank",    "?"),
-                alive         = state.get("alive_teams", 8),
-                next_opp      = next_opp,
-                team_rankings = rankings,
-                augments      = augments,
-                my_abilities  = fmt_abilities(state.get("my_abilities", {})),
-                enemy_cc_threats = enemy_cc_threat_line(
-                    _arena_enemies,
-                    state.get("game_mode", "CHERRY"),
-                ),
-                cc_blended_ehp_impact = cc_blended_ehp_impact_line(
-                    _arena_enemies,
-                    state.get("game_mode", "CHERRY"),
-                ),
-                cc_conditional_impact = cc_conditional_impact_line(
-                    _arena_enemies,
-                    state.get("game_mode", "CHERRY"),
-                ),
-                ds_picks      = _ds_picks_str,
-                ds_label      = _ds_label,
-                vision_context = vision_ctx,
+        teams = state.get("teams", [])
+        rankings = "\n".join(
+            f"  {'[YOU]' if t.get('is_you') else '     '} "
+            f"{t.get('name', '?')[:12]:12}  {t.get('hp_pct', 100):3d}%"
+            + (" [NEXT OPP]" if t.get("is_next_opponent") else "")
+            + (" [DEAD]"     if t.get("is_dead")           else "")
+            for t in sorted(teams, key=lambda x: -x.get("hp_pct", 0))
+        ) or "  Team data loading..."
+
+        partner  = next((t.get("name", "?") for t in teams if t.get("is_partner")),  "Unknown")
+        next_opp = next((t.get("name", "?") for t in teams if t.get("is_next_opponent")), "Unknown")
+        augments = ", ".join(state.get("augments", [])) or "none"
+
+        vs = self._vision_state
+        vision_ctx = ""
+        if vs.get("camp_phase"):
+            vision_ctx = "CAMP PHASE ACTIVE - buy/upgrade items and heal now."
+        elif vs.get("anvil_choices"):
+            vision_ctx = f"ITEM ANVIL available: {', '.join(vs.get('anvil_choices', []))}"
+
+        # s182 (2026-05-13): rank_for() -> archetype dispatcher.
+        _ds_dispatch = None
+        _ds_picks_str = "unavailable"
+        _ds_label = "DPS"
+        try:
+            from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
+            from coach_integration.archetype_dispatch import (
+                dispatch_for_coach as _ds_dispatch_for_coach,
+                display_label as _ds_display_label,
             )
-
-            # -- Same-state Haiku-skip debounce (DEFAULT-OFF) --------------
-            # When ON, skip the redundant messages.create if the coarse
-            # coaching-relevant signature is unchanged AND the cached
-            # coaching is younger than the hard max-staleness ceiling. The
-            # prior coaching artifact is already on disk (written by the
-            # last non-skipped tick) so reuse is a no-op write. When OFF
-            # (default) this block is inert and behavior is byte-identical.
-            if _STATE_DEBOUNCE:
-                import time as _time_dbnc
-                _sig = _coach_state_signature(state, vs)
-                _last_sig = getattr(self, "_state_dbnc_sig", None)
-                _last_ts = getattr(self, "_state_dbnc_ts", 0.0)
-                _now_dbnc = _time_dbnc.time()
-                if (
-                    _last_sig is not None
-                    and _sig == _last_sig
-                    and (_now_dbnc - _last_ts) < _STATE_DEBOUNCE_MAX_STALE_S
-                ):
-                    logger.debug(
-                        "Arena state-debounce: signature unchanged "
-                        "(age %.1fs < %.0fs ceiling) - reusing cached coaching",
-                        _now_dbnc - _last_ts, _STATE_DEBOUNCE_MAX_STALE_S,
-                    )
-                    return
-
-            import time as _time_a
-            _t0 = _time_a.perf_counter()
-            # AUDIT 2026-04-29 (gap E): cache_control: ephemeral on the
-            # system prompt - system prompt is reused every tick.
-            resp = self._client.messages.create(
-                model="claude-haiku-4-5-20251001", max_tokens=650,
-                system=[{"type": "text", "text": system,
-                         "cache_control": {"type": "ephemeral"}}],
-                messages=[{"role": "user", "content": user}],
-                timeout=20,
+            # Trinkets + consumables share the Live Client inventory array
+            # with shop items, so the raw list charges the engine's 6-slot
+            # budget for a slot no build item occupies - and the same list
+            # is persisted as the calibration row's owned_items below.
+            owned_ids = _ds_resolve_inventory(state.get("items", []), mode="arena")
+            target_bonus_hp = self._estimate_target_bonus_hp(state)
+            _lvl = int(state.get("level", 1)) or 1
+            # s170: replaces hardcoded target_armor=80.0 with level-aware
+            # Arena curve. Item-aware bonus_hp estimator wins via override
+            # when enemies show items.
+            _es = _ds_enemy_stats(
+                mode="arena",
+                game_seconds=int(state.get("game_seconds", 0) or 0),
+                level=_lvl,
+                bonus_hp_override=target_bonus_hp if target_bonus_hp > 0 else None,
+                enemy_champions=state.get("enemy_comp", []),
             )
-            # AUDIT 2026-04-29 (gap A): cost + trace telemetry.
-            self._record_coach_call(resp, system=system, user=user,
-                                    t0_perf=_t0,
-                                    model="claude-haiku-4-5-20251001",
-                                    purpose="arena_coach")
-            raw    = resp.content[0].text
-            # ARCH-002 bug fix: pass keys argument (was missing - caused silent TypeError)
-            fields = parse_fields(raw, _OUTPUT_KEYS)
-            if not fields:
-                logger.warning("Arena: no fields parsed")
+            _ds_dispatch = _ds_dispatch_for_coach(
+                champion=champ,
+                mode_engine="ARENA",
+                level=_lvl,
+                item_ids=owned_ids,
+                enemy_stats=_es,
+                augments=state.get("augments") or None,
+                top=5,
+                # R5 self-HP: absent -> dispatch guard yields 0.0 (OFF).
+                caster_hp=state.get("hp"),
+                caster_hp_max=state.get("hp_max"),
+                # RM-875: DEFAULT-OFF; False sends no body key.
+                apply_mode_modifiers=_ARENA_MODE_MODIFIERS,
+            )
+            if _ds_dispatch is not None:
+                _ds_picks_str = _ds_dispatch.picks_str
+                _ds_label = _ds_display_label(_ds_dispatch.scorer)
+        except Exception as _ds_exc:  # noqa: BLE001
+            logger.debug("Arena daemon_slayer pre-call: %s", _ds_exc)
+        if _ds_dispatch is not None and _ds_dispatch.rows:
+            try:
+                from core.ds_calibration import (
+                    current_engine_version as _ds_engine_version,
+                    enemy_stats_summary as _ds_enemy_summary,
+                    log_ds_run as _ds_log,
+                )
+                # D-01b: Arena never surfaces a Live Client game_id, so mint
+                # the shared per-match key (same seam the metric streamer
+                # uses) or these rows stay permanently unjoinable.
+                _ds_mk = live_metrics.match_key(
+                    self, {"champion": champ,
+                           "game_time_s": state.get("game_seconds")},
+                    state, "ARENA")
+                _ds_log(champion=champ, mode="ARENA", level=int(state.get("level", 1)) or 1,
+                        owned_items=list(owned_ids), match_key=_ds_mk,
+                        ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
+                                   "delta_dps": _r["delta_dps"], "gold": _r["gold"],
+                                   "scorer": _r["scorer"]}
+                                  for _r in _ds_dispatch.display_rows],
+                        # RM-875 item 5: the re-run inputs (G5-05 CHECK B).
+                        enemy_stats=_ds_enemy_summary(_es),
+                        augments=list(state.get("augments") or []),
+                        engine_version=_ds_engine_version(),
+                        apply_mode_modifiers=_ARENA_MODE_MODIFIERS)
+            except Exception:  # noqa: BLE001
+                pass
+
+        # Arena enemy roster: every team-name that is not me, not my
+        # partner, alive or dead - drive enemy_cc_threat_line off it.
+        # Skips champion-mode placeholders ("Player0" etc) by length:
+        # championName-derived names are always non-empty alphanumerics.
+        _arena_enemies = [
+            t.get("name")
+            for t in teams
+            if not t.get("is_you") and not t.get("is_partner")
+        ]
+        user = _USER_TEMPLATE.format(
+            round         = state.get("round", 0),
+            champion      = champ,
+            partner       = partner,
+            hp_pct        = state.get("hp_pct",  100),
+            gold          = state.get("gold",    0),
+            level         = state.get("level",   1),
+            kda           = state.get("kda",     "0/0/0"),
+            items         = ", ".join(state.get("items", [])) or "none",
+            rank          = state.get("rank",    "?"),
+            alive         = state.get("alive_teams", 8),
+            next_opp      = next_opp,
+            team_rankings = rankings,
+            augments      = augments,
+            my_abilities  = fmt_abilities(state.get("my_abilities", {})),
+            enemy_cc_threats = enemy_cc_threat_line(
+                _arena_enemies,
+                state.get("game_mode", "CHERRY"),
+            ),
+            cc_blended_ehp_impact = cc_blended_ehp_impact_line(
+                _arena_enemies,
+                state.get("game_mode", "CHERRY"),
+            ),
+            cc_conditional_impact = cc_conditional_impact_line(
+                _arena_enemies,
+                state.get("game_mode", "CHERRY"),
+            ),
+            ds_picks      = _ds_picks_str,
+            ds_label      = _ds_label,
+            vision_context = vision_ctx,
+        )
+
+        # -- Same-state Haiku-skip debounce (DEFAULT-OFF) --------------
+        # When ON, skip the redundant messages.create if the coarse
+        # coaching-relevant signature is unchanged AND the cached
+        # coaching is younger than the hard max-staleness ceiling. The
+        # prior coaching artifact is already on disk (written by the
+        # last non-skipped tick) so reuse is a no-op write. When OFF
+        # (default) this block is inert and behavior is byte-identical.
+        if _STATE_DEBOUNCE:
+            import time as _time_dbnc
+            _sig = _coach_state_signature(state, vs)
+            _last_sig = getattr(self, "_state_dbnc_sig", None)
+            _last_ts = getattr(self, "_state_dbnc_ts", 0.0)
+            _now_dbnc = _time_dbnc.time()
+            if (
+                _last_sig is not None
+                and _sig == _last_sig
+                and (_now_dbnc - _last_ts) < _STATE_DEBOUNCE_MAX_STALE_S
+            ):
+                logger.debug(
+                    "Arena state-debounce: signature unchanged "
+                    "(age %.1fs < %.0fs ceiling) - reusing cached coaching",
+                    _now_dbnc - _last_ts, _STATE_DEBOUNCE_MAX_STALE_S,
+                )
                 return
 
-            # Passthrough for the optional native-emit `choices` JSON array.
-            # The model returns a single-line JSON list (per the OUTPUT FORMAT
-            # block); parse_fields stores it as a string. We read the decoded
-            # list off the shared validated CoachOutput model (one seam) and
-            # write a real Python list into the artifact so the dashboard's
-            # state builder picks it up via core.coach_choices.parse_choices.
-            # from_fields routes `choices` through the model's before-validator,
-            # which silently swallows malformed/non-list input and returns []
-            # so the synthesizer fallback in _state_builder covers the tick.
-            # The choices field is OPTIONAL by contract.
-            from core.coach_output import CoachOutput
-            _choices_list = CoachOutput.from_fields(fields).choices
+        import time as _time_a
+        _t0 = _time_a.perf_counter()
+        # AUDIT 2026-04-29 (gap E): cache_control: ephemeral on the
+        # system prompt - system prompt is reused every tick.
+        resp = self._client.messages.create(
+            model="claude-haiku-4-5-20251001", max_tokens=650,
+            system=[{"type": "text", "text": system,
+                     "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user}],
+            timeout=20,
+        )
+        # AUDIT 2026-04-29 (gap A): cost + trace telemetry.
+        self._record_coach_call(resp, system=system, user=user,
+                                t0_perf=_t0,
+                                model="claude-haiku-4-5-20251001",
+                                purpose="arena_coach")
+        raw    = resp.content[0].text
+        # ARCH-002 bug fix: pass keys argument (was missing - caused silent TypeError)
+        fields = parse_fields(raw, _OUTPUT_KEYS)
+        if not fields:
+            logger.warning("Arena: no fields parsed")
+            return
 
-            current = load_json(self._out)
-            current.update({
-                "action":          fields.get("action",          "").upper(),
-                "round_strategy":  fields.get("round strategy",  ""),
-                "fight_rule":      fields.get("fight rule",       ""),
-                "augment_advice":  fields.get("augment advice",  ""),
-                "anvil_advice":    fields.get("anvil advice",    ""),
-                "target_priority": fields.get("target priority", ""),
-                "risk":            fields.get("risk",            ""),
-                "choices":       _choices_list,
-                "teams":           teams,
-                "round":           state.get("round",        0),
-                "rank":            state.get("rank",         "?"),
-                "alive_teams":     state.get("alive_teams",  8),
-                "hp_pct":          state.get("hp_pct",       100),
-                "wins":            state.get("wins",         0),
-                "losses":          state.get("losses",       0),
-                "game_time_s":     state.get("game_seconds", 0),
-                "camp_phase":      vs.get("camp_phase",      False),
-                # (audit cycle 4) Mirror ARAM coach: write champion +
-                # ally_spells to the artifact so the dashboard's header
-                # champion-pill flips immediately at champ-pop instead of
-                # waiting for the /api/locked-champion fallback poll.
-                "champion":        champ,
-                "ally_spells":     {champ: [{"spell": state.get("summoner_d", ""), "cd_s": 0},
-                                            {"spell": state.get("summoner_f", ""), "cd_s": 0}]}
-                                  if champ and (state.get("summoner_d") or state.get("summoner_f")) else {},
-            })
-            mirror_live_stats(current, state)
+        # Passthrough for the optional native-emit `choices` JSON array.
+        # The model returns a single-line JSON list (per the OUTPUT FORMAT
+        # block); parse_fields stores it as a string. We read the decoded
+        # list off the shared validated CoachOutput model (one seam) and
+        # write a real Python list into the artifact so the dashboard's
+        # state builder picks it up via core.coach_choices.parse_choices.
+        # from_fields routes `choices` through the model's before-validator,
+        # which silently swallows malformed/non-list input and returns []
+        # so the synthesizer fallback in _state_builder covers the tick.
+        # The choices field is OPTIONAL by contract.
+        from core.coach_output import CoachOutput
+        _choices_list = CoachOutput.from_fields(fields).choices
 
-            # Per-round item advisor (s33). Replaces the static champ-select
-            # item_build (frozen full_build joined) with a recommendation
-            # that dedups against owned items + re-ranks by alive opponents'
-            # tank/healer counts. Pure rule-based; no Haiku call.
-            try:
-                alive_opps = [
-                    t.get("name", "") for t in teams
-                    if not t.get("is_dead")
-                    and not t.get("is_you")
-                    and not t.get("is_partner")
-                ]
-                new_build = recompute_arena_build(
-                    champion=champ,
-                    current_items=state.get("items", []),
-                    gold=state.get("gold", 0),
-                    alive_opponents=alive_opps,
-                    hp_pct=state.get("hp_pct", 100),
-                )
-                if new_build:
-                    current["item_build"] = ", ".join(new_build)
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("arena item advisor: %s", exc)
+        current = load_json(self._out)
+        current.update({
+            "action":          fields.get("action",          "").upper(),
+            "round_strategy":  fields.get("round strategy",  ""),
+            "fight_rule":      fields.get("fight rule",       ""),
+            "augment_advice":  fields.get("augment advice",  ""),
+            "anvil_advice":    fields.get("anvil advice",    ""),
+            "target_priority": fields.get("target priority", ""),
+            "risk":            fields.get("risk",            ""),
+            "choices":       _choices_list,
+            "teams":           teams,
+            "round":           state.get("round",        0),
+            "rank":            state.get("rank",         "?"),
+            "alive_teams":     state.get("alive_teams",  8),
+            "hp_pct":          state.get("hp_pct",       100),
+            "wins":            state.get("wins",         0),
+            "losses":          state.get("losses",       0),
+            "game_time_s":     state.get("game_seconds", 0),
+            "camp_phase":      vs.get("camp_phase",      False),
+            # (audit cycle 4) Mirror ARAM coach: write champion +
+            # ally_spells to the artifact so the dashboard's header
+            # champion-pill flips immediately at champ-pop instead of
+            # waiting for the /api/locked-champion fallback poll.
+            "champion":        champ,
+            "ally_spells":     {champ: [{"spell": state.get("summoner_d", ""), "cd_s": 0},
+                                        {"spell": state.get("summoner_f", ""), "cd_s": 0}]}
+                              if champ and (state.get("summoner_d") or state.get("summoner_f")) else {},
+        })
+        mirror_live_stats(current, state)
 
-            if _ds_dispatch is not None:
-                current["daemon_slayer_picks"] = _ds_dispatch.display_rows
+        # Per-round item advisor (s33). Replaces the static champ-select
+        # item_build (frozen full_build joined) with a recommendation
+        # that dedups against owned items + re-ranks by alive opponents'
+        # tank/healer counts. Pure rule-based; no Haiku call.
+        try:
+            alive_opps = [
+                t.get("name", "") for t in teams
+                if not t.get("is_dead")
+                and not t.get("is_you")
+                and not t.get("is_partner")
+            ]
+            new_build = recompute_arena_build(
+                champion=champ,
+                current_items=state.get("items", []),
+                gold=state.get("gold", 0),
+                alive_opponents=alive_opps,
+                hp_pct=state.get("hp_pct", 100),
+            )
+            if new_build:
+                current["item_build"] = ", ".join(new_build)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("arena item advisor: %s", exc)
 
-            safe_write(self._out, current)
-            # -- Same-state Haiku-skip debounce: record the signature + ts of
-            # THIS just-coached state so the next tick can skip a redundant
-            # call. Only tracked when the gate is ON; inert (and byte-identical)
-            # when OFF. Computed from the same state/vs that drove this call so
-            # the cached artifact matches the signature.
-            if _STATE_DEBOUNCE:
-                import time as _time_dbnc2
-                self._state_dbnc_sig = _coach_state_signature(state, vs)
-                self._state_dbnc_ts = _time_dbnc2.time()
-            logger.debug("Arena coaching written (%d fields)", len(fields))
-            # Live metric streaming (feature-flagged; core.live_metrics gate).
-            live_metrics.stream(self, current, state, self._MODE_NAME)
-            try:
-                from core.coaching_timestamps import write_coaching_ts as _wts
-                _wts("arena")
-            except Exception:  # noqa: BLE001
-                # D-class: callee already swallows (the except Exception in
-                # core.coaching_timestamps.write_coaching_ts logs at DEBUG and
-                # returns None), so narrowing this handler would be dead code.
-                pass
-        except Exception:
-            raise
+        if _ds_dispatch is not None:
+            current["daemon_slayer_picks"] = _ds_dispatch.display_rows
+
+        safe_write(self._out, current)
+        # -- Same-state Haiku-skip debounce: record the signature + ts of
+        # THIS just-coached state so the next tick can skip a redundant
+        # call. Only tracked when the gate is ON; inert (and byte-identical)
+        # when OFF. Computed from the same state/vs that drove this call so
+        # the cached artifact matches the signature.
+        if _STATE_DEBOUNCE:
+            import time as _time_dbnc2
+            self._state_dbnc_sig = _coach_state_signature(state, vs)
+            self._state_dbnc_ts = _time_dbnc2.time()
+        logger.debug("Arena coaching written (%d fields)", len(fields))
+        # Live metric streaming (feature-flagged; core.live_metrics gate).
+        live_metrics.stream(self, current, state, self._MODE_NAME)
+        try:
+            from core.coaching_timestamps import write_coaching_ts as _wts
+            _wts("arena")
+        except Exception:  # noqa: BLE001
+            # D-class: callee already swallows (the except Exception in
+            # core.coaching_timestamps.write_coaching_ts logs at DEBUG and
+            # returns None), so narrowing this handler would be dead code.
+            pass
 
     def _handle_augment_select(self, vision_state: dict) -> None:
         if not self._client:
