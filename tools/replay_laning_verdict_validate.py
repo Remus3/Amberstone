@@ -552,7 +552,7 @@ def run_validation(
 
 
 def _tally_gold(lr: LevelResult, status: str, agreed: bool, lane: str) -> None:
-    if status == "uncovered" or status == "even":
+    if status in ("uncovered", "even"):
         lr.n_even += 1
     elif status == "gold_tie":
         lr.n_gold_tie += 1
@@ -561,7 +561,7 @@ def _tally_gold(lr: LevelResult, status: str, agreed: bool, lane: str) -> None:
 
 
 def _tally_duel(lr: LevelResult, status: str, agreed: bool, lane: str) -> None:
-    if status == "uncovered" or status == "even":
+    if status in ("uncovered", "even"):
         lr.n_even += 1
     elif status == "no_duel":
         lr.n_no_duel += 1

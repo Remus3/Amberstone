@@ -121,7 +121,7 @@ def check_fields(snaps: list[dict], mode_value: str, seeds: dict[str, Any],
         for f, seed in seeds.items():
             v = s["fields"].get(f)
             # "" is an empty read (event_location defaults to it), never a hit.
-            if v is not None and v != "" and v != seed and v not in seen[f]:
+            if v is not None and v not in ("", seed) and v not in seen[f]:
                 seen[f].append(v)
     hits = {f: vals for f, vals in seen.items() if vals}
     if not fresh:

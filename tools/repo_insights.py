@@ -439,7 +439,7 @@ def render_html(f: dict) -> str:
     done = orch["status"].get("DONE", 0)
     closed = orch["status"].get("CLOSED", 0)
     openn = orch["status"].get("OPEN", 0)
-    non_terminal = sum(v for k, v in orch["status"].items() if k != "DONE" and k != "CLOSED")
+    non_terminal = sum(v for k, v in orch["status"].items() if k not in ("DONE", "CLOSED"))
     glance2 = (
         "<strong>Loop state:</strong> ORCHESTRATION_PLAN shows "
         + " / ".join(f"{v} {k}" for k, v in sorted(orch["status"].items()))

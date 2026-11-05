@@ -138,7 +138,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
     queue_id  = enriched.get("queue_id") or 0
     game_mode = (enriched.get("game_mode") or "").upper()
     is_arena   = queue_id in (1700, 1710, 1750) or game_mode == "CHERRY"
-    is_aram    = (queue_id == 450 or queue_id == 2400
+    is_aram    = (queue_id in (450, 2400)
                   or game_mode in ("ARAM", "KIWI"))
     is_sr      = (queue_id in (400, 420, 430, 440)
                   or (game_mode == "CLASSIC" and not is_aram))

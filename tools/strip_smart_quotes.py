@@ -231,7 +231,7 @@ def _replace_201d_safe(raw: bytes) -> tuple[bytes, int, int]:
         # Check mojibake neighbours
         prev = raw[max(0, idx - 3):idx]
         nxt = raw[idx + 3:idx + 6]
-        is_moji = (nxt == _MOJI_NEIGHBOUR) or (prev == _MOJI_NEIGHBOUR)
+        is_moji = _MOJI_NEIGHBOUR in (nxt, prev)
         if is_moji:
             out.append(src)  # keep mojibake intact
             n_moji += 1

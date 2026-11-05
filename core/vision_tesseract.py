@@ -625,7 +625,7 @@ def _parse_field(name: str, crop):
     if name == "score_red":
         v = _ocr_colored_int(crop, channel="R")
         return v if v is not None and 0 <= v <= 99 else None
-    if name == "ping" or name == "fps":
+    if name in ("ping", "fps"):
         import pytesseract
         s = pytesseract.image_to_string(
             _preprocess(crop), config="--oem 3 --psm 7",

@@ -253,7 +253,7 @@ def _normalize_damage_type(dt: Optional[str]) -> str:
     d = dt.strip().upper()
     if d == "PHYSICAL":
         return "physical"
-    if d == "MAGIC" or d == "MAGICAL":
+    if d in ("MAGIC", "MAGICAL"):
         return "magical"
     if d == "TRUE":
         return "true"

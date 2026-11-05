@@ -42,7 +42,7 @@ def _serve_index(h) -> None:
 
 
 def _index_matcher(path: str) -> bool:
-    return (path == "/" or path == "/index.html"
+    return (path in ("/", "/index.html")
             or path.startswith(("/?", "/index.html?")))
 
 

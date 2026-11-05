@@ -87,7 +87,7 @@ def _strip_char(ch: str) -> str:
     same, so both map to a space and the word boundary a reader sees is
     the word boundary the patterns see.
     """
-    if ch == "\n" or ch == "\t":
+    if ch in ("\n", "\t"):
         return ch
     if ch.isspace() or unicodedata.category(ch) in _SEPARATOR_CATEGORIES:
         return " "

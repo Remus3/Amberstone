@@ -398,7 +398,7 @@ class TftStateReader:
         for p in (all_p if isinstance(all_p,list) else []):
             if not isinstance(p,dict): continue
             pn=p.get("summonerName") or p.get("riotIdGameName") or ""
-            if pn==mn or pn==self._my_name: me=p
+            if pn in (mn, self._my_name): me=p
             else: others.append(p)
         items=[]
         for it in (me.get("items",[]) or []):
