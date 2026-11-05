@@ -15,7 +15,8 @@ It now delegates to ``core.polled_json.atomic_write_bytes``. The bytes are the
 downloaded body, unchanged. scripts/ sits outside the repo-wide guard
 tests/test_atomic_write_guard_rm258_rm261.py (one-shot generator tree), so this
 module carries its own source pin. No test touches the network: ``urlopen`` is
-monkeypatched, and the transient failure is a monkeypatched ``os.replace``.
+monkeypatched (``open_consented`` since RM-1441), and the transient failure
+is a monkeypatched ``os.replace``.
 """
 from __future__ import annotations
 
@@ -64,7 +65,9 @@ class _Resp:
 
 @pytest.fixture(autouse=True)
 def _no_network(monkeypatch):
-    monkeypatch.setattr(CDA, "urlopen", lambda req, timeout=None: _Resp(_BODY))
+    # RM-1441: fetch opens through lib.wiki_consent.open_consented (setattr
+    # raises if the name is gone, so this fake can never go inert silently).
+    monkeypatch.setattr(CDA, "open_consented", lambda req, timeout=None: _Resp(_BODY))
     monkeypatch.setattr(CDA.time, "sleep", lambda _s: None)
 
 
@@ -133,7 +136,7 @@ def test_an_existing_non_empty_icon_is_skipped(tmp_path, monkeypatch):
     def boom(*a, **k):
         raise AssertionError("fetch must not download an icon already present")
 
-    monkeypatch.setattr(CDA, "urlopen", boom)
+    monkeypatch.setattr(CDA, "open_consented", boom)
     assert CDA.fetch("https://example.invalid/x.png", target) is False
     assert target.read_bytes() == b"kept"
 

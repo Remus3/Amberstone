@@ -11,7 +11,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from urllib.request import Request, urlopen
+from urllib.request import Request
 from urllib.error import URLError, HTTPError
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,6 +24,10 @@ from lib.icons.downloader import _safe_basename  # noqa: E402
 # RC-DDragonMirror task (tools/ddragon_mirror_refresh.py) writes the same
 # web/data/ddragon/<ver>/img/ tree through the same helper.
 from core.polled_json import atomic_write_bytes  # noqa: E402
+# RM-1441 (ruling 51): every icon GET opens through the consent opener, so a
+# Data Dragon url answering 3xx into the League wiki host is refused before a
+# wiki socket opens (urlopen's default opener followed it with no consent).
+from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
 
 # RM-372: the same shape as tools/ddragon_mirror_refresh.py VERSION_RE /
 # validate_version (fullmatch, so a trailing newline is refused). Kept local
@@ -56,10 +60,15 @@ def fetch(url: str, dest: Path, *, retries: int = 2, timeout: float = 6.0) -> bo
     for attempt in range(retries + 1):
         try:
             req = Request(url, headers={"User-Agent": "amberstone-asset-cache/1"})
-            with urlopen(req, timeout=timeout) as r:
+            with open_consented(req, timeout=timeout) as r:
                 body = r.read()
             atomic_write_bytes(dest, body)
             return True
+        except WikiFetchRefused as e:
+            # Not a transient network error: never retried, no file written;
+            # one failed icon, and the run moves on like any other failure.
+            sys.stderr.write(f"refused {url}: {e}\n")
+            return False
         except (URLError, HTTPError, TimeoutError) as e:
             if attempt == retries:
                 sys.stderr.write(f"fail {url}: {e}\n")
