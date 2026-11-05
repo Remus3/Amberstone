@@ -41,10 +41,12 @@ _DEFAULT_POLL_S = 0.5
 # Reported age for a snapshot carrying data whose timestamp could not be
 # established (absent, null, non-numeric, or implausibly far in the future).
 # FAIL-CLOSED: an unknown age reads as stale, never as fresh. A finite value
-# rather than float("inf") because core/decision_detector.py:830 and
-# core/vision_tracker.py:279 hand age_s back to callers and json.dumps emits a
-# bare `Infinity`, which is not valid JSON. One day exceeds every consumer gate
-# (the loosest is 12.0s at coaches/_base_coach.py:689).
+# rather than float("inf") because the `_fetch_snapshot` methods of
+# core/decision_detector.py and core/vision_tracker.py hand age_s back to
+# callers and json.dumps emits a bare `Infinity`, which is not valid JSON. One
+# day exceeds every consumer gate (the loosest is the 12.0s `RELAY_MAX_AGE_S`
+# in game_reader/poller.py, mirrored by `_fetch_game_data` in
+# coaches/_base_coach.py).
 _UNKNOWN_AGE_S = 86400.0
 
 # Tolerance for ordinary clock jitter before a future timestamp is treated as

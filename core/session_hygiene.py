@@ -18,7 +18,7 @@ consumer can trust small samples less. Raw n rides on every bucket so the
 UI can show/hide by confidence.
 
 Read-only. Mirrors core.duration_winrate's _open_ro() file:...?mode=ro seam
-(core/duration_winrate.py:57-64) so tests inject a synthetic tmp_path db and
+(`_open_ro` in core/duration_winrate.py) so tests inject a synthetic tmp_path db and
 the suite stays clean-checkout safe (the real db is gitignored). Never
 writes to the db. Never raises - an absent db or empty corpus returns a
 well-formed ok payload with empty buckets and an UNKNOWN readiness (score

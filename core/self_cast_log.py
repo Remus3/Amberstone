@@ -625,8 +625,8 @@ def match_tolerance(truth: int) -> int:
     return max(MATCH_ABS_TOL, int(round(MATCH_REL_TOL * max(0, int(truth)))))
 
 
-# Match-V5 participant fields; scripts/rewind_scraper.py:452 stores them in
-# rewind_history.db participants as spell1_casts..spell4_casts.
+# Match-V5 participant fields; `parse_participant` in scripts/rewind_scraper.py
+# stores them in rewind_history.db participants as spell1_casts..spell4_casts.
 _TRUTH_KEYS = {
     "Q": ("spell1_casts", "spell1Casts"),
     "W": ("spell2_casts", "spell2Casts"),

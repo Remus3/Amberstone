@@ -51,7 +51,7 @@ asymmetric:
   redundant second copy. Measured on the live tree 2026-08-04, that is FALSE:
   of 3123 cached timelines only 117 (3.75 pct) are in `rewind_history.db` and
   only 316 (10.12 pct) have a `.rofl`, leaving 2698 (86.39 pct) in NEITHER.
-  Nor does a `.rofl` substitute: `core/rofl_archive.py:611 extract_stats`
+  Nor does a `.rofl` substitute: `extract_stats` in core/rofl_archive.py
   does parse the replay's own trailing Layer-1 blob, but that blob is a final
   scoreboard (10 players x ~367 end-of-game fields) with no time series, and
   a timeline is per-minute frames plus events. The two stores are near-

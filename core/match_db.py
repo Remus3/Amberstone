@@ -222,8 +222,10 @@ class MatchDB:
         and a saved one were indistinguishable to every caller. The method
         still never raises - both production callers already wrap it in a
         try/except and would keep working either way - but the outcome is
-        now readable. Widening the return is additive: no caller in the tree
-        reads it (performance_tracker.py:415 and :477 discard it).
+        now readable. Widening the return was additive: the callers in
+        performance_tracker.py discarded it at the time; they now read it
+        (RM-904: `save_rating` and `_tft_db_write` in performance_tracker.py
+        treat `False` as a lost row and feed the caller's report).
         """
         sql, vals = self._insert_sql(data)
         try:
@@ -367,7 +369,7 @@ class MatchDB:
 
         RM-233: SQLite reads a NEGATIVE `LIMIT` as UNLIMITED, so the whole
         table came back for `get_recent(mode, -1)`. Clamped here rather than
-        only at the caller - `tools/ds_matchdb_mcp_server.py:342` does clamp
+        only at the caller - `tool_match_recent` in tools/ds_matchdb_mcp_server.py does clamp
         (`max(1, min(int(limit), 200))`), but this is a public method with a
         default argument and "LIMIT n returns at most n rows" belongs to it.
         `_as_int` keeps a numeric string working and never raises; 0 stays 0,

@@ -261,7 +261,7 @@ class MetricsCache:
         cancelled and cancellation is observed by the loop thread.  The
         cancel itself is safe from any thread - AppLoop.spawn_task uses
         asyncio.run_coroutine_threadsafe when called off the loop thread
-        (app/_loop.py:75-79), so _task is a concurrent.futures.Future
+        (`AppLoop.spawn_task` in app/_loop.py), so _task is a concurrent.futures.Future
         whose cancel() is thread-safe.  Blocking on it here would risk
         deadlocking shutdown against the very loop being stopped.
         """
