@@ -30,11 +30,26 @@ logging exception text with no scrub, and a new route adds another. So:
   ``exc_text`` pre-rendered through ``scrub_traceback`` (the stdlib
   ``Formatter`` uses a set ``exc_text`` instead of formatting the raw
   traceback). A record with neither is passed on untouched.
+
+s144 true-audit cycle 108 (RM-1383) adds secret redaction to the
+backstop. ``redact_secrets`` replaces a key-shaped token (an Anthropic
+``sk-ant-`` key, a Riot ``RGAPI-`` key) and the value of a header-shaped
+credential (``X-RC-Token``, ``X-Riot-Token``, ``X-Api-Key``,
+``Authorization``, and the ``ANTHROPIC_API_KEY`` / ``RIOT_API_KEY`` /
+``RC_DASH_TOKEN`` / ``RC_VISION_TOKEN`` env names) with ``[redacted]``. The filter
+applies it to every record's message, to the traceback it renders (frame
+lines included) and to an ``exc_text`` a caller already set. A record that
+cannot be formatted keeps going to the handler's error path unless the
+reprs that path prints hold a secret; then it becomes one redacted,
+control-escaped line. ``scrub_log`` stays a pure, injective control-character
+escaper: its output is pinned exactly, and the filter runs after it on
+every installed logger.
 """
 from __future__ import annotations
 
 import builtins
 import logging
+import re
 import traceback
 from http.server import BaseHTTPRequestHandler
 
@@ -94,6 +109,47 @@ _MAX_GROUP_DEPTH = 10
 _GROUP_TYPE = getattr(builtins, "BaseExceptionGroup", ())
 
 
+# RM-1383: the secret shapes a log line must never carry. False
+# positives are acceptable, a missed key is not. The Anthropic floor of 8
+# characters after the prefix matches tools/credential_patterns.py (a test
+# pins the parity); core does not import tools.
+REDACTED = "[redacted]"
+# A header- or env-shaped credential: the name (anywhere, so a prefixed
+# env name such as ``MY_ANTHROPIC_API_KEY`` matches), its separator, an
+# optional auth scheme, then the value. The separator is ``:`` or ``=``
+# with an optional quote either side, or a quoted comma (a header list of
+# ``(name, value)`` tuples); a quote may be escaped (JSON inside a string)
+# and a value quote may carry a ``b`` prefix (a bytes repr, the usual form
+# of a raw header list). It never crosses a line, so a name ending one line
+# cannot eat a word of the next. Run FIRST, so ``ANTHROPIC_API_KEY=sk-ant-``
+# keys become one ``[redacted]``. A second pass replaces ``[redacted]``
+# with itself, so the redaction is idempotent.
+_Q = r"\\?[\"']"
+_HEADER_SECRET = re.compile(
+    r"(?i)(x-rc-token|x-riot-token|x-api-key|authorization|"
+    r"anthropic_api_key|riot_api_key|rc_dash_token|rc_vision_token)"
+    rf"((?:{_Q})?[ \t]*[:=][ \t]*(?:b?{_Q})?|{_Q}[ \t]*,[ \t]*b?{_Q})"
+    r"((?:bearer|basic|token|digest|negotiate|apikey)[ \t]+)?"
+    r"[^\s\"',;{}()\\]+")
+_KEY_SECRETS = (
+    (re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}"), "sk-ant-" + REDACTED),
+    (re.compile(r"RGAPI-[A-Za-z0-9\-]{8,}"), "RGAPI-" + REDACTED),
+)
+
+
+def _header_sub(m: re.Match) -> str:
+    return f"{m[1]}{m[2]}{m[3] or ''}{REDACTED}"
+
+
+def redact_secrets(text: str) -> str:
+    """Replace every secret shape above with ``[redacted]``. Idempotent;
+    any other text, control characters included, is left as it is."""
+    text = _HEADER_SECRET.sub(_header_sub, text)
+    for pattern, marker in _KEY_SECRETS:
+        text = pattern.sub(marker, text)
+    return text
+
+
 def scrub_log(text: str, table=_UNSET) -> str:
     """Escape control characters so a request cannot inject into a log."""
     if table is _UNSET:
@@ -130,13 +186,14 @@ def _exception_text(exc: BaseException) -> str:
         text = "".join(traceback.format_exception_only(exc))
     except Exception:  # noqa: BLE001 - a broken __str__ / __notes__
         text = f"{type(exc).__name__}: <exception text unavailable>"
-    return scrub_log(text.rstrip("\n")) + "\n"
+    return scrub_log(redact_secrets(text.rstrip("\n"))) + "\n"
 
 
 def _frames(tb) -> list[str]:
     out: list[str] = []
     for frame in traceback.format_tb(tb):
-        out.append("\n".join(scrub_controls(part) for part in frame.split("\n")))
+        out.append("\n".join(scrub_controls(redact_secrets(part))
+                             for part in frame.split("\n")))
     return out
 
 
@@ -213,10 +270,16 @@ class ScrubFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             msg = record.getMessage()
-        except Exception:  # noqa: BLE001 - the handler reports a bad format
+        except Exception as fmt_exc:  # noqa: BLE001 - handler reports it
             msg = None
+            # RM-1383: Handler.handleError prints the format error's
+            # traceback and the reprs of the raw msg and args. Without a
+            # secret in any of them the record is left for that error path,
+            # as before; with one it is replaced by one redacted,
+            # control-escaped line that formats.
+            _replace_unformattable_secret(record, fmt_exc)
         if msg is not None:
-            clean = scrub_controls(msg)
+            clean = scrub_controls(redact_secrets(msg))
             if clean != msg:
                 record.msg, record.args = clean, ()
         exc_info = record.exc_info
@@ -228,10 +291,44 @@ class ScrubFilter(logging.Filter):
             except Exception:  # noqa: BLE001
                 # The type name is data too: a class built at runtime can
                 # carry an ESC or a newline, so it is scrubbed like the rest.
-                text = (f"{scrub_log(type(exc_info[1]).__name__)} "
+                text = (f"{scrub_log(redact_secrets(type(exc_info[1]).__name__))} "
                         "(traceback could not be rendered)")
             record.exc_text = text.rstrip("\n")
+        elif isinstance(record.exc_text, str) and record.exc_text:
+            # A caller rendered it already; its line structure is theirs,
+            # so only the secrets are removed (RM-1383).
+            record.exc_text = redact_secrets(record.exc_text)
         return True
+
+
+UNFORMATTABLE = "log record could not be formatted (secret redacted): "
+
+
+def _replace_unformattable_secret(record: logging.LogRecord,
+                                  fmt_exc: BaseException) -> None:
+    # Redacting the template or the args in place is NOT safe: a redaction
+    # can eat a ``%s`` and turn the bad record into one that formats with
+    # its raw, unescaped args (measured by the cycle-108 verifier). The
+    # whole record is rendered once, the way handleError prints it: the
+    # format error (its whole chain - an arg's __str__ can raise one that
+    # quotes a key) and the reprs.
+    try:
+        error = "".join(traceback.format_exception(fmt_exc))
+    except Exception:  # noqa: BLE001 - a broken __str__ / __notes__
+        error = type(fmt_exc).__name__
+    try:
+        raw = f"msg={record.msg!r} args={record.args!r}"
+    except Exception:  # noqa: BLE001 - a broken __repr__; nothing to print
+        raw = None
+    if raw is None:
+        if redact_secrets(error) == error:
+            return
+        raw = "msg=<repr unavailable> args=<repr unavailable>"
+    elif redact_secrets(raw) == raw and redact_secrets(error) == error:
+        return
+    record.msg = (UNFORMATTABLE + scrub_controls(redact_secrets(raw))
+                  + " error=" + _exception_text(fmt_exc).rstrip("\n"))
+    record.args = ()
 
 
 def install_scrub_filter(*loggers: logging.Logger | str) -> None:
