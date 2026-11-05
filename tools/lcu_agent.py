@@ -800,22 +800,22 @@ def execute_command(cmd: dict) -> dict:
     if name == "reroll":
         # ARAM reroll - POST /lol-champ-select/v1/session/my-selection/reroll.
         # Costs 1 reroll point; LCU returns 204 on success.
-        r, err = lcu_request("POST", "/lol-champ-select/v1/session/my-selection/reroll")
+        _r, err = lcu_request("POST", "/lol-champ-select/v1/session/my-selection/reroll")
         return {"ok": err is None, "err": err}
     if name == "accept_ready":
-        r, err = lcu_request("POST", "/lol-matchmaking/v1/ready-check/accept")
+        _r, err = lcu_request("POST", "/lol-matchmaking/v1/ready-check/accept")
         return {"ok": err is None, "err": err}
     if name == "bench_swap":
         # Accept both championId (canonical) and champion_id (legacy
         # snake_case) so older JS payloads keep working.
         cid = int(cmd.get("championId", cmd.get("champion_id", 0)))
         if cid <= 0: return {"ok": False, "err": "no champ"}
-        r, err = lcu_request("POST", f"/lol-champ-select/v1/session/bench/swap/{cid}")
+        _r, err = lcu_request("POST", f"/lol-champ-select/v1/session/bench/swap/{cid}")
         return {"ok": err is None, "err": err}
     if name == "set_summoners":
         d = int(cmd.get("d", 0)); f = int(cmd.get("f", 0))
         body = {"spell1Id": d, "spell2Id": f}
-        r, err = lcu_request("PATCH", "/lol-champ-select/v1/session/my-selection", body)
+        _r, err = lcu_request("PATCH", "/lol-champ-select/v1/session/my-selection", body)
         return {"ok": err is None, "err": err}
     if name == "set_summoner_spell":
         # Per-slot push from the champ-select summoner-spell strip
@@ -1112,7 +1112,7 @@ def execute_command(cmd: dict) -> dict:
         if pending_aid is None:
             return {"ok": False, "err": "no pending pick action"}
         body = {"championId": cid, "completed": True}
-        r, err = lcu_request("PATCH",
+        _r, err = lcu_request("PATCH",
             f"/lol-champ-select/v1/session/actions/{pending_aid}", body)
         return {"ok": err is None, "err": err}
     # -- Phase B lobby controls (s171) ---------------------------------
@@ -1295,7 +1295,7 @@ def auto_features() -> None:
                 if (cur_d, cur_f) != (want_d, want_f) and \
                         _session_state["last_summoner_set_for"] != key:
                     body = {"spell1Id": want_d, "spell2Id": want_f}
-                    r, err = lcu_request("PATCH",
+                    _r, err = lcu_request("PATCH",
                         "/lol-champ-select/v1/session/my-selection", body)
                     if err is None:
                         _session_state["last_summoner_set_for"] = key

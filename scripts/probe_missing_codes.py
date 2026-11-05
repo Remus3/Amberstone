@@ -88,7 +88,7 @@ def main() -> int:
             with urllib.request.urlopen(r, context=ctx, timeout=5) as resp: return resp.status, resp.read().decode()
         except urllib.error.HTTPError as e: return e.code, e.read().decode()[:200]
 
-    s, b = lcu("GET", "/lol-tft-team-planner/v1/previous-context")
+    _s, b = lcu("GET", "/lol-tft-team-planner/v1/previous-context")
     d = json.loads(b); tid = d.get("optionalTeamId", ""); sid = d.get("setId", "TFTSet17")
 
     def get_code():
@@ -108,7 +108,7 @@ def main() -> int:
         clr()
         found = False
         for fmt in fmts:
-            s2, b2 = lcu("POST", f"/lol-tft-team-planner/v1/sets/{sid}/teams/{tid}/champions/{fmt}")
+            s2, _b2 = lcu("POST", f"/lol-tft-team-planner/v1/sets/{sid}/teams/{tid}/champions/{fmt}")
             if s2 in (200, 201, 204):
                 time.sleep(0.15)
                 code = get_code()

@@ -1874,7 +1874,7 @@ def _parse_diff(out: str, stats: ScanStats):
             cur_status = "M"
             stats.files += 1
             continue
-        if raw.startswith("Binary files ") or raw.startswith("GIT binary patch"):
+        if raw.startswith(("Binary files ", "GIT binary patch")):
             stats.binary_blobs += 1
             continue
         m = _HUNK.match(raw)
@@ -1882,7 +1882,7 @@ def _parse_diff(out: str, stats: ScanStats):
             flush()
             next_line = int(m.group(1))
             continue
-        if raw.startswith("+++") or raw.startswith("---"):
+        if raw.startswith(("+++", "---")):
             continue
         if raw.startswith("+"):
             body = raw[1:]

@@ -178,7 +178,7 @@ def _lookup_summoner_by_id(request: Callable[..., tuple], sid: int):
                else _SUMMONER_LOOKUP_TTL_S)
         if (now - cached.get("fetched_at", 0)) < ttl:
             return cached.get("data")
-    payload, err = request("GET", f"/lol-summoner/v1/summoners/{sid}")
+    payload, _err = request("GET", f"/lol-summoner/v1/summoners/{sid}")
     if not isinstance(payload, dict):
         _prune_summoner_lookup_cache(now)
         _summoner_lookup_cache[sid] = {"data": None, "fetched_at": now}
@@ -331,7 +331,7 @@ def _resolve_local_summoner_id(request: Callable[..., tuple]) -> int | None:
     cached = _mastery_cache.get("summoner_id")
     if cached:
         return cached
-    me, err = request("GET", "/lol-summoner/v1/current-summoner")
+    me, _err = request("GET", "/lol-summoner/v1/current-summoner")
     if not isinstance(me, dict):
         return None
     sid = me.get("summonerId")
@@ -371,7 +371,7 @@ def _maybe_refresh_mastery(request: Callable[..., tuple]) -> dict | None:
     # local player's mastery without needing a sid/puuid path param. summonerId
     # is still resolved above so we can surface it on state["lcu"]["summoner_id"]
     # for downstream consumers.
-    payload, err = request(
+    payload, _err = request(
         "GET",
         "/lol-champion-mastery/v1/local-player/champion-mastery",
     )

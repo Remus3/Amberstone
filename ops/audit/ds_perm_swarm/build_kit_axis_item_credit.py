@@ -187,7 +187,7 @@ def _survives_fresh_gate(
     st = per_item.get(str(item_id))
     if not st or st[0] < _MIN_N:
         return False
-    cnt, wr = st
+    _cnt, wr = st
     if str(item_id) in _OFFCLASS_STAPLE_IDS:
         return wr >= base_wr - _STAPLE_BAND
     return wr > base_wr

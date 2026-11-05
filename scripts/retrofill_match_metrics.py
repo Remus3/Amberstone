@@ -197,7 +197,7 @@ def retrofill_match(src_conn, match: dict) -> int:
     # --- 10-minute snapshot ----------------------------------------
     f10 = _nearest_frame(src_conn, mid, pid, 600_000)
     if f10:
-        (ts, cg, tg, xp, lvl, cs, jg, dmg, dmg_t, px, py, cc) = f10
+        (ts, _cg, tg, xp, lvl, cs, _jg, _dmg, _dmg_t, _px, _py, _cc) = f10
         recorder.record(**base, key="cs_at_10", value=f"{cs} CS",
                         metric_type="numeric", game_time_s=ts // 1000,
                         milestone_tag="10min_mark")
@@ -214,7 +214,7 @@ def retrofill_match(src_conn, match: dict) -> int:
     # --- 15-minute snapshot ----------------------------------------
     f15 = _nearest_frame(src_conn, mid, pid, 900_000)
     if f15:
-        (ts, cg, tg, xp, lvl, cs, jg, dmg, dmg_t, px, py, cc) = f15
+        (ts, _cg, tg, xp, lvl, cs, _jg, _dmg, _dmg_t, _px, _py, _cc) = f15
         recorder.record(**base, key="cs_at_15", value=f"{cs} CS",
                         metric_type="numeric", game_time_s=ts // 1000,
                         milestone_tag="15min_mark")

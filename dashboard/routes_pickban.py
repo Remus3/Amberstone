@@ -603,7 +603,7 @@ def _query_last_in_queue(conn: sqlite3.Connection, puuid: str,
     row = cur.fetchone()
     if not row:
         return None
-    champ_id, champ_name, win, ts = row
+    champ_id, champ_name, win, _ts = row
     return {
         "champId":   int(champ_id),
         "champName": str(champ_name or "?"),

@@ -103,7 +103,7 @@ def _ds():
 
 
 def _thresholds() -> dict:
-    cc_output, mobility, threatrange, waveclear, _s, _a = _ds()
+    cc_output, _mobility, threatrange, waveclear, _s, _a = _ds()
     kw = cc_output._CC_KIND_WEIGHT
     return {
         # hard_cc: an unconditional CC of the hard-disable tier (stun, knock-up,

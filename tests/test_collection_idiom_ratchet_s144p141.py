@@ -150,7 +150,7 @@ def test_probe_is_live():
 def test_rewrites_are_equivalent():
     """The premise of each fix: same value or same exception object, same order."""
     pairs = [("b", 1), ("a", 2)]
-    assert {k: v for k, v in pairs} == dict(pairs)
+    assert {k: v for k, v in pairs} == dict(pairs)  # noqa: C416 - the identity form IS the premise
     assert list(dict(pairs)) == ["b", "a"]
     assert dict(level=1, mode="x") == {"level": 1, "mode": "x"}
     src = [1, 2, 3]

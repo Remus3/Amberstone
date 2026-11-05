@@ -197,7 +197,7 @@ def _candidate_scores(conn, cand: int, ally: list[int], enemy: list[int],
                       queues) -> dict:
     """Compute solo + hurts_them + helps_us ratings for one candidate."""
     # Solo prior: cand's lifetime smoothed WR -> rating.
-    w_solo, g_solo, r_solo = draft_elo_db.solo_winrate(conn, cand, queues)
+    _w_solo, g_solo, r_solo = draft_elo_db.solo_winrate(conn, cand, queues)
     solo_rating = draft_elo.winrate_to_rating(r_solo)
 
     # HURTS-THEM signal:

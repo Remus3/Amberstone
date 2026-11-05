@@ -15,10 +15,10 @@ scope; they hold the same idioms by the dozen and are not touched here.
 Left in the baseline on purpose, each for a named owner:
 
 - ``core/log_scrub.py`` is changed on the true-audit lane branch and
-  ``lib/http/client.py`` and ``scripts/fetch_cdragon_pbe.py`` on the queue lane
-  branch: a later repo cycle takes them once those lanes land.
+  ``scripts/fetch_cdragon_pbe.py`` on the queue lane
+  branch (``lib/http/client.py`` left the baseline in RM-1527): a later repo cycle takes them once those lanes land.
 - ``ops/rc_supervisor.py`` is FROZEN; ``tools/build_portable.py`` is PKG (main
-  session); ``tools/sibling_name_sweep.py`` is the armed sibling-name sweep.
+  session). ``tools/sibling_name_sweep.py`` left the baseline in RM-1533.
 - ``docs/_rescore`` and ``docs/_rsc_score`` are dated scoring scratch scripts.
 
 The ratchet runs ruff with NO config (``--isolated``) so a per-file-ignore cannot
@@ -61,6 +61,7 @@ _FIXED = (
     "tools/p3_ascii_census.py",
     "tools/ci_watchdog.py",
     "tools/run_phase2_perf.py",
+    "tools/sibling_name_sweep.py",
 )
 # file -> number of findings still there. Only shrinks.
 _BASELINE = {
@@ -68,11 +69,9 @@ _BASELINE = {
     "docs/_rescore/tally.py": 1,
     "docs/_rsc_score/calibrate.py": 1,
     "docs/_rsc_score/calibrate_rep.py": 1,
-    "lib/http/client.py": 2,
     "ops/rc_supervisor.py": 1,
     "scripts/fetch_cdragon_pbe.py": 1,
     "tools/build_portable.py": 1,
-    "tools/sibling_name_sweep.py": 2,
 }
 
 

@@ -18,10 +18,10 @@ first, which is both correct and quiet.
 
 Out of this slice on purpose (not edited by it): ``ops/rc_supervisor.py``
 (frozen), ``tools/build_portable.py`` and ``tests/test_launcher_*`` (packaging
-paths the main session owns), and ``lib/http/client.py`` /
-``scripts/fetch_cdragon_pbe.py`` / ``agents/daemon_slayer/tests/
-test_no_cwd_relative_paths.py`` (changed by another lane branch awaiting
-landing). Everything in the baseline is test code, a docs scratch script or a
+paths the main session owns), and ``scripts/fetch_cdragon_pbe.py`` /
+``agents/daemon_slayer/tests/test_no_cwd_relative_paths.py`` (changed by
+another lane branch awaiting landing; ``lib/http/client.py`` and
+``tools/sibling_name_sweep.py`` left the baseline in RM-1527 / RM-1533). Everything in the baseline is test code, a docs scratch script or a
 tool.
 
 The ratchet runs ruff with NO config (``--isolated``) so a per-file-ignore cannot
@@ -61,6 +61,7 @@ _FIXED = (
     "lib/icons/downloader.py",
     "performance_tracker.py",
     "tft/tft_live_analysis.py",
+    "tools/sibling_name_sweep.py",
 )
 # file -> number of findings still there. Only shrinks.
 _BASELINE = {
@@ -75,7 +76,6 @@ _BASELINE = {
     "docs/_rescore/tally.py": 1,
     "docs/_rsc_score/calibrate.py": 1,
     "docs/_rsc_score/calibrate_rep.py": 1,
-    "lib/http/client.py": 2,
     "ops/rc_supervisor.py": 1,
     "scripts/fetch_cdragon_pbe.py": 1,
     "tests/snapshot_panels/test_objective_gauges_view.py": 1,
@@ -97,7 +97,6 @@ _BASELINE = {
     "tests/test_skip_condition_hygiene.py": 1,
     "tests/test_tft_cv_accuracy_harness.py": 1,
     "tools/build_portable.py": 1,
-    "tools/sibling_name_sweep.py": 2,
 }
 
 

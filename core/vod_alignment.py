@@ -94,7 +94,7 @@ class AlignmentTracker:
             return False  # first poll, frozen (loading / pause) or a drop
         offset = (p.wall - self._start) - p.game_time
         if self._anchors:
-            gt0, off0 = self._anchor_for(p.game_time)
+            _gt0, off0 = self._anchor_for(p.game_time)
             if abs(offset - off0) <= self._tol:
                 return False
             # An anchor never goes BEFORE an existing one: keep the list
