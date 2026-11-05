@@ -565,7 +565,8 @@ def _write_context(worktree: Path, run_id: int, head_sha: str,
             f"## Failing step log (tail)\n\n```\n{log_tail}\n```\n\n"
             f"## Offending commit diff\n\n```diff\n{(diff_out or '')[:12000]}\n```\n"
         )
-        (Path(worktree) / _CONTEXT_FILE).write_text(body, encoding="utf-8")
+        (Path(worktree) / _CONTEXT_FILE).write_text(
+            body, encoding="utf-8", newline="\n")
     except OSError:
         pass
 

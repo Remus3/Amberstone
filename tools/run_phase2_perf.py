@@ -197,7 +197,8 @@ def _bench_metrics_cache(td: Path):
         for i in range(5)
     ]
     (rt / "incident_log.jsonl").write_text(
-        "\n".join(json.dumps(e) for e in incidents) + "\n", encoding="utf-8")
+        "\n".join(json.dumps(e) for e in incidents) + "\n",
+        encoding="utf-8", newline="\n")
 
     mc = MetricsCache(rt, refresh_interval_s=9999)
     mc._refresh()
