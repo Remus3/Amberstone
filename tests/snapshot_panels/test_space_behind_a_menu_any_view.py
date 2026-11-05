@@ -33,8 +33,12 @@ VP = VIEWPORTS[0]
 # The one line in web/js/main.js the controls take out.
 MAIN_HOLD = "if (_spaceHeldBehindMenu(e)) e.preventDefault();"
 
-_VIEWS = ["settings", "session", "replay", "champ-select", "historical-pgr",
-          "build-insights"]
+# Historical PGR left this list with RM-1552: its 65 px of scroll came from
+# the five coaching panels header.css failed to hide on that view, which
+# squeezed the review into a 245 px band. With them hidden the hash-reached
+# review fits at 1920x920 and has no scroller; the last test below pins that,
+# so a review that grows a scroller again comes back here.
+_VIEWS = ["settings", "session", "replay", "champ-select", "build-insights"]
 
 # A bare spot (no focusable ancestor) inside the first rendered scroller of the
 # showing view. Fails loud rather than clicking somewhere that cannot scroll.
@@ -186,6 +190,22 @@ def test_that_route_really_scrolls_without_the_hold(mock_server, pw_browser, vie
         page.wait_for_function(
             f"() => ({_SCROLL_OF})({scroller!r}) > 0", timeout=5_000
         )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_historical_pgr_has_no_scroller_to_hold(mock_server, pw_browser):
+    # Why historical-pgr is not in _VIEWS: nothing on it scrolls at this
+    # viewport. If this fails, the view scrolls again - put it back in _VIEWS.
+    ctx, page, errors = _open_view(pw_browser, mock_server, "historical-pgr")
+    try:
+        assert page.evaluate(
+            "() => document.getElementById('view-historical-pgr')"
+            ".getClientRects().length"
+        ) == 1, "the review is not rendered; the check below would be empty"
+        assert page.evaluate(_BARE_SPOT) is None
     finally:
         page.close()
         ctx.close()

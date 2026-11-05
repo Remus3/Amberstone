@@ -682,7 +682,12 @@ footer .prefs-chip:hover { color: var(--text); }
 
 /* When a non-default view is active, hide the 5 main panels + the
  * inline overlays that are mode-specific. Lobby/Home overlays show
- * via their own logic. */
+ * via their own logic.
+ * RM-1552: every VIEW_ID (lib/state.js) needs a line here. The detached
+ * historical PGR had none, so the five coaching panels painted 578px tall
+ * above it and the review got a 245px band at 1920x920. Guard (reads the
+ * list from state.js): tests/snapshot_panels/
+ * test_historical_pgr_hides_coaching_main.py. */
 body[data-view="home"] main,
 body[data-view="lobby"] main,
 body[data-view="active-match"] main,
@@ -693,6 +698,7 @@ body[data-view="build-insights"] main,
 body[data-view="settings"] main,
 body[data-view="champ-select"] main,
 body[data-view="last-match"] main,
+body[data-view="historical-pgr"] main,
 body[data-view="replay"] main { display: none; }
 /* s220 PGR S5: the broad `body[data-view="replay"] main` selector
  * above unintentionally also hid the nested <main class="replay-main-
