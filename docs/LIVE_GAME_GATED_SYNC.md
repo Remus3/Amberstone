@@ -2168,7 +2168,7 @@ survivability flips below cannot roll otherwise.
   SAMPLING RESOLUTION: only the sampled points are graded, so with 25 s polls a true peak up to
   about one interval above 90 s can fall between two samples. A PASS means "no SAMPLED lag over
   90 s", not "the lag never crossed 90 s".
-  FALSE-FAIL RESIDUALS, FIXED 2026-11-04 (lane 9 s144 cycle 55, RM-1345, read at `c69f5c9d2`; NOT
+  FALSE-FAIL RESIDUALS, FIXED 2026-11-04 (lane 9 s144 cycle 55, RM-1345, read at `16c48a7cf`; NOT
   a tick). Verifier pass 2 of cycle 54 found two: the poll period is the tick time PLUS the 1.5 s
   sleep (`coaches/_base_coach.py:421-426`), so an unexcused tick under the old 2000 ms threshold
   could push the worst case to about 90.5 s; and the sampler's `/api/state` GET (8 s timeout) runs
@@ -2397,7 +2397,7 @@ survivability flips below cannot roll otherwise.
   2026-07-11/12 show it has - note which value vision reports after the kill. A FAIL files a row against the vision
   tower read; it does not touch `item_extra`. The `item_extra` half still accrues and still needs the
   operator's OK.
-  **TOWER CHECK TOOL - READY (lane 9 PREP s144 cycle 56, source read at `6cc21b236`; NOT a tick; it
+  **TOWER CHECK TOOL - READY (lane 9 PREP s144 cycle 56, source read at `bf3292940`; NOT a tick; it
   grades the CHECK above, so no count moves).** ONE COMMAND, read-only (it writes nothing, prints no
   path, token, game id or champion name), started once the game is past the load screen: `python
   tools/gated_g314_tower_input.py --samples 80 --interval 25 > _scratch/g314.jsonl` (about 33 min;
