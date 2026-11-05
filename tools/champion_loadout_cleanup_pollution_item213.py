@@ -436,7 +436,7 @@ def _norm(s: str) -> str:
 def _load_item_index() -> dict[str, list[dict]]:
     data = json.loads(_ITEMS_PATH.read_text(encoding="utf-8"))["data"]
     idx: dict[str, list[dict]] = {}
-    for _iid, it in data.items():
+    for it in data.values():
         idx.setdefault(_norm(it.get("name", "")), []).append(it)
     return idx
 
@@ -445,7 +445,7 @@ def _name_to_family() -> dict[str, str]:
     from agents.daemon_slayer._effects_data import ITEM_EFFECTS
 
     out: dict[str, str] = {}
-    for _iid, eff in ITEM_EFFECTS.items():
+    for eff in ITEM_EFFECTS.values():
         upk = getattr(eff, "unique_passive_key", None)
         nm = getattr(eff, "name", None)
         if upk and nm:
@@ -462,7 +462,7 @@ def _fam_norm(s: str) -> str:
 def _ranged_marksmen() -> set[str]:
     data = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))["data"]
     out: set[str] = set()
-    for _k, c in data.items():
+    for c in data.values():
         rng = (c.get("stats") or {}).get("attackrange", 0)
         if "Marksman" in (c.get("tags") or []) and rng >= 525:
             out.add(c.get("name", ""))
@@ -870,7 +870,7 @@ class Cleaner:
                 )
                 self.clean_variant(cn, vk, mode, v)
         # recount golden spatula after
-        for _cn, c in (loadouts.get("champions") or {}).items():
+        for c in (loadouts.get("champions") or {}).values():
             for vk, v in (c.get("variants") or {}).items():
                 if not v.get("_collapsed"):
                     continue

@@ -444,7 +444,7 @@ def _superseded_patch_dirs(root: Path, keep_patches: int) -> list[Path]:
         return []
 
     superseded: list[Path] = []
-    for _parent, dirs in groups.items():
+    for dirs in groups.values():
         ordered = sorted(dirs, key=lambda p: _version_key(p.name), reverse=True)
         # RM-363: floor at 1, not 0. "Superseded" is defined by this
         # function's own docstring as "a newer sibling supersedes it", and

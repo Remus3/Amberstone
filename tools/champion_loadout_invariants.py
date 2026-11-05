@@ -115,7 +115,7 @@ def load_item_facts() -> dict[str, ItemFacts]:
         )
     ).get("data") or {}
     acc: dict[str, dict] = {}
-    for _iid, it in raw.items():
+    for it in raw.values():
         n = _norm(it.get("name", ""))
         if not n:
             continue

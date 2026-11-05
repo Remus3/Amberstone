@@ -114,7 +114,7 @@ def apply(data: dict) -> int:
     for champ, cd in champs.items():
         if not _is_melee(champ):
             continue
-        for _vk, var in (cd.get("variants") or {}).items():
+        for var in (cd.get("variants") or {}).values():
             changed = False
             for p in var.get("build_paths") or []:
                 if not isinstance(p, dict):

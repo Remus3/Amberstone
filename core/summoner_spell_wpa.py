@@ -298,7 +298,7 @@ def compute_summoner_spell_wpa(
             spells = _participant_spells(conn, mid)
             if not spells:
                 continue
-            for _pid, (team_id, win, spell_ids) in spells.items():
+            for team_id, win, spell_ids in spells.values():
                 known = [sid for sid in spell_ids if sid in catalog]
                 if not known:
                     continue

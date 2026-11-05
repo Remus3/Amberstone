@@ -68,8 +68,8 @@ bo = json.loads(
     (DS_DATA / "build_orders" / PATCH / "build_orders_sr.json").read_text(encoding="utf-8")
 )["build_orders"]
 ds_recd_ids = set()
-for champ, variants in bo.items():
-    for variant, cell in variants.items():
+for variants in bo.values():
+    for cell in variants.values():
         ds_recd_ids.update(str(i) for i in (cell.get("order") or []))
 ds_recd_names = {ITEMS[i]["name"] for i in ds_recd_ids if i in ITEMS}
 

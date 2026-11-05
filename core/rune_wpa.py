@@ -314,7 +314,7 @@ def compute_rune_wpa(
             if not runes:
                 continue
             base_t_s = float(base_ts_ms or 0) / 1000.0
-            for _pid, (team_id, win, rune_ids) in runes.items():
+            for team_id, win, rune_ids in runes.values():
                 exp = _expected_win_for_team(base_rows, base_t_s, team_id,
                                              model)
                 if exp is None:

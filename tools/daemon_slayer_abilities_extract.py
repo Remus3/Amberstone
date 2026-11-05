@@ -706,7 +706,7 @@ def _coverage_summary(data: dict[str, dict[str, list[dict]]]) -> dict[str, Any]:
     total_forms = 0
     multiform = 0
 
-    for _champ, keymap in data.items():
+    for keymap in data.values():
         for key, forms in keymap.items():
             if len(forms) > 1:
                 multiform += 1

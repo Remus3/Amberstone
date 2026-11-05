@@ -53,11 +53,11 @@ def build_payload() -> dict:
         )
     primary = []
     for spells in c._build_per_spell_cc_conditional().values():
-        for _spell, entry in spells.items():
+        for entry in spells.values():
             primary.append(dataclasses.asdict(entry))
     forms = []
     for slots in c._build_per_spell_cc_conditional_forms().values():
-        for (_spell, _fi), entry in slots.items():
+        for entry in slots.values():
             forms.append(dataclasses.asdict(entry))
     primary.sort(key=lambda d: (d["champion"], d["spell"]))
     forms.sort(key=lambda d: (d["champion"], d["spell"], d["form_index"]))
