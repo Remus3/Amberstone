@@ -48,8 +48,8 @@ _ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PATH = _ROOT / "data" / "ocr_shadow.jsonl"
 
 # The eight numeric shadow fields registered by both coaches:
-# coaches/aram_coach.py:513 (_ARAM_SHADOW_FIELDS) and
-# coaches/arena_coach.py:1122 (SHADOW_FIELDS). Seeded into every report so a
+# coaches/aram_coach.py `_ARAM_SHADOW_FIELDS` and
+# coaches/arena_coach.py `SHADOW_FIELDS`. Seeded into every report so a
 # field with zero accrued rows still shows (at zero) rather than vanishing.
 KNOWN_FIELDS = (
     "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",

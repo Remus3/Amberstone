@@ -210,8 +210,9 @@ lanes = _bind("ops.loop.lanes", "rc_loop_lanes", "lanes.py")
 lane_launcher = _bind("ops.loop.lane_launcher", "rc_loop_lane_launcher",
                       "lane_launcher.py")
 # NOT a third `_bind`. lanes.py already binds slots.py under "rc_loop_slots"
-# (lanes.py:103); reaching through it is the only way to be sure the driver, the
-# lock and the dashboard all probe pids with one module object. slots.py itself
+# (the `slots = _bind("rc_loop_slots", ...)` line in lanes.py); reaching
+# through it is the only way to be sure the driver, the lock and the dashboard
+# all probe pids with one module object. slots.py itself
 # is stateless, so a second copy would not corrupt anything today - but it is
 # BYTE-IDENTICAL-BY-CONTRACT with the Sibling-A copy and must be consumed,
 # never re-bound on a guess about what it holds.
@@ -504,8 +505,8 @@ def append_record(record: dict, cycle_log=None, *, hold=None) -> Path:
     Lazily, because `--reports-dir` may name a directory that does not exist yet
     and because import time must stay side-effect free.
 
-    Serialised under LEDGER_MUTEX, the way `steer.py:189` serialises its own
-    appends. An O_APPEND write of one short line is close to atomic already, but
+    Serialised under LEDGER_MUTEX, the way `steer.append` serialises its
+    own appends. An O_APPEND write of one short line is close to atomic already, but
     "close to" is what interleaves two half-lines into an unparseable row at 3am,
     and the ledger is the only durable record of the night.
 
@@ -536,7 +537,7 @@ def _worker_is_up(pid, started, *, alive, stranger) -> bool:
 
     Two probes, not one. `alive` answers whether SOMETHING holds the pid;
     `stranger` answers whether that something is still the process we launched.
-    `lanes.lane_state` makes exactly this pair of checks (lanes.py:300-306) and
+    `lanes.lane_state` makes exactly this pair of checks and
     reusing its predicate rather than deriving a second one is what keeps the
     driver and the dashboard from ever disagreeing about a lane.
 

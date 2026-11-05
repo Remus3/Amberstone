@@ -5,7 +5,7 @@ WHY THIS EXISTS
 `tests/test_aram_state_debounce.py` and `tests/test_arena_state_debounce.py`
 drove the real ARAM / Arena coaches through `Coach._run_coach` with a mocked
 Anthropic client whose response carried `input_tokens=10, output_tokens=20`.
-That reached `coaches/_base_coach.py:713 _record_coach_call` ->
+That reached `coaches/_base_coach.py` `_record_coach_call` ->
 `core.cost_tracker.get_tracker().record_call(...)`, i.e. the operator's REAL
 daily spend ledger. Every suite run booked fake calls. The leak is now closed
 at the root by the autouse `redirect_cost_tracker_spend_dir_to_tmp` fixture in
@@ -210,8 +210,9 @@ def repair_doc(doc: dict, usd_per_call: float) -> dict:
 def _is_synthetic_match_record(rec) -> bool:
     """True for a per-match cost record the leak produced.
 
-    `core/match_db.py:177` calls `get_tracker().note_match_boundary()` on every
-    saved match and is the only route to this file. The PRODUCER of the two
+    `core/match_db.py` `_note_match_boundary` calls
+    `get_tracker().note_match_boundary()` on every saved match and is the only
+    route to this file. The PRODUCER of the two
     records found in the production ledger is UNIDENTIFIED - see the
     ruled-out list in the `redirect_cost_tracker_spend_dir_to_tmp` docstring in
     `tests/conftest.py`. What is measured is the SHAPE: `by_gate` all-zero (the

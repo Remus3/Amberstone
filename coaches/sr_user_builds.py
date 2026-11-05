@@ -85,8 +85,8 @@ _SCHEMA_VERSION = 1
 
 # AUDIT 2026-08-30 (lane 8 cycle 22, W5): this store sits behind an
 # UNAUTHENTICATED CRUD route (dashboard/routes_sr_user_builds.py, spliced into
-# :8888 by dashboard/_dispatch.py:168 + :208). Nothing bounded the champion
-# key, the label, the notes, the item list or the number of builds, so any
+# :8888 by dashboard/_dispatch.py `_gather_get` / `_gather_post`). Nothing
+# bounded the champion key, the label, the notes, the item list or the number of builds, so any
 # caller on the interface the dashboard binds could grow user_builds.json
 # without limit - and the whole file is re-serialized on every single write.
 # Caps are generous enough that no honest operator ever meets one.
@@ -177,7 +177,7 @@ def add(champion: str, build: dict[str, Any]) -> str:
         # W2/W7: mutate a PRIVATE copy. The pre-fix code appended straight into
         # the shared cache and only then called _save, so a failed write left a
         # phantom build that every reader could see - and that
-        # coaches/rune_pages.py:142 would fold into a live rune page.
+        # coaches/rune_pages.py (`_user_builds_for`) would fold into a live rune page.
         store = _load()
         champs = store.setdefault("champions", {})
         if champion not in champs and len(champs) >= MAX_CHAMPIONS:

@@ -33,13 +33,14 @@ def _atomic_write_json(path: Path, data: dict) -> None:
     ``os.replace`` raises PermissionError (WinError 5) whenever a
     concurrent reader holds the destination open, a plain CPython
     ``open()`` handle is enough, and these rating files have a real
-    cross-process reader in ``agents/supervisor.py:794-805``. Measured
+    cross-process reader in ``agents/supervisor.py``
+    (``_rating_file_is_current``). Measured
     on Python 3.14 / win32: the bare call raised in under a millisecond
     against a reader that released after 80 ms, while the retry-backed
     call rode it out and landed its content.
 
-    ``core/polled_json.py:30-35`` already recorded this and the same fix
-    already shipped to ``ops/rc_supervisor.atomic_write_json`` on
+    The ``core/polled_json.py`` ``_REPLACE_RETRY_DELAYS_S`` comment already
+    recorded this and the same fix already shipped to ``ops/rc_supervisor.atomic_write_json`` on
     2026-05-02; this module simply held a private copy that never got it.
     The retry buys the TRANSIENT window only - under a permanently held
     handle it still raises, exactly as that helper's comment claims.
@@ -57,7 +58,8 @@ def _atomic_write_json(path: Path, data: dict) -> None:
     # An exhausted retry must not leave a stray scratch file beside the target
     # - the sibling lane 8 cycle 22 audit records the repo treating an orphaned
     # tmp after a failed replace as a defect in its own right
-    # (tests/test_sr_user_builds_lane8_cycle22.py:28). Lane 8 cycle 24 moved
+    # (item W6 in the docstring of tests/test_sr_user_builds_lane8_cycle22.py).
+    # Lane 8 cycle 24 moved
     # that cleanup INTO atomic_write_bytes, which now removes its own scratch
     # file on every failure path. The mirror that used to live here unlinked
     # ``<dest>.tmp``, a name the helper no longer uses, so keeping it would be
@@ -653,7 +655,7 @@ def _tft_heatmap() -> None:
         from tft.placement_aggregator import update_heatmap as _uh
         _uh()
     # LEFT BROAD 2026-07-19: update_heatmap -> build_heatmap
-    # (tft/placement_aggregator.py:45) re-walks and re-parses the whole ratings
+    # (tft/placement_aggregator.py ``build_heatmap``) re-walks and re-parses the whole ratings
     # dir, so the reachable set is at least ImportError / OSError / KeyError /
     # TypeError / ValueError and is not closed by inspection. Could not rule out
     # further types from build_heatmap's own callees, so the handler stays broad.

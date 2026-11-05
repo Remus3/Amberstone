@@ -85,8 +85,8 @@ def handle_upload_lcu(body: bytes) -> dict:
     # AUDIT 2026-08-30 (lane 8 cycle 25): the guard above covers only the
     # DECODE. `[1,2]`, `"x"`, `5` and `null` all decode fine and were cached as
     # a valid LCU session, reaching consumers that call .get on them. The
-    # sibling module already carries this guard (_frame.py:231, cycle 20) and
-    # so does the self-read path below (:132, :156) - the asymmetry inside one
+    # sibling module already carries this guard (`handle_upload_frame` in _frame.py,
+    # cycle 20) and so does the self-read path below - the asymmetry inside one
     # package is what shows this was an omission rather than a choice.
     if not isinstance(parsed, dict):
         _record("lcu_upload", int((time.time() - t0) * 1000), ok=False)
@@ -232,7 +232,7 @@ def handle_upload_liveclient(body: bytes) -> dict:
     but it is not trusted to be: the sender is a separate process on its own
     release cadence, so a renamed field or a retyped body is a contract change
     rather than an impossibility (the same reasoning
-    core/liveclient_cache.py:212-214 applies to this envelope from the other
+    core/liveclient_cache.py `_fetch_once` applies to this envelope from the other
     side). Callers get a fixed error token; the cause goes to logs/.
     """
     t0 = time.time()

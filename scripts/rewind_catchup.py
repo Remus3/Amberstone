@@ -173,7 +173,7 @@ class PaginationApiFailure(RuntimeError):
     """A match-id page came back None for a reason that is NOT a rate limit.
 
     ``get_recent_matches`` returns an EMPTY LIST for a 200 carrying no ids
-    (core/riot_api.py:799-806) and a bare None only for no_key / 401 / 403 /
+    (core/riot_api.py `get_recent_matches`) and a bare None only for no_key / 401 / 403 /
     404 / 5xx / transport / parse failure. So None is never a statement that
     the window is empty - it is always a failed call, and the old code's
     ``break`` collapsed the two, then exited 0 through the no-op path. An
@@ -846,7 +846,7 @@ def main(argv: list[str] | None = None) -> int:
               "Place RGAPI-... in 'API-Key-Riot.txt' at project root.")
         _log.error("Riot API key not configured")
         # is_configured() only checks the key file's SHAPE, never its
-        # liveness (core/riot_api.py:1099-1101), so a dead-but-well-formed
+        # liveness (core/riot_api.py `is_configured`), so a dead-but-well-formed
         # key sails past here and is caught by PaginationApiFailure instead.
         record_run(load_state(), RUN_NO_API_KEY, 2, dry_run=args.dry_run)
         return 2

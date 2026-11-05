@@ -1,8 +1,8 @@
 """Transactional deploy worker - copy staged files over live ones, verify the
 app survives, roll back if it does not.
 
-Invoked by the supervisor as a SUBPROCESS (`ops/rc_supervisor.py:658`,
-configured at `ops/rc_config.json:9`), once per JSON request found in
+Invoked by the supervisor as a SUBPROCESS (`ops/rc_supervisor.py` `_run_deploy_thread`,
+configured as `deploy_script` in `ops/rc_config.json`), once per JSON request found in
 `ops/runtime/deploy_requests/`. It runs under the supervisor's token and it
 overwrites RC's own source files, which makes the request the most powerful
 untrusted input in the tree.
@@ -19,7 +19,7 @@ construction, so every path in the request is treated as hostile here:
   * `request_id`     is contained under the directories derived from it
 
 `contained_path` is the single primitive that enforces this, modelled on the
-`dashboard/routes_static.py:64-67` precedent - resolve both sides and assert
+`dashboard/routes_static.py` `relative_to` precedent - resolve both sides and assert
 `relative_to`. A prefix check plus a ".." filter was deliberately REPLACED by
 that pattern there because both are bypassable; the same reasoning applies.
 
@@ -27,8 +27,8 @@ MEASURED, not assumed: on Windows `Path("C:/repo") / Path("C:/x")`
 is `C:\\x` - an absolute right-hand side discards the root entirely, so
 string-prefix reasoning about the joined path is wrong before it starts.
 
-SECRETS. `rc_supervisor.py:29` records that rollback excludes `ops/backups/`
-and `API-Key-Claude.txt`. This module named the same file in a local
+SECRETS. The `ops/rc_supervisor.py` module docstring (item [12]) records that
+rollback excludes `ops/backups/` and `API-Key-Claude.txt`. This module named the same file in a local
 `api_key` variable it never read - a declared exclusion that was not
 implemented. `_is_excluded_name` implements it on BOTH sides of the copy:
 the key can neither be deployed over nor lifted out of a staging tree into
@@ -54,7 +54,7 @@ Producers (grep 2026-10-26, `deploy_requests` / `sign_request` / `--sign`):
   * scripts/bootstrap_dev.ps1, ops/setup_dirs.bat, ops/start_ops.bat,
     ops/rc_league_watcher.ps1 - only create the directory (the legacy
     launcher that also did was archived by RM-721 (d), session 144).
-    ops/rc_supervisor.py:1450 (frozen) invokes `--request
+    ops/rc_supervisor.py `_run_deploy_thread` (frozen) invokes `--request
     --result`; that CLI is unchanged.
 No unsigned path exists (RM-160) and none is added. A request signed before
 this change (no window, no per-file sha256) is refused: on 2026-10-26 the
@@ -88,7 +88,7 @@ DEFAULT_EXCLUDED_NAMES = ("API-Key-Claude.txt",)
 # control-command drop directory and the deploy result files - so contention is
 # routine rather than exceptional. Bounded backoff, ~275 ms worst case, then
 # re-raise: an UNBOUNDED retry would convert a visible failure into a hung
-# deploy thread. This mirrors core/polled_json.py:40-48 rather than importing
+# deploy thread. This mirrors core/polled_json.py `_REPLACE_RETRY_DELAYS_S` rather than importing
 # it: this module is launched by absolute path as a SCRIPT, so sys.path[0] is
 # `ops/` and the project root is not importable here.
 _REPLACE_RETRY_DELAYS_S = (0.025, 0.05, 0.2)
@@ -110,8 +110,9 @@ SIGNATURE_FIELD = "signature"
 
 # Validity window of a signed request (seconds). A producer signs right
 # before dropping the request and the supervisor picks it up within a poll
-# (ops/rc_supervisor.py:1424) once the app is healthy (:1421), so a short
-# window costs nothing and bounds how long a leaked request stays usable.
+# (ops/rc_supervisor.py `process_deploy_requests`) once the app is healthy
+# (`app_is_healthy`), so a short window costs nothing and bounds how long a
+# leaked request stays usable.
 DEFAULT_TTL_S = 900.0
 MAX_TTL_S = 3600.0
 CLOCK_SKEW_S = 300.0

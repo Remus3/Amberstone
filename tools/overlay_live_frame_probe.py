@@ -96,7 +96,7 @@ _TRINKET_FROM = {"stealth ward", "warding totem"}
 
 
 def _stage_for(clock_s, owned_count):
-    """stageFor(next_buy_model.js:67-75): the FURTHER along of clock and count."""
+    """stageFor (web/js/lib/next_buy_model.js): the FURTHER along of clock and count."""
     by_clock = ("early" if not isinstance(clock_s, (int, float))
                 or clock_s < _EARLY_CLOCK_S
                 else "mid" if clock_s < _LATE_CLOCK_S else "late")
@@ -110,10 +110,10 @@ def sample(ws, msg_id):
     st = _api_state()
     lc = st.get("liveclient") or {}
     # /api/state.liveclient is the FLATTENED block built by
-    # dashboard/_liveclient.py:114 liveclient_summary() (attached at
-    # dashboard/_state_builder.py:687), NOT the raw Live Client :2999 payload.
-    # Gold lands at out["gold"] (_liveclient.py:148) and the clock at
-    # out["game_time_s"] (_liveclient.py:144). The raw activePlayer.currentGold
+    # dashboard/_liveclient.py liveclient_summary() (attached by
+    # dashboard/_state_builder.py), NOT the raw Live Client :2999 payload.
+    # Gold lands at out["gold"] and the clock at out["game_time_s"] (both set
+    # in liveclient_summary). The raw activePlayer.currentGold
     # / gameData.gameTime paths this probe used to read never exist here and
     # always read null - that is the widget-vs-probe null the 2026-07-23
     # WAKEUP flagged as unconfirmed.
@@ -133,7 +133,7 @@ def sample(ws, msg_id):
         "holds_upgradable_trinket": any(
             str(x).strip().lower() in _TRINKET_FROM for x in owned),
         # The GOLD row targets the first sr_items row with next===true
-        # (next_buy_model.js:12-16). No such row means the widget CANNOT
+        # (the `gold` note in web/js/lib/next_buy_model.js). No such row means the widget CANNOT
         # render a countdown, which is an upstream feed fact, not a widget bug.
         "next_item": next((r.get("name") for r in sr_items if r.get("next")), None),
         "sr_items_len": len(sr_items),

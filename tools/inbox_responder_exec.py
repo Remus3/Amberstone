@@ -6,7 +6,8 @@ actually be RUN, and what may be said about the result. The split is deliberate
 and each half is refutable on its own.
 
 The validator judges argv[:2], shell metacharacters and output-redirecting
-flags (inbox_responder.py:259-276). That is a correct allowlist of VERBS and it
+flags (inbox_responder.py `_validate_measure`, `_SHELL_META`,
+`_WRITING_FLAGS`). That is a correct allowlist of VERBS and it
 is provably not a licence to execute: `git diff --no-index API-Key-Claude.txt
 README.md` reads a gitignored file and `git ls-remote <url>` reaches the
 network, and both pass it. `harden_measure_argv` closes that without touching
@@ -80,8 +81,8 @@ MEASURE_STDERR_CAP = 2048
 SCRUB_TEXT_LIMIT = 300
 
 # The output filter's own ceiling. The validator recomputes bytes on the model
-# reply (inbox_responder.py:363); this one covers the ASSEMBLED body, which the
-# validator never sees.
+# reply (inbox_responder.py `_validate_reply`, `_MAX_BODY_BYTES`); this one
+# covers the ASSEMBLED body, which the validator never sees.
 MAX_ASSEMBLED_BYTES = 200_000
 
 # Verbs that pass the validator's list and are held by the executor THIS BUILD.
