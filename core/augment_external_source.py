@@ -33,6 +33,7 @@ never raises into its callers except via the explicit `refresh_cache`
 """
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import math
@@ -251,7 +252,14 @@ def _http_get(url: str, timeout_s: float):
         # A RuntimeError, so without this it escaped get_priors' and
         # get_augment_meta's never-raises boundary (AugmentSourceError only).
         raise AugmentSourceError(f"{url} refused: {exc}") from exc
-    except (urllib.error.URLError, OSError, TimeoutError) as exc:
+    except (urllib.error.URLError, http.client.HTTPException, OSError,
+            TimeoutError, ValueError) as exc:
+        # RM-1442: urllib lets getresponse() and read() errors through
+        # unwrapped, and BadStatusLine / LineTooLong / IncompleteRead are
+        # HTTPException, NOT OSError; a read on a closed response raises
+        # ValueError. Either escaped get_priors' and get_augment_meta's
+        # never-raises boundary (AugmentSourceError only) and skipped the
+        # RM-450 backoff gate.
         raise AugmentSourceError(f"{url} fetch failed: {exc}") from exc
     try:
         # LANE 8 CYCLE 33: parse_constant fires on exactly the three
