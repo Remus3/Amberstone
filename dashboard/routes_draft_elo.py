@@ -87,6 +87,11 @@ def _cache_put(key: tuple, now: float, payload: dict) -> None:
                 _CACHE.pop(k, None)
 
 
+# A rejected token is never echoed in a 400 (RM-1255 / RM-1233): the text
+# names the expected shape only, and the handler prefixes the parameter.
+_ERR_NOT_INT = "each id must be an integer"
+
+
 def _parse_int_list(raw: str, expected: int) -> tuple[list[int], str | None]:
     if not raw:
         return ([], f"missing required ids (expected {expected})")
@@ -98,7 +103,7 @@ def _parse_int_list(raw: str, expected: int) -> tuple[list[int], str | None]:
         try:
             ids.append(int(p))
         except ValueError:
-            return ([], f"non-integer id {p!r}")
+            return ([], _ERR_NOT_INT)
     return (ids, None)
 
 
@@ -111,7 +116,7 @@ def _parse_queues(raw: str) -> tuple[tuple[int, ...] | None, str | None]:
         try:
             ids.append(int(p))
         except ValueError:
-            return (None, f"non-integer queue id {p!r}")
+            return (None, _ERR_NOT_INT)
     return (tuple(ids), None)
 
 
@@ -273,7 +278,7 @@ def _serve_draft_elo(h) -> None:
             return
         queue_ids, err = _parse_queues(queue_raw)
         if err:
-            h._send(400, json.dumps({"ok": False, "error": err})
+            h._send(400, json.dumps({"ok": False, "error": f"queue: {err}"})
                     .encode("utf-8"), "application/json")
             return
 

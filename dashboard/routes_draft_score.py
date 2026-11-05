@@ -44,7 +44,8 @@ query string and the SQLite binds in core.draft_elo_db):
 
 Failure modes (a raw exception string is NEVER leaked to the client):
   - bad / wrong-length ids or a duplicate queue id -> 400 with a short clear
-    error; a rejected token is clipped before it is echoed
+    error naming the parameter and the expected shape; a rejected token is
+    never echoed (RM-1255)
   - any other exception -> 500 structured error; the traceback is logged, and
     a failed 500 send is logged instead of swallowed.
 """
@@ -73,7 +74,6 @@ _CACHE_EVICT = 64
 _ID_RE = re.compile(r"[0-9]{1,6}")
 _TEAM_SIZE = 5
 _MAX_QUEUE_IDS = 16
-_ERR_TOKEN_MAX = 24
 _PARAMS = ("ally", "enemy", "queue")
 
 
@@ -86,11 +86,10 @@ def _cache_put(key: tuple, now: float, payload: dict) -> None:
                 _CACHE.pop(k, None)
 
 
-def _clip(token: str) -> str:
-    """Bound a rejected token before it is echoed in an error body."""
-    if len(token) > _ERR_TOKEN_MAX:
-        token = token[:_ERR_TOKEN_MAX] + "..."
-    return repr(token)
+# A rejected token is never echoed in a 400 (RM-1255 / RM-1233): the text
+# names the expected shape only, and the handler prefixes the parameter.
+_ERR_BAD_TOKEN = "each id must be 1-6 ASCII digits"
+_ERR_DUPLICATE = "duplicate ids are not allowed"
 
 
 def _parse_ids(raw: str, expected, *, min_value: int = 1, unique: bool = False):
@@ -107,12 +106,12 @@ def _parse_ids(raw: str, expected, *, min_value: int = 1, unique: bool = False):
     ids: list[int] = []
     for p in parts:
         if not _ID_RE.fullmatch(p):
-            return (None, f"invalid id {_clip(p)}")
+            return (None, _ERR_BAD_TOKEN)
         value = int(p)
         if value < min_value:
-            return (None, f"invalid id {value}")
+            return (None, f"each id must be {min_value} or more")
         if unique and value in ids:
-            return (None, f"duplicate id {value}")
+            return (None, _ERR_DUPLICATE)
         ids.append(value)
     return (ids, None)
 

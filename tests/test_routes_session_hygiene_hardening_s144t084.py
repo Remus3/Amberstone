@@ -235,12 +235,13 @@ def test_f4_queue_order_does_not_split_the_cache(calls):
 
 # ---------------------------------------------------------------- F5
 
-def test_f5_rejected_token_is_clipped_in_the_error(calls):
+def test_f5_rejected_token_is_not_echoed_in_the_error(calls):
+    # Was "clipped in the error"; RM-1255 removed the echo altogether.
     h = _serve("queue=" + "x" * 5000)
     assert h.sent_status == 400
     err = h.json()["error"]
-    assert len(err) < 80
-    assert "..." in err
+    assert err == "queue: each id must be 1-6 ASCII digits"
+    assert "x" not in err
 
 
 # ---------------------------------------------------------------- F6

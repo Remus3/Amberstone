@@ -18,7 +18,8 @@ Request shape:
   starts with "queue:"): every id is 1-6 ASCII decimal digits (no sign,
   no "_" separator, no non-ASCII digit - int() alone accepts all three);
   no id repeats; a value that holds no id at all ("queue=,") is refused.
-  A rejected token is clipped in the error body. (s144 true-audit cycle
+  A rejected token is never echoed in the error body (RM-1255: the text
+  names the expected shape only; it was a clipped repr). (s144 true-audit cycle
   84: an over-long id reached SQLite as an OverflowError - not a
   sqlite3.Error, so it escaped the core's "never raises" catch - and
   came back as a 500; "queue=," became an EMPTY filter the core answers
@@ -69,7 +70,10 @@ _CACHE_EVICT = 16
 # 6 keeps every accepted value far inside SQLite's int64.
 _ID_RE = re.compile(r"[0-9]{1,6}")
 _MAX_QUEUE_IDS = 16
-_ERR_TOKEN_MAX = 24
+# A rejected token is never echoed in a 400 (RM-1255 / RM-1233): the text
+# names the expected shape only, and the handler prefixes the parameter.
+_ERR_BAD_TOKEN = "each id must be 1-6 ASCII digits"
+_ERR_DUPLICATE = "duplicate ids are not allowed"
 
 
 def _cache_put(key: tuple, now: float, payload: dict) -> None:
@@ -79,13 +83,6 @@ def _cache_put(key: tuple, now: float, payload: dict) -> None:
             victims = sorted(_CACHE.items(), key=lambda kv: kv[1][0])[:_CACHE_EVICT]
             for k, _ in victims:
                 _CACHE.pop(k, None)
-
-
-def _clip(token: str) -> str:
-    """Bound a rejected token before it is echoed in an error body."""
-    if len(token) > _ERR_TOKEN_MAX:
-        token = token[:_ERR_TOKEN_MAX] + "..."
-    return repr(token)
 
 
 def _parse_queue(raw: str) -> tuple[tuple[int, ...] | None, str | None]:
@@ -100,10 +97,10 @@ def _parse_queue(raw: str) -> tuple[tuple[int, ...] | None, str | None]:
     ids: list[int] = []
     for p in parts:
         if not _ID_RE.fullmatch(p):
-            return (None, f"invalid queue id {_clip(p)}")
+            return (None, _ERR_BAD_TOKEN)
         value = int(p)
         if value in ids:
-            return (None, f"duplicate queue id {value}")
+            return (None, _ERR_DUPLICATE)
         ids.append(value)
     return (tuple(ids), None)
 

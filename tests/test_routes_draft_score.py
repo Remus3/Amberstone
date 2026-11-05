@@ -215,9 +215,10 @@ class TestIdValidation(_RouteTestBase):
         self.assert_400("ally=1,2,3,4,5&ally=6,7,8,9,10", "ally")
         self.assert_400("ally=1,2,3,4,5&queue=420&queue=440", "queue")
 
-    def test_rejected_token_is_clipped_in_the_error_body(self):
+    def test_rejected_token_is_not_echoed_in_the_error_body(self):
+        # Was "clipped in the error body"; RM-1255 removed the echo.
         body = self.assert_400("ally=" + "x" * 3000 + ",2,3,4,5")
-        self.assertLess(len(body["error"]), 120)
+        self.assertEqual(body["error"], "ally: each id must be 1-6 ASCII digits")
 
 
 class TestQueueValidation(_RouteTestBase):
