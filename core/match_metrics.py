@@ -531,7 +531,7 @@ class Recorder:
         overrides = provenance_overrides if isinstance(provenance_overrides, dict) else {}
         for pkey, (mkey, mtype) in self._PAYLOAD_METRIC_MAP.items():
             val = payload.get(pkey)
-            if val is None or val == "" or val == "-":
+            if val is None or val in ("", "-"):
                 continue
             if isinstance(val, float) and not math.isfinite(val):
                 continue

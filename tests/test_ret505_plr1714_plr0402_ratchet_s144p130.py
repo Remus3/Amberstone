@@ -13,11 +13,11 @@ them writes tuple membership, never the set ruff suggests, because a ``set`` rai
 TypeError on an unhashable operand where ``==`` did not (``core/match_metrics.py``
 compares a payload value of unknown type).
 
-Three findings are left on purpose: ``ops/fleet_kit/fleet_suite_gate.py`` is a vendored
+One finding is left on purpose: ``ops/fleet_kit/fleet_suite_gate.py`` is a vendored
 fleet kit file (CLAUDE.md FLEET-COMMON item 11: never edit locally) and drops to zero only
-when MAIN ships a new kit version; ``core/match_metrics.py`` and
-``dashboard/routes_replay_events.py`` carry commits on the true-audit lane branch awaiting
-landing, so they are that lane's to edit (RM-1420 left them for the same reason).
+when MAIN ships a new kit version. ``core/match_metrics.py`` and
+``dashboard/routes_replay_events.py`` were left by this slice and RM-1420 (a lane branch
+held them) and became tuple membership in RM-1537.
 
 Scope: production code. ``tests/``, ``agents/daemon_slayer`` (DS lane), the
 ``agents/agent3_testing/suite`` test suite and ``tools/ds_cross_eval`` are out of scope.
@@ -62,9 +62,8 @@ _FIXED = (
 )
 # file -> number of findings still there. Only shrinks.
 _BASELINE: dict[str, int] = {
-    # Changed by the true-audit lane branch awaiting landing: that lane's to edit.
-    "core/match_metrics.py": 1,
-    "dashboard/routes_replay_events.py": 1,
+    # RM-1537: core/match_metrics.py and dashboard/routes_replay_events.py now
+    # use tuple membership (no lane branch holds them any more).
     "ops/fleet_kit/fleet_suite_gate.py": 1,  # vendored kit file: MAIN ships a new version
 }
 

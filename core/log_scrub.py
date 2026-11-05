@@ -68,7 +68,7 @@ EXTRA_SCRUB = ((0x061C, 0x200E, 0x200F, 0x2028, 0x2029)
 # Escaped as ``\\uHHHH`` like the extras, so every scrub's output encodes.
 SURROGATES = tuple(range(0xD800, 0xE000))
 # The ONE range table (dashboard._handler re-exports it, RM-825).
-SCRUB_RANGES = (tuple(range(0x00, 0x20)) + tuple(range(0x7F, 0xA0))
+SCRUB_RANGES = (tuple(range(0x20)) + tuple(range(0x7F, 0xA0))
                 + EXTRA_SCRUB + SURROGATES)
 
 

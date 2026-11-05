@@ -65,12 +65,10 @@ _FIXED = (
 )
 # file -> number of findings still there. Only shrinks.
 _BASELINE = {
-    "core/log_scrub.py": 1,
     "docs/_rescore/tally.py": 1,
     "docs/_rsc_score/calibrate.py": 1,
     "docs/_rsc_score/calibrate_rep.py": 1,
     "ops/rc_supervisor.py": 1,
-    "scripts/fetch_cdragon_pbe.py": 1,
     "tools/build_portable.py": 1,
 }
 

@@ -557,9 +557,7 @@ def fetch_one(asset: Asset, dest: Path, *, manifest_entry: dict | None,
       status in {"skip_present", "new", "changed", "fail_404", "fail_other"}.
       new_manifest_entry is None on skip; populated dict otherwise.
     """
-    if force:
-        decide = "fetch"
-    elif not dest.exists():
+    if force or not dest.exists():
         decide = "fetch"
     elif check_changed:
         # HEAD probe; compare against manifest etag/size.

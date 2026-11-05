@@ -50,7 +50,6 @@ _BASELINE = {
     "ops/fleet_kit/fleet_done.py": 1,
     "ops/fleet_kit/fleet_rewrite.py": 1,
     "ops/launcher/updater.py": 1,
-    "tools/ddragon_mirror_refresh.py": 1,
 }
 _FIXED = (
     "agents/agent2_backend/migration_rewind.py",

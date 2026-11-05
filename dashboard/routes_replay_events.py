@@ -300,7 +300,7 @@ def _row_subtype(row: sqlite3.Row) -> str | None:
         return (row["tower_type"] or row["building_type"] or None)
     if et == "ELITE_MONSTER_KILL":
         return (row["monster_subtype"] or row["monster_type"] or None)
-    if et == "WARD_PLACED" or et == "WARD_KILL":
+    if et in ("WARD_PLACED", "WARD_KILL"):
         return row["ward_type"]
     return None
 
