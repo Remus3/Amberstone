@@ -50,7 +50,6 @@ def main() -> None:
         raise SystemExit("usage: ds_cc_output_build.py <workflow_output.json>")
     entries = _load_entries(sys.argv[1])
 
-    roster = set(_PER_SPELL_CC_DURATIONS.keys())  # registered-CC subset only
     problems: list[str] = []
     reconciled = 0
     mismatches: list[str] = []

@@ -241,9 +241,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
         opp_side = [r for r in roster if r.get("team_id") != my_tid]
         if my_side and opp_side:
             my_k  = sum(int(r.get("kills") or 0)  for r in my_side)
-            my_d  = sum(int(r.get("deaths") or 0) for r in my_side)
             opp_k = sum(int(r.get("kills") or 0)  for r in opp_side)
-            opp_d = sum(int(r.get("deaths") or 0) for r in opp_side)
             if opp_k >= my_k * 1.5 and opp_k - my_k >= 10:
                 out.append({
                     "text": f"Team kill deficit ({my_k}-{opp_k})",

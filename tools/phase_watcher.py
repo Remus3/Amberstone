@@ -573,7 +573,6 @@ def handle_event(topic: str, data: object, queue_id: int | None, *,
     if topic_short == "gameflow_phase" and sub_phase == "InProgress":
         time.sleep(INPROGRESS_CAPTURE_DELAY_S)
     captured_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    captured_at_iso = captured_at.replace(":", "-")
 
     frames_meta: list[dict] = []
     monitors = capture_both_monitors()

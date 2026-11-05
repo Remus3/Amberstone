@@ -176,8 +176,6 @@ def _load_brawl_build_note(champion: str, mode: str = "") -> str:
         tier = entry.get("aram_tier", "")
         note = entry.get("build_note", "")
         fb   = entry.get("full_build", [])
-        vt   = entry.get("vs_tanks", "")
-        vh   = entry.get("vs_healing", "")
         build_str = ", ".join(fb) if fb else ""
         mode_upper = mode.upper()
         if "URF" in mode_upper:

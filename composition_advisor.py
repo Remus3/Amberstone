@@ -127,7 +127,6 @@ def validate_item(item_name: str, champion: str,
     ad_pct   = profile["ad"]
     ap_pct   = profile["ap"]
     tanks    = profile["tank_count"]
-    has_sustain = profile["sustain_count"] >= 2
     champ_data = CHAMPIONS.get(champion, {})
     item_lower = item_name.lower()
     is_aram  = "ARAM" in game_mode

@@ -239,7 +239,6 @@ def targets_from_matrix(
     / loses to champ_a) - the de-bias is in the SORT, so a champ that loses to
     anyone still gets its most-specific counters rather than an empty list.
     """
-    a_mean = colmeans.get(champ_a, 0.0)
     counters: list[tuple[str, float, float]] = []
     good: list[tuple[str, float, float]] = []
     for champ_b in roster:

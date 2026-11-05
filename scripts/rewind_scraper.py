@@ -533,7 +533,6 @@ def parse_frame(frame: dict, match_id: str) -> list:
             continue
         pos = pf.get("position", {}) or {}
         ds  = pf.get("damageStats", {}) or {}
-        cs  = pf.get("championStats", {}) or {}
         rows.append({
             "match_id":       match_id,
             "timestamp_ms":   ts,
@@ -718,15 +717,13 @@ def main():
         if stats and isinstance(stats, dict):
             has_stats = 1
             info = stats.get("info", {})
-            meta = stats.get("metadata", {})
 
             # Determine the tracked player's team
             tracked = next((p for p in (info.get("participants") or [])
                            if any(alias in p.get("riotIdGameName", "").lower()
                                   for alias in ["sampleplayer", "moonbeam"])), None)
 
-            # Teams from history
-            teams_hist = hist_entry.get("teams", {})
+            # Side and result from history
             side       = hist_entry.get("side", "1")
             win_flag   = hist_entry.get("win", False)
 

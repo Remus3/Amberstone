@@ -686,7 +686,6 @@ def liveclient_summary() -> dict:
                     except Exception:  # noqa: BLE001
                         build = []
                 norm_owned = {x.lower().strip() for x in owned_items}
-                build_lc = {x.lower().strip() for x in build}
                 items_view = []
                 # 1. Owned items first (green) - skip trinket since it never sells.
                 for it in owned_items:

@@ -247,9 +247,8 @@ class CoachIntegration:
                     role    = cp.get("role", "unknown")
                     dmg     = cp.get("dmg", "ad")
                     mechanic = cp.get("mechanic", "")
-                    aram_tip = cp.get("aram", "")
                     spikes   = ", ".join(cp.get("spikes", [])) if cp.get("spikes") else ""
-                    # SR context: omit aram_tip (ARAM-specific, not useful in SR)
+                    # SR context: the champion's "aram" tip is not read (ARAM-specific)
                     profile  = (
                         f"{champion} ({role}, {dmg} damage). "
                         f"{mechanic} "
@@ -259,7 +258,6 @@ class CoachIntegration:
                     profile = GENERIC_PROFILE
             except Exception:  # noqa: BLE001
                 profile = GENERIC_PROFILE
-        game_mode  = game_state.get("game_mode", "CLASSIC")
         # SrAramWorker only submits CLASSIC/RANKED - always SR path.
         # ARAM/KIWI/Arena/Brawl coaching is owned by dedicated mode coaches.
         sr_rune_rec  = _load_sr_rune_rec(champion)

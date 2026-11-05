@@ -376,14 +376,7 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
         lines.append(f"Note: Lane quest boots NOT yet completed (level {gs.get('level',1)})")
 
     # RM-361: ally_list / enemy_list are the sanitised lists built above -
-    # do NOT re-read gs here. lane_partner likewise reuses the already
-    # cleaned ally_status rather than re-reading ally_status_str raw.
-    lane_partner = ""
-    for a_info in (ally_status or "").split(","):
-        a_info = a_info.strip()
-        if a_info:
-            lane_partner = a_info.split()[0] if a_info else ""
-            break
+    # do NOT re-read gs here.
 
     lines += [
         f"Summoners: D={summ_d}  F={summ_f}",
