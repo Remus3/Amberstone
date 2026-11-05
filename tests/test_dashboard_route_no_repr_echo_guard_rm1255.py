@@ -8,9 +8,10 @@ guard is scoped to the whole module, not only to error bodies: a log line
 that wants a repr uses lazy ``%r`` logging, which this guard does not
 match. A hit here is a new echo until proven otherwise.
 
-Known open site (allow-listed BY COUNT, so a fix there turns this guard
-red until the entry is removed): ``routes_loadout.py`` ``_resolve_user_build``
-(RM-1374, waiting on the lane/repo and true-audit work on that file).
+Known open sites are allow-listed BY COUNT, so a fix there turns this guard
+red until the entry is removed. None is open: the last one,
+``routes_loadout.py`` ``_resolve_user_build``, was closed by RM-1374 (fixed
+404 texts; the route no longer forwards the resolver's dict).
 
 An empty enumeration would pass vacuously, so the walk is anchored: it
 must see at least 40 route modules, and the detector is shown to fire on
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROUTES = ROOT / "dashboard"
 
 # file name -> number of repr-shaped f-string fields still allowed there.
-_KNOWN_OPEN = {"routes_loadout.py": 3}
+_KNOWN_OPEN: dict[str, int] = {}
 
 _REPR_CALLS = frozenset({"repr", "_clip"})
 

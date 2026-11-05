@@ -154,7 +154,9 @@ class UserBuildResolveTests(unittest.TestCase):
         with p1, p2:
             out = rt._resolve_user_build("Caitlyn", "userbuild_deadbeef", "sr", None)
         self.assertFalse(out["ok"])
-        self.assertIn("deadbeef", out["err"])
+        # RM-1374: a fixed text that never quotes the caller's build id.
+        self.assertEqual(out["err"], rt._UB_NOT_FOUND)
+        self.assertNotIn("deadbeef", out["err"])
 
     def test_malformed_shape_not_ok(self) -> None:
         p1, p2 = _patch_store([_REC], shaped=None)

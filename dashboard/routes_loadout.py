@@ -433,6 +433,21 @@ def _serve_rune_pages_post(h, payload) -> None:
 # produces so the existing enqueue loop is unchanged. override_summ (from
 # the champ-select adaptive-summoners pipeline) wins over the build's
 # stored pair when present.
+#
+# RM-1374: the failure texts are FIXED. They used to quote the caller's own
+# champion and build id back (`no user build {uid!r} for {champion!r}`),
+# and `_serve_loadout_apply_post` sent the dict verbatim as its 404 body -
+# the last site of the RM-1255 echo census. The ids go to the log instead.
+_UB_NOT_FOUND = "no such user build"
+_UB_MALFORMED = "user build malformed"
+# The 404 text for every other resolver failure. `coaches.loadout_resolver
+# .resolve` still builds its `err` from the caller's champion / variant /
+# path key (its texts are log material), so the route never forwards it.
+_VARIANT_NOT_FOUND = "no such variant"
+# The only resolver `err` texts the apply route may send as they are.
+_FIXED_RESOLVE_ERRS = frozenset({_UB_NOT_FOUND, _UB_MALFORMED})
+
+
 def _resolve_user_build(champion: str, variant: str, mode: str,
                         override_summ: list | None) -> dict:
     from coaches.loadout_resolver import (
@@ -444,10 +459,13 @@ def _resolve_user_build(champion: str, variant: str, mode: str,
     rec = next((b for b in list_for(champion)
                 if isinstance(b, dict) and b.get("id") == uid), None)
     if not rec:
-        return {"ok": False, "err": f"no user build {uid!r} for {champion!r}"}
+        log.info("loadout apply: no user build %r for %r", uid, champion)
+        return {"ok": False, "err": _UB_NOT_FOUND}
     shaped = format_for_display(rec)
     if not shaped:
-        return {"ok": False, "err": f"user build {uid!r} malformed"}
+        log.warning("loadout apply: user build %r for %r is malformed",
+                    uid, champion)
+        return {"ok": False, "err": _UB_MALFORMED}
     mode_key  = _normalize_mode(mode)
     label     = shaped.get("label") or "user build"
     runes     = shaped.get("runes") or {}
@@ -588,7 +606,16 @@ def _serve_loadout_apply_post(h, payload) -> None:
         # reaches resolve()'s "<variant>:<path>" partition logic.
         resolved = _resolve_variant(champ, variant, mode, override_summ)
         if not resolved.get("ok"):
-            h._send(404, json.dumps(resolved).encode(), "application/json"); return
+            # RM-1374: a fixed body, never the resolver's dict - its `err`
+            # (and any other key) can quote the caller's own values.
+            raw_err = resolved.get("err")
+            if isinstance(raw_err, str) and raw_err in _FIXED_RESOLVE_ERRS:
+                err = raw_err
+            else:
+                err = _VARIANT_NOT_FOUND
+                log.info("api/loadout/apply 404 (raw, not sent): %r", raw_err)
+            h._send(404, json.dumps({"ok": False, "err": err}).encode(),
+                    "application/json"); return
         queued = []
         queued_ids = []
         failed = []
