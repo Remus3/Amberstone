@@ -38,6 +38,19 @@ HASHES (the s145 rebuild map): VERBATIM in A1101 block 13.
 LAUNCH (s147): from an agent shell, start a GUI app via WMI Win32_Process Create (Start-Process dies with
 the call); run tools/rc_facts.py with empty stdin (it hangs on an open one).
 
+TOP OF NEXT ACTIONS (s150 main, after the harness stop, LEDGER 2047-2051; the numbered actions below keep their numbers and order):
+ORIGIN RED: origin main e21b4391b (git ls-remote, read at this record) fails CI: ci 42003344193 11 tests, docs-guards 42003344148 dead at collection. Local main holds the fixes (RM-1657 folds), and no whole suite has read rc 0 on it. The last run, on 401dac973, was reaped by the harness at 94 percent with 3 unnamed F marks in the partial log (LEDGER 2050), so it is NOT green. RULING A (LEDGER 2051; docs/_archive/2026-11/2026-11-05-s150-suite-retry-after-harness-stop-ruling.md): no suite retry until the operator says "run the landing suite" at the terminal; harness-stop retry unspent and suspended; the 19:40 window lapses; another reap ends that run. Ticks are health-only until then.
+/DONE MUST NOT PUSH while that holds: the no-push rule (gated suite exit 0 on the exact tree pushed, or that tree plus docs-only commits) overrides the /done push step for this tree state. It is a session-scoped rule from this session's main, not a change to tools/done.md. The margin ruling's section 7 is stricter for the ruled run (pushed sha == run sha, doc commits not excepted; LEDGER 2047): a push after that run meets both. Unpushed: 102 (git rev-list --count origin/main..main, this record's commit included; re-read at /done).
+OPERATOR ASKS:
+- Say "run the landing suite" to run it, after lanes are paused or at a quiet time; admission depends on free commit, needed 35314 MB at margin 2048.
+- RM-1427: "Decide: restore an entry point, or retire both modals with their escape-layer registrations and tests."
+- RM-1384: "Acceptance: decide with a live session whether the window shows in those phases, against the S134 T1 measured rule; if it does, read the table back live."
+- OK the one report to MAIN named by the margin ruling (docs/_archive/2026-11/2026-11-05-s150-suite-gate-landing-margin-ruling.md section 7); unsent, a new note needs that OK.
+- Choice on CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1: unverified, and it turns off a memory protection.
+VERIFY NEXT: nightly at or past 63e7c76cd for test_focused_option_draws_the_inset_system_ring: e21b4391b carries 63e7c76cd (git merge-base), so ci 42062228822 (schedule, on e21b4391b, in progress at this record) is that read; it reads origin's red tip, not the folds. RM-1506 stays OPEN until a plain gated rc 0. RM-1657: Linux verification of the folds; only CI on a pushed sha reads it.
+LANES IN FLIGHT: rotator pid 6176 (ops/loop/control/progress/s144-lanes.json; alive in tasklist at this record), paused until 20:11:45 local on 2026-11-05 and then running. Lane commits accumulate on lane/* and do not land until the suite question is settled. true-audit: crashed worker, 2 dirty paths (coaches/adaptation_hint_champion.py, tests/test_adaptation_hint_champion_true_audit_s144.py) kept in its worktree on an old base, do not discard. The tick job dies with this session.
+OPERATOR SCOPE: the line at the top of this file stays as already recorded.
+
 Next action 1 (FIRST, the inbox): `python ops/loop/inbox_tick.py --pending` read 2 open ORDER rows at /done, 1547
 and 2215. 1547: item 1 done, item 2 holding, item 3 (L9) DONE and answered (docs/_archive/2026-11/2026-11-01-2330-from-RC-ANSWER-to-MAIN-1547-*,
 1/1, re-hashed), item 4 (the clear) open; no mark_work_done until 4 is done; TERMINAL, no reply owed, send no note. 2215: Next action 7.
