@@ -22,9 +22,11 @@ height) and a text-face advance keep a swap close to the real one. Every
 glyph sharing one advance is the stub's signature: STUB_APPLIED is true
 only while an element set in 'Lato' is drawn by the stub, not a fallback.
 
-Every route here matches a Google Fonts host with _route_match.on_host, an
-EXACT hostname match (CodeQL py/incomplete-url-substring, alerts 78-81): a
-substring test also answered look-alikes such as
+Every route here matches a Google Fonts host with _route_match.on_host, a
+hostname match, not a substring test and not exact either: its docstring names
+what it answers differently from url_has_host (CodeQL
+py/incomplete-url-substring, alerts 78-81). A substring test also answered
+look-alikes such as
 `https://x.example/?q=fonts.gstatic.com` or
 `https://fonts.gstatic.com.evil.example/`. RM-1506: it is a compiled regex,
 never a function, because one callable matcher sends every request of the

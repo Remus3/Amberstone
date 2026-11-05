@@ -25,7 +25,7 @@ from urllib.parse import urlsplit
 import pytest
 from playwright._impl._helper import RouteHandler
 
-from tests._repo_walk import iter_repo_files, relative_posix, self_check
+from tests._repo_walk import REPO_ROOT, iter_repo_files, relative_posix, self_check
 from tests.snapshot_panels import _route_match, _webfont_stub
 from tests.snapshot_panels.conftest import _WS_STUB
 
@@ -122,6 +122,14 @@ def test_on_path_answers_what_the_lambda_it_replaced_answered(url):
     assert bool(_route_match.on_path("/api/state").search(url)) == (urlsplit(url).path == "/api/state")
 
 
+def test_on_host_differs_from_the_callable_on_userinfo():
+    """The known divergence _route_match.on_host records, kept on purpose: if
+    this flips, its comment is wrong."""
+    url = "https://user@fonts.gstatic.com/s/x.woff2"
+    assert _webfont_stub.url_has_host(url, _webfont_stub.FACE_HOST)
+    assert not _route_match.on_host(_webfont_stub.FACE_HOST).search(url)
+
+
 def test_on_path_takes_a_literal_path():
     assert _route_match.on_path("/api/a.b").search("http://h/api/a.b")
     assert not _route_match.on_path("/api/a.b").search("http://h/api/axb")
@@ -130,17 +138,37 @@ def test_on_path_takes_a_literal_path():
 # --- the AST guard ------------------------------------------------------------
 
 _ALLOWED_CALLS = {"on_host", "on_path", "compile"}
+_ROUTE_CALL = re.compile(r"\.(?:un)?route\s*\(")
+
+
+def _matcher_of(call):
+    """The matcher a .route / .unroute call passes: its first positional
+    argument, else its `url=` keyword (Playwright's name for it), else a `**`
+    splat. None when the call passes none of them."""
+    if call.args:
+        return call.args[0]
+    keywords = {keyword.arg: keyword.value for keyword in call.keywords}
+    return keywords.get("url", keywords.get(None))
 
 
 def _callable_matchers(source):
     """(line, matcher text) of every .route / .unroute whose matcher is not a
-    string or a regex. A bare name is refused too: it cannot be read here."""
+    string or a regex, positional or `url=`. A bare name and a `**` splat are
+    refused too: they cannot be read here.
+
+    NOT COMPLETE: this reads the syntax of a call on an attribute named route
+    or unroute, so it cannot see an alias (`r = ctx.route; r(lambda u: True, h)`),
+    `getattr(ctx, "route")(...)`, or `on_host` rebound to something that returns
+    a function. Those stay uncaught here; the behaviour tests above would only
+    see one on the contexts they build themselves."""
     found = []
     for node in ast.walk(ast.parse(source)):
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                and node.func.attr in ("route", "unroute") and node.args):
+                and node.func.attr in ("route", "unroute")):
             continue
-        matcher = node.args[0]
+        matcher = _matcher_of(node)
+        if matcher is None:
+            continue
         if isinstance(matcher, (ast.JoinedStr, ast.BinOp)):
             continue
         if isinstance(matcher, ast.Constant) and isinstance(matcher.value, str):
@@ -168,17 +196,57 @@ def test_the_guard_sees_each_callable_shape():
     assert _callable_matchers(good) == []
 
 
-def test_no_tracked_python_routes_with_a_callable_matcher():
-    self_check()
+def test_the_guard_reads_a_url_keyword(tmp_path):
+    """Playwright names the argument `url`, so the keyword form widens the
+    context exactly as the positional form does and has to fail the same way."""
+    site = tmp_path / "keyword_site.py"
+    site.write_text("ctx.route(url=lambda u: True, handler=h)\n"
+                    "page.route(handler=h, url=is_mine)\n"
+                    "page.route(url=make_matcher(), handler=h)\n"
+                    "page.unroute(url=lambda u: True)\n"
+                    "page.route(**options)\n", encoding="utf-8")
+    found = _callable_matchers(site.read_text(encoding="utf-8"))
+    assert [line for line, _ in found] == [1, 2, 3, 4, 5], found
+    good = ("ctx.route(url='**/api/x', handler=h)\n"
+            "ctx.route(handler=h, url=re.compile('x'))\n"
+            "ctx.route(url=_route_match.on_path('/x'), handler=h)\n"
+            "router.route()\n"
+            "router.route(mode='aram')\n")
+    assert _callable_matchers(good) == []
+
+
+def _scan(paths, root=REPO_ROOT):
+    """(files that call .route or .unroute, the callable matchers in them)."""
     sites = 0
     findings = []
-    route_call = re.compile(r"\.(?:un)?route\(")
-    for path in iter_repo_files():
+    for path in paths:
         source = path.read_text(encoding="utf-8", errors="replace")
-        if not route_call.search(source):
+        if not _ROUTE_CALL.search(source):
             continue
         sites += 1
-        findings += [f"{relative_posix(path)}:{line}: {text}" for line, text in _callable_matchers(source)]
+        findings += [f"{relative_posix(path, root)}:{line}: {text}" for line, text in _callable_matchers(source)]
+    return sites, findings
+
+
+def _audit(paths):
+    sites, findings = _scan(paths)
     # Anchor: an empty enumeration would pass the assertion below.
     assert sites >= 40, f"premise: the snapshot directory routes: {sites} files"
     assert not findings, findings
+
+
+def test_the_scan_reports_a_keyword_site_in_a_file(tmp_path):
+    (tmp_path / "keyword_site.py").write_text(
+        "ctx.route (url=lambda u: True, handler=h)\n", encoding="utf-8")
+    assert _scan(tmp_path.glob("*.py"), tmp_path) == (
+        1, ["keyword_site.py:1: lambda u: True"])
+
+
+def test_the_audit_does_not_pass_on_an_empty_enumeration():
+    with pytest.raises(AssertionError, match="premise"):
+        _audit([])
+
+
+def test_no_tracked_python_routes_with_a_callable_matcher():
+    self_check()
+    _audit(iter_repo_files())
