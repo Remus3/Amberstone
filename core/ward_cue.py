@@ -9,20 +9,24 @@ read live WITHOUT the (non-existent) ward-placement event stream.
 Live Client realities (the same ones core/ward_producer.py is built on):
   * The Live Client API emits NO ward / trinket cast events - the canonical
     event set is ChampionKill / DragonKill / BaronKill / TurretKilled /
-    InhibKilled / ... only (dashboard/_state_cooldowns.py documents this). So a
-    precise trinket cooldown timer is impossible. What IS exposed is the
-    per-item ``canUse`` boolean on ``allPlayers[i].items[]``: for a ward
-    trinket, canUse True == off cooldown / ready to place (ward_producer.py
-    reads the True->False edge to infer a placement; we read the True state
-    itself for the ready cue).
+    InhibKilled / ... only (which is why core/ward_producer.py infers
+    placements from inventory deltas). So a precise trinket cooldown timer is
+    impossible. What IS exposed is the per-item ``canUse`` boolean on
+    ``allPlayers[i].items[]``: for a ward trinket, canUse True == off
+    cooldown / ready to place (ward_producer.py reads the True->False edge to
+    infer a placement; we read the True state itself for the ready cue).
   * Control Ward (2055) is a stackable consumable. "Ready" means you are
     holding one (count >= 1) - there is no cooldown, you place it when you have
     it, so presence is the honest signal.
 
 This module is the PURE extractor (no I/O, no DOM): dashboard/_liveclient.py
 calls it with the active player's ``items`` list and ships the result as
-``/api/state.liveclient.ward_cue``. The overlay (web/js/panels/ward_cue.js)
-owns the not-ready -> ready edge detection + the one-shot pulse.
+``/api/state.liveclient.ward_cue``. The frontend panel that once consumed it
+(a ward_cue overlay panel doing the not-ready -> ready edge detection and the
+one-shot pulse) was deleted as an orphan; the backend was kept on purpose, so
+nothing in web/ reads the field today. Its teardown is a live-session job
+(docs/LIVE_GAME_GATED_SYNC.md, RM-05 disposition notes: serializer, test and
+overlay DOM contract together), never a blind headless delete.
 """
 
 from __future__ import annotations
