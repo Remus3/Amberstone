@@ -973,6 +973,20 @@ def _own_nodes(stmt):
 _DEFERRED = (ast.Lambda, ast.GeneratorExp)
 
 
+def _log_args(call):
+    """The message arguments of a logging sink, or None if `call` is not one.
+
+    RM-1561 (d): `functools.partial(log.info, m)` evaluates `m` where the
+    partial is BUILT, so the partial is the sink and is judged there (a
+    later re-binding of `m` changes nothing the partial holds)."""
+    if _is_log_call(call):
+        return list(call.args) + [kw.value for kw in call.keywords]
+    if (_call_name(call) == "partial" and call.args
+            and _is_log_call(ast.Call(func=call.args[0], args=[], keywords=[]))):
+        return list(call.args[1:]) + [kw.value for kw in call.keywords]
+    return None
+
+
 def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
     """Flag a raise or logging call among `nodes` whose message is tainted.
     A logging call inside a lambda or generator body is judged with the late
@@ -985,11 +999,11 @@ def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
         deferred = {id(c) for d in ast.walk(node) if isinstance(d, _DEFERRED)
                     for c in ast.walk(d) if isinstance(c, ast.Call)}
         for call in [n for n in ast.walk(node) if isinstance(n, ast.Call)]:
-            if _is_log_call(call):
+            args = _log_args(call)
+            if args is not None:
                 seen = (set(tainted) | set(late) if id(call) in deferred
                         else tainted)
-                exprs.extend((a, seen) for a in call.args)
-                exprs.extend((kw.value, seen) for kw in call.keywords)
+                exprs.extend((a, seen) for a in args)
     for expr, seen in exprs:
         scan = _TaintScan(seen, late)
         scan.visit(expr)
@@ -1003,7 +1017,8 @@ def _walk_scope(body, entry, report, late=frozenset()):
     the enclosing scopes' `late`. `ever` is the late view a nested def,
     lambda or generator in this scope reads with, since it may run after any
     of the scope's bindings (`m = 'x'; def g(): log.info(m)` then `m = url`).
-    Returns (fall-through state, `return` states, every state seen inside)."""
+    Returns (fall-through state, `return` states, every state seen inside,
+    whether a reachable `return` / `yield` value may carry the url)."""
     ever = set(entry) | set(late)
     while True:
         flow = _Flow(report, ever)
@@ -1012,7 +1027,7 @@ def _walk_scope(body, entry, report, late=frozenset()):
         out = flow.block(body, entry)
         seen = _join(out, *flow.returns, *inside) or set()
         if seen <= ever:
-            return out, flow.returns, inside
+            return out, flow.returns, inside, flow.hands_back
         ever |= seen
 
 
@@ -1043,6 +1058,8 @@ class _Flow:
         self.loops = []     # innermost last: {"breaks": [...], "conts": [...]}
         self.watchers = []  # per open try: every state seen inside it
         self.returns = []   # states at `return` in this function body
+        # RM-1561 (d): a reachable `return` / `yield` value may carry the url.
+        self.hands_back = False
 
     def block(self, stmts, state):
         """The state after `stmts`, or None if no path falls through them."""
@@ -1081,6 +1098,12 @@ class _Flow:
             if len(state) == before:
                 break
         _check_sinks(nodes, stmt, state, self.report, self.ever)
+        for node in nodes:
+            for sub in ast.walk(node):
+                if (isinstance(sub, (ast.Yield, ast.YieldFrom, ast.Return))
+                        and sub.value is not None
+                        and _is_tainted(sub.value, state, self.ever)):
+                    self.hands_back = True
         return state
 
     def stmt(self, stmt, state):
@@ -1102,13 +1125,23 @@ class _Flow:
             # may READ, not what it binds. A class body runs where it stands,
             # so it gets no late walk; its methods still read `self.ever`
             # through the class scope's own late view.
+            # RM-1561 (d): a def whose `return` / `yield` value may carry
+            # the url binds its name as a tainted VALUE, as `g = lambda: url`
+            # does, so `raise E(g())` is a leak. Judged from both walks (the
+            # late one sees what a later call reads). Add-only, like every
+            # binding form but plain `=`: the body may still hold the old
+            # value of the name.
             _check_sinks(_own_nodes(stmt), stmt, state, self.report, self.ever)
-            out, returns, inside = _walk_scope(stmt.body, state, self.report,
-                                               self.ever)
+            out, returns, inside, hands_back = _walk_scope(
+                stmt.body, state, self.report, self.ever)
             if (not isinstance(stmt, ast.ClassDef)
                     and not self.ever <= state):
-                _walk_scope(stmt.body, state | self.ever, self.report, self.ever)
-            return state | (_join(out, *returns, *inside) or set())
+                hands_back |= _walk_scope(stmt.body, state | self.ever,
+                                          self.report, self.ever)[3]
+            state = state | (_join(out, *returns, *inside) or set())
+            if hands_back and not isinstance(stmt, ast.ClassDef):
+                state.add(stmt.name)
+            return state
         if isinstance(stmt, ast.Return):
             # `return (m := url)` binds before leaving, and a `finally` or a
             # handler can still see that state.
@@ -1677,6 +1710,55 @@ _CHECKER_SAMPLES = (
      "    m = url\n", False),
     ("lambda over a name never tainted",
      "def f(url):\n    m = 'x'\n    h = lambda: log.info(m)\n    h()\n", False),
+    # RM-1561 (d): what a nested def hands back is a value. A def whose
+    # return or yield may carry the url taints its name, as `h = lambda: url`
+    # already did, so a call to it in a message is a leak.
+    ("nested def returns the value",
+     "def f(url):\n    def g():\n        return url\n    raise E(g())\n", True),
+    ("nested def returns a name bound after its def",
+     "def f(url):\n    m = 'x'\n    def g():\n        return m\n    m = url\n"
+     "    raise E(g())\n", True),
+    ("nested def returns a local carrying the value",
+     "def f(url):\n    def g():\n        m = url\n        return m\n"
+     "    log.info('%s', g())\n", True),
+    ("nested generator yields the value",
+     "def f(url):\n    def g():\n        yield url\n    raise E(next(g()))\n", True),
+    ("nested async def returns the value",
+     "def f(url):\n    async def g():\n        return url\n    raise E(g())\n", True),
+    ("module helper returning a built url, called in a later def",
+     "def g(c):\n    return _build_url(c, 't', 'i', 'SR')\n\n"
+     "def f(c):\n    log.info('%s', g(c))\n", True),
+    ("module helper returning a built url, called in an earlier def",
+     "def f(c):\n    log.info('%s', g(c))\n\n"
+     "def g(c):\n    return _build_url(c, 't', 'i', 'SR')\n", True),
+    # RM-1561 (d): functools.partial over a logging function takes its
+    # arguments NOW, so it is a sink judged where it is built.
+    ("partial over a log function with the value",
+     "import functools\ndef f(url):\n    p = functools.partial(log.info, '%s', url)\n"
+     "    p()\n", True),
+    ("partial binds the value before the name is cleared",
+     "def f(url):\n    m = url\n    p = partial(log.info, m)\n    m = 'x'\n    p()\n",
+     True),
+    ("partial over a log function with the value as a keyword",
+     "def f(url):\n    p = partial(log.warning, '%s', extra=url)\n    p()\n", True),
+    ("partial built in a lambda reads a name bound after it",
+     "def f(url):\n    m = 'x'\n    h = lambda: partial(log.info, m)()\n    m = url\n"
+     "    h()\n", True),
+    # RM-1561 (d) keep-greens.
+    ("nested def returns a sanitized value",
+     "def f(url):\n    def g():\n        return _safe_url(url)\n    raise E(g())\n",
+     False),
+    ("nested def returns a constant",
+     "def f(url):\n    def g():\n        return 'x'\n    raise E(g())\n", False),
+    ("nested def returns its own clean parameter",
+     "def f(url):\n    def g(m):\n        return m\n    raise E(g('x'))\n", False),
+    ("partial over a log function with clean arguments",
+     "def f(url):\n    p = partial(log.info, 'x')\n    p()\n", False),
+    ("partial over a non-log function with the value",
+     "def f(url):\n    p = partial(fetch, url)\n    p()\n", False),
+    ("partial takes the value at build time, not at call time",
+     "def f(url):\n    m = 'x'\n    p = partial(log.info, m)\n    m = url\n    p()\n",
+     False),
 )
 
 
