@@ -74,7 +74,7 @@ at the first rotator run), RM-1272 (not started); operator's "Yes, all" covers t
 RC-OWES d: `gh api` alerts route denied in the drive, push line reads alert 144, package unread; done 2, 3, 8, 11, 6 code half; 1 + 4 went into ORDER 1233; 7 = MAIN writes the
 700 USD ceiling from FLEET-5a. RM-1273 CLAUDE.md at 92 percent of its budget (drift_guard, a /done breach).
 Next action 8 (CI read owed, LEDGER 2024): read the next scheduled nightly for test_focused_option_draws_the_inset_system_ring on a sha at or past 63e7c76cd and name the sha; 63e7c76cd was unpushed at this write, so no nightly carries it before the next push.
-Next action 9 (s150 landing, LEDGER 2025-2030): ds and repo HELD on suite reds, 26 lane commits at the 21:49:10 snapshot, ids RM-1339..-1343 and RM-1346..-1363 reserved. They land with the 3 merger folds named in LEDGER 2030 before the gated suite; lane reports use S144-* ids. Fold a fake-key pragma when the credential dry run halts, before the suite. Land first, a ds lane with nothing landed idles at cost. RM-1272 BUILT, PARTIAL, on local main unpushed (LEDGER 2031, row in BACKLOG, item 9 stays open on RM-1384). CI on the s150 push 592fb47d7 is red by a 45 min step timeout at 98 percent, 0 failed (RM-1386): read the nightly, and expect the same timeout on the next wide push until RM-1386 lands.
+Next action 9 (s150 landings, LEDGER 2025-2038): the 00:48:57 snapshot lands whole lanes, ds and repo included (LEDGER 2032-2038 name the boundary tips and folds); filings RM-1387..RM-1505. Fold a fake-key pragma into the introducing commit when the credential dry run halts, before the suite; expect cross-lane ratchet reds (repo baselines against other lanes' files), so run the touched tests on the merged tree before the suite. RM-1272 PARTIAL (LEDGER 2031, item 9 stays open on RM-1384), its last fix verified by an independent pass (LEDGER 2038). CI on the s150 push 592fb47d7 is red by a 45 min step timeout at 98 percent, 0 failed (RM-1386): read the nightly, and expect the same timeout on the next wide push until RM-1386 lands.
 FIRST: CPU / memory glance; the rotator (IN-FLIGHT); inbox_tick.py --pending; gh pr list; git fetch +
 origin/main still an ancestor of main; the RC-InboxResponder agreement expires 2026-12-01 00:00 (read
 back s147 from ops/runtime/inbox_responder_agreement.json; renew before then).
@@ -245,7 +245,7 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
 - RM-681 PARTIAL: one attended live call per path (truststore MET s133 c6). Origin
   c1/deps-pip-anthropic1-measure was deleted under MAIN 0909; 24c54ec39 stays in the kit bundle.
 - Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free
-  RM-1387 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2032. ROADMAP top open: PKG (WA9-WA14, WA17), the
+  RM-1506 (pin docs/DS_SWEEP_TRACKER.md); next LEDGER 2039. ROADMAP top open: PKG (WA9-WA14, WA17), the
   PKG-6c residue, RM-488, RM-596, RM-597, the RM-681.. rows; EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45
   2026-10-03 (Desktop EXTERNAL-LIFT-DIRECTIVE.md / -2.md; -2 ingested as RM-526..RM-594).
