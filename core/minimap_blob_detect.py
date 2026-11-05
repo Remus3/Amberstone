@@ -132,8 +132,8 @@ def detect_team_dots(
     mn = np.minimum(np.minimum(R, G), B)
     sat = (mx - mn) / np.maximum(mx, 1)
 
-    red_mask = (sat > _SAT_MIN) & (mx > _VAL_MIN_RED) & (R == mx) & (R - G > 45) & (R - B > 35)
-    blue_mask = (sat > _SAT_MIN) & (mx > _VAL_MIN_BLUE) & (B == mx) & (B - R > 45) & (B - G > 10)
+    red_mask = (sat > _SAT_MIN) & (mx > _VAL_MIN_RED) & (mx == R) & (R - G > 45) & (R - B > 35)
+    blue_mask = (sat > _SAT_MIN) & (mx > _VAL_MIN_BLUE) & (mx == B) & (B - R > 45) & (B - G > 10)
     mask_cap = max(1, int(H * W * _MASK_CAP_FRAC))
     if int(red_mask.sum()) > mask_cap or int(blue_mask.sum()) > mask_cap:
         return []  # frame is loading / garbage - do not emit noise

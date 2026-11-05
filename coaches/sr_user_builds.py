@@ -469,7 +469,7 @@ def _read_cached_locked() -> dict[str, Any]:
         mt = _STORE_PATH.stat().st_mtime_ns
     except OSError:
         mt = None
-    if _CACHE is not None and _CACHE_MTIME == mt:
+    if _CACHE is not None and mt == _CACHE_MTIME:
         return _CACHE
     try:
         raw = json.loads(_STORE_PATH.read_text(encoding="utf-8"))

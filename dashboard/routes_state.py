@@ -300,7 +300,7 @@ def _state_payload_cached() -> bytes:
     # tries once itself, so a transient failure is not amplified.
     gen_seen = _STATE_CACHE_GEN
     with _STATE_BUILD_LOCK:
-        if _STATE_CACHE_GEN != gen_seen and _STATE_CACHE_PAYLOAD is not None:
+        if gen_seen != _STATE_CACHE_GEN and _STATE_CACHE_PAYLOAD is not None:
             return _STATE_CACHE_PAYLOAD
         now = time.time()
         if (_STATE_CACHE_PAYLOAD is not None

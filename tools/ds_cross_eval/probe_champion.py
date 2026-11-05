@@ -41,8 +41,8 @@ OPERATOR = "SamplePlayer"  # owned-side; taglines Vayne(old)+Trist(new)
 MODE_DB = {"ARAM": "ARAM", "SR": "CLASSIC"}
 
 # comp grid: (label, ad_share, ap_share, armor, mr, max_hp)
-SQUISHY = dict(armor=60.0, mr=50.0, max_hp=1800.0)
-TANKY = dict(armor=180.0, mr=150.0, max_hp=3500.0)
+SQUISHY = {"armor": 60.0, "mr": 50.0, "max_hp": 1800.0}
+TANKY = {"armor": 180.0, "mr": 150.0, "max_hp": 3500.0}
 GRID = [
     ("ad_squishy", 0.85, 0.10, SQUISHY),
     ("bal_squishy", 0.50, 0.50, SQUISHY),

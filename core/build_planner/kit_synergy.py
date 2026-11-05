@@ -602,8 +602,7 @@ def champ_kit_traits(champ) -> dict:
     override = _lookup_kit_traits(name)
     if override is not None:
         _, ov_flags = override
-        for k, v in ov_flags.items():
-            flags[k] = v
+        flags.update(ov_flags)
     # Default crit_scaling heuristic when not explicitly overridden: an AD carry
     # / assassin kit scales with crit; everything else does not.
     if override is None or "crit_scaling" not in override[1]:

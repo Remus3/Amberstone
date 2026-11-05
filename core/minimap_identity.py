@@ -319,7 +319,7 @@ def identify_dots(crop_rgb, dots, roster):
         crop = np.ascontiguousarray(crop[:, :, :3])
         H, W = int(crop.shape[0]), int(crop.shape[1])
         size = _template_size(W)
-        if H < size or W < size:
+        if size > H or size > W:
             return dots
         templates = []
         for champ in roster:

@@ -213,9 +213,7 @@ def build_map() -> dict[str, dict]:
                 else:
                     # ``**splat`` - attribute by name, the only sound rule
                     # without evaluating the dict (see _route_rank_tank).
-                    for key in got:
-                        if key in params:
-                            carried[key] = key
+                    carried.update({key: key for key in got if key in params})
 
         out[route] = {
             "handler": handler_fn.__name__,

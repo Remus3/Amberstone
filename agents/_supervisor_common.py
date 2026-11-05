@@ -597,8 +597,8 @@ def _reassert_sentinel() -> bool:
     global _SENTINEL_REPAIRS
     sentinel = _sentinel_path()
     if (_LOCK_OWNER_PID is None
-            or _LOCK_OWNER_PID != os.getpid()
-            or _LOCK_OWNER_SENTINEL != sentinel):
+            or os.getpid() != _LOCK_OWNER_PID
+            or sentinel != _LOCK_OWNER_SENTINEL):
         return False
     if sentinel.exists():
         _check_sentinel_conflict(sentinel)
@@ -659,7 +659,7 @@ def lock_health() -> dict[str, object]:
     """
     sentinel = _sentinel_path()
     return {
-        "owned": _LOCK_OWNER_PID == os.getpid() and _LOCK_OWNER_SENTINEL == sentinel,
+        "owned": os.getpid() == _LOCK_OWNER_PID and sentinel == _LOCK_OWNER_SENTINEL,
         "sentinel_present": sentinel.exists(),
         "sentinel_repairs": _SENTINEL_REPAIRS,
         "sentinel_conflicts": _SENTINEL_CONFLICTS,
