@@ -51,8 +51,7 @@ FIXED = (
 )
 
 # rel path -> number of B007 findings it may keep. Only shrinks. Test scaffolding
-# (the DS tests belong to lane ds) plus tools/ddragon_mirror_refresh.py, which
-# another lane branch changed. tools/stop_claim_gate.py is a ruff FALSE POSITIVE:
+# (the DS tests belong to lane ds). tools/stop_claim_gate.py is a ruff FALSE POSITIVE:
 # the loop target ``turn`` is read by the nested ``flag()`` closure, so it must
 # keep its name (renaming it to ``_turn`` blanked every finding's turn).
 _BASELINE = {
@@ -92,7 +91,6 @@ _BASELINE = {
     "tests/test_session_hygiene.py": 2,
     "tests/test_smoothed_rates_101qq.py": 1,
     "tests/test_xdist_suite_fragments_s144q33.py": 1,
-    "tools/ddragon_mirror_refresh.py": 2,
     "tools/stop_claim_gate.py": 1,
 }
 

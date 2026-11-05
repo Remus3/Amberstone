@@ -79,8 +79,8 @@ def _resolve_target(rel_path: str) -> Path:
     root = _PROJECT_ROOT.resolve()
     try:
         p.relative_to(root)
-    except ValueError:
-        raise UIApplyError(f"path escapes project root: {rel_path}")
+    except ValueError as exc:
+        raise UIApplyError(f"path escapes project root: {rel_path}") from exc
     return p
 
 

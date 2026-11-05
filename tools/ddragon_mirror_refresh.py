@@ -464,7 +464,7 @@ def enumerate_assets(version: str, bundles: dict[str, Any]) -> list[Asset]:
     # Champions - square portrait (from summary) + ability spells + passive
     # (from per-champion detail; the summary bundle drops both).
     champs = bundles.get("champion", {}).get("data", {})
-    for key, meta in champs.items():
+    for meta in champs.values():
         img = (meta.get("image") or {}).get("full")
         bn = _safe_basename(img)
         if bn:
@@ -494,7 +494,7 @@ def enumerate_assets(version: str, bundles: dict[str, Any]) -> list[Asset]:
                 out.append(Asset("spell", f"{base}/spell/{sn}", f"img/spell/{sn}"))
 
     # Items
-    for iid, meta in bundles.get("item", {}).get("data", {}).items():
+    for meta in bundles.get("item", {}).get("data", {}).values():
         bn = _safe_basename((meta.get("image") or {}).get("full"))
         if bn:
             out.append(Asset("item", f"{base}/item/{bn}", f"img/item/{bn}"))
@@ -557,14 +557,13 @@ def fetch_one(asset: Asset, dest: Path, *, manifest_entry: dict | None,
       status in {"skip_present", "new", "changed", "fail_404", "fail_other"}.
       new_manifest_entry is None on skip; populated dict otherwise.
     """
-    if force or not dest.exists():
-        decide = "fetch"
-    elif check_changed:
-        # HEAD probe; compare against manifest etag/size.
+    if not (force or not dest.exists()):
+        if not check_changed:
+            return "skip_present", None
+        # HEAD probe; compare against manifest etag/size. A HEAD failure (or
+        # any non-skip verdict) falls through to the GET below.
         head = http_head(asset.url)
-        if head.status != 200:
-            decide = "fetch"  # treat HEAD failure as "go fetch and let GET handle it"
-        else:
+        if head.status == 200:
             etag = head.headers.get("etag")
             length = head.headers.get("content-length")
             try:
@@ -578,9 +577,6 @@ def fetch_one(asset: Asset, dest: Path, *, manifest_entry: dict | None,
             if size_new is not None and known_size == size_new and not known_etag:
                 # Same size, no etag tracked - good enough to skip.
                 return "skip_present", None
-            decide = "fetch"
-    else:
-        return "skip_present", None
 
     headers: dict[str, str] = {}
     if check_changed and manifest_entry and manifest_entry.get("etag"):

@@ -49,9 +49,9 @@ FIXED = (
 )
 
 # rel path -> number of unused locals it may keep. Only shrinks.
-# Frozen: core/log_setup.py, lcu/lcu_client.py. Another lane branch changed:
-# tools/ddragon_mirror_refresh.py. The rest are DS (lane ds), test scaffolding,
-# a probe script and performance_tracker.py (a call on the right-hand side).
+# Frozen: core/log_setup.py, lcu/lcu_client.py. The rest are DS (lane ds) and
+# test scaffolding. RM-1539 cleaned tools/ddragon_mirror_refresh.py, the
+# dsv5 probe script and performance_tracker.py (an unread _identify_comp call).
 _BASELINE = {
     "agents/agent3_testing/suite/test_round34.py": 1,
     "agents/agent3_testing/suite/test_round35.py": 1,
@@ -67,8 +67,6 @@ _BASELINE = {
     "agents/daemon_slayer/tests/test_rank_offclass_win_exempt.py": 1,
     "core/log_setup.py": 1,
     "lcu/lcu_client.py": 1,
-    "ops/audit/ds_perm_swarm/dsv5_lean_probe.py": 4,
-    "performance_tracker.py": 1,
     "tests/phase2_smoke/test_snapshot_translation.py": 1,
     "tests/phase8_smoke/test_sr_user_builds.py": 1,
     "tests/snapshot_panels/test_spike_curve.py": 1,
@@ -84,7 +82,6 @@ _BASELINE = {
     "tests/test_snowball_elasticity.py": 1,
     "tests/test_tft_coach_engine_audit.py": 1,
     "tests/test_vision_atlas_precompute.py": 3,
-    "tools/ddragon_mirror_refresh.py": 1,
 }
 
 

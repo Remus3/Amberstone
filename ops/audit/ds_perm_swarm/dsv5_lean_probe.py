@@ -35,17 +35,17 @@ def row(label, enemy, lean):
 def main():
     print(f"DSV5 RC_COMP_HP_LEAN probe (level={LEVEL}, sr)")
     print("\n[1] no-comp-info (champ-select/preview fallback shape):")
-    n_off = row("enemy=None", None, False)
+    row("enemy=None", None, False)
     n_on = row("enemy=None", None, True)
-    e_off = row("enemy=[]", [], False)
-    e_on = row("enemy=[]", [], True)
+    row("enemy=[]", [], False)
+    row("enemy=[]", [], True)
 
     print(f"\n[2] live SR comp (in-game coach shape) {LIVE_COMP}:")
     c_off = row("live comp", LIVE_COMP, False)
     c_on = row("live comp", LIVE_COMP, True)
 
     print(f"\n[3] all-squishy comp {SQUISHY}:")
-    s_off = row("squishy comp", SQUISHY, False)
+    row("squishy comp", SQUISHY, False)
     s_on = row("squishy comp", SQUISHY, True)
 
     print("\nFINDINGS:")

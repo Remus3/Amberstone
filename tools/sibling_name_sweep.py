@@ -1654,7 +1654,7 @@ def remote_advertised(root: Path, remote_name: str) -> list:
         raise GitFault(
             "could not read the remote's advertised refs (git ls-remote); a new "
             f"ref is never scanned against local remote-tracking refs: {exc}"
-        )
+        ) from exc
     shas = sorted({
         ln.split()[0] for ln in out.splitlines() if ln.split() and _SHA.match(ln.split()[0])
     })
@@ -1740,10 +1740,10 @@ def _git(
             env=dict(os.environ, **env) if env else None,
             timeout=timeout,
         )
-    except subprocess.TimeoutExpired:
-        raise GitFault("git " + " ".join(args[:2]) + f" timed out after {timeout}s")
+    except subprocess.TimeoutExpired as exc:
+        raise GitFault("git " + " ".join(args[:2]) + f" timed out after {timeout}s") from exc
     except OSError as exc:
-        raise GitFault(f"git could not be invoked: {exc}")
+        raise GitFault(f"git could not be invoked: {exc}") from exc
     if proc.returncode != 0:
         raise GitFault(
             "git " + " ".join(args[:2]) + f" exited {proc.returncode}: "

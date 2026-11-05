@@ -352,7 +352,7 @@ def _core_units(units):
 def calculate_tft_rating(placement,stage=0,level=0,game_mins=0.0,traits=None,units=None,augments=None,is_duo=False):
     mx=4 if is_duo else 8
     if placement<1 or placement>mx: return ("", [])
-    gm=(_TFT_GRADE_DUO if is_duo else _TFT_GRADE).get(placement,"C");n=[];comp=_identify_comp(traits or [],units or []);core=_core_units(units or [])
+    gm=(_TFT_GRADE_DUO if is_duo else _TFT_GRADE).get(placement,"C");n=[];core=_core_units(units or [])
     tag=" (Double Up)" if is_duo else ""
     if placement==1:n.append(f"1st place{tag} - dominant")
     elif placement<=2:n.append(f"Top {placement}{tag} - close to winning")

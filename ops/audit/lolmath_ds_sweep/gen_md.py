@@ -147,7 +147,7 @@ for cid, kit, nb, ub, dsm, lmd, dsd, ov, fl, gc in rows:
     L.append(f"| {cid}{mark} | {kit} | {lmd} | {dsd} | {sh(best)} | {sh(dsm)} | {ov} | {fl} |")
 L += ["\n## Appendix: lolmath normal (gold-aware) where it differs from ultimate\n",
  "| Champ | normal (gold-aware) | ULTIMATE (cost-ignore) |", "|---|---|---|"]
-for cid, kit, nb, ub, dsm, lmd, dsd, ov, fl, gc in rows:
+for cid, _kit, nb, ub, _dsm, _lmd, _dsd, _ov, _fl, gc in rows:
     if gc:
         cur = (lm_ult.get(cid) or {}).get("current", [])
         normal_disp = nb if len(nb) >= 5 else cur

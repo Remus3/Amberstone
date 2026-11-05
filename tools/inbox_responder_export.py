@@ -162,7 +162,7 @@ def ensure_export(repo_root, state_root, *, ref: str = "origin/main", runner, ti
         return final
     except (tarfile.TarError, ValueError, EOFError) as exc:
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        raise ExportFailed(f"exc:{type(exc).__name__}")
+        raise ExportFailed(f"exc:{type(exc).__name__}") from exc
 
     _prune(export_root, final)
     return final

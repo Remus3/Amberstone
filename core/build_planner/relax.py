@@ -283,7 +283,7 @@ def encode_state(constraints: Sequence[Constraint],
         raw = json.dumps(doc, sort_keys=True, separators=(",", ":"),
                          ensure_ascii=True, allow_nan=False)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"constraint value is not JSON-serialisable: {exc}")
+        raise ValueError(f"constraint value is not JSON-serialisable: {exc}") from exc
     return base64.urlsafe_b64encode(raw.encode("ascii")).decode("ascii").rstrip("=")
 
 
@@ -294,13 +294,13 @@ def decode_state(state: str) -> tuple:
         raw = base64.urlsafe_b64decode((state + pad).encode("ascii"))
         doc = json.loads(raw.decode("ascii"))
     except (binascii.Error, UnicodeError, ValueError, TypeError) as exc:
-        raise ValueError(f"malformed state string: {exc}")
+        raise ValueError(f"malformed state string: {exc}") from exc
     if not isinstance(doc, dict) or doc.get("v") != STATE_VERSION:
         raise ValueError("unsupported state string version")
     try:
         cons = tuple(Constraint(**c) for c in doc["c"])
         rungs = tuple(doc["l"])
     except (KeyError, TypeError) as exc:
-        raise ValueError(f"malformed state string: {exc}")
+        raise ValueError(f"malformed state string: {exc}") from exc
     _validate(cons, rungs)
     return cons, rungs

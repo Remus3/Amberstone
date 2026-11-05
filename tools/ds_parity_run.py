@@ -65,7 +65,7 @@ def load_fixtures(path: Path = FIXTURES) -> list[dict]:
         try:
             out.append(json.loads(line))
         except json.JSONDecodeError as e:
-            raise SystemExit(f"{path}:{i}: bad JSON - {e}")
+            raise SystemExit(f"{path}:{i}: bad JSON - {e}") from e
     return out
 
 
