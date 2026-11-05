@@ -28,8 +28,8 @@ There is no directory or package sanction on purpose - it would let every new
 writer in that tree start bare, the RM-258 failure itself.
 
 SCOPE: every tracked .py via tests/_repo_walk (ADR-015) EXCEPT the one-shot
-generator trees the rows themselves allowlist (`scripts/`, `ops/audit/`,
-`Share/`), plus `tests/`, `docs/`, `oss/` (the extracted package IS
+generator trees the rows themselves allowlist (`ops/audit/`, `Share/`), plus
+`tests/`, `docs/`, `oss/` (the extracted package IS
 an implementation and is drift-pinned to core/polled_json by
 tests/test_oss_win32_atomic_io_drift.py) and `ops/fleet_kit/` (vendored
 byte-for-byte; a local edit fails its MANIFEST). tools/ is in scope except
@@ -736,7 +736,7 @@ def test_a_new_lib_writer_starts_in_scope():
     assert _in_scope("lib/game_data/fetch.py")
     assert _in_scope("lib/game_data/build.py")
     assert _in_scope("lib/ddragon/fetch.py")
-    assert not _in_scope("scripts/rewind_scraper.py")
+    assert _in_scope("scripts/rewind_scraper.py")
 
 
 def test_every_lib_module_is_in_scope():

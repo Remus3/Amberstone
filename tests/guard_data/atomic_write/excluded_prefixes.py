@@ -3,7 +3,6 @@ ROWS = {
     "tests/",
     "docs/",
     "oss/",
-    "scripts/",
     "ops/audit/",
     "ops/fleet_kit/",
     "Share/",

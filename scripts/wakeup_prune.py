@@ -28,6 +28,11 @@ from pathlib import Path
 from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.polled_json import atomic_write_text  # noqa: E402
+
 WAKEUP = ROOT / "WAKEUP_NOTES.md"
 ARCHIVE = ROOT / "docs" / "history_notes.md"
 
@@ -283,9 +288,9 @@ def prepend_sessions(
 
 
 def _atomic_write(target: Path, content: str) -> None:
-    tmp = target.with_suffix(target.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8", newline="\n")
-    tmp.replace(target)
+    """RM-258: core.polled_json writes UTF-8 bytes verbatim (LF stays LF) via
+    a per-writer scratch name, and removes it if the write or rename raises."""
+    atomic_write_text(target, content)
 
 
 def _reject_bad_keep(keep: int) -> bool:

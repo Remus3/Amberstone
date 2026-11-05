@@ -24,6 +24,11 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.polled_json import atomic_write_json  # noqa: E402
+
 REFRESH_DIR = ROOT / "data" / "meta_build" / "refresh_2026-05-02"
 META_BUILD = ROOT / "data" / "meta_build"
 
@@ -41,21 +46,12 @@ def load_refresh(phase_file: str) -> dict:
 def _write_json_lf(path: Path, payload: dict) -> None:
     """Atomically write ``payload`` as UTF-8 JSON with LF line endings.
 
-    Bytes, not ``write_text``: on Windows ``write_text`` turns every LF into
-    CRLF, and the canonical build files are TRACKED (RM-441; same pattern as
-    scripts/data_pipeline.py ``_atomic_write_text``).
+    RM-258: delegates to core.polled_json, which encodes to bytes (on Windows
+    ``write_text`` turns every LF into CRLF, and the canonical build files are
+    TRACKED, RM-441), uses a per-writer scratch name keeping the full target
+    name (RM-447) and removes it when the write or the rename raises.
     """
-    # RM-447: full-name temp in the same dir; remove it if write/rename raises.
-    tmp = path.with_name(path.name + ".tmp")
-    try:
-        tmp.write_bytes(json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"))
-        tmp.replace(path)
-    except BaseException:
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass  # best-effort; never mask the original error
-        raise
+    atomic_write_json(path, payload)
 
 
 def merge_champ(existing: dict, refresh: dict) -> dict:

@@ -9,6 +9,7 @@ over the target with no cleanup when either step raised:
     scripts/data_pipeline.py        _atomic_write_text, _write_bytes,
                                     cmd_rank_tiers
     scripts/merge_refresh_builds.py _write_json_lf
+    scripts/wakeup_prune.py         _atomic_write
     tools/gen_state_schema.py       main
     tools/hz_mismatch_diagnose.py   write_markdown
 
@@ -39,6 +40,7 @@ import pytest
 
 import scripts.data_pipeline as dp
 import scripts.merge_refresh_builds as mrb
+import scripts.wakeup_prune as wp
 import tools.gen_state_schema as gss
 import tools.hz_mismatch_diagnose as hmd
 
@@ -154,7 +156,9 @@ def test_data_pipeline_rank_tiers_cleans_up(tmp_path, monkeypatch, polled_fault)
     _assert_clean_failure(excinfo, fault, rt, live, _ORIGINAL)
 
 
-def test_merge_refresh_builds_write_json_lf_cleans_up(tmp_path, fault):
+def test_merge_refresh_builds_write_json_lf_cleans_up(tmp_path, polled_fault):
+    # RM-258: writes through core.polled_json, so the fault is the polled pair.
+    fault = polled_fault
     target = tmp_path / "aram_champion_builds.json"
     target.write_bytes(_ORIGINAL)
     with pytest.raises(OSError) as excinfo:
@@ -234,27 +238,15 @@ def temp_spy(monkeypatch):
     return seen
 
 
-_PATH_WRITERS = [
-    ("merge_refresh_builds._write_json_lf", lambda p: mrb._write_json_lf(p, {"x": 1})),
-]
-
 # RM-1125: these write through core.polled_json, whose scratch is the
 # per-writer `<full name>.<pid>.<hex>.tmp`, so they pin the RM-447 intent the
 # way test_hz_write_markdown_temp_keeps_full_name does.
 _POLLED_PATH_WRITERS = [
     ("data_pipeline._atomic_write_text", lambda p: dp._atomic_write_text(p, "x\n")),
     ("data_pipeline._write_bytes", lambda p: dp._write_bytes(p, b"x\n")),
+    ("merge_refresh_builds._write_json_lf", lambda p: mrb._write_json_lf(p, {"x": 1})),
+    ("wakeup_prune._atomic_write", lambda p: wp._atomic_write(p, "x\n")),
 ]
-
-
-@pytest.mark.parametrize("writer", [w for _, w in _PATH_WRITERS],
-                         ids=[name for name, _ in _PATH_WRITERS])
-def test_same_stem_outputs_get_distinct_temp_paths(tmp_path, temp_spy, writer):
-    writer(tmp_path / "a.json")
-    writer(tmp_path / "a.md")
-    assert [p.name for p in temp_spy] == ["a.json.tmp", "a.md.tmp"]
-    assert all(p.parent == tmp_path for p in temp_spy), "temp must share the target dir"
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["a.json", "a.md"]
 
 
 @pytest.mark.parametrize("writer", [w for _, w in _POLLED_PATH_WRITERS],
