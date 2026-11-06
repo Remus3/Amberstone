@@ -164,7 +164,10 @@ amp, the registered champions never reach the enchanter scorer, and no EHP route
 the R45 `caster_current_hp_pct`; each row holds its own AGE CHECK); no count moved. G2-08 / G2-17 /
 G2-20 were tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 85: `assume_magic_burst`,
 `assume_shielded_target` and `score_completion_runes` are parsed by `/burst` only and no live RC
-caller arms them on a route that reads them; the AGE CHECK sits in G2-08); no count moved.
+caller arms them on a route that reads them; the AGE CHECK sits in G2-08); no count moved. G2-11 /
+G2-18 / G2-19 were tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 86: nothing in RC
+calls `/ehp`, no DS route parses `assume_caster_lowhp` and the ruled live HP feed is unshipped, and
+no live caller arms the DSV2/3/4 burst seams; each row holds its own AGE CHECK); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -1019,8 +1022,30 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   one such body is below 0.40 (the tier threshold); the "EHP ranking sane" eyeball is written when the
   producer names its surface. SUBSTITUTION CHECK: as G2-04 (an in-process `compute_ehp` call answers
   COMPUTES, not SENT).
-- **G2-11** (was B16) R46 `assume_passive_health_stacks` (Sion W / Cho'Gath R / Swain P; stacks
+- **G2-11** `[BLOCKED ON WIRING 2026-11-06]` (was B16) R46 `assume_passive_health_stacks` (Sion W / Cho'Gath R / Swain P; stacks
   farmable on minions). Ideally replace the assumed-stack curve with a live stack feed later.
+  **AGE CHECK (lane 9 PREP s144 cycle 86, RM-1675; source read at local main `ba0df749f`, no game
+  up; NOT a tick). Producer-orphan: the seam is parsed by `/ehp` only, and nothing in RC calls
+  `/ehp`.** Measured: `agents/daemon_slayer/server.py` `_route_ehp` parses it
+  (`_opt_bool(body, "assume_passive_health_stacks", False)`); `_route_rank_tank`'s own comment says
+  the seam exists on `compute_ehp` alone, so parsing it there "would read a key that dies before the
+  engine call", and the tank ranker never reads it. `core/daemon_slayer_client.py` `ehp_for` emits
+  it when True, but `ehp_for` has no caller outside its own module and no JS body posts to `/ehp`,
+  so no live RC surface asks `/ehp` anything, armed or not. The stack COUNT is still the assumed
+  by-level curve (`_passive_health_overrides.py` `assumed_stacks_by_level`); no live stack feed
+  exists. PRECONDITION for return to the drain list: an RC producer calls `/ehp` (or a Tier-2 change
+  threads the seam into `rank_items_by_ehp` and `/rank-tank`) with
+  `assume_passive_health_stacks: true` for a live Sion / Cho'Gath / Swain and records the outbound
+  body with `ts` and the Live Client `gameData.gameTime` it read. Predicate stated NOW, graded only
+  after that lands, in one practice-tool SR game on one of the three: PASS iff a recorded body
+  carries `assume_passive_health_stacks: true`, that champion, and a level equal to
+  `activePlayer.level` from a `:2999` read within 10 s of game time of the body, AND the producer
+  names the surface the result renders on (the "ranking sane" eyeball is written against that
+  surface). CALIBRATION READ (does NOT tick): on a page with no max-HP rune or shard, the same
+  `:2999` read's `activePlayer.championStats.maxHealth` minus base, per-level and item HP is the live
+  stack HP the assumed curve stands in for; record both - the gap is the evidence for the "live
+  stack feed" follow-up. SUBSTITUTION CHECK: as G2-04 (an in-process `compute_ehp` call answers
+  COMPUTES, not SENT).
 - **G2-12** (was B17) R49 `assume_passive_reflect` (Rammus W) + R68 the ITEM Thorns lane on the SAME
   seam (Thornmail 3075 + mirrors 223075/323075 + Bramble Vest 3076). Practice bots DO attack, so the
   1.0s cadence + 3.0s window assumptions are exercisable for both streams. STRICTER READ: re-check
@@ -1098,13 +1123,60 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   and an item list containing 6695 that equals the active player's `:2999` items within 10 s of
   game time, AND the response carries the `notes` entry written only when the shield-cut damage is
   above 0 (it ends "(assume_shielded_target seam)"). Substitution check as G2-08.
-- **G2-18** (was B49) R111 `assume_caster_lowhp` (Overlord's Bloodmail 2501 "Retribution"): build it,
+- **G2-18** `[BLOCKED ON WIRING 2026-11-06]` (was B49) R111 `assume_caster_lowhp` (Overlord's Bloodmail 2501 "Retribution"): build it,
   drop to low HP, eyeball the missing-HP-scaled bonus AD credit. Midpoint
   `_ASSUMED_CASTER_MISSING_HP` 0.35 / cap 0.70. SOURCE: LEDGER 879.
-- **G2-19** (was B3) DSV2/3/4 `assume_takedown` / `assume_squishy_target` / `assume_ability_amp` on the
+  **AGE CHECK (lane 9 PREP s144 cycle 86, RM-1675; source read at local main `ba0df749f`, no game
+  up; NOT a tick). The eyeball half is already DISCHARGED by operator ruling (the G2-18 entry in the
+  DRAIN SESSION 2026-07-20 block at the top of this file: +6.00 pct at the 0.35 midpoint on the
+  operator's real build, RULING "wire the live HP feed and delete the midpoint guess"). What remains
+  is that ruling's code slice, and it has not shipped.** Measured: no DS HTTP route parses
+  `assume_caster_lowhp` (zero hits in `agents/daemon_slayer/server.py`); only the in-process
+  `compute_dps` and `compute_burst_damage` take it (`burst.py` forwards it to
+  `total_missing_hp_bonus_ad`), and no RC module outside `agents/daemon_slayer/` names it, so no
+  live caller can arm it. `dps.py` `total_missing_hp_bonus_ad` still reads the fixed
+  `_ASSUMED_CASTER_MISSING_HP` 0.35 and takes no caster HP input, so the ruled live feed is absent.
+  The dashboard's `caster_missing_hp_pct` preview float (`dashboard/routes_state.py`
+  `_DS_PREVIEW_SEAM_FLOATS`) is the R5 heal-amp input on the HPS lane, not this seam. BACKLOG
+  RM-1338 (DS patch 16.21.1 -> 16.22.1) cuts Retribution 12 pct -> 10 pct; the +6.00 / +12.00 pct
+  figures in the drained entry were measured at the 12 pct value still current at 16.21.1. PRECONDITION for return to the drain list: a DS
+  route parses the seam with a live caster HP fraction in place of the midpoint, and an RC producer
+  sends `currentHealth / maxHealth` for a Bloodmail holder, recording the outbound body with `ts`
+  and `gameData.gameTime`. Predicate stated NOW, graded only after that lands, in one practice-tool
+  SR game holding 2501: PASS iff two recorded bodies each carry the seam ON and a caster HP fraction
+  within 0.02 of `activePlayer.championStats.currentHealth / maxHealth` from a `:2999` read within
+  10 s of game time of that body, one at a fraction of 0.99 or above and one below 0.65, AND the
+  Retribution credit in the responses (the field the producer names when it lands) is 0 for the
+  first and positive for the second. SUBSTITUTION CHECK: as G2-08 (an
+  in-process `compute_dps` call, or the drained midpoint measurement, answers COMPUTES, not SENT).
+- **G2-19** `[BLOCKED ON WIRING 2026-11-06]` (was B3) DSV2/3/4 `assume_takedown` / `assume_squishy_target` / `assume_ability_amp` on the
   BURST scorer `burst.py rank_items_by_burst` (NOT rank.py). Transport WIRED (OQ17). R70 added the
   Hollow Radiance Desolate takedown eruption (6664/226664) to the `assume_takedown` stream - confirm an
   HR-holder's burst reads sane next to Hubris/Collector. Client-helper emit still pending.
+  **AGE CHECK (lane 9 PREP s144 cycle 86, RM-1675; source read at local main `ba0df749f`, no game
+  up; NOT a tick). Producer-orphan, and "client-helper emit still pending" is STALE: the helpers
+  emit, but no live caller arms them.** Measured: `agents/daemon_slayer/server.py`
+  `_route_rank_assassin` parses `assume_takedown`, `assume_squishy_target`, `assume_ability_amp` and
+  `target_preset`; `_route_burst` parses `assume_takedown` and `assume_ability_amp`.
+  `core/daemon_slayer_client.py` `rank_assassin_for` emits all three when True and `burst_for` emits
+  `assume_takedown` / `assume_ability_amp`. Callers: the one live `rank_assassin_for` call (the
+  assassin branch of `rank_for_primary_archetype`, reached from `dispatch_for_coach`) passes none of
+  the three, and `rank_for_primary_archetype` takes none of them; `dashboard/routes_state.py`
+  `_DS_PREVIEW_SEAM_BOOLS` lists none; `burst_for`'s one live caller (`core/death_recap.py`
+  `fetch_ds_profiles`) sends none. `ops/audit/ds_perm_swarm/live_flip_eyeball.py` arms them
+  in-process only. The client's own comment adds two traps for a future producer: with the default
+  `target_max_hp` 0.0 the Collector arm of `assume_takedown` is never credited, and any positive
+  `target_armor` disables `assume_squishy_target`. PRECONDITION for return to the drain list: a
+  producer sends `assume_takedown: true` to `/burst` for a live build with a
+  sourced `target_max_hp` above 0, recording the outbound body with `ts` and `gameData.gameTime`.
+  Predicate stated NOW, graded only after that lands, in one practice-tool SR game holding Hollow
+  Radiance 6664: PASS iff a recorded body carries `assume_takedown: true`, a `target_max_hp` above 0
+  that the producer labels with its source, and an item list equal to the active player's `:2999`
+  items within 10 s of game time of the body, AND that body's `/burst` response carries the `notes`
+  entry `compute_burst_damage` writes for the eruption (it starts "Hollow Radiance Desolate
+  eruption +"); the "reads sane next to Hubris / Collector" eyeball is written against the
+  producer's named surface. SUBSTITUTION CHECK: as G2-08 (`live_flip_eyeball.py`, a hand-POSTed
+  body or a DS unit test answers COMPUTES, not SENT).
 - **G2-20** `[BLOCKED ON WIRING 2026-11-06]` (was B6) DSP4 `score_completion_runes` (Shield Bash 8401) - **PARTIAL 2026-07-18.**
   SETTLED HEADLESS: the correct instrument was used correctly - `compute_burst_damage` was called
   DIRECTLY with a real Resolve page (not the re-rank harness this row forbids) - and the seam is
