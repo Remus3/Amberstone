@@ -18,6 +18,7 @@ import json
 import logging
 from core.safe_coach_output import safe_coach_output
 from pathlib import Path
+from typing import ClassVar
 
 from coaches._base_coach import (
     BaseCoach,
@@ -655,7 +656,7 @@ class Coach(BaseCoach):
     # introspectable without an Anthropic key. The trailing block is the Lane E
     # CV OCR shadow-only numerics - registered for R101-A OCR-vs-Sonnet logging,
     # never read into the served coaching dict.
-    _ARAM_TIERED_FIELDS = [
+    _ARAM_TIERED_FIELDS: ClassVar[list] = [
         "timer",               # OCR canary (validates in-game frame)
         "my_tower_hp", "enemy_tower_hp",
         "wave_pct", "hp_packs", "fight_state",
@@ -674,11 +675,11 @@ class Coach(BaseCoach):
         "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
         "gold", "level", "cs", "kda",
     ]
-    _ARAM_SHADOW_FIELDS = [
+    _ARAM_SHADOW_FIELDS: ClassVar[list] = [
         "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
         "gold", "level", "cs", "kda",
     ]
-    _ARAM_TIERED_VALIDATORS = {
+    _ARAM_TIERED_VALIDATORS: ClassVar[dict] = {
         "my_tower_hp":     lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
         "enemy_tower_hp":  lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
         "wave_pct":        lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,

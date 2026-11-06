@@ -15,7 +15,7 @@ import socketserver
 import threading
 import time
 import urllib.parse
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 # Lane 8 cycle 15: reuse the control-char scrubber built and verified in cycle
 # 13 rather than re-rolling it (RM-228 names this reuse explicitly). Its
@@ -155,7 +155,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
     idle client held its request thread indefinitely. Never a class-level
     ``timeout``: it is per receive and lasts the whole connection (RM-152).
     """
-    _DENYLIST_NAMES = {".env", ".git", ".htpasswd", "secrets.json",
+    _DENYLIST_NAMES: ClassVar[set] = {".env", ".git", ".htpasswd", "secrets.json",
                        "api-key-claude.txt", "credentials.json"}
     host_refusal_log = log
 

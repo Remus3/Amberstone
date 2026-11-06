@@ -10,7 +10,7 @@ import re
 import threading
 import time
 from pathlib import Path
-from typing import Optional
+from typing import ClassVar, Optional
 
 from core.polled_json import atomic_write_json
 # RM-364: this module already runs a name-plausibility layer (_is_valid_unit,
@@ -413,8 +413,8 @@ class TftLiveAnalysis:
     # A wrong guess on a set with other augment rounds costs extra scans or
     # leaves the one planning scan plus the force scan, never a wrong label.
     # Set 18's augment rounds are unverified: docs/LIVE_GAME_GATED_SYNC.md LT-01.
-    _AUGMENT_ROUNDS={(2,1),(3,2),(4,2)}
-    _CAROUSEL_EVENTS={"carousel","opening_carousel","realm_of_gods"}
+    _AUGMENT_ROUNDS: ClassVar[set] = {(2,1),(3,2),(4,2)}
+    _CAROUSEL_EVENTS: ClassVar[set] = {"carousel","opening_carousel","realm_of_gods"}
     def __init__(self, api_key: str, data_file, model: str = "claude-haiku-4-5-20251001") -> None:
         import anthropic
         from tft.tft_vision_reader import TftVisionReader

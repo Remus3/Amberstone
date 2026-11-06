@@ -18,6 +18,7 @@ import json
 import logging
 from core.safe_coach_output import safe_coach_output
 from pathlib import Path
+from typing import ClassVar
 
 from coaches._base_coach import (
     BaseCoach,
@@ -1200,7 +1201,7 @@ Rules:
     # those two OCR-vs-Sonnet rows.
     USE_RELAY = False
 
-    TIERED_FIELDS = [
+    TIERED_FIELDS: ClassVar[list] = [
         "timer",               # OCR canary (validates in-game frame)
         "round_number",
         "augment_select", "augment_choices", "anvil_choices",
@@ -1219,12 +1220,12 @@ Rules:
         "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
         "gold", "level", "cs", "kda",
     ]
-    SHADOW_FIELDS = [
+    SHADOW_FIELDS: ClassVar[list] = [
         "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
         "gold", "level", "cs", "kda",
     ]
-    TIERED_VALIDATORS = {
-        "round_number":      lambda v: isinstance(v, int) and 1 <= v <= 30,
+    TIERED_VALIDATORS: ClassVar[dict] = {
+        "round_number":     lambda v: isinstance(v, int) and 1 <= v <= 30,
         "augment_select":    lambda v: isinstance(v, bool),
         "is_augment_select": lambda v: isinstance(v, bool),
         "augment_choices":   lambda v: isinstance(v, list),

@@ -45,7 +45,7 @@ import sqlite3
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 logger = logging.getLogger("rc.match_metrics")
 
@@ -357,7 +357,7 @@ class Recorder:
     # record_state_snapshot(payload, match_id=..., game_time_s=...) to
     # emit every tracked field to match_metrics in one call. Keys absent
     # from the payload are silently skipped. NO FABRICATION.
-    _PAYLOAD_METRIC_MAP: dict[str, tuple[str, str]] = {
+    _PAYLOAD_METRIC_MAP: ClassVar[dict[str, tuple[str, str]]] = {
         # Core game state
         "kda":                     ("kda_string",           "text"),
         "cs":                      ("cs_current",           "numeric"),

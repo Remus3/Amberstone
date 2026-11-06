@@ -48,6 +48,10 @@ def _class_attr(path: str, cls: str, name: str):
                 if isinstance(item, ast.Assign) and any(
                         getattr(t, "id", "") == name for t in item.targets):
                     return ast.literal_eval(item.value)
+                # RM-1719: the shared tables carry a ClassVar annotation.
+                if (isinstance(item, ast.AnnAssign) and item.value is not None
+                        and getattr(item.target, "id", "") == name):
+                    return ast.literal_eval(item.value)
     raise AssertionError(f"{cls}.{name} not found in {path}")
 
 

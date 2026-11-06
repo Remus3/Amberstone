@@ -24,7 +24,7 @@ import json
 import logging
 import re
 import time
-from typing import Optional
+from typing import ClassVar, Optional
 
 logger = logging.getLogger("rc.tft.vision")
 
@@ -231,7 +231,7 @@ class TftVisionReader:
     # HUD strips sent instead of the whole frame, authored at _BASE_SIZE
     # (calibrated on the s134 tft_qa recorder frames, 1280x720 relay):
     # Format: (left, top, right, bottom)
-    _CROP_REGIONS = [
+    _CROP_REGIONS: ClassVar[list] = [
         (0,    150, 200,  540),  # traits panel - left edge, up to 10 rows
         (150,  460, 1000, 720),  # bench row + shop
         (230,  250, 1040, 480),  # board - your half; also the augment cards

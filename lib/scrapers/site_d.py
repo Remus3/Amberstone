@@ -14,6 +14,8 @@ without editing the module.
 """
 from __future__ import annotations
 
+from typing import ClassVar
+
 from core import external_sources
 from lib.scrapers._base import ScraperBase
 
@@ -21,7 +23,7 @@ from lib.scrapers._base import ScraperBase
 class SiteDScraper(ScraperBase):
     site = "site_d"
 
-    MODE_PATH = {
+    MODE_PATH: ClassVar[dict] = {
         "sr": "lol/{champ}/build/",
         "aram": "lol/{champ}/aram/build/",
         "arena": "lol/{champ}/arena/build/",

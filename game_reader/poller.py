@@ -21,6 +21,7 @@ import subprocess
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import ClassVar
 
 from core.game_host import GAME_HOST
 from core.relay_age import is_stale as _relay_is_stale
@@ -110,7 +111,7 @@ class _PollerMixin:
     initialized by `GameReader.__init__`."""
 
     # AUDIT-PHASE-2-GR-001: lockfile-based LCU auth (replaces deprecated wmic)
-    _LCU_LOCKFILE_PATHS = [
+    _LCU_LOCKFILE_PATHS: ClassVar[list] = [
         Path(r"C:\Riot Games\League of Legends\lockfile"),
         Path(r"C:\Riot Games\League of Legends (PBE)\lockfile"),
         Path(r"D:\Riot Games\League of Legends\lockfile"),

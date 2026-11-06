@@ -122,7 +122,7 @@ mode) now covers the modes listed above only. `app/__init__.py:158` sets `_brawl
 `core/coach_registry.py:7` maps `_brawl_mode` -> `coaches.brawl_coach`, and
 `app/_game_lifecycle.py:144-163` importlib-loads it on game start. `config/feature_flags.json:12-14`
 has `brawl.live_coaching: "allow"`, so nothing gates it off. The end-to-end path is intact and
-`coaches/brawl_coach.py:493` would issue a live Haiku call. What IS true: the module runs only
+`coaches/brawl_coach.py:494` would issue a live Haiku call. What IS true: the module runs only
 while one of those modes is in Riot's queue (Brawl itself is disabled by Riot, patch 25.23 - the
 "Brawl mode re-enable" row in `BACKLOG.md` - and refused by RC as above), so it is currently
 unexercised, which is a statement about Riot's rotation, not about reachability.

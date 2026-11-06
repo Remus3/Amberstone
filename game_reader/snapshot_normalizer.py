@@ -16,6 +16,7 @@ import logging
 import math
 import time
 import urllib.parse
+from typing import ClassVar
 
 from core.liveclient_coerce import as_list
 from core.mode_capabilities import district_config, has_capability
@@ -1054,7 +1055,7 @@ class _NormalizerMixin:
             return pos if isinstance(pos, dict) else {}
         return {}
 
-    _RESPAWN_BASE = [0, 8, 10, 12, 14, 16, 18, 21, 24, 27,
+    _RESPAWN_BASE: ClassVar[list] = [0, 8, 10, 12, 14, 16, 18, 21, 24, 27,
                      30, 34, 37, 40, 43, 47, 50, 52, 54]
 
     @classmethod
@@ -1156,7 +1157,7 @@ class _NormalizerMixin:
     # Used as a last-resort fallback only - Smite detection (_has_smite) is
     # checked first and is authoritative for any champion. This list only
     # fires when summoner-spell data is absent (relay warm-up frames, etc.).
-    _JUNGLE_CHAMPS = {
+    _JUNGLE_CHAMPS: ClassVar[set] = {
         # Dedicated junglers
         "Hecarim","Lee Sin","Vi","Warwick","Amumu","Jarvan IV","Nocturne",
         "Graves","Kindred","Nidalee","Kayn","Rengar","Kha'Zix","Shaco",
