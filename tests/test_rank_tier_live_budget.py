@@ -1341,7 +1341,17 @@ def _sink_specs(fn, state, late=frozenset()):
     the parameters carrying the value. A parameter is a sink parameter if
     tainting it adds a sink site, or changes what a site carries; each one
     is then judged alone so `def g(m, n): log.info(n)` marks only `n`. The
-    walks report into throwaway sets, never into the real report."""
+    walks report into throwaway sets, never into the real report.
+
+    RM-1563: a parameter whose default is a logging function or logger
+    object (`def g(m, p=log.info): p(m)`) is one inside the body, as the
+    def's own walk has it (RM-1562), so its `_LOGFN` / `_LOGOBJ` mark is
+    put back after the shadowing. The default is judged from `state`; a
+    def is judged from the state after it, a superset of the def-time
+    state (the safe side). A tainted-VALUE default is not added: the def's
+    own walk (RM-1562) already reports the sites it reaches. A caller that
+    passes its own `p` is still read as logging through it (the safe
+    side)."""
     params = _param_specs(fn)
     if not params:
         return set()
@@ -1357,6 +1367,8 @@ def _sink_specs(fn, state, late=frozenset()):
     # `_walk_scope`), so the key is projected onto them.
     base = _readable(set(state) | set(late), _scope_names(body))
     base = frozenset(e for e in base if not shadowed(e))
+    base |= {e for e in _default_bindings(fn, state, late)
+             if e.startswith((_LOGFN, _LOGOBJ))}
     # The answer depends only on `fn` and `base`, and a nested def is judged
     # again on every pass of every walk around it, so it is memoised for one
     # `_message_leak_sites` call (the tree, so every `id`, outlives it).
@@ -3030,6 +3042,40 @@ _CHECKER_SAMPLES = (
     ("class-level alias of a method wrapper keeps the positional shift",
      "class C:\n    def g(self, m, n):\n        log.info(m)\n    h = g\n"
      "    def k(self, url):\n        self.h('x', url)\n", False),
+    # RM-1563 default-bound wrappers: a parameter whose default is a
+    # logging function or logger object is one inside the body (RM-1562),
+    # so a parameter the body hands it is a sink parameter of the wrapper.
+    ("wrapper whose logging function is a default",
+     "def g(m, p=log.info):\n    p(m)\ndef f(url):\n    g(url)\n", True),
+    ("wrapper whose logging function is a keyword-only default",
+     "def g(m, *, p=log.info):\n    p(m)\ndef f(url):\n    g(url)\n", True),
+    ("wrapper whose logger object is a default",
+     "def g(m, w=logging.getLogger()):\n    w.info(m)\ndef f(url):\n    g(url)\n", True),
+    ("wrapper whose default is a partial over a logging function",
+     "def g(m, p=partial(log.info, '%s')):\n    p(m)\ndef f(url):\n    g(url)\n", True),
+    ("wrapper whose default is a name bound to a logging function",
+     "q = log.info\ndef g(m, p=q):\n    p(m)\ndef f(url):\n    g(url)\n", True),
+    ("lambda wrapper whose logging function is a default",
+     "g = lambda m, p=log.info: p(m)\ndef f(url):\n    g(url)\n", True),
+    ("lambda wrapper with a logging default called in place",
+     "def f(url):\n    (lambda m, p=log.info: p(m))(url)\n", True),
+    ("method wrapper whose logging function is a default",
+     "class C:\n    def g(self, m, p=log.info):\n        p(m)\n"
+     "    def h(self, url):\n        self.g(url)\n", True),
+    ("local wrapper whose logging function is a default",
+     "def f(url):\n    def g(m, p=log.info):\n        p(m)\n    g(url)\n", True),
+    # RM-1563 default-bound wrapper keep-greens.
+    ("default logging function never handed the parameter",
+     "def g(m, p=log.info):\n    p('x')\ndef f(url):\n    g(url)\n", False),
+    ("default-bound wrapper called with a sanitized value",
+     "def g(m, p=log.info):\n    p(m)\ndef f(url):\n    g(_safe_url(url))\n", False),
+    ("default that is not a logging function",
+     "def g(m, p=fetch):\n    p(m)\ndef f(url):\n    g(url)\n", False),
+    ("default logging function re-bound in the body",
+     "def g(m, p=log.info):\n    p = fetch\n    p(m)\ndef f(url):\n    g(url)\n", False),
+    ("default read from a name the module re-binds to a logger later",
+     "q = fetch\ndef g(m, p=q):\n    p(m)\nq = log.info\ndef f(url):\n    g(url)\n",
+     False),
 )
 
 
