@@ -917,6 +917,12 @@ Proof the task FIRED rather than merely being registered: after
 plus a metrics row with the same cycle_id. Two such pairs 5 minutes apart
 prove the repetition.
 
+**Bounce policy.** The fixed-template `BOUNCE-*.txt` the responder writes into
+a sender's inbox when a cycle ends `exhausted` or `refused`: what it is, why
+RC keeps it, its cost, RC's position question by question and the five-way
+questions left undecided are in `docs/BOUNCE_POLICY.md`. It binds RC's runner
+and nothing else.
+
 ---
 
 ## TLS certificate
@@ -1227,6 +1233,7 @@ Moved from `RC-NEXT-SESSION.txt` "Kit / gate procedure (carry)" on 2026-10-18 (s
 | `ops/runtime/stop_claim_history.jsonl` | Rolling one-line-per-audit history (newest 500) |
 | `data/{aram,arena,brawl,tft}_coaching_data.json` | Current game state per mode |
 | `logs/YYYY-MM-DD.log` | Daily log. **Binding retention is 14 days, not 30.** Two reapers disagree and the stricter one wins: `core/log_retention.py:82` sets `_DEFAULT_MAX_AGE_DAYS = 14`, `main.py:158` starts it with that default, and it sweeps HOURLY (plus a 100 MB total cap, `_DEFAULT_MAX_TOTAL_MB`; the cap's size pass deletes every other `*.log*` oldest first, ties by name, BEFORE any dated daily log, RM-718 a). `logs/replay_roster.log` and `logs/lcu_agent.log` rotate themselves at 5 MiB with 2 backups (`core/log_rotation.py`, RM-718 a; a refused rotation changes nothing and notes itself once in the log). History kept on purpose goes in `logs/_archive/` (`ARCHIVE_DIRNAME`), which the non-recursive sweep never deletes or counts; it holds `replay_roster.2026-07-26_2026-10-24.log.gz`, the only copy of the pre-rotation roster-pull log. `core/log_setup.py:37` still says `_RETENTION_DAYS = 30`, but that purge runs only inside `setup()` (boot), so on a long-lived RC the hourly 14-day sweep always deletes a file first and the 30 never takes effect. **The 30 is STALE as a statement of effective retention; treat 14 as authoritative.** `main.py:155-156` says the same thing in prose. `core/log_setup.py` is a FROZEN file, so the stale constant is recorded here rather than edited there |
+| `docs/SHA_CITATION_MAP.md` | Lookup for dead commit citations in the append-only history files (LEDGER, history_notes, ...): the old token, its new sha at HEAD. Generated from `.git/filter-repo/commit-map` (RM-501); the history bodies are never edited, look the token up here |
 | `config/vision_token.txt` | Vision server auth token |
 | `assets/wards/*.png` | Eight small minimap crops (ward spots), fixture art with no code loader; described only in `docs/qa/OVERLAY_LEGIBILITY_VARIANTS_2026-09-01.md` (RM-724) |
 | `ops/loop/config*.json` | The headless loop config and its variants; one index line each in `docs/LOOP_CONFIG_NOTES.md` (RM-724) |
