@@ -882,3 +882,33 @@ At 720 px and under, the dashboard Active Match view stacks its panes in ONE ful
   - ASCII: 0 non-ASCII bytes in the diff.
   - HIERARCHY: the title is still the first and brightest line of every head.
 - FUTURE: the view BODIES still scroll sideways under 720 on several views. Measured section scrollWidth in clientWidth at 320: Lobby 752 in 282, Champ Select 658, Build Insights 728, Settings 385, Replay 426, Post Game Review 462, archive Post Game Review 417. Lobby and Build Insights also overflow at 720. Each needs its own reflow ruling, as Active Match got in U-162.
+
+## 2026-11-06 - lane 4 headless, s144 cycle 155 (RM-1775)
+
+### RULING
+- Target: the U-164 FUTURE row "the view BODIES still scroll sideways under 720", Lobby first (it overflows even at 720).
+- Probe (headless, ui_mock, Lobby at 720, 640, 480 and 360 px wide; every displayed descendant of the view against the view):
+  - Below 1200 the Lobby grid is one `1fr` track, and a `1fr` track cannot shrink below its widest card's min-content.
+  - The PARTY member rows are a six-track grid (name | lane prefs | role | rank | top champs | a fixed 120 px action column) with a 700 px min-content, so all four cards were 734 px wide at every narrow width: 69 px past the view at 720, 149 at 640, 309 at 480, 429 at 360.
+  - The QUEUE buttons (two lane buttons, Cancel, Find Match, 110 px each) held one `nowrap` row, so inside a fitted card they would run 56 px past at 480.
+  - MAINS (a 76 px + three-fr category grid) and TOP 8 (a nine-track row grid shared with its search row) have their own wide min-contents.
+- Ruling: one `@media (max-width: 720px)` block in `web/css/panels/header.css`, after the 1200 companion block:
+  - The Lobby track is `minmax(0, 1fr)`, so a card may be narrower than its widest sibling.
+  - A PARTY row is a wrapping flex row (column gap 6 px, row gap `--space-1`). Its sections wrap in DOM order, so focus order and reading order stay the same, and `.lobby-member-actions` keeps its `margin-left: auto` at the right edge. The role / rank columns no longer line up with TOP 8 under 720; that alignment is a desktop-width idea.
+  - The QUEUE controls wrap; the lane pair is one flex item, so the two lane buttons stay side by side.
+  - MAINS and TOP 8 keep `min-width: min-content` until their own reflow ruling, so they do not spill out of their frame meanwhile. The view still scrolls sideways under 720 because of them.
+  - A 10em name slot and a `flex: none` on every section were tried and dropped: the one-rule mutation runs showed neither changes the pinned contract, and the wrap alone keeps every name at least 6em or whole.
+- Scope line: the duo-synergy block in the PARTY card is RM-881, the queue lane's row, so its CSS is not edited. It fits at 640 / 480 / 360. At 320 its four 32 px icons run about 11 px past the card; pinned as a strict xfail, so the fix that lands there turns the file red until the mark is lifted.
+- Guard: `tests/snapshot_panels/test_lobby_narrow_reflow.py`, 37 cases (36 pass + 1 strict xfail). At HEAD's CSS 9 failed (the 8 QUEUE / PARTY fit cases and the xfail, which passes while the card is 734 px).
+- Mutations (each restored, then re-run green), against the shipped rules:
+  - No `minmax(0, 1fr)` track: 5 failed.
+  - No `min-content` on TOP 8: 1 failed.
+  - No QUEUE wrap: 4 failed.
+  - No PARTY flex wrap: 4 failed.
+- 5-phase audit (headless):
+  - STRUCTURE: QUEUE and PARTY inside the view at 320-640; no card has content past its frame; nothing changes above 720 (722 keeps the six-track rows and a one-row QUEUE, pinned).
+  - TYPOGRAPHY: no size changed.
+  - HIT-TARGETS: QUEUE buttons stay 110x64, row actions 26x26 with their 30x44 hit pseudo (unchanged).
+  - ASCII: 0 non-ASCII bytes and 0 CR in the diff.
+  - HIERARCHY: element captures of the PARTY and QUEUE cards at 480 and 320 (headless, `_scratch/`, not committed): the member name is still the first and brightest item of each row; the top champs and actions wrap to the next line.
+- FUTURE: the MAINS and TOP 8 reflow (they keep the Lobby view scrolling sideways under 720); the duo-synergy cells at 320 (RM-881 owner); Build Insights' table at 720 (45 px past, the section scrolls, not the table mount); Champ Select cards at 640 and under (640 px min-content); Settings at 360; the Post Game Review tab strip at 480.

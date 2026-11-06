@@ -3195,6 +3195,27 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   .header-row { flex-wrap: wrap; gap: var(--space-2); }
   .hb { margin-left: 0; }
 }
+/* RM-1775: at 720px and under (300% zoom of the 1920x920 baseline is
+ * 640, the WCAG reflow reference is 320) the Lobby's QUEUE and PARTY cards
+ * fit the view. Measured before: the one 1fr track above could not shrink
+ * below the PARTY rows' 700px six-track min-content, so every card was
+ * 734px wide (69px past the view at 720, 429 at 360) and the view scrolled
+ * sideways. Here the track may shrink; a PARTY row wraps its sections in
+ * DOM order (name, lane prefs, role, rank, top champs, actions) instead of
+ * holding the desktop columns, the actions still pushed right; the QUEUE
+ * buttons wrap with the lane pair kept as one unit. MAINS and TOP 8 keep
+ * their content width until their own reflow (pinned by
+ * tests/snapshot_panels/test_lobby_narrow_reflow.py). */
+@media (max-width: 720px) {
+  .lobby-view-grid { grid-template-columns: minmax(0, 1fr); }
+  .lobby-view-card-mainchamps,
+  .lobby-view-card-friends { min-width: min-content; }
+  .lobby-view-queue-controls { flex-wrap: wrap; }
+  .lobby-members-list .lobby-member-row {
+    display: flex; flex-wrap: wrap;
+    column-gap: 6px; row-gap: var(--space-1);
+  }
+}
 /* RM-1432: below 720px (300% zoom of the 1920x920 baseline is 640, the
  * WCAG reflow reference is 320) the view trigger may be narrower than its
  * 465px (403px before RM-1553). Its current-view label is pinned to
