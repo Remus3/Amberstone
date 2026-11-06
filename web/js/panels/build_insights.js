@@ -500,8 +500,27 @@ function _render(tab) {
       _ST.minN + ' ' + tab.emptyUnit + ').</div>';
     return;
   }
+  // RM-1761: the rebuild destroys the focused sort header, so a keyboard
+  // sort threw focus to <body>. Carry it across by the header's data-sort key
+  // (the overlay_layout.js capture / restore pattern); null when focus was not
+  // in the table, so a re-render never steals it.
+  const focusKey = _captureSortFocus(mount);
   mount.innerHTML = _tableHtml(tab, st);
   _wireHeaders(tab, mount);
+  _restoreSortFocus(mount, focusKey);
+}
+
+function _captureSortFocus(mount) {
+  const a = document.activeElement;
+  if (!a || !mount.contains(a)) return null;
+  const th = a.closest('th.bi-sortable');
+  return th ? th.getAttribute('data-sort') : null;
+}
+
+function _restoreSortFocus(mount, key) {
+  if (!key) return;
+  const th = mount.querySelector(`th.bi-sortable[data-sort="${CSS.escape(key)}"]`);
+  if (th) th.focus();
 }
 
 function _wireHeaders(tab, mount) {
@@ -521,7 +540,10 @@ function _wireHeaders(tab, mount) {
     };
     th.addEventListener('click', handler);
     th.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      // RM-1322: a held key is one press, or each autorepeat flips the order.
+      if (!e.repeat) handler();
     });
   });
 }
