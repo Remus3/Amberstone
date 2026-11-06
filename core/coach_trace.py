@@ -89,7 +89,9 @@ def append(
         with _lock:
             _TRACE_FILE.parent.mkdir(parents=True, exist_ok=True)
             line = json.dumps(rec, ensure_ascii=False) + "\n"
-            with _TRACE_FILE.open("a", encoding="utf-8") as f:
+            # newline="\n": LF on Windows too, matching _trim's LF rewrite of
+            # this same file (RM-481 residual, RM-1698).
+            with _TRACE_FILE.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(line)
             # Trim if oversize. Cheap to keep last MAX_LINES; rare path.
             if _TRACE_FILE.stat().st_size > 1 << 20:  # 1 MiB
