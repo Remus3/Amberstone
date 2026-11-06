@@ -971,6 +971,15 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lq-lane-pref.is-conflict:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
+/* RM-1760: a warning state keeps its --bad border on hover. The
+ * hover rules above (0,4,0) out-rank .is-conflict / .needs-pick (0,2,0)
+ * and drew the --info "clickable" blue over the warning; this restates
+ * it at (0,5,0). The Auto Accept and Party toggles keep the --info hover:
+ * their state is also in their own coloured text. */
+.lq-lane-pref.is-conflict:hover:not(:disabled):not([aria-disabled="true"]),
+.lq-lane-pref.needs-pick:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--bad);
+}
 .lq-lane-pref.is-conflict::after {
   content: "CONFLICT";
   position: absolute;
