@@ -252,8 +252,15 @@ body:not([data-shell="overlay"]) #view-active-match
   display: grid;
   /* Five columns: a level-10 board (10 units) is two rows inside the
    * ~145px BUILD body at the 1920x920 baseline; a summon-heavy board scrolls
-   * inside the pane (am-pane-body overflow-y), never reflowing the page. */
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+   * inside the pane (am-pane-body overflow-y), never reflowing the page.
+   * RM-1766: at most five, and a chip is never narrower than 6 x --fs-sm
+   * (108px; the board's own width if that is less), so a narrower window
+   * drops a column before it cuts a name. A fixed five cut "Rakan" to 24px
+   * at the 923px companion width and every name to 0-7px at 640px. Rows
+   * that no longer fit scroll inside the fixed board wrapper below. */
+  grid-template-columns: repeat(auto-fill,
+    minmax(max(min(calc(var(--fs-sm) * 6), 100%), calc((100% - 4 * 6px) / 5)),
+           1fr));
   gap: 6px;
 }
 #view-active-match .am-tft-unit {
