@@ -727,3 +727,37 @@ An overlay canvas is shown only while it lies exactly over the image it annotate
 - Sibling, not changed: the legacy minimap's `#mm-vt-overlay` (web/index.html, sized in web/js/main.js) uses the same JS-sized pattern inside a wrapper that stays hidden until shown. FUTURE: probe it for the same default-box window.
 - Guard: `tests/snapshot_panels/test_am_map_overlay_canvas_fits.py`, 47 cases. With a generated 512 px map image, at five sizes 1920 to 480, sr and aram, vision answering or failing (503): the canvas covers the image box to within 1 px and stays inside the figure, and the pane body has no x-overflow. A resize from 1920 and from 1024 down to 640 and 480 and back re-fits within 300 ms, under the poll period, with or without vision. With no image (map and minimap crop 404): the canvas is not shown, there is no x-overflow, and the vision text still ticks. A world-centre enemy is drawn at the image centre. Red at HEAD 47 of 47.
 - 5-phase audit (headless, sr / aram at 1920x920, 1024x768, 768x1024, 640x900, 480x800): STRUCTURE (no pane-body x-overflow, canvas inside the figure), TYPOGRAPHY (no text change), HIT-TARGETS (none: the canvas is pointer-events: none), ASCII (0 non-ASCII bytes, 0 CR in the diff), HIERARCHY (unchanged; the no-image box keeps its slot).
+
+## 2026-11-05 - lane 4 headless, s144 cycle 150 (RM-1770)
+
+### RULING
+
+The dashboard Active Match view fits the window below the header: CALL, BUILD and MAP all start and end inside the view, and the view never scrolls. The BUILD pane scrolls as a whole; CALL and MAP scroll inside their pane bodies, as authored. `body[data-view="active-match"] #view-active-match` is a flex column outside the overlay shell (web/css/panels/active_match.css; the RM-1063 Replay pattern), so `.am-grid`'s own `flex: 1 1 auto; min-height: 0` takes the height under the view head and the two `1fr` rows are definite. The BUILD pane (`.am-pane-build`) scrolls as a whole, with `overscroll-behavior: contain`. Its `.am-pane-head` is sticky at the top (z-index 2, opaque `--surface`), and `#am-build-body` keeps its natural height (`flex: 1 0 auto`, overflow visible).
+
+- Before (measured headless, ui_mock, no map image, vision 503):
+  - The router showed the section as `display: block` (header.css), so the grid's flex settings were inert and the grid was content-sized.
+  - That size came from the MAP pane, which spans both rows and whose shell (`height: 100%`) and figure (`max-height: 50%`) are percent heights with no definite base.
+  - At 1920x920 (sr): grid 3139 px tall in an 823 px view, rows `1562.55px 1562.55px`, BUILD pane top at y = 1680 (760 px below the window), and a 1563 px CALL pane around about 380 px of content. The view scrolled 3189 into 821.
+  - The same in aram (2981 px) and arena (2949 px), and at 1280x720 (3219 px) and 923x1280 (3876 px). TFT has no map figure and already fit.
+  - The R213 entry (LEDGER 1090) measured this inflation in 2026-07 ("the section already scrolls 3610px into 1003px") and left it as context. This ruling closes it.
+- Why not a flex column alone: the BUILD pane holds the DS card cluster (spike curve, matchup, capability gap, combo, relscore, knobs, statcheck) ABOVE `#am-build-body`, in a pane that is `overflow: hidden`. With a definite row, the body (`flex: 1 1 auto; min-height: 0`) was squeezed to 28 px of its 453 (measured, sr 1920x920), and the ranks scrolled in a sliver.
+- After, at 1920x920: rows `378.594px 378.609px`, grid 771 px inside the 823 px view, and the view scroll is 0. BUILD content (about 1500 px in the sr fixture) scrolls inside its 379 px pane under the pinned head (elementFromPoint at the head after a 120 px scroll returns the head). The MAP figure caps at 50% of its pane as authored (358 px). TFT rows grow from 202 to 378 px, filling the window.
+- Alternatives:
+  - (a) Keep the page scroll and only stop the MAP inflation (for example `height: auto` on the shell). The rows stay `1fr 1fr` of a content-sized grid, so both rows equal the taller of CALL and BUILD (BUILD about 1500 px in sr). BUILD would still start below the fold behind an empty CALL pane. Reasoned from the grid row rule, not measured.
+  - (b) Rows `auto minmax(0, 1fr)` (CALL at its natural height). A long coach CALL would squeeze BUILD to nothing. The s160 `1fr / 1fr` split is the authored intent, so it is kept.
+  - (c) Move the DS cards into `#am-build-body`. The overlay's w-build widget and the B-OVL-4 re-parent depend on the current markup (index.html comments), and active_match.js wipes the body with `innerHTML = ""` on every build-signature change.
+- Not changed: the overlay shell. overlay.css keeps the view and the grid `display: block !important` and owns the w-build widget box. Every new selector is `body:not([data-shell="overlay"])`.
+- Guard: `tests/snapshot_panels/test_active_match_view_fits_viewport.py`, 23 cases. Red at HEAD 18 of 23; the 4 TFT fit cases and the overlay case pass at HEAD by construction.
+  - For ui_mock sr / aram / arena / tft at 1920x920, 1280x720, 1024x768 and 923x1280: the view does not scroll, the grid ends inside it, every displayed pane lies inside the view with its top above the fold, `#am-build-body` is never a squeezed scroller, and a BUILD pane taller than its row is a scroller.
+  - The BUILD head stays at the pane top after scrolling to the end (sr / arena, 1920x920 and 1280x720; it asserts the pane really scrolled).
+  - A live ARAM balance panel (third grid row, 600 px of content under its 320 px cap) fits.
+  - Under `?overlay=1` the view and grid stay `display: block` and the BUILD pane is not a scroller.
+- 5-phase audit (headless, sr / aram / arena / tft at 1920x920, plus the guard's four sizes):
+  - STRUCTURE: no document x-overflow, the view scroll is 0, and every pane is inside the view.
+  - TYPOGRAPHY: the pane head stays 16 px; no text rule changed.
+  - HIT-TARGETS: the `.bm-shaper-btn` controls stay 42 px, and the sticky head is the hit target at its own box after a scroll.
+  - ASCII: 0 non-ASCII bytes and 0 CR in the diff.
+  - HIERARCHY: all three panes are above the fold at the 1920x920 baseline, and CALL keeps its full content there.
+- FUTURE (pre-existing, not changed by this unit; seen by the same audit): the BUILD pane renders sub-floor text. `.spk-empty` is 10 px, the spike-curve SVG labels are 12 px, and `.wh-empty` is 9 px (sr / arena fixtures). Check each against the documented SVG / empty-state exceptions before raising them.
+- FUTURE: at 1280x720 the CALL body scrolls (sr content 392 px in a 276 px body). It also scrolls at 1920x920 while a live ARAM balance panel holds the third row: rows `211.594px 211.609px 320px`, with CALL content 296 px in a 210 px body (measured by the verifier). That is the pane-body scroller as authored. A later unit may give CALL more of the column when BUILD is mostly cards.
+- Sibling probe, closed by reading, no change: the legacy minimap's `#mm-vt-overlay` (cycle 149 FUTURE). web/js/main.js `refreshVisionOverlay` sets `display: none` on every failing branch (fetch error, non-ok, no enemies, hidden wrap, image not loaded, a box under 4 px) and re-fits on every 500 ms poll. The default 300 x 150 box can show only between `#mm-img-wrap` un-hiding and the next poll answer, and it is a transparent, pointer-events: none box. Not measured headless; recorded as reasoned.

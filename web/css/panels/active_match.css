@@ -89,6 +89,39 @@ body:not([data-shell="overlay"]) #view-active-match
  * file and would otherwise win on order. */
 #view-active-match .am-grid .am-pane-cd { display: none; }
 
+/* RM-1770: the view fits the window below the header. The router shows
+ * the section as display: block (header.css), which left .am-grid's own
+ * flex: 1 1 auto / min-height: 0 inert, so the grid was content-sized - and
+ * that size came from the MAP pane, whose shell (height: 100%) and figure
+ * (max-height: 50%) are percent heights with no definite base. MEASURED
+ * (ui_mock sr, 1920x920): grid 3139 px in an 823 px view, BUILD pane top at
+ * y = 1680, a 1563 px CALL pane around ~380 px of content; every League mode,
+ * every size. As a flex column (the RM-1063 Replay pattern) the grid takes
+ * the height under the view head and the rows are definite.
+ * The BUILD pane carries the DS card cluster ABOVE #am-build-body, so a
+ * definite row would squeeze the body under them (measured: 28 px of 453).
+ * The pane scrolls as a whole instead, the body keeps its natural height and
+ * the head stays pinned. Not the overlay shell: overlay.css keeps the view
+ * and grid display: block there and owns the w-build widget box.
+ * Guard: tests/snapshot_panels/test_active_match_view_fits_viewport.py. */
+body[data-view="active-match"]:not([data-shell="overlay"]) #view-active-match {
+  display: flex;
+  flex-direction: column;
+}
+body:not([data-shell="overlay"]) #view-active-match .am-pane-build {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-body {
+  flex: 1 0 auto;
+  overflow-y: visible;
+}
+
 #view-active-match .am-pane {
   display: flex;
   flex-direction: column;
