@@ -56,7 +56,6 @@ _ALLOWLIST = (
     "tools/phase_watcher_install.ps1",  # Legion-local installer surface (carries bare py)
     "ROADMAP.md",                # gamepc-machine historical recipes - P3 gamepc prune removes them
     "ops/audit/P0_WORKMAP.md",   # P0 audit workmap - quotes the banned pattern by design
-    "ops/tls/_bridge_msg.txt",   # gamepc-era bridge message artifact (foreign C:/RC-Agent path)
     "tests/test_precommit_gate.py",   # characterization fixtures - bare py IS the tested input
     "tests/test_truth_gate.py",       # incident-characterization fixture + docstring
     "_scratch/**",               # untracked scratch; sweep/probe tooling carries the pattern

@@ -745,6 +745,30 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
          "ops/autostart_on_login.bat:7"),
         ("docs/specs/mission_control_removal_gap_analysis.md", "ops/loop/spawn_lanes.ps1:7"),
     )
+) + tuple(
+    # 2026-11-06, RM-713 (a) slice (session 144 repo lane, cycle 301). Two
+    # dated no-reader artifacts were ARCHIVED with git mv:
+    # ops/loop/CDRAGON_FLIP_FINDINGS.md to docs/_archive/2026-06/ and
+    # ops/tls/_bridge_msg.txt to docs/_archive/2026-04/ (pinned by
+    # tests/test_rm713_dated_artifact_archive_s144p301.py). The cited lines
+    # sit in the RM-713 row body and the dated 2026-10-09 repo-review findings,
+    # which record the files as they stood where they were measured;
+    # re-pointing them would make each say it measured a path it never
+    # measured. BACKLOG.md is the research lane's in s144, so the RM-713 row
+    # refresh is a merger follow-up; when it is re-worded the guard reports
+    # the entry as no longer broken and it is deleted here.
+    (doc, raw, "HISTORICAL",
+     "Points into an artifact archived by RM-713 (a) on 2026-11-06, from the "
+     "retained RM-713 row body or a dated findings doc - see the block "
+     "comment above for why it is not re-pointed.")
+    for doc, raw in (
+        ("BACKLOG.md", "ops/loop/CDRAGON_FLIP_FINDINGS.md:1"),
+        ("BACKLOG.md", "ops/loop/CDRAGON_FLIP_FINDINGS.md:7"),
+        ("BACKLOG.md", "ops/tls/_bridge_msg.txt:1-3"),
+        ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:3"),
+        ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:7"),
+        ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:12"),
+    )
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})
