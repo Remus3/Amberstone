@@ -32,6 +32,12 @@ Contract pinned here:
     from the baseline to 1024 px shows it without a new round (no poll);
   - it is aria-hidden: the list already gives assistive tech every unit.
 
+Those counts are the two-column layout. Since RM-1772 the panes stack in
+one full-width column at 720 px and under, so the board there is wider
+(four columns at 640, three at 480) and fewer units are hidden. The size
+sweep computes its count from the measured column count; the pinned and
+scrolled-to-bottom cases use 760 and 800, which are still two columns.
+
 Drive path: /?ui_mock=1&mode=tft_round#active-match (web/data/ui_mock/
 active_match_tft_round.json, a recorded S134 round row: seven units).
 """
@@ -222,8 +228,11 @@ _BOX_JS = r"""
 @pytest.mark.parametrize("w,h", [(360, 800), (320, 700)])
 def test_cue_never_spills_a_board_narrower_than_itself(
         w, h, mock_server, pw_browser):
-    # At 320 px the board (78 px) is narrower than "+5 BELOW": the cue
-    # ellipsises inside the box rather than spill into a sideways scroll.
+    # Before RM-1772 the board at 320 px was 78 px, narrower than
+    # "+5 BELOW", and the cue ellipsised inside the box. Since the panes
+    # stack at 720 and under, the board takes the full column, so these
+    # widths now pin only that the cue never spills the box sideways; the
+    # max-width rule stays for a board narrower than its cue.
     ctx, page, errors = _open(pw_browser, mock_server, w, h)
     try:
         m = page.evaluate(_MEASURE)
@@ -239,10 +248,12 @@ def test_cue_never_spills_a_board_narrower_than_itself(
 
 
 def test_cue_stays_pinned_while_units_remain_below(mock_server, pw_browser):
-    # The RM-1771 verifier SHOULD-FIX: at 480 px five units are below;
-    # scrolling one chip row must not scroll the cue away with the eyebrow.
-    # The pinned row paints the pane colour, so no chip shows through it.
-    ctx, page, errors = _open(pw_browser, mock_server, 480, 800)
+    # The RM-1771 verifier SHOULD-FIX: at 760 px (two columns, the last
+    # two-column width band since RM-1772 stacks the panes at 720 and
+    # under) three units are below; scrolling one chip row must not scroll
+    # the cue away with the eyebrow. The pinned row paints the pane colour,
+    # so no chip shows through it.
+    ctx, page, errors = _open(pw_browser, mock_server, 760, 900)
     try:
         before = page.evaluate(_MEASURE)
         page.evaluate(
@@ -254,9 +265,9 @@ def test_cue_stays_pinned_while_units_remain_below(mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, errors[:3]
-    assert before["below"] == 5, before
+    assert before["below"] == 3, before
     assert after["scrollTop"] == 60, after["scrollTop"]
-    assert 1 <= after["below"] < 5, after
+    assert 1 <= after["below"] < 3, after
     assert _shown(after["cue"]), after["cue"]
     assert after["cue"]["text"] == _units_word(after["below"]), after["cue"]
     assert after["headPos"] == "sticky", after["headPos"]
@@ -267,7 +278,9 @@ def test_cue_stays_pinned_while_units_remain_below(mock_server, pw_browser):
 
 
 def test_cue_hides_when_scrolled_to_the_bottom(mock_server, pw_browser):
-    ctx, page, errors = _open(pw_browser, mock_server, 640, 900)
+    # 800 px: two columns, three units below (640 was used before
+    # RM-1772; the stacked single column there now fits four columns).
+    ctx, page, errors = _open(pw_browser, mock_server, 800, 900)
     try:
         before = page.evaluate(_MEASURE)
         page.evaluate(

@@ -787,3 +787,44 @@ The TFT Active Match BOARD says how many units sit below its fixed box. The boar
   - ASCII: 0 non-ASCII bytes and 0 CR in the diff.
   - HIERARCHY: unit names stay brightest; the cue matches the eyebrow; it appears only when it has something to say.
 - FUTURE: at 360 px the count text keeps only about 7 px (an ellipsis) beside the cue. That window is below every authored size; the count stays in the title.
+
+## 2026-11-06 - lane 4 headless, s144 cycle 152 (RM-1772)
+
+### RULING
+
+At 720 px and under, the dashboard Active Match view stacks its panes in ONE full-width column: CALL, then BUILD, then the live ARAM balance row (only while it is live), then MAP. Each pane takes its natural height, and the view section (`overflow-y: auto`) scrolls them as one page. 720 px is the line Home (RM-1431) and the header already use: 300% zoom of the 1920x920 baseline is 640 wide, 400% is 480, and WCAG 1.4.10 reflows at 320. Above the line nothing changes (the two columns and the RM-1770 fit-the-window layout). The overlay shell is never affected: every selector is scoped to `body:not([data-shell="overlay"])`.
+
+- Before (measured headless, ui_mock sr / aram / arena / tft): the 1.4fr / 1.6fr columns held at every width: 258 / 294 px at 640, 183 / 209 at 480, 127 / 145 at 360.
+  - The BUILD pane content needs 205 px, so at 480 and 360 the pane scrolled SIDEWAYS inside its own vertical scroller (scrollWidth 205 in a clientWidth of 181 / 125). That is two-dimensional scrolling inside a box.
+  - The combo action input sat beside the 176 px keystone select at 54 px wide at 640, and 12 px at 480 and 360.
+  - At 360 and 320 the view head's sub line (`#am-sub`) ran up to 37 px past the view, because the h2 does not shrink, so the whole section scrolled sideways (scrollWidth 359 in 322).
+- In the stacked column:
+  - The BUILD pane is not a scroller of its own, because a nested scroller in a scrolling page traps the wheel and the touch drag. It uses `overflow-x: clip` (which keeps its box without making it a scroll container), so its sticky head pins against the view while the page scrolls through it.
+  - The view head wraps, so the sub line drops under the title.
+  - The combo row wraps, with a 4 px gap in place of the select's left margin. The select drops under the input once the pair no longer fits the input's own width (at 360 and 320). At 640 and 480 they share the line and the input keeps 364 / 204 px.
+- Order: CALL first, because the coach call is the most important text. The single column then follows the desktop reading order (left column top to bottom, then the right). MAP is last; it is the least actionable pane without live positions (R30).
+- Alternatives:
+  - (a) Keep the two columns and drop the RM-1770 fixed height only. The 127 px panes stay too narrow for any of the panes' content.
+  - (b) Stack the panes but keep BUILD a fixed-height inner scroller. That makes a nested scroller inside a scrolling page, which traps the wheel and the touch drag.
+  - (c) A 900 px line (the PGR loadout one). At 760-900 the two columns measured 314-379 px with no overflow and a 110+ px input, so they still work there.
+- Knock-on (this lane's own tests): the RM-1771 "+N BELOW" pinned and scrolled-to-bottom cases used 480 and 640, where the board was one or two columns. In the stacked column the board is the full width (four columns at 640, three at 480), so those cases moved to 760 and 800, which are still two columns. The 320 / 360 never-spill case still passes; the narrow-board ellipsis it was written for is no longer reachable by window size, and its comment says so.
+- Also fixed, a U-160 regression in a test: `test_ds_combo_controls_hit_floor.py::test_the_row_is_read_from_one_layout_snapshot` failed run alone since RM-1770 (red with 5fd7df066's active_match.css, green with 5e55f6eb8's and main's). Its 27 px probe pad is an empty flex item in the BUILD pane, which is now a fixed-height flex column whose content overflows, so the default flex-shrink squeezed the pad to 0 px and it moved nothing. The pad is now `flex: none`.
+- Guard: `tests/snapshot_panels/test_active_match_narrow_reflow.py`, 22 cases. Red at HEAD: 19 of 22 (the two above-the-line cases and the overlay case pass at HEAD by construction).
+  - For ui_mock sr / aram / arena / tft at 640x900, 480x800, 360x740 and 320x640:
+    - one grid column, every pane full width, panes in the order CALL / BUILD / MAP with no overlap;
+    - no sideways scroll in the document or the view, and no element past the view's content box;
+    - the BUILD pane is not a nested scroller;
+    - the combo input is at least 160 px, inside its row and at the 42 px floor.
+  - A live ARAM balance row sits between BUILD and MAP at 480.
+  - The BUILD head is still sticky at the view's padding edge 400 px into the pane (sr / arena, 480).
+  - Two columns stay at 722x900 and at the 923x1280 companion size.
+  - Under `?overlay=1` at 640 the grid stays `display: block` with the desktop template.
+  - Mutations: without the head wrap, 8 red (360 / 320); without the combo-row wrap, 6 red (360 / 320, League modes); without `overflow-y: visible`, 19 red.
+- 5-phase audit (headless, the guard's sizes plus 722 and 923x1280):
+  - STRUCTURE: no document or view x-overflow at 320-720, and the panes are stacked full width. Above 720 the geometry is unchanged.
+  - TYPOGRAPHY: no font rule changed.
+  - HIT-TARGETS: the combo input and select stay 42 px tall, and the input widens from 12-84 px to at least 204 px (wrapped at 360 / 320: the row width).
+  - ASCII: 0 non-ASCII bytes and 0 CR in the diff.
+  - HIERARCHY: CALL is the first thing under the view head at every narrow width.
+- FUTURE: the other views' `.view-section-head` carries the same non-shrinking h2, so a long sub line can push past a narrow view elsewhere. Only Active Match was measured and changed here.
+- FUTURE: at 320 the view section's own 18 px margin plus 18 px padding (header.css) leaves the panes 246 px of a 320 px window. A narrow-window margin ruling belongs to the shared `.view-section`, not to one view.

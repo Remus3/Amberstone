@@ -136,6 +136,10 @@ _SHIFT_AFTER_INPUT_READ = """(sel) => {
     const r = real();
     queueMicrotask(() => {
       const pad = document.createElement('div');
+      // flex: none - since RM-1770 the card sits in the BUILD pane, a
+      // fixed-height flex column whose content overflows, so an empty pad
+      // with the default flex-shrink was squeezed to 0 px and moved nothing.
+      pad.style.flex = 'none';
       pad.style.height = '27px';
       card.parentNode.insertBefore(pad, card);
     });

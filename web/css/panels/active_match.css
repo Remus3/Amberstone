@@ -122,6 +122,68 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   overflow-y: visible;
 }
 
+/* RM-1772: narrow windows and high zoom (300% of the 1920x920 baseline
+ * is 640 wide, 400% is 480; WCAG 1.4.10 reflows at 320) - the same 720px
+ * line as Home (RM-1431) and the header. Above it the two columns keep the
+ * 1.4fr / 1.6fr split; below it they did too, so the panes shrank to
+ * 258 / 294 px at 640 and 127 / 145 px at 360. MEASURED (ui_mock, headless):
+ * the BUILD pane content needs 205 px, so at 480 and 360 it scrolled
+ * SIDEWAYS inside its own vertical scroller (scrollWidth 205 in 181 / 125),
+ * and the combo action input was 54 px wide at 640 and 12 px at 480 and
+ * 360. Here the panes stack in one full-width column - CALL, BUILD, the
+ * live ARAM balance row, MAP - each at its natural height, and the view
+ * section (overflow-y: auto) scrolls them as one page. The BUILD pane is not
+ * a scroller of its own here (a nested scroller in a scrolling page traps
+ * the wheel and the touch drag): overflow-x clip keeps its box and leaves
+ * its sticky head pinned against the view. 1920x920, the 923x1280
+ * companion and the overlay shell never reach this block. Guard:
+ * tests/snapshot_panels/test_active_match_narrow_reflow.py. */
+@media (max-width: 720px) {
+  body:not([data-shell="overlay"]) #view-active-match .am-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-rows: auto;
+    grid-template-areas:
+      "call"
+      "build"
+      "map";
+    flex: 0 0 auto;
+  }
+  /* The balance row only while it is live, so no other mode pays an empty
+   * track plus its gap. */
+  body:not([data-shell="overlay"]) #view-active-match
+    .am-grid:has(> #aram-balance-panel[data-ab-state="live"]) {
+    grid-template-rows: none;
+    grid-template-areas:
+      "call"
+      "build"
+      "aram"
+      "map";
+  }
+  body:not([data-shell="overlay"]) #view-active-match .am-pane-build {
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+  /* The head's h2 does not shrink (header.css), so at 360 and 320 the sub
+   * line ran 37 px past the view and the section scrolled sideways; it
+   * wraps under the title instead. */
+  body:not([data-shell="overlay"]) #view-active-match > .view-section-head {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  /* The combo action input sat beside a 176 px keystone select and kept
+   * 84 px at 360 and 44 px at 320; the select drops under it once the
+   * pair no longer fits the input's own width, and the gap replaces its
+   * margin so the wrapped select lines up with the input. */
+  body:not([data-shell="overlay"]) #view-active-match .dscombo-input-row {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  body:not([data-shell="overlay"]) #view-active-match .dscombo-keystone {
+    margin-left: 0;
+  }
+}
+
 #view-active-match .am-pane {
   display: flex;
   flex-direction: column;
