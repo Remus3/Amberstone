@@ -23,9 +23,14 @@ mirroring the existing FlatHPPoolMod cache, then per-coach
 """
 from __future__ import annotations
 
+import logging
+import math
+import numbers
 import os
 from dataclasses import dataclass
 from typing import Iterable, Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -121,36 +126,116 @@ def _env_comp_hp_lean() -> bool:
     )
 
 
-def _count_tanky(enemy_champions: Optional[Iterable[str]]) -> int:
+def _finite_number(value: object) -> Optional[float]:
+    """Return ``value`` as a finite float, or None for anything else.
+
+    One reader for every numeric input (level, clock, enemy levels, the
+    bonus_hp override, the comp factor counts). A real number or a numeric
+    string is accepted (the pre-hardening ``float(level)`` accepted ``"11"``);
+    a bool, NaN, inf, an int too large for a float and any other type is
+    junk. Never raises.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, numbers.Real):
+        try:
+            out = float(value)
+        except (OverflowError, ValueError):
+            return None
+    elif isinstance(value, str):
+        try:
+            out = float(value.strip())
+        except ValueError:
+            return None
+    else:
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _comp_names(enemy_champions: object) -> list[str]:
+    """Materialize the enemy comp ONCE as stripped champion names.
+
+    A one-shot iterable (a generator) is read a single time here, so the tank
+    count, the no-comp guard and the AD/AP split all see the same comp. A bare
+    string is one name, never its letters. Non-str entries and blanks are
+    dropped; a non-iterable comp reads as empty. The ``"?"`` placeholder live
+    callers write for a missing ``championName`` is kept here and simply never
+    resolves (``_resolved_count``), like any other unknown name.
+    """
+    if enemy_champions is None:
+        return []
+    if isinstance(enemy_champions, str):
+        items: list = [enemy_champions]
+    else:
+        try:
+            items = list(enemy_champions)  # type: ignore[call-overload]
+        except TypeError:
+            return []
+    names: list[str] = []
+    for champ in items:
+        if not isinstance(champ, str):
+            continue
+        safe = champ.strip()
+        if safe:
+            names.append(safe)
+    return names
+
+
+def _comp_factors(names: list[str]) -> Optional[dict]:
+    """``core.aram_comp_verdict.compute_factors`` over ``names``, or None.
+
+    Best-effort: the DDragon-backed lookup failing (import, data, a non-dict
+    result) is "no comp info", logged at debug, never raised into the coach.
+    """
+    if not names:
+        return None
+    try:
+        from core.aram_comp_verdict import compute_factors
+        factors = compute_factors(list(names))
+    except Exception as exc:  # noqa: BLE001 - comp lookup is best-effort
+        logger.debug("enemy_stats: compute_factors failed: %r", exc)
+        return None
+    return factors if isinstance(factors, dict) else None
+
+
+def _count_tanky(names: list[str]) -> int:
     """Count enemy tank/bruiser archetypes via the shared archetype registry.
 
     Reuses ``core.archetype_picks.get_archetype_for`` (the same classifier
-    core.ds_antitank_hint uses). Fail-soft per champion: a blank id or a
-    lookup miss is treated as non-tanky and never raises.
+    core.ds_antitank_hint uses). Fail-soft per champion: a lookup miss or
+    error is treated as non-tanky and never raises.
     """
-    if not enemy_champions:
+    if not names:
         return 0
     try:
         from core.archetype_picks import get_archetype_for
-    except Exception:  # noqa: BLE001 - registry import is best-effort
+    except Exception as exc:  # noqa: BLE001 - registry import is best-effort
+        logger.debug("enemy_stats: archetype registry import failed: %r", exc)
         return 0
     count = 0
-    for champ in enemy_champions:
-        safe = (champ or "").strip()
-        if not safe:
-            continue
+    for champ in names:
         try:
-            info = get_archetype_for(safe)
-            primary = info.get("primary", "") if isinstance(info, dict) else ""
-            if primary in _TANKY_ARCHETYPES:
-                count += 1
-        except Exception:  # noqa: BLE001 - one bad id never breaks the count
+            info = get_archetype_for(champ)
+        except Exception as exc:  # noqa: BLE001 - one bad id never breaks the count
+            logger.debug("enemy_stats: archetype lookup %r failed: %r", champ, exc)
             continue
+        primary = info.get("primary", "") if isinstance(info, dict) else ""
+        if primary in _TANKY_ARCHETYPES:
+            count += 1
     return count
 
 
+def _resolved_count(factors: Optional[dict]) -> int:
+    """How many comp names DDragon resolved (``compute_factors``'s ``n``)."""
+    if factors is None:
+        return 0
+    n = _finite_number(factors.get("n"))
+    return int(n) if n is not None and n > 0 else 0
+
+
 def _comp_hp_scale(
-    enemy_champions: Optional[Iterable[str]],
+    names: list[str],
+    resolved: int,
     comp_hp_lean: Optional[bool],
 ) -> tuple[float, int]:
     """Return ``(hp_scale, tanky_count)`` for the comp-conditioned seam.
@@ -159,22 +244,25 @@ def _comp_hp_scale(
     explicitly). OFF -> ``(1.0, tanky_count)`` so max_hp is byte-identical to
     the flat curve.
 
-    NO-COMP-INFO GUARD: an absent / empty / all-blank ``enemy_champions`` is
-    "no data", which is NOT the same as "an all-squishy comp". A known
-    all-squishy comp (>=1 classifiable champ, 0 tanks) earns the intended 0.90
-    discount, but a no-info call must stay neutral (1.0). Without this guard the
-    seam computed ``1 + STEP*(0 - 1) = 0.90`` whenever it ran with no comp, so
-    flipping ``RC_COMP_HP_LEAN`` ON would silently de-rate every champ-select /
-    preview route (routes_state ds-preview Path 3, ds-knobs, ds-relscore,
-    ds-statcheck all call ``compute_enemy_stats(mode, level)`` with no comp) by
-    10%. Keeping no-info at the flat curve is the safety contract that lets the
-    operator flip the seam ON without shifting any comp-blind ranking.
+    NO-COMP-INFO GUARD: an absent / empty / all-blank comp is "no data", which
+    is NOT the same as "an all-squishy comp". A known all-squishy comp (>=1
+    champion DDragon resolves, 0 tanks) earns the intended 0.90 discount, but a
+    no-info call must stay neutral (1.0). Without this guard the seam computed
+    ``1 + STEP*(0 - 1) = 0.90`` whenever it ran with no comp, so flipping
+    ``RC_COMP_HP_LEAN`` ON would silently de-rate every champ-select / preview
+    route (routes_state ds-preview Path 3, ds-knobs, ds-relscore, ds-statcheck
+    all call ``compute_enemy_stats(mode, level)`` with no comp) by 10%. Keeping
+    no-info at the flat curve is the safety contract that lets the operator
+    flip the seam ON without shifting any comp-blind ranking. "No info" also
+    covers a comp of only ``"?"`` placeholders or only names DDragon cannot
+    resolve (``resolved == 0``): before the s144 true-audit both read as a
+    known all-squishy comp and earned the blind discount.
     """
     on = comp_hp_lean if comp_hp_lean is not None else _env_comp_hp_lean()
-    tanky_count = _count_tanky(enemy_champions)
+    tanky_count = _count_tanky(names)
     if not on:
         return 1.0, tanky_count
-    if not any((c or "").strip() for c in (enemy_champions or [])):
+    if resolved <= 0:
         # No classifiable comp -> neutral flat curve, never a blind discount.
         return 1.0, 0
     scale = 1.0 + _COMP_HP_STEP * (tanky_count - 1)
@@ -182,24 +270,74 @@ def _comp_hp_scale(
     return round(scale, 4), tanky_count
 
 
-def _estimate_level_from_game_time(game_seconds: float) -> float:
+def _ad_ap_share(factors: Optional[dict]) -> tuple[float, float]:
+    """Enemy (ad_share, ap_share) from the comp factors; hybrids split evenly.
+
+    No comp, an all-unknown comp, or a junk / negative count -> 0.5 / 0.5, so
+    the pair is always a split in [0, 1] that sums to 1.
+    """
+    if factors is None:
+        return 0.5, 0.5
+    counts = []
+    for key in ("ad_count", "ap_count", "hybrid_count"):
+        raw = factors.get(key, 0)
+        val = _finite_number(0 if raw is None else raw)
+        if val is None or val < 0:
+            return 0.5, 0.5
+        counts.append(val)
+    ad_n, ap_n, hybrid_n = counts
+    ad = ad_n + 0.5 * hybrid_n
+    ap = ap_n + 0.5 * hybrid_n
+    tot = ad + ap
+    if tot <= 0:
+        return 0.5, 0.5
+    return ad / tot, ap / tot
+
+
+def _estimate_level_from_game_time(game_seconds: object) -> float:
     """Rough level estimate from game clock when no level signal exists.
 
     Standard SR XP curve: ~1 level per 90s of game time, plus a head
     start at minute 0 (everyone is level 1, not 0). Capped at 18 (max
     champion level). Used as a fallback only - when ``level`` is
-    supplied explicitly we always prefer that.
+    supplied explicitly we always prefer that. A junk clock (None, NaN,
+    inf, a non-number) reads as level 1, never NaN and never a raise.
     """
-    if game_seconds <= 0:
+    secs = _finite_number(game_seconds)
+    if secs is None or secs <= 0:
         return 1.0
-    est = 1.0 + (game_seconds / 90.0)
+    est = 1.0 + (secs / 90.0)
     if est > 18.0:
         return 18.0
     return est
 
 
-def _normalize_mode(mode: str | None) -> str:
-    m = (mode or "sr").lower().strip()
+def _enemy_level_list(enemy_levels: object) -> list[float]:
+    """Usable per-enemy levels: finite numbers > 0, each clamped to [1, 18].
+
+    Zero is the Live Client placeholder and is dropped (pre-hardening
+    behaviour); so are negatives, NaN / inf, bools and non-numbers. A str,
+    bytes or a non-iterable reads as no levels.
+    """
+    if enemy_levels is None or isinstance(enemy_levels, (str, bytes)):
+        return []
+    try:
+        items = list(enemy_levels)  # type: ignore[call-overload]
+    except TypeError:
+        return []
+    out: list[float] = []
+    for raw in items:
+        lv = _finite_number(raw)
+        if lv is None or lv <= 0:
+            continue
+        out.append(max(1.0, min(lv, 18.0)))
+    return out
+
+
+def _normalize_mode(mode: object) -> str:
+    if not isinstance(mode, str):
+        return "sr"
+    m = mode.lower().strip()
     if m in _MODE_ANCHORS:
         return m
     # Common aliases. The DS server accepts "SR" / "ARAM" / etc.
@@ -227,9 +365,10 @@ def compute_enemy_stats(
 
     Args:
         mode: ``"sr"`` / ``"aram"`` / ``"arena"`` / ``"brawl"`` or any
-            uppercased / alias variant (auto-normalized).
+            uppercased / alias variant (auto-normalized). A non-str reads
+            as ``"sr"``.
         game_seconds: Game clock in seconds. Used as a fallback when
-            ``level`` and ``enemy_levels`` are both None.
+            ``level`` and ``enemy_levels`` are both None (or junk).
         level: Operator's current champion level. When supplied alongside
             no ``enemy_levels``, assumed roughly equal to average enemy
             level (true in laning, +/-1 mid-game; off by 2-3 in stomps).
@@ -237,29 +376,38 @@ def compute_enemy_stats(
             bonus_hp. Coaches' existing `_estimate_target_bonus_hp`
             (item-aware, walks enemy item displayNames) is more accurate
             when enemy items are visible - pass that result through here.
+            Zero, negative or junk falls back to the heuristic.
         enemy_levels: Per-enemy levels when known (e.g. parsed from
             Live Client `enemy_details`). When supplied, averaged into
             the effective level used for the curve. Overrides ``level``.
+        enemy_champions: Enemy champion names. Feeds the AD/AP split and
+            the default-OFF comp max-HP seam. Read once (a generator is
+            fine); a bare string is one name; non-str entries and blanks
+            are ignored, and an unresolvable name (incl. the ``"?"``
+            placeholder) counts as no comp info.
+        comp_hp_lean: Overrides the ``RC_COMP_HP_LEAN`` env gate when not
+            None.
 
     Returns:
         EnemyStats with armor / mr / max_hp / bonus_hp filled. Always
-        non-negative; caps applied to prevent runaway values.
+        finite and non-negative; caps applied to prevent runaway values.
+        Junk input never raises: each junk field falls back to the next
+        signal (enemy levels -> level -> clock -> level 1).
     """
     mode_key = _normalize_mode(mode)
     armor_base, armor_per_lv, mr_base, mr_per_lv, hp_base, hp_per_lv = (
         _MODE_ANCHORS[mode_key]
     )
 
-    if enemy_levels is not None:
-        levels_list = [float(lv) for lv in enemy_levels if lv]
-        if levels_list:
-            avg_level = sum(levels_list) / len(levels_list)
-        else:
-            avg_level = float(level) if level is not None else _estimate_level_from_game_time(game_seconds)
-    elif level is not None:
-        avg_level = float(level)
+    levels_list = _enemy_level_list(enemy_levels)
+    if levels_list:
+        avg_level = sum(levels_list) / len(levels_list)
     else:
-        avg_level = _estimate_level_from_game_time(game_seconds)
+        own_level = _finite_number(level)
+        if own_level is not None:
+            avg_level = own_level
+        else:
+            avg_level = _estimate_level_from_game_time(game_seconds)
 
     # Clamp to valid champion-level range.
     avg_level = max(avg_level, 1.0)
@@ -269,10 +417,17 @@ def compute_enemy_stats(
     mr      = mr_base + mr_per_lv * avg_level
     max_hp  = hp_base + hp_per_lv * avg_level
 
+    # The comp is materialized once and the DDragon factors computed once,
+    # so the tank count, the no-info guard and the AD/AP split agree.
+    names = _comp_names(enemy_champions)
+    factors = _comp_factors(names)
+
     # DSV5 comp-conditioned max-HP (default-OFF seam). hp_scale == 1.0 leaves
     # max_hp byte-identical to the flat curve; a tank-heavy comp scales it up
     # so DSV1's ability-burn / %max-HP valuation tilts toward DoT vs tanks.
-    hp_scale, tanky_count = _comp_hp_scale(enemy_champions, comp_hp_lean)
+    hp_scale, tanky_count = _comp_hp_scale(
+        names, _resolved_count(factors), comp_hp_lean,
+    )
     max_hp *= hp_scale
 
     # Apply caps.
@@ -280,8 +435,9 @@ def compute_enemy_stats(
     mr = min(mr, _MR_CAP)
     max_hp = min(max_hp, _MAX_HP_CAP)
 
-    if bonus_hp_override is not None and bonus_hp_override > 0:
-        bonus_hp = float(bonus_hp_override)
+    override = _finite_number(bonus_hp_override)
+    if override is not None and override > 0:
+        bonus_hp = override
     else:
         bonus_hp = max_hp - _CHAMP_BASE_HP_AVG
     bonus_hp = max(bonus_hp, _BONUS_HP_FLOOR)
@@ -290,19 +446,7 @@ def compute_enemy_stats(
     # Enemy damage-type split from the comp (the EHP-side signal). DDragon
     # info.attack/info.magic leans via core.aram_comp_verdict.compute_factors;
     # hybrids split evenly. No comp / unresolved / all-unknown -> 0.5/0.5.
-    ad_share, ap_share = 0.5, 0.5
-    if enemy_champions:
-        try:
-            from core.aram_comp_verdict import compute_factors
-            f = compute_factors(list(enemy_champions))
-            ad = float(f.get("ad_count", 0) or 0) + 0.5 * float(f.get("hybrid_count", 0) or 0)
-            ap = float(f.get("ap_count", 0) or 0) + 0.5 * float(f.get("hybrid_count", 0) or 0)
-            tot = ad + ap
-            if tot > 0:
-                ad_share = ad / tot
-                ap_share = ap / tot
-        except Exception:  # noqa: BLE001
-            ad_share, ap_share = 0.5, 0.5
+    ad_share, ap_share = _ad_ap_share(factors)
 
     return EnemyStats(
         armor=round(armor, 1),
