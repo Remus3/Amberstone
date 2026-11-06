@@ -161,7 +161,10 @@ ON WIRING on 2026-11-06 (s144 lane gated cycle 83: no live RC caller sends the `
 seams or the `runes` they need; the AGE CHECK sits in G2-13); no count moved. G2-04 / G2-10 were
 tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 84: no live caller arms the R5 heal
 amp, the registered champions never reach the enchanter scorer, and no EHP route or ranker carries
-the R45 `caster_current_hp_pct`; each row holds its own AGE CHECK); no count moved.
+the R45 `caster_current_hp_pct`; each row holds its own AGE CHECK); no count moved. G2-08 / G2-17 /
+G2-20 were tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 85: `assume_magic_burst`,
+`assume_shielded_target` and `score_completion_runes` are parsed by `/burst` only and no live RC
+caller arms them on a route that reads them; the AGE CHECK sits in G2-08); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -958,10 +961,41 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   champion level" is still UNWIRED. The only live caller, `core/ds_antitank_hint.py:76`, calls
   `compute_antitank(safe_champion, safe_mode)` with NO level argument, while the HTTP route does accept
   it (`server.py:1646`). Same shape as the G2-06 "CODE PREREQ (headless)" precedent.
-- **G2-08** (was B13) R30/DSV6 `assume_magic_burst` (Luden's/Stormsurge/Malignance) + R69 item ACTIVES
+- **G2-08** `[BLOCKED ON WIRING 2026-11-06]` (was B13) R30/DSV6 `assume_magic_burst` (Luden's/Stormsurge/Malignance) + R69 item ACTIVES
   (Rocketbelt 3152/223152, Everfrost 446656) + R70 Zeke's 3050/223050/323050 Frostfire Tempest.
   compute_ability_dps deliberately inert. Confirm an active/ult-trigger holder's burst reads sane and
   assumes the trigger fires inside the burst window.
+  **AGE CHECK (lane 9 PREP s144 cycle 85, RM-1674; source read at local main `ba0df749f`, no game
+  up; NOT a tick). Producer-orphan, shared by G2-08, G2-17 and G2-20: all three seams are parsed by
+  `/burst` only, and no live RC caller arms any of them on a route that reads it.** Measured with
+  `inspect.signature`: `compute_burst_damage` takes `assume_magic_burst`, `assume_shielded_target`
+  and `score_completion_runes`; `rank_items_by_burst` takes none of the three; `compute_combo` takes
+  `score_completion_runes` only. In `agents/daemon_slayer/server.py` the parse sites are
+  `_route_burst` (`_opt_bool(body, "assume_magic_burst" / "assume_shielded_target" /
+  "score_completion_runes", False)`); `_route_rank_assassin` says in its own comment that the R30 /
+  R74 / R75 seams are `/burst`-scoped and does not parse them. Callers: the SR / ARAM / Arena /
+  Brawl coaches call `dispatch_for_coach` with no `assume_magic_burst` (default False), and every
+  `/api/ds-preview` body in `web/js/panels/active_match.js` and `champ_select.js` carries champion /
+  mode / level / items (plus `enemies` or `archetype`) and no seam key. Even when armed, the assassin
+  branch forwards it to `rank_assassin_for` -> `POST /rank-assassin`, which drops it (the client's
+  own comment says this is by design: the lever reaches the engine through `burst_for`).
+  `core/daemon_slayer_client.py` `burst_for` can send all three, but its one live caller,
+  `core/death_recap.py` `fetch_ds_profiles`, sends champion, level, items, mode and the target
+  resists / max HP only; the direct in-process `compute_burst_damage` caller
+  `dashboard/routes_spike_curve.py` passes none of the three either. The R69 / R70 rows ride the same seam (their `_effects_data.py` notes name
+  `assume_magic_burst`, read on 3152, 223152 and 3050). PRECONDITION for return to the drain list:
+  a producer sends `assume_magic_burst: true` to `/burst` (or a Tier-2 change threads it into
+  `rank_items_by_burst` and `/rank-assassin`) for a live holder of a trigger item, and records the
+  outbound body with `ts` and the Live Client `gameData.gameTime` it read. Predicate stated NOW,
+  graded only after that lands, in one practice-tool SR game: PASS iff a recorded body carries
+  `assume_magic_burst: true` and an item list that contains the held trigger item id and equals the
+  active player's `allPlayers[].items[].itemID` from a `:2999` read within 10 s of game time of the
+  body, AND the response for that body carries the `notes` entry `burst.py` writes only when the
+  magic-burst damage is above 0 (it ends "assume_magic_burst seam)"). The "reads sane" eyeball is written when the
+  producer names its surface. SUBSTITUTION CHECK: a hand-POSTed `/burst` body,
+  `live_flip_eyeball.py`, a fixture or a DS unit test answers whether the engine COMPUTES the
+  credit; only the producer's own recorded outbound body, joined to a `:2999` read at the same game
+  time, answers whether RC SENT it for the live build.
 - **G2-09** (was B14) R35 `apply_passive_mitigation` + snapshot (Galio/Garen/MasterYi percent-DR);
   confirm the rank-4 + 0.3-uptime assumptions read sane.
 - **G2-10** `[BLOCKED ON WIRING 2026-11-06]` (was B15) R45 Poppy W low-HP doubled percent-of-resist tier - feed
@@ -1053,9 +1087,17 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   MS items should gain modest credit and no MS-less staple should be displaced by more than a slot -
   and sanity-check the 0.5 fraction / 0.15 cap against how much the movement speed actually bought you
   in that fight.
-- **G2-17** (was B41b) R75/DSV9 `assume_shielded_target` (Serpent's Fang 6695). Practice suffices
+- **G2-17** `[BLOCKED ON WIRING 2026-11-06]` (was B41b) R75/DSV9 `assume_shielded_target` (Serpent's Fang 6695). Practice suffices
   (assumed pool 0.20 x target max HP, melee 50% / ranged 35%); a REAL game vs Shieldbow/enchanter comps
   is the stronger eyeball. Sanity = the credit does not dominate a real-damage item swap.
+  Re-measured 2026-11-06 (RM-1674): producer-orphan, AGE CHECK in G2-08 - `/burst` is the only
+  parse site, `burst_for` can send it, and no live caller does. The seam is also inert without
+  `target_max_hp > 0` (`burst.py`: `if assume_shielded_target and target_max_hp > 0`). Predicate
+  stated NOW, graded only after a producer lands: PASS iff a recorded body carries
+  `assume_shielded_target: true`, a `target_max_hp` above 0 that the producer labels with its source,
+  and an item list containing 6695 that equals the active player's `:2999` items within 10 s of
+  game time, AND the response carries the `notes` entry written only when the shield-cut damage is
+  above 0 (it ends "(assume_shielded_target seam)"). Substitution check as G2-08.
 - **G2-18** (was B49) R111 `assume_caster_lowhp` (Overlord's Bloodmail 2501 "Retribution"): build it,
   drop to low HP, eyeball the missing-HP-scaled bonus AD credit. Midpoint
   `_ASSUMED_CASTER_MISSING_HP` 0.35 / cap 0.70. SOURCE: LEDGER 879.
@@ -1063,7 +1105,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   BURST scorer `burst.py rank_items_by_burst` (NOT rank.py). Transport WIRED (OQ17). R70 added the
   Hollow Radiance Desolate takedown eruption (6664/226664) to the `assume_takedown` stream - confirm an
   HR-holder's burst reads sane next to Hubris/Collector. Client-helper emit still pending.
-- **G2-20** (was B6) DSP4 `score_completion_runes` (Shield Bash 8401) - **PARTIAL 2026-07-18.**
+- **G2-20** `[BLOCKED ON WIRING 2026-11-06]` (was B6) DSP4 `score_completion_runes` (Shield Bash 8401) - **PARTIAL 2026-07-18.**
   SETTLED HEADLESS: the correct instrument was used correctly - `compute_burst_damage` was called
   DIRECTLY with a real Resolve page (not the re-rank harness this row forbids) - and the seam is
   non-inert: burst reads **+2.64%** with the runes scored. Transport WIRED (OQ17, /burst parses
@@ -1073,6 +1115,17 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   LIVE RESIDUAL (glance): with a real Shield Bash page in a live game, judge whether ~+2.6 pct of burst
   is the right ORDER OF MAGNITUDE for what Shield Bash actually contributed in a fight. That is a
   magnitude judgment, not another delta.
+  Re-measured 2026-11-06 (RM-1674): producer-orphan, AGE CHECK in G2-08.
+  `/burst` is the only route that parses `score_completion_runes`; no live caller sends it, and
+  `burst_for`'s one live caller sends no `runes` at all. The dashboard combo route
+  (`dashboard/routes_ds_combo.py`) passes the request's `runes` into `compute_combo` but never the
+  flag, so `burst.py` filters Shield Bash 8401 OUT of the scored set there (`if
+  score_completion_runes or _rid not in COMPLETION_RUNE_IDS`); `core/laning_scenario_precompute.py`
+  passes neither. So no live surface shows a Shield Bash credit to judge. Predicate stated NOW,
+  graded only after a producer lands: PASS iff a recorded body carries `score_completion_runes:
+  true` and a `runes` set that contains 8401 and equals `activePlayer.fullRunes.generalRunes[].id`
+  from a `:2999` read within 10 s of game time of the body; the magnitude glance above is then made
+  against that body's response. Substitution check as G2-08.
 - **G2-21** (was B2) DS Phase-D: `apply_passive_damage` + the 4 non-every-AA `on_hit` + per-stack
   `assumed_stacks`. **NOT a clean transport flip:** `apply_passive_damage` is deliberately /dps-scoped
   (R7/R12 precedent, `rank_items` does not forward it), the on_hit remainder needs net-new cadence
