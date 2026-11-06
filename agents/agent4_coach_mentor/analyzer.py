@@ -676,10 +676,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
 
-    if args.mode:
-        result = {args.mode: analyze_mode(args.mode)}
-    else:
-        result = analyze_all()
+    result = {args.mode: analyze_mode(args.mode)} if args.mode else analyze_all()
     print(json.dumps(result, indent=2))
 
     # Surface top-N champions per mode.

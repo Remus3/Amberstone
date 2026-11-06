@@ -947,10 +947,7 @@ def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
     # so it outranks the WS4 stagnation/lost-objective response; when it is
     # None the chain (and the served bytes) are unchanged.
     advisory = dt_macro or macro or soul or heal
-    if advisory is not None:
-        callouts = callouts[:2] + [advisory]
-    else:
-        callouts = callouts[:3]
+    callouts = callouts[:2] + [advisory] if advisory is not None else callouts[:3]
 
     # ZOI map-control callout from the minimap blob dots (item 567 slice 3).
     # Appended here inside _compute_uncached so the callouts list is complete

@@ -654,10 +654,7 @@ def main() -> int:
       f" = {pct(len(set_disagree), n)} pct")
     w("   pairwise rates available: ONE (A-B). The pooled rate and the single")
     w("   pairwise rate are the same number, because there is one pair.")
-    if p >= 26.1:
-        verdict = "REFUTED"
-    else:
-        verdict = "CONFIRMED"
+    verdict = "REFUTED" if p >= 26.1 else "CONFIRMED"
     w(f"   nothing rounded: {p!r} against the threshold 26.1")
     w(f"   VERDICT: P1 {verdict}")
     w("")

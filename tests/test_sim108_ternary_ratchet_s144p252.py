@@ -7,8 +7,11 @@ kit. Nine production sites are now one conditional expression each (``core/build
 ``tools/upstream_drift_check.py``). The condition, both arms and the arm that is evaluated are unchanged: a
 conditional expression is as lazy as the block it replaces.
 
-Six files are the named baseline, one finding each. They stay as they are this cycle and the count per file can only
-fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
+One file is the named baseline (one finding): ``tests/test_rank_tier_live_budget.py``, which the queue lane's branch
+changes, so it is left to that lane. Five more sites (``agents/agent4_coach_mentor/analyzer.py``,
+``dashboard/_deterministic_coaching.py``, ``docs/_rsc_score/tally_ab.py``, ``tests/_replace_faults.py``,
+``tests/test_math_core_golden.py``) were converted in a second step. The count per file can only fall: a file that
+reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -39,14 +42,14 @@ _NOT_THIS_SCOPE = {
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE = {
-    "agents/agent4_coach_mentor/analyzer.py": 1,
-    "dashboard/_deterministic_coaching.py": 1,
-    "docs/_rsc_score/tally_ab.py": 1,
-    "tests/_replace_faults.py": 1,
-    "tests/test_math_core_golden.py": 1,
     "tests/test_rank_tier_live_budget.py": 1,
 }
 _FIXED = (
+    "agents/agent4_coach_mentor/analyzer.py",
+    "dashboard/_deterministic_coaching.py",
+    "docs/_rsc_score/tally_ab.py",
+    "tests/_replace_faults.py",
+    "tests/test_math_core_golden.py",
     "coaches/sr_user_builds.py",
     "core/build_order.py",
     "core/minimap_geometry.py",

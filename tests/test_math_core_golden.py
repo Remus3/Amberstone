@@ -288,10 +288,7 @@ def test_js_builtins_match_the_same_golden_file():
     ).stdout
     got = json.loads(out)
     for case, val in zip(JS_CASES, got):
-        if "s" in val:
-            actual = val["s"]
-        else:
-            actual = -0.0 if val["neg0"] else val["n"]
+        actual = val["s"] if "s" in val else (-0.0 if val["neg0"] else val["n"])
         assert _close(actual, case["expected"], case.get("tol", _DEFAULT_TOL)), f"node {case['id']} got {actual!r}"
         # And the Python port of the same JS semantics agrees with node.
         assert _close(_call(case["fn"], case), actual, case.get("tol", _DEFAULT_TOL)), case["id"]

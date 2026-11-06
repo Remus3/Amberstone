@@ -332,10 +332,7 @@ def scoped_path_fault(name: str, root, action, *, expect_fire: bool = True):
     rec = ReplaceFaults()
 
     def _scoped(self, *a, **kw):
-        if name in _PATH_DEST_ARG:
-            scoped = a[0] if a else kw.get("target")
-        else:
-            scoped = self
+        scoped = (a[0] if a else kw.get("target")) if name in _PATH_DEST_ARG else self
         if scoped is not None and _path_in_scope(root, scoped):
             rec.attempts += 1
             return action(real, self, *a, **kw)
