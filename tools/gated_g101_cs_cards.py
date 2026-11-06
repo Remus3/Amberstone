@@ -81,6 +81,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -224,7 +225,7 @@ class InputError(Exception):
 
 
 def _is_num(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool) and v == v
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and not (isinstance(v, float) and math.isnan(v))
 
 
 def _shown(b) -> bool | None:

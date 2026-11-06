@@ -180,7 +180,7 @@ def _as_int(v, lo=None, hi=None) -> Optional[int]:
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         return None
     if isinstance(v, float):
-        if v != v or v in (float("inf"), float("-inf")) or v != int(v):
+        if math.isnan(v) or v in (float("inf"), float("-inf")) or v != int(v):
             return None
         v = int(v)
     if not -_I64_MAX - 1 <= v <= _I64_MAX:

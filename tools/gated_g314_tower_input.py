@@ -60,6 +60,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import ssl
 import sys
 import time
@@ -123,7 +124,7 @@ def _num(v: Any) -> float | None:
         f = float(v)
     except (TypeError, ValueError):
         return None
-    return f if f == f and f not in (float("inf"), float("-inf")) else None
+    return f if math.isfinite(f) else None
 
 
 def _epoch(ts: Any) -> float | None:

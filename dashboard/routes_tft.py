@@ -62,6 +62,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import threading
 import time
@@ -146,7 +147,7 @@ def _num(v: Any) -> Optional[float]:
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         return None
     f = float(v)
-    return f if f == f and f not in (float("inf"), float("-inf")) else None
+    return f if math.isfinite(f) else None
 
 
 def _flag(qs: dict, name: str) -> bool:

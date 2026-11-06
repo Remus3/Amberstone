@@ -9,6 +9,7 @@ The system prompt is built per resolved set by tft/tft_prompt.py (RM-845).
 
 import json
 import logging
+import math
 import re
 import threading
 import time
@@ -102,7 +103,7 @@ def _bounded_int(value, hi: int):
         f = float(value)
     except (TypeError, ValueError):
         return None
-    if f != f or not (0 <= f <= hi):
+    if math.isnan(f) or not (0 <= f <= hi):
         return None
     return int(f)
 

@@ -5,6 +5,7 @@ Skips combat. Force scan via right-click overrides all timing.
 """
 import json
 import logging
+import math
 import re
 import threading
 import time
@@ -321,7 +322,7 @@ def _coerce_hp(v):
         f = float(str(v).strip()) if isinstance(v, str) else float(v)
     except (TypeError, ValueError):
         return None
-    if f != f or f in (float("inf"), float("-inf")):
+    if math.isnan(f) or f in (float("inf"), float("-inf")):
         return None
     if f > 100 or f < 0:
         return 0

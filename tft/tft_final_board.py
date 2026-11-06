@@ -70,7 +70,7 @@ def _int(v) -> Optional[int]:
         return None
     if isinstance(v, int):
         return v
-    if isinstance(v, float) and v == v and v.is_integer():
+    if isinstance(v, float) and not math.isnan(v) and v.is_integer():
         return int(v)
     return None
 

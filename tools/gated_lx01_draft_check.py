@@ -79,6 +79,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import math
 import re
 import sqlite3
 import ssl
@@ -291,7 +292,7 @@ def no_draft_matches(conn: sqlite3.Connection, games: dict, since: Optional[floa
 # -- the path witness -----------------------------------------------------------
 
 def _num(v: Any) -> Optional[float]:
-    if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v:
+    if isinstance(v, (int, float)) and not isinstance(v, bool) and not (isinstance(v, float) and math.isnan(v)):
         return float(v)
     return None
 
