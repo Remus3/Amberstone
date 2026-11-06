@@ -45,9 +45,20 @@ regions, not exact camps. At 1:00 laners are often still leashing, so a
 Pure layer (classify_game / tendencies_from_games) works on plain dicts;
 load_games reads a sqlite connection; opening_tendencies is the fail-soft
 entry point used by POST /api/scouting. Never raises.
+
+Junk input (s144 true-audit, RM-1839..RM-1846): a timeline row whose
+position is not a finite number is NOT a map location - a junk 1:00 frame
+is skipped (a clean frame in tolerance still decides, otherwise the game
+is excluded) and a junk kill position buckets "other", never the
+district_of fallback (blue_base). A bad row (non-dict, overflowing
+timestamp, string assists) costs that row, never the whole game. A
+min_games that is not a positive int falls back to MIN_GAMES, so a sample
+of zero never reports a mode. Results handed out are copies, so a caller
+mutating one cannot poison the cache; an absent DB is not cached.
 """
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import math
@@ -137,18 +148,54 @@ LANE_BUCKETS = ("top", "mid", "bot", "jungle", "river", "base", "other")
 GANK_BUCKETS = LANE_BUCKETS + ("none",)
 
 
+# --- input coercion -------------------------------------------------------------
+
+def _finite(value) -> Optional[float]:
+    """A finite float from an int / float / numeric str, else None.
+
+    bool is rejected (True is not a coordinate); bytes are rejected
+    (float(b"12") parses, but a BLOB is not a timeline number); inf, nan
+    and an int too large for a float (OverflowError) are rejected."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _timestamp(value) -> Optional[int]:
+    """A timeline timestamp in ms as an int, or None for junk."""
+    f = _finite(value)
+    return None if f is None else int(f)
+
+
+def _has_position(row) -> bool:
+    return (_finite(row.get("pos_x")) is not None
+            and _finite(row.get("pos_y")) is not None)
+
+
+def _min_games(value) -> int:
+    """min_games as a positive int; anything else is MIN_GAMES. A value
+    below 1 is clamped to 1 so an empty sample never reports a mode."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return MIN_GAMES
+    return max(1, value)
+
+
 # --- geometry -----------------------------------------------------------------
 
 def to_frac(pos_x, pos_y):
     """Match-V5 map units (y-up) -> minimap box-fraction (y-down, blue base
-    bottom-left), the frame core.minimap_districts expects. Garbage in ->
+    bottom-left), the frame core.minimap_districts expects. Garbage in
+    (non-number, bool, bytes, inf / nan, an int beyond float range) ->
     (nan, nan), which district_of maps to its fallback. Never raises."""
-    try:
-        x = float(pos_x) / SR_MAP_EXTENT
-        y = 1.0 - float(pos_y) / SR_MAP_EXTENT
-    except (TypeError, ValueError):
+    fx = _finite(pos_x)
+    fy = _finite(pos_y)
+    if fx is None or fy is None:
         return (math.nan, math.nan)
-    return (x, y)
+    return (fx / SR_MAP_EXTENT, 1.0 - fy / SR_MAP_EXTENT)
 
 
 def _district(pos_x, pos_y):
@@ -176,17 +223,20 @@ def _on_enemy_half(pos_x, pos_y, team_id):
 # --- per-game classification ------------------------------------------------------
 
 def _frame_at(frames, pid, target_ms):
+    """The player's frame nearest target_ms within FRAME_TOLERANCE_MS.
+    A non-dict row, a junk timestamp or a position that is not a finite
+    number skips THAT row only (a junk position is not a location)."""
     best = None
     best_d = None
     for f in frames:
-        if f.get("participant_id") != pid:
+        if not isinstance(f, dict) or f.get("participant_id") != pid:
             continue
-        if f.get("pos_x") is None or f.get("pos_y") is None:
+        if not _has_position(f):
             continue
-        try:
-            d = abs(int(f.get("timestamp_ms")) - target_ms)
-        except (TypeError, ValueError):
+        ts = _timestamp(f.get("timestamp_ms"))
+        if ts is None:
             continue
+        d = abs(ts - target_ms)
         if d <= FRAME_TOLERANCE_MS and (best_d is None or d < best_d):
             best, best_d = f, d
     return best
@@ -214,10 +264,15 @@ def classify_game(game: dict, puuid: str) -> Optional[dict]:
         if not isinstance(game, dict) or not _eligible(game):
             return None
         part = next((p for p in game.get("participants") or ()
-                     if p.get("puuid") == puuid), None)
+                     if isinstance(p, dict) and p.get("puuid") == puuid),
+                    None)
         if part is None:
             return None
         pid = part.get("participant_id")
+        if isinstance(pid, bool) or not isinstance(pid, int):
+            # A missing id would match every NULL-id frame and every
+            # NULL-killer kill; the game cannot be attributed.
+            return None
         frames = game.get("frames") or ()
         f1 = _frame_at(frames, pid, ONE_MIN_MS)
         if f1 is None:
@@ -248,19 +303,21 @@ def classify_game(game: dict, puuid: str) -> Optional[dict]:
 def _first_gank_bucket(kills, pid):
     hits = []
     for k in kills:
-        try:
-            ts = int(k.get("timestamp_ms"))
-        except (TypeError, ValueError):
+        if not isinstance(k, dict):
             continue
-        if ts >= FIRST_GANK_CUTOFF_MS:
+        ts = _timestamp(k.get("timestamp_ms"))
+        if ts is None or ts >= FIRST_GANK_CUTOFF_MS:
             continue
-        assists = k.get("assists") or ()
+        assists = k.get("assists")
+        if not isinstance(assists, (list, tuple)):
+            assists = ()
         if k.get("killer_id") == pid or pid in assists:
             hits.append((ts, k))
     if not hits:
         return "none"
     _ts, k = min(hits, key=lambda h: h[0])
-    if k.get("pos_x") is None or k.get("pos_y") is None:
+    if not _has_position(k):
+        # The gank happened but its position is unusable: lane unknown.
         return "other"
     return _bucket(_district(k["pos_x"], k["pos_y"]))
 
@@ -277,18 +334,22 @@ def _distribution(values, buckets, min_games):
         return SENTINEL
     counts = dict.fromkeys(buckets, 0)
     for v in values:
-        counts[v if v in counts else "other"] += 1
+        counts[v if isinstance(v, str) and v in counts else "other"] += 1
     mode = max(buckets, key=lambda b: (counts[b], -buckets.index(b)))
     return {"n": n, "mode": mode,
             "rates": {b: _rate(c, n) for b, c in counts.items() if c}}
 
 
 def aggregate(observations: Iterable[dict], min_games: int = MIN_GAMES) -> dict:
-    obs = [o for o in observations if o]
+    """Shrunk per-puuid metrics over classify_game observations. A
+    non-dict observation is dropped; a missing / unknown bucket counts as
+    "other"; min_games is coerced by _min_games."""
+    min_games = _min_games(min_games)
+    obs = [o for o in (observations or ()) if isinstance(o, dict) and o]
     jg = [o for o in obs if o.get("jungler")]
     out = {"games": len(obs), "jungle_games": len(jg)}
     out["level1_lane"] = _distribution(
-        [o["level1_lane"] for o in obs], LANE_BUCKETS, min_games)
+        [o.get("level1_lane") for o in obs], LANE_BUCKETS, min_games)
     sides = [o["start_side"] for o in jg if o.get("start_side") in ("top", "bot")]
     if len(sides) < min_games:
         out["jungle_start_side"] = SENTINEL
@@ -306,7 +367,7 @@ def aggregate(observations: Iterable[dict], min_games: int = MIN_GAMES) -> dict:
     else:
         out["invade_rate"] = _rate(sum(1 for o in jg if o.get("invade")), len(jg))
     out["first_gank_lane"] = _distribution(
-        [o["first_gank_lane"] for o in jg], GANK_BUCKETS, min_games)
+        [o.get("first_gank_lane") for o in jg], GANK_BUCKETS, min_games)
     return out
 
 
@@ -349,6 +410,9 @@ def load_games(conn: sqlite3.Connection, puuids: Iterable[str],
         m = conn.execute(
             "SELECT queue_id, map_id, has_timeline FROM matches WHERE match_id = ?",
             (mid,)).fetchone()
+        if m is None:
+            # Pruned by a concurrent writer since the roster query.
+            continue
         parts = [
             {"participant_id": r[0], "team_id": r[1], "puuid": r[2],
              "team_position": r[3], "summoner1_id": r[4], "summoner2_id": r[5]}
@@ -378,7 +442,8 @@ def load_games(conn: sqlite3.Connection, puuids: Iterable[str],
                 (mid, FIRST_GANK_CUTOFF_MS)):
             try:
                 assists = json.loads(r[2] or "[]")
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, RecursionError):
+                # RecursionError: a pathologically nested array.
                 assists = []
             kills.append({"timestamp_ms": r[0], "killer_id": r[1],
                           "assists": assists if isinstance(assists, list) else [],
@@ -398,7 +463,9 @@ def opening_tendencies(puuids: Iterable[str], db_path=None,
     games only. Results are cached per (db, puuid, min_games) for
     _CACHE_TTL_S so a champ-select re-poll does not re-read the DB (the
     timeline DB only grows when a match download lands)."""
-    puuids = [p for p in (puuids or ()) if isinstance(p, str) and p]
+    puuids = list(dict.fromkeys(
+        p for p in (puuids or ()) if isinstance(p, str) and p))
+    min_games = _min_games(min_games)
     path = Path(db_path) if db_path is not None else _REWIND_DB
     now = time.monotonic()
     out: dict = {}
@@ -407,7 +474,7 @@ def opening_tendencies(puuids: Iterable[str], db_path=None,
         for p in puuids:
             hit = _CACHE.get((str(path), p, min_games))
             if hit is not None and now - hit[0] < _CACHE_TTL_S:
-                out[p] = hit[1]
+                out[p] = copy.deepcopy(hit[1])
             else:
                 missing.append(p)
     if not missing:
@@ -415,10 +482,14 @@ def opening_tendencies(puuids: Iterable[str], db_path=None,
     fresh: dict = {}
     conn = None
     try:
-        if path.exists():
-            conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+        if not path.exists():
+            # Not cached: the DB appears with the first match download and
+            # must be read on the next poll, not _CACHE_TTL_S later.
+            out.update((p, aggregate([], min_games)) for p in missing)
+            return out
+        conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
         for p in missing:
-            games = load_games(conn, [p]) if conn is not None else []
+            games = load_games(conn, [p])
             fresh[p] = tendencies_from_games(games, [p], min_games)[p]
     except sqlite3.Error as exc:
         log.warning("opening_tendency load: %s", exc)
@@ -437,5 +508,5 @@ def opening_tendencies(puuids: Iterable[str], db_path=None,
             for k, _v in sorted(_CACHE.items(), key=lambda kv: kv[1][0])[
                     :len(_CACHE) - _CACHE_MAX]:
                 _CACHE.pop(k, None)
-    out.update(fresh)
+    out.update((p, copy.deepcopy(v)) for p, v in fresh.items())
     return out
