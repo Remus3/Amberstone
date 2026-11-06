@@ -480,9 +480,8 @@ class WaveTracker:
 
         old = None
         for s in self._samples:
-            if game_seconds - s["t"] <= 15:
-                if old is None:
-                    old = s
+            if game_seconds - s["t"] <= 15 and old is None:
+                old = s
 
         if old is None:
             return "unknown"

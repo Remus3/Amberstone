@@ -19,8 +19,11 @@ A second slice (RM-1754) merged 8 more, one per module in ``core/`` x5 and ``vis
 kept every ``and`` operand in the nested form's order, and only the ``elif state == STOPPED`` site in
 ``core/obs_recorder.py`` moved a nested ``if`` into an ``elif`` test, where its chain has no later branch.
 
-The other 6 are the baseline below: one frozen file (``ops/rc_supervisor.py``), one file the uiux lane's branch
-changes (``agents/agent5_ui/champion_fallback.py``) and the rest left for later slices. The count per file can only
+A fifth slice (RM-1757) merged the last 2 in non-excluded modules (``coach_integration/_sr_prompt.py``
+WaveTracker.update, ``game_reader/snapshot_normalizer.py`` _has_smite), each with no ``else`` on either ``if``.
+
+The other 4 are the baseline below: one frozen file (``ops/rc_supervisor.py``, 2), one file the uiux lane's branch
+changes (``agents/agent5_ui/champion_fallback.py``) and one PKG-excluded tool (``tools/package_portable.py``). The count per file can only
 fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
@@ -53,8 +56,6 @@ _NOT_THIS_SCOPE = {
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE = {
     "agents/agent5_ui/champion_fallback.py": 1,
-    "coach_integration/_sr_prompt.py": 1,
-    "game_reader/snapshot_normalizer.py": 1,
     "ops/rc_supervisor.py": 2,
     "tools/package_portable.py": 1,
 }
@@ -83,6 +84,8 @@ _FIXED = (
     "ops/rc_self_monitor.py",
     "scripts/fetch_cdragon_pbe.py",
     "tft/tft_coach_engine.py",
+    "coach_integration/_sr_prompt.py",
+    "game_reader/snapshot_normalizer.py",
 )
 
 

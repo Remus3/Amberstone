@@ -1180,9 +1180,8 @@ class _NormalizerMixin:
             return False
         for key in ("summonerSpellOne", "summonerSpellTwo"):
             entry = ss.get(key)
-            if isinstance(entry, dict):
-                if "Smite" in (entry.get("displayName") or ""):
-                    return True
+            if isinstance(entry, dict) and "Smite" in (entry.get("displayName") or ""):
+                return True
         return False
 
     def _gank_threat(self, enemies: list, allies: list, my_pos: dict,
