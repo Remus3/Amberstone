@@ -876,8 +876,15 @@ _SINKATTR = "sinkattr:"
 # `q.append(url)` taints `q` (`_bind_mut_calls`). A class body turns one into
 # `_MUTATTR + name + " " + kind + " " + dst + ">" + src`, read off an
 # attribute call as `_SINKATTR` is, so `self.h(url)` taints `self`.
+# RM-1793: a def that puts an ENCLOSING tainted name into a parameter
+# (`G = url; def h(q): q.append(G)`) makes the pair `dst>*` (`_MUT_ALWAYS`):
+# a call through it taints its `dst` argument whatever it is passed. The
+# sink- and mutating-parameter judges (`_judge_params`, `_judge_mut_params`)
+# walk without those pairs (`_without_always`), so a wrapper that hands its
+# own parameter to such a helper keeps that parameter's sink spec.
 _MUTFN = "mutfn:"
 _MUTATTR = "mutattr:"
+_MUT_ALWAYS = "*"
 # RM-1794: a plain binding of a name to an attribute or element of a name
 # (`d = m.cache`, `b = m[0]`) makes it hold a PART of that name's object,
 # held as the directed mark `_ALIAS + d + " " + m`: a value put into the
@@ -2060,7 +2067,9 @@ def _bind_mut_calls(nodes, tainted, late=frozenset()) -> None:
         _call_views(node, tainted, late, calls)
         for call, seen in calls:
             for dst, src in _mut_pairs(call, seen):
-                if any(_is_tainted(a, seen, late) for a in _spec_args(call, {src})):
+                # RM-1793: an always pair needs no tainted argument.
+                if src == _MUT_ALWAYS or any(
+                        _is_tainted(a, seen, late) for a in _spec_args(call, {src})):
                     for arg in _spec_args(call, {dst}):
                         _bind_names(arg, True, tainted, clear=False)
                         # RM-1794: and every alias of its object.
@@ -2159,15 +2168,21 @@ def _mut_specs(fn, state, late=frozenset()):
     an alias (`k = h`) and a helper stored on an attribute from outside a
     class body (by `=` or `setattr`) make no pair (RM-1794: a helper
     that stores INTO its parameter through `setattr(q, 'u', v)` makes
-    one); a helper that stores
-    an ENCLOSING tainted name (`q.append(G)`) makes a pair only for a
-    tainted argument, so `h(r, 'x')` is missed (a pair needing no argument
-    pre-tainted the parameters of every wrapper that calls the helper, and
-    so hid their sink parameters from `_sink_specs`); a parameter mutated
+    one); a parameter mutated
     and then re-bound (`q.append('x'); q = [v]`) is read as still carrying
-    `v`, the RM-1788 safe side."""
+    `v`, the RM-1788 safe side.
+
+    RM-1793: a parameter that leaves the body carrying the value with NO
+    parameter tainted (it stores an enclosing tainted name: `q.append(G)`,
+    or hands the parameter to such a helper) makes the always pair
+    `dst>*` (`_MUT_ALWAYS`), so a def with one parameter is judged too.
+    Residual: a judge walk drops only the always pairs it starts from, so
+    a NESTED def that stores an enclosing tainted name, called on the
+    wrapper's own parameter inside the wrapper, still pre-taints that
+    parameter for the judge (the wrapper's own log site stays flagged; the
+    caller line that hands the wrapper a url is missed)."""
     params = _param_specs(fn)
-    if len(params) < 2:
+    if not params:
         return set()
     names = {n for n, _ in params}
     base = _param_base(fn, names, state, late)
@@ -2180,18 +2195,38 @@ def _mut_specs(fn, state, late=frozenset()):
     return _SPEC_CACHE[key]
 
 
+def _is_always(entry) -> bool:
+    """RM-1793: `entry` is a mutating-helper always pair (`dst>*`)."""
+    return (entry.startswith((_MUTFN, _MUTATTR))
+            and entry.endswith(">" + _MUT_ALWAYS))
+
+
+def _without_always(base):
+    """RM-1793: `base` less its always pairs, the entry a judge walks
+    from: a pair that needs no tainted argument would pre-taint a
+    parameter the body hands to the helper, so the parameter would add
+    nothing over the baseline and lose its spec."""
+    return frozenset(e for e in base if not _is_always(e))
+
+
 def _judge_mut_params(body, params, dsts, base):
     """The uncached body of `_mut_specs`."""
+    judged = _without_always(base)
 
-    def carried(extra):
-        out, returns, inside, _ = _walk_scope(body, base | extra, lambda e, f: None)
+    def carried(start, extra):
+        out, returns, inside, _ = _walk_scope(body, start | extra, lambda e, f: None)
         flowed = _join(out, *returns, *inside) or set()
         return {d for d in dsts if d in flowed or _OBJ + d in flowed}
 
     specs = dict(params)
-    pairs = set()
+    # RM-1793: what the body leaves carrying the value with no parameter
+    # tainted, read from the FULL entry, so a helper's own always pair
+    # passes on (`def w(q): h(q)`).
+    pairs = {f"{d}>{_MUT_ALWAYS}" for dst in carried(base, set()) for d in specs[dst]}
+    if len(params) < 2:
+        return pairs
     for src, src_specs in params:
-        for dst in carried({src}) - {src}:
+        for dst in carried(judged, {src}) - {src}:
             pairs |= {f"{d}>{s}" for d in specs[dst] for s in src_specs}
     return pairs
 
@@ -2218,6 +2253,7 @@ _BODY_CACHE = {}
 
 def _judge_params(body, params, names, base):
     """The uncached body of `_sink_specs`."""
+    base = _without_always(base)    # RM-1793
 
     def sites(extra):
         got = set()
@@ -2726,9 +2762,38 @@ def _class_attr_marks(body, out, cls_name=""):
                 continue
             name, spec = entry[len(fn_mark):].split(" ", 1)
             for kind in kinds.get(name, ()):
+                if kind in ("inst", "cls") and _is_always(entry) and (
+                        spec.split(">", 1)[0] in _receiver_specs(body, name)):
+                    continue
                 tag = f"inst:{cls_name}" if kind == "inst" else kind
                 marks.add(f"{attr_mark}{name} {tag} {spec}")
     return marks
+
+
+def _receiver_specs(body, name):
+    """RM-1793: the specs (`pos:0`, `kw:<first parameter>`) of the first
+    parameter of every def named `name` at class body `body`'s own level.
+    An always pair whose destination is a plain method's or classmethod's
+    receiver makes no `_MUTATTR` mark: a store into `self` / `cls` is
+    already read by the class's other methods (its attributes are tainted
+    for them), and the mark, keyed by attribute name only, would taint the
+    receiver and the first argument of every same-named call off any
+    other receiver (`subprocess.run([...])` for a `def run(self)` that
+    stores a tainted module name into `self`). Residual: an instance
+    logged OUTSIDE the class after such a call (`o.h(); log.info(o)`) is
+    missed, as on HEAD."""
+    specs, stack = {"pos:0"}, list(body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name == name:
+                first = (node.args.posonlyargs + node.args.args)[:1]
+                specs |= {f"kw:{p.arg}" for p in first}
+            continue
+        if isinstance(node, ast.ClassDef):
+            continue
+        stack.extend(ast.iter_child_nodes(node))
+    return specs
 
 
 def _walk_scope_uncached(body, entry, report, late=frozenset()):
@@ -4796,6 +4861,56 @@ _CHECKER_SAMPLES = (
     ("helper function stores a clean module name whatever is passed",
      "G = 'x'\ndef h(q, v):\n    q.append(G)\ndef f(url):\n    r = []\n    h(r, 'x')\n"
      "    log.info(r)\n", False),
+    # RM-1793: a helper that stores an ENCLOSING tainted name into its
+    # parameter (`q.append(G)`) taints the object a caller passes whatever
+    # the other arguments are: with a clean one, with no other parameter at
+    # all, through a wrapper that passes its own parameter on, and off a
+    # staticmethod or a dotted receiver. The clean rows keep it tied to the
+    # value: a clean enclosing name, a sanitized one, and a helper that only
+    # caches it under its parameter (the key is read, not changed).
+    ("helper function stores a tainted module name whatever is passed",
+     "G = url\ndef h(q, v):\n    q.append(G)\ndef f():\n    r = []\n    h(r, 'x')\n"
+     "    log.info(r)\n", True),
+    ("one-parameter helper stores a tainted module name",
+     "G = url\ndef h(q):\n    q.append(G)\ndef f():\n    r = []\n    h(r)\n"
+     "    log.info(r)\n", True),
+    ("one-parameter helper reached through a wrapper",
+     "G = url\ndef h(q):\n    q.append(G)\ndef w(q):\n    h(q)\ndef f():\n"
+     "    r = []\n    w(r)\n    log.info(r)\n", True),
+    ("one-parameter helper stores into an attribute of its parameter",
+     "G = url\ndef h(o):\n    o.u = G\ndef f():\n    c = C()\n    h(c)\n"
+     "    log.info(c)\n", True),
+    ("staticmethod helper stores a tainted module name",
+     "G = url\nclass C:\n    @staticmethod\n    def h(q):\n        q.append(G)\n"
+     "    def b(self):\n        r = []\n        self.h(r)\n        log.info(r)\n",
+     True),
+    ("helper given an attribute, its object is logged",
+     "G = url\ndef h(q):\n    q.append(G)\ndef f(o):\n    h(o.q)\n    log.info(o)\n",
+     True),
+    ("one-parameter helper stores a clean module name",
+     "G = 'x'\ndef h(q):\n    q.append(G)\ndef f():\n    r = []\n    h(r)\n"
+     "    log.info(r)\n", False),
+    ("one-parameter helper stores a sanitized module name",
+     "G = url\ndef h(q):\n    q.append(_safe_url(G))\ndef f():\n    r = []\n"
+     "    h(r)\n    log.info(r)\n", False),
+    ("one-parameter helper caches a tainted module name under its key",
+     "G = url\nCACHE = {}\ndef put(k):\n    CACHE[k] = G\ndef f(name):\n"
+     "    put(name)\n    log.info(name)\n", False),
+    ("one-parameter helper given an object the caller never logs",
+     "G = url\ndef h(q):\n    q.append(G)\ndef f(n):\n    r = []\n    h(r)\n"
+     "    log.info(n)\n", False),
+    # A method that stores a tainted module name into its own receiver
+    # leaves a same-named call off another receiver alone (the mark is
+    # keyed by attribute name only, so it would taint `cmd` here).
+    ("method stores a tainted module name into self, a same-named call",
+     "G = url\nclass C:\n    def run(self):\n        self.u = G\ndef f(cmd):\n"
+     "    sp.run(cmd)\n    log.info(cmd)\n", False),
+    ("method stores a tainted module name into self, a keyword call",
+     "G = url\nclass C:\n    def run(self):\n        self.u = G\ndef f(cmd):\n"
+     "    sp.run(self=cmd)\n    log.info(cmd)\n", False),
+    ("classmethod stores a tainted module name into cls, a same-named call",
+     "G = url\nclass C:\n    @classmethod\n    def run(cls):\n        cls.u = G\n"
+     "def f(sp):\n    sp.run()\n    log.info(sp)\n", False),
     ("helper function stores under a key, the key is logged",
      "def put(d, k, v):\n    d[k] = v\ndef f(url, name):\n    c = {}\n"
      "    put(c, name, url)\n    log.info(name)\n", False),
@@ -5056,6 +5171,22 @@ def test_defect_f_leak_checker_walks_grow_linearly_with_def_nesting(tmp_path, mo
         counts[depth] = len(runs)
     assert counts[10] > 0, counts
     assert counts[20] <= 2.2 * counts[10], counts
+
+
+def test_defect_f_an_always_storing_helper_keeps_a_wrapper_sink_parameter(tmp_path):
+    """RM-1793: a helper that stores an enclosing tainted name into its
+    parameter taints the caller's object whatever it is passed, but that
+    must not pre-taint a wrapper's own parameter when the wrapper is judged
+    for sink parameters (`_judge_params`): the first try did, and so hid the
+    sink parameter of every wrapper that calls such a helper on it. The
+    wrapper's own log site is flagged, AND so is the caller line that hands
+    it a url."""
+    sample = ("G = url\ndef h(q):\n    q.append(G)\ndef w(q):\n    h(q)\n"
+              "    log.info(q)\ndef f(a):\n    w(a.chunk_url)\n")
+    p = tmp_path / "sample.py"
+    p.write_text(sample, encoding="utf-8")
+    lines = {int(s.split(":")[1]) for s in _message_leak_sites(p)}
+    assert {6, 8} <= lines, lines
 
 
 def test_defect_f_no_message_site_in_the_module_carries_the_raw_endpoint():
