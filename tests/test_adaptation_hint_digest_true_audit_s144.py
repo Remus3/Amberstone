@@ -212,6 +212,29 @@ def test_bad_bucket_in_one_mode_keeps_other_modes_and_dimensions(
     assert {"cold_streak", "worst_hour", "best_hour"} <= types
     assert [i["mode"] for i in d["insights"]
             if i["type"] == "cold_streak"] == ["sr_ranked"]
+    # Since true-audit cycle 150 (RM-1879) kda_trends skips the bad
+    # row itself, so the digest has nothing to isolate and logs no
+    # kda_trends warning; the isolation is pinned by the test below.
+    assert not any("kda_trends" in r.getMessage()
+                   for r in caplog.records if r.levelno == logging.WARNING)
+
+
+def test_kda_trends_data_error_in_one_mode_is_isolated(env, monkeypatch,
+                                                       caplog):
+    import coaches.adaptation_hint_digest as dg
+    real = dg.kda_trends
+
+    def flaky(mode, **kw):
+        if mode == "aram":
+            raise AttributeError("bad aram row")
+        return real(mode, **kw)
+
+    _bucket(env / "sr_ranked.db", "Jinx", COLD)
+    monkeypatch.setattr(dg, "kda_trends", flaky)
+    with caplog.at_level(logging.WARNING, logger="coaches.adaptation_hint"):
+        d = dg.coaching_digest(top_n=10)
+    assert [i["mode"] for i in d["insights"]
+            if i["type"] == "cold_streak"] == ["sr_ranked"]
     assert any("kda_trends" in r.getMessage() and "aram" in r.getMessage()
                for r in caplog.records if r.levelno == logging.WARNING)
 
