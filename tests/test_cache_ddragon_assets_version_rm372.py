@@ -28,7 +28,7 @@ def _load():
 CDA = _load()
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(tmp_path, monkeypatch):
     vdir = tmp_path / "data" / "meta_build" / "ddragon"
     vdir.mkdir(parents=True)

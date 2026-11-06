@@ -25,7 +25,7 @@ import pytest
 from core import daemon_slayer_client as dsc
 
 
-@pytest.fixture()
+@pytest.fixture
 def captured_bodies(monkeypatch):
     """Capture every ``_post_json`` body; answer with an empty ranking."""
     bodies: list[tuple[str, dict]] = []

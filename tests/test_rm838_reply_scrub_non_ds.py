@@ -109,7 +109,7 @@ def capture():
 
 
 # ============================================================ (a) vision :8889
-@pytest.fixture()
+@pytest.fixture
 def vision_server():
     from vision_server._http import Handler
     srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)

@@ -56,7 +56,7 @@ _GOOD_ITEMS = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def ds(tmp_path, monkeypatch):
     """Point the loaders at an empty DS data dir with fresh caches and gates."""
     saved_orders = dict(dc._BUILD_ORDERS_CACHE)
@@ -77,7 +77,7 @@ def ds(tmp_path, monkeypatch):
     dc._ITEM_COST_CACHE.update(saved_costs)
 
 
-@pytest.fixture()
+@pytest.fixture
 def clock(monkeypatch):
     now = [1000.0]
     monkeypatch.setattr(time, "monotonic", lambda: now[0])

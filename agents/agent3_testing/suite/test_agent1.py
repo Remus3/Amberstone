@@ -9,7 +9,7 @@ from agents.agent0_gatekeeper.evaluator import Evaluator
 from agents.agent1_lead import Scheduler, TaskStatus
 
 
-@pytest.fixture()
+@pytest.fixture
 def scheduler(tmp_path: Path) -> Scheduler:
     return Scheduler(queue_log=tmp_path / "q.jsonl",
                      agent0_evaluate=Evaluator().evaluate)

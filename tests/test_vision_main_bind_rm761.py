@@ -29,7 +29,7 @@ def _free_port() -> int:
     return port
 
 
-@pytest.fixture()
+@pytest.fixture
 def stubbed_main(monkeypatch):
     monkeypatch.setattr(vision_server, "api_key_present", lambda: True)
     monkeypatch.setattr(vision_server, "PORT", _free_port())

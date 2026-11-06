@@ -16,7 +16,7 @@ from agents.agent4_coach_mentor.analyzer import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def seeded_db(tmp_path: Path, monkeypatch) -> Path:
     """Build a temp mode DB with synthetic matches, then point the
     analyzer at it by monkeypatching DB_DIR."""

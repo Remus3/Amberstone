@@ -62,7 +62,7 @@ import pytest
 from core.riot_api_cache import RiotApiCache
 
 
-@pytest.fixture()
+@pytest.fixture
 def cache(tmp_path):
     return RiotApiCache(db_path=tmp_path / "c.db")
 

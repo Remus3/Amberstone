@@ -15,7 +15,7 @@ import pytest
 from tests import _logger_leak_report as leak
 
 
-@pytest.fixture()
+@pytest.fixture
 def no_psutil(monkeypatch):
     monkeypatch.setitem(sys.modules, "psutil", None)  # import raises ImportError
 

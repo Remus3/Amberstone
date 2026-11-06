@@ -87,7 +87,7 @@ def _recv_request(conn: socket.socket) -> str:
     return urlsplit(parts[1]).path if len(parts) >= 2 else ""
 
 
-@pytest.fixture()
+@pytest.fixture
 def origin():
     """(base url, request-path log) of a raw scripted origin; joined at teardown."""
     hits: list[str] = []
@@ -126,7 +126,7 @@ def origin():
         srv.close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def env(monkeypatch, tmp_path):
     """Real seams, no proxy, a tmp cache tree, empty process caches and
     backoff gates, the consent path in an empty dir. Yields the cache root."""

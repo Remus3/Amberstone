@@ -35,7 +35,7 @@ class _Resp:
         return False
 
 
-@pytest.fixture()
+@pytest.fixture
 def serve(monkeypatch):
     holder = {}
 

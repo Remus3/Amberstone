@@ -39,7 +39,7 @@ class _Spy:
         return r(url) if callable(r) else r
 
 
-@pytest.fixture()
+@pytest.fixture
 def env(tmp_path, monkeypatch):
     monkeypatch.setattr(RA, "_KEY_CACHE", MAIN_KEY)
     monkeypatch.setattr(RA, "_TFT_KEY_CACHE", None)

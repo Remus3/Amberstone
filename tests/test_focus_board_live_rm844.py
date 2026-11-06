@@ -64,7 +64,7 @@ def _isolated(monkeypatch):
     fbl.reset_for_tests()
 
 
-@pytest.fixture()
+@pytest.fixture
 def real_engine(snapshot):
     fbl._set_engine_for_tests((snapshot, compute_focus_board))
     return snapshot

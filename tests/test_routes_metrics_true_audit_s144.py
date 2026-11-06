@@ -93,7 +93,7 @@ class _Handler:
         self.sent.append((code, body, ctype))
 
 
-@pytest.fixture()
+@pytest.fixture
 def src(monkeypatch):
     """Injectable sources; each test mutates the attributes it needs."""
     import core.cost_tracker as ct

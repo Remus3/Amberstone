@@ -67,7 +67,7 @@ def _hermetic_env(monkeypatch):
     monkeypatch.delenv("RC_SIBLING_SWEEP_BYPASS", raising=False)
 
 
-@pytest.fixture()
+@pytest.fixture
 def run_log(monkeypatch, tmp_path: Path) -> Path:
     log = tmp_path / "runlog" / "sibling_sweep_runs.jsonl"
     monkeypatch.setenv(_ENV, str(log))

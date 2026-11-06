@@ -160,7 +160,7 @@ def _git(cwd: Path, *args: str) -> str:
     ).stdout.strip()
 
 
-@pytest.fixture()
+@pytest.fixture
 def leaked_push(tmp_path: Path):
     """A clone whose one unpushed commit carries a BARE mention of MAIN."""
     remote = tmp_path / "remote.git"

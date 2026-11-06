@@ -46,7 +46,7 @@ def test_head_on_api_env_returns_200(tmp_path: Path) -> None:
 
 # -- first-legendary analyzer ----------------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def seeded_with_events(tmp_path: Path, monkeypatch):
     """Seed an aram.db with matches + ITEM_PURCHASED events so the
     first-legendary aggregator has real data to operate on.

@@ -11,7 +11,7 @@ import pytest
 from agents.agent2_backend.db_schema import SCHEMA_STATEMENTS
 
 
-@pytest.fixture()
+@pytest.fixture
 def seeded(tmp_path: Path, monkeypatch):
     """Build an aram.db in a tmp dir, point both analyzer and
     adaptation_hint at it via monkeypatched DB_DIR."""

@@ -32,7 +32,7 @@ OLD_DROPPED = "dddddddd" + "5" * 32
 ZERO = "0" * 40
 
 
-@pytest.fixture()
+@pytest.fixture
 def cmap() -> CommitMap:
     return CommitMap({OLD_A: NEW_A, OLD_B: NEW_B, OLD_DROPPED: ZERO})
 

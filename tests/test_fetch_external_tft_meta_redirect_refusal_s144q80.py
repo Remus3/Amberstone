@@ -100,7 +100,7 @@ def _make_handler(hits: list[str]):
     return _Handler
 
 
-@pytest.fixture()
+@pytest.fixture
 def origin():
     """(base url, request log) of a local origin; stopped and joined at teardown."""
     hits: list[str] = []
@@ -116,7 +116,7 @@ def origin():
         t.join(timeout=10)
 
 
-@pytest.fixture()
+@pytest.fixture
 def net(monkeypatch, tmp_path):
     """Record-and-refuse wiki connects; no proxy; consent path in an empty dir."""
     calls: list[str] = []
@@ -140,7 +140,7 @@ def net(monkeypatch, tmp_path):
     return calls
 
 
-@pytest.fixture()
+@pytest.fixture
 def configure(monkeypatch, tmp_path):
     """Point the script at synthetic sources and a tmp RAW_OUT; return RAW_OUT."""
     raw = tmp_path / "out" / "raw.json"

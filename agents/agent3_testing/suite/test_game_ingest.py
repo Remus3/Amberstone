@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture()
+@pytest.fixture
 def seeded_db(tmp_path: Path, monkeypatch) -> Path:
     """Empty mode DBs with the round-9 schema so the consumer has
     somewhere to insert."""

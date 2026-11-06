@@ -106,7 +106,7 @@ def _make_handler(hits: list[str]):
     return _Handler
 
 
-@pytest.fixture()
+@pytest.fixture
 def origin():
     """(base url, request log) of a local origin; stopped and joined at teardown."""
     hits: list[str] = []
@@ -122,7 +122,7 @@ def origin():
         t.join(timeout=10)
 
 
-@pytest.fixture()
+@pytest.fixture
 def net(monkeypatch, tmp_path):
     """Record-and-refuse wiki connects; no proxy; consent path in an empty dir."""
     calls: list[str] = []
@@ -146,7 +146,7 @@ def net(monkeypatch, tmp_path):
     return calls
 
 
-@pytest.fixture()
+@pytest.fixture
 def targets(monkeypatch, tmp_path):
     """Point every write target into tmp_path; return the output dir."""
     out = tmp_path / "meta"

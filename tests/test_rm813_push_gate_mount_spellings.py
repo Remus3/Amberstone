@@ -41,7 +41,7 @@ _NARROW_TWO = "Tindal Sprocket"
 _FULL_NAME = "Widget Foundry"
 
 
-@pytest.fixture()
+@pytest.fixture
 def narrow(tmp_path: Path):
     root = tmp_path / "fakeroot"
     (root / "ops").mkdir(parents=True)

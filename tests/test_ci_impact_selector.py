@@ -324,7 +324,7 @@ def _head(root):
                           capture_output=True, text=True).stdout.strip()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mini_repo(tmp_path):
     root = tmp_path / "repo"
     (root / ".nohooks").mkdir(parents=True)

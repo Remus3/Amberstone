@@ -10,7 +10,7 @@ import pytest
 from agents.agent0_gatekeeper import Evaluator, Task
 
 
-@pytest.fixture()
+@pytest.fixture
 def evaluator() -> Evaluator:
     return Evaluator()
 

@@ -39,7 +39,7 @@ FIXTURE_MATCHES = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_path(tmp_path):
     """A minimal `participants` table shaped like `data/rewind_history.db`."""
     path = tmp_path / "fixture_history.db"
@@ -66,7 +66,7 @@ def db_path(tmp_path):
     return path
 
 
-@pytest.fixture()
+@pytest.fixture
 def roster():
     return [dict(PRO)]
 

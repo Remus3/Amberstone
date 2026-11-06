@@ -262,7 +262,7 @@ def test_watcher_negative_control_a_truly_empty_inbox_does_report_withdrawals(
 # ------------------------------------------------------------------- poller
 
 
-@pytest.fixture()
+@pytest.fixture
 def state(tmp_path: Path, monkeypatch) -> Path:
     d = tmp_path / "state"
     d.mkdir()

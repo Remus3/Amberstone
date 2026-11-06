@@ -27,7 +27,7 @@ from vision_server._http import Handler
 _HTTP_SRC = Path(__file__).resolve().parent.parent / "vision_server" / "_http.py"
 
 
-@pytest.fixture()
+@pytest.fixture
 def server():
     srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     srv.daemon_threads = True

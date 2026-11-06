@@ -36,7 +36,7 @@ from lib.game_data.replay import ReplayClient, ReplayMiss
 FIX = Path(__file__).resolve().parent / "fixtures" / "game_data_replay"
 
 
-@pytest.fixture()
+@pytest.fixture
 def replay(tmp_path):
     """A private copy of the recorded bodies, so a test may plant a change."""
     d = tmp_path / "replay"

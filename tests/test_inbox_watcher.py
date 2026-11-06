@@ -35,7 +35,7 @@ from tools.rc_facts import (  # noqa: E402
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def inbox(tmp_path: Path) -> Path:
     d = tmp_path / "moon_sync_inbox"
     d.mkdir()

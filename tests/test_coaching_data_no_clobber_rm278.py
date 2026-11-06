@@ -22,7 +22,7 @@ from dashboard import _context, _writers
 _GOOD = {"mode": "game", "pregame": "old", "log": ["x"], "action": "farm"}
 
 
-@pytest.fixture()
+@pytest.fixture
 def root(tmp_path, monkeypatch):
     monkeypatch.setattr(_context, "APP_DIR", tmp_path)
     monkeypatch.setattr(_writers, "APP_DIR", tmp_path)

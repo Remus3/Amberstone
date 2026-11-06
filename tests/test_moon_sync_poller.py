@@ -34,7 +34,7 @@ from tests._sleep_probe import thread_scoped  # noqa: E402
 from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 
-@pytest.fixture()
+@pytest.fixture
 def state(tmp_path: Path, monkeypatch) -> Path:
     """Every reader AND every writer resolves under tmp_path.
 

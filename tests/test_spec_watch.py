@@ -20,7 +20,7 @@ FIX = Path(__file__).resolve().parent / "fixtures" / "game_data_replay"
 VERSIONS = "https://ddragon.leagueoflegends.com/api/versions.json"
 
 
-@pytest.fixture()
+@pytest.fixture
 def env(tmp_path):
     rep = tmp_path / "replay"
     shutil.copytree(FIX, rep)

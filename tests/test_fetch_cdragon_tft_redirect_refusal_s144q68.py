@@ -106,7 +106,7 @@ def _make_handler(hits: list[str], routes: dict):
     return _Handler
 
 
-@pytest.fixture()
+@pytest.fixture
 def origin(monkeypatch):
     """(base url, request log, routes) of a local origin; CDRAGON_BASE points at
     it; stopped and joined at teardown."""
@@ -126,7 +126,7 @@ def origin(monkeypatch):
         t.join(timeout=10)
 
 
-@pytest.fixture()
+@pytest.fixture
 def net(monkeypatch, tmp_path):
     """Record-and-refuse wiki connects; no proxy; consent path in an empty dir."""
     calls: list[str] = []
@@ -150,7 +150,7 @@ def net(monkeypatch, tmp_path):
     return calls
 
 
-@pytest.fixture()
+@pytest.fixture
 def sleeps(monkeypatch):
     """The retry loop's backoff sleeps, recorded and skipped (module view only)."""
     seen: list[float] = []

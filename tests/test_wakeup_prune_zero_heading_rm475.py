@@ -30,7 +30,7 @@ WP = _load()
 SEP = WP.SEP
 
 
-@pytest.fixture()
+@pytest.fixture
 def files(tmp_path, monkeypatch):
     monkeypatch.setattr(WP, "WAKEUP", tmp_path / "WAKEUP_NOTES.md")
     monkeypatch.setattr(WP, "ARCHIVE", tmp_path / "docs" / "history_notes.md")

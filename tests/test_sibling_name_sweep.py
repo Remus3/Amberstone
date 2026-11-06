@@ -98,7 +98,7 @@ def _write_config(tmp_path: Path, blob: dict) -> Path:
     return root
 
 
-@pytest.fixture()
+@pytest.fixture
 def synth_cfg(tmp_path: Path):
     root = _write_config(
         tmp_path, {"repos": _SYNTH_REPOS, "participants": _SYNTH_PARTICIPANTS}
@@ -106,7 +106,7 @@ def synth_cfg(tmp_path: Path):
     return sweep.load_config(root=root, env={})
 
 
-@pytest.fixture()
+@pytest.fixture
 def synth_needles(synth_cfg):
     return sweep.build_needles(synth_cfg)
 
@@ -1156,13 +1156,13 @@ def _narrow_blob(narrowed):
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def narrow_cfg(tmp_path: Path):
     root = _write_config(tmp_path, _narrow_blob([_NARROW_ONE, _NARROW_TWO]))
     return sweep.load_config(root=root, env={})
 
 
-@pytest.fixture()
+@pytest.fixture
 def narrow_needles(narrow_cfg):
     return sweep.build_needles(narrow_cfg)
 
@@ -1636,7 +1636,7 @@ _RM477_NAME = "Zephyr Quarry"
 _RM477_CODE = "ZQX"
 
 
-@pytest.fixture()
+@pytest.fixture
 def rm477_cfg():
     """ONE synthetic slot. The pattern count drives the runtime of every test
     in this block, and one name is enough to prove a boundary property."""
@@ -1645,7 +1645,7 @@ def rm477_cfg():
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def rm477_needles(rm477_cfg):
     return sweep.build_needles(rm477_cfg)
 

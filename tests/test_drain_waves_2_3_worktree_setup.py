@@ -29,7 +29,7 @@ LOCK_ERR = ("Preparing worktree (new branch 'drain/wave2-atomic')\n"
             "error: unable to write upstream branch configuration")
 
 
-@pytest.fixture()
+@pytest.fixture
 def dw(tmp_path, monkeypatch):
     name = "drain_waves_2_3_under_test"
     spec = importlib.util.spec_from_file_location(name, SRC)
@@ -345,7 +345,7 @@ _kspec.loader.exec_module(_REAL_KIT)
 _REL = Path("ops") / "loop" / "control" / "progress"
 
 
-@pytest.fixture()
+@pytest.fixture
 def wt_copy(tmp_path, monkeypatch):
     """The launcher as it runs from a LINKED worktree: a byte copy of the
     script (and its prompts) under <tmp>/wt, whose .git file points into

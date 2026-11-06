@@ -19,7 +19,7 @@ from scripts.rewind_scraper import SCHEMA
 MID = "NA1_9000000001"
 
 
-@pytest.fixture()
+@pytest.fixture
 def conn(tmp_path):
     c = sqlite3.connect(str(tmp_path / "rewind.db"))
     c.row_factory = sqlite3.Row

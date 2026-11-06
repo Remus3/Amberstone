@@ -24,7 +24,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 HOSTILE = [".", "..", "../../x.png", "..\\..\\x.png", "sub/x.png", ".hidden.png"]
 
 
-@pytest.fixture()
+@pytest.fixture
 def dirs(tmp_path, monkeypatch):
     meta, icons = tmp_path / "meta", tmp_path / "icons"
     meta.mkdir()

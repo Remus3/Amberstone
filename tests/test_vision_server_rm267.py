@@ -22,7 +22,7 @@ from vision_server import _relay
 from vision_server._config import AUTH_HEADER, AUTH_TOKEN
 from vision_server._http import Handler
 
-@pytest.fixture()
+@pytest.fixture
 def server():
     srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     srv.daemon_threads = True

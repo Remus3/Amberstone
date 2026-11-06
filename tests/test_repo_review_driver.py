@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "ops" / "loop" / "repo_review.py"
 
 
-@pytest.fixture()
+@pytest.fixture
 def rr(tmp_path, monkeypatch):
     name = "repo_review_under_test"
     spec = importlib.util.spec_from_file_location(name, SRC)

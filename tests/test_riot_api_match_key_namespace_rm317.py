@@ -15,7 +15,7 @@ import pytest
 from core import riot_api
 
 
-@pytest.fixture()
+@pytest.fixture
 def keys(monkeypatch):
     seen = []
 

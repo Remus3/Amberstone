@@ -23,7 +23,7 @@ from core import lcu_events
 from tests._asyncio_isolation import run_coro
 
 
-@pytest.fixture()
+@pytest.fixture
 def registry():
     return lcu_events.SubscriptionRegistry()
 

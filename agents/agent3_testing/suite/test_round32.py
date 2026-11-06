@@ -29,7 +29,7 @@ class _MockHandler:
         self.responses.append((status, {}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def fresh_scheduler(tmp_path: Path):
     from agents.agent1_lead import Scheduler
     return Scheduler(queue_log=tmp_path / "q.jsonl")

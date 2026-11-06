@@ -306,7 +306,7 @@ def test_blank_obs_frame_is_dropped(monkeypatch):
 
 # -- the standalone agent (tools/screen_agent.py) ----------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def agent(tmp_path):
     """Load a COPY of the agent from a dir with no repo above it (that is how
     it is deployed), so the import also proves it needs no core module and

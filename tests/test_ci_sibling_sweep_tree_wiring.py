@@ -289,7 +289,7 @@ def _finding(path):
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def declared(monkeypatch):
     """A SYNTHETIC declared exception, injected into the sweep's own registry.
 

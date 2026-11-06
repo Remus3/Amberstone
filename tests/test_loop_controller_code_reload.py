@@ -45,7 +45,7 @@ import pytest
 _REPO = Path(__file__).resolve().parent.parent
 
 
-@pytest.fixture()
+@pytest.fixture
 def lc():
     return importlib.import_module("ops.loop.loop_controller")
 

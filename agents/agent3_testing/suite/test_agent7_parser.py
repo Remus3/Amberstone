@@ -9,7 +9,7 @@ from agents.agent1_lead import Scheduler, TaskStatus
 from agents.agent7_context import InputParser
 
 
-@pytest.fixture()
+@pytest.fixture
 def parser(tmp_path: Path) -> InputParser:
     s = Scheduler(queue_log=tmp_path / "q.jsonl")
     # No LLM spawn - force rule-based path for these tests.

@@ -62,7 +62,7 @@ _FILLER_LINE = (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def cfg(tmp_path: Path):
     root = tmp_path / "fakeroot"
     (root / "ops").mkdir(parents=True)
@@ -75,7 +75,7 @@ def cfg(tmp_path: Path):
     return loaded
 
 
-@pytest.fixture()
+@pytest.fixture
 def needles(cfg):
     built = sweep.build_needles(cfg)
     assert len(built) == len(_NAMES)

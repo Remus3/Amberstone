@@ -81,7 +81,7 @@ def _recv_request(conn: socket.socket) -> str:
     return urlsplit(parts[1]).path if len(parts) >= 2 else ""
 
 
-@pytest.fixture()
+@pytest.fixture
 def origin():
     """(base url, request-path log) of a raw scripted origin; joined at teardown."""
     hits: list[str] = []
@@ -120,7 +120,7 @@ def origin():
         srv.close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def env(monkeypatch, tmp_path):
     """Real seams, no proxy, empty caches, consent path in an empty dir."""
     for name in ("http_proxy", "https_proxy", "all_proxy",

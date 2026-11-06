@@ -102,7 +102,7 @@ def opp_puuid(i):
     return f"00000000-0000-4000-8000-0000000001{i:02d}"
 
 
-@pytest.fixture()
+@pytest.fixture
 def riot_env(tmp_path, monkeypatch):
     monkeypatch.setattr(RA, "_KEY_CACHE", MAIN_KEY)
     monkeypatch.setattr(RA, "_TFT_KEY_CACHE", None)

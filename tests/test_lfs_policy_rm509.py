@@ -15,7 +15,7 @@ POINTER = (b"version https://git-lfs.github.com/spec/v1\n"
            b"oid sha256:" + b"0" * 64 + b"\nsize 66000000\n")
 
 
-@pytest.fixture()
+@pytest.fixture
 def pointer_table(tmp_path, monkeypatch):
     d = tmp_path / "16.12.1"
     d.mkdir()

@@ -264,7 +264,7 @@ def _npm_pkg(node_root: Path, key: str, name: str, version: str, licence: str, *
         (d / "LICENSE").write_text(f"{licence} licence text of {name}\n", encoding="utf-8", newline="\n")
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(tmp_path: Path) -> dict:
     req = tmp_path / "requirements.txt"
     req.write_text(

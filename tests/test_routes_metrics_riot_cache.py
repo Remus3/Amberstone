@@ -32,7 +32,7 @@ _EXPECTED_GAUGES = (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_singleton(tmp_path):
     """Point the module singleton at a scratch DB.
 

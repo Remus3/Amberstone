@@ -93,7 +93,7 @@ def _new_clone(tmp_path: Path, remote: Path, name: str) -> Path:
     return work
 
 
-@pytest.fixture()
+@pytest.fixture
 def pushenv(tmp_path: Path):
     """A bare remote plus one clone whose `main` is already on the remote."""
     remote = tmp_path / "remote.git"

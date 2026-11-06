@@ -50,7 +50,7 @@ def _listening_socket() -> tuple[socket.socket, int]:
     return s, s.getsockname()[1]
 
 
-@pytest.fixture()
+@pytest.fixture
 def dying_holder():
     """A holder that releases its port ~0.4 s from now (the lingering old pid)."""
     s, port = _listening_socket()
@@ -63,7 +63,7 @@ def dying_holder():
         s.close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mute_holder():
     """Bound and listening, never answers: a wedged or foreign holder."""
     s, port = _listening_socket()
@@ -103,7 +103,7 @@ def _json_handler(status: int, doc: dict):
     return _H
 
 
-@pytest.fixture()
+@pytest.fixture
 def http_holder():
     """Start a JSON server answering every GET with (status, doc); yield its port."""
     started = []
@@ -323,7 +323,7 @@ def mdb():
     return ds_matchdb_mcp_server
 
 
-@pytest.fixture()
+@pytest.fixture
 def real_matchdb(mdb):
     srv, t = _serve(mdb._Handler)
     try:
@@ -361,7 +361,7 @@ class _FakeServer:
         return None
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake_bind(mdb, monkeypatch):
     _FakeServer.instances = []
     monkeypatch.setattr(mdb, "_MatchDBHTTPServer", _FakeServer)
@@ -391,7 +391,7 @@ def test_matchdb_serve_forever_exits_1_for_a_mute_holder(mdb, fake_bind, mute_ho
 
 
 # -- the vision server's start guard --------------------------------------------------
-@pytest.fixture()
+@pytest.fixture
 def vision_main(monkeypatch):
     """vision_server.main() with every side effect before the bind stubbed (the
     stale-instance reap kills real processes: it must never run from a test)."""

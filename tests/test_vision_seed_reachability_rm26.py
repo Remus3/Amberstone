@@ -65,7 +65,7 @@ _FULL_KEY_1080 = ("1920x1080|GlobalScale=0.0000|ShowTeamFramesOnLeft=0"
                   "|MirroredScoreboard=0|FlipMiniMap=0|MinimapScale=0.5000")
 
 
-@pytest.fixture()
+@pytest.fixture
 def isolated(tmp_path, monkeypatch):
     """Redirect the profile store AND the legacy baseline into tmp_path so no
     assertion depends on what this machine happens to have calibrated."""

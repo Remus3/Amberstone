@@ -21,7 +21,7 @@ def _db(path: Path, rows: int) -> None:
     conn.close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def data(tmp_path):
     d = tmp_path / "data"
     d.mkdir()

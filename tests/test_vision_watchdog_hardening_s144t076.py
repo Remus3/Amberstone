@@ -298,7 +298,7 @@ class _Health(BaseHTTPRequestHandler):
         pass
 
 
-@pytest.fixture()
+@pytest.fixture
 def health_port():
     srv = ThreadingHTTPServer(("127.0.0.1", 0), _Health)
     t = threading.Thread(target=srv.serve_forever, daemon=True,

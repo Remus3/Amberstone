@@ -59,7 +59,7 @@ def test_auto_analyze_stats_idle_after_run_shows_last_ago() -> None:
 
 # -- 30-day recency bucket -------------------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def seeded_recency(tmp_path: Path, monkeypatch):
     """Seed an aram.db with a mix of old matches + matches inside the
     30-day window so we can verify the recency bucket populates."""

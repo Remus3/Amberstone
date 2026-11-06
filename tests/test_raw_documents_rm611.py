@@ -99,7 +99,7 @@ def test_kinds_for_lists_what_is_held(tmp_path):
 
 # ------------------------------------------------- the collector writes it
 
-@pytest.fixture()
+@pytest.fixture
 def pgc(tmp_path, monkeypatch):
     import lcu.lcu_postgame_collector as mod
     monkeypatch.setattr(mod, "_DB_PATH", tmp_path / "pg.db")

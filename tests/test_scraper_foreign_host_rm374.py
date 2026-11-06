@@ -36,7 +36,7 @@ class _Fake(ScraperBase):
     base_url = "https://fake.example"
 
 
-@pytest.fixture()
+@pytest.fixture
 def scraper(tmp_path, monkeypatch):
     monkeypatch.setattr(scrapers_base, "SCRAPED_ROOT", Path(tmp_path))
     s = _Fake()

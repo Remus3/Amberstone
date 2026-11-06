@@ -14,7 +14,7 @@ import pytest
 from tools import upstream_drift_check as M
 
 
-@pytest.fixture()
+@pytest.fixture
 def iso(monkeypatch, tmp_path):
     monkeypatch.setattr(M, "SENTINEL_PATH", tmp_path / "upstream_drift.json")
     for name in ("probe_meraki_content_patch", "probe_cdragon_content_version",

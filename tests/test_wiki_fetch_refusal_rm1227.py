@@ -55,7 +55,7 @@ class _NetworkTouched(OSError):
     """Raised by the patched network layer after it records the call."""
 
 
-@pytest.fixture()
+@pytest.fixture
 def net(monkeypatch, tmp_path):
     """Record-and-raise network layer; consent record path in an empty dir."""
     calls: list[str] = []
@@ -185,7 +185,7 @@ class _NetLikeClient:
         return self._replay.get(url)
 
 
-@pytest.fixture()
+@pytest.fixture
 def replay(tmp_path):
     d = tmp_path / "replay"
     shutil.copytree(FIX, d)

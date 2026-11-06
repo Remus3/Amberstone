@@ -64,7 +64,7 @@ def _state(**over):
     return s
 
 
-@pytest.fixture()
+@pytest.fixture
 def eng(tmp_path):
     return CacheEngine(tmp_path / "d.db")
 

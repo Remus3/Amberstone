@@ -52,7 +52,7 @@ def _git(cwd: Path, *args: str) -> None:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def layout(tmp_path: Path, monkeypatch):
     """A main checkout carrying the config, plus a linked worktree carrying none."""
     for name in (*_GIT_REDIRECT_ENV, orc.REPOS_ENV):

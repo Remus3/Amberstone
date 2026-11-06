@@ -61,7 +61,7 @@ def _slow_handler(doc: dict, delay_s: float, *, status: int = 200):
     return _H
 
 
-@pytest.fixture()
+@pytest.fixture
 def slow_holder():
     """Start a JSON server whose every GET answers after ``delay_s``; yield its port."""
     started = []
@@ -157,7 +157,7 @@ def test_matchdb_live_check_accepts_a_slow_real_shaped_server(slow_holder):
 
 
 # -- (c) the bearer never leaves loopback ------------------------------------------
-@pytest.fixture()
+@pytest.fixture
 def no_connection(monkeypatch):
     """Record every HTTPConnection the probe opens (none may open)."""
     opened = []

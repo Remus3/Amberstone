@@ -79,7 +79,7 @@ def _raw() -> dict:
     return json.loads(_SNAPSHOT.read_text(encoding="utf-8"))
 
 
-@pytest.fixture()
+@pytest.fixture
 def real_default_index():
     """Force the loader onto its REAL default path for one test.
 

@@ -87,7 +87,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
-@pytest.fixture()
+@pytest.fixture
 def origin():
     """A local origin server; stopped, closed and joined at teardown."""
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
@@ -102,7 +102,7 @@ def origin():
         t.join(timeout=10)
 
 
-@pytest.fixture()
+@pytest.fixture
 def net(monkeypatch, tmp_path):
     """Record-and-refuse connects to a wiki host; consent path in an empty dir."""
     calls: list[str] = []

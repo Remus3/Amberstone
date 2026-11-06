@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture()
+@pytest.fixture
 def lc(monkeypatch, tmp_path):
     mod = importlib.import_module("ops.loop.loop_controller")
     lines: list[str] = []

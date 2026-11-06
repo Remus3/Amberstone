@@ -85,7 +85,7 @@ def test_frozen_file_with_backslashes(tmp_path: Path) -> None:
 
 # -- insight_card helper ---------------------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def seeded_ahri(tmp_path: Path, monkeypatch):
     from agents.agent2_backend.db_schema import SCHEMA_STATEMENTS
     db_dir = tmp_path / "db"

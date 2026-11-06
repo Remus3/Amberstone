@@ -53,7 +53,7 @@ def _final_players():
     return [_p(n + 1, items) for n, items in enumerate(_TICKS[-1][1])]
 
 
-@pytest.fixture()
+@pytest.fixture
 def cat():
     c = lit.load_default_catalog()
     for iid in (LONG_SWORD, CAULFIELD, POTION, WARD, MANAMUNE, MURAMANA, TEAR,
@@ -63,7 +63,7 @@ def cat():
     return c
 
 
-@pytest.fixture()
+@pytest.fixture
 def db(tmp_path, cat):
     path = tmp_path / "rewind.db"
     conn = sqlite3.connect(str(path))

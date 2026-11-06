@@ -23,7 +23,7 @@ _FULL_KEY = ("3440x1440|GlobalScale=0.0000|ShowTeamFramesOnLeft=0"
              "|MirroredScoreboard=0|FlipMiniMap=0|MinimapScale=0.5000")
 
 
-@pytest.fixture()
+@pytest.fixture
 def profiles_dir(tmp_path, monkeypatch):
     d = tmp_path / "profiles"
     monkeypatch.setattr(vp, "PROFILES_DIR", d)

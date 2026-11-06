@@ -397,7 +397,7 @@ def test_handle_tools_call_happy(monkeypatch):
 # --------------------------------------------------------------------------
 # 3. Real HTTP server - auth + JSON-RPC envelope contract
 # --------------------------------------------------------------------------
-@pytest.fixture()
+@pytest.fixture
 def server():
     srv = ThreadingHTTPServer((mod.HOST, 0), mod._Handler)
     port = srv.server_address[1]

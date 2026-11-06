@@ -26,7 +26,7 @@ WT_SRC, WT_DST = r"C:\example-worktrees", r"E:\example-worktrees"
 MAPS = [(SRC, DST), (WT_SRC, WT_DST)]
 
 
-@pytest.fixture()
+@pytest.fixture
 def rw():
     return em.PathRewriter(MAPS)
 

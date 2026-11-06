@@ -75,7 +75,7 @@ from tests import _repo_walk
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-@pytest.fixture()
+@pytest.fixture
 def cache(tmp_path):
     return RiotApiCache(db_path=tmp_path / "c.db")
 
