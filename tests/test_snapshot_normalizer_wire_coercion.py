@@ -246,7 +246,8 @@ def test_respawn_secs_non_int_level_does_not_raise(level):
     assert isinstance(got, int)
 
 
-def test_respawn_secs_float_level_matches_its_int(level=13.0):
+def test_respawn_secs_float_level_matches_its_int():
+    level = 13.0
     assert (_NormalizerMixin._respawn_secs(level, 600.0)
             == _NormalizerMixin._respawn_secs(13, 600.0))
 

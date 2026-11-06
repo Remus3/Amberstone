@@ -170,6 +170,8 @@ def test_f6_overlong_head_is_no_item() -> None:
 
 
 class _BadStr(str):
+    __slots__ = ()
+
     def strip(self, *args):
         raise RuntimeError("boom")
 

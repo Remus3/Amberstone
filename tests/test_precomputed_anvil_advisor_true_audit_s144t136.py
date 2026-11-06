@@ -216,6 +216,8 @@ def test_unusable_champion_is_low_conf_without_recompute(monkeypatch, champ):
 
 
 class _HostileStr(str):
+    __slots__ = ()
+
     def strip(self, *a):
         raise RuntimeError("hostile strip")
 

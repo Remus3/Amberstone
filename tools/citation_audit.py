@@ -229,24 +229,27 @@ _COL_WINDOW = 160
 # Tokens that are English, not code. A prose word inside backticks (this repo
 # backticks emphasis as well as identifiers) would otherwise create noise in
 # both directions.
-_STOPWORDS = frozenset(
-    """
-    always append assert because before between change changed checked
-    citation citations comment commit committed config constant contract
-    correct current default defined definition delete deleted directory
-    docstring during either engine except exists expected failure feature
-    function guarded handler header import include instead itself library
-    literal machine measured method missing module nothing number object
-    operator package parallel parameter pattern present private problem
-    process produce project property provide reader really record reference
-    registry release removed rename renamed replace report require result
-    return returns sample schema scoped script search section server session
-    setting should signal single source status string structure subject
-    support symbol system target test tests through timeout tracked
-    trailing update updated usage useful value values verify version
-    warning window without worker written
-    """.split()
-)
+_STOPWORDS = frozenset((
+    "always", "append", "assert", "because", "before", "between", "change",
+    "changed", "checked", "citation", "citations", "comment", "commit",
+    "committed", "config", "constant", "contract", "correct", "current",
+    "default", "defined", "definition", "delete", "deleted", "directory",
+    "docstring", "during", "either", "engine", "except", "exists",
+    "expected", "failure", "feature", "function", "guarded", "handler",
+    "header", "import", "include", "instead", "itself", "library", "literal",
+    "machine", "measured", "method", "missing", "module", "nothing",
+    "number", "object", "operator", "package", "parallel", "parameter",
+    "pattern", "present", "private", "problem", "process", "produce",
+    "project", "property", "provide", "reader", "really", "record",
+    "reference", "registry", "release", "removed", "rename", "renamed",
+    "replace", "report", "require", "result", "return", "returns", "sample",
+    "schema", "scoped", "script", "search", "section", "server", "session",
+    "setting", "should", "signal", "single", "source", "status", "string",
+    "structure", "subject", "support", "symbol", "system", "target", "test",
+    "tests", "through", "timeout", "tracked", "trailing", "update",
+    "updated", "usage", "useful", "value", "values", "verify", "version",
+    "warning", "window", "without", "worker", "written",
+))
 
 # THREE SCOPES, NOT TWO. An earlier cut of this module had only "in scope" and
 # its negation, and presented the negation as "immutable history". That was

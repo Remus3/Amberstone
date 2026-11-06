@@ -256,6 +256,8 @@ def test_f6_tuple_build_order_is_joined() -> None:
 
 
 class _BadStrip(str):
+    __slots__ = ()
+
     def strip(self, *args):
         raise RuntimeError("boom")
 

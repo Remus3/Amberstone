@@ -74,8 +74,8 @@ class DecisionsLogTailRM238(unittest.TestCase):
             p = Path(d) / "decisions_log.jsonl"
             row = json.dumps({"id": "x", "pad": "p" * 600})
             with open(p, "w", encoding="utf-8") as f:
-                for i in range(20000):  # ~12 MB
-                    f.write(row.replace('"x"', f'"d{i}"') + "\n")
+                f.writelines(  # ~12 MB
+                    row.replace('"x"', f'"d{i}"') + "\n" for i in range(20000))
             size = p.stat().st_size
             h, read = self._serve(p, limit=50)
             self.assertEqual(h.sent[0], 200)
@@ -91,8 +91,8 @@ class DecisionsLogTailRM238(unittest.TestCase):
             p = Path(d) / "decisions_log.jsonl"
             with open(p, "w", encoding="utf-8") as f:
                 f.write(json.dumps({"id": "old"}) + "\n")
-                for _ in range(200000):  # ~6 MB of torn lines
-                    f.write("{not json at all..\n")
+                f.writelines(  # ~6 MB of torn lines
+                    "{not json at all..\n" for _ in range(200000))
             h, read = self._serve(p)
             self.assertEqual(h.sent[0], 200)
             self.assertLessEqual(read, rd._TAIL_MAX_BYTES)

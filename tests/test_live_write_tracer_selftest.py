@@ -221,12 +221,12 @@ def _plant_and_report(base, monkeypatch):
 
 
 @pytest.fixture(scope="module")
-def control(request):
+def control():
     """One armed-and-fired control, shared by the arms that only read it."""
-    monkeypatch = pytest.MonkeyPatch()
-    request.addfinalizer(monkeypatch.undo)
-    with _private_base("main") as base:
-        return _plant_and_report(base, monkeypatch)
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        with _private_base("main") as base:
+            result = _plant_and_report(base, monkeypatch)
+        yield result
 
 
 def _assert_non_vacuous(result):

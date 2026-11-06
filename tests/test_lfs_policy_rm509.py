@@ -26,13 +26,13 @@ def pointer_table(tmp_path, monkeypatch):
 
 def test_default_is_an_explicit_skip(pointer_table, monkeypatch):
     monkeypatch.delenv(policy.REQUIRE_LFS_ENV, raising=False)
-    with pytest.warns(UserWarning), pytest.raises(pytest.skip.Exception):
+    with pytest.warns(UserWarning, match="ADR-014 disk pin NOT enforced"), pytest.raises(pytest.skip.Exception):
         rm175._table_bytes_or_skip("16.12.1")
 
 
 def test_required_mode_fails_on_a_pointer(pointer_table, monkeypatch):
     monkeypatch.setenv(policy.REQUIRE_LFS_ENV, "1")
-    with pytest.warns(UserWarning), pytest.raises(pytest.fail.Exception):
+    with pytest.warns(UserWarning, match="ADR-014 disk pin NOT enforced"), pytest.raises(pytest.fail.Exception):
         rm175._table_bytes_or_skip("16.12.1")
 
 

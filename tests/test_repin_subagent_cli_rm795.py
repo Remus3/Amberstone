@@ -81,8 +81,7 @@ def _events(version, *, spawn, answer, sub_tools=0, agent_input="", early=""):
 
 def _write(log_path, evs):
     with open(log_path, "w", encoding="utf-8", newline="\n") as fh:
-        for ev in evs:
-            fh.write(json.dumps(ev) + "\n")
+        fh.writelines(json.dumps(ev) + "\n" for ev in evs)
 
 
 class FakeCli:
