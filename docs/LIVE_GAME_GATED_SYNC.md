@@ -3423,6 +3423,49 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   `data/vision_calib_reference/*.jpg`, then WIRE the native OCR crops. Native reference-capture is
   live-verified (LEDGER 793); the recalibration needs rendered in-game HUD pixels to validate the field
   reads. Pairs with G2-41.
+  **READY (lane 9, s144 cycle 80, RM-1669, PREP only, no game up: RC :8888 answered an empty body
+  and :2999 refused, probed 2026-11-06 about 00:59 -06:00; NOT ticked).** AGE: the recalibration
+  half is NOT done for the HUD League reports now. Four measured facts shape the check.
+  (1) A calibration is keyed by the FULL HUD `config_key` (`core/hud_settings.py`
+  `read_hud_settings`: `WxH` plus the five `_LAYOUT_KEYS` toggles), and `core/vision_profiles.py`
+  `load_profile` uses a profile only on an EXACT key match (source `profile`); any other key gets a
+  proportional seed (`resolution_seed`, which that docstring calls a starting point, not parity) or
+  the 1080p legacy table. (2) The main checkout's gitignored `data/vision_profiles/` holds exactly
+  two calibrated profiles, both 2560x1440 at GlobalScale=0.0000, MinimapScale 1.6200 and 3.0000
+  (files dated 2026-07-06); `data/vision_calib_reference/` holds 10 base stills, all at
+  GlobalScale=0.0000 (2026-07-05 / 2026-07-06). (3) League's game.cfg read at idle today: no
+  `[General]` Width/Height (key `unknown`, RM-1666) and layout GlobalScale=1.0000,
+  MinimapScale=1.0000. So even with Width/Height back, the live key matches NO profile and NO base
+  still (both profiles differ on GlobalScale 1.0000 vs 0.0000 and on MinimapScale), and the coach
+  OCR path would crop seed boxes. The cfg may be a client-regenerated default (Width/Height are
+  missing), so the values written once a game starts are the ones that count: re-run at the load
+  screen. (4) ORDER: a G4-23 base still at the new key first (G4-23 is ARMED exactly then), then
+  this row's calibration, then G2-41's A/B (`tools/gated_g241_ocr_native.py` refuses a decisive
+  verdict unless `regions.source` is `profile`).
+  PROBE (read-only, main checkout, before queueing and again from the load screen): `python
+  tools/gated_g424_calib_ready.py` (JSON: live key and layout, profiles, base stills, nearest
+  profiles with the differing toggles, the predicted `load_profile` tier, verdict).
+  PREDICATE (stated before any game): CALIBRATED (exit 0) = an exact profile exists for the live
+  key; READY_TO_CALIBRATE (exit 3) = a base still but no profile; NEEDS_REFERENCE (exit 3) =
+  neither, the G4-23 still comes first; KEY_UNKNOWN (exit 4) = nothing can key. **PASS needs both,
+  in ONE game:** (a) the tool says CALIBRATED at the key read during that game, the profile file
+  written by a calibration after this READY date; (b) `python tools/gated_g241_ocr_native.py
+  --samples 8 --interval 3 --json` in the same game with `regions.source == "profile"` and the
+  halved path grading gold, level and timer each on >= 3 valid samples with at least 2 of every 3
+  valid samples MATCH (PROPOSED bar; a human may set another). Anything less leaves the row open.
+  EVIDENCE CONTRACT: the tool JSON before queueing and at the load screen, the profile's
+  `config_key` and write time, the G2-41 JSON verbatim, gameMode + queue, wall time.
+  SUBSTITUTION CHECK: does the evidence show calibrated boxes READ the live HUD against `:2999`
+  truth, or only that boxes were DRAWN? A calibrator save, a profile file, a unit test, OCR over
+  `data/vision_calib_reference/` stills (the calibration's own input) or CALIBRATED at an idle key
+  the game never ran answers the second only. Grader: `tools/gated_g424_calib_ready.py`, tests
+  `tests/test_gated_g424_calib_ready.py`.
+  **Idle finding (RM-1669, a FILING for the main session, not this row's verdict):** every
+  calibrated profile and base still is at GlobalScale=0.0000, and the idle cfg reads 1.0000. If the
+  in-client HUD scale really moved, every coach OCR crop runs on uncalibrated boxes today (the 1080p
+  legacy table while the key is `unknown`, a seed once it keys), whatever G2-41 decides. The
+  operator confirms the in-client HUD scale and minimap scale; either restore the calibrated values
+  or treat this row as a fresh calibration at the new key.
 - **G4-25** (was Z2) `[RE-SCOPED 2026-07-18]` ZOI macro callout (`kind="macro"`) + `zoi.mia` rings.
   **The stated CV-precision PREREQUISITE IS NOW DISCHARGED:** LEDGER 871 (B) / `b4ddedd1` added a
   champion-size floor + per-team clamp to `core/minimap_blob_detect.py`, measured 72->8 / 62->10 /
