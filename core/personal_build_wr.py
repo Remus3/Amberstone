@@ -19,14 +19,31 @@ The build snapshot is the END-OF-GAME item set (rewind_history stores final
 items), so components have mostly already completed into legendaries; the item0-5
 slots are dominated by finished items + boots. item6 (trinket) is excluded.
 
+Sample rules (s144 true-audit, RM-1908..RM-1916):
+- only a RESOLVED game counts: tracked_win 0 / 1 (or a bool). An unknown result
+  (NULL, 2, text) is skipped, never read as a loss; "games" is resolved games.
+- a match counts once even when the participants table holds its tracked row
+  twice (that table has no unique key, so a re-scrape can duplicate a row), and
+  an item counts once per game even when it fills two slots.
+- an item id is an ASCII-digit id from an int, an integral float or a padded
+  digit string; anything else in a slot is skipped.
+- ties (equal lift, equal modal-build count) are broken by stable keys, never
+  by SQLite row order.
+- the DB is opened READ-ONLY, so a read never creates or writes it.
+
 Public API:
     compute_personal_build(champion, mode="sr", *, min_games=..., db_path=None) -> dict
 
 The dict is the GET /api/personal-build contract; see _empty() for the shape.
+``confidence`` is one of ok | thin | insufficient (verdicts about the data) or
+bad_mode | bad_champion | no_db | read_error (the request or the store is
+unusable). Never raises.
 """
 from __future__ import annotations
 
+import json
 import logging
+import math
 import os
 import re
 import sqlite3
@@ -48,9 +65,19 @@ _TOP_ITEMS = 6               # cap the returned ranked-item list
 # legendaries + boots so "your best build" is not muddied by leftover parts.
 LEGENDARY_GOLD_FLOOR = 2000
 
+# Largest id accepted for a champion or an item. Real ids are well under it
+# (Arena mirrors are 6 digits); anything past it is junk, and it keeps every
+# bound parameter inside SQLite's 64-bit INTEGER.
+_MAX_ID = 10 ** 9
+# Digits in the largest accepted id, checked BEFORE int(): int() raises
+# ValueError on a digit string past sys.get_int_max_str_digits() (4300).
+_MAX_ID_DIGITS = len(str(_MAX_ID))
+_MAX_CHAMPION_CHARS = 64
+
 _REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.db"
 _DDRAGON_ROOT = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
 _PATCH_DIR_RE = re.compile(r"^\d+\.\d+\.\d+$")
+_SLOTS = ("item0", "item1", "item2", "item3", "item4", "item5")
 
 # Boots item ids (tier-2 SR + the 22-prefixed Arena mirrors) - tagged, not dropped.
 _BOOTS_IDS = frozenset({
@@ -65,37 +92,121 @@ _META_GATE = FailedLoadGate()
 _log = logging.getLogger(__name__)
 
 
+def _norm_id(value: object) -> Optional[str]:
+    """Canonical ASCII-digit id string for *value*, or None when it is not one.
+
+    Accepts a non-bool int, an integral finite float (a REAL column) and a
+    padded ASCII-digit string; the result has no sign and no leading zeros.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float):
+        if not math.isfinite(value) or not value.is_integer():
+            return None
+        value = int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not (text and text.isascii() and text.isdigit()):
+            return None
+        text = text.lstrip("0") or "0"
+        if len(text) > _MAX_ID_DIGITS:
+            return None
+        value = int(text)
+    if isinstance(value, int) and 0 < value < _MAX_ID:
+        return str(value)
+    return None
+
+
+def _as_win(value: object) -> Optional[bool]:
+    """tracked_win -> True / False for a resolved result, None when unknown."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and value in (0, 1):
+        return value == 1
+    return None
+
+
+def _floor(value: object, default: int) -> int:
+    """A sample floor: a non-bool int clamped to >= 1; anything else -> default."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return max(1, value)
+    return default
+
+
+def _gold_total(gold: object) -> int:
+    """DDragon ``gold.total`` as a non-negative int; junk reads as 0."""
+    total = gold.get("total") if isinstance(gold, dict) else None
+    if isinstance(total, bool):
+        return 0
+    if isinstance(total, float):
+        if not math.isfinite(total):
+            return 0
+        total = int(total)
+    return total if isinstance(total, int) and total > 0 else 0
+
+
+def _parse_items(raw: object) -> dict[str, dict]:
+    """id -> {name, gold} from one parsed items.json; {} when unusable.
+
+    A malformed ENTRY is skipped (or keeps a 0 gold / empty name), never the
+    whole file: one bad row must not demote every legendary to a component.
+    """
+    data = raw.get("data") if isinstance(raw, dict) else None
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, dict] = {}
+    for iid, entry in data.items():
+        sid = _norm_id(iid)
+        if sid is None or not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        out[sid] = {"name": name if isinstance(name, str) else "",
+                    "gold": _gold_total(entry.get("gold"))}
+    return out
+
+
 def _item_meta() -> dict[str, dict]:
-    """id -> {name, gold} from the newest DDragon items.json. Fail-soft {}."""
+    """id -> {name, gold} from the newest USABLE DDragon items.json. Fail-soft {}.
+
+    Patch dirs are tried newest first; an unreadable or unusable items.json
+    falls back to the next older one. Finding none is a FAILURE (not cached,
+    retried after the gate's backoff), never a cached empty map.
+    """
     global _META_CACHE
     if _META_CACHE is not None:
         return _META_CACHE
     if not _META_GATE.should_attempt():
         return {}
+    problem = "no usable items.json"
     out: dict[str, dict] = {}
     try:
-        import json
         # RM-990: semver dirs compared as integers; a name sort read 16.9.1
         # after 16.21.1, and gold here decides which items count as completed.
         dirs = sorted(
             (p for p in _DDRAGON_ROOT.iterdir() if p.is_dir() and _PATCH_DIR_RE.match(p.name)),
             key=lambda p: tuple(int(x) for x in p.name.split(".")),
         )
-        for d in reversed(dirs):
-            f = d / "items.json"
-            if not f.exists():
-                continue
+    except OSError as exc:
+        dirs = []
+        problem = f"cannot list {_DDRAGON_ROOT.name}: {exc}"
+    for d in reversed(dirs):
+        f = d / "items.json"
+        if not f.is_file():
+            continue
+        try:
             raw = json.loads(f.read_text(encoding="utf-8"))
-            data = raw.get("data") or {}
-            for iid, entry in data.items():
-                if not isinstance(entry, dict):
-                    continue
-                gold = (entry.get("gold") or {}).get("total") or 0
-                out[str(iid)] = {"name": str(entry.get("name") or ""), "gold": int(gold)}
+        # ValueError covers bad JSON and bad UTF-8; RecursionError is a
+        # pathologically nested file (json.loads recurses per level).
+        except (OSError, ValueError, RecursionError) as exc:
+            problem = f"{d.name}/items.json unreadable: {exc}"
+            continue
+        out = _parse_items(raw)
+        if out:
             break
-    except Exception as exc:  # noqa: BLE001 - metadata is a nicety; ids stand alone
+        problem = f"{d.name}/items.json has no usable item entries"
+    if not out:
         if _META_GATE.record_failure():
-            _log.warning("personal_build_wr: item metadata load failed: %s", exc)
+            _log.warning("personal_build_wr: item metadata load failed: %s", problem)
         return {}
     _META_GATE.record_success()
     _META_CACHE = out
@@ -116,9 +227,10 @@ def reset_cache() -> None:
     _META_GATE.reset()
 
 
-def _empty(champion: object, mode: str, n_games: int, reason: str) -> dict:
+def _empty(champion: Optional[str], mode: Optional[str], n_games: int,
+           reason: str) -> dict:
     return {
-        "champion": str(champion) if champion is not None else None,
+        "champion": champion,
         "champion_id": None,
         "mode": mode,
         "games": n_games,
@@ -131,16 +243,62 @@ def _empty(champion: object, mode: str, n_games: int, reason: str) -> dict:
     }
 
 
-def _rows(
-    conn: sqlite3.Connection, champion: object, map_id: int
-) -> list[sqlite3.Row]:
-    champ_name = str(champion).strip()
+def _norm_mode(mode: object) -> Optional[str]:
+    """'sr' for None / blank, the stripped lowercase str otherwise; None if not a str."""
+    if mode is None:
+        return "sr"
+    if not isinstance(mode, str):
+        return None
+    return mode.strip().lower() or "sr"
+
+
+def _norm_champion(champion: object) -> Optional[tuple[str, int]]:
+    """(lookup name, champion id or -1) for a usable champion, else None.
+
+    A champion is a non-blank str (a display name or an ASCII-digit id) or a
+    non-bool int id. A bool, None, float or bytes is NOT an id (int(True) is 1,
+    Annie), a blank name would match rows whose tracked name was never
+    captured, and a non-ASCII digit string is a name, not an id.
+    """
+    if isinstance(champion, bool):
+        return None
+    if isinstance(champion, int):
+        return (str(champion), champion) if 0 < champion < _MAX_ID else None
+    if not isinstance(champion, str):
+        return None
+    name = champion.strip()
+    if not name or len(name) > _MAX_CHAMPION_CHARS:
+        return None
     try:
-        champ_id = int(champion)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        champ_id = -1
+        name.encode("utf-8")  # a lone surrogate cannot be bound by sqlite3
+    except UnicodeEncodeError:
+        return None
+    sid = _norm_id(name)
+    return name, (int(sid) if sid is not None else -1)
+
+
+def _db_path(db_path: object) -> Optional[Path]:
+    if db_path is None:
+        return Path(os.environ.get("RC_REWIND_DB") or _REWIND_DB)
+    try:
+        return Path(db_path)
+    except TypeError:  # not a str / PathLike, or an __fspath__ that is not a str
+        return None
+
+
+def _connect_ro(path: Path) -> sqlite3.Connection:
+    """Read-only connection: never creates the file, never writes it."""
+    # as_uri() percent-encodes a '#', '%' or '?' in the path (an f-string
+    # "file:{path}" does not); same form as core/aram_item_interaction.py.
+    return sqlite3.connect(f"{path.absolute().as_uri()}?mode=ro", uri=True)
+
+
+def _rows(
+    conn: sqlite3.Connection, name: str, champ_id: int, map_id: int
+) -> list[sqlite3.Row]:
     return conn.execute(
-        "SELECT p.item0, p.item1, p.item2, p.item3, p.item4, p.item5, "
+        "SELECT m.match_id AS mid, "
+        "       p.item0, p.item1, p.item2, p.item3, p.item4, p.item5, "
         "       m.tracked_win AS win "
         "FROM matches m JOIN participants p "
         "  ON p.match_id = m.match_id "
@@ -149,54 +307,83 @@ def _rows(
         "WHERE (m.tracked_champion_name = ? COLLATE NOCASE "
         "       OR m.tracked_champion_id = ?) "
         "  AND m.map_id = ? "
-        "  AND (m.game_duration_s IS NULL OR m.game_duration_s >= ?)",
-        (champ_name, champ_id, map_id, MIN_DURATION_S),
+        "  AND (m.game_duration_s IS NULL OR m.game_duration_s >= ?) "
+        "ORDER BY m.match_id, p.rowid",
+        (name, champ_id, map_id, MIN_DURATION_S),
     ).fetchall()
+
+
+def _games(rows: list[sqlite3.Row]) -> list[tuple[bool, list[str]]]:
+    """(won, distinct item ids) per resolved match; first row per match wins."""
+    seen: set = set()
+    out: list[tuple[bool, list[str]]] = []
+    for r in rows:
+        mid = r["mid"]
+        if mid in seen:
+            continue
+        seen.add(mid)
+        won = _as_win(r["win"])
+        if won is None:
+            continue
+        items: list[str] = []
+        for slot in _SLOTS:
+            sid = _norm_id(r[slot])
+            if sid is not None and sid not in items:
+                items.append(sid)
+        out.append((won, items))
+    return out
 
 
 def compute_personal_build(
     champion: object,
-    mode: str = "sr",
+    mode: object = "sr",
     *,
-    min_games: int = DEFAULT_MIN_GAMES,
-    min_item_games: int = DEFAULT_MIN_ITEM_GAMES,
-    db_path: Optional[Path] = None,
+    min_games: object = DEFAULT_MIN_GAMES,
+    min_item_games: object = DEFAULT_MIN_ITEM_GAMES,
+    db_path: object = None,
 ) -> dict:
     """Personal per-champion build win-rate from the operator's own history.
 
-    Returns the /api/personal-build contract dict. Fail-soft: a missing DB,
-    unknown champion, or thin sample yields an _empty() shell (never raises).
+    Returns the /api/personal-build contract dict. Fail-soft: a bad mode or
+    champion, a missing or unreadable DB, or a thin sample yields an _empty()
+    shell (never raises).
     """
-    mode = (mode or "sr").lower()
-    if mode not in MODE_MAPS:
-        return _empty(champion, mode, 0, "bad_mode")
-    map_id = MODE_MAPS[mode]
-    if db_path is not None:
-        path = Path(db_path)
-    else:
-        path = Path(os.environ.get("RC_REWIND_DB") or _REWIND_DB)
-    if not path.exists():
-        return _empty(champion, mode, 0, "no_db")
+    champ = _norm_champion(champion)
+    norm_mode = _norm_mode(mode)
+    if norm_mode is None or norm_mode not in MODE_MAPS:
+        return _empty(champ[0] if champ else None, norm_mode, 0, "bad_mode")
+    map_id = MODE_MAPS[norm_mode]
+    if champ is None:
+        return _empty(None, norm_mode, 0, "bad_champion")
+    name, champ_id = champ
+    min_games = _floor(min_games, DEFAULT_MIN_GAMES)
+    min_item_games = _floor(min_item_games, DEFAULT_MIN_ITEM_GAMES)
+
+    path = _db_path(db_path)
+    # is_file, not exists: a Windows device name (CON, NUL, con.db) "exists",
+    # and a read-only URI open of one blocks forever.
+    if path is None or not path.is_file():
+        return _empty(name, norm_mode, 0, "no_db")
 
     conn = None
     try:
-        conn = sqlite3.connect(path)
+        conn = _connect_ro(path)
         conn.row_factory = sqlite3.Row
-        rows = _rows(conn, champion, map_id)
-    except Exception:  # noqa: BLE001 - fail-soft empty rather than 500 the route
-        return _empty(champion, mode, 0, "read_error")
+        games = _games(_rows(conn, name, champ_id, map_id))
+    except (sqlite3.Error, OSError, ValueError) as exc:
+        # fail-soft empty rather than 500 the route; read_error is not cached
+        # by the route, so this logs at debug to stay quiet on a poll loop.
+        _log.debug("personal_build_wr: rewind db read failed: %s", exc)
+        return _empty(name, norm_mode, 0, "read_error")
     finally:
         if conn is not None:
-            try:
-                conn.close()
-            except Exception:  # noqa: BLE001
-                pass
+            conn.close()
 
-    n_games = len(rows)
+    n_games = len(games)
     if n_games < min_games:
-        return _empty(champion, mode, n_games, "insufficient")
+        return _empty(name, norm_mode, n_games, "insufficient")
 
-    n_wins = sum(1 for r in rows if r["win"])
+    n_wins = sum(1 for won, _ in games if won)
     baseline = n_wins / n_games
 
     # Per-item games/wins over the final-build slots (item0-5; trinket excluded).
@@ -205,19 +392,11 @@ def compute_personal_build(
     item_games: dict[str, int] = {}
     item_wins: dict[str, int] = {}
     build_counts: dict[tuple[str, ...], int] = {}
-    for r in rows:
-        won = bool(r["win"])
-        core: list[str] = []
-        for slot in ("item0", "item1", "item2", "item3", "item4", "item5"):
-            iid = r[slot]
-            if not iid:
-                continue
-            sid = str(iid)
-            if not _is_core(sid, meta):
-                continue
+    for won, items in games:
+        core = [sid for sid in items if _is_core(sid, meta)]
+        for sid in core:
             item_games[sid] = item_games.get(sid, 0) + 1
             item_wins[sid] = item_wins.get(sid, 0) + (1 if won else 0)
-            core.append(sid)
         key = tuple(sorted(core))
         if key:
             build_counts[key] = build_counts.get(key, 0) + 1
@@ -231,7 +410,7 @@ def compute_personal_build(
         weight = shrink(g, DEFAULT_K)          # n / (n + K)
         est = blend(raw, baseline, weight)     # toward the player's baseline
         scored.append({
-            "item_id": int(sid) if sid.isdigit() else sid,
+            "item_id": int(sid),
             "name": meta.get(sid, {}).get("name", ""),
             "games": g,
             "wins": w,
@@ -240,19 +419,21 @@ def compute_personal_build(
             "lift": round(est - baseline, 4),
             "is_boots": sid in _BOOTS_IDS,
         })
-    scored.sort(key=lambda d: d["lift"], reverse=True)
+    # Lift first; ties go to the larger sample, then the lower id.
+    scored.sort(key=lambda d: (-d["lift"], -d["games"], d["item_id"]))
 
     most_common: list[int] = []
     if build_counts:
-        modal = max(build_counts.items(), key=lambda kv: kv[1])[0]
-        most_common = [int(s) if s.isdigit() else s for s in modal]
+        # Highest count; a tie goes to the fuller build, then the lower ids.
+        modal = min(build_counts.items(),
+                    key=lambda kv: (-kv[1], -len(kv[0]), [int(s) for s in kv[0]]))[0]
+        most_common = [int(s) for s in modal]
 
     confidence = "ok" if n_games >= _THIN_GAMES else "thin"
-    champ_str = str(champion).strip()
     return {
-        "champion": champ_str,
-        "champion_id": int(champ_str) if champ_str.isdigit() else None,
-        "mode": mode,
+        "champion": name,
+        "champion_id": champ_id if champ_id > 0 else None,
+        "mode": norm_mode,
         "games": n_games,
         "win_rate": round(baseline, 4),
         "baseline_win_rate": round(baseline, 4),

@@ -256,7 +256,8 @@ EXEMPT = {
         "per-minute mean stat of winning games (win_sum / win count), "
         "not a win rate",
     "core/personal_build_wr.py":
-        "per-build lift baseline; already drops game_duration_s < 300",
+        "per-build lift baseline; already drops game_duration_s < 300 and "
+        "skips an unknown result (RM-1909)",
     "core/riot_api.py":
         "summarize_recent scouts OTHER roster players (team context), not "
         "the operator; counts unknown as loss (follow-up)",
