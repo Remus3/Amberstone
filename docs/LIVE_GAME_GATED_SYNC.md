@@ -156,7 +156,9 @@ until RM-860 shipped the next day (`9b51bc90f` + `32f625d4c`, LEDGER 1832); it i
 (re-tagged 2026-10-27, s144 lane gated cycle 8). G1-03 was re-tagged the same day (draft lobby
 only); no count moved. G4-02 / G4-03 / G4-04 / G4-05 were tagged BLOCKED ON WIRING on 2026-11-06
 (s144 lane gated cycle 81: no RC producer sends any of the four DSP5-DSP8 live inputs at local
-main `ba0df749f`; the AGE CHECK sits in G4-02); no count moved.
+main `ba0df749f`; the AGE CHECK sits in G4-02); no count moved. G2-13 / G2-14 were tagged BLOCKED
+ON WIRING on 2026-11-06 (s144 lane gated cycle 83: no live RC caller sends the `/burst` HP gate
+seams or the `runes` they need; the AGE CHECK sits in G2-13); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -935,10 +937,50 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   seam (Thornmail 3075 + mirrors 223075/323075 + Bramble Vest 3076). Practice bots DO attack, so the
   1.0s cadence + 3.0s window assumptions are exercisable for both streams. STRICTER READ: re-check
   ranking-vs-real-comp in the GATE 3 ARAM sitting.
-- **G2-13** (was B18) R51 `gate_target_hp_amp` per-instant consumer (dummy HP is settable) -
+- **G2-13** `[BLOCKED ON WIRING 2026-11-06]` (was B18) R51 `gate_target_hp_amp` per-instant consumer (dummy HP is settable) -
   per-instant / stepped scenario eval, **NOT a blind burst-scorer flip**. Transport WIRED (OQ17).
-- **G2-14** (was B19) R53 `gate_caster_hp_amp` per-instant consumer (own HP droppable) - same
-  per-instant discipline. Transport WIRED (OQ17).
+  **AGE CHECK (lane 9 PREP s144 cycle 83, RM-1672; source read at local main `ba0df749f`, no game
+  up; NOT a tick). Producer-orphan, for both G2-13 and G2-14: the transport is wired, but no live
+  RC caller sends either seam or the inputs it reads, so dropping own HP or a dummy's HP in a
+  practice game changes nothing RC computes today.** Measured: both seams are parsed by `/burst`
+  only (`agents/daemon_slayer/server.py` `_route_burst`: `gate_target_hp_amp`,
+  `gate_caster_hp_amp`, `caster_current_hp_pct`, `target_current_hp_pct`, `runes`). Outside
+  `agents/daemon_slayer/`, no tracked `.py` / `.js` / `.mjs` file (tests aside) names
+  `gate_target_hp_amp`, `gate_caster_hp_amp` or `caster_current_hp_pct` except
+  `core/daemon_slayer_client.py` `burst_for`, which puts them on the body. The one live
+  `burst_for` caller, `core/death_recap.py` `fetch_ds_profiles`, sends champion, level, items,
+  mode and the three target resists / max HP only: no `runes`, no caster HP pct, no gate flag
+  (the body's `target_current_hp_pct` is `burst_for`'s full-HP default 1.0, never a read). The
+  one direct in-process `compute_burst_damage` caller outside DS, `dashboard/routes_spike_curve.py`
+  (scorer `burst`), passes none of them either, and the `compute_combo` paths
+  (`dashboard/routes_ds_combo.py`, `core/laning_scenario_precompute.py`) forward no gate flag or
+  caster HP pct. And the engine gates are inert without `runes`
+  carrying Cut Down 8017 / Coup de Grace 8014 (target gate) or Last Stand 8299 (caster gate)
+  (`burst_for` docstring, measured at 1.253.0). The game-side inputs differ by row: own HP is
+  on the Live Client (`activePlayer.championStats.currentHealth` / `maxHealth`) and the own page
+  under `activePlayer.fullRunes.generalRunes[].id` (also `/liveclientdata/activeplayerrunes`
+  `generalRunes`, which `game_reader/snapshot_normalizer.py` already reads); a target's CURRENT HP is not (per the Riot
+  Live Client schema, not re-measured this cycle, `allPlayers[]` carries no health field), so
+  the G2-13 target HP can only be a stepped scenario axis or a vision read, never a `:2999`
+  read. PRECONDITION for return to the drain list: a producer lands that sends a live own
+  `runes` set to `/burst` with the gate seam(s) and records its outbound body (a log line or
+  shadow row carrying `ts` and the Live Client `gameData.gameTime` it read). Predicates stated
+  NOW, graded only after that lands, each in one practice-tool SR game: G2-14 PASS iff a
+  recorded body carries `gate_caster_hp_amp: true`, a `runes` set equal to
+  `activePlayer.fullRunes.generalRunes[].id` and a `caster_current_hp_pct` within 0.02 of
+  `currentHealth / maxHealth` from a `:2999` read within 10 s of game time of the body, AND at
+  least one such body has `caster_current_hp_pct` below 0.60 (the Last Stand ramp starts there);
+  G2-13 PASS iff a recorded body carries `gate_target_hp_amp: true`, such a `runes` set, and a
+  `target_current_hp_pct` the producer itself labels with its source (a named scenario step or
+  a timestamped vision read); a body carrying a target HP with no named source FAILS. The
+  on-screen eyeball halves are written when the producer names its surface. SUBSTITUTION CHECK:
+  a hand-POSTed `/burst` body, `live_flip_eyeball.py`, a fixture or a DS unit test answers
+  whether the engine COMPUTES the gate; only the producer's own recorded outbound body, joined
+  to a `:2999` read at the same game time, answers whether RC SENT the live HP and page.
+- **G2-14** `[BLOCKED ON WIRING 2026-11-06]` (was B19) R53 `gate_caster_hp_amp` per-instant consumer (own HP droppable) - same
+  per-instant discipline. Transport WIRED (OQ17), producer-orphan. Re-measured 2026-11-06: no
+  live caller sends `gate_caster_hp_amp`, `caster_current_hp_pct` or `runes`; AGE CHECK,
+  precondition and predicate in G2-13.
 - **G2-15** (was B20) OQ1/R55 `assume_archetype_hp_pct` OFF-vs-ON re-rank (BotRK 3153 / Hellfire 4017 /
   Fulmination 443055 only). Own-build sanity reached **3/3 2026-07-04** (Kalista + Tristana + Vayne).
   The flag is NOT a `/rank` body param (`server.py:452-453` exposes only exempt_offclass_by_win +
