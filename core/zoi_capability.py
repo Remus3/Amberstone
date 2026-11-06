@@ -38,6 +38,8 @@ ASCII only (repo hard rule). No em-dashes.
 """
 from __future__ import annotations
 
+import math
+
 from core.archetype_picks import (
     _load_champion_tags,
     get_archetype_for,
@@ -79,7 +81,7 @@ def _num(v):
     if not isinstance(v, (int, float)):
         return None
     f = float(v)
-    if f != f or f in (float("inf"), float("-inf")):  # NaN / inf
+    if not math.isfinite(f):  # NaN / inf
         return None
     return f
 

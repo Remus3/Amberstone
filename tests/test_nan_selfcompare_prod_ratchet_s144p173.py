@@ -39,21 +39,18 @@ pytestmark = pytest.mark.skipif(
 _RULE = "PLR0124"
 _TEST_DIRS = ("tests/", "agents/daemon_slayer/tests/", "tools/tests/", "agents/agent3_testing/suite/")
 # Measured 2026-11-05; each row is a core/ module that still spells the NaN test as a self-compare.
+# RM-1691 converted the other twelve; core/zoi_influence.py stays because the true-audit lane branch edits it.
 _BASELINE = {
-    "core/champion_movespeed.py",
-    "core/death_recap.py",
-    "core/highlight_reel.py",
-    "core/liveclient_cache.py",
-    "core/macro_context.py",
-    "core/mia_reachability.py",
-    "core/minimap_identity.py",
-    "core/self_cast_log.py",
-    "core/vision_template_match.py",
-    "core/vod_retention.py",
-    "core/zoi_capability.py",
-    "core/zoi_field.py",
     "core/zoi_influence.py",
 }
+
+# RM-1691: twelve core/ modules converted; each now imports math and uses isnan / isfinite.
+_CORE_CONVERTED = (
+    "core/champion_movespeed.py", "core/death_recap.py", "core/highlight_reel.py",
+    "core/liveclient_cache.py", "core/macro_context.py", "core/mia_reachability.py",
+    "core/minimap_identity.py", "core/self_cast_log.py", "core/vision_template_match.py",
+    "core/vod_retention.py", "core/zoi_capability.py", "core/zoi_field.py",
+)
 
 
 def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
@@ -100,6 +97,7 @@ def test_converted_modules_use_the_named_spelling():
         "tft/sources/eog_file.py", "tft/tft_coach_engine.py", "tft/tft_final_board.py",
         "tft/tft_live_analysis.py", "dashboard/routes_tft.py", "tools/gated_g101_cs_cards.py",
         "tools/gated_g314_tower_input.py", "tools/gated_lx01_draft_check.py",
+        *_CORE_CONVERTED,
     ):
         src = (REPO_ROOT / rel).read_text(encoding="utf-8")
         assert "\nimport math\n" in src, rel

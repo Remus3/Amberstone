@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import re
 import threading
@@ -153,7 +154,7 @@ def _num(v: Any) -> Optional[float]:
         f = float(v)
     except OverflowError:
         return None
-    if f != f or f in (float("inf"), float("-inf")):
+    if not math.isfinite(f):
         return None
     return f
 

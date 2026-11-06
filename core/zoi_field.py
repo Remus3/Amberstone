@@ -34,6 +34,8 @@ ASCII only (repo hard rule). No em-dashes.
 """
 from __future__ import annotations
 
+import math
+
 # --- tunables -------------------------------------------------------------
 _GRID = 24              # sample resolution per axis (coarse, pure-python cost)
 _SIGMA_FLOOR = 0.08     # min kernel spread (box-fraction) so a tiny r stays smooth
@@ -48,7 +50,7 @@ def _num(v):
     if not isinstance(v, (int, float)):
         return None
     f = float(v)
-    if f != f or f in (float("inf"), float("-inf")):
+    if not math.isfinite(f):
         return None
     return f
 

@@ -60,6 +60,8 @@ garbage containers / non-SR modes return ``None``. NEVER raises.
 """
 from __future__ import annotations
 
+import math
+
 from core.champion_movespeed import distance_frac_per_s, est_ms
 
 #: SR map extent in game units (core/vision_tracker.py zone-labelling note).
@@ -88,7 +90,7 @@ def _num(v):
     if not isinstance(v, (int, float)):
         return None
     f = float(v)
-    if f != f or f in (float("inf"), float("-inf")):  # NaN / inf
+    if not math.isfinite(f):  # NaN / inf
         return None
     return f
 

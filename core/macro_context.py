@@ -22,6 +22,7 @@ to defaults, matching the ``core.zoi_influence`` pure-module pattern.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -86,7 +87,7 @@ def _coerce_float(value: object) -> Optional[float]:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     f = float(value)
-    if f != f:  # NaN
+    if math.isnan(f):  # NaN
         return None
     return f
 

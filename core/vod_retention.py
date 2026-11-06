@@ -88,6 +88,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 from dataclasses import asdict, dataclass, field
@@ -311,7 +312,7 @@ def _epoch(v) -> Optional[float]:
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         return None
     f = float(v)
-    return f if f > 0 and f == f and f != float("inf") else None
+    return f if f > 0 and math.isfinite(f) else None
 
 
 def created_at_from_wall(doc: dict) -> Optional[float]:

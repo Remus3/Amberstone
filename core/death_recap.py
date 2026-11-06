@@ -71,6 +71,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import queue
 import threading
@@ -162,7 +163,7 @@ def _num(v: Any, default: float = 0.0) -> float:
         f = float(v)
     except (TypeError, ValueError):
         return default
-    return f if f == f else default  # NaN guard
+    return default if math.isnan(f) else f  # NaN guard
 
 
 def active_player_keys(data: Any) -> set[str]:

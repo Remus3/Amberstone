@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+import math
 import struct
 import threading
 from collections.abc import Mapping
@@ -144,7 +145,7 @@ def _num(v):
     if not isinstance(v, (int, float)):
         return None
     f = float(v)
-    if f != f or f in (float("inf"), float("-inf")):  # NaN / inf
+    if not math.isfinite(f):  # NaN / inf
         return None
     return f
 
@@ -449,7 +450,7 @@ def _match_score(cv2, np, crop, tpl, mask):
         if denom <= 1e-9:
             return 0.0
         r = float((a * b).sum() / denom)
-        if r != r:  # NaN
+        if math.isnan(r):  # NaN
             return 0.0
         return max(0.0, min(1.0, r))
     except Exception:  # noqa: BLE001 - fail-soft contract

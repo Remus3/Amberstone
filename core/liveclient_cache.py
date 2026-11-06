@@ -23,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import threading
 import time
 from dataclasses import dataclass
@@ -260,7 +261,7 @@ def _coerce_ts(raw: Any) -> Optional[float]:
     if not isinstance(raw, (int, float)):
         return None
     value = float(raw)
-    if value != value or value in (float("inf"), float("-inf")):  # NaN / inf
+    if not math.isfinite(value):  # NaN / inf
         return None
     if value <= 0.0:
         return None

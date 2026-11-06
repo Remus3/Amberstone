@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from pathlib import Path
 
 from core.failed_load_gate import FailedLoadGate
@@ -90,7 +91,7 @@ def _num(v):
     if not isinstance(v, (int, float)):
         return None
     f = float(v)
-    if f != f or f in (float("inf"), float("-inf")):  # NaN / inf
+    if not math.isfinite(f):  # NaN / inf
         return None
     return f
 
