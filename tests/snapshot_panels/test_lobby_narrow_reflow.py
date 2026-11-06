@@ -19,8 +19,8 @@ Contract pinned here, ui_mock lobby, at 640x900, 480x800, 360x740 and
 320x640:
   - the QUEUE and PARTY cards lie inside the view's content box;
   - no displayed descendant of any Lobby card reaches past that card's
-    frame (MAINS and TOP 8 keep their content width until their own
-    reflow; they must not spill out of their frame meanwhile);
+    frame (MAINS and TOP 8 reflow in RM-1776, pinned with populated
+    rows by test_lobby_mains_top8_narrow_reflow.py);
   - the PARTY card's duo-synergy block (RM-881, the queue lane's row, so
     its CSS is not edited here) fits at 640 / 480 / 360; at 320 its four
     32 px icons run about 11 px past the card, pinned as a strict xfail so

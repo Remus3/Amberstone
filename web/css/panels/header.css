@@ -3203,18 +3203,64 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * sideways. Here the track may shrink; a PARTY row wraps its sections in
  * DOM order (name, lane prefs, role, rank, top champs, actions) instead of
  * holding the desktop columns, the actions still pushed right; the QUEUE
- * buttons wrap with the lane pair kept as one unit. MAINS and TOP 8 keep
- * their content width until their own reflow (pinned by
+ * buttons wrap with the lane pair kept as one unit. MAINS and TOP 8 reflow
+ * in the RM-1776 block below (pinned by
  * tests/snapshot_panels/test_lobby_narrow_reflow.py). */
 @media (max-width: 720px) {
   .lobby-view-grid { grid-template-columns: minmax(0, 1fr); }
-  .lobby-view-card-mainchamps,
-  .lobby-view-card-friends { min-width: min-content; }
   .lobby-view-queue-controls { flex-wrap: wrap; }
   .lobby-members-list .lobby-member-row {
     display: flex; flex-wrap: wrap;
     column-gap: 6px; row-gap: var(--space-1);
   }
+}
+/* RM-1776: at 720px and under the Lobby's MAINS and TOP 8 cards fit the
+ * view too, and no value in them is cut. Measured before (ui_mock lobby
+ * plus a populated Top 8 and YOUR MAINS, headless): the nine-track TOP 8
+ * row shrank every cell to a sliver - the rank pill showed 93 of its 157px
+ * at 640, 52 at 480, 10 at 320, and a 16-character name 12 of 130 - and the
+ * YOUR MAINS FORM cells ran 33px past their row at 360, so U-165 had to hold
+ * both cards at their content width (MAINS 302px, past the view at 360).
+ * Here a TOP 8 row is two flex lines: name (6em basis, grows, may ellipsize
+ * past that), games, role and rank on the first, never cut; a forced break
+ * (the row's ::before); then the tag (4em basis, grows) and the dot,
+ * invite, reorder and remove controls on the second, at the right edge,
+ * lined up with the search row's add button. A long name pushes the rank
+ * onto its own line rather than cutting it. A YOUR MAINS row keeps the
+ * icon, RECENT and OVERALL on its first line and puts FORM on a second
+ * line under them; the FORM header is dropped there, since each FORM value
+ * carries its own KP% / CS/m / Dmg label. At 400px and under the copy
+ * button sits under the champion icon, so the icon column is 50px, not 76:
+ * at 320 the 76px column left RECENT and OVERALL 53px each, which cut the
+ * "12/4/8" KDA by a pixel and pushed the OVERALL header 10px past its row. */
+@media (max-width: 720px) {
+  .lv-top8-row {
+    display: flex; flex-wrap: wrap; align-items: center;
+    row-gap: calc(var(--space-1) / 2);
+  }
+  .lv-top8-row > * { flex: none; }
+  .lv-top8-row > :nth-child(1) { flex: 1 1 6em; min-width: 0; }
+  .lv-top8-row::before { content: ""; order: 1; flex: 0 0 100%; }
+  .lv-top8-row > :nth-child(n+5) { order: 2; }
+  .lv-top8-row > :nth-child(5) { flex: 1 1 4em; min-width: 0; }
+  .lv-top8-search { display: flex; align-items: center; }
+  .lv-top8-search > * { flex: none; }
+  .lv-top8-search > .lv-top8-search-input { flex: 1 1 6em; min-width: 0; }
+  .lv-mainchamps-list[data-tab="you"] .lv-mc-row,
+  .lv-mainchamps-categories[data-tab="you"] .lv-mc-cats-you {
+    grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .lv-mainchamps-list[data-tab="you"] .lv-mc-form { grid-column: 2 / -1; }
+  .lv-mainchamps-categories[data-tab="you"] .lv-mc-cat:nth-child(4) {
+    display: none;
+  }
+}
+@media (max-width: 400px) {
+  .lv-mainchamps-list[data-tab="you"] .lv-mc-row,
+  .lv-mainchamps-categories[data-tab="you"] .lv-mc-cats-you {
+    grid-template-columns: 50px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .lv-mainchamps-list[data-tab="you"] .lv-mc-champ { flex-direction: column; }
 }
 /* RM-1432: below 720px (300% zoom of the 1920x920 baseline is 640, the
  * WCAG reflow reference is 320) the view trigger may be narrower than its

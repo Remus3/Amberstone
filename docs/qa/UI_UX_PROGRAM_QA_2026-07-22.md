@@ -912,3 +912,33 @@ At 720 px and under, the dashboard Active Match view stacks its panes in ONE ful
   - ASCII: 0 non-ASCII bytes and 0 CR in the diff.
   - HIERARCHY: element captures of the PARTY and QUEUE cards at 480 and 320 (headless, `_scratch/`, not committed): the member name is still the first and brightest item of each row; the top champs and actions wrap to the next line.
 - FUTURE: the MAINS and TOP 8 reflow (they keep the Lobby view scrolling sideways under 720); the duo-synergy cells at 320 (RM-881 owner); Build Insights' table at 720 (45 px past, the section scrolls, not the table mount); Champ Select cards at 640 and under (640 px min-content); Settings at 360; the Post Game Review tab strip at 480.
+
+## 2026-11-06 - lane 4 headless, s144 cycle 156 (RM-1776)
+
+### RULING
+- Target: the U-165 FUTURE row "the MAINS and TOP 8 reflow".
+- Fixture finding first: the ui_mock lobby fixture's `mains` and `top8` keys never reach the renderers. `_renderMains` reads `state.latest.lcu.main_champs` (or `/api/mains`), `_top8Load` reads `state.latest.lcu.top8` (or `/api/top8`), and `_lobbyResolveLcu` hands only `phase` / `lobby` / `config` from the fixture. So under plain `?ui_mock=1` both cards show placeholders, and a placeholder-only probe calls them fine. The guard feeds a populated Top 8 and YOUR MAINS through the mock `/api/state` in the `dashboard/routes_lobby_aux.py` response shapes: a 16-character name (the Riot ID name cap), a ranked entry with LP, an unranked one, a tag, five empty slots, four mains with up to three-digit game counts. Synthetic Riot IDs only (RM-906).
+- Probe with that data (headless, 722 / 640 / 480 / 360 / 320):
+  - TOP 8: the nine-track row shrank every cell. The rank pill showed 93 of its 157 px at 640, 52 at 480, 10 at 320; a 16-character name 12 of 130 px at 320; games, role and tag were cut from 480 down. Nothing reached past the card, so the U-165 containment check stayed green.
+  - YOUR MAINS: the FORM cells ran 33 px past their row at 360, and U-165's `min-width: min-content` held the card at 302 px, past the view at 360 and 320.
+- Ruling: the U-165 `min-content` hold is removed and a new `@media (max-width: 720px)` block in `web/css/panels/header.css` reflows both cards:
+  - A TOP 8 row is two flex lines. Line 1: name (6em basis, grows, may ellipsize past 6em), games, role and rank, none of them cut. A forced break (the row's `::before`, `flex: 0 0 100%`, `order: 1`). Line 2 (`order: 2` from the fifth child on): the tag (4em basis, grows) and the dot, invite, reorder and remove controls at the right edge. A long name pushes the rank onto its own line rather than cutting it. Placeholder rows have the same nine children, so the same positions apply.
+  - The search row is a flex row: the input grows from a 6em basis, so the add button stays right-anchored under the invite buttons.
+  - A YOUR MAINS row keeps the icon, RECENT and OVERALL on line 1 (`76px minmax(0, 1fr) minmax(0, 1fr)`) and puts FORM under them (`grid-column: 2 / -1`). The FORM header is hidden there, since each FORM value carries its own KP% / CS/m / Dmg label.
+  - At 400 px and under the copy button sits under the icon (a 50 px column): with 76 px, RECENT and OVERALL got 53 px each at 320, which cut "12/4/8" by a pixel and pushed the OVERALL header 10 px past its row.
+  - A `margin-inline: 2px` on the TOP 8 dot was tried and dropped: the one-rule mutation passed, because the controls are right-anchored.
+- Scope line: the PARTY card's duo-synergy win-rate cells (RM-881, the queue lane's) overflow their 0 px boxes at 360 and under, so the view still scrolls sideways there. Pinned as strict xfails, so that fix turns the file red until the marks are lifted. PARTY MAINS was not probed with data (its renderer reads `lcu.lobby` mastery the guard does not feed).
+- Guard: `tests/snapshot_panels/test_lobby_mains_top8_narrow_reflow.py`, 41 cases (39 pass + 2 strict xfail). At HEAD's CSS 20 failed.
+- Mutations (each restored, sha256-checked):
+  - No forced row break: 3 failed.
+  - No TOP 8 flex: 8 failed.
+  - No FORM span: 4 failed.
+  - No 400 px block: 5 failed.
+  - Name basis `0` instead of 6em: 1 failed.
+- 5-phase audit (headless):
+  - STRUCTURE: MAINS and TOP 8 inside the view at 320-640; no row scrolls sideways; the view stops scrolling sideways at 640 and 480; nothing changes above 720 (722 keeps the nine-track TOP 8 grid, the four-track MAINS grid and the FORM header, pinned).
+  - TYPOGRAPHY: no size changed.
+  - HIT-TARGETS: invite / remove stay 26x26, the search input 42 px tall, the stacked copy button 22x22; no TOP 8 hit overlay takes the centre of a name, games, role or rank cell (elementFromPoint, pinned).
+  - ASCII: 0 non-ASCII bytes and 0 CR in the diff.
+  - HIERARCHY: element captures of both cards at 480 and 320 (headless, `_scratch/`, not committed): the name is still the first and brightest item of a TOP 8 row, the tag and controls sit on the second line; in MAINS the result and W-L colours lead, FORM reads as a sub-row.
+- FUTURE: the ui_mock lobby fixture's `mains` / `top8` keys are dead (wire them through `_lobbyResolveLcu`, or drop them); the YOUR MAINS copy button is 20 px wide, not 22, at every width above 400 (desktop included: its 76 px column holds 50 + 6 + 22 = 78 px); at 320 OVERALL stacks six short lines ("124 / Games / 68W - / 56L / 3.66 / KDA"); TOP 8 placeholder rows are two lines tall under 720; the desktop unranked cell clips "LVL 412 : Unranked" by 4 px at 722; the Lobby still scrolls sideways from 721 to about 800 px (the 720 line); PARTY MAINS narrow with data.
