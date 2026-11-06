@@ -1294,10 +1294,57 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   G2-26. Verifying this row live would mean reinstating a banned
   surface, so it can never drain; the matching G2-30 sub-item is dead for the same reason. Moving the
   row to "Not actually live-gated" is a human doc edit.
-- **G2-34** `[NEW ROW 2026-07-18 - LIVE-GATED DECISION]` Objective gauges 1-line collapse: the
-  operator picks horizontal vs vertical after seeing them in-game. SOURCE: RM-05.
-- **G2-35** `[NEW ROW 2026-07-18 - LIVE-GATED DECISION]` `am-statspanel` intent: CLARIFY with the
-  operator before acting (RM-05 explicitly parks this pending an operator call over a live render).
+- **G2-34** `[NEW ROW 2026-07-18 - LIVE-GATED DECISION]` ~~Objective gauges 1-line collapse: the
+  operator picks horizontal vs vertical after seeing them in-game. SOURCE: RM-05.~~
+  **CLOSED 2026-07-20, RULED HORIZONTAL (LEDGER 987, drain commit `51dfc0cef`; the ruling and the
+  in-game render evidence are in the dated drain block at the head of this doc). Strike recorded by
+  lane 9 PREP s144 c71, source read at `d5e56f44d`, 2026-11-05; NOT a tick, no game involved.** The
+  ruled shape stands at HEAD: `web/css/panels/objective_gauges.css` `.obj-gauges .og-grid` is
+  `grid-template-columns: repeat(3, 1fr)` ("One horizontal row of 3 dials"), and the dial set in
+  `web/js/panels/objective_gauges.js` is DRAKE / BARON / ELDER. Nothing is owed on this row; an
+  "I don't see them" report is the saved-layout class and belongs to G2-32.
+- **G2-35** `[NEW ROW 2026-07-18 - LIVE-GATED DECISION]` ~~`am-statspanel` intent: CLARIFY with the
+  operator before acting (RM-05 explicitly parks this pending an operator call over a live render).~~
+  **DECISION CLOSED 2026-07-20, RULED "pace-projected baseline" (LEDGER 987, drain commit
+  `51dfc0cef`): keep the tier AVG but scale it to the current game clock, because the panel compared
+  live CS 30 against a full-game average of 260. THE RULING NEVER SHIPPED (lane 9 PREP s144 c71,
+  source read at `d5e56f44d`, 2026-11-05; NOT a tick, no game involved).** At HEAD
+  `web/js/panels/stats_panel.js` `_paintBench` paints the route's raw `stats[k].avg` with no clock
+  term; `_bracketFor` only picks the cache key ("early" under 840s, else "mid"), and
+  `core/rank_tier_bench.py` documents both brackets as "identical estimate values in the seed
+  (bracket-agnostic)". Measured in `data/rank_tiers/rank_tier_averages.seed.json`: gold SR cs avg
+  205 in BOTH brackets (ARAM 55 in both); `core/rank_tier_source.py` has no real endpoint wired, so
+  the seed is the only source. So at 5:00 the panel still sets a live CS near 35 against 205 - the
+  exact defect the operator ruled on. The ruling is carried in dated QA files
+  (`docs/qa/UI_UX_QUEUE_2026-07-21.md`, `docs/qa/UI_UX_PROGRAM_QA_2026-07-22.md`). The second is
+  read by the headless UI/UX lane (`tools/headless-uiux.md` section 2 names it the master ruling
+  ledger) and by ROADMAP RM-122, but no ROADMAP or BACKLOG row carries the slice itself (no
+  am-statspanel / stats_panel / pace-projected hit in either; their two case-insensitive `cs_per_min` hits are
+  unrelated rows, the ROADMAP F2 note on `core/lead_projection.py` and BACKLOG RM-376). That QA
+  file's "CONTRADICTION TO RECONCILE" note still
+  calls G2-34 / G2-35 open here; this strike supersedes it. The residual is a CODE SLICE, not a
+  game: filed provisionally as RM-1660 for the merger to mint (UI lane). The seed carries NO
+  game-length field, so the slice must not invent one: the seed's own origin,
+  `web/js/panels/last_match.js` `_RANK_TIER_AVERAGES`, carries a per-tier `cs_per_min` (gold SR 6.8,
+  gold ARAM 4.6), and pace cs = `cs_per_min` x `game_time_s` / 60 capped at the full-game `cs`
+  avg; kda / kp stay unscaled since they are ratios; keep the `estimate` badge; the 5-phase UI
+  audit applies. READY, for after that slice lands (SR practice or real, any role, a tier set in
+  DS Settings):
+  - PROBE: `curl -sk https://127.0.0.1:8888/api/state` -> `liveclient.game_time_s` and the live
+    `cs`; then read the rendered `.sp-bench-cell[data-c="cs"]` text in `#am-statspanel` (text-first,
+    computed DOM, not a pixel read).
+  - PREDICATE, stated before any game: take two samples at least 5 game-minutes apart, BOTH before
+    20:00 game time (so a correct cap at the full-game avg cannot read as a fail). The rendered cs
+    Avg cell is strictly larger at the later sample, and at the first sample it reads below the
+    full-game value (205 for gold SR). The kda / kp Avg cells are equal at both samples. FAIL if
+    the cs Avg is the same at both samples. SR only: every SR tier reaches its cap near 30:00,
+    but every ARAM tier reaches it near 12:00 (gold 55 / 4.6), so an ARAM check needs both
+    samples before 12:00.
+  - EVIDENCE: both rendered values, both `game_time_s` values, the tier, mode and queue, the ISO
+    time of each sample.
+  - SUBSTITUTION CHECK: a unit test of the scaling helper answers whether it COMPUTES, not whether
+    the overlay RENDERS the scaled value; only the rendered cell text read in a live game counts.
+    A bench cell of "-" (no tier set, Arena, fetch miss) is NO_EVIDENCE, never a pass.
 
 ### GATE 2 singles
 
