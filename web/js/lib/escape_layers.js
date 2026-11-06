@@ -1,15 +1,15 @@
 // web/js/lib/escape_layers.js
 //
-// RM-1070: one Escape closes the layer PAINTED ON TOP. Every transient
-// layer (task modal, view menu, Find Match picker, digest popover, draft-elo
-// contributions overlay) used to bind its own document capture listener, so
-// the first REGISTERED open layer took the press: with the view menu or the
-// Find Match picker open over the task modal, Escape closed the modal
-// underneath and left the upper layer showing. Layers now register here and
-// one capture listener picks the topmost open one, closes it and consumes
-// the press (preventDefault), so the bubble-phase Escape chain in main.js
-// (modal -> reply toast -> zen) and the Replay player stand down on it. A
-// press already consumed upstream is left alone (RM-1069); with nothing
+// RM-1070: one Escape closes the layer PAINTED ON TOP. Every transient layer
+// (task modal, view menu, Find Match picker, digest popover, since retired by
+// RM-1427, draft-elo contributions overlay) used to bind its own document
+// capture listener, so the first REGISTERED open layer took the press: with
+// the view menu or the Find Match picker open over the task modal, Escape
+// closed the modal underneath and left the upper layer showing. Layers now
+// register here and one capture listener picks the topmost open one, closes it
+// and consumes the press (preventDefault), so the bubble-phase Escape chain in
+// main.js (modal -> reply toast -> zen) and the Replay player stand down on
+// it. A press already consumed upstream is left alone (RM-1069); with nothing
 // open the press passes through untouched.
 //
 // A layer: { name, el: () => Element|null, isOpen: () => bool, close(),
@@ -27,15 +27,15 @@
 // inside another one's context wins over it.
 //
 // RM-1074: the first cut ranked a layer by the z-index of its outermost
-// POSITIONED ancestor, which is exact for this page's five layers (all
-// position:fixed in the root context: modal 200, view menu 9100, picker
-// 9200, digest 9500) but not for a layer inside a context created any
-// other way. A position:fixed z-index 9999 layer under a transformed
-// wrapper paints at the wrapper's z 0, below a z-index 50 layer, yet ranked
-// 9999; a static flex item with z-index 60 lifts its z-index 1 child over
-// that z-index 50 layer, yet ranked 1. stackingZ() below carries the CSS
-// creation rules; a top-layer element (an open popover or modal dialog)
-// paints over every z-index and ranks above all of them.
+// POSITIONED ancestor, which was exact for the page's five layers of the time
+// (all position:fixed in the root context: modal 200, view menu 9100, picker
+// 9200, digest 9500, since retired) but not for a layer inside a context
+// created any other way. A position:fixed z-index 9999 layer under a
+// transformed wrapper paints at the wrapper's z 0, below a z-index 50 layer,
+// yet ranked 9999; a static flex item with z-index 60 lifts its z-index 1
+// child over that z-index 50 layer, yet ranked 1. stackingZ() below carries
+// the CSS creation rules; a top-layer element (an open popover or modal
+// dialog) paints over every z-index and ranks above all of them.
 // Known approximations: a non-positioned leaf ranks with the z 0 positioned
 // ones, and a negative-z child is still ranked over its own context root.
 //

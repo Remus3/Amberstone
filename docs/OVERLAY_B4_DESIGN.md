@@ -160,7 +160,7 @@ consumed by `right_now.js` and `coach_choices.js` so a stale cached payload
 cannot paint a directive either. It must not be the only gate.
 
 **Deliberately NOT decided here - build recommendations.** `coach.reset_item`
-(`right_now.js:613`) and the next-buy panel dictate purchases, not plays. The
+(`right_now.js:549`) and the next-buy panel dictate purchases, not plays. The
 Riot wording bans notifications that "dictate player action based on the
 current game state"; a shop recommendation is arguably outside it, and every
 approved competitor ships one. Flag to DevRel with B8/B9 rather than

@@ -227,7 +227,7 @@ install on natural quit, never mid-game (`rc-shell/src/main.js:267`).
   of `dashboard/` is empty). The shell loads that origin with a preload
   bridge, so add a `script-src 'self'` policy in the packaged profile.
   Blocked until the inline `<script>` blocks at `web/index.html:12` and
-  `web/index.html:2521` move out or are hashed (PKG-5 deferred it).
+  `web/index.html:2507` move out or are hashed (PKG-5 deferred it).
 
 ### 1c. NICE
 

@@ -26,7 +26,8 @@ test("pickTopmost: nothing open picks nothing", () => {
 });
 
 test("pickTopmost: the highest z wins whatever the registration order", () => {
-  // Registration order of the page: digest, draft-elo, modal, menu, picker.
+  // Registration order of the page: draft-elo, modal, menu, picker (the
+  // digest popover, once registered first, was retired by RM-1427).
   const open = [e("task-modal", 200, 3), e("view-menu", 9100, 1)];
   assert.strictEqual(pickTopmost(open, follows).layer.name, "view-menu");
   open.reverse();

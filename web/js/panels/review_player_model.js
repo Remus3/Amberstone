@@ -159,9 +159,9 @@ export function isSpaceActivated(target) {
 // scroll the pane behind it.
 // Escape and modifier+Space sit above that check on purpose: the dispatcher
 // consumes an Escape that closes a menu, and no menu reads a modified Space.
-// RM-1364: with a modal rendered (modalOpen: the task modal, the digest
-// popout) the plain keys do nothing either, and Space is not held: it is left
-// to the browser, which with focus on the body scrolled nothing behind the
+// RM-1364: with a modal rendered (modalOpen: the task modal; RM-1427 retired the
+// digest popout) the plain keys do nothing either, and Space is not held: it is
+// left to the browser, which with focus on the body scrolled nothing behind the
 // modal (measured on five views) and may scroll the modal's own content. A menu
 // painted over the modal is checked first, so its hold still applies.
 export function hotkeyAction(ev) {

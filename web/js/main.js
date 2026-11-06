@@ -7357,9 +7357,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // trigger, or on the body after a click on a menu's label. Rendered is what
   // counts, not the class: a Lobby menu left open by a view change is not
   // displayed, and must not kill the shortcuts in the next view.
-  // RM-1364: the same holds behind an open modal (the task modal, the
-  // digest popout): A clicked ANALYZE NOW, Z flipped zen and Shift+R reloaded
-  // the page out from under it. escape_layers.js modalLayerRendered().
+  // RM-1364: the same holds behind an open modal (the task modal; RM-1427
+  // retired the digest popout): A clicked ANALYZE NOW, Z flipped zen and
+  // Shift+R reloaded the page under it. escape_layers.js modalLayerRendered().
   function _menuRendered() {
     return Array.from(document.querySelectorAll('[role="menu"]'))
       .some((m) => m.getClientRects().length > 0);
