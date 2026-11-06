@@ -118,7 +118,7 @@ def test_mode_transition_same_mode_no_callback(tmp_path: Path) -> None:
         health.write_text(json.dumps({"mode": "client"}), encoding="utf-8")
         await ingest._tick()
         # Change a non-mode field and bump mtime - mode same.
-        time.sleep(0.02)
+        await asyncio.sleep(0.02)
         health.write_text(json.dumps({"mode": "client", "pid": 123}),
                           encoding="utf-8")
         await ingest._tick()
@@ -144,7 +144,7 @@ def test_mode_transition_callback_exception_swallowed(tmp_path: Path) -> None:
     async def drive():
         health.write_text(json.dumps({"mode": "client"}), encoding="utf-8")
         await ingest._tick()         # prime last_mode
-        time.sleep(0.02)
+        await asyncio.sleep(0.02)
         health.write_text(json.dumps({"mode": "game"}), encoding="utf-8")
         await ingest._tick()         # callback raises - must be caught
     asyncio.run(drive())

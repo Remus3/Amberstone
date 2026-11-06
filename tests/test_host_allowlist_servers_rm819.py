@@ -227,12 +227,12 @@ def _get(port: int, host: str | None, path: str = "/health",
 # -- the gate is the shared one, listed first -----------------------------
 
 def _handler_classes():
-    from agents.daemon_slayer.server import Handler as ds
-    from mc.handler import Handler as mc
-    from tools.ds_matchdb_mcp_server import _Handler as matchdb
-    from vision_server._http import Handler as vision
-    return {"ds-8860": ds, "mc-8895": mc, "matchdb-8861": matchdb,
-            "vision-8889": vision}
+    from agents.daemon_slayer.server import Handler as DsHandler
+    from mc.handler import Handler as McHandler
+    from tools.ds_matchdb_mcp_server import _Handler as MatchdbHandler
+    from vision_server._http import Handler as VisionHandler
+    return {"ds-8860": DsHandler, "mc-8895": McHandler, "matchdb-8861": MatchdbHandler,
+            "vision-8889": VisionHandler}
 
 
 @pytest.mark.parametrize("name", sorted(SERVERS))
