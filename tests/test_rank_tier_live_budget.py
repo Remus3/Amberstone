@@ -878,6 +878,25 @@ _SINKATTR = "sinkattr:"
 # attribute call as `_SINKATTR` is, so `self.h(url)` taints `self`.
 _MUTFN = "mutfn:"
 _MUTATTR = "mutattr:"
+# RM-1794: a plain binding of a name to an attribute or element of a name
+# (`d = m.cache`, `b = m[0]`) makes it hold a PART of that name's object,
+# held as the directed mark `_ALIAS + d + " " + m`: a value put into the
+# part is in the whole. A binding to the bare name (`a = m`) holds the
+# WHOLE object, so it is marked both ways (`_new_alias_marks`). A value put
+# INTO an object in place (an attribute or element store, a `_MUTATORS`
+# call, `setattr`, an augmented assignment that fills a list, set or dict
+# (`_IN_PLACE_AUG`), a mutating helper) then taints
+# every name the marks reach from its root, transitively
+# (`_taint_aliases`). A store into the whole does not reach a part read
+# out before (`p = d['k']; d['k'] = v` leaves `p` alone). Every re-binding
+# of a name (`=`, and a `for` / `with` / walrus / except / import / match /
+# def / class target) ends its marks and leaves what reached it marked to
+# what it reached (`_drop_aliases`); a def's own names shadow the marks of
+# the scope around it (`_shadow_aliases`), as a lambda's parameters and a
+# comprehension's targets do in their view (`_call_views`), and a def's
+# locals' marks do not flow out (`_drop_locals`). Like `_LOGFN` the marks
+# carry no value.
+_ALIAS = "alias:"
 
 
 def _object_only(name, tainted) -> bool:
@@ -886,12 +905,24 @@ def _object_only(name, tainted) -> bool:
             and not any(p in low for p in _TAINTED_NAME_PARTS))
 
 
+_TYPE_ALIAS = (ast.TypeAlias,) if hasattr(ast, "TypeAlias") else ()
+
+
 def _retaint(stmt, tainted, late=frozenset()) -> None:
     """Propagate taint across one binding statement. Scope is deliberately
     small - assignments (except-as names are bound at handler entry in
     `_flow_block`) - because that is what carries a URL into a message;
     reaching a URL off an object is caught by the attribute rule (`.full_url`,
     `.geturl`) instead of by over-tainting the object."""
+    if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+        # RM-1794: an import re-binds its names, as a `type` statement
+        # re-binds its own.
+        for alias in stmt.names:
+            _drop_aliases((alias.asname or alias.name).split(".")[0], tainted)
+        return
+    if isinstance(stmt, _TYPE_ALIAS):
+        _drop_target_aliases(stmt.name, tainted)
+        return
     if isinstance(stmt, ast.Assign):
         targets, value = stmt.targets, stmt.value
     elif isinstance(stmt, (ast.AugAssign, ast.AnnAssign)):
@@ -935,10 +966,19 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
                     for kind in _attr_store_kinds(target.value, value)
                     for spec in wrapper)
     tainted |= attr_marks
+    # RM-1794: the object marks the binding makes, judged before it ends
+    # the targets' own marks (`a = a.q` still reaches what `a` did).
+    joined = _new_alias_marks(targets, value, tainted) if plain else set()
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
         _bind_names(target, found, tainted, clear=plain)
+    if found:
+        # RM-1794: a store INTO an object reaches every alias of it.
+        for target in targets:
+            for sub in _in_place_targets(target, stmt):
+                _taint_aliases(sub, tainted)
+    tainted |= joined
     for name, is_alias, is_obj in aliases:
         _bind_log_alias(name, is_alias, tainted, is_obj)
     for name, specs in wrappers:
@@ -1062,12 +1102,181 @@ def _bind_names(target, found, tainted, *, clear=True) -> None:
             tainted.discard(_LOGFN + target.id)
             tainted.discard(_LOGOBJ + target.id)
             _drop_wrapper(target.id, tainted)
+            _drop_aliases(target.id, tainted)
         return
     if found:
         fresh = _fresh_callees(target)
         for sub in ast.walk(target):
             if isinstance(sub, ast.Name) and id(sub) not in fresh:
                 tainted.add(sub.id)
+
+
+def _alias_roots(value):
+    """RM-1794: (root, whole) for every name whose object a plain binding
+    of `value` may reach: the root of a name / attribute / element chain
+    (`m`, `m.q`, `m[0]`: `m`), through either arm of a conditional, every
+    operand of an `or` / `and` and both sides of a walrus. `whole` is True
+    when the value IS the root's object (a bare name), False when it is a
+    part of it. A call, a literal, an operator or a slice makes a new
+    object (`list(m)`, `[m]`, `m + n`, `m[:]`): none. Residual: a slice of
+    an object whose slice is a view (a numpy array) is one too."""
+    if isinstance(value, ast.IfExp):
+        return _alias_roots(value.body) | _alias_roots(value.orelse)
+    if isinstance(value, ast.BoolOp):
+        return set().union(*(_alias_roots(v) for v in value.values))
+    if isinstance(value, ast.NamedExpr):
+        return _alias_roots(value.value) | {(value.target.id, True)}
+    if isinstance(value, ast.Subscript) and isinstance(value.slice, ast.Slice):
+        # A slice is a new list / str / tuple (`out = items[:]`); an
+        # element of one (`m[1:][0]`) is still a part of `m`.
+        return set()
+    root = _chain_root(value)
+    return {(root, isinstance(value, ast.Name))} if root is not None else set()
+
+
+def _alias_pairs(target, value):
+    """RM-1794: (name, `_alias_roots`) for every plain name binding
+    `target = value` makes. A tuple target is paired element by element
+    with a tuple value of the same length and no starred part
+    (`a, b = m, n`); any other unpacking binds each name to a PART of the
+    value. A starred target is a new list: none."""
+    if isinstance(target, ast.Name):
+        return [(target.id, _alias_roots(value))]
+    if not isinstance(target, (ast.Tuple, ast.List)):
+        return []
+    elts = target.elts
+    if (isinstance(value, (ast.Tuple, ast.List)) and len(value.elts) == len(elts)
+            and not any(isinstance(e, ast.Starred) for e in (*elts, *value.elts))):
+        return [p for t, v in zip(elts, value.elts) for p in _alias_pairs(t, v)]
+    parts = {(root, False) for root, _ in _alias_roots(value)}
+    return [(name, parts) for t in elts for name, _ in _alias_pairs(t, value)]
+
+
+def _alias_edges(entries):
+    """RM-1794: the `_ALIAS` marks in `entries` as (from, to) pairs."""
+    return [tuple(e[len(_ALIAS):].split(" ", 1)) for e in entries
+            if e.startswith(_ALIAS)]
+
+
+def _alias_mark(src, dst):
+    return f"{_ALIAS}{src} {dst}"
+
+
+def _new_alias_marks(targets, value, tainted):
+    """RM-1794: the `_ALIAS` marks `targets = value` makes, judged
+    against `tainted` as it stands. A name bound to a PART of an object
+    (`a = m.q`) reaches it: a value put into the part is in the whole.
+    Only a name bound to the WHOLE object (`a = m`) is also reached from
+    it; a store into the whole (`m['q'] = v`) replaces a part and leaves
+    the one read out before alone. A root that is the target itself
+    (`a = a.q`) stands for what the target reached before (and, for a
+    whole, what reached it). Residual: a root that is ANOTHER target of
+    the same binding (`a, b = b, a`) is read by its new name, so the two
+    are marked to each other, as the plain taint of a swap is kept (the
+    safe side)."""
+    marks = set()
+    edges = None
+    for target in targets:
+        for name, roots in _alias_pairs(target, value):
+            for root, whole in roots:
+                if root != name:
+                    marks.add(_alias_mark(name, root))
+                    if whole:
+                        marks.add(_alias_mark(root, name))
+                    continue
+                if edges is None:
+                    edges = _alias_edges(tainted)
+                marks |= {_alias_mark(name, d) for s, d in edges if s == name != d}
+                if whole:
+                    marks |= {_alias_mark(s, name) for s, d in edges if d == name != s}
+    return marks
+
+
+def _drop_aliases(name, tainted) -> None:
+    """RM-1794: a re-binding of `name` ends the `_ALIAS` marks it is in;
+    what reached it still reaches what it reached (`a = m; b = a; a = []`
+    leaves `b` reaching `m`), so those are marked to each other."""
+    edges = [(s, d) for s, d in _alias_edges(tainted) if name in (s, d)]
+    if not edges:
+        return
+    tainted -= {_alias_mark(s, d) for s, d in edges}
+    froms = {s for s, d in edges if d == name}
+    tos = {d for s, d in edges if s == name}
+    tainted |= {_alias_mark(s, d) for s in froms for d in tos if s != d}
+
+
+def _drop_target_aliases(target, tainted) -> None:
+    """RM-1794: `_drop_aliases` for every plain name a binding target
+    re-binds (a bare, tuple, list or starred name; an attribute or element
+    store re-binds no name). Used for a target that may be a tuple: a
+    `for`, `with` or comprehension target and a `type` statement name. The
+    single-name forms call `_drop_aliases` directly (a walrus, except,
+    import, match capture, def, class and lambda parameter), and `=`
+    reaches it through `_bind_names`."""
+    if isinstance(target, (ast.Tuple, ast.List)):
+        for elt in target.elts:
+            _drop_target_aliases(elt, tainted)
+    elif isinstance(target, ast.Starred):
+        _drop_target_aliases(target.value, tainted)
+    elif isinstance(target, ast.Name):
+        _drop_aliases(target.id, tainted)
+
+
+def _shadow_aliases(entries, names):
+    """RM-1794: `entries` without the `_ALIAS` marks about a name in
+    `names` (the same object when nothing is dropped)."""
+    drop = {e for e in entries if e.startswith(_ALIAS)
+            and not names.isdisjoint(e[len(_ALIAS):].split(" ", 1))}
+    return entries - drop if drop else entries
+
+
+def _taint_aliases(expr, tainted, view=None) -> None:
+    """RM-1794: a value put in place into the object `expr` hangs off
+    (`_chain_root`) is in that object whatever name reaches it, so every
+    name the `_ALIAS` marks reach from the root, transitively, carries it
+    too. Add-only. The marks are read from `view`, the state the call or
+    store reads (`_call_views`: a lambda parameter or comprehension target
+    has none of the enclosing marks), else from `tainted`. The late view is
+    never added: it still holds the marks a re-binding ended (`a = m;
+    a = []`), and a def body walked from it gets its marks in its entry."""
+    root = _chain_root(expr)
+    if root is None:
+        return
+    edges = {}
+    for src, dst in _alias_edges(tainted if view is None else view):
+        edges.setdefault(src, set()).add(dst)
+    if edges:
+        tainted |= _alias_closure({root}, edges) - {root}
+
+
+# RM-1794: the augmented assignments that put a value INTO a list, set or
+# dict in place, keyed by operator: `a += [v]` (a list display: only a list
+# or a mutable sequence takes one in place), `a |= {v}` (a set or dict
+# display), `a ^= {v}` (a set display). Any other operator or value may
+# re-bind the name to a new object (`msg += url`, `msg %= {'u': v}`,
+# `n *= [v]`), which leaves an alias of the old object alone; `-=` and `&=`
+# put nothing in. Residual: a frozenset `|=` / `^=` re-binds as well.
+_IN_PLACE_AUG = {
+    ast.Add: (ast.List, ast.ListComp),
+    ast.BitOr: (ast.Set, ast.SetComp, ast.Dict, ast.DictComp),
+    ast.BitXor: (ast.Set, ast.SetComp),
+}
+
+
+def _in_place_targets(target, stmt):
+    """RM-1794: the parts of binding statement `stmt`'s `target` that
+    are changed in place rather than re-bound: an attribute or element
+    store, and the plain name of an augmented assignment `_IN_PLACE_AUG`
+    reads as one."""
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return [x for elt in target.elts for x in _in_place_targets(elt, stmt)]
+    if isinstance(target, ast.Starred):
+        return _in_place_targets(target.value, stmt)
+    if isinstance(target, ast.Name):
+        in_place = (isinstance(stmt, ast.AugAssign) and isinstance(
+            stmt.value, _IN_PLACE_AUG.get(type(stmt.op), ())))
+        return [target] if in_place else []
+    return [target]
 
 
 # RM-1792: builtin constructors whose call always returns a NEW object, so
@@ -1224,7 +1433,37 @@ def _module_bound_names(tree):
 # would: `self.seen.append(url)` taints `self` like `self.last = url` does).
 # `write` is not here: it is a sink (`_LOG_FUNCS`).
 _MUTATORS = frozenset({"append", "appendleft", "extend", "extendleft", "insert",
-                       "add", "update", "setdefault", "put", "put_nowait"})
+                       "add", "update", "setdefault", "put", "put_nowait",
+                       "__setitem__", "__setattr__"})
+# RM-1794: a dunder store takes (key, value) bound (`d.__setitem__(k, v)`:
+# a `_MUTATORS` call off its receiver; the key is only read) and
+# (object, key, value) called off a class (`object.__setattr__(o, 'u', v)`,
+# `Base.__setattr__(self, 'u', v)`, `dict.__setitem__(d, k, v)`), so with
+# exactly three positional arguments (a `*args` counts as one) it names its
+# object in the FIRST one, as `setattr(o, 'u', v)` always does, and the
+# class is not changed. Residuals: a bound call to a user dunder taking an
+# extra parameter (`d.__setitem__(k, v, x)`) is read as unbound and taints
+# `k`; a call off a class with any other count (`Base.__setattr__(o, *r)`)
+# taints the class, as `list.append(d, v)` taints `list`.
+_FIRST_ARG_MUTATORS = frozenset({"__setitem__", "__setattr__"})
+
+
+def _mutated_exprs(call):
+    """RM-1794: the expressions call `call` may put its arguments INTO:
+    the receiver of a `_MUTATORS` call, or, for a `_FIRST_ARG_MUTATORS`
+    one called off a class (exactly three positional arguments), its first
+    argument; and the first argument of `setattr`."""
+    f = call.func
+    out = []
+    if isinstance(f, ast.Attribute) and f.attr in _MUTATORS:
+        unbound = f.attr in _FIRST_ARG_MUTATORS and len(call.args) == 3
+        if unbound:
+            out.append(call.args[0])
+        else:
+            out.append(f.value)
+    elif isinstance(f, ast.Name) and f.id == "setattr" and call.args:
+        out.append(call.args[0])
+    return out
 
 
 def _bind_mutators(nodes, tainted, late=frozenset()) -> None:
@@ -1232,16 +1471,20 @@ def _bind_mutators(nodes, tainted, late=frozenset()) -> None:
     Applied with the walrus bindings, before the statement's sinks.
     RM-1563: each call is judged with the view `_call_views` gives it, so
     one in a comprehension sees the comprehension's targets
-    (`[q.append(x) for x in [url]]`)."""
+    (`[q.append(x) for x in [url]]`). RM-1794: so does `setattr(q, 'u',
+    url)` and a dunder store (`_mutated_exprs`), and the value reaches
+    every alias of the object (`_taint_aliases`)."""
     for node in nodes:
         calls = []
         _call_views(node, tainted, late, calls)
         for sub, seen in calls:
-            if (isinstance(sub.func, ast.Attribute)
-                    and sub.func.attr in _MUTATORS):
+            targets = _mutated_exprs(sub)
+            if targets:
                 args = list(sub.args) + [kw.value for kw in sub.keywords]
                 if any(_is_tainted(a, seen, late) for a in args):
-                    _bind_names(sub.func.value, True, tainted, clear=False)
+                    for target in targets:
+                        _bind_names(target, True, tainted, clear=False)
+                        _taint_aliases(target, tainted, seen)
 
 
 # RM-1557: the binding forms this walk added - `for` targets, `with ... as`
@@ -1269,6 +1512,7 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
             is_alias = _is_log_callable(sub.value, seen)
             is_obj = _is_logger_expr(sub.value, seen)
             wrapper = _value_wrapper_specs(sub.value, seen, late)
+            _drop_aliases(sub.target.id, tainted)    # RM-1794
             _bind_names(sub.target, _is_tainted(sub.value, seen, late),
                         tainted, clear=False)
             _bind_log_alias(sub.target, is_alias, tainted, is_obj)
@@ -1627,22 +1871,61 @@ def _mutated_names(fn):
     store target (`m.x = v`, `q[m] = v`, the index included, as
     `_bind_names` taints it), in the receiver of a `_MUTATORS` call
     (`q[m].append(v)`), or the plain-name target of an augmented assignment,
-    which changes a list or set in place (`m += [v]`, `m |= {v}`)."""
+    which changes a list or set in place (`m += [v]`, `m |= {v}`).
+    RM-1794: also every name in what `setattr` or a dunder store puts a
+    value into (`_mutated_exprs`), and every name an alias of one of these
+    may reach (`_alias_closure`: `a = m; a.append(v)` mutates `m`)."""
     found = set()
+    edges = {}
     for node in ast.walk(fn):
+        _add_alias_edges(node, edges)
         if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
             found.add(node.target.id)
             continue
         if (isinstance(node, (ast.Attribute, ast.Subscript))
                 and isinstance(node.ctx, ast.Store)):
-            target = node
-        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                and node.func.attr in _MUTATORS):
-            target = node.func.value
+            targets = [node]
+        elif isinstance(node, ast.Call):
+            targets = _mutated_exprs(node)
         else:
             continue
-        found.update(sub.id for sub in ast.walk(target) if isinstance(sub, ast.Name))
-    return found
+        for target in targets:
+            found.update(sub.id for sub in ast.walk(target) if isinstance(sub, ast.Name))
+    return _alias_closure(found, edges)
+
+
+def _add_alias_edges(node, edges) -> None:
+    """RM-1794: the alias edges (`_alias_pairs`) a plain assignment
+    `node` makes into `edges` (name -> the names a value put into its
+    object reaches), as `_new_alias_marks` makes them."""
+    if isinstance(node, ast.Assign):
+        targets, value = node.targets, node.value
+    elif isinstance(node, ast.AnnAssign) and node.value is not None:
+        targets, value = [node.target], node.value
+    else:
+        return
+    for target in targets:
+        for name, roots in _alias_pairs(target, value):
+            for root, whole in roots:
+                if root == name:
+                    continue
+                edges.setdefault(name, set()).add(root)
+                if whole:
+                    edges.setdefault(root, set()).add(name)
+
+
+def _alias_closure(found, edges):
+    """RM-1794: `found` plus every name `edges` reach from it,
+    transitively. In `_mutated_names` / `_mutated_containers` the edges are
+    flow-insensitive (a later re-binding does not cut one): the safe side
+    for flow-out."""
+    seen, todo = set(found), list(found)
+    while todo:
+        for peer in edges.get(todo.pop(), ()):
+            if peer not in seen:
+                seen.add(peer)
+                todo.append(peer)
+    return seen
 
 
 def _chain_root(expr):
@@ -1659,23 +1942,29 @@ def _mutated_containers(fn):
     (`m.x = v`, `q[k] = v`: `m`, `q`, never the index `k`), of a
     `_MUTATORS` call's receiver (`q[k].append(v)`: `q`) and the plain-name
     target of an augmented assignment. The narrow half of `_mutated_names`,
-    which also keeps every name in the target (the safe side for flow-out)."""
+    which also keeps every name in the target (the safe side for flow-out).
+    RM-1794: the root of what `setattr` or a dunder store puts a value
+    into (`_mutated_exprs`) too, and every alias of a root
+    (`_alias_closure`: `def h(q, v): a = q; a.append(v)` mutates `q`)."""
     found = set()
+    edges = {}
     for node in ast.walk(fn):
+        _add_alias_edges(node, edges)
         if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
             found.add(node.target.id)
             continue
         if (isinstance(node, (ast.Attribute, ast.Subscript))
                 and isinstance(node.ctx, ast.Store)):
-            root = _chain_root(node)
-        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                and node.func.attr in _MUTATORS):
-            root = _chain_root(node.func.value)
+            targets = [node]
+        elif isinstance(node, ast.Call):
+            targets = _mutated_exprs(node)
         else:
             continue
-        if root is not None:
-            found.add(root)
-    return found
+        for target in targets:
+            root = _chain_root(target)
+            if root is not None:
+                found.add(root)
+    return _alias_closure(found, edges)
 
 
 _LOCALS_CACHE = {}
@@ -1685,8 +1974,9 @@ _ATTR_MARKS = (_LOGATTR, _LOGOBJATTR, _SINKATTR, _MUTATTR)
 
 
 def _drop_locals(state, names):
-    """`state` without the entries about a name in `names` (`_def_locals`)."""
-    return {entry for entry in state
+    """`state` without the entries about a name in `names` (`_def_locals`).
+    RM-1794: an `_ALIAS` mark is about both its names."""
+    return {entry for entry in _shadow_aliases(state, names)
             if entry.startswith(_ATTR_MARKS) or _entry_name(entry) not in names}
 
 
@@ -1773,6 +2063,8 @@ def _bind_mut_calls(nodes, tainted, late=frozenset()) -> None:
                 if any(_is_tainted(a, seen, late) for a in _spec_args(call, {src})):
                     for arg in _spec_args(call, {dst}):
                         _bind_names(arg, True, tainted, clear=False)
+                        # RM-1794: and every alias of its object.
+                        _taint_aliases(arg, tainted, seen)
 
 
 def _param_specs(fn):
@@ -1844,7 +2136,10 @@ def _param_base(fn, names, state, late):
     # RM-1656: only the entries the body can read decide the answer (see
     # `_walk_scope`), so the key is projected onto them.
     base = _readable(set(state) | set(late), _scope_names(_fn_body(fn)))
-    base = frozenset(e for e in base if not shadowed(e))
+    # RM-1794: an `_ALIAS` mark about a parameter or a local is shadowed
+    # too, as the def arm's walk has it.
+    own = names if isinstance(fn, ast.Lambda) else names | _def_locals(fn)
+    base = frozenset(e for e in _shadow_aliases(base, own) if not shadowed(e))
     return base | {e for e in _default_bindings(fn, state, late)
                    if e.startswith((_LOGFN, _LOGOBJ, _SINKFN))}
 
@@ -1861,8 +2156,10 @@ def _mut_specs(fn, state, late=frozenset()):
     made are reused), into a throwaway report. What `dst` carries is read
     from every state the body may leave it in (fall-through, `return` and
     every state inside, as the def arm's flow-out is). Residuals: a lambda,
-    an alias (`k = h`), a helper stored on an attribute from outside a
-    class body and `setattr(o, 'u', v)` make no pair; a helper that stores
+    an alias (`k = h`) and a helper stored on an attribute from outside a
+    class body (by `=` or `setattr`) make no pair (RM-1794: a helper
+    that stores INTO its parameter through `setattr(q, 'u', v)` makes
+    one); a helper that stores
     an ENCLOSING tainted name (`q.append(G)`) makes a pair only for a
     tainted argument, so `h(r, 'x')` is missed (a pair needing no argument
     pre-tainted the parameters of every wrapper that calls the helper, and
@@ -2070,12 +2367,21 @@ def _comp_bind(gen, view, late):
     aliases = _iter_alias_bindings(gen.target, gen.iter, view)
     wrappers = _iter_wrapper_bindings(gen.target, gen.iter, view, late)
     inner = set(view)
+    # RM-1794: the target is the comprehension's own name.
+    _drop_target_aliases(gen.target, inner)
     _bind_names(gen.target, found, inner, clear=False)
     for name, is_alias, is_obj in aliases:
         _bind_log_alias(name, is_alias, inner, is_obj)
     for name, specs in wrappers:
         _bind_wrapper(name, specs, inner)
     return inner
+
+
+def _late_view(view, late):
+    """`view | late`, the state a deferred body (a lambda, a generator)
+    reads. RM-1794: less the late view's `_ALIAS` marks, which still
+    hold the marks a re-binding ended (`a = m; a = []`)."""
+    return set(view) | {e for e in late if not e.startswith(_ALIAS)}
 
 
 def _call_views(node, view, late, out, kinds=ast.Call) -> None:
@@ -2100,7 +2406,7 @@ def _call_views(node, view, late, out, kinds=ast.Call) -> None:
     reach only that body and the lambdas nested in it, never a sibling or the
     enclosing scope. The calls inside a default keep the late view."""
     if isinstance(node, _COMPREHENSIONS):
-        inner = set(view) | set(late) if isinstance(node, _DEFERRED) else view
+        inner = _late_view(view, late) if isinstance(node, _DEFERRED) else view
         for gen in node.generators:
             _call_views(gen.iter, inner, late, out, kinds)
             inner = _comp_bind(gen, inner, late)
@@ -2113,11 +2419,15 @@ def _call_views(node, view, late, out, kinds=ast.Call) -> None:
             _call_views(part, inner, late, out, kinds)
         return
     if isinstance(node, ast.Lambda):
-        late_view = set(view) | set(late)
+        late_view = _late_view(view, late)
         a = node.args
         for d in a.defaults + [d for d in a.kw_defaults if d is not None]:
             _call_views(d, late_view, late, out, kinds)
         body_view = late_view | _default_bindings(node, view, late)
+        # RM-1794: a parameter is the lambda's own name, so the
+        # enclosing scope's `_ALIAS` marks about it do not hold inside.
+        for name, _ in _param_specs(node):
+            _drop_aliases(name, body_view)
         _call_views(node.body, body_view, late, out, kinds)
         return
     if isinstance(node, kinds):
@@ -2179,7 +2489,7 @@ def _entry_name(entry):
     for mark in (_OBJ, _LOGFN, _LOGOBJ, _LOGATTR, _LOGOBJATTR):
         if entry.startswith(mark):
             return entry[len(mark):]
-    for mark in (_SINKFN, _SINKATTR, _MUTFN, _MUTATTR):
+    for mark in (_SINKFN, _SINKATTR, _MUTFN, _MUTATTR, _ALIAS):
         if entry.startswith(mark):
             return entry[len(mark):].split(" ", 1)[0]
     return entry
@@ -2561,8 +2871,17 @@ class _Flow:
             # are read as run here, the safe side. The sinks were
             # checked here before, the bindings were not.
             state = self._expr_step(list(_own_nodes(stmt)), stmt, state)
+            # RM-1794: a def's parameters and locals are not the
+            # enclosing scope's names, so the `_ALIAS` marks about them do
+            # not reach into its body (`a = m; def f(a): a.append(url)`
+            # leaves `m` alone).
+            enter, late_in = state, self.ever
+            if not isinstance(stmt, ast.ClassDef):
+                own = _def_locals(stmt) | {n for n, _ in _param_specs(stmt)}
+                enter = _shadow_aliases(state, own)
+                late_in = _shadow_aliases(self.ever, own)
             out, returns, inside, hands_back = _walk_scope(
-                stmt.body, state, self.report, self.ever)
+                stmt.body, enter, self.report, late_in)
             marks = set()
             while isinstance(stmt, ast.ClassDef):
                 more = _class_attr_marks(stmt.body, out, stmt.name) - state - marks
@@ -2574,12 +2893,12 @@ class _Flow:
             if not isinstance(stmt, ast.ClassDef):
                 seeded = _default_bindings(stmt, state, self.ever) - state
                 if seeded:
-                    hands_back |= _walk_scope(stmt.body, state | seeded,
-                                              self.report, self.ever)[3]
-                if not self.ever <= state:
+                    hands_back |= _walk_scope(stmt.body, enter | seeded,
+                                              self.report, late_in)[3]
+                if not late_in <= enter:
                     hands_back |= _walk_scope(stmt.body,
-                                              state | self.ever | seeded,
-                                              self.report, self.ever)[3]
+                                              enter | late_in | seeded,
+                                              self.report, late_in)[3]
             flowed = _join(out, *returns, *inside) or set()
             if not isinstance(stmt, ast.ClassDef):
                 # RM-1563: a name the def binds is its own local unless
@@ -2601,6 +2920,7 @@ class _Flow:
             # (or none) from here on; the body is judged from the def-time
             # state plus the late view, as a later call may run it.
             _drop_wrapper(stmt.name, state)
+            _drop_aliases(stmt.name, state)    # RM-1794
             if not isinstance(stmt, ast.ClassDef):
                 _bind_wrapper(stmt.name, _sink_specs(stmt, state, self.ever),
                               state)
@@ -2639,6 +2959,7 @@ class _Flow:
             for item in stmt.items:
                 state = self._expr_step([item], stmt, state)
                 if item.optional_vars is not None:
+                    _drop_target_aliases(item.optional_vars, state)    # RM-1794
                     _bind_names(item.optional_vars,
                                 _with_target_found(item, state, self.ever),
                                 state, clear=False)
@@ -2673,6 +2994,8 @@ class _Flow:
         tried = set(state)
         for case in stmt.cases:
             entry = set(tried)
+            for name in _capture_names(case.pattern):
+                _drop_aliases(name, entry)    # RM-1794
             if found:
                 entry.update(_capture_names(case.pattern))
             if case.guard is not None:
@@ -2712,6 +3035,7 @@ class _Flow:
             # The target is assigned once per item, so a sink in it
             # (`for d[log.info(m)] in xs`) sees what the last pass bound.
             body_in = self._expr_step([stmt.target], stmt, entry)
+            _drop_target_aliases(stmt.target, body_in)    # RM-1794
             _bind_names(stmt.target, found, body_in, clear=False)
             # RM-1563: add-only, like the value binding above; RM-1563:
             # so is a wrapper (`for h in (g,)`).
@@ -2774,6 +3098,7 @@ class _Flow:
                     # back at us, so it is untrusted text until it goes through
                     # a sanitizer.
                     entry.add(handler.name)
+                    _drop_aliases(handler.name, entry)    # RM-1794
                 exits.append(self.block(handler.body, entry))
         finally:
             self.watchers.pop()
@@ -4076,6 +4401,174 @@ _CHECKER_SAMPLES = (
     ("attribute alias stored beside a local of the same name",
      "class C:\n    def __init__(self):\n        p = 1\n        self.p = log.info\n"
      "    def m(self, url):\n        self.p(url)\n", True),
+    # RM-1794: a plain-name binding to a name (or an attribute / element
+    # of one) ALIASES that object, so a value put into the alias in place is
+    # in the object the other name holds too, and a parameter the def
+    # mutates through an alias flows out as a mutated one does. So does a
+    # store made through `setattr`, `__setitem__` or `__setattr__`.
+    ("parameter filled through an alias reaches a later def",
+     "def g(m):\n    a = m\n    a.append(url)\ndef f(m):\n    raise E(m)\n", True),
+    ("local filled through an alias is read in its def",
+     "def f(url):\n    m = []\n    a = m\n    a.append(url)\n    raise E(m)\n", True),
+    ("name filled through an alias at module level",
+     "a = m\na.append(url)\nraise E(m)\n", True),
+    ("dict stored into under another name reaches a later def",
+     "def g(m):\n    d = m\n    d['k'] = url\ndef f(m):\n    raise E(m)\n", True),
+    ("attribute of a parameter stored into under another name",
+     "def g(m):\n    d = m.cache\n    d[0] = url\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter filled through an alias of an alias",
+     "def f(url):\n    m = []\n    a = m\n    b = a\n    b.append(url)\n    raise E(m)\n",
+     True),
+    ("alias kept when the name between is re-bound",
+     "def f(url):\n    m = []\n    a = m\n    b = a\n    a = []\n    b.append(url)\n"
+     "    raise E(m)\n", True),
+    ("source filled in place is read through its alias",
+     "def f(url):\n    m = []\n    a = m\n    m.append(url)\n    raise E(a)\n", True),
+    ("parameter extended in place through an alias by +=",
+     "def g(m):\n    a = m\n    a += [url]\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter filled through a conditional alias",
+     "def g(m, n):\n    a = m if c else n\n    a.append(url)\ndef f(m):\n    raise E(m)\n",
+     True),
+    ("parameter filled through a tuple-bound alias",
+     "def g(m, n):\n    a, b = m, n\n    a.append(url)\ndef f(m):\n    raise E(m)\n", True),
+    ("alias passed to a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    m = []\n    a = m\n    h(a, url)\n"
+     "    raise E(m)\n", True),
+    ("helper that fills an alias of its parameter",
+     "def h(q, v):\n    a = q\n    a.append(v)\ndef f(url):\n    m = []\n    h(m, url)\n"
+     "    raise E(m)\n", True),
+    ("parameter set through setattr reaches a later def",
+     "def g(m):\n    setattr(m, 'x', url)\ndef f(m):\n    raise E(m)\n", True),
+    ("name set through setattr at module level",
+     "setattr(m, 'x', url)\nraise E(m)\n", True),
+    ("helper that sets its parameter through setattr",
+     "def h(q, v):\n    setattr(q, 'u', v)\ndef f(url):\n    m = C()\n    h(m, url)\n"
+     "    raise E(m)\n", True),
+    ("parameter stored into through __setitem__ reaches a later def",
+     "def g(m):\n    m.__setitem__(0, url)\ndef f(m):\n    raise E(m)\n", True),
+    ("local set through object.__setattr__",
+     "def f(url):\n    o = C()\n    object.__setattr__(o, 'x', url)\n    raise E(o)\n", True),
+    ("alias re-bound before the fill does not taint the source",
+     "def f(url):\n    m = []\n    a = m\n    a = []\n    a.append(url)\n    raise E(m)\n",
+     False),
+    ("source re-bound before the fill is not tainted by the alias",
+     "def f(url):\n    m = []\n    a = m\n    m = []\n    a.append(url)\n    raise E(m)\n",
+     False),
+    ("a copy is not an alias",
+     "def g(m):\n    a = list(m)\n    a.append(url)\ndef f(m):\n    raise E(m)\n", False),
+    ("a slice copy is not an alias",
+     "def f(url, items):\n    out = items[:]\n    out.append(url)\n    log.info('%s', items)\n",
+     False),
+    ("an element of a slice is still a part of its source",
+     "def f(url):\n    m = [[]]\n    a = m[0:][0]\n    a.append(url)\n    raise E(m)\n", True),
+    ("parameter filled through an alias with a clean value",
+     "def g(m):\n    a = m\n    a.append('x')\ndef f(m):\n    raise E(m)\n", False),
+    ("alias re-bound to the value does not flow out",
+     "def g(m):\n    a = m\n    a = url\ndef f(m):\n    raise E(m)\n", False),
+    ("setattr of a clean value",
+     "def f(o):\n    setattr(o, 'x', 'y')\n    raise E(o)\n", False),
+    ("an alias local to a def does not reach a later def",
+     "def g(m):\n    a = m\ndef f(url, a):\n    a.append(url)\n    raise E(m)\n", False),
+    ("a parameter shadows an alias of the enclosing scope",
+     "a = m\ndef f(url, a):\n    a.append(url)\nraise E(m)\n", False),
+    ("an alias made inside a def does not flow out of it",
+     "def g():\n    a = G\nG.append(url)\nraise E(a)\n", False),
+    # Every binding form re-binds the name, not only `=`, and a lambda's
+    # parameters and a comprehension's targets are its own names.
+    ("a for target re-binding an alias does not fill its source",
+     "def f(url, xs):\n    m = []\n    a = m\n    for a in xs:\n        a.append(url)\n"
+     "    raise E(m)\n", False),
+    ("an async for target re-binding an alias does not fill its source",
+     "async def f(url, xs):\n    m = []\n    a = m\n    async for a in xs:\n"
+     "        a.append(url)\n    raise E(m)\n", False),
+    ("a with target re-binding an alias does not fill its source",
+     "def f(url):\n    m = []\n    a = m\n    with g() as a:\n        a.append(url)\n"
+     "    raise E(m)\n", False),
+    ("an except target re-binding an alias does not fill its source",
+     "def f(url):\n    m = []\n    a = m\n    try:\n        g()\n    except E as a:\n"
+     "        a.append(url)\n    raise E(m)\n", False),
+    ("an import re-binding an alias does not fill its source",
+     "def f(url):\n    m = []\n    a = m\n    import a\n    a.append(url)\n    raise E(m)\n",
+     False),
+    ("a walrus re-binding an alias does not fill its source",
+     "def f(url):\n    m = []\n    a = m\n    if (a := []):\n        a.append(url)\n"
+     "    raise E(m)\n", False),
+    ("a def re-binding an alias name does not fill its source",
+     "def f(url):\n    m = []\n    a = m\n    def a():\n        pass\n    a.x = url\n"
+     "    raise E(m)\n", False),
+    ("a class re-binding an alias name does not fill its source",
+     "def f(url):\n    m = []\n    a = m\n    class a:\n        pass\n    a.x = url\n"
+     "    raise E(m)\n", False),
+    ("a match capture re-binding an alias does not fill its source",
+     "def f(url, v):\n    m = []\n    a = m\n    match v:\n        case a:\n"
+     "            a.append(url)\n    raise E(m)\n", False),
+    ("a type statement re-binding an alias does not fill its source",
+     "def f(url):\n    m = []\n    a = m\n    type a = int\n    a.append(url)\n    raise E(m)\n",
+     False),
+    ("a comprehension target shadowing an alias does not fill its source",
+     "def f(url, xs):\n    m = []\n    a = m\n    [a.append(url) for a in xs]\n    raise E(m)\n",
+     False),
+    ("a module comprehension target shadowing an alias",
+     "a = m\nr = [a.append(url) for a in xs]\nraise E(m)\n", False),
+    ("a generator target shadowing an alias does not fill its source",
+     "def f(url, xs):\n    m = []\n    a = m\n    list(a.append(url) for a in xs)\n"
+     "    raise E(m)\n", False),
+    ("a lambda parameter shadowing an alias does not fill its source",
+     "def f(url):\n    m = []\n    a = m\n    g = lambda a: a.append(url)\n    raise E(m)\n",
+     False),
+    ("a module lambda parameter shadowing an alias",
+     "a = m\nf = lambda a: a.append(url)\nraise E(m)\n", False),
+    ("an alias a re-binding ended is not read back by a lambda",
+     "def f(url):\n    m = []\n    a = m\n    a = []\n    g = lambda: a.append(url)\n"
+     "    raise E(m)\n", False),
+    ("a lambda filling an alias it reads freely",
+     "def f(url):\n    m = []\n    a = m\n    g = lambda: a.append(url)\n    g()\n    raise E(m)\n",
+     True),
+    ("a store through object.__setattr__ does not taint object",
+     "def f(url):\n    o = C()\n    object.__setattr__(o, 'x', url)\n    p = object()\n"
+     "    raise E(p)\n", False),
+    ("a bound __setitem__ does not taint its key",
+     "def f(url):\n    k = 'x'\n    d = {}\n    d.__setitem__(k, url)\n    raise E(k)\n", False),
+    ("a store through a base class __setattr__ does not taint the class",
+     "def f(url):\n    o = C()\n    Base.__setattr__(o, 'x', url)\n    raise E(Base)\n", False),
+    ("a store through a base class __setattr__ taints the object",
+     "class C(Base):\n    def h(self, url):\n        Base.__setattr__(self, 'u', url)\n"
+     "        raise E(self)\n", True),
+    ("an unbound __setitem__ off a non-builtin class does not taint it",
+     "def f(url):\n    d = OrderedDict()\n    OrderedDict.__setitem__(d, 'k', url)\n"
+     "    raise E(OrderedDict)\n", False),
+    # `+=` by anything but a container display may re-bind the name to a new
+    # str / int, leaving an alias of the old object alone.
+    ("a string built by += through an alias does not taint the source",
+     "def f(url, base):\n    msg = base\n    msg += url\n    log.info('%s', base)\n", False),
+    ("an attribute read out and built by += does not taint its object",
+     "class C:\n    def h(self, url):\n        s = self.base\n        s += url\n"
+     "        log.info('%s', self)\n", False),
+    ("a count built by += through an alias does not flow out",
+     "def g(n, url):\n    k = n\n    k += len(url)\ndef f(n):\n    raise E(n)\n", False),
+    ("a template filled by %= through an alias does not taint the source",
+     "T = 'see %(u)s'\ndef f(url):\n    msg = T\n    msg %= {'u': url}\n"
+     "    log.info('%s', T)\n", False),
+    ("a repeat by *= through an alias does not taint the source",
+     "def f(url, n):\n    k = n\n    k *= [url]\n    raise E(n)\n", False),
+    ("a set difference through an alias puts nothing in",
+     "def f(url):\n    m = set()\n    a = m\n    a -= {url}\n    raise E(m)\n", False),
+    ("a set filled by |= through an alias",
+     "def f(url):\n    m = set()\n    a = m\n    a |= {url}\n    raise E(m)\n", True),
+    ("a set filled by ^= through an alias",
+     "def f(url):\n    m = set()\n    a = m\n    a ^= {url}\n    raise E(m)\n", True),
+    ("a name re-bound to a part of itself still reaches the old object",
+     "def f(url):\n    m = []\n    a = m\n    a = a[0]\n    a.append(url)\n    raise E(m)\n",
+     True),
+    # A store into the whole REPLACES a part, so a part read out before it
+    # is not changed (the shape of a real module-level state dict).
+    ("an element read out is not changed by a store into its container",
+     "def f(url):\n    d = {}\n    x = d['k']\n    d['k'] = url\n    raise E(x)\n", False),
+    ("a prior value read out of a state dict does not make a sink parameter",
+     "S = {}\ndef h(state):\n    prev = S['p']\n    S['p'] = state.get('x')\n"
+     "    log.info(prev)\ndef f(url):\n    h(url)\n", False),
+    ("a part read out and then filled in place reaches its container",
+     "def f(url):\n    d = {}\n    x = d['k']\n    x.append(url)\n    raise E(d)\n", True),
     # RM-1563 wrappers stored on an attribute from outside the class body.
     # Only a store off `self` is known to land on an instance, where a
     # function binds nothing. Off any other receiver it may land on a class
