@@ -25,6 +25,7 @@ from __future__ import annotations
 import ast
 import json
 import logging
+import math
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -246,7 +247,7 @@ def test_scenario_cell_note_carries_no_exception_text(monkeypatch, ds_cap):
     val_a, note_a = _score_cell(*args)
     monkeypatch.setattr(dps_mod, "compute_dps", _raiser("RM838MARKB"))
     _val_b, note_b = _score_cell(*args)
-    assert val_a != val_a  # NaN, the fail-soft contract
+    assert math.isnan(val_a)  # NaN, the fail-soft contract
     assert note_a == note_b == "scorer raised - see logs"
     _assert_logged(ds_cap, "RM838MARKA", "OSError")
 

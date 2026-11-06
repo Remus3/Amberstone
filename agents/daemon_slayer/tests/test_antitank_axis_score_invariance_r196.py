@@ -135,9 +135,7 @@ def _in_scan_scope(rel: Path) -> bool:
         return False
     if set(rel.parts) & _SCAN_SKIP_DIRS:
         return False
-    if "tests" in rel.parts or rel.name.startswith("test_"):
-        return False
-    return True
+    return not ("tests" in rel.parts or rel.name.startswith("test_"))
 
 
 def _iter_scan_scope(root: Path) -> Iterator[Path]:

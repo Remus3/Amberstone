@@ -21,6 +21,7 @@ from __future__ import annotations
 import collections
 import importlib.util
 import json
+import math
 import subprocess
 import sys
 from pathlib import Path
@@ -169,7 +170,7 @@ def test_minimap_clamp01_lets_nan_through_as_before():
     from core import minimap_districts
 
     out = minimap_districts._clamp01(_NAN)
-    assert out != out  # NaN is neither below 0 nor above 1: unchanged
+    assert math.isnan(out)  # NaN is neither below 0 nor above 1: unchanged
 
 
 def test_draft_log_session_game_id_keeps_its_table():

@@ -104,11 +104,9 @@ def _is_external_data(rel_posix: str) -> bool:
     # DDragon-delivered item / spell catalogs may carry punctuation Riot
     # shipped (en-dashes in patch notes, etc); allowlist with the other
     # external-data mirrors.
-    if rel_posix in {"data/meta/ddragon_items.json",
-                     "data/meta/ddragon_runes.json",
-                     "data/meta/ddragon_summoner_spells.json"}:
-        return True
-    return False
+    return rel_posix in {"data/meta/ddragon_items.json",
+                         "data/meta/ddragon_runes.json",
+                         "data/meta/ddragon_summoner_spells.json"}
 
 
 def _should_skip(path: Path, rel_posix: str) -> bool:
@@ -126,9 +124,7 @@ def _should_skip(path: Path, rel_posix: str) -> bool:
         return True
     if path.suffix.lower() in _SKIP_EXT:
         return True
-    if _is_external_data(rel_posix):
-        return True
-    return False
+    return bool(_is_external_data(rel_posix))
 
 
 # Frozen files per CLAUDE.md hard-rule. The strip tool refuses to rewrite

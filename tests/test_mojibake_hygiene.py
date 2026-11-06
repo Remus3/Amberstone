@@ -74,9 +74,7 @@ def _is_external_data(rel_posix: str) -> bool:
         return True
     if rel_posix.startswith("data/meta_build/"):
         return True
-    if rel_posix == "data/meta/ddragon_champions.json":
-        return True
-    return False
+    return rel_posix == "data/meta/ddragon_champions.json"
 
 
 def _should_skip(path: Path, rel_posix: str) -> bool:
@@ -95,9 +93,7 @@ def _should_skip(path: Path, rel_posix: str) -> bool:
         return True
     if path.suffix.lower() in _SKIP_EXT:
         return True
-    if _is_external_data(rel_posix):
-        return True
-    return False
+    return bool(_is_external_data(rel_posix))
 
 
 # Frozen files per CLAUDE.md hard-rule. The repair tool refuses to rewrite

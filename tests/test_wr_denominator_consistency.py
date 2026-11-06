@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import math
 import re
 import sqlite3
 import sys
@@ -364,7 +365,7 @@ def _measure(fn) -> float:
 def _inconsistent(results: dict) -> list[str]:
     """Builders whose WR is not exactly EXPECTED_WR (NaN included)."""
     return [f"{k}={v}" for k, v in results.items()
-            if v != v or abs(v - EXPECTED_WR) > 1e-9]
+            if math.isnan(v) or abs(v - EXPECTED_WR) > 1e-9]
 
 
 def _total_games_variant(rows):

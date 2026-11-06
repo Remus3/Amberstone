@@ -31,6 +31,7 @@ Plus NO-REFLOW (same boxes for the start-of-game placeholder, the live payload
 and the full feed) and the League control (SR keeps its own panels + menu).
 """
 import json
+import math
 from pathlib import Path
 
 from tests.test_overlay_tft_layout import KEEP_OUT, NATURAL_H, tft_default_boxes
@@ -427,7 +428,7 @@ def test_tft_overlay_lobby_chips_carry_the_hp_band(mock_server, pw_browser):
             " return ['--ovx-warn', '--ovx-red', '--ovx-bg-nested'].map("
             "k => s.getPropertyValue(k).split(',').map(v => parseFloat(v))); }")
         warn, red, nested = tok
-        assert all(len(t) == 3 and all(v == v for v in t) for t in tok), tok
+        assert all(len(t) == 3 and all(not math.isnan(v) for v in t) for t in tok), tok
 
         def rgb(s):
             return [float(v) for v in s[s.index("(") + 1:s.index(")")].split(",")]
