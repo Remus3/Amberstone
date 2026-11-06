@@ -1370,6 +1370,57 @@ def _default_bindings(fn, state, late=frozenset()):
 _SINKFN = "sinkfn:"
 
 
+def _def_locals(fn):
+    """RM-1563: the names def `fn` binds as its own locals - a plain-name
+    store, a for / with / walrus / except / import / match target, or a
+    nested def or class name, at the def's own level - minus its parameters
+    and every name declared `global` or `nonlocal` anywhere inside it.
+    Nested defs, classes, lambdas and comprehensions are not entered, and a
+    name declared in a nested scope is never counted local: both keep a
+    binding flowing out, the safe side. Kept per scan, like `_scope_names`."""
+    hit = _LOCALS_CACHE.get(id(fn))
+    if hit is not None and hit[0] is fn:
+        return hit[1]
+    found = set()
+    todo = list(fn.body)
+    while todo:
+        node = todo.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            found.add(node.name)
+            continue
+        if isinstance(node, _OWN_SCOPES):
+            continue
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            found.add(node.id)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            found.add(node.name)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            found.update((a.asname or a.name).split(".")[0] for a in node.names)
+        elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name:
+            found.add(node.name)
+        elif isinstance(node, ast.MatchMapping) and node.rest:
+            found.add(node.rest)
+        todo.extend(ast.iter_child_nodes(node))
+    declared = {name for node in ast.walk(fn)
+                if isinstance(node, (ast.Global, ast.Nonlocal)) for name in node.names}
+    params = {name for name, _ in _param_specs(fn)}
+    names = frozenset(found - declared - params)
+    _LOCALS_CACHE[id(fn)] = (fn, names)
+    return names
+
+
+_LOCALS_CACHE = {}
+# The class attribute marks are about an ATTRIBUTE, which a local of the same
+# spelling does not hold, so they always flow out of a def.
+_ATTR_MARKS = (_LOGATTR, _LOGOBJATTR, _SINKATTR)
+
+
+def _drop_locals(state, names):
+    """`state` without the entries about a name in `names` (`_def_locals`)."""
+    return {entry for entry in state
+            if entry.startswith(_ATTR_MARKS) or _entry_name(entry) not in names}
+
+
 def _drop_wrapper(name, tainted) -> None:
     """A re-binding of `name` replaces whatever wrapper it named."""
     prefix = _SINKFN + name + " "
@@ -2018,7 +2069,8 @@ class _Flow:
             # Decorators, defaults and bases run here. The body is ALSO walked
             # with the enclosing state, as the walk this replaced did, and what
             # it binds flows OUT by union (the body may or may not have run by
-            # the time a later statement does): a `global` or `self.x` set from
+            # the time a later statement does), less a def's own locals (see
+            # RM-1563 below): a `global` or `self.x` set from
             # a URL in one method must still taint a sink in the next. Each
             # function is walked again as its own scope in `_message_leak_sites`.
             # RM-1559: any statement may raise out of the body, so every
@@ -2066,7 +2118,15 @@ class _Flow:
                     hands_back |= _walk_scope(stmt.body,
                                               state | self.ever | seeded,
                                               self.report, self.ever)[3]
-            state = state | (_join(out, *returns, *inside) or set())
+            flowed = _join(out, *returns, *inside) or set()
+            if not isinstance(stmt, ast.ClassDef):
+                # RM-1563: a name the def binds is its own local unless
+                # declared `global` / `nonlocal`, so what the body bound to
+                # it stays inside (`def g(): p = log.info` leaves the
+                # enclosing `p` alone). Only the body's additions are
+                # dropped: the enclosing state is kept whole by the union.
+                flowed = _drop_locals(flowed, _def_locals(stmt))
+            state = state | flowed
             if hands_back and not isinstance(stmt, ast.ClassDef):
                 state.add(stmt.name)
             # RM-1563: the def re-binds its name, so it names this wrapper
@@ -2267,7 +2327,7 @@ def _message_leak_sites(path):
         leaks.add(f"{Path(path).name}:{expr.lineno}: {sorted(set(found))}")
 
     caches = (_SPEC_CACHE, _BODY_CACHE, _NAMES_CACHE, _WALK_CACHE,
-              _CLASS_NAMES_CACHE, _CLASS_KINDS_CACHE)
+              _CLASS_NAMES_CACHE, _CLASS_KINDS_CACHE, _LOCALS_CACHE)
     for cache in caches:
         cache.clear()
     try:
@@ -3399,6 +3459,47 @@ _CHECKER_SAMPLES = (
     ("default read from a name the module re-binds to a wrapper later",
      "def h(x):\n    log.info(x)\nq = fetch\ndef g(m, p=q):\n    p(m)\nq = h\n"
      "def f(url):\n    g(url)\n", False),
+    # RM-1563 (nested-def flow-out precision): a name a def binds is local
+    # to it unless declared `global` / `nonlocal`, so what the body binds to
+    # it does not reach the enclosing scope's name of the same spelling.
+    ("logging alias bound inside a nested def does not flow out",
+     "def f(url):\n    def g():\n        p = log.info\n    g()\n    p(url)\n", False),
+    ("logging alias bound inside a module-level def does not flow out",
+     "def g():\n    p = log.info\ndef f(url):\n    p(url)\n", False),
+    ("value bound inside a nested def does not flow out",
+     "def f(url, m):\n    def g():\n        m = url\n    g()\n    raise E(m)\n", False),
+    ("wrapper defined inside a nested def does not flow out",
+     "def f(url):\n    def g():\n        def h(m):\n            log.info(m)\n    g()\n"
+     "    h(url)\n", False),
+    ("logger object bound inside a nested def does not flow out",
+     "def f(url):\n    def g():\n        out = log\n    g()\n    out.info(url)\n", False),
+    ("for target bound inside a nested def does not flow out",
+     "def f(url, m):\n    def g():\n        for m in (url,):\n            pass\n    g()\n"
+     "    raise E(m)\n", False),
+    ("except name bound inside a nested def does not flow out",
+     "def f():\n    def g():\n        try:\n            h()\n        except OSError as exc:\n"
+     "            pass\n    g()\n    raise E(f'{exc}')\n", False),
+    ("walrus target bound inside a nested def does not flow out",
+     "def f(url, m):\n    def g():\n        (m := url)\n    g()\n    raise E(m)\n", False),
+    # ... and every way the binding DOES reach the enclosing scope still flows.
+    ("logging alias bound through global in a nested def",
+     "def f(url):\n    def g():\n        global p\n        p = log.info\n    g()\n    p(url)\n",
+     True),
+    ("logging alias bound through nonlocal in a nested def",
+     "def f(url):\n    p = str\n    def g():\n        nonlocal p\n        p = log.info\n"
+     "    g()\n    p(url)\n", True),
+    ("global declared deeper than the def that also binds the name",
+     "def f(url):\n    def g():\n        m = 'x'\n        def h():\n            global m\n"
+     "            m = url\n        h()\n    g()\n    raise E(m)\n", True),
+    ("parameter mutated inside a nested def",
+     "def f(url, q):\n    def g(q):\n        q.append(url)\n    g(q)\n    raise E(q[0])\n",
+     True),
+    ("parameter mutated, then re-bound, inside a nested def",
+     "def f(url, q):\n    def g(q):\n        q.append(url)\n        q = []\n    g(q)\n"
+     "    raise E(q[0])\n", True),
+    ("attribute alias stored beside a local of the same name",
+     "class C:\n    def __init__(self):\n        p = 1\n        self.p = log.info\n"
+     "    def m(self, url):\n        self.p(url)\n", True),
 )
 
 
