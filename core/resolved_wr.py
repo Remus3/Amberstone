@@ -26,6 +26,8 @@ listing them and badge them via :func:`classify`.
 """
 from __future__ import annotations
 
+import math
+import re
 import sqlite3
 from typing import Any, Iterable
 
@@ -44,6 +46,15 @@ _WINNER_COUNT_KEY = "winner_count"
 _WIN_STRINGS = {"win": True, "true": True, "1": True,
                 "loss": False, "fail": False, "lose": False,
                 "false": False, "0": False}
+
+# Only these spellings CLEAR a flag. Any other truthy value - including
+# junk such as "maybe" or NaN - keeps the game out of the denominator
+# (fail closed), so a malformed source can only shrink the sample, never
+# leak a guessed or remade game into it (RM-1920).
+_FLAG_FALSE_STRINGS = frozenset({"", "0", "false", "no", "n", "off"})
+
+# A SQL identifier; resolution_select interpolates the alias (RM-1924).
+_IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 
 
 def _get(row: Any, key: str) -> Any:
@@ -69,23 +80,84 @@ def _first(row: Any, keys: tuple[str, ...]) -> Any:
     return None
 
 
+def _finite_number(value: Any) -> float | None:
+    """*value* as a finite float, or None. Bools are not numbers here."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            number = float(value)
+        except OverflowError:
+            return None
+    elif isinstance(value, str):
+        try:
+            number = float(value.strip())
+        except ValueError:
+            return None
+    else:
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _as_int(value: Any) -> int | None:
+    """An integral finite number (1, 1.0, "1") as int; else None."""
+    number = _finite_number(value)
+    if number is None or not number.is_integer():
+        return None
+    return int(number)
+
+
 def _as_win(value: Any) -> bool | None:
     if isinstance(value, bool):
         return value
-    if isinstance(value, int):
-        return {1: True, 0: False}.get(value)
     if isinstance(value, str):
         return _WIN_STRINGS.get(value.strip().lower())
+    return {1: True, 0: False}.get(_as_int(value))
+
+
+def _first_win(row: Any) -> bool | None:
+    """The first win key whose value PARSES (RM-1921): a junk ``win``
+    no longer hides a valid ``tracked_win``."""
+    for k in _WIN_KEYS:
+        win = _as_win(_get(row, k))
+        if win is not None:
+            return win
     return None
 
 
+def _flag_set(value: Any) -> bool:
+    """True unless *value* is missing or an explicit false (RM-1920)."""
+    if value is None or value is False:
+        return False
+    if isinstance(value, str) and value.strip().lower() in _FLAG_FALSE_STRINGS:
+        return False
+    number = _finite_number(value)
+    if number is not None:
+        return number != 0
+    # True, NaN, inf or any other type: not an explicit false.
+    return True
+
+
+def _duration_s(row: Any) -> int:
+    """The first KNOWN duration in seconds, or 0 for unknown.
+
+    Unknown = missing, zero, negative, bool, non-finite or unparseable
+    (RM-1917 / RM-1918); an unknown value under one key does not
+    hide a real value under a later key (RM-1919).
+    """
+    for k in _DURATION_KEYS:
+        number = _finite_number(_get(row, k))
+        # Under one whole second truncates to 0 = unknown, so it must not
+        # hide a later key either.
+        if number is not None and number >= 1:
+            return int(number)
+    return 0
+
+
 def is_remake(row: Any) -> bool:
-    if _first(row, _EARLY_SURRENDER_KEYS):
+    if any(_flag_set(_get(row, k)) for k in _EARLY_SURRENDER_KEYS):
         return True
-    try:
-        duration = int(_first(row, _DURATION_KEYS) or 0)
-    except (TypeError, ValueError):
-        duration = 0
+    duration = _duration_s(row)
     # Unknown duration (0) is not a remake - same rule as
     # corpus_hygiene.judge.
     return bool(duration) and duration < REMAKE_MAX_SECONDS
@@ -95,22 +167,34 @@ def classify(row: Any) -> str:
     """'win' | 'loss' | 'remake' | 'unknown' for one game row."""
     if is_remake(row):
         return "remake"
-    if any(_get(row, k) for k in _UNRESOLVED_FLAG_KEYS):
+    if any(_flag_set(_get(row, k)) for k in _UNRESOLVED_FLAG_KEYS):
         return "unknown"
     winners = _get(row, _WINNER_COUNT_KEY)
-    if winners is not None and winners != 1:
+    # RM-1922: "1" / 1.0 count as one winner; a bool or junk count
+    # is not a count, so the result is unknown.
+    if winners is not None and _as_int(winners) != 1:
         return "unknown"
-    win = _as_win(_first(row, _WIN_KEYS))
+    win = _first_win(row)
     if win is None:
         return "unknown"
     return "win" if win else "loss"
 
 
 def wr_pct(wins: int, resolved: int, ndigits: int | None = 1):
-    """Numeric percent rounded to *ndigits*, or None when resolved == 0."""
-    if not resolved:
+    """Numeric percent rounded to *ndigits*, or None when resolved == 0.
+
+    None also for counts that cannot be a record (RM-1923): a bool,
+    a non-integral or non-finite number, a negative count or more wins
+    than resolved games. The display then reads the ``"-"`` sentinel
+    instead of raising or showing an impossible percent.
+    """
+    if isinstance(wins, bool) or isinstance(resolved, bool):
         return None
-    pct = 100.0 * wins / resolved
+    w = _as_int(wins) if isinstance(wins, (int, float)) else None
+    n = _as_int(resolved) if isinstance(resolved, (int, float)) else None
+    if w is None or n is None or n <= 0 or w < 0 or w > n:
+        return None
+    pct = 100.0 * w / n
     if ndigits == 0:
         return int(round(pct))
     return round(pct, ndigits) if ndigits is not None else pct
@@ -150,7 +234,14 @@ def resolution_select(conn: sqlite3.Connection, matches_alias: str) -> str:
     simply contributes nothing, and the row is judged on its result only.
     The early-surrender flag is game-wide in Match-V5, so MAX over the
     match's participants is the game's value.
+
+    *matches_alias* is interpolated into SQL, so anything but a plain
+    identifier raises ValueError (RM-1924).
     """
+    if not isinstance(matches_alias, str) or not _IDENT_RE.match(
+            matches_alias):
+        raise ValueError(f"matches_alias must be a SQL identifier,"
+                         f" got {matches_alias!r}")
     frag = ""
     if "game_duration_s" in _cols(conn, "matches"):
         frag += f", {matches_alias}.game_duration_s AS game_duration_s"
