@@ -30,6 +30,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +77,16 @@ HEALTH_PATH = _PROJECT_ROOT / "ops" / "runtime" / "health.json"
 
 POLL_SEC = 0.5          # matches the existing :8888 dashboard cadence
 MAX_PAYLOAD_BYTES = 128 * 1024   # sanity cap - coaching JSON ~ 1-2 KB
+
+
+def _stat_blocking(path: Path) -> os.stat_result:
+    """``path.stat()``; _check_one runs it in the default executor, never on the loop."""
+    return path.stat()
+
+
+def _read_text_blocking(path: Path) -> str:
+    """UTF-8 read of ``path``; _check_one runs it in the default executor, never on the loop."""
+    return path.read_text(encoding="utf-8")
 
 
 class FileIngest:
@@ -125,8 +136,9 @@ class FileIngest:
 
     async def _check_one(self, path: Path, source: str, *,
                          mode: str, envelope_type: str) -> None:
+        loop = asyncio.get_running_loop()
         try:
-            st = path.stat()
+            st = await loop.run_in_executor(None, _stat_blocking, path)
         except FileNotFoundError:
             return
         except OSError as e:
@@ -142,7 +154,7 @@ class FileIngest:
             return    # no change
 
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(await loop.run_in_executor(None, _read_text_blocking, path))
         except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
             logger.warning("parse %s: %s", source, e)
             return
@@ -157,7 +169,6 @@ class FileIngest:
                 and _PREFLIP_AVAILABLE
                 and isinstance(data, dict)):
             try:
-                loop = asyncio.get_running_loop()
                 lcu_snapshot = await loop.run_in_executor(None, _lcu_summary)
                 # S134 P0: same standalone-TFT mirror as /api/state, so the
                 # WS health envelope agrees with onState during the match.
