@@ -6,6 +6,13 @@ Only comments/docstrings/dividers - no executable string literals, no
 load-bearing separators. The 2 load-bearing files are intentionally excluded.
 """
 import pathlib
+import sys
+
+_ROOT = pathlib.Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from core.polled_json import atomic_write_text  # noqa: E402
 
 # Decorative-glyph -> ASCII map (union of what the slice agents normalized).
 GLYPHS = {
@@ -38,10 +45,8 @@ for rel in TARGETS:
     if remaining:
         print(f"WARN {rel}: residual non-ascii {[hex(ord(c)) for c in remaining]}")
     if text != orig:
-        # LF only (repo EOL guard); atomic replace.
-        tmp = p.with_suffix(p.suffix + ".tmp")
-        tmp.write_text(text, encoding="utf-8", newline="\n")
-        tmp.replace(p)
+        # LF only (repo EOL guard); core.polled_json atomic write.
+        atomic_write_text(p, text)
         print(f"swept {rel}")
     else:
         print(f"nochange {rel}")

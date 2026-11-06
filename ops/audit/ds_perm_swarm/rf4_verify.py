@@ -40,13 +40,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[3]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+from core.polled_json import atomic_write_text  # noqa: E402
 
 # The operator-gated AP-in-ARAM archetype-divergence set (do-NOT-auto-flip). The RF
 # builders' ``_EXCLUDE_CHAMPS``; NOT a survivability cluster. (Udyr is a true bruiser
@@ -270,10 +271,8 @@ def verify_resolved_survivability(top_k: int = 6) -> list[dict]:
 
 
 def _atomic_write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    os.replace(tmp, path)
+    # core.polled_json: per-writer scratch name, fsync, bounded retry, mkdir.
+    atomic_write_text(path, text)
 
 
 def _render_md(report: dict) -> str:
