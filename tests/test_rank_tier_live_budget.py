@@ -854,6 +854,16 @@ _LOGOBJ = "logobj:"
 # whatever `o` is: the safe side.
 _LOGATTR = "logattr:"
 _LOGOBJATTR = "logobjattr:"
+# RM-1786: a WRAPPER (`_SINKFN`) the class body binds at its own level - a
+# def, a lambda, or a staticmethod / classmethod over one - is a method, held
+# as `_SINKATTR + name + " " + kind + " " + spec` (`_class_attr_marks`), and a
+# lambda stored on an attribute (`self.g = lambda m: log.info(m)`) makes the
+# same mark with kind `static` (`_retaint`). The kind says how a call off an
+# attribute of that name binds the first parameter (`_attr_specs`): `static`
+# binds nothing, `cls` always binds it, and `inst:<class>` binds it unless the
+# receiver is the class name itself (`C.g(o, url)` is unbound). As with
+# `_LOGATTR`, the receiver is otherwise not checked: the safe side.
+_SINKATTR = "sinkattr:"
 
 
 def _object_only(name, tainted) -> bool:
@@ -884,11 +894,16 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
                if plain else [])
     # RM-1563: `p = lambda m: log.info(m)` makes `p` a wrapper. Only a bare
     # name target is tracked (residual: tuple targets, walrus, for).
-    wrapper = (_sink_specs(value, tainted, late)
-               if plain and isinstance(value, ast.Lambda) else set())
+    # RM-1786: so does a staticmethod / classmethod over a lambda.
+    fn = _wrapped_lambda(value)
+    wrapper = _sink_specs(fn, tainted, late) if plain and fn is not None else set()
     # RM-1563: `self.p = log.info` stores the alias in an attribute, as a
     # class body's `p = log.info` does, so it makes the same mark. Add-only:
     # one store does not replace what another instance or the class holds.
+    # RM-1786: a wrapper lambda stored on an attribute is a `static`
+    # method mark: a function held on an instance binds no `self`. Residual:
+    # one stored on a CLASS from outside (`C.g = lambda self, m: ...`) does
+    # bind `self` off an instance, and is read unshifted.
     attr_marks = set()
     for target in targets if plain else []:
         if isinstance(target, ast.Attribute):
@@ -896,6 +911,8 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
                 attr_marks.add(_LOGATTR + target.attr)
             if _is_logger_expr(value, tainted):
                 attr_marks.add(_LOGOBJATTR + target.attr)
+            attr_marks.update(f"{_SINKATTR}{target.attr} static {spec}"
+                              for spec in wrapper)
     tainted |= attr_marks
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
@@ -906,6 +923,18 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     for target in targets:
         if isinstance(target, ast.Name):
             _bind_wrapper(target.id, wrapper, tainted)
+
+
+_METHOD_WRAPPERS = ("staticmethod", "classmethod")
+
+
+def _wrapped_lambda(value):
+    """RM-1786: the lambda `value` binds as a callable - the lambda itself,
+    or the one a staticmethod / classmethod wraps - or None."""
+    if (isinstance(value, ast.Call) and _call_name(value) in _METHOD_WRAPPERS
+            and value.args):
+        value = value.args[0]
+    return value if isinstance(value, ast.Lambda) else None
 
 
 def _is_tainted(expr, tainted, late=frozenset()) -> bool:
@@ -1333,7 +1362,8 @@ def _bind_wrapper(name, specs, tainted) -> None:
 def _wrapper_args(call, tainted=frozenset()):
     """RM-1563: the arguments a call through a wrapper (`_SINKFN`) binds
     to its sink parameters, or None if `call` is not through one. A lambda
-    called in place is judged where it stands. After a starred positional
+    called in place is judged where it stands; RM-1786: a call off an
+    attribute reads the method marks (`_attr_specs`). After a starred positional
     argument every later position is unknown, so every one counts, and a
     starred argument or a `**` mapping counts whole: the safe side."""
     f = call.func
@@ -1342,6 +1372,8 @@ def _wrapper_args(call, tainted=frozenset()):
         specs = {e[len(prefix):] for e in tainted if e.startswith(prefix)}
     elif isinstance(f, ast.Lambda):
         specs = _sink_specs(f, tainted)
+    elif isinstance(f, ast.Attribute):
+        specs = _attr_specs(f, tainted)
     else:
         return None
     if not specs:
@@ -1358,6 +1390,52 @@ def _wrapper_args(call, tainted=frozenset()):
         if kw.arg is None or "dstar" in specs or f"kw:{kw.arg}" in specs:
             out.append(kw.value)
     return out
+
+
+def _bound_spec(spec):
+    """RM-1786: `spec` as seen by a call that binds the first parameter
+    itself (`self` / `cls`): every position moves down one, the first one
+    is no longer the caller's (None), and keywords are unchanged."""
+    if spec.startswith("pos:"):
+        i = int(spec[4:])
+        return f"pos:{i - 1}" if i > 0 else None
+    if spec.startswith("star:"):
+        return f"star:{max(int(spec[5:]) - 1, 0)}"
+    return spec
+
+
+def _attr_specs(f, tainted):
+    """RM-1786: the `_SINKFN`-style specs a call off attribute `f` binds
+    to sink parameters of a method wrapper (`_SINKATTR`), each read for how
+    that call binds the first parameter. A plain method (`inst:<class>`) is
+    bound off `self`, `super()` or a new instance of its own class (`C()`),
+    unbound off its own class name, and read BOTH ways off any other
+    receiver, which may be a class (`cls`, `type(self)`, a subclass `D`, a
+    dotted path `O.I`) or an instance: the safe side.
+    Residuals: the first parameter itself is not judged on a bound call
+    (`self.g()` with a tainted `self`; the method body sees `self`'s taint
+    through the class state instead), and a def re-wrapped by name
+    (`g = staticmethod(g)`) drops its wrapper, like the open `h = g` alias."""
+    prefix = _SINKATTR + f.attr + " "
+    recv = f.value
+    specs = set()
+    for entry in tainted:
+        if not entry.startswith(prefix):
+            continue
+        kind, spec = entry[len(prefix):].split(" ", 1)
+        owner = kind[len("inst:"):]
+        if kind == "static":
+            ways = (spec,)
+        elif kind == "cls" or (isinstance(recv, ast.Name) and recv.id == "self") or (
+                isinstance(recv, ast.Call) and isinstance(recv.func, ast.Name)
+                and recv.func.id in ("super", owner)):
+            ways = (_bound_spec(spec),)
+        elif isinstance(recv, ast.Name) and recv.id == owner:
+            ways = (spec,)
+        else:
+            ways = (spec, _bound_spec(spec))
+        specs.update(s for s in ways if s is not None)
+    return specs
 
 
 def _call_views(node, view, late, out) -> None:
@@ -1437,13 +1515,15 @@ _NAMES_CACHE = {}
 def _entry_name(entry):
     """The name a taint-state entry is about: `url`, `obj:r`, `logfn:p`,
     `logobj:lg` and `sinkfn:g pos:0` give url, r, p, lg and g; the class
-    attribute marks (`logattr:p`) give the attribute name, which a body
-    reading `self.p` holds as an `Attribute.attr` string."""
+    attribute marks (`logattr:p`, `sinkattr:g static pos:0`) give the
+    attribute name, which a body reading `self.p` holds as an
+    `Attribute.attr` string."""
     for mark in (_OBJ, _LOGFN, _LOGOBJ, _LOGATTR, _LOGOBJATTR):
         if entry.startswith(mark):
             return entry[len(mark):]
-    if entry.startswith(_SINKFN):
-        return entry[len(_SINKFN):].split(" ", 1)[0]
+    for mark in (_SINKFN, _SINKATTR):
+        if entry.startswith(mark):
+            return entry[len(mark):].split(" ", 1)[0]
     return entry
 
 
@@ -1529,12 +1609,66 @@ def _class_level_names(body):
 _CLASS_NAMES_CACHE = {}
 
 
-def _class_attr_marks(body, out):
+def _method_kind(fn):
+    """RM-1786: how def `fn` in a class body binds its first parameter,
+    read off its decorators: `static`, `cls` or `inst`."""
+    for dec in fn.decorator_list:
+        node = dec.func if isinstance(dec, ast.Call) else dec
+        name = (node.id if isinstance(node, ast.Name)
+                else node.attr if isinstance(node, ast.Attribute) else "")
+        if name == "staticmethod":
+            return "static"
+        if name == "classmethod":
+            return "cls"
+    return "inst"
+
+
+def _class_method_kinds(body):
+    """RM-1786: {name: kinds} for every def, and every plain name bound to
+    a lambda (or a staticmethod / classmethod over one), at class body
+    `body`'s own level - its branches, loops and handlers included, never
+    inside a method, nested class, lambda or comprehension. A name bound
+    more than once keeps every kind: the safe side. Kept per scan."""
+    hit = _CLASS_KINDS_CACHE.get(id(body))
+    if hit is None or hit[0] is not body:
+        kinds, stack = {}, list(body)
+        while stack:
+            node = stack.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                kinds.setdefault(node.name, set()).add(_method_kind(node))
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                stack.extend(_own_nodes(node))
+                continue
+            if isinstance(node, _OWN_SCOPES):
+                continue
+            if (isinstance(node, (ast.Assign, ast.AnnAssign))
+                    and _wrapped_lambda(node.value) is not None):
+                kind = {"staticmethod": "static", "classmethod": "cls"}.get(
+                    _call_name(node.value) if isinstance(node.value, ast.Call)
+                    else "", "inst")
+                targets = (node.targets if isinstance(node, ast.Assign)
+                           else [node.target])
+                for target in targets:
+                    if isinstance(target, ast.Name):
+                        kinds.setdefault(target.id, set()).add(kind)
+            stack.extend(ast.iter_child_nodes(node))
+        hit = _CLASS_KINDS_CACHE[id(body)] = (
+            body, {n: frozenset(k) for n, k in kinds.items()})
+    return hit[1]
+
+
+_CLASS_KINDS_CACHE = {}
+
+
+def _class_attr_marks(body, out, cls_name=""):
     """RM-1563: the `_LOGATTR` / `_LOGOBJATTR` marks of class body `body`
     whose fall-through state is `out`. A method runs only once the class
     exists, so only what the body leaves BOUND counts (`p = log.info` then
     `p = fetch` makes no mark), and only for names the body itself binds: a
-    logging alias in a method or in the enclosing scope is not an attribute."""
+    logging alias in a method or in the enclosing scope is not an attribute.
+    RM-1786: likewise a wrapper (`_SINKFN`) the body leaves bound to a
+    def or lambda of its own makes a `_SINKATTR` mark per kind and spec; a
+    wrapper defined inside a method, or in the enclosing scope, does not."""
     if not out:
         return set()
     marks = set()
@@ -1543,6 +1677,14 @@ def _class_attr_marks(body, out):
             marks.add(_LOGATTR + name)
         if _LOGOBJ + name in out:
             marks.add(_LOGOBJATTR + name)
+    kinds = _class_method_kinds(body)
+    for entry in out:
+        if not entry.startswith(_SINKFN):
+            continue
+        name, spec = entry[len(_SINKFN):].split(" ", 1)
+        for kind in kinds.get(name, ()):
+            tag = f"inst:{cls_name}" if kind == "inst" else kind
+            marks.add(f"{_SINKATTR}{name} {tag} {spec}")
     return marks
 
 
@@ -1680,7 +1822,7 @@ class _Flow:
                 stmt.body, state, self.report, self.ever)
             marks = set()
             while isinstance(stmt, ast.ClassDef):
-                more = _class_attr_marks(stmt.body, out) - state - marks
+                more = _class_attr_marks(stmt.body, out, stmt.name) - state - marks
                 if not more:
                     break
                 marks |= more
@@ -1892,7 +2034,7 @@ def _message_leak_sites(path):
         leaks.add(f"{Path(path).name}:{expr.lineno}: {sorted(set(found))}")
 
     caches = (_SPEC_CACHE, _BODY_CACHE, _NAMES_CACHE, _WALK_CACHE,
-              _CLASS_NAMES_CACHE)
+              _CLASS_NAMES_CACHE, _CLASS_KINDS_CACHE)
     for cache in caches:
         cache.clear()
     try:
@@ -2670,6 +2812,104 @@ _CHECKER_SAMPLES = (
      "        self.p(url)\n", False),
     ("a module alias does not make a class attribute",
      "p = log.info\nclass C:\n    def m(self, url):\n        self.p(url)\n", False),
+    # RM-1786 method wrappers: a def or lambda the class body binds whose
+    # parameter reaches a sink is a wrapper held as an attribute. A call off
+    # an instance or `cls` binds the first parameter (`self` / `cls`), so the
+    # positions shift by one; a staticmethod binds nothing, and a plain
+    # method called off the class name itself is unbound.
+    ("method wrapper called off self",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    def h(self, url):\n"
+     "        self.g(url)\n", True),
+    ("class-level lambda method wrapper",
+     "class C:\n    g = lambda self, m: log.info(m)\n    def h(self, url):\n"
+     "        self.g(url)\n", True),
+    ("staticmethod wrapper called off self",
+     "class C:\n    @staticmethod\n    def g(m):\n        log.info(m)\n"
+     "    def h(self, url):\n        self.g(url)\n", True),
+    ("staticmethod wrapper called off the class",
+     "class C:\n    @staticmethod\n    def g(m):\n        log.info(m)\n"
+     "def f(url):\n    C.g(url)\n", True),
+    ("classmethod wrapper called off the class",
+     "class C:\n    @classmethod\n    def g(cls, m):\n        log.info(m)\n"
+     "def f(url):\n    C.g(url)\n", True),
+    ("method wrapper called unbound off the class",
+     "class C:\n    def g(self, m):\n        log.info(m)\n"
+     "def f(o, url):\n    C.g(o, url)\n", True),
+    ("method wrapper called off an instance after the class",
+     "class C:\n    def g(self, m):\n        log.info(m)\ndef f(url):\n"
+     "    C().g(url)\n", True),
+    ("method wrapper defined after its caller",
+     "class C:\n    def h(self, url):\n        self.g(url)\n    def g(self, m):\n"
+     "        log.info(m)\n", True),
+    ("method wrapper called by keyword",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    def h(self, url):\n"
+     "        self.g(m=url)\n", True),
+    ("varargs method wrapper",
+     "class C:\n    def g(self, *a):\n        log.info(*a)\n    def h(self, url):\n"
+     "        self.g('x', url)\n", True),
+    ("varargs after a named parameter of a method wrapper",
+     "class C:\n    def g(self, m, *a):\n        log.info(*a)\n    def h(self, url):\n"
+     "        self.g('x', url)\n", True),
+    ("method wrapper that raises",
+     "class C:\n    def g(self, m):\n        raise E(m)\n    def h(self, url):\n"
+     "        self.g(url)\n", True),
+    ("async method wrapper",
+     "class C:\n    async def g(self, m):\n        log.info(m)\n"
+     "    async def h(self, url):\n        await self.g(url)\n", True),
+    ("staticmethod over a lambda",
+     "class C:\n    g = staticmethod(lambda m: log.info(m))\n"
+     "    def h(self, url):\n        self.g(url)\n", True),
+    ("instance attribute lambda wrapper",
+     "class C:\n    def __init__(self):\n        self.g = lambda m: log.info(m)\n"
+     "    def h(self, url):\n        self.g(url)\n", True),
+    ("annotated class-level lambda method wrapper",
+     "class C:\n    g: Any = lambda self, m: log.info(m)\n    def h(self, url):\n"
+     "        self.g(url)\n", True),
+    ("annotated staticmethod over a lambda",
+     "class C:\n    g: Any = staticmethod(lambda m: log.info(m))\n"
+     "    def h(self, url):\n        self.g(url)\n", True),
+    ("method wrapper called unbound off a subclass",
+     "class C:\n    def g(self, m):\n        log.info(m)\nclass D(C):\n    pass\n"
+     "def f(o, url):\n    D.g(o, url)\n", True),
+    ("method wrapper called unbound off a dotted class path",
+     "class O:\n    class I:\n        def g(self, m):\n            log.info(m)\n"
+     "def f(o, url):\n    O.I.g(o, url)\n", True),
+    ("method wrapper called unbound off cls",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    @classmethod\n"
+     "    def k(cls, o, url):\n        cls.g(o, url)\n", True),
+    ("method wrapper called unbound off type(self)",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    def h(self, url):\n"
+     "        type(self).g(self, url)\n", True),
+    # RM-1786 keep-greens.
+    ("method that does not log its parameter",
+     "class C:\n    def g(self, m):\n        log.info('x')\n    def h(self, url):\n"
+     "        self.g(url)\n", False),
+    ("method wrapper positional shift",
+     "class C:\n    def g(self, m, n):\n        log.info(m)\n    def h(self, url):\n"
+     "        self.g('x', url)\n", False),
+    ("method wrapper positional shift off a new instance",
+     "class C:\n    def g(self, m, n):\n        log.info(m)\ndef f(url):\n"
+     "    C().g('x', url)\n", False),
+    ("classmethod wrapper positional shift",
+     "class C:\n    @classmethod\n    def g(cls, m, n):\n        log.info(m)\n"
+     "def f(url):\n    C.g('x', url)\n", False),
+    ("unbound method call keeps the self slot",
+     "class C:\n    def g(self, m, n):\n        log.info(n)\n"
+     "def f(o, url):\n    C.g(o, url, 'x')\n", False),
+    # The two below log their SECOND parameter, so a mark made for them would
+    # be read shifted onto `url`.
+    ("a module wrapper does not make a method wrapper",
+     "def g(s, m):\n    log.info(m)\nclass C:\n    def h(self, url):\n"
+     "        self.g(url)\n", False),
+    ("method wrapper re-bound before the class ends",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    g = fetch\n"
+     "    def h(self, url):\n        self.g(url)\n", False),
+    ("method wrapper called with a sanitized value",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    def h(self, url):\n"
+     "        self.g(_safe_url(url))\n", False),
+    ("a wrapper nested in a method is not an attribute",
+     "class C:\n    def a(self):\n        def g(s, m):\n            log.info(m)\n"
+     "    def h(self, url):\n        self.g(url)\n", False),
 )
 
 
