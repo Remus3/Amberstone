@@ -1500,24 +1500,11 @@
     min-width: 0;
   }
   /* An ARAM / Arena / experimental build row (checkbox | meta | spells |
-   * items) wraps instead of squeezing: its grid let the meta column fall
-   * under the 200 px badge, which then drew over the spells and items
-   * (meta 0 px at 640 before this block). The meta keeps the badge's
-   * width while the line holds it (less the 12 px checkbox and its gap,
-   * so the checkbox never sits alone), and the items drop to their own
-   * line only when the row cannot hold all four; capped at the row less
-   * the 20 px spells and a gap, they then share a line with the spells. */
-  #view-champ-select .csv-build-row:not(.csv-build-row-collapsed) {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 10px;
-    row-gap: 6px;
-  }
-  #view-champ-select .csv-build-row:not(.csv-build-row-collapsed) .csv-build-meta {
-    flex: 1 1 min(200px, calc(100% - 22px));
-    width: auto;
-  }
+   * items) is a wrapping flex row at every width (RM-1781 moved the
+   * U-170 flex row to the base rule; its grid let the meta column fall
+   * to 0 px at 640). Here the items, once on their own line, are capped
+   * at the row less the 20 px spells and a gap, so on a narrow row they
+   * share a line with the spells instead of leaving them alone. */
   #view-champ-select .csv-build-row .csv-build-items {
     max-width: calc(100% - 30px);
   }
@@ -1989,11 +1976,21 @@
   gap: 4px;
 }
 /* s211: 4-column row - checkbox / meta (3 stacked: badge, main tree,
- * sub tree) / summoners stacked / items (larger now). */
+ * sub tree) / summoners stacked / items (larger now).
+ * RM-1781 (s144 lane uiux): a wrapping flex row, no longer the grid
+ * `14px 1fr auto auto`. The grid's meta column was what the spells and
+ * items left over, so it fell under the fixed 200 px badge and 130 px
+ * keystone strip, which then drew over the spells and items (meta 51 px
+ * at 721, 177 px at 1201; RM-1780 fixed 720 and under). Where one
+ * line holds all four the geometry is the grid's (checkbox in a 14 px
+ * box, meta at +24, items flush right, 10 px gaps); otherwise the items
+ * drop under the meta, 6 px below it. The collapsed SR entry is a
+ * column flex of auto height, which never wraps. */
 .csv-build-row {
-  display: grid;
-  grid-template-columns: 14px 1fr auto auto;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  row-gap: 6px;
   align-items: center;
   /* UIX1 audit 2026-06-16: hit-target floor on the non-collapsed (SR
    * experimental / ARAM / Arena) variant click row. The collapsed
@@ -2016,6 +2013,8 @@
 }
 .csv-build-checkbox {
   width: 12px; height: 12px;
+  /* RM-1781: holds the grid's 14 px checkbox box in the flex row. */
+  margin-inline-end: 2px;
   border-radius: 50%;
   border: 2px solid var(--text-faint);
   background: transparent;
@@ -2041,6 +2040,13 @@
   align-items: flex-start;
   width: 100%;
   gap: 4px;
+}
+/* RM-1781: in the flex row the meta keeps the badge's 200 px while the
+ * line holds it (less the 14 px checkbox box and its gap, so the checkbox
+ * never sits alone) and grows into the rest of the line, as the grid's
+ * 1fr column did. */
+.csv-build-row > .csv-build-meta {
+  flex: 1 1 min(200px, calc(100% - 24px));
 }
 .csv-build-label {
   /* UI scale v2.1 (item 202 audit MUST FIX): 14 -> --fs-xs (16) floor. */

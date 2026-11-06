@@ -35,8 +35,10 @@ modes sr, aram and arena:
     overlap, and neither the checkbox nor the spells sit alone on a line.
 Above the line (722x900 and 1920x920) the layout is unchanged: the 1200 px
 one-track grid at 722 and the three-track grid at 1920, ten bench columns,
-the three-track portrait row, two-track path rows, the grid build row and
-the rune rail beside the build list.
+the three-track portrait row, two-track path rows, the flex build row and
+the rune rail beside the build list. (RM-1781 made the build row a
+wrapping flex row at every width; test_champ_select_build_row_mid_width.py
+pins it above 720, with the grid's geometry wherever one line holds it.)
 """
 import base64
 import math
@@ -382,7 +384,7 @@ def test_layout_is_unchanged_above_the_line(wide, mode, size):
         assert [row["cols"] for row in r["cellRows"]["bench"]] == [10], r
         assert r["buildRows"], size
         for row in r["buildRows"]:
-            assert row["display"] == "grid", (size, row)
+            assert row["display"] == "flex", (size, row)
     if mode == "arena":
         for key in ("duo", "aug", "team"):
             assert r["cellRows"][key], (size, key)
