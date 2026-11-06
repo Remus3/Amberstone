@@ -47,6 +47,7 @@ participants.participant_id -> timeline_frames).
 from __future__ import annotations
 
 import logging
+import math
 import sqlite3
 from pathlib import Path
 from typing import Optional
@@ -81,13 +82,122 @@ MIN_GAMES_N = 5           # below this a minute's average is untrustworthy -> No
 
 
 def _open_ro() -> Optional[sqlite3.Connection]:
+    """A read-only handle to the local rewind db, or None.
+
+    The URI comes from ``Path.as_uri()``, never an f-string over the raw path:
+    a '#' (URI fragment) or '%' in the checkout path would otherwise open a
+    different file and the curve would go silently empty (mirror
+    core.perf_curve._open_ro).
+    """
     if not _REWIND_DB.exists():
         return None
     try:
-        return sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True)
+        return sqlite3.connect(_REWIND_DB.resolve().as_uri() + "?mode=ro",
+                               uri=True)
     except sqlite3.Error as exc:
         log.warning("op_score_curve open: %s", exc)
         return None
+
+
+# SQLite binds a signed 64-bit INTEGER; a larger Python int raises
+# OverflowError (not sqlite3.Error) at execute time.
+_SQLITE_INT_MIN = -(2 ** 63)
+_SQLITE_INT_MAX = 2 ** 63 - 1
+_SQLITE_INT_DIGITS = len(str(_SQLITE_INT_MAX))
+
+# A stored stat / timestamp magnitude above this is corruption (a real game's
+# cumulative gold, xp, cs or damage is far below it). Such a value would
+# otherwise become the per-minute normalization max and read every real game
+# at that minute as 0.
+_MAX_ABS_VALUE = 1e12
+
+
+def _coerce_champion(value) -> Optional[int]:
+    """An integral champion id, or None for anything that is not one.
+
+    Accepts an int (never a bool), an integral finite float and a str of an
+    optionally signed decimal integer (surrounding whitespace ignored).
+    Everything else - bool, text, bytes, NaN, inf, a fractional float, a
+    container - is None, and so is any id outside SQLite's signed 64-bit
+    range (no stored row can carry it, and binding it raises OverflowError).
+    A digit string longer than that range is refused BEFORE int(), which
+    would otherwise raise past Python's 4300-digit conversion limit. Same
+    contract as core.perf_curve._coerce_champion.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        number = value
+    elif isinstance(value, float):
+        # is_integer() is False for NaN and +-inf.
+        if not value.is_integer():
+            return None
+        number = int(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        body = text[1:] if text[:1] in ("+", "-") else text
+        if not body or not body.isascii() or not body.isdigit():
+            return None
+        digits = body.lstrip("0") or "0"
+        if len(digits) > _SQLITE_INT_DIGITS:
+            return None
+        number = -int(digits) if text[:1] == "-" else int(digits)
+    else:
+        return None
+    if not _SQLITE_INT_MIN <= number <= _SQLITE_INT_MAX:
+        return None
+    return number
+
+
+def _as_result(value) -> Optional[bool]:
+    """tracked_win 1 -> True, 0 -> False, anything else (NULL, 2, text) ->
+    None: an unknown result, which is never read as a loss (mirror
+    core.perf_curve._as_result)."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return {1: True, 0: False}.get(value)
+    return None
+
+
+def _as_number(value) -> Optional[float]:
+    """A stored int / float as a bounded finite float, else None.
+
+    SQLite is dynamically typed, so an INTEGER column can hand back text, a
+    BLOB or an infinite REAL; none of those is a usable stat or timestamp
+    (a bool is refused too - it is never a stored count).
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        number = float(value)
+    except OverflowError:
+        return None
+    if not math.isfinite(number) or abs(number) > _MAX_ABS_VALUE:
+        return None
+    return number
+
+
+def _frame_stats(gold, xp, minions, jungle, combat) -> Optional[tuple]:
+    """The (gold, xp, cs, combat) tuple of one frame, or None if unusable.
+
+    A NULL stat reads as 0 (the historical contract: ``float(x or 0)`` for
+    gold / xp / combat and COALESCE for the two cs operands). A non-NULL stat
+    that is not a bounded finite number (text, BLOB, +-inf, a magnitude above
+    1e12) makes the whole frame unusable - it is skipped, never read as 0 and
+    never allowed to become the normalization max.
+    """
+    out = []
+    for value in (gold, xp, minions, jungle, combat):
+        if value is None:
+            out.append(0.0)
+            continue
+        number = _as_number(value)
+        if number is None:
+            return None
+        out.append(number)
+    g, x, m, j, c = out
+    return (g, x, m + j, c)
 
 
 def _empty(mode: str, champion: Optional[int]) -> dict:
@@ -108,34 +218,51 @@ def compute_op_score_curve(mode: str = DEFAULT_MODE,
                            conn: Optional[sqlite3.Connection] = None) -> dict:
     """Per-minute composite 0-100 OP-Score for the tracked player, win vs loss.
 
-    ``mode`` in VALID_MODES (else DEFAULT_MODE). ``champion`` is an optional Riot
-    integer champion id (filters tracked_champion_id). ``conn`` injects a db
-    connection for tests; when None a read-only handle to the local rewind db is
-    opened + closed. Never raises - an unavailable db or empty corpus returns an
-    ok payload with minutes == []. See the module docstring for the exact, fully
-    transparent composite formula.
+    ``mode`` in VALID_MODES (else - including a non-string - DEFAULT_MODE).
+    ``champion`` is an optional Riot integer champion id (filters
+    tracked_champion_id): an int, an integral float or a decimal string,
+    echoed back as an int. Anything else (a bool, text, NaN, a fractional
+    float, an id outside SQLite's 64-bit range) is a filter nothing
+    satisfies - zero games, champion echoed as None, no query run - never a
+    silent widening to every champion.
+    ``conn`` injects a db connection for tests; when None a read-only handle
+    to the local rewind db is opened + closed.
+
+    Only a resolved result (tracked_win 0 or 1) is counted; an unknown one
+    (NULL, 2, text) is skipped - never read as a loss, never part of the
+    normalization baseline, not in ``n_games``. A frame whose timestamp is
+    unusable (NULL, text, BLOB, non-finite) or whose stat is unusable (see
+    _frame_stats) is skipped, so every number in the payload is finite
+    (strict JSON). Never raises - an unavailable db or empty corpus returns
+    an ok payload with minutes == []. See the module docstring for the
+    exact, fully transparent composite formula.
     """
-    if mode not in MODE_MAPS:
+    if not isinstance(mode, str) or mode not in MODE_MAPS:
         mode = DEFAULT_MODE
     map_id = MODE_MAPS[mode]
 
+    champ_id: Optional[int] = None
+    matchable = True
+    if champion is not None:
+        champ_id = _coerce_champion(champion)
+        matchable = champ_id is not None
+
     own = conn is None
-    if own:
+    if own and matchable:
         conn = _open_ro()
 
     rows: list = []
-    if conn is not None:
+    if conn is not None and matchable:
         try:
             where = ["m.map_id = ?", "m.has_stats = 1", "m.game_duration_s >= ?"]
             params: list = [map_id, MIN_DURATION_S]
-            if champion is not None:
+            if champ_id is not None:
                 where.append("m.tracked_champion_id = ?")
-                params.append(int(champion))
+                params.append(champ_id)
             sql = (
                 "SELECT m.match_id, m.tracked_win, p.participant_id, "
                 "f.timestamp_ms, "
-                "f.total_gold, f.xp, "
-                "COALESCE(f.minions_killed, 0) + COALESCE(f.jungle_minions, 0) AS cs, "
+                "f.total_gold, f.xp, f.minions_killed, f.jungle_minions, "
                 "f.total_dmg_done "
                 "FROM matches m "
                 "JOIN participants p ON p.match_id = m.match_id "
@@ -159,26 +286,33 @@ def compute_op_score_curve(mode: str = DEFAULT_MODE,
 
     # Per match: lock onto the first participant_id seen (sentinel tracked ids
     # can multi-match the join; mirror perf_curve's keep-first dedup) and keep
-    # the last raw stat tuple per (match, minute).
-    locked_pid: dict[str, int] = {}
-    win_by_match: dict[str, bool] = {}
+    # the last raw stat tuple per (match, minute). A match whose result is
+    # unknown is still locked (so its colliding participant rows stay out)
+    # but never enters the curve or the normalization baseline.
+    locked_pid: dict = {}
+    win_by_match: dict = {}
     # match_id -> {minute -> (gold, xp, cs, combat)}
-    per_match_minute: dict[str, dict[int, tuple]] = {}
+    per_match_minute: dict = {}
     for (match_id, tracked_win, pid, ts_ms,
-         gold, xp, cs, combat) in rows:
+         gold, xp, minions, jungle, combat) in rows:
         if match_id not in locked_pid:
             locked_pid[match_id] = pid
-            win_by_match[match_id] = bool(tracked_win)
-            per_match_minute[match_id] = {}
-        if pid != locked_pid[match_id]:
+            result = _as_result(tracked_win)
+            if result is not None:
+                win_by_match[match_id] = result
+                per_match_minute[match_id] = {}
+        if pid != locked_pid[match_id] or match_id not in per_match_minute:
             continue
-        minute = int(ts_ms or 0) // 60000
+        ts = _as_number(ts_ms)
+        if ts is None:
+            continue
+        minute = int(ts // 60000)
         if minute < 0 or minute > MAX_MINUTE:
             continue
-        per_match_minute[match_id][minute] = (
-            float(gold or 0), float(xp or 0),
-            float(cs or 0), float(combat or 0),
-        )
+        stats = _frame_stats(gold, xp, minions, jungle, combat)
+        if stats is None:
+            continue
+        per_match_minute[match_id][minute] = stats
 
     # Pass 1: per-minute corpus max for each raw stat (over win + loss alike) -
     # the self-relative normalization baseline.
@@ -246,7 +380,7 @@ def compute_op_score_curve(mode: str = DEFAULT_MODE,
         })
 
     n_games = len(per_match_minute)
-    out = _empty(mode, champion)
+    out = _empty(mode, champ_id)
     out["n_games"] = n_games
     out["minutes"] = minutes
     # Descriptive arc-shape read of each result bucket's curve (pure, derived
