@@ -412,13 +412,13 @@ class TestResourceLifetime(ReplayHistoryTestBase):
         state = {"closed": False, "calls": 0}
 
         class _Proxy:
-            def execute(_self, *a, **kw):
+            def execute(self, *a, **kw):
                 state["calls"] += 1
                 if state["calls"] == fail_on_call:
                     raise sqlite3.OperationalError("no such table: injected")
                 return real.execute(*a, **kw)
 
-            def close(_self):
+            def close(self):
                 state["closed"] = True
                 real.close()
 

@@ -410,7 +410,7 @@ def test_stop_suppresses_logging_during_drain(_isolated_lock_pair: Path) -> None
     observed: dict[str, bool] = {}
 
     class _Loop:
-        def stop(self_inner) -> None:
+        def stop(self) -> None:
             observed["raise"] = logging.raiseExceptions
 
     sup._decision_loop = _Loop()

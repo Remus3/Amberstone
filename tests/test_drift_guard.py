@@ -605,7 +605,7 @@ class HookGateRequirementTests(unittest.TestCase):
 
         class Probe(unittest.TestCase):
             @requires_armed_hook_gate
-            def runTest(probe_self) -> None:
+            def runTest(self) -> None:
                 calls.append("ran")
 
         return Probe(), calls
