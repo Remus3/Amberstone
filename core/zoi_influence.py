@@ -11,6 +11,14 @@ Design notes:
     raises. A malformed dot is skipped; an all-malformed / empty input -> None.
   - Coords are BOX-FRACTION [0,1], origin top-left, x right, y down - the same
     basis as minimap_dots.x_frac / y_frac (see core/minimap_blob_detect.py).
+  - Input domain (s144 true-audit, RM-1847..RM-1853): `dots` that is not
+    iterable -> None; a number that is not a finite float (NaN, inf, bool, an
+    int too large for a float) is malformed; px is clamped to [0, _MAX_PX] and
+    confidence to the producer's documented [0, 1], so a weight is always
+    finite and non-negative and the payload is always strict JSON. A
+    malformed `base_fallback` falls back to the map centre, and a capability
+    helper's non-number / non-positive return reads as neutral (1.0), a
+    positive one is clamped to [CAP_MIN, CAP_MAX].
 
 HONEST SCOPE (mirror the team-PRESENCE note in core/minimap_blob_detect.py): the Live Client API
 exposes ONLY my own data - my level / gold / game_time. It does NOT expose
@@ -34,6 +42,11 @@ _ALLY_SPIKE_STEP = 0.15      # +15% ally power per crossed spike level
 _ENEMY_TIME_GAIN = 0.20      # generic enemy power gain across the game
 _SPIKE_LEVELS = (6, 11, 16)
 _TIME_FULL_S = 1200.0        # game_time at which the time-scalar saturates to 1
+# Blob-size ceiling. A blob cannot exceed its box (312 * 312 = 97344 px at the
+# design size); 1e7 leaves room for any native capture size while keeping
+# px * confidence and every weight sum far from float overflow.
+_MAX_PX = 1e7
+_CENTER = (0.5, 0.5)
 
 
 def _num(v):
@@ -42,7 +55,10 @@ def _num(v):
         return None
     if not isinstance(v, (int, float)):
         return None
-    f = float(v)
+    try:
+        f = float(v)
+    except OverflowError:  # an int too large for a float (e.g. 10 ** 400)
+        return None
     if f != f or f in (float("inf"), float("-inf")):  # NaN / inf
         return None
     return f
@@ -240,8 +256,12 @@ def _valid_dot(d):
     conf = _num(d.get("confidence"))
     if x is None or y is None or px is None or conf is None:
         return None
+    # Clamp each factor BEFORE the product: a negative px times a negative
+    # confidence must not read as positive presence, and a bounded px keeps
+    # every weight (and every weight sum) finite.
+    px = _clamp(px, 0.0, _MAX_PX)
+    conf = _clamp(conf, 0.0, 1.0)
     W = px * conf
-    W = max(W, 0.0)
     return {
         "team": team,
         "x_frac": _clamp(x, 0.0, 1.0),
@@ -252,22 +272,46 @@ def _valid_dot(d):
     }
 
 
+def _safe_fallback(fb):
+    """A usable (x, y) fallback centroid in [0,1]^2, else the map centre."""
+    if not isinstance(fb, (list, tuple)) or len(fb) != 2:
+        return _CENTER
+    x = _num(fb[0])
+    y = _num(fb[1])
+    if x is None or y is None:
+        return _CENTER
+    return (_clamp(x, 0.0, 1.0), _clamp(y, 0.0, 1.0))
+
+
+def _safe_cap(v):
+    """A capability helper's return as a bounded multiplier: a non-number or a
+    non-positive value is neutral (1.0); a positive one is clamped to the
+    capability module's own [CAP_MIN, CAP_MAX]."""
+    from core.zoi_capability import CAP_MAX, CAP_MIN, CAP_NEUTRAL
+    f = _num(v)
+    if f is None or f <= 0.0:
+        return CAP_NEUTRAL
+    return _clamp(f, CAP_MIN, CAP_MAX)
+
+
 def _mean_cap(roster, my_level, game_time_s):
     """Team-mean capability weight over a roster (fail-soft -> 1.0)."""
     from core.zoi_capability import team_mean_weight
     try:
-        return team_mean_weight(roster, level=my_level, game_time_s=game_time_s)
+        w = team_mean_weight(roster, level=my_level, game_time_s=game_time_s)
     except Exception:  # noqa: BLE001 - pure fail-soft
         return 1.0
+    return _safe_cap(w)
 
 
 def _dot_cap(champion, my_level, game_time_s):
     """Per-dot capability weight from an identity-tagged champion (fail-soft)."""
     from core.zoi_capability import capability_weight
     try:
-        return capability_weight(champion, level=my_level, game_time_s=game_time_s)
+        w = capability_weight(champion, level=my_level, game_time_s=game_time_s)
     except Exception:  # noqa: BLE001 - pure fail-soft
         return 1.0
+    return _safe_cap(w)
 
 
 def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5),
@@ -295,8 +339,13 @@ def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5),
     """
     if not dots:
         return None
+    try:
+        it = iter(dots)
+    except TypeError:  # a truthy non-iterable (int, float, True, object)
+        return None
+    base_fallback = _safe_fallback(base_fallback)
     valid = []
-    for d in dots:
+    for d in it:
         nd = _valid_dot(d)
         if nd is not None:
             # preserve an optional identity tag for per-dot capability
@@ -410,6 +459,15 @@ def zoi_callout(zoi):
     try:
         line = zoi["map_control"]["line"]
     except (KeyError, TypeError):
+        return None
+    # The callout row renders as ONE line of text: a non-str or blank line is
+    # no callout, and embedded whitespace runs (newline, tab) collapse to one
+    # space. compute_zoi's own line is single-spaced and <= 120 chars, so a
+    # well-formed payload passes through unchanged.
+    if not isinstance(line, str):
+        return None
+    line = " ".join(line.split())[:120]
+    if not line:
         return None
     return {
         "tag": "map_control",
