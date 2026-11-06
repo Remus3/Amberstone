@@ -166,10 +166,14 @@ def test_rewrites_are_equivalent():
     assert d == {"p": 11, "q": 12}
     err = RuntimeError("boom")
     handled: list = []
-    with pytest.raises(RuntimeError) as bare:
+
+    def _handle_then_reraise():
         try:
             raise err
         except Exception:
             handled.append(True)
             raise
+
+    with pytest.raises(RuntimeError) as bare:
+        _handle_then_reraise()
     assert bare.value is err and handled == [True]

@@ -38,13 +38,16 @@ def test_a_start_through_an_unbound_module_trips():
     assert [h[0] for h in hits] == ["subprocess.Popen"]
 
 
+def _run_swallowing_errors():
+    try:
+        _real_run()
+    except Exception:  # noqa: BLE001 - the code under test swallowing it
+        pass
+
+
 def test_a_swallowed_trip_still_fails_when_the_block_ends():
-    with pytest.raises(ProcessStartTripped, match=r"subprocess\.Popen"):
-        with no_process_start():
-            try:
-                _real_run()
-            except Exception:  # noqa: BLE001 - the code under test swallowing it
-                pass
+    with pytest.raises(ProcessStartTripped, match=r"subprocess\.Popen"), no_process_start():
+        _run_swallowing_errors()
 
 
 def test_os_system_trips():
@@ -64,11 +67,13 @@ def test_a_thread_started_inside_the_block_is_armed_too():
         except ProcessStartTripped:
             seen.append("tripped")
 
-    with pytest.raises(ProcessStartTripped):
-        with no_process_start():
-            t = threading.Thread(target=_worker)
-            t.start()
-            t.join(60)
+    def _run_worker_thread():
+        t = threading.Thread(target=_worker)
+        t.start()
+        t.join(60)
+
+    with pytest.raises(ProcessStartTripped), no_process_start():
+        _run_worker_thread()
     assert seen == ["tripped"]
 
 
@@ -117,8 +122,6 @@ def test_the_block_disarms_on_exit():
 
 
 def test_nested_blocks_each_record_the_start():
-    with pytest.raises(ProcessStartTripped):
-        with no_process_start() as outer:
-            with no_process_start() as inner:
-                _real_run()
+    with pytest.raises(ProcessStartTripped), no_process_start() as outer, no_process_start() as inner:
+        _real_run()
     assert len(outer) == 1 and len(inner) == 1

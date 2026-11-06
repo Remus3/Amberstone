@@ -39,11 +39,14 @@ def test_real_callable_is_restored_after_a_clean_exit(tmp_path, name):
 @pytest.mark.parametrize("name", ["replace", "rename"])
 def test_real_callable_is_restored_after_the_body_raises(tmp_path, name):
     real = getattr(os, name)
+
+    def _body_that_fails():
+        assert getattr(os, name) is not real, "the shim was never installed"
+        raise RuntimeError("body failed")
+
     try:
-        with pytest.raises(RuntimeError, match="body failed"):
-            with scoped_fs_fault(name, tmp_path, _delegate):
-                assert getattr(os, name) is not real, "the shim was never installed"
-                raise RuntimeError("body failed")
+        with pytest.raises(RuntimeError, match="body failed"), scoped_fs_fault(name, tmp_path, _delegate):
+            _body_that_fails()
         after = getattr(os, name)
     finally:
         setattr(os, name, real)

@@ -153,11 +153,15 @@ def test_the_scripted_replies_raise_the_real_http_client_exceptions(origin):
     import urllib.request
     base, _hits = origin
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+    def _drain(opener, url):
+        with opener.open(url, timeout=10) as r:
+            while r.read(4096):
+                pass
+
     for path, exc_type in HTTP_EXC_PATHS.items():
         with pytest.raises(exc_type) as ei:
-            with opener.open(f"{base}{path}", timeout=10) as r:
-                while r.read(4096):
-                    pass
+            _drain(opener, f"{base}{path}")
         assert not isinstance(ei.value, OSError), path
 
 
