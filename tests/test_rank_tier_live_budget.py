@@ -1064,9 +1064,159 @@ def _bind_names(target, found, tainted, *, clear=True) -> None:
             _drop_wrapper(target.id, tainted)
         return
     if found:
+        fresh = _fresh_callees(target)
         for sub in ast.walk(target):
-            if isinstance(sub, ast.Name):
+            if isinstance(sub, ast.Name) and id(sub) not in fresh:
                 tainted.add(sub.id)
+
+
+# RM-1792: builtin constructors whose call always returns a NEW object, so
+# a value put into what one returns (`h(dict(), url)`, `dict().update(u=url)`,
+# `list()[0] = url`) is not in anything the name `dict` reaches afterwards.
+# Only the bare builtins: `make()` may hand back a shared object, and tainting
+# `make` is how the walk follows it (`h(make(), url); log.info(make())`).
+_FRESH_CTORS = frozenset({"dict", "list", "set", "bytearray"})
+# The `_FRESH_CTORS` names the module under scan binds anywhere (filled and
+# cleared by `_message_leak_sites`): there the name may not be the builtin
+# (`dict = get_shared`), so its callee keeps the old taint.
+_SHADOWED_FRESH = set()
+
+
+def _fresh_callees(expr):
+    """RM-1792: the ids of the callee nodes in `expr` that are a call of an
+    unshadowed `_FRESH_CTORS` builtin. Only the callee name is skipped; the
+    call's arguments are still tainted, since a shallow copy shares its
+    elements (`h(list(r), url)` with `def h(q, v): q[0].append(v)` puts the
+    url into an element of `r`)."""
+    return {id(sub.func) for sub in ast.walk(expr)
+            if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name)
+            and sub.func.id in _FRESH_CTORS
+            and sub.func.id not in _SHADOWED_FRESH}
+
+
+# RM-1792: how one module can re-bind a builtin's name without a binding
+# `_module_bound_names` sees. Any of these anywhere in the module keeps the old
+# taint for every `_FRESH_CTORS` name:
+# - ANY import but an absolute `from __future__`. An imported callable can re-bind a
+#   builtin given only a string or a keyword (`mock.patch('builtins.dict', g)`,
+#   `timeit.timeit(src)`, `patch.multiple(m, dict=g)`), and each verifier
+#   round found one more such channel, so the exemption is kept for
+#   import-free code, whose channels are the builtins and the object model.
+# The rest is read off WORDS: every string a field of any node holds
+# (`_node_words`: a name, attribute, string literal, keyword, parameter,
+# def / class name, `global` name, match-pattern attribute):
+# - a word that is a `_FRESH_CTORS` name (`o.dict = g`, `ns['dict'] = g`,
+#   `f(dict=g)`), except in a plain Name node (the call `dict()` itself),
+#   whose binding `_module_bound_names` reads instead;
+# - ANY dunder word but the few in `_INERT_DUNDERS`: the object-model hooks
+#   are dunders
+#   (`f.__globals__`, `mod.__dict__`, `__builtins__`, `object.__setattr__`,
+#   `f.__code__`, `__subclasses__`, `__import__`, `exc.__traceback__`, and a
+#   metaclass `def __prepare__` whose class-body namespace answers for
+#   `dict`, a `case object(__globals__=g)` pattern), so one rule covers the
+#   whole class;
+# - a `_BUILTIN_ESCAPES` word: the namespace, code,
+#   class and file builtins (`globals()['dict']`, `exec(src)`,
+#   `type(n, b, ns)`, `metaclass=`, `open` on the process memory) and the
+#   frame and code object attributes reached without a dunder or an import
+#   (`gen.gi_frame.f_globals`, `code.replace(co_names=...)`);
+# - the name `getattr` anywhere but as the callee of a call whose attribute
+#   name is a string literal (`_literal_getattrs`): with a computed name, or
+#   held as a value (`ga = getattr`, `map(getattr, ...)`), it can fetch any of
+#   the above without spelling it.
+# A heuristic list of the channels measured so far, not a proof that none is
+# left; a patch done from ANOTHER module is not visible to a one-file scan at
+# all.
+_INERT_DUNDERS = frozenset({"__name__", "__file__", "__doc__", "__all__",
+                            "__main__", "__init__", "__version__"})
+_BUILTIN_ESCAPES = frozenset({
+    "globals", "locals", "vars", "exec", "eval", "compile", "setattr",
+    "getattr", "delattr", "breakpoint", "help", "open", "type", "metaclass",
+    "f_globals", "f_builtins", "f_locals", "f_back", "f_code", "tb_frame",
+    "tb_next", "gi_frame", "gi_code", "cr_frame", "cr_code", "ag_frame",
+    "ag_code", "co_names", "co_consts", "co_code"})
+
+
+def _literal_getattrs(tree):
+    """RM-1792: the ids of the `getattr` callee names in `tree` whose call
+    names its attribute with a string literal (`getattr(o, 'x')`,
+    `getattr(o, 'x', None)`): the one use of the name that is not a channel.
+    The literal itself is still read as a word by `_rebinds_builtins`."""
+    return {id(c.func) for c in ast.walk(tree)
+            if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
+            and c.func.id == "getattr" and not c.keywords
+            and len(c.args) in (2, 3)
+            and not any(isinstance(a, ast.Starred) for a in c.args)
+            and isinstance(c.args[1], ast.Constant)
+            and isinstance(c.args[1].value, str)}
+
+
+def _is_live_dunder(s) -> bool:
+    """RM-1792: `s` is a dunder string outside `_INERT_DUNDERS`."""
+    return (isinstance(s, str) and len(s) > 4 and s.startswith("__")
+            and s.endswith("__") and s not in _INERT_DUNDERS)
+
+
+def _node_words(n):
+    """RM-1792: every string held by a field of AST node `n` (one level, a
+    list field's strings included): a name, attribute, string literal,
+    keyword, parameter, def / class name, import alias, `global` name or
+    match-pattern attribute (`case object(__globals__=g)` keeps its
+    attribute names as plain strings, not nodes)."""
+    words = []
+    for _, value in ast.iter_fields(n):
+        if isinstance(value, str):
+            words.append(value)
+        elif isinstance(value, list):
+            words.extend(v for v in value if isinstance(v, str))
+    return words
+
+
+def _rebinds_builtins(n) -> bool:
+    """RM-1792: `n` is one of the run-time re-binding channels above."""
+    if isinstance(n, ast.ImportFrom):
+        return n.module != "__future__" or n.level > 0
+    if isinstance(n, ast.Import):
+        return True
+    if isinstance(n, ast.Name) and n.id in _FRESH_CTORS:
+        return False  # the call `dict()` itself; a binding is read elsewhere
+    return any(w in _BUILTIN_ESCAPES or w in _FRESH_CTORS or _is_live_dunder(w)
+               for w in _node_words(n))
+
+
+def _module_bound_names(tree):
+    """RM-1792: every name `tree` binds anywhere, in any scope: store and
+    del targets, def / class names, parameters, PEP 695 type parameters,
+    import aliases, `global` / `nonlocal` names, except-handler names and
+    match captures. A run-time re-binding channel (`_rebinds_builtins`,
+    any import included) may re-bind a builtin, so it counts as binding every
+    `_FRESH_CTORS` name."""
+    type_params = tuple(getattr(ast, k) for k in ("TypeVar", "ParamSpec", "TypeVarTuple")
+                        if hasattr(ast, k))
+    literal = _literal_getattrs(tree)
+    out = set()
+    for n in ast.walk(tree):
+        if id(n) not in literal and _rebinds_builtins(n):
+            out |= _FRESH_CTORS
+        if isinstance(n, ast.Name) and not isinstance(n.ctx, ast.Load):
+            out.add(n.id)
+        elif isinstance(n, type_params):
+            out.add(n.name)
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            out.add(n.name)
+        elif isinstance(n, ast.arg):
+            out.add(n.arg)
+        elif isinstance(n, ast.alias):
+            out.add((n.asname or n.name).split(".")[0])
+        elif isinstance(n, (ast.Global, ast.Nonlocal)):
+            out.update(n.names)
+        elif isinstance(n, ast.ExceptHandler) and n.name:
+            out.add(n.name)
+        elif isinstance(n, (ast.MatchAs, ast.MatchStar)) and n.name:
+            out.add(n.name)
+        elif isinstance(n, ast.MatchMapping) and n.rest:
+            out.add(n.rest)
+    return out
 
 
 # RM-1558: methods that put their arguments INTO the receiver. A tainted
@@ -2647,12 +2797,15 @@ def _message_leak_sites(path):
               _CLASS_NAMES_CACHE, _CLASS_KINDS_CACHE, _LOCALS_CACHE)
     for cache in caches:
         cache.clear()
+    _SHADOWED_FRESH.clear()
+    _SHADOWED_FRESH.update(_module_bound_names(tree) & _FRESH_CTORS)
     try:
         for scope in scopes:
             _walk_scope(scope.body, set(), report)
     finally:
         for cache in caches:
             cache.clear()
+        _SHADOWED_FRESH.clear()
     return sorted(leaks)
 
 
@@ -4111,6 +4264,185 @@ _CHECKER_SAMPLES = (
     ("helper function given the url for no source parameter",
      "def h(q, v):\n    q.append(v)\ndef f(url):\n    q = []\n    h(v='x', q=q)\n"
      "    log.info(q)\n", False),
+    # RM-1792: a value put into a FRESH builtin object (a helper's
+    # destination, a mutator's receiver, a store target) is in nothing the
+    # constructor's name reaches afterwards, so the name stays clean.
+    ("helper given a fresh dict, the dict builtin is logged",
+     "def h(q, v):\n    q.append(v)\ndef f(url, x):\n    h(dict(), url)\n"
+     "    log.info(isinstance(x, dict))\n", False),
+    ("mutator on a fresh dict, the dict builtin is logged",
+     "def f(url, x):\n    dict().update(u=url)\n    log.info(isinstance(x, dict))\n",
+     False),
+    ("mutator on a fresh set, the set builtin is logged",
+     "def f(url, x):\n    set().add(url)\n    log.info(isinstance(x, set))\n", False),
+    ("helper given a fresh list, the list builtin is logged",
+     "def h(q, v):\n    q.append(v)\ndef f(url, x):\n    h(list(), url)\n"
+     "    log.info(sorted(x, key=list))\n", False),
+    ("store into a fresh list, the list builtin is logged",
+     "def f(url, x):\n    list()[0] = url\n    log.info(sorted(x, key=list))\n", False),
+    ("mutator deep in a fresh dict chain, the dict builtin is logged",
+     "def f(url, x):\n    dict()['k'].append(url)\n    log.info(isinstance(x, dict))\n",
+     False),
+    # ... but only the bare builtin's NAME is skipped: any other callee may
+    # hand back a shared object, a copy's argument shares its elements, and
+    # a name the module binds may not be the builtin.
+    ("helper given a call result, the same call is logged",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    h(make(), url)\n"
+     "    log.info(make())\n", True),
+    ("helper mutates an element of a shallow copy",
+     "def h(q, v):\n    q[0].append(v)\ndef f(url, r):\n    h(list(r), url)\n"
+     "    log.info(r)\n", True),
+    ("mutator on a setdefault result",
+     "def f(url, d, k):\n    d.setdefault(k, []).append(url)\n    log.info(d)\n", True),
+    ("helper given a setdefault result",
+     "def h(q, v):\n    q.append(v)\ndef f(url, d, k):\n"
+     "    h(d.setdefault(k, []), url)\n    log.info(d)\n", True),
+    ("dict re-bound in the scope",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    dict = get_shared\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict re-bound at module level",
+     "dict = get_shared\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict bound as a parameter",
+     "def h(q, v):\n    q.append(v)\ndef f(url, dict):\n    h(dict(), url)\n"
+     "    log.info(dict())\n", True),
+    ("dict bound by an import alias",
+     "from m import shared as dict\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict possibly bound by a star import",
+     "from m import *\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    # ... and a builtin replaced at run time binds no name at all.
+    ("dict replaced through the builtins module",
+     "import builtins\nbuiltins.dict = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced through an alias of the builtins module",
+     "import builtins as b\nb.dict = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced on a looked-up builtins module",
+     "import sys\nsys.modules['builtins'].dict = get_shared\n"
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    h(dict(), url)\n"
+     "    log.info(dict())\n", True),
+    ("dict replaced through setattr",
+     "import b\nsetattr(b.ns, 'dict', get_shared)\n"
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    h(dict(), url)\n"
+     "    log.info(dict())\n", True),
+    ("dict replaced through a function's globals",
+     "g.__globals__['dict'] = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced through the globals mapping",
+     "globals()['dict'] = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced through __builtins__",
+     "__builtins__[KEY] = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced through exec",
+     "exec(SRC)\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced on the module's own entry in sys.modules",
+     "import sys\nsys.modules[__name__].dict = get_shared\ndef h(q, v):\n"
+     "    q.append(v)\ndef f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced on a module found by import_module",
+     "import importlib as il\nil.import_module(NAME).dict = get_shared\n"
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    h(dict(), url)\n"
+     "    log.info(dict())\n", True),
+    ("dict replaced through a frame's globals",
+     "import sys as s\ns._getframe().f_globals[KEY] = get_shared\ndef h(q, v):\n"
+     "    q.append(v)\ndef f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced through object.__setattr__",
+     "object.__setattr__(MOD, KEY, get_shared)\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("namespace fetched through a computed getattr",
+     "ns = getattr(fn, KEY)\nns[NAME] = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict replaced on the module imported by its own name",
+     "import sample\nsample.dict = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("namespace fetched through a literal getattr of a frame",
+     "ns = getattr(FRAME, 'f_globals')\nns[NAME] = get_shared\ndef h(q, v):\n"
+     "    q.append(v)\ndef f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("dict re-bound in a namespace handed in",
+     "def setup(ns):\n    ns['dict'] = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("memory written through ctypes imported under an alias",
+     "import ctypes as c\nc.memmove(ADDR, SRC, N)\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("code run from pickled data, loader imported by name",
+     "from pickle import loads\nloads(BLOB)\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("code run from marshalled data",
+     "import marshal as m\nrun(m.loads(BLOB))\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("namespace reached through an object-model dunder",
+     "for c in object.__subclasses__():\n    poke(c)\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("namespace fetched through a literal getattr of a dunder",
+     "ns = getattr(MOD, '__dict__')\nns[KEY] = get_shared\ndef h(q, v):\n"
+     "    q.append(v)\ndef f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("code object names replaced",
+     "k = CODE.replace(co_names=NAMES)\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("objects walked through gc",
+     "import gc as g\nfor o in g.get_objects():\n    poke(o)\ndef h(q, v):\n"
+     "    q.append(v)\ndef f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("the __name__ guard re-binds nothing, the dict builtin is logged",
+     "def h(q, v):\n    q.append(v)\ndef f(url, x):\n    h(dict(), url)\n"
+     "    log.info(isinstance(x, dict))\nif __name__ == '__main__':\n    f(1, 2)\n",
+     False),
+    ("dict patched by an imported helper given a string",
+     "from unittest import mock\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    with mock.patch(TARGET, get_shared):\n        h(dict(), url)\n"
+     "        log.info(dict())\n", True),
+    ("dict re-bound through a keyword",
+     "configure(dict=get_shared)\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("namespace reached through a generator frame",
+     "def g():\n    yield\nGEN = g()\nGEN.gi_frame.f_globals[KEY] = get_shared\n"
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    h(dict(), url)\n"
+     "    log.info(dict())\n", True),
+    ("a class whose dunder hook may answer for dict",
+     "class NS:\n    def __missing__(self, k):\n        return get_shared\n"
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    h(dict(), url)\n"
+     "    log.info(dict())\n", True),
+    ("a dunder parameter",
+     "def g(__dict__=None):\n    pass\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("a class body run under a metaclass",
+     "def f(url):\n    class C(metaclass=M):\n        h(dict(), url)\n"
+     "        log.info(dict())\ndef h(q, v):\n    q.append(v)\n", True),
+    ("a class built by type from a namespace",
+     "C = type(NAME, BASES, NS)\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("process memory opened as a file",
+     "MEM = open(PATH, MODE)\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("namespace fetched through an alias of getattr",
+     "ga = getattr\nns = ga(FN, NAME)\nns[KEY] = get_shared\ndef h(q, v):\n"
+     "    q.append(v)\ndef f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("namespace fetched through getattr handed to map",
+     "for ns in map(getattr, FNS, NAMES):\n    ns[KEY] = get_shared\n"
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    h(dict(), url)\n"
+     "    log.info(dict())\n", True),
+    ("namespace fetched through a starred getattr",
+     "ns = getattr(*PAIR, 'x')\nns[KEY] = get_shared\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url):\n    h(dict(), url)\n    log.info(dict())\n", True),
+    ("namespace fetched by a class pattern",
+     "match FN:\n    case object(__globals__=g):\n        g[KEY] = get_shared\n"
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    h(dict(), url)\n"
+     "    log.info(dict())\n", True),
+    ("frame fetched by a nested class pattern",
+     "match GEN:\n    case object(gi_frame=object(f_globals=g)):\n"
+     "        g[KEY] = get_shared\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("a relative import of a module named __future__",
+     "from .__future__ import x\ndef h(q, v):\n    q.append(v)\ndef f(url):\n"
+     "    h(dict(), url)\n    log.info(dict())\n", True),
+    ("a __future__ import re-binds nothing, the dict builtin is logged",
+     "from __future__ import annotations\ndef h(q, v):\n    q.append(v)\n"
+     "def f(url, x):\n    h(dict(), url)\n    log.info(isinstance(x, dict))\n", False),
+    ("a literal getattr re-binds nothing, the dict builtin is logged",
+     "y = getattr(o, 'x')\ndef h(q, v):\n    q.append(v)\ndef f(url, x):\n"
+     "    h(dict(), url)\n    log.info(isinstance(x, dict))\n", False),
 )
 
 
