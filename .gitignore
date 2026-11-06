@@ -125,6 +125,17 @@ data/placement_heatmap.json
 data/tft_matches/
 data/tft_live_data.json
 data/rewind_catchup.state.json
+# RM-715 runtime outputs a running RC rewrites: the per-mode coach cache
+# (agents/agent2_backend/pipeline/orchestrator.py COACH_CACHE_DIR), the
+# rewind scraper logs, and the retired data/coaching_ts.json (the live writer
+# is core/coaching_timestamps.py, into ops/runtime). Untracked so a normal run
+# leaves `git status` clean and the PKG-4 bundle does not ship stale copies.
+# NOT the ops/audit/lolmath_ds_sweep/*.log files: NOTICE records those as
+# tracked scrape logs (a licence decision). Guard
+# tests/test_runtime_outputs_untracked_rm715_s144p221.py.
+data/coach_cache/
+data/rewind_scraper*.log
+data/coaching_ts.json
 data/coaching/death_patterns.json
 # RM-608 estimated death-recap rows (runtime; contributor champions + model shares)
 data/coaching/death_recaps.jsonl
