@@ -258,8 +258,12 @@
   cursor: pointer;
   user-select: none;
 }
+/* RM-1763: hover lifts --dim to --text, like .bi-tab:hover above. The old
+ * --accent hover was 1.07:1 and DARKER than rest in the default arcane theme
+ * (same-hue lavender metal) and 1.00:1 in terminal; --text is >= 1.95:1 over
+ * --dim in all six themes. */
 .bi-table .bi-sort-btn:hover {
-  color: var(--accent);
+  color: var(--text);
 }
 /* Drawn inside the cell (was outline-offset -2px), the RM-972 pattern. */
 .bi-table .bi-sort-btn:focus-visible {
