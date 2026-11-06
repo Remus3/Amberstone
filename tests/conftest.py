@@ -1187,9 +1187,7 @@ class _ProdWriteRecorder:
                 elif not (isinstance(flags, int) and flags & _WRITE_FLAGS):
                     return
                 self._hit(path)
-            elif event == "os.truncate":
-                self._hit(args[0])
-            elif event == "os.remove":
+            elif event in ("os.truncate", "os.remove"):
                 self._hit(args[0])
             else:  # rename / replace / copyfile / move: destination matters
                 if len(args) > 1:

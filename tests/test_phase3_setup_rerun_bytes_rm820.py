@@ -27,7 +27,7 @@ from ops import phase3_setup
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DECISIONS_REL = Path("agents") / "state" / "resolved_decisions.json"
 INSTALLER = REPO_ROOT / "ops" / "phase3_install.ps1"
-PS51 = (Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32"
+PS51 = (Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32"
         / "WindowsPowerShell" / "v1.0" / "powershell.exe")
 
 

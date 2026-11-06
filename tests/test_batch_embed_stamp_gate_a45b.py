@@ -104,7 +104,7 @@ def _run(tmp_path: Path, rel: str, *, embed: bool, stamp, lock: bool = True,
     head = ["@echo off", "setlocal", f'set "RC_ROOT={root}"', set_embed[0]]
     bat = root / "launch_block_harness.bat"
     bat.write_bytes(("\r\n".join(head + block) + "\r\n").encode("ascii"))
-    cmd = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "cmd.exe"
+    cmd = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32" / "cmd.exe"
     run_env = {k: v for k, v in os.environ.items()
                if k.upper() not in ("EMBED_OK", "EMBED_WHY", "EMBED_WANT")}
     run_env.update(env or {})

@@ -143,8 +143,7 @@ class PersistAndReaderTests(unittest.TestCase):
 
 
 class EngineCharacterizationTests(unittest.TestCase):
-    """Precompute cells must equal the live DS matchup engine (characterization).
-    """
+    """Precompute cells must equal the live DS matchup engine (characterization)."""
 
     @classmethod
     def setUpClass(cls) -> None:

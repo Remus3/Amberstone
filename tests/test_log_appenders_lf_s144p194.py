@@ -110,7 +110,7 @@ def test_build_rank_baselines_log_file_sink_is_lf(tmp_path, monkeypatch,
         sys.stdout.flush()
     finally:
         sink = sys.stdout
-        if sink not in (sys.__stdout__,) and hasattr(sink, "close"):
+        if sink is not sys.__stdout__ and hasattr(sink, "close"):
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__
             sink.close()

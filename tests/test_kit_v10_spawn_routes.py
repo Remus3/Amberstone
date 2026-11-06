@@ -295,7 +295,7 @@ def test_run_lane_never_reads_an_empty_exit_code_as_success():
 
 
 def _powershell_51():
-    root = os.environ.get("SystemRoot") or os.environ.get("SYSTEMROOT")
+    root = os.environ.get("SYSTEMROOT")
     exe = Path(root) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe" \
         if root else None
     return exe if exe is not None and exe.is_file() else None
@@ -308,7 +308,7 @@ def test_run_lane_exits_3_when_python_cannot_start(tmp_path):
     System32 only, so `python` cannot resolve. Belt and braces: the prompt file
     does not exist, so even a python that did start would fail on the read
     before any spawn - this test can never start a real claude."""
-    root = os.environ.get("SystemRoot") or os.environ.get("SYSTEMROOT")
+    root = os.environ.get("SYSTEMROOT")
     env = dict(os.environ)
     for key in [k for k in env if k.upper() in ("PATH", "LOCALAPPDATA")]:
         del env[key]

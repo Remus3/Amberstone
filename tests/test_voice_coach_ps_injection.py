@@ -137,7 +137,7 @@ class ScriptIsConstantTests(_Base):
         self.assertNotIn("a" * (voice_coach._MAX_CHARS + 1), kwargs["env"].values())
 
 
-_PS51 = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / \
+_PS51 = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32" / \
     "WindowsPowerShell" / "v1.0" / "powershell.exe"
 
 # Swaps the SAPI synthesizer for an object whose Speak() echoes its argument,

@@ -156,7 +156,7 @@ def test_rewrites_are_equivalent():
     src = [1, 2, 3]
     looped: list = []
     for x in src:
-        looped.append(x)
+        looped.append(x)  # noqa: PERF402 - the loop form IS the premise
     ext: list = []
     ext.extend(src)
     assert looped == ext

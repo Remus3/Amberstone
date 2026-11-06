@@ -179,7 +179,7 @@ win_only = pytest.mark.skipif(sys.platform != "win32", reason="checks Windows pa
 
 @win_only
 def test_every_mapped_system_tool_path_exists():
-    root = os.environ.get("SystemRoot", r"C:\Windows")
+    root = os.environ.get("SYSTEMROOT", r"C:\Windows")
     missing = [f"{name}: {path}" for name, path in sorted(_SYSTEM_TOOLS.items())
                if name != "wmic"
                and not Path(path.replace("%SystemRoot%", root)).is_file()]

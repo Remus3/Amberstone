@@ -139,7 +139,7 @@ def test_the_shortcut_command_pastes_no_cmd_variable_into_powershell():
 
 
 win_only = pytest.mark.skipif(sys.platform != "win32", reason="runs cmd.exe and PowerShell")
-_POWERSHELL = Path(os.environ.get("SystemRoot", r"C:\Windows"),
+_POWERSHELL = Path(os.environ.get("SYSTEMROOT", r"C:\Windows"),
                    "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
 
 
