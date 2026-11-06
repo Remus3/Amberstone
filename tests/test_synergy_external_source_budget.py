@@ -319,8 +319,8 @@ class ResponseSizeCapTests(_SeamBase):
             self.assertIsNone(S.fetch_rows("bottom", "support"))
 
     def test_a_normal_sized_body_still_parses(self) -> None:
-        body = b'{"code": 0, "data": [{"championid1": "498",' \
-               b' "championid2": "497", "doublewinrate": 0.56}]}'
+        body = (b'{"code": 0, "data": [{"championid1": "498",'
+                b' "championid2": "497", "doublewinrate": 0.56}]}')
         with _fake_urlopen(return_value=_FakeResponse(body)):
             data = S._http_get_json("https://example.invalid/getRankDouble")
             self.assertEqual(data["code"], 0)

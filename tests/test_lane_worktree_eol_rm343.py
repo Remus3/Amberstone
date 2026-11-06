@@ -219,9 +219,9 @@ def test_repair_is_not_fooled_by_a_matching_index_stat(repo):
     assert _status(repo) == "", \
         "the real condition reads CLEAN to git - that is why it survives"
     assert launcher.renormalize_eol(repo) == ["a.json"]
-    assert (repo / "a.json").read_bytes() == LF_JSON, \
-        "a repair that returns paths it did not actually rewrite is worse than " \
-        "no repair - it reports success and leaves the tree stale"
+    assert (repo / "a.json").read_bytes() == LF_JSON, (
+        "a repair that returns paths it did not actually rewrite is worse than "
+        "no repair - it reports success and leaves the tree stale")
 
 
 def test_repair_is_idempotent_against_a_real_stale_shape(repo):

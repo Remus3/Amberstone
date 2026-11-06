@@ -148,8 +148,8 @@ class TestEventFrameParsing:
         return lcu_events.LcuEventBus._parse_event(raw)
 
     def test_valid_event_frame(self):
-        raw = '[8,"OnJsonApiEvent",{"uri":"/lol-gameflow/v1/gameflow-phase",' \
-              '"eventType":"Update","data":"ChampSelect"}]'
+        raw = ('[8,"OnJsonApiEvent",{"uri":"/lol-gameflow/v1/gameflow-phase",'
+               '"eventType":"Update","data":"ChampSelect"}]')
         assert self.parse(raw) == ("/lol-gameflow/v1/gameflow-phase", "ChampSelect")
 
     def test_bytes_frame_is_decoded(self):

@@ -38,8 +38,8 @@ from unittest.mock import patch
 from dashboard import routes_playstyle_labels as rpl
 from tests._timing_budget import fleet_test_guard
 
-_COMPUTE = "dashboard.routes_playstyle_labels.playstyle_labels." \
-           "compute_playstyle_labels"
+_COMPUTE = ("dashboard.routes_playstyle_labels.playstyle_labels."
+            "compute_playstyle_labels")
 
 
 def _payload(**over):

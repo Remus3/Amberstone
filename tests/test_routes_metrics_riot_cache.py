@@ -123,8 +123,8 @@ class TestRefreshIsFailSoft:
 
         monkeypatch.setattr(rac, "get_cache", boom)
         routes_metrics._refresh_cache_gauges()  # must not raise
-        assert calls, "the refresh never reached get_cache(), so the " \
-                      "fail-soft path was not exercised at all"
+        assert calls, ("the refresh never reached get_cache(), so the "
+                       "fail-soft path was not exercised at all")
 
     def test_full_refresh_includes_the_cache_gauges(self, temp_singleton):
         """The scrape entry point must actually call the new refresh.

@@ -135,8 +135,8 @@ def test_producer_writes_lf_bytes(row, tmp_path):
     out = tmp_path / f"{mod_name.replace('.', '_')}_{attr}.json"
     _invoke(fn, kind, out)
     raw = out.read_bytes()
-    assert raw, f"{mod_name}.{attr} wrote nothing - the assertion below would "\
-                "pass for the wrong reason"
+    assert raw, (f"{mod_name}.{attr} wrote nothing - the assertion below would "
+                 "pass for the wrong reason")
     pairs = raw.count(b"\r\n")
     assert pairs == 0, (
         f"{mod_name}.{attr} put {pairs} CRLF pairs on disk. Its targets are "

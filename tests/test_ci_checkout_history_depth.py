@@ -327,8 +327,8 @@ def test_docs_guard_selector_picks_no_history_reading_module():
     )
     selected = {ln.strip().replace("\\", "/")
                 for ln in proc.stdout.splitlines() if ln.strip()}
-    assert selected, "the selector chose nothing - it exits 1 on empty, so " \
-                     "this should be unreachable"
+    assert selected, ("the selector chose nothing - it exits 1 on empty, so "
+                      "this should be unreachable")
     overlap = sorted(selected & set(_history_reading_modules()))
     assert not overlap, (
         f"tools/md_guard_selector.py now selects {overlap}, which ask git for "

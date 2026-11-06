@@ -136,8 +136,8 @@ def test_only_checkpoint_15_fails(tmp_path):
 
 
 def test_non_strict_json_row_fails(tmp_path):
-    raw = '{"ts": "2026-01-02T18:21:00+00:00", "mode": "sr", "champion": "Caitlyn", ' \
-          '"game_time_s": NaN, "cs": 70, "level": 9, "bands": []}'
+    raw = ('{"ts": "2026-01-02T18:21:00+00:00", "mode": "sr", "champion": "Caitlyn", '
+           '"game_time_s": NaN, "cs": 70, "level": 9, "bands": []}')
     out = _grade(_write(tmp_path, [_row()], raw=[raw]))
     assert out["verdict"] == "FAIL"
     assert any("not strict JSON" in r for r in out["reasons"])

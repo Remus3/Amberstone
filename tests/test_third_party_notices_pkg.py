@@ -72,8 +72,9 @@ def test_rc_shell_lock_agrees_with_package_json() -> None:
     pkg = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
     drift = tpn.lock_drift(pkg, lock)
-    assert drift == [], "rc-shell lock is out of sync with package.json (regenerate with " \
-        "`npm install --package-lock-only --ignore-scripts` in rc-shell): " + "; ".join(drift)
+    assert drift == [], (
+        "rc-shell lock is out of sync with package.json (regenerate with "
+        "`npm install --package-lock-only --ignore-scripts` in rc-shell): " + "; ".join(drift))
     # The pin the shell is built and tested on.
     assert lock["packages"]["node_modules/electron"]["version"] == pkg["devDependencies"]["electron"]
 
