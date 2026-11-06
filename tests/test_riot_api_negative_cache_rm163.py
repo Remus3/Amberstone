@@ -136,7 +136,7 @@ def _zero_ttl():
     """Patch every negative TTL to 0 so the entry is expired on write."""
     return mock.patch.dict(
         RA._NEGATIVE_TTL_S_BY_OUTCOME,
-        {k: 0 for k in RA._NEGATIVE_TTL_S_BY_OUTCOME},
+        dict.fromkeys(RA._NEGATIVE_TTL_S_BY_OUTCOME, 0),
     )
 
 

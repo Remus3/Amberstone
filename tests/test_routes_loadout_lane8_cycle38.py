@@ -489,7 +489,7 @@ def test_explicit_truthy_spellings_keep_that_push_on(
 
 def test_all_three_flags_off_pushes_nothing(monkeypatch):
     status, body, seen = _apply(
-        monkeypatch, {k: "false" for k in _PUSH_KEYS})
+        monkeypatch, dict.fromkeys(_PUSH_KEYS, "false"))
     assert status == 200
     assert seen == []
     assert body["queued"] == []

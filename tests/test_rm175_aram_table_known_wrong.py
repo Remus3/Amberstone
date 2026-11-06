@@ -168,7 +168,7 @@ def test_which_economy_axes_move_per_band(monkeypatch):
     each), never at L6."""
     moved: dict[str, set] = {"gold_at_band": set(), "next_spike": set(),
                              "recall": set()}
-    recall_combo_hits = {band: 0 for band in lsp.GEN_BANDS}
+    recall_combo_hits = dict.fromkeys(lsp.GEN_BANDS, 0)
 
     for band in lsp.GEN_BANDS:
         for mana_state, manaless in _MANA_COMBOS:

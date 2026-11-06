@@ -60,7 +60,7 @@ def test_empty_is_zeroed():
     assert s["records"] == 0
     assert s["band_fires"] == 0
     assert s["top_band_skew"] is None
-    assert s["by_band"] == {k: 0 for k in rep._BAND_ORDER}
+    assert s["by_band"] == dict.fromkeys(rep._BAND_ORDER, 0)
 
 
 def test_degenerate_skew_flag():

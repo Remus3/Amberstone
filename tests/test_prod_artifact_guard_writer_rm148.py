@@ -22,7 +22,7 @@ _SENTINEL = "agents/state/lockfile.sentinel"
 
 
 def _sizes(**over):
-    base = {rel: 100 for rel in C._PROD_ARTIFACT_GUARD}
+    base = dict.fromkeys(C._PROD_ARTIFACT_GUARD, 100)
     base.update(over)
     return base
 

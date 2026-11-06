@@ -38,7 +38,7 @@ def _conn() -> sqlite3.Connection:
 
 
 def _ins(c, **row):
-    full = {n: 0 for n in _PARTICIPANT_COLS}
+    full = dict.fromkeys(_PARTICIPANT_COLS, 0)
     full.update(row)
     cols = ", ".join(full)
     c.execute(f"INSERT INTO participants ({cols}) VALUES "

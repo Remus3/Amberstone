@@ -347,7 +347,7 @@ class BuildReportTests(unittest.TestCase):
         deaths = [
             DeathEvent("m", i, 1, 6, ()) for i in range(10)
         ]
-        counts = {k: 0 for k in PATTERN_KEYS}
+        counts = dict.fromkeys(PATTERN_KEYS, 0)
         counts["solo_pickoff"] = 9
         counts["caught_4plus"] = 5
         counts["rapid_repeat"] = 2
@@ -356,7 +356,7 @@ class BuildReportTests(unittest.TestCase):
 
     def test_top3_drops_zero_count_patterns(self):
         deaths = [DeathEvent("m", i, 1, 6, ()) for i in range(3)]
-        counts = {k: 0 for k in PATTERN_KEYS}
+        counts = dict.fromkeys(PATTERN_KEYS, 0)
         counts["solo_pickoff"] = 1
         report = build_report(deaths, counts, [])
         self.assertEqual(report["top3"], ["solo_pickoff"])

@@ -1111,7 +1111,7 @@ class TestOffsetCastTier:
     def _common(self, monkeypatch, table):
         monkeypatch.setattr(W, "_load_champion_ids", lambda p: list(table.keys()))
         monkeypatch.setattr(W, "_load_display_names", lambda p: {k: k for k in table})
-        monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {k: 175.0 for k in table})
+        monkeypatch.setattr(W, "_load_attack_ranges", lambda p: dict.fromkeys(table, 175.0))
         monkeypatch.setattr(W, "_load_wiki_table", lambda: table)
         monkeypatch.setattr(W, "_fetch_field", lambda disp, field, stats_fallback: None)
         monkeypatch.setattr(W, "_cdragon_scalars", lambda cid, ar: {

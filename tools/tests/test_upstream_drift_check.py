@@ -98,7 +98,7 @@ class TestComputeFields:
         cur = {"ddragon_version": "16.11.1",
                "meraki_content_patch": "25.15",
                "cdragon_content_version": "buildA"}
-        errs = {k: None for k in cur}
+        errs = dict.fromkeys(cur)
         fields = M.compute_fields(prev, cur, errs)
         assert all(f.changed is False for f in fields)
         assert M.any_drift(fields) is False
@@ -127,14 +127,14 @@ class TestAnyDrift:
                 "cdragon_content_version": "A"}
         cur = {"ddragon_version": "16.11.1", "meraki_content_patch": "25.16",
                "cdragon_content_version": "A"}
-        errs = {k: None for k in cur}
+        errs = dict.fromkeys(cur)
         assert M.any_drift(M.compute_fields(prev, cur, errs)) is True
 
     def test_false_when_none_changed(self):
         prev = {"ddragon_version": "16.11.1", "meraki_content_patch": "25.15",
                 "cdragon_content_version": "A"}
         cur = dict(prev)
-        errs = {k: None for k in cur}
+        errs = dict.fromkeys(cur)
         assert M.any_drift(M.compute_fields(prev, cur, errs)) is False
 
 
@@ -150,7 +150,7 @@ class TestSentinelRoundTrip:
         prev = M.load_sentinel()
         cur = {"ddragon_version": "16.11.1", "meraki_content_patch": "25.15",
                "cdragon_content_version": "buildA"}
-        errs = {k: None for k in cur}
+        errs = dict.fromkeys(cur)
         fields = M.compute_fields(prev, cur, errs)
         M.advance_sentinel(prev, cur, fields, drift=M.any_drift(fields))
         back = M.load_sentinel()
@@ -175,7 +175,7 @@ class TestSentinelRoundTrip:
         prev = M.load_sentinel()
         cur = {"ddragon_version": "16.12.1", "meraki_content_patch": "25.15",
                "cdragon_content_version": "A"}
-        errs = {k: None for k in cur}
+        errs = dict.fromkeys(cur)
         fields = M.compute_fields(prev, cur, errs)
         M.advance_sentinel(prev, cur, fields, drift=True)
         drifted = M.load_sentinel()

@@ -218,8 +218,8 @@ def test_gold_deficit_profile_detects_a_recovery():
     def frame(ts, blue, red):
         return {"timestamp": ts, "events": [],
                 "participantFrames": _frames_for(
-                    {**{i: blue for i in range(1, 6)},
-                     **{i: red for i in range(6, 11)}})}
+                    {**dict.fromkeys(range(1, 6), blue),
+                     **dict.fromkeys(range(6, 11), red)})}
     tl = {"info": {"frameInterval": 60000, "frames": [
         frame(0, 500, 500), frame(60000, 900, 500), frame(120000, 800, 1200)]}}
     f = ep.gold_deficit_profile(_match(), tl, 7)   # pid 7 is on team 200

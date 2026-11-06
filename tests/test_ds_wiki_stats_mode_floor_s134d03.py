@@ -77,7 +77,7 @@ class TestCheckModePresence:
     def test_live_shape_passes_with_counts(self):
         out = W.check_mode_presence(_champions())
         assert out["rows"] == 171
-        assert out["counts"] == {m: 171 for m in W.GATED_MODE_KEYS}
+        assert out["counts"] == dict.fromkeys(W.GATED_MODE_KEYS, 171)
         assert out["missing"] == []
         assert "overrides" not in out
 

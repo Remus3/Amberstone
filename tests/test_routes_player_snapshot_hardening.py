@@ -92,8 +92,7 @@ def _patch_gpi(monkeypatch, result=None, exc=None):
 # ---- tags -----------------------------------------------------------------
 
 def test_flat_profile_never_tags_one_axis_strong_and_weak():
-    flat = {k: 50.0 for k in ("aggression", "farming", "vision",
-                              "objectives", "survival", "tempo")}
+    flat = dict.fromkeys(("aggression", "farming", "vision", "objectives", "survival", "tempo"), 50.0)
     # compute_gpi's max()/min() both pick the FIRST axis on a full tie.
     gpi = _gpi(axes=_axes(flat), strongest_axis="aggression",
                weakest_axis="aggression")

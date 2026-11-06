@@ -124,13 +124,13 @@ def test_a_name_with_a_unicode_line_separator_resolves_whole(tmp_path, git_env, 
 def test_control_ascii_hook_modes_are_keyed_by_basename(tmp_path, git_env, executor):
     repo = _repo(tmp_path, git_env, _hook_files(".githooks"))
     modes = executor._hook_index_modes(repo, repo / ".githooks")
-    assert modes == {n: "100644" for n in _HOOK_NAMES}
+    assert modes == dict.fromkeys(_HOOK_NAMES, "100644")
 
 
 def test_hook_modes_under_a_non_ascii_dir_are_keyed_by_basename(tmp_path, git_env, executor):
     repo = _repo(tmp_path, git_env, _hook_files(_HOOKS))
     modes = executor._hook_index_modes(repo, repo / _HOOKS)
-    assert modes == {n: "100644" for n in _HOOK_NAMES}
+    assert modes == dict.fromkeys(_HOOK_NAMES, "100644")
 
 
 def test_a_non_executable_hook_under_a_non_ascii_dir_fails_the_gate(tmp_path, git_env, executor):

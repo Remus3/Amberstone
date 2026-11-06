@@ -120,7 +120,7 @@ def test_snapshot_live_write_counts_filled_entries_not_names(tmp_path):
     p = _live(tmp_path / "f.json", T0)
     s = g.snapshot(p, {"degraded", "bench_units"})
     assert s["kind"] == "live_write" and s["mtime"] == T0
-    assert s["keys_present"] == {k: True for k in g.KEYS}
+    assert s["keys_present"] == dict.fromkeys(g.KEYS, True)
     assert s["filled"] == {"bench_units": 1, "shop_units": 2, "unit_swap": 6}
     assert s["missing_head_keys"] == []
     assert "UnitB" not in json.dumps(s)

@@ -137,8 +137,8 @@ def test_fromkeys_equals_the_comprehension():
     """The premise of the fix: same keys, same order, same values, a fresh dict per call."""
     for keys in ((), ("a",), ("b", "a", "c"), ("a", "a", "b")):
         for value in (0, 0.0, False, None):
-            assert dict.fromkeys(keys, value) == {k: value for k in keys}
-            assert list(dict.fromkeys(keys, value)) == list({k: value for k in keys})
+            assert dict.fromkeys(keys, value) == {k: value for k in keys}  # noqa: C420 - premise
+            assert list(dict.fromkeys(keys, value)) == list({k: value for k in keys})  # noqa: C420 - premise
     a, b = dict.fromkeys(("x",), 0), dict.fromkeys(("x",), 0)
     a["x"] += 1
     assert b == {"x": 0}

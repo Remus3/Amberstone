@@ -36,7 +36,7 @@ def _write_prefix_row(db_path, **overrides):
         "arena_rounds_won", "arena_placement",
         "notes", "label", "raw_data", "game_id",
     ]
-    vals = {c: "" for c in cols}
+    vals = dict.fromkeys(cols, "")
     vals["timestamp"] = "2026-08-30 12:00:00"
     vals["mode"] = "TFT"
     vals.update(overrides)

@@ -176,7 +176,7 @@ class RouteExposureTests(_Base):
     def test_route_forced_off_reorders_the_head(self) -> None:
         default = server._route_rank_tank(_route_body())
         forced_off = server._route_rank_tank(
-            _route_body(**{s: False for s in _SEAMS})
+            _route_body(**dict.fromkeys(_SEAMS, False))
         )
         d_order = tuple(r["item_id"] for r in default["ranked"])
         f_order = tuple(r["item_id"] for r in forced_off["ranked"])
@@ -204,7 +204,7 @@ class RouteExposureTests(_Base):
     def test_route_absent_keys_are_byte_identical_to_explicit_true(self) -> None:
         absent = server._route_rank_tank(_route_body())
         explicit = server._route_rank_tank(
-            _route_body(**{s: True for s in _SEAMS})
+            _route_body(**dict.fromkeys(_SEAMS, True))
         )
         self.assertEqual(absent, explicit)
 
@@ -224,7 +224,7 @@ class ByteIdenticalDefaultTests(_Base):
 
     def test_explicit_true_equals_omitted(self) -> None:
         omitted = _rows(_rank())
-        explicit = _rows(_rank(**{s: True for s in _SEAMS}))
+        explicit = _rows(_rank(**dict.fromkeys(_SEAMS, True)))
         self.assertEqual(omitted, explicit)
 
 
@@ -235,7 +235,7 @@ class ForcedOffMagnitudeTests(_Base):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.on = _deltas(_rank())
-        cls.off = _deltas(_rank(**{s: False for s in _SEAMS}))
+        cls.off = _deltas(_rank(**dict.fromkeys(_SEAMS, False)))
 
     def _pct(self, item_id: str) -> float:
         return (self.on[item_id] - self.off[item_id]) / self.off[item_id] * 100.0
@@ -258,7 +258,7 @@ class ForcedOffMagnitudeTests(_Base):
 
     def test_forced_off_order_matches_the_measured_reorder(self) -> None:
         self.assertEqual(
-            _order(_rank(**{s: False for s in _SEAMS}))[:8], _FORCED_OFF_TOP8
+            _order(_rank(**dict.fromkeys(_SEAMS, False)))[:8], _FORCED_OFF_TOP8
         )
 
 
@@ -295,7 +295,7 @@ class ClientPayloadTests(unittest.TestCase):
             )
 
     def test_explicit_false_is_emitted(self) -> None:
-        body = self._body(**{s: False for s in _SEAMS})
+        body = self._body(**dict.fromkeys(_SEAMS, False))
         for seam in _SEAMS:
             self.assertIs(body[seam], False)
 

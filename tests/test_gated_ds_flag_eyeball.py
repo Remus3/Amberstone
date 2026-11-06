@@ -27,7 +27,7 @@ def _pair(row, champion, off_ids, on_ids, *, gt=600.0, top=eb.POOL_TOP, on_flags
                                               "items": ["s1"], "mode": "SR"}, top=top)
     if on_flags is not None:
         on_body = dict(off_body)
-        on_body.update({f: True for f in on_flags})
+        on_body.update(dict.fromkeys(on_flags, True))
     return {"ts": "2026-10-31T00:00:00+00:00", "row": row, "champion": champion,
             "level": 11, "game_time_s": gt, "items_source": "owned_item_ids",
             "body_off": off_body, "body_on": on_body,

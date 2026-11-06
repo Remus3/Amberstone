@@ -176,7 +176,7 @@ def _plan(rounds=30, seed=134):
     rng = random.Random(seed)
     keys = _keys()
     plan = {"keys": keys, "rounds": []}
-    hp = {k: 100 for k in keys}
+    hp = dict.fromkeys(keys, 100)
     for r in range(1, rounds + 1):
         stage, rnd = 1 + (r - 1) // 7, 1 + (r - 1) % 7
         kind = "carousel" if rnd == 4 else ("pve" if stage == 1 else "pvp")

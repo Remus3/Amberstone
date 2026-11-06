@@ -83,7 +83,7 @@ _EXPECTED_COMBAT_STATS = {
 }
 _EXPECTED_COMBAT_STATS["resource_type"] = "MANA"
 
-_DEFAULT_COMBAT_STATS = {out_key: 0.0 for out_key in _STAT_SOURCES}
+_DEFAULT_COMBAT_STATS = dict.fromkeys(_STAT_SOURCES, 0.0)
 _DEFAULT_COMBAT_STATS["resource_type"] = ""
 
 # /activeplayerrunes structured payload (Riot naming) -> runes_full contract.

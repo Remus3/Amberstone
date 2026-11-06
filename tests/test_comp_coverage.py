@@ -46,8 +46,8 @@ class CorpusTests(unittest.TestCase):
         least one champion and by NOT every champion, same for each VULN
         axis. A broken DS import or a dead threshold turns this red."""
         names = _roster()
-        holders = {a: 0 for a in cc.COVER_AXES}
-        weak = {a: 0 for a in cc.VULN_AXES}
+        holders = dict.fromkeys(cc.COVER_AXES, 0)
+        weak = dict.fromkeys(cc.VULN_AXES, 0)
         for name in names:
             prof = cc.champion_profile(name)
             self.assertIsNotNone(prof, name)

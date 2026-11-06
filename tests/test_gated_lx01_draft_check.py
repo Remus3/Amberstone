@@ -307,7 +307,7 @@ def test_scan_logs_both_shapes(tmp_path):
     wrong.write_text("10:00:05.123 ERROR    rc.x  [a.py:1] database is locked\n", encoding="utf-8")
     r2 = g.scan_logs([agent, wrong], since, until)
     assert r2["files"][1] == {"name": "2026-01-03.log", "lines_in_window": 0,
-                              "counts": {k: 0 for k in g.LOG_PATTERNS}}
+                              "counts": dict.fromkeys(g.LOG_PATTERNS, 0)}
     r3 = g.scan_logs([agent, tmp_path / "lcu_agent.log.1"], since, until)
     assert r3["files"][1]["missing"] is True and r3["lines_in_window"] == 1
     # A rotated day log (<day>.log.1) is reached through a glob and keeps its day.

@@ -112,7 +112,7 @@ _FIMBUL = "assume_fimbulwinter_shield"
 
 _SEAMS = (_KAENIC, _ECLIPSE, _CHAINLACED, _SERAPHS, _FIMBUL)
 # The MEASURED route table this slice wires. One route, all five seams.
-_ROUTES_BY_SEAM: dict[str, tuple[str, ...]] = {seam: ("/ehp",) for seam in _SEAMS}
+_ROUTES_BY_SEAM: dict[str, tuple[str, ...]] = dict.fromkeys(_SEAMS, ("/ehp",))
 # Every OTHER EHP-family route. None of their engine functions names any of the
 # five, so none of them may parse any of the keys.
 _FORBIDDEN_ROUTES = ("/rank-tank", "/hybrid", "/rank-bruiser")

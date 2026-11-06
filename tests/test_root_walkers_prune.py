@@ -148,7 +148,7 @@ _GAM_ALLOWED: frozenset[str] = frozenset({
 
 def _gam_tree(root: Path) -> None:
     body = _ARCH_HEADER + _PHASE_LINE
-    _build_tree(root, {rel: body for rel in _GAM_LEGIT | _DECOY_FILES})
+    _build_tree(root, dict.fromkeys(_GAM_LEGIT | _DECOY_FILES, body))
 
 
 class TestGenArchmapPrunes:
@@ -219,7 +219,7 @@ _AAS_ALLOWED: frozenset[str] = frozenset({
 
 
 def _aas_tree(root: Path) -> None:
-    _build_tree(root, {rel: "x = 1\n" for rel in _AAS_LEGIT | _DECOY_FILES})
+    _build_tree(root, dict.fromkeys(_AAS_LEGIT | _DECOY_FILES, "x = 1\n"))
 
 
 class TestAuditApiSurfacePrunes:
