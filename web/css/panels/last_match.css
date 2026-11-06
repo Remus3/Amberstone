@@ -806,6 +806,53 @@
     min-height: auto;
   }
 }
+/* RM-1783: at 720 px and under the identity cluster wraps between its
+ * parts. As the 7-track grid (72px + six auto tracks) its min-content was
+ * 472px in SR / ARAM (425 in Arena), so the one-column hero track grew
+ * past the hero from about 600 down and #view-last-match scrolled
+ * sideways from 560 (SR / ARAM) / 480 (Arena) down, and the champion name
+ * (min-width: 0) was squeezed to a 0px track: no name at 480. Above 720
+ * the grid fits and nothing moves. The live and the historical Post Game
+ * Review share these classes. Guard:
+ * tests/snapshot_panels/test_last_match_hero_narrow.py. */
+@media (max-width: 720px) {
+  .lm-hero-identity {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}
+/* RM-1783: at 560 px and under the 2 x 4 stat grids (Detailed stats,
+ * the rank-tier comparison) put two cells on a line in reading order (row
+ * 1 then row 2, as at 1920), and drop the dashed left separator and its
+ * padding: the hero is one column here, its sections already stack 18px
+ * apart. Four 72px-min columns needed 330px plus 33px of separator, past
+ * the hero at about 510 and under. The rank selector and the KDA + KP%
+ * pair keep their own full line. The historical view's spacer cell
+ * hides so no line starts with a hole. */
+@media (max-width: 560px) {
+  .lm-hero-stats-details,
+  .lm-hero-stats-grid,
+  .lm-hero-rank-compare {
+    border-left: none;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .lm-hero-stats-grid {
+    grid-template-columns: repeat(2, minmax(72px, auto));
+    grid-template-rows: none;
+  }
+  .lm-hero-stats-grid .lm-hero-stat-blank { display: none; }
+  .lm-hero-rank-compare {
+    grid-template-columns: repeat(2, minmax(72px, auto));
+    grid-template-rows: none;
+    grid-template-areas:
+      "selector   selector"
+      "kda-kp     kda-kp"
+      "vision-avg cs-avg"
+      "tank-avg   damage-avg"
+      "cspm-avg   heal-avg";
+  }
+}
 
 /* -- Stats grid ---------------------------------------------------- */
 /* s219 v2: now sits in the left half of a 2-up row alongside BUILD.
@@ -1589,6 +1636,13 @@
   padding: 10px 12px;
   min-height: 120px;
   border-top: 3px solid var(--text-dim);
+}
+/* RM-1783: at 720 px and under the three Quick Review columns stack.
+ * Side by side, each column's min-content (its longest word at --fs-md
+ * plus padding) put the third column past the view from 560 (SR) / 480
+ * (ARAM, Arena) down; at 640 they were 160px columns of 22px text. */
+@media (max-width: 720px) {
+  .lm-qr-cols { grid-template-columns: 1fr; }
 }
 .lm-qr-col-right    { border-top-color: var(--good); }
 .lm-qr-col-wrong    { border-top-color: var(--warn); }
