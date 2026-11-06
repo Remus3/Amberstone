@@ -219,6 +219,23 @@ def _computed_mode(call: ast.Call, fn: ast.expr, name: str) -> bool:
         isinstance(mode, ast.Constant) and isinstance(mode.value, str))
 
 
+def _newline_stops_translation(call: ast.Call) -> bool:
+    r"""True when ``call`` passes a ``newline=`` that stops LF -> CRLF on write.
+
+    ``newline=None`` (universal translation) and a literal ``"\r"`` /
+    ``"\r\n"`` still translate, so a bare keyword is not enough (RM-1725).
+    ``""``, ``"\n"`` and a value the AST cannot read (``chr(10)``, a name) pass.
+    """
+    for kw in call.keywords:
+        if kw.arg != "newline":
+            continue
+        value = kw.value
+        if isinstance(value, ast.Constant):
+            return value.value in ("", "\n")
+        return True
+    return False
+
+
 def _violations(source: str) -> list[str]:
     out: list[str] = []
     for node in ast.walk(ast.parse(source)):
@@ -229,7 +246,7 @@ def _violations(source: str) -> list[str]:
         if name == "write_text":
             # Path.write_text(newline=) is LF-safe (Python 3.10+; the repo
             # runs 3.14), so only the bare form is a violation.
-            if not any(kw.arg == "newline" for kw in node.keywords):
+            if not _newline_stops_translation(node):
                 out.append(f"line {node.lineno}: write_text without newline=")
             continue
         if (name in ("writer", "DictWriter") and isinstance(fn, ast.Attribute)
@@ -240,8 +257,8 @@ def _violations(source: str) -> list[str]:
         if name in _TEMPFILE_MODE_INDEX:
             # RM-1540: a text-mode temp file translates LF like open().
             mode = _write_mode(node, _TEMPFILE_MODE_INDEX[name])
-            if (mode and "b" not in mode and not any(
-                    kw.arg == "newline" for kw in node.keywords)):
+            if (mode and "b" not in mode
+                    and not _newline_stops_translation(node)):
                 out.append(f"line {node.lineno}: {name}({mode!r}) without newline=")
             continue
         if (name == "open" and isinstance(fn, ast.Attribute)
@@ -250,14 +267,13 @@ def _violations(source: str) -> list[str]:
             # a TextIOWrapper; the file name, not the mode, is arg 0.
             mode = _write_mode(node, 1)
             if (mode and "t" in mode and ("w" in mode or "x" in mode)
-                    and not any(kw.arg == "newline" for kw in node.keywords)):
+                    and not _newline_stops_translation(node)):
                 out.append(f"line {node.lineno}: {fn.value.id}.open({mode!r}) "
                            "without newline=")
             continue
         if name not in ("open", "fdopen"):
             continue
-        if _computed_mode(node, fn, name) and not any(
-                kw.arg == "newline" for kw in node.keywords):
+        if _computed_mode(node, fn, name) and not _newline_stops_translation(node):
             # RM-1540: a mode the AST cannot read is treated as a write.
             out.append(f"line {node.lineno}: {name}(<computed mode>) without newline=")
             continue
@@ -271,7 +287,7 @@ def _violations(source: str) -> list[str]:
             continue
         if not ("w" in mode or "x" in mode or ("r" in mode and "+" in mode)):
             continue
-        if not any(kw.arg == "newline" for kw in node.keywords):
+        if not _newline_stops_translation(node):
             out.append(f"line {node.lineno}: {name}({mode!r}) without newline=")
     return out
 
@@ -352,6 +368,36 @@ def test_guard_detects_a_compressed_text_mode_open():
         "gzip.open('x.gz', 'rt')\n"
         "bz2.open('w.bz2', 'rb')\n"
         "lzma.open('x.xz', 'at')\n"
+    )
+    assert _violations(good) == []
+
+
+def test_guard_rejects_a_newline_value_that_still_translates():
+    """RM-481 residual (RM-1725): the detector accepted ANY ``newline=``
+    keyword, so ``newline=None`` (universal translation: LF becomes CRLF on
+    Windows) and ``newline="\\r"`` / ``"\\r\\n"`` passed as LF-safe. Only
+    ``""`` and ``"\\n"`` (a literal, ``chr(10)`` or a name the AST cannot read)
+    stop the translation."""
+    bad = (
+        "from pathlib import Path\n"
+        "open('x', 'w', newline=None)\n"
+        "open('x', 'w', newline='\\r\\n')\n"
+        "open('x', 'w', newline='\\r')\n"
+        "Path('x').write_text('a', newline=None)\n"
+        "Path('x').write_text('a', newline='\\r\\n')\n"
+        "Path('x').open('w', newline=None)\n"
+        "gzip.open('x.gz', 'wt', newline=None)\n"
+        "tempfile.NamedTemporaryFile('w', newline='\\r\\n')\n"
+    )
+    assert len(_violations(bad)) == 8
+    good = (
+        "from pathlib import Path\n"
+        "open('x', 'w', newline='')\n"
+        "open('x', 'w', newline='\\n')\n"
+        "open('x', 'w', newline=chr(10))\n"
+        "open('x', 'w', newline=NL)\n"
+        "Path('x').write_text('a', newline='\\n')\n"
+        "gzip.open('x.gz', 'wt', newline='\\n')\n"
     )
     assert _violations(good) == []
 
