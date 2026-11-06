@@ -252,15 +252,15 @@ status rules.
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the checkbox wrappers and sliders (HIT-TARGETS, the RM-1061 ring), the coaching-action buttons and spend gates, and the companion single-column reflow (STRUCTURE at 923x1280).
 - Notes: 10,761 bytes at writing. The range carries the shared `@media (max-width: 1200px)` block. It also collapses the lobby grid, the User Builds layout, the History grid, the header row and the heartbeat. So the audit covers those views at 923x1280 too.
 
-### HS-7 - Header chips, toasts and digest
+### HS-7 - Header chips and toasts
 - File: `web/css/panels/header.css`
 - Target: `header_chips.css`
 - Start: `.mode-pill {`
-- Anchors: `self-spell`, `kda-burst`, `keybinds-toast`, `advisory-toast`, `rebuild-toast`, `digest-popout`, `digest-insights`
-- Coupled: `tests/snapshot_panels/test_escape_one_action.py`
+- Anchors: `self-spell`, `kda-burst`, `keybinds-toast`, `advisory-toast`, `rebuild-toast`
+- Coupled: none (re-derived in s150 for RM-1427 over the tracked tests and tools: none names header.css or header_chips.css with an anchor; test_escape_one_action.py did only through its digest stack case, which RM-1427 removed with the digest popout)
 - Views: `all`, `active-match`
-- UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the header bar pills in game (mode, champion, spells, KDA, CS, level, vision, ult, zone, win), the toasts and the digest popout (Escape still closes it, the z-index stack is unchanged), and the pulse keyframes under prefers-reduced-motion.
-- Notes: 18,416 bytes at writing. The Start line has no comment banner: it is the first rule after the Settings block. The static widths of the same pills stay in the head (rule 1 forbids merging them in a move).
+- UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the header bar pills in game (mode, champion, spells, KDA, CS, level, vision, ult, zone, win), the toasts (the z-index stack is unchanged), and the pulse keyframes under prefers-reduced-motion.
+- Notes: 18,416 bytes at writing; RM-1427 (s150) then removed the digest popout rules from this range. The Start line has no comment banner: it is the first rule after the Settings block. The static widths of the same pills stay in the head (rule 1 forbids merging them in a move).
 
 ## web/css/panels/champ_select_view.css slices
 

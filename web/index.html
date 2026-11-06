@@ -2473,35 +2473,12 @@
          #advisory-count / #digest-label keeps writing to defined
          elements without errors; no visual footprint. -->
     <span id="advisory-badge" class="advisory-badge" hidden role="button" aria-label="Open latest advisory"><b id="advisory-count">0</b></span>
-    <span id="digest-icon" class="digest-icon" hidden role="button" aria-label="Open cross-session digest"><b id="digest-label">-</b></span>
+    <span id="digest-icon" class="digest-icon" hidden><b id="digest-label">-</b></span>
     <span id="input-latency-footer" class="latency-stat">latency -</span>
     <span id="analyze-footer" class="analyze-stat">analyze idle</span>
     <button id="analyze-now" class="footer-btn" type="button" title="Run Agent 4 analyzer across all mode DBs now">ANALYZE NOW</button>
     <span id="frame-count" class="frame-stat">0 frames</span>
   </footer>
-
-  <!-- Cross-session digest popout - opened by clicking #digest-icon.
-       Carries cold-streak / slump / trend data that used to live inside
-       an in-panel surface before the header-icon redesign. -->
-  <div id="digest-popout" class="digest-popout hidden" role="dialog" aria-modal="true" aria-labelledby="digest-popout-title">
-    <div class="digest-popout-body">
-      <div class="digest-popout-head">
-        <span id="digest-popout-title">CROSS-SESSION DIGEST</span>
-        <button id="digest-popout-close" type="button" aria-label="close">×</button>
-      </div>
-      <div class="digest-popout-content">
-        <div class="kv"><span>State</span><span id="dig-state">-</span></div>
-        <div class="kv"><span>Streak</span><span id="dig-streak">-</span></div>
-        <div class="kv"><span>Recent</span><span id="dig-recent">-</span></div>
-        <div class="kv"><span>KDA trend</span><span id="dig-kda-trend">-</span></div>
-        <div class="kv"><span>Time of day</span><span id="dig-tod">-</span></div>
-        <div class="kv"><span>Fatigue</span><span id="dig-fatigue">-</span></div>
-        <div class="digest-popout-advice" id="dig-advice">-</div>
-        <div class="digest-insights-head">TOP INSIGHTS <span id="dig-insights-count" class="dim">-</span></div>
-        <ul id="dig-insights" class="digest-insights"><li class="dim">loading...</li></ul>
-      </div>
-    </div>
-  </div>
 
   <div id="task-modal" class="task-modal hidden" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
     <div class="task-modal-body">

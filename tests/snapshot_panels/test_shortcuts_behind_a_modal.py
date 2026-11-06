@@ -6,9 +6,10 @@ RM-1323 made the global letter shortcuts in web/js/main.js stand down behind a
 rendered role="menu", and RM-1324 did the same for the Replay player's own keys
 (web/js/panels/review_player.js). Neither looked at the two full-window modals,
 the task detail modal (#task-modal, opened from an activity row) and the
-cross-session digest popout (#digest-popout, opened from the header digest
-icon). Each is a position: fixed scrim over the whole page, so whatever a key
-does there it does to a page the operator cannot see. Measured in headless
+cross-session digest popout (#digest-popout), which RM-1427 (s150) later
+retired, so only the task modal is tested here. Each was a position: fixed
+scrim over the whole page, so whatever a key did there it did to a page the
+operator cannot see. Measured in headless
 Chromium at 1920x920 under ?ui_mock=1 before the fix, focus on the body, on
 Home, Settings, Replay, Lobby and Session alike: A clicked ANALYZE NOW and Z
 flipped zen behind either modal, Shift+R would wipe the saved preferences and
@@ -16,7 +17,7 @@ reload the page out from under it, and on Replay ] seeked a showing recording
 from 20 to 30 behind the task modal.
 
 Ruling: an open, rendered modal owns the page's shortcuts the way a menu does.
-The modal layers carry `modal: true` in their web/js/lib/escape_layers.js
+A modal layer carries `modal: true` in its web/js/lib/escape_layers.js
 registration; escape_layers.modalLayerRendered() answers whether one is open
 with a box, and main.js _letterShortcutsYield and the player's hotkeyAction
 (as `modalOpen`) both read it, so the two cannot drift apart.
@@ -28,12 +29,12 @@ What stays as it was, each pinned below:
   modal's own content may want it to scroll that content. It no longer plays.
 - Ctrl+Space still plays (the documented play-from-anywhere chord, kept above
   the check exactly as RM-1324 kept it for a menu).
-- A modal open by class but with no box (the overlay shell hides both with
+- A modal open by class but with no box (the overlay shell hides it with
   display: none !important) is over nothing and kills no key.
 
-The modals are opened by class, as the RM-1323 / RM-1324 guards open menus:
-ui_mock has no activity row to click and keeps the digest icon hidden, and the
-escape layer's isOpen() reads the same class.
+The modal is opened by class, as the RM-1323 / RM-1324 guards open menus:
+ui_mock has no activity row to click, and the escape layer's isOpen() reads
+the same class.
 """
 import pytest
 
@@ -55,7 +56,6 @@ VP = VIEWPORTS[0]
 
 _MODALS = {
     "task": ("#task-modal", "#task-modal-close"),
-    "digest": ("#digest-popout", "#digest-popout-close"),
 }
 _KEYS = ["a", "f", "z", "h", "?", "Shift+R"]
 
@@ -136,7 +136,7 @@ def test_every_shortcut_acts_again_once_escape_has_closed_the_modal(
 
 @pytest.mark.parametrize("modal", list(_MODALS))
 def test_a_modal_with_no_box_kills_no_shortcut(mock_server, pw_browser, modal):
-    # Rendered is what counts: the overlay shell hides both modals with
+    # Rendered is what counts: the overlay shell hides the modal with
     # display: none !important, the same state as here.
     ctx, page, errors = _open_view(pw_browser, mock_server, "settings")
     try:

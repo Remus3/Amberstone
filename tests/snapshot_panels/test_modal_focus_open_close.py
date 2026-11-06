@@ -4,8 +4,11 @@ RM-1424 (s144 uiux): an open modal holds the keyboard focus, and closing it
 hands focus back.
 
 The two full-window modals, the task detail modal (#task-modal, opened from an
-activity row) and the cross-session digest popout (#digest-popout, opened from
-the header digest icon), are each a position: fixed scrim over the whole page.
+activity row) and the cross-session digest popout (#digest-popout), were each
+a position: fixed scrim over the whole page. RM-1427 (s150) retired the digest
+popout (its last entry point went in s218), so only the task modal is tested
+here; it stays dormant behind the hidden #activity-strip, ready for that
+strip's documented restore.
 Measured in headless Chromium at 1920x920 under ?ui_mock=1 before the fix:
 opening either left focus where it was (on the control behind the scrim, or on
 the body), so the next Tab walked the page the operator cannot see; neither
@@ -24,13 +27,15 @@ Ruling, the RM-1312 / RM-1321 menu rules applied to a modal:
   modal is dropped. A pointer close (a click on the close button or on the
   scrim) never parks focus on the opener, so the next Space on Replay is not
   taken by it.
-- Both are role="dialog" aria-modal="true" with a labelled title, and both
-  close buttons meet --hit-min with a focus ring.
+- The modal is role="dialog" aria-modal="true" with a labelled title, and its
+  close button meets --hit-min with a focus ring.
 
 The task modal opens through its real path, a click on an activity row
-rendered from a routed /api/activity response; the digest popout through a
-click on its icon. A scripted click moves no focus, so the opener is the
-control the test focused first, as a keyboard activation would leave it.
+rendered from a routed /api/activity response. A scripted click moves no
+focus, so the opener is the control the test focused first, as a keyboard
+activation would leave it. The layer painted over the modal is the view menu,
+opened by an activation as the keyboard opens it (the modal's scrim takes the
+mouse), the test_escape_one_action RM-1070 pattern.
 """
 import json
 
@@ -48,7 +53,6 @@ OPENER = "#view-trigger"
 
 _MODALS = {
     "task": ("#task-modal", "#task-modal-close", "#task-modal-title"),
-    "digest": ("#digest-popout", "#digest-popout-close", "#digest-popout-title"),
 }
 
 _ACTIVITY = {
@@ -125,13 +129,8 @@ def _focus_opener(page):
 
 
 def _open(page, modal):
-    if modal == "task":
-        page.evaluate("() => document.querySelector('#activity-line .activity-event').click()")
-    else:
-        page.evaluate(
-            "() => { const i = document.getElementById('digest-icon');"
-            " i.hidden = false; i.click(); }"
-        )
+    assert modal == "task", modal
+    page.evaluate("() => document.querySelector('#activity-line .activity-event').click()")
     page.wait_for_function(
         "(s) => !document.querySelector(s).classList.contains('hidden')",
         arg=_MODALS[modal][0], timeout=5_000,
@@ -266,22 +265,43 @@ def test_an_opener_that_lost_its_box_takes_no_focus(mock_server, pw_browser, mod
     assert not errors, f"JS errors: {errors[:3]}"
 
 
+_MENU = """() => {
+  const m = document.getElementById('view-menu');
+  return {
+    open: !m.classList.contains('hidden') && m.getClientRects().length > 0,
+    focusIn: m.contains(document.activeElement),
+    z: [m, document.getElementById('task-modal')]
+      .map((e) => +getComputedStyle(e).zIndex),
+  };
+}"""
+
+
 def test_a_layer_painted_over_the_modal_is_not_held_by_it(mock_server, pw_browser):
-    # The digest popout (z 9500) opened over the task modal (z 200): Tab is
-    # held by the popout on top; each Escape closes one and hands focus back
-    # one step, the popout to the task modal's close button, then the task
-    # modal to the original opener.
-    ctx, page, errors = _open_view(pw_browser, mock_server)
+    # The view menu (z 9100, a non-modal role="menu" layer) opened over the
+    # task modal (z 200), on Home, where the menu's active row is its first.
+    # Measured (s150): Tab stays in the menu, the modal's trap stands down; the
+    # first Escape closes only the menu and leaves the modal open; the next
+    # Tab is the modal's again; the second Escape closes the modal and hands
+    # focus back to the original opener. (The menu returns focus to its own
+    # trigger, behind the scrim, and a Tab past the menu's last row on Settings
+    # lands behind it too; both are filed under RM-1427, not pinned here.)
+    ctx, page, errors = _open_view(pw_browser, mock_server, "home")
     try:
         _focus_opener(page)
         _open(page, "task")
-        _open(page, "digest")
-        assert _active(page) == "#digest-popout-close"
+        page.evaluate("() => document.getElementById('view-trigger').click()")
+        menu = page.evaluate(_MENU)
+        assert menu["open"] and _is_open(page, "task"), menu
+        assert menu["z"][0] > menu["z"][1], f"the menu is not painted over the modal: {menu}"
+        assert menu["focusIn"], f"opening the menu left focus on {_active(page)}"
         page.keyboard.press("Tab")
-        assert _inside(page, "digest")
+        assert page.evaluate(_MENU)["focusIn"] and not _inside(page, "task"), (
+            f"the modal under the menu took the Tab: {_active(page)}")
         page.keyboard.press("Escape")
-        assert not _is_open(page, "digest") and _is_open(page, "task")
-        assert _active(page) == "#task-modal-close"
+        assert not page.evaluate(_MENU)["open"], "the first Escape left the menu open"
+        assert _is_open(page, "task"), "the first Escape closed the modal under the menu"
+        page.keyboard.press("Tab")
+        assert _inside(page, "task"), f"with the menu shut Tab went to {_active(page)}"
         page.keyboard.press("Escape")
         assert not _is_open(page, "task")
         assert _active(page) == OPENER

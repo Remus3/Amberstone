@@ -260,8 +260,8 @@ export function dismissStrandedLayers() {
   return done;
 }
 
-// RM-1364: a layer registered with `modal: true` (the task modal, the
-// digest popout: each a position:fixed scrim over the whole page) owns the
+// RM-1364: a layer registered with `modal: true` (the task modal, a
+// position:fixed scrim over the whole page) owns the
 // page's shortcuts while it is open and rendered, as a role="menu" does.
 // main.js _letterShortcutsYield and the Replay player (hotkeyAction's
 // modalOpen) both ask modalLayerRendered(), so the two cannot drift apart.

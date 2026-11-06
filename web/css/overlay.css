@@ -115,7 +115,6 @@ body[data-shell="overlay"] #activity-strip,
 body[data-shell="overlay"] #input-bar,
 body[data-shell="overlay"] #view-menu,
 body[data-shell="overlay"] #view-banner,
-body[data-shell="overlay"] #digest-popout,
 body[data-shell="overlay"] #task-modal {
   display: none !important;
 }

@@ -22,12 +22,13 @@ a press already consumed. A second Escape still reaches the next handler
 (positive controls below), and an Escape with no layer open is untouched.
 
 RM-1068 (s144 uiux) closes the same double action on two more layers
-outside main.js: the Right Now cross-session digest popover
-(#digest-popout, web/js/panels/right_now.js bindDigestIcon) and the
+outside main.js: the Right Now cross-session digest popover and the
 draft-elo contributions overlay (.draft-elo-contributions,
 web/js/panels/draft_elo.js, the hover-only overlay Escape dismisses). Each
 closed AND exited zen on one press; each now consumes the press it acts on,
-and only that press.
+and only that press. RM-1427 (s150) retired the digest popover (no entry
+point since s218), so its RM-1068 and RM-1069 cases went with it; the
+RM-1070 cases below still peel stacked layers one per press.
 
 The Replay lane stays hidden under ?ui_mock=1, so the player tests reveal
 #replay-video-section the way a servable sidecar would (the helper from
@@ -184,33 +185,6 @@ def test_escape_with_no_layer_open_still_exits_zen(mock_server, pw_browser, vp):
 
 # RM-1068 ----------------------------------------------------------------
 
-_DIGEST_OPEN = (
-    "() => !document.getElementById('digest-popout').classList.contains('hidden')"
-)
-
-
-@pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
-def test_escape_closes_the_digest_popover_and_keeps_zen(
-        mock_server, pw_browser, vp):
-    ctx, page, errors = _open_view(pw_browser, mock_server, vp, "home")
-    try:
-        _zen_on(page)
-        # #digest-icon stays [hidden] until a digest payload arrives (the
-        # fixtures carry none); its click handler is the real opener.
-        page.evaluate("() => document.getElementById('digest-icon').click()")
-        assert page.evaluate(_DIGEST_OPEN), "the digest popover did not open"
-        page.keyboard.press("Escape")
-        assert not page.evaluate(_DIGEST_OPEN), "Escape did not close the popover"
-        st = page.evaluate(_STATE)
-        assert st["zen"] == "1", f"closing the digest popover also exited zen: {st}"
-        page.keyboard.press("Escape")
-        assert page.evaluate(_STATE)["zen"] == "", "a second Escape no longer exits zen"
-    finally:
-        page.close()
-        ctx.close()
-    assert not errors, f"JS errors: {errors[:3]}"
-
-
 _CONTRIB_SHOWN = """
 () => {
   const o = document.querySelector('#am-draft-elo .draft-elo-contributions');
@@ -258,64 +232,11 @@ def test_escape_dismisses_the_draft_elo_overlay_and_keeps_zen(
 
 
 # RM-1069 ----------------------------------------------------------------
-# Two layers open at once: the cross-session digest popover (#digest-popout,
-# z-index 9500, web/css/panels/header.css) over the task modal (#task-modal,
-# z-index 200, web/css/panels/input_activity.css), with zen on underneath.
-# Every layer listens on document in the capture phase; before the fix none
-# of them checked e.defaultPrevented, so one Escape closed BOTH layers (and
-# only zen survived, because the bubble-phase chain does check it). Each
-# layer now stands down on a press another layer consumed, so the press goes
-# to the first registered listener: right_now.js is imported by main.js and
-# binds at module evaluation, before main.js wires the task modal. One press
-# peels one layer. RM-1070 then moved every layer onto one dispatcher that
-# picks the topmost open layer (web/js/lib/escape_layers.js), so the order is
-# paint order, not registration order; for THIS pair the two agree, and the
-# RM-1070 tests at the end of the file pin a pair where they disagree.
-
-_STACK = """
-() => ({
-  digest: !document.getElementById('digest-popout').classList.contains('hidden'),
-  modal: !document.getElementById('task-modal').classList.contains('hidden'),
-  zen: document.body.dataset.zen || '',
-})
-"""
-
-
-@pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
-def test_escape_peels_stacked_layers_one_per_press(mock_server, pw_browser, vp):
-    ctx, page, errors = _open_view(pw_browser, mock_server, vp, "home")
-    try:
-        _zen_on(page)
-        page.evaluate(
-            "() => document.getElementById('task-modal').classList.remove('hidden')"
-        )
-        page.evaluate("() => document.getElementById('digest-icon').click()")
-        st = page.evaluate(_STACK)
-        assert st == {"digest": True, "modal": True, "zen": "1"}, st
-        page.keyboard.press("Escape")
-        st = page.evaluate(_STACK)
-        assert st == {"digest": False, "modal": True, "zen": "1"}, (
-            f"the first Escape did not close only the topmost layer: {st}"
-        )
-        page.keyboard.press("Escape")
-        st = page.evaluate(_STACK)
-        assert st == {"digest": False, "modal": False, "zen": "1"}, (
-            f"the second Escape did not close only the task modal: {st}"
-        )
-        page.keyboard.press("Escape")
-        st = page.evaluate(_STACK)
-        assert st["zen"] == "", f"the third Escape no longer exits zen: {st}"
-    finally:
-        page.close()
-        ctx.close()
-    assert not errors, f"JS errors: {errors[:3]}"
-
-
-# A press consumed UPSTREAM is not taken again, by any layer. The stack test
-# above can only reach the listeners registered after another layer's, so
-# this one consumes the Escape in a window capture listener (window runs
-# before every document listener) and asserts each layer stays open. The
-# first-registered layer (the digest popover) is pinned only here.
+# A press consumed UPSTREAM is not taken again, by any layer. This consumes
+# the Escape in a window capture listener (window runs before every document
+# listener) and asserts each layer stays open. (Its stacked-pair case, the
+# digest popover over the task modal, went with the popover in RM-1427; the
+# RM-1070 tests below peel a stacked pair one press at a time.)
 
 _CONSUME_UPSTREAM = """
 () => window.addEventListener('keydown', (e) => {
@@ -330,7 +251,6 @@ _LAYER_OPEN = {
         "() => !document.getElementById('home-find-match-picker')"
         ".classList.contains('hidden')"
     ),
-    "digest-popover": _DIGEST_OPEN,
 }
 
 
@@ -341,11 +261,10 @@ def _open_layer(page, layer):
         )
     elif layer == "view-menu":
         page.click("#view-trigger")
-    elif layer == "find-match-picker":
+    else:
+        assert layer == "find-match-picker", layer
         page.wait_for_selector("#home-hero-cta", state="visible", timeout=10_000)
         page.click("#home-hero-cta")
-    else:
-        page.evaluate("() => document.getElementById('digest-icon').click()")
 
 
 @pytest.mark.parametrize("layer", sorted(_LAYER_OPEN))
@@ -399,9 +318,9 @@ def test_a_press_consumed_upstream_leaves_the_draft_elo_overlay_shown(
 
 # RM-1070 ----------------------------------------------------------------
 # Close order is PAINT order. Measured in headless Chromium (?ui_mock=1#home,
-# 1920x920): #task-modal is z-index 200, #view-menu 9100, the Find Match
-# picker 9200 (its backdrop 9100) and #digest-popout 9500, all position:
-# fixed in the root stacking context. Before the fix each layer had its own
+# 1920x920): #task-modal is z-index 200, #view-menu 9100 and the Find Match
+# picker 9200 (its backdrop 9100), all position: fixed in the root stacking
+# context. Before the fix each layer had its own
 # document capture listener and the first REGISTERED open layer took the
 # press: the task modal is wired before the view menu and the lazily bound
 # picker, so with either open OVER the modal one Escape closed the modal
@@ -505,7 +424,8 @@ def test_every_escape_layer_registers_with_the_one_dispatcher(
 
     root = Path(__file__).resolve().parents[2] / "web" / "js"
     names = {}
-    for rel in ("main.js", "panels/right_now.js", "panels/draft_elo.js"):
+    # RM-1427 retired panels/right_now.js's "digest-popover" layer.
+    for rel in ("main.js", "panels/draft_elo.js"):
         src = (root / rel).read_text(encoding="utf-8")
         assert re.search(r"import \{[^}]*registerEscapeLayer[^}]*\} from "
                          r"['\"]\.{1,2}/lib/escape_layers\.js['\"]", src), rel
@@ -518,7 +438,6 @@ def test_every_escape_layer_registers_with_the_one_dispatcher(
         # (tests/snapshot_panels/test_lobby_lane_popup_keyboard.py).
         "main.js": ["task-modal", "view-menu", "find-match-picker",
                     "lobby-lane-popup", "lobby-mode-menu"],
-        "panels/right_now.js": ["digest-popover"],
         "panels/draft_elo.js": ["draft-elo-contributions"],
     }, names
 

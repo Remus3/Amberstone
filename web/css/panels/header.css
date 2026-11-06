@@ -3785,7 +3785,8 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  *   neutral  = nothing to surface
  *   warn     = minor pattern (mild slump, late-night plays)
  *   alert    = cold streak / stop-playing recommendation
- * Click opens #digest-popout overlay. */
+ * Ships [hidden]: no entry point since s218, and RM-1427 retired the popout
+ * it used to open. */
 .digest-icon {
   display: inline-flex;
   align-items: center;
@@ -3808,116 +3809,6 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .digest-icon.warn  { background: var(--gold-soft); color: var(--gold); }
 .digest-icon.alert { background: var(--bad-soft);  color: var(--bad); }
 
-/* Digest popout - modal-like overlay, centered, dark backdrop. */
-.digest-popout {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9500;
-}
-.digest-popout.hidden { display: none; }
-.digest-popout-body {
-  background: var(--surface);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-card);
-  border: 1px solid rgba(255,255,255,0.08);
-  width: min(560px, 90vw);
-  max-height: 82vh;
-  display: flex; flex-direction: column;
-  overflow: hidden;
-}
-.digest-popout-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  background: var(--surface-head);
-  border-bottom: 1px solid var(--border-soft);
-  font-size: 16px;
-  letter-spacing: 0.18em;
-  font-weight: 900;
-  color: var(--info);
-  text-transform: uppercase;
-}
-.digest-popout-head button {
-  background: transparent;
-  border: none;
-  color: var(--text-faint);
-  font-size: 25px;
-  font-weight: 900;
-  cursor: pointer;
-  /* RM-1424: opening the popout focuses this button, so it meets the
-     hit floor (was 28x28) and paints the shared ring. */
-  width: var(--hit-min); height: var(--hit-min);
-  border-radius: 4px;
-}
-.digest-popout-head button:hover { background: var(--bad-soft); color: var(--bad); }
-.digest-popout-head button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.digest-popout-content {
-  padding: 14px 18px 18px 18px;
-  overflow-y: auto;
-}
-.digest-popout-advice {
-  margin-top: 14px;
-  padding: 10px 12px;
-  background: var(--surface-alt);
-  border-left: 3px solid var(--info);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  font-size: 15px;
-  line-height: 1.45;
-}
-
-/* TOP INSIGHTS list inside the digest popout - populated from
- * /api/digest. Severity tone drives the left border color. */
-.digest-insights-head {
-  margin: 16px 0 6px 0;
-  font-size: 13px;
-  letter-spacing: 0.12em;
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
-.digest-insights-head .dim {
-  margin-left: 6px;
-  color: var(--text-faint);
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-}
-.digest-insights {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.digest-insights .ins-row {
-  display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 10px;
-  padding: 6px 10px;
-  background: var(--surface-alt);
-  border-left: 3px solid var(--text-faint);
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-  line-height: 1.35;
-}
-.digest-insights .ins-row.tone-alert { border-left-color: var(--bad); }
-.digest-insights .ins-row.tone-warn  { border-left-color: var(--gold); }
-.digest-insights .ins-row.tone-ok    { border-left-color: var(--good); }
-.digest-insights .ins-tag {
-  color: var(--text-dim);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  align-self: center;
-}
-.digest-insights .ins-msg { color: var(--text); }
-.digest-insights .dim { color: var(--text-faint); padding: 4px 8px; }
 .advisory-badge.pulse {
   animation: advPulse 1.8s ease-in-out infinite;
 }

@@ -109,9 +109,9 @@ def test_ctrl_k_still_focuses_a_rendered_prompt(mock_server, pw_browser):
     assert not errors, f"JS errors: {errors[:3]}"
 
 
+# RM-1427 (s150) retired the second modal, the digest popout (#digest-popout).
 @pytest.mark.parametrize("modal,close_btn", [
     ("#task-modal", "#task-modal-close"),
-    ("#digest-popout", "#digest-popout-close"),
 ])
 def test_ctrl_k_does_not_pull_focus_out_of_an_open_modal(
     mock_server, pw_browser, modal, close_btn

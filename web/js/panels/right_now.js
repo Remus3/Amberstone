@@ -4,7 +4,6 @@ import { state } from '../lib/state.js';
 import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_priority.js';
 import { isFightCue, makeCombatLatch } from '../lib/combat_mode.js';
 import { condenseKvRows } from '../lib/condense.js';
-import { modalClosing, modalOpened, registerEscapeLayer } from '../lib/escape_layers.js';
 import { directivesAllowed, withoutLiveDirectives } from '../lib/live_directive_gate.js';
 
 // RC2 P3.3 SHADOW: the previous S0 cue across renders, for shouldPulse's
@@ -82,10 +81,11 @@ function renderWhatWent(p) {
   fill(badList, bad);
 }
 
-// -- Digest icon + popout ------------------------------------------
-// Queue #5: cross-session digest warning icon in the header. Replaces
-// the in-panel trend surfaces that were removed. Click opens a modal-
-// style popout with cold-streak / slump / trend data.
+// -- Digest icon ----------------------------------------------------
+// Queue #5: cross-session digest state on the footer #digest-icon, which
+// ships [hidden] (no entry point since s218). RM-1427 retired the popout it
+// used to open; this keeps the hidden span's class, label and title in step
+// with the payload's digest_* keys, so the write target stays defined.
 function renderDigest(p) {
   if (!p) return;
   const icon = el("digest-icon");
@@ -101,101 +101,7 @@ function renderDigest(p) {
   const tag = safe(p.digest_label) || (state === "none" ? "-" : state.toUpperCase());
   label.textContent = tag;
   icon.title = safe(p.digest_tooltip) || "cross-session digest";
-  // Populate popout fields from the same payload.
-  const setd = (id, v) => { const e = el(id); if (e) e.textContent = safe(v) || "-"; };
-  setd("dig-state",      p.digest_state_long);
-  setd("dig-streak",     p.digest_streak);
-  setd("dig-recent",     p.digest_recent);
-  setd("dig-kda-trend",  p.digest_kda_trend);
-  setd("dig-tod",        p.digest_time_of_day);
-  setd("dig-fatigue",    p.digest_fatigue);
-  setd("dig-advice",     p.digest_advice);
 }
-(function bindDigestIcon() {
-  const icon = el("digest-icon");
-  const pop = el("digest-popout");
-  const close = el("digest-popout-close");
-  if (!icon || !pop) return;
-  // 2026-04-25: populate "TOP INSIGHTS" list from /api/digest each open.
-  // Cache for 60 s so reopening within a minute doesn't re-fetch.
-  const _DIG = { fetchedAt: 0, items: null };
-  function renderInsights(arr) {
-    const ul = el("dig-insights");
-    const cnt = el("dig-insights-count");
-    if (!ul) return;
-    ul.innerHTML = "";
-    if (!arr || !arr.length) {
-      ul.innerHTML = '<li class="dim">no insights yet</li>';
-      if (cnt) cnt.textContent = "0";
-      return;
-    }
-    // Sort by severity desc, take top 5.
-    const top = arr.slice().sort((a, b) =>
-      (b.severity || 0) - (a.severity || 0)).slice(0, 5);
-    top.forEach(ins => {
-      const sev = (ins.severity || 0);
-      const tone = sev >= 0.7 ? "alert" : sev >= 0.4 ? "warn" : "ok";
-      const li = document.createElement("li");
-      li.className = "ins-row tone-" + tone;
-      const tag = document.createElement("span");
-      tag.className = "ins-tag";
-      tag.textContent = (ins.type || "?").replace(/_/g, " ");
-      const msg = document.createElement("span");
-      msg.className = "ins-msg";
-      msg.textContent = ins.message || "(no message)";
-      li.appendChild(tag);
-      li.appendChild(msg);
-      ul.appendChild(li);
-    });
-    if (cnt) cnt.textContent = arr.length;
-  }
-  function refreshInsights(force) {
-    const now = Date.now();
-    if (!force && _DIG.items && (now - _DIG.fetchedAt) < 60000) {
-      renderInsights(_DIG.items);
-      return;
-    }
-    fetch("/api/digest", { cache: "no-store" })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        _DIG.fetchedAt = now;
-        _DIG.items = (data && data.insights) || [];
-        renderInsights(_DIG.items);
-      })
-      .catch(() => renderInsights([]));
-  }
-  // RM-1424: opening moves focus to the close button and remembers the
-  // opener; a keyboard close (refocus) hands focus back to it, a pointer
-  // close never parks it there.
-  const open = () => {
-    pop.classList.remove("hidden");
-    modalOpened(pop, close);
-    refreshInsights(false);
-  };
-  const hide = (refocus) => {
-    modalClosing(pop, refocus === true);
-    pop.classList.add("hidden");
-  };
-  icon.addEventListener("click", open);
-  icon.addEventListener("keydown", e => {
-    if (e.key === "Enter" || e.key === " ") { open(); e.preventDefault(); }
-  });
-  // A click with detail 0 came from the keyboard (Enter / Space on the button).
-  if (close) close.addEventListener("click", e => hide(e.detail === 0));
-  pop.addEventListener("click", e => { if (e.target === pop) hide(false); });
-  // RM-1068: an OPEN popover takes the Escape and consumes it, so
-  // main.js's Escape chain does not also exit zen on the same press.
-  // RM-1070: through the shared dispatcher, which gives one press to the
-  // topmost open layer, so stacked layers close top down, one per press.
-  registerEscapeLayer({
-    name: "digest-popover",
-    el: () => pop,
-    isOpen: () => !pop.classList.contains("hidden"),
-    close: () => hide(true),
-    // RM-1364: a full-page scrim; the page's shortcuts stand down behind it.
-    modal: true,
-  });
-})();
 
 // -- GAME SENSE panel renderer -------------------------------------
 // Client/aftergame mode populates the 3-row Game Sense block with the
