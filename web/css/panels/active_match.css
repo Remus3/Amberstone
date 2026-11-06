@@ -282,6 +282,52 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* RM-1771: the board eyebrow row - the count line, and "+N BELOW" while
+ * chips sit below the fixed box (a narrow window drops columns, so a
+ * seven-unit board needs a third row under ~1150 px and nothing said so).
+ * Same one-line height as a bare eyebrow, so the box above stays exact; the
+ * count text ellipsises first, the cue stays whole. Same type and colour as
+ * the eyebrow (--fs-xs, --text-dim): a cue, not a headline. */
+#view-active-match .am-tft-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  /* Pinned at the top of the box while the chips scroll under it, so the
+   * cue stays readable for as long as units remain below (a 480 px window
+   * hides 5; scrolling one row used to scroll the cue away with them). The
+   * eyebrow's 6px gap is padding here, inside the opaque pane colour, so a
+   * chip scrolling under it never shows through. */
+  padding: 0 0 6px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-head);
+}
+#view-active-match .am-tft-head > .am-tft-sec {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+#view-active-match .am-tft-more {
+  flex: none;
+  /* Whole from a 150 px board up (the count text gives way first); in a
+   * board narrower than the cue itself (a 320 px window) it ellipsises
+   * inside the box instead of spilling into a sideways scroll. */
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+#view-active-match .am-tft-more[hidden] {
+  display: none;
+}
 #view-active-match .am-tft-board-wrap .am-empty,
 #view-active-match .am-tft-lobby-wrap .am-empty {
   color: var(--text-dim);

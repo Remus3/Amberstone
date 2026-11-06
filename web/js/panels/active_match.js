@@ -1297,6 +1297,7 @@ function _amRenderLiveFallback(fb, p, ctx) {
   const buildSig = JSON.stringify([fb.build, fb.board || [], fb.asOf || null]);
   if (build && build.dataset.amFallbackSig !== buildSig) {
     build.innerHTML = "";
+    _amTftStopMore();
     if (fb.kind === "tft") {
       // Board or its empty state in the SAME fixed-height wrapper
       // (active_match.css .am-tft-board-wrap), so the round-1 data landing
@@ -1380,7 +1381,20 @@ function _amTftBoardNode(board, emptyText, asOf) {
     return _amEmptyIn(wrap, emptyText);
   }
   const asOfTxt = asOf ? ` - as of ${asOf}` : "";
-  wrap.appendChild(_amSectionHead(`${board.length} UNIT${board.length === 1 ? "" : "S"}${asOfTxt}`));
+  // RM-1771: the eyebrow row also carries "+N BELOW" while chips sit
+  // below the fixed box (a narrow window drops columns, RM-1766, so a
+  // seven-unit board needs a third row under ~1150 px). It is in the
+  // eyebrow's reserved line, so the box never grows; aria-hidden because
+  // the list already gives assistive tech every unit.
+  const head = document.createElement("div");
+  head.className = "am-tft-head";
+  head.appendChild(_amSectionHead(`${board.length} UNIT${board.length === 1 ? "" : "S"}${asOfTxt}`));
+  const more = document.createElement("span");
+  more.className = "am-tft-more";
+  more.hidden = true;
+  more.setAttribute("aria-hidden", "true");
+  head.appendChild(more);
+  wrap.appendChild(head);
   const list = document.createElement("ul");
   list.className = "am-tft-board";
   list.setAttribute("aria-label", "Units");
@@ -1412,7 +1426,55 @@ function _amTftBoardNode(board, emptyText, asOf) {
     list.appendChild(li);
   }
   wrap.appendChild(list);
+  _amTftWatchMore(wrap, list);
   return wrap;
+}
+
+// RM-1771: the "+N BELOW" cue follows the box - a scroll, a window
+// resize (columns drop or return) and the first layout after attach. One
+// observer at a time: a rebuilt board replaces it, leaving the TFT
+// fallback releases it.
+const _AM_TFT_MORE = { ro: null };
+
+function _amTftStopMore() {
+  if (_AM_TFT_MORE.ro) {
+    _AM_TFT_MORE.ro.disconnect();
+    _AM_TFT_MORE.ro = null;
+  }
+}
+
+function _amTftUpdateMore(wrap) {
+  const more = wrap.querySelector(".am-tft-more");
+  if (!more) return;
+  // A chip counts as below until it is wholly inside the visible box. A
+  // detached or display:none wrapper measures zero, so nothing is below.
+  const r = wrap.getBoundingClientRect();
+  const visBottom = r.top + wrap.clientTop + wrap.clientHeight;
+  let n = 0;
+  if (wrap.isConnected && wrap.clientHeight > 0) {
+    for (const u of wrap.querySelectorAll(".am-tft-unit")) {
+      if (u.getBoundingClientRect().bottom > visBottom + 0.5) n++;
+    }
+  }
+  const txt = n > 0 ? `+${n} BELOW` : "";
+  if (more.textContent !== txt) more.textContent = txt;
+  more.title = n > 0 ? `${n} more unit${n === 1 ? "" : "s"} below - scroll the board` : "";
+  if (more.hidden !== (n === 0)) more.hidden = n === 0;
+}
+
+function _amTftWatchMore(wrap, list) {
+  const update = () => _amTftUpdateMore(wrap);
+  wrap.addEventListener("scroll", update, { passive: true });
+  _amTftStopMore();
+  if (typeof ResizeObserver === "function") {
+    // Fires once on attach and on every size change of the box or the
+    // list (a dropped column is a taller list in the same box).
+    _AM_TFT_MORE.ro = new ResizeObserver(update);
+    _AM_TFT_MORE.ro.observe(wrap);
+    _AM_TFT_MORE.ro.observe(list);
+  } else {
+    requestAnimationFrame(update);
+  }
 }
 
 // Lobby: every player's placement + HP, by placement. Opponents are
@@ -1495,6 +1557,7 @@ export function renderActiveMatch(payload, ctx) {
       delete _pane.dataset.amFallbackSig;
     }
   }
+  _amTftStopMore();
   // The TFT fallback renames the BUILD pane head to BOARD; put it back.
   const _bh = _amBuildHead();
   if (_bh && _bh.textContent !== "BUILD") _bh.textContent = "BUILD";
