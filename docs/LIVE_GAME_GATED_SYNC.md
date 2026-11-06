@@ -2987,6 +2987,114 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 
   RM-02 states the remaining work is "the overlay chip in-game eyeball only". DS plan stays
   byte-identical (hints-only enrichment).
+  **READY for the two owed chips, C2 antiheal and C4 `hp_vs_pen` (lane 9 PREP s144 cycle 73,
+  source read at `08822072c`; NOT a tick; no game up: :8888 and :2999 curl 000 at
+  2026-11-05T21:19-06:00).** C3, C5 and C6 stay as seen on 2026-07-20; this block readies only
+  the two still owed. AGE CHECK: NOT stale. `_counterChip` still paints `.counter-chip` chips
+  (`--ok` when satisfied, else `--gap`; `--high` for severity high) into `.counter-strip` inside
+  the BUILD pane `#am-build-body` (`_renderAmBuildBody`); `overlay.css` hides ds-sweep /
+  ds-matchup / ds-combo / ds-relscore in the overlay BUILD pane, not this row, so the same
+  chips ride the overlay `w-build` widget. Source facts the eyeball must know (pinned in
+  `tests/test_gated_g416_counter_chips.py`):
+  (a) The hints depend only on the roster, items, scores, levels and the coach `level`, never
+  on the champion or the mode (those feed the DS plan); an empty coach champion answers
+  `no_champion` with no hints at all.
+  (b) C2 fires at `heal_sources >= 2` (`HEAL_THRESHOLD`; curated sustain champions plus
+  distinct enemy heal items, `core/heal_threat.py` `count_heal_sources`) and ONLY while no
+  my-team item applies Grievous Wounds (`ally_has_antiheal`, its Grievous set includes
+  Thornmail, Bramble Vest and Chemtech Putrifier). While `_resolveMyTeam` resolves my team,
+  the client's `_extractBpAllyItems` keeps every row on my team, MY OWN ROW INCLUDED, and
+  every BASE-id item the chip's `satisfied` test counts as antiheal is also in that Grievous
+  set, so the C2 chip does not paint in its `--ok` state: buying the counter (me or an ally)
+  makes the chip VANISH. `--ok` is reachable only when the team is unresolved (`ally_items`
+  empty while `items`, filled by the server's own name match, still holds my Grievous item;
+  the grader refuses that as ROSTER_BAD) or if the feed ever reports a 22-prefixed alias id
+  (`_ANTIHEAL_NAMES` matches those by name, the Grievous set holds base ids only). So the C2
+  eyeball is a `--gap` chip "ANTIHEAL" with detail "<n> enemy heal sources" while nobody on
+  my team owns a Grievous item, and, as the dedup half, the chip gone once one is bought
+  (filed provisionally as RM-1663 for the merger to mint or decline: with the team
+  resolved the `--ok` state is dark, so the chip never confirms a bought counter; a
+  code-lane question, not edited here).
+  (c) C4 fires at `enemy_pen >= 0.5` (`PEN_HINT_CUT`; two or more enemy lethality or
+  percent-pen items, e.g. Lord Dominik's + Serylda's, saturating at four) AND only when MY
+  build already holds armor or MR; satisfied (`--ok`) = my item HP >= 300 (`HP_HINT_FLOOR`).
+  A lethality enemy comp against a no-resist build shows no HP chip, correctly.
+  (d) Off LCU phase InProgress `renderActiveMatch` returns at the CALL pane, before the BUILD
+  pane, so the COUNTER row keeps its last paint after the game ends (same class as
+  RM-1662); the fetch fires at once on a roster / item / score key change (unless one is
+  in flight) and re-fires every 4 s with no change (`_BUILD_PLAN_COOLDOWN_MS`), landing on
+  the next render, so a capture right after a purchase can be one fetch behind. And the
+  retain guard (`_shouldRetainBuild`): while the Daemon Slayer, Meta and Ultimate rows are
+  all empty (DS :8860 down or empty) and the pane already holds a paint,
+  `_renderAmBuildBody` returns before the COUNTER row, so hints that land after the first
+  paint never show; the snippet counts the filled row items (`build_items`) and the grader
+  calls a freeze over an empty-row or static-placeholder pane RETAINED (no evidence: get DS
+  answering first), not a mismatch. A freeze over an earlier FILLED paint (every row cache overwritten later by an
+  ok-but-empty reply; the caches are never reset, so DS going down after a filled paint does
+  not trigger it) still shows filled rows and grades RENDER_MISMATCH; that is why the one
+  re-capture in step (2) uses a FRESHLY opened page, which turns it into RETAINED or a real
+  repaint.
+  (e) The same live-only roster risk as G4-12: when `_resolveMyTeam` finds no activePlayer
+  name match it returns null, all 10 players are posted as enemies and `ally_items` is
+  empty, so my own sustain and pen items feed C2 and C4; the grader refuses that first.
+  (f) The BUILD pane's repaint signature keys the hints on `criterion:satisfied` only, so a
+  chip whose DETAIL changes alone (C2's heal-source count after an enemy heal-item buy) may
+  stay on the old text until another signature input moves; the grader names that
+  DETAIL_LAG, not RENDER_MISMATCH (filed provisionally as RM-1664, code lane; plausible
+  from source, not yet seen live). The grader grades an exact `lcu.phase` InProgress only,
+  and its in-process path cannot see a route ok:false (step (4) can, as PLAN_ERROR).
+  PROBE (real SR game, or ARAM, with a comp carrying 2 or more sustain sources for C2 and 2
+  or more enemy pen items while I hold armor or MR for C4; one minute, repo root):
+  (1) `curl -sk https://127.0.0.1:8888/api/state > _scratch/g416_state.json`;
+  (2) in a HEADLESS Chromium page on `https://127.0.0.1:8888/` (ignore cert errors, Active
+  Match view), open at least 10 s, evaluate `python tools/gated_g416_counter_chips.py snippet`
+  and save the JSON as `_scratch/g416_dom.json` within 5 s of (1); on a first RENDER_MISMATCH
+  re-run (1) and (2) together once, (2) on a freshly opened page left 10 s (the fetch can be
+  one behind, and a fresh page clears a retain-guard freeze), before it counts;
+  (3) `python tools/gated_g416_counter_chips.py grade --state _scratch/g416_state.json --dom
+  _scratch/g416_dom.json --state-ts <epoch of (1)> --json` (expected computed in-process
+  through the route's own helpers);
+  (4) optional served cross-check: `python tools/gated_g416_counter_chips.py body --state
+  _scratch/g416_state.json > _scratch/g416_body.json`, then `curl -sk -X POST
+  https://127.0.0.1:8888/api/build-plan -H "Content-Type: application/json" -d
+  @_scratch/g416_body.json > _scratch/g416_plan.json`, then (3) again with `--plan
+  _scratch/g416_plan.json`; the two verdicts must agree;
+  (5) the operator, on the overlay `w-build` widget within the same minute: the COUNTER chips
+  read aloud or typed (label, detail, green or amber), then ONE yes / no per owed chip: is
+  ANTIHEAL right for the enemy healers on the scoreboard, and is HP right for the enemy pen
+  items shown?
+  FIELD PATHS: `/api/state` -> `mode_key`, `lcu.phase` (InProgress), `coach.champion`,
+  `coach.level`, `liveclient.activePlayer`, `liveclient.allPlayers[].team / championName /
+  items[].itemID / scores / level`, `liveclient.owned_item_ids`, `liveclient.enemy_team`,
+  `liveclient.game_time_s`; `/api/build-plan` -> `ok`, `counter_hints[].criterion / label /
+  detail / satisfied / severity`; DOM -> `#am-build-body .counter-strip .counter-chip`
+  `.counter-chip-label`, `.counter-chip-detail`, class `counter-chip--ok` / `--high`,
+  computed `display`, bounding box, `offsetParent`.
+  PREDICATE (stated before any game): a chip half PASSES iff the grader prints RENDER_MATCH
+  (team resolved, exactly 5 posted enemies equal to the server `enemy_team`, the coach
+  champion equal to my roster row, every expected chip painted in order with the same label,
+  detail, ok / gap and high state) with `owed_cases` naming it (`antiheal`, `hp_vs_pen`, or
+  `antiheal_dedup` for the dedup half), AND the operator's overlay read names the same chip
+  AND the operator answers yes. FAIL iff ROSTER_BAD, PANE_ABSENT, PLAN_ERROR or
+  RENDER_MISMATCH (after the one re-capture), or the operator answers no (record the 5
+  enemies, `inputs` and `expected`). DETAIL_LAG is a finding for RM-1664 (record `expected`
+  and `painted`), not a pass; re-capture after my next purchase (owned names are a
+  signature input). NO_GAME, RETAINED, STALE_DOM, NO_HINT_CONSISTENT or NO_OWED_CHIP (render
+  consistent, but the comp warrants neither owed chip) = no evidence: re-sample in a sustain
+  or pen comp, never a pass.
+  EVIDENCE CONTRACT: the grader JSON (verdict, `owed_cases`, `my_champion`, `posted_champion`,
+  `enemies`, `inputs` with `heal_sources` / `ally_has_antiheal` / `enemy_pen_item_ids` /
+  `my_has_resist` / `my_item_hp`, `expected`, `painted`, `game_time_s`, `state_ts`, `dom_ts`,
+  `expected_source`), the operator's overlay read with its local time, and the yes / no per
+  chip, with mode, queue and `game_time_s`. Champion names and item ids only: never a player
+  name, game id or puuid (RM-906).
+  SUBSTITUTION: `counter_hints` (served or in-process) is the COMPUTE half, and RENDER_MATCH
+  only shows the dashboard painted what was computed; neither answers the row. The row is
+  answered only by the operator's overlay read plus the yes / no that the chip is right for
+  the comp on screen, in a live game. A `?ui_mock=1` render seeds the roster from a fixture
+  and proves nothing here; a chip seen after the game ends is the stale last paint, not a
+  pass. Grader: `tools/gated_g416_counter_chips.py`, tests
+  `tests/test_gated_g416_counter_chips.py`.
 - **G4-17** (was the 2026-07-16 Slice B addendum) DS Slice B on-hit AP scorer OVERLAY RENDER eyeball -
   confirm the new `ds.onhit` build order (Nashor's Tooth present) actually renders on the in-game
   overlay build panel in a real **Gwen / Kayle / Kog'Maw** game. Backend + `/api/build-plan` already
