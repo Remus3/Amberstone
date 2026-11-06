@@ -90,6 +90,7 @@ from agents.daemon_slayer.mode_variants import (  # noqa: E402
     canonical_champions,
     canonical_items,
 )
+from core.log_rotation import LFFileHandler  # noqa: E402
 from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
 
 DATA_ROOT = ROOT / "data" / "daemon_slayer"
@@ -154,7 +155,7 @@ def _configure_logging() -> None:
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler(str(LOG_FILE), encoding="utf-8"),
+            LFFileHandler(str(LOG_FILE), encoding="utf-8"),
         ],
     )
 

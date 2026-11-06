@@ -192,7 +192,9 @@ def _build_logger(name: str, path: Path) -> logging.Logger:
         return lg
     lg.setLevel(logging.INFO)
     path.parent.mkdir(parents=True, exist_ok=True)
-    h = logging.handlers.RotatingFileHandler(path, maxBytes=3 * 1024 * 1024, backupCount=3, encoding="utf-8")
+    # RM-481: LF rows, not the stdlib handler's CRLF-on-Windows (RM-1708).
+    from core.log_rotation import LFRotatingFileHandler
+    h = LFRotatingFileHandler(path, maxBytes=3 * 1024 * 1024, backupCount=3, encoding="utf-8")
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     lg.addHandler(h)
     lg.propagate = False

@@ -110,6 +110,7 @@ ROOT = Path(__file__).parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.log_rotation import LFFileHandler  # noqa: E402
 from lib.wiki_consent import open_consented  # noqa: E402
 
 DATA_ROOT = ROOT / "data" / "daemon_slayer"
@@ -151,7 +152,7 @@ def _configure_logging() -> None:
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler(str(LOG_FILE), encoding="utf-8"),
+            LFFileHandler(str(LOG_FILE), encoding="utf-8"),
         ],
     )
 

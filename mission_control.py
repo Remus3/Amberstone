@@ -22,14 +22,16 @@ ROOT = Path(__file__).resolve().parent
 
 
 def _setup_logging() -> None:
+    # RM-481: LF rows, not the stdlib handler's CRLF-on-Windows (RM-1708).
+    from core.log_rotation import LFFileHandler
     logs = ROOT / "logs"
     logs.mkdir(exist_ok=True)
     stamp = _dt.datetime.now().strftime("%Y-%m-%d")
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
-        handlers=[logging.FileHandler(logs / f"mission_control-{stamp}.log",
-                                      encoding="utf-8")],
+        handlers=[LFFileHandler(logs / f"mission_control-{stamp}.log",
+                                encoding="utf-8")],
     )
 
 

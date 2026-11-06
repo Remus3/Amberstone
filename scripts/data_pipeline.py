@@ -40,6 +40,7 @@ if str(ROOT) not in sys.path:
 
 from agents.daemon_slayer import mode_variants  # noqa: E402
 from core import external_sources  # noqa: E402
+from core.log_rotation import LFFileHandler  # noqa: E402
 from core.polled_json import atomic_write_bytes  # noqa: E402
 # RM-379: the RM-359 filename validator, applied before every icon write.
 from lib.icons.downloader import _safe_basename  # noqa: E402
@@ -70,7 +71,7 @@ LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 # under pythonw BOTH sys.stdout and sys.stderr are None. A StreamHandler built on
 # them would then raise on every single record and have the error swallowed by
 # logging.handleError, so the handler is only attached when a real stream exists.
-_handlers = [logging.FileHandler(str(LOG_FILE), encoding="utf-8")]
+_handlers = [LFFileHandler(str(LOG_FILE), encoding="utf-8")]
 if sys.stdout is not None:
     _handlers.insert(0, logging.StreamHandler(sys.stdout))
 

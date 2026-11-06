@@ -86,6 +86,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import performance_tracker as pt  # noqa: E402
+from core.log_rotation import LFFileHandler  # noqa: E402
 from core.match_db import NUMERIC_COLS, coerce_numeric  # noqa: E402
 from core.polled_json import atomic_write_json  # noqa: E402
 from tft import tft_placement as tp  # noqa: E402
@@ -639,7 +640,7 @@ def _logfile(root: Path):
     """Every log record of the apply (this script, performance_tracker,
     MatchDB) also goes to <root>/logs/repair_tft_match_rows.log."""
     (root / "logs").mkdir(parents=True, exist_ok=True)
-    h = logging.FileHandler(root / "logs" / LOG_NAME, encoding="utf-8")
+    h = LFFileHandler(root / "logs" / LOG_NAME, encoding="utf-8")
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     h.setLevel(logging.INFO)
     lg = logging.getLogger()

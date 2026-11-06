@@ -16,6 +16,8 @@ import threading
 import time
 from pathlib import Path
 
+from core.log_rotation import LFFileHandler
+
 # -- Logger -----------------------------------------------------------------
 # P2-W1-app-A CWD hardening: anchor the log file to the repo root (this
 # module's grandparent dir) instead of the process CWD. dashboard/server.py
@@ -39,7 +41,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.StreamHandler(sys.stdout),
-              logging.FileHandler(str(_log_target()), encoding="utf-8")]
+              LFFileHandler(str(_log_target()), encoding="utf-8")]
 )
 log = logging.getLogger("moon_vision")
 
