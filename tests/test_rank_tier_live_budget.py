@@ -736,12 +736,20 @@ def _is_logger_expr(expr, tainted=frozenset()) -> bool:
     """`expr` may evaluate to a logger OBJECT (RM-1563): a log-ish name
     anywhere along its chain (`log`, `self.log`, `get_logger()`,
     `logging.getLogger(n)`), a chain rooted at a name bound to one
-    (`_LOGOBJ`), or a conditional either arm of which is one."""
+    (`_LOGOBJ`), or a conditional either arm of which is one. RM-1563: so
+    is a chain through an attribute a class body bound to a logger object
+    (`self.lg` after `class C: lg = logging.getLogger()`)."""
     if isinstance(expr, ast.IfExp):
         return (_is_logger_expr(expr.body, tainted)
                 or _is_logger_expr(expr.orelse, tainted))
     names, root = _chain_names(expr)
-    if isinstance(root, ast.Name) and _LOGOBJ + root.id in tainted:
+    if isinstance(root, ast.Name):
+        if _LOGOBJ + root.id in tainted:
+            return True
+        attrs = names[:-1]
+    else:
+        attrs = names
+    if any(_LOGOBJATTR + n in tainted for n in attrs):
         return True
     return any(_is_log_name(n) for n in names)
 
@@ -837,6 +845,15 @@ _LOGFN = "logfn:"
 # `p = log`, `lg = self.log`) is held as `_LOGOBJ + name`. Like `_LOGFN` it
 # carries no value; a level call off it (`lg.info(m)`) is a sink.
 _LOGOBJ = "logobj:"
+# RM-1563: a name a CLASS BODY binds at its own level to a logging function
+# or logger object is a class attribute, held as `_LOGATTR + name` /
+# `_LOGOBJATTR + name` (`_class_attr_marks`). Any attribute of that name is
+# then read as one - off `self`, `cls`, the class or an instance (`self.p(m)`,
+# `self.lg.info(m)`). The receiver is not checked, and the marks flow out of
+# the class with the rest of its state, so `o.p(m)` after the class is a sink
+# whatever `o` is: the safe side.
+_LOGATTR = "logattr:"
+_LOGOBJATTR = "logobjattr:"
 
 
 def _object_only(name, tainted) -> bool:
@@ -869,6 +886,17 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # name target is tracked (residual: tuple targets, walrus, for).
     wrapper = (_sink_specs(value, tainted, late)
                if plain and isinstance(value, ast.Lambda) else set())
+    # RM-1563: `self.p = log.info` stores the alias in an attribute, as a
+    # class body's `p = log.info` does, so it makes the same mark. Add-only:
+    # one store does not replace what another instance or the class holds.
+    attr_marks = set()
+    for target in targets if plain else []:
+        if isinstance(target, ast.Attribute):
+            if _is_log_callable(value, tainted):
+                attr_marks.add(_LOGATTR + target.attr)
+            if _is_logger_expr(value, tainted):
+                attr_marks.add(_LOGOBJATTR + target.attr)
+    tainted |= attr_marks
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
@@ -1052,13 +1080,19 @@ def _is_log_callable(expr, tainted=frozenset()) -> bool:
     reference (`log.info`, `print`), a name bound to one (`_LOGFN`), or a
     `partial` over one, nested partials included. RM-1563: a conditional
     either arm of which is one, and a level method off a logger object
-    (`lg.info` after `lg = logging.getLogger()`)."""
+    (`lg.info` after `lg = logging.getLogger()`). RM-1563: an attribute a
+    class body bound to a logging function (`_LOGATTR`: `self.p` after
+    `class C: p = log.info`), and a `staticmethod` over one, the class-body
+    spelling that keeps a plain function from binding `self`."""
     if isinstance(expr, ast.Name) and _LOGFN + expr.id in tainted:
+        return True
+    if isinstance(expr, ast.Attribute) and _LOGATTR + expr.attr in tainted:
         return True
     if isinstance(expr, ast.IfExp):
         return (_is_log_callable(expr.body, tainted)
                 or _is_log_callable(expr.orelse, tainted))
-    if isinstance(expr, ast.Call) and _call_name(expr) == "partial" and expr.args:
+    if (isinstance(expr, ast.Call) and _call_name(expr) in ("partial", "staticmethod")
+            and expr.args):
         return _is_log_callable(expr.args[0], tainted)
     return _is_log_call(ast.Call(func=expr, args=[], keywords=[]), tainted)
 
@@ -1069,7 +1103,8 @@ def _bind_log_alias(target, is_alias, tainted, is_obj=False) -> None:
     makes a level call off it a sink. Both are judged BEFORE the binding
     clears the name (`p = p` keeps it). Add-only here; a plain `=` to
     anything else clears them through `_bind_names`. A tuple target is
-    split into its names by `_alias_bindings`; an element or attribute
+    split into its names by `_alias_bindings`; an attribute target makes a
+    class-attribute mark instead (`_retaint`, RM-1563), and an element
     target is not tracked (residual)."""
     if not isinstance(target, ast.Name):
         return
@@ -1401,8 +1436,10 @@ _NAMES_CACHE = {}
 
 def _entry_name(entry):
     """The name a taint-state entry is about: `url`, `obj:r`, `logfn:p`,
-    `logobj:lg` and `sinkfn:g pos:0` give url, r, p, lg and g."""
-    for mark in (_OBJ, _LOGFN, _LOGOBJ):
+    `logobj:lg` and `sinkfn:g pos:0` give url, r, p, lg and g; the class
+    attribute marks (`logattr:p`) give the attribute name, which a body
+    reading `self.p` holds as an `Attribute.attr` string."""
+    for mark in (_OBJ, _LOGFN, _LOGOBJ, _LOGATTR, _LOGOBJATTR):
         if entry.startswith(mark):
             return entry[len(mark):]
     if entry.startswith(_SINKFN):
@@ -1459,6 +1496,54 @@ def _walk_scope(body, entry, report, late=frozenset()):
 
 
 _WALK_CACHE = {}
+
+# Nodes whose body is a scope of its own: a name stored inside one is not a
+# class attribute. A def or class still has decorators, defaults and bases
+# evaluated in the class body (`_own_nodes`).
+_OWN_SCOPES = (ast.Lambda, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+
+
+def _class_level_names(body):
+    """RM-1563: every plain name class body `body` binds in the class
+    namespace - assignment, `for`, `with` and walrus targets at the class's
+    own level, in its branches, loops and handlers included - but not a name
+    bound inside a method, a nested class, a lambda or a comprehension.
+    Kept per scan with `body` itself, as `_scope_names` is."""
+    hit = _CLASS_NAMES_CACHE.get(id(body))
+    if hit is None or hit[0] is not body:
+        names, stack = set(), list(body)
+        while stack:
+            node = stack.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                stack.extend(_own_nodes(node))
+                continue
+            if isinstance(node, _OWN_SCOPES):
+                continue
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+                names.add(node.id)
+            stack.extend(ast.iter_child_nodes(node))
+        hit = _CLASS_NAMES_CACHE[id(body)] = (body, frozenset(names))
+    return hit[1]
+
+
+_CLASS_NAMES_CACHE = {}
+
+
+def _class_attr_marks(body, out):
+    """RM-1563: the `_LOGATTR` / `_LOGOBJATTR` marks of class body `body`
+    whose fall-through state is `out`. A method runs only once the class
+    exists, so only what the body leaves BOUND counts (`p = log.info` then
+    `p = fetch` makes no mark), and only for names the body itself binds: a
+    logging alias in a method or in the enclosing scope is not an attribute."""
+    if not out:
+        return set()
+    marks = set()
+    for name in _class_level_names(body):
+        if _LOGFN + name in out:
+            marks.add(_LOGATTR + name)
+        if _LOGOBJ + name in out:
+            marks.add(_LOGOBJATTR + name)
+    return marks
 
 
 def _walk_scope_uncached(body, entry, report, late=frozenset()):
@@ -1585,9 +1670,22 @@ class _Flow:
             # tainted inside the body. Judged by extra walks, so the def-time
             # flow-out stays the walk without them: a parameter is local, and
             # its default must not taint the enclosing scope's name.
+            # RM-1563: a class body that leaves a logging alias bound makes
+            # it a class attribute. Its methods were walked inside the body,
+            # before the attribute existed, so the body is walked again with
+            # the marks in its entry (the marks only ever add, so this ends);
+            # they then flow out with the rest of the class state.
             _check_sinks(_own_nodes(stmt), stmt, state, self.report, self.ever)
             out, returns, inside, hands_back = _walk_scope(
                 stmt.body, state, self.report, self.ever)
+            marks = set()
+            while isinstance(stmt, ast.ClassDef):
+                more = _class_attr_marks(stmt.body, out) - state - marks
+                if not more:
+                    break
+                marks |= more
+                out, returns, inside, hands_back = _walk_scope(
+                    stmt.body, state | marks, self.report, self.ever)
             if not isinstance(stmt, ast.ClassDef):
                 seeded = _default_bindings(stmt, state, self.ever) - state
                 if seeded:
@@ -1793,7 +1891,8 @@ def _message_leak_sites(path):
     def report(expr, found):
         leaks.add(f"{Path(path).name}:{expr.lineno}: {sorted(set(found))}")
 
-    caches = (_SPEC_CACHE, _BODY_CACHE, _NAMES_CACHE, _WALK_CACHE)
+    caches = (_SPEC_CACHE, _BODY_CACHE, _NAMES_CACHE, _WALK_CACHE,
+              _CLASS_NAMES_CACHE)
     for cache in caches:
         cache.clear()
     try:
@@ -2505,6 +2604,72 @@ _CHECKER_SAMPLES = (
     ("a parameter shadows an outer wrapper",
      "def g(m):\n    log.info(m)\ndef k(g, n):\n    g(n)\ndef f(url):\n    k(fetch, url)\n",
      False),
+    # RM-1563 class-body aliases: a name the class body itself binds to a
+    # logging function or logger object is a class ATTRIBUTE, read off
+    # `self`, `cls`, the class or an instance.
+    ("class attribute alias of a log function called off self",
+     "class C:\n    p = log.info\n    def m(self, url):\n        self.p(url)\n", True),
+    ("class attribute alias of print called off cls",
+     "class C:\n    p = print\n    @classmethod\n    def m(cls, url):\n"
+     "        cls.p(url)\n", True),
+    ("class attribute alias called off the class after it",
+     "class C:\n    p = log.warning\ndef f(url):\n    C.p(url)\n", True),
+    ("class attribute alias called off the class from a def before it",
+     "def f(url):\n    C.p(url)\nclass C:\n    p = log.warning\n", True),
+    ("class attribute alias bound after the method",
+     "class C:\n    def m(self, url):\n        self.p(url)\n    p = log.info\n", True),
+    ("class attribute logger object",
+     "import logging\nclass C:\n    lg = logging.getLogger('x')\n"
+     "    def m(self, url):\n        self.lg.info(url)\n", True),
+    ("class attribute staticmethod over a log function",
+     "class C:\n    p = staticmethod(log.info)\n    def m(self, url):\n"
+     "        self.p(url)\n", True),
+    ("class attribute alias passed through a local",
+     "class C:\n    p = log.info\n    def m(self, url):\n        q = self.p\n"
+     "        q(url)\n", True),
+    ("class attribute alias off an instance of a class in a function",
+     "def f(url):\n    class C:\n        p = log.info\n    C().p(url)\n", True),
+    ("class attribute tuple alias",
+     "class C:\n    p, q = log.info, fetch\n    def m(self, url):\n        self.p(url)\n",
+     True),
+    ("class attribute alias bound in a class-level branch",
+     "class C:\n    if X:\n        p = log.info\n    else:\n        p = fetch\n"
+     "    def m(self, url):\n        self.p(url)\n", True),
+    ("class attribute alias of an earlier class-level alias",
+     "class C:\n    p = log.info\n    q = p\n    def m(self, url):\n        self.q(url)\n",
+     True),
+    ("instance attribute alias set in __init__",
+     "class C:\n    def __init__(self):\n        self.p = log.info\n"
+     "    def m(self, url):\n        self.p(url)\n", True),
+    ("instance attribute alias set in a later method",
+     "class C:\n    def m(self, url):\n        self.p(url)\n"
+     "    def __init__(self):\n        self.p = print\n", True),
+    ("instance attribute logger object",
+     "import logging\nclass C:\n    def __init__(self):\n"
+     "        self.lg = logging.getLogger()\n    def m(self, url):\n"
+     "        self.lg.warning(url)\n", True),
+    # RM-1563 class-body keep-greens.
+    ("instance attribute of a non-log function",
+     "class C:\n    def __init__(self):\n        self.p = fetch\n"
+     "    def m(self, url):\n        self.p(url)\n", False),
+    ("class attribute alias re-bound before the class ends",
+     "class C:\n    p = log.info\n    p = fetch\n    def m(self, url):\n"
+     "        self.p(url)\n", False),
+    ("class attribute of a non-log function",
+     "class C:\n    p = fetch\n    def m(self, url):\n        self.p(url)\n", False),
+    ("another class attribute is not the alias",
+     "class C:\n    p = log.info\n    q = fetch\n    def m(self, url):\n"
+     "        self.q(url)\n", False),
+    ("class attribute alias called with a sanitized value",
+     "class C:\n    p = log.info\n    def m(self, url):\n        self.p(_safe_url(url))\n",
+     False),
+    ("a local alias does not make an attribute an alias",
+     "def f(url, o):\n    p = log.info\n    o.p(url)\n", False),
+    ("an alias bound in a method body is not a class attribute",
+     "class C:\n    def a(self):\n        p = log.info\n    def m(self, url):\n"
+     "        self.p(url)\n", False),
+    ("a module alias does not make a class attribute",
+     "p = log.info\nclass C:\n    def m(self, url):\n        self.p(url)\n", False),
 )
 
 
