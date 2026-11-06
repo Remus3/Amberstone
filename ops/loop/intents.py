@@ -175,10 +175,16 @@ def _read_doc(path: Path) -> dict | None:
     The control dir is polled by a dashboard route and by a done ritual; a
     half-written or hand-edited file must degrade to "nothing queued" rather
     than take the caller down.
+
+    LANE 8 S144 CYCLE 169. `utf-8-sig`, not `utf-8`: PowerShell 5.1
+    `Set-Content -Encoding UTF8` writes a BOM, and json.loads rejects a leading
+    BOM with a ValueError - so a hand-queued intent was silently invisible, read
+    as "nothing queued". RecursionError joins the degrade set: a deeply nested
+    file made json.loads raise it, and it escaped pending() into the poller.
     """
     try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        doc = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, RecursionError):
         return None
     return doc if isinstance(doc, dict) else None
 
@@ -216,16 +222,52 @@ def resolve_next_session_path(doc, base=None) -> Path:
     `REPO_PREFIX-`-prefixed falls back too, so an RC session can never be
     talked into overwriting `LW-NEXT-SESSION.txt` by a doctored or stale intent
     doc. Cross-repo writes are a deliberate act, never a fallback.
+
+    LANE 8 S144 CYCLE 169 - three more fall-backs, each measured:
+      * a segment Windows would RENAME on open (a trailing space or dot, so
+        `sub/.. /RC-x.txt` is not the literal path the `..` check saw) or one
+        holding a reserved / control character. Before, consume() raised
+        FileNotFoundError on `sub/.. /RC-x.txt` instead of falling back.
+      * a resolved target that is not under the resolved base - a directory
+        link or junction inside the base pointing out of it.
+      * a doc that is not a dict (AttributeError before).
     """
-    raw = (doc or {}).get("next_session_path")
+    raw = doc.get("next_session_path") if isinstance(doc, dict) else None
     candidate = (raw if isinstance(raw, str) else "").strip().replace("\\", "/")
     parts = [p for p in candidate.split("/") if p not in ("", ".")]
     rooted = candidate.startswith("/") or ":" in candidate
     owned = bool(parts) and parts[-1].startswith(f"{REPO_PREFIX}-")
     if not parts or rooted or ".." in parts or Path(candidate).is_absolute() \
-            or not owned:
+            or not owned or not all(_plain_segment(p) for p in parts):
         parts = DEFAULT_NEXT_SESSION_PATH.split("/")
-    return _base(base).joinpath(*parts)
+    root = _base(base)
+    target = root.joinpath(*parts)
+    if not _contained(target, root):
+        target = root.joinpath(*DEFAULT_NEXT_SESSION_PATH.split("/"))
+    return target
+
+
+# Characters no Windows file name may hold, plus every C0 control character.
+_RESERVED_CHARS = frozenset('<>:"|?*') | frozenset(chr(c) for c in range(32))
+
+
+def _plain_segment(seg: str) -> bool:
+    """True if Windows opens this path segment under its literal name.
+
+    Win32 path normalisation strips a trailing space or dot from a segment, so
+    the name the `..` check inspected is not the name that gets opened.
+    """
+    return (not seg.endswith((" ", "."))
+            and not any(ch in _RESERVED_CHARS for ch in seg))
+
+
+def _contained(target: Path, root: Path) -> bool:
+    """The routes_static pattern: resolve both, then require relative_to."""
+    try:
+        target.resolve().relative_to(root.resolve())
+    except (OSError, ValueError, RuntimeError):
+        return False
+    return True
 
 
 def _nothing_to_consume(base: Path) -> dict:
@@ -340,6 +382,25 @@ def write_prompt(*, prompt, base=None) -> dict:
             "bytes": len(prompt.encode("utf-8"))}
 
 
+def _marker_path(raw, intent: str, ctl: Path) -> Path:
+    """Which file consume() re-reads and marks, from a caller's `_path`.
+
+    LANE 8 S144 CYCLE 169. The `_path` a caller hands back was honoured
+    verbatim, so a doc naming an unrelated JSON file got that file overwritten
+    with the consumed marker, and a doc naming the OTHER intent's file marked
+    the wrong intent consumed. A non-string raised TypeError. `_path` exists
+    so a peek under one control dir can be consumed without a re-read, so it
+    is honoured only when its file NAME is this intent's own file; anything
+    else falls back to the control dir.
+    """
+    own = INTENT_FILES[intent]
+    if isinstance(raw, str) and raw.strip():
+        candidate = Path(raw)
+        if candidate.name == own:
+            return candidate
+    return ctl / own
+
+
 def consume(doc=None, *, prompt, root=None, base=None) -> dict:
     """Write the bootstrap prompt, then mark the intent consumed.
 
@@ -351,6 +412,9 @@ def consume(doc=None, *, prompt, root=None, base=None) -> dict:
     Raises ValueError on an empty prompt. Writing an empty hand-off file
     would look exactly like a successful hand-off and would silently lose the
     session, so it is a caller bug, not a degraded mode.
+
+    Raises HandoffRefused (a ValueError) when the repo's own gate rejects the
+    prompt, exactly as write_prompt() does; nothing is written or marked.
     """
     if not isinstance(prompt, str) or not prompt.strip():
         raise ValueError("consume() requires a non-empty prompt")
@@ -366,10 +430,12 @@ def consume(doc=None, *, prompt, root=None, base=None) -> dict:
         doc = pending(root=ctl)
         if doc is None:
             return _nothing_to_consume(ctl)
-    intent = doc.get("intent")
-    if intent not in INTENT_FILES:
+    # LANE 8 S144 CYCLE 169: a junk doc (not a dict, or an unhashable intent)
+    # raised AttributeError / TypeError; it is the documented refusal instead.
+    intent = doc.get("intent") if isinstance(doc, dict) else None
+    if not isinstance(intent, str) or intent not in INTENT_FILES:
         return {"ok": False, "reason": "no_pending_intent"}
-    path = Path(doc.get("_path") or (ctl / INTENT_FILES[intent]))
+    path = _marker_path(doc.get("_path"), intent, ctl)
 
     # Re-read rather than trusting the caller's snapshot: the peek may be old.
     on_disk = _read_doc(path)
@@ -378,6 +444,13 @@ def consume(doc=None, *, prompt, root=None, base=None) -> dict:
                 "path": str(path)}
 
     target = resolve_next_session_path(on_disk, base=base)
+    # LANE 8 S144 CYCLE 169: this path writes the same TRACKED hand-off as
+    # write_prompt() and skipped its pre-write gate, so a prompt the commit
+    # hook rejects reached disk through the intent route. Gated here, after
+    # the replay check (a replay writes nothing, so it still answers
+    # already_consumed) and before EITHER write, so a refusal leaves the
+    # intent unconsumed for the fixed retry.
+    _refuse_if_gated(prompt)
     _awrite(target, prompt)
 
     marker = dict(on_disk)

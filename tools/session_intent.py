@@ -70,6 +70,13 @@ def main(argv=None) -> int:
             result = intents.write_prompt(prompt=prompt)
         else:
             result = intents.consume(prompt=prompt, root=args.control_dir)
+    except intents.HandoffRefused as exc:
+        # A ValueError subclass, so it must be caught FIRST: it used to be
+        # reported as "empty_prompt", sending the session to look for a
+        # missing prompt when the gate had refused its content.
+        print(json.dumps({"ok": False, "reason": "handoff_refused",
+                          "error": str(exc)}))
+        return 2
     except ValueError as exc:
         print(json.dumps({"ok": False, "reason": "empty_prompt",
                           "error": str(exc)}))
