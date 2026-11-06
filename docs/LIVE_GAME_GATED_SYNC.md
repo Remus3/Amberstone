@@ -3150,6 +3150,55 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   grade alone.
 - **G4-18** Jhin AS-lock full lethality eyeball (`c904ddae`) - the Boots of Swiftness half was
   live-confirmed; the lethality core eyeball remains.
+  **READY (lane 9, s144 cycle 75, PREP only, NOT ticked; no game up: :8888 curl status 000 at
+  2026-11-05T22:28-06:00).** AGE CHECK: not stale. The premise still holds at source:
+  `core/ds_champion_fight_length.py` maps `"jhin": 0.5`, the carry branch of
+  `rank_for_primary_archetype` (`core/daemon_slayer_client.py`) applies it and serves scorer
+  `dps`, Jhin's default primary is `carry`, and `core/build_order.py` keeps `"Jhin": "3009"`
+  (Swiftness). Source facts (pinned in `tests/test_gated_g418_jhin_lethality.py`): (a) the three
+  painted rows are read exactly as G4-17 reads them; the tool reuses G4-17's DOM snippet, client
+  bodies and Daemon Slayer row derivation (family dedupe, 7 cap) by import, so the two cannot
+  drift. (b) The burst blend rides only the carry branch, and a persisted operator pick in
+  gitignored `data/cs_archetype_picks.json` wins over the default, so only a served scorer `dps`
+  proves it ran. (c) "Lethality item" = an engine record with `lethality > 0`
+  (`agents/daemon_slayer/_effects_data.py` `ITEM_EFFECTS`; Hubris 6697, The Collector 6676,
+  Youmuu's 3142, Axiom Arc 6696 among them). The core the shipped claim names also holds
+  Infinity Edge 3031 and Serylda's 6694, which carry no lethality: they are reported as
+  `named_core_painted` context, never graded. (d) An owned lethality item is not in the preview's
+  ranked rows, so the Daemon Slayer row is compared on non-owned tiles only; a fallback tile with
+  no icon is resolved by name to its SR id. (e) Meta / Ultimate are ADVISORY (incumbent
+  hysteresis, as in G4-17), and Runaan's (3085) ranked above every lethality item in the preview
+  is an advisory line, since the shipped claim puts it below the core.
+  PROBE (real SR or ARAM game as Jhin, DS :8860 up; repo root): (1) `curl -sk
+  https://127.0.0.1:8888/api/state > _scratch/g418_state.json`; (2) in a HEADLESS Chromium page on
+  `https://127.0.0.1:8888/` (ignore cert errors, Active Match view, open at least 10 s) evaluate
+  `python tools/gated_g418_jhin_lethality.py snippet` and save the JSON as
+  `_scratch/g418_dom.json` within 5 s of (1); (3) `python tools/gated_g418_jhin_lethality.py
+  bodies --state _scratch/g418_state.json`, POST `ds_preview` to `/api/ds-preview`
+  (`_scratch/g418_preview.json`), optionally `build_order` and `ultimate` to `/api/build-order`
+  (`_scratch/g418_order.json`, `_scratch/g418_ult.json`); (4) `python
+  tools/gated_g418_jhin_lethality.py grade --state _scratch/g418_state.json --dom
+  _scratch/g418_dom.json --preview _scratch/g418_preview.json [--order ... --ultimate ...]
+  --state-ts <epoch of (1)> --json`. Take one sample before the first lethality buy and one after
+  the second; on a first RENDER_MISMATCH re-run (1)-(4) once on a freshly opened page.
+  PREDICATES, stated before any game: RENDER_MATCH (exit 0) iff every supplied reply is ok with
+  scorer `dps`, the Daemon Slayer row paints exactly the preview's non-owned lethality items in
+  the shown 7, every painted lethality tile is visible and unclipped, and at least one row paints
+  one. FAIL (exit 3): SCORER_DRIFT, RENDER_MISMATCH, PLAN_NO_LETHALITY (no reply ranks one: a DS
+  question at this state, file it, not a render bug), LETHALITY_DARK, UNMAPPED (Jhin lost his
+  fight_length: re-read LEDGER 870 first), PLAN_ERROR, ROSTER_BAD, PANE_ABSENT. NO EVIDENCE (exit
+  4): NO_GAME, STALE_DOM, NOT_JHIN, FULL_BUILD, EMPTY_ROWS.
+  EVIDENCE CONTRACT: the grade JSON (scorers, fight_length, lethality_expected,
+  lethality_painted, rows_with_lethality, named_core_painted, swiftness_rows, advisory,
+  game_time_s, lcu_phase, state_ts) plus the operator's overlay read: which lethality icons the
+  overlay BUILD rows show, at what game time, and a yes / no that the build reads as the
+  lethality-crit path (Hubris / Collector / Youmuu's) rather than a sustained on-hit one.
+  SUBSTITUTION CHECK: RENDER_MATCH proves the dashboard page painted what the preview computed,
+  the compute half again, and the engine-confirmed "plan_build_order leads Hubris" of LEDGER 870
+  is compute too; the headless page is not the Electron `w-build` widget (its own width,
+  overrides and MUTE), so its clip read is dashboard-only. Only the operator's eyeball of the
+  overlay ticks G4-18; never tick on the grade alone. Grader:
+  `tools/gated_g418_jhin_lethality.py`, tests `tests/test_gated_g418_jhin_lethality.py`.
 - **G4-19** Overlay `liveclient_cache` self-heal live re-verify (`03868b03`).
   **READY (lane 9, s144 cycle 63, RM-1509, PREP only, no game up: RC :8888 refused, re-probed
   2026-11-05 about 00:50-00:53 -06:00; NOT ticked).** Source facts (pinned in
