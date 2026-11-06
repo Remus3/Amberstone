@@ -86,7 +86,7 @@ def test_line_cite_pattern_catches_the_old_forms():
         ("agents/daemon_slayer/tests/test_effects_expansion.py", "def test_lethality_is_level_invariant_post_v14_1("),
         ("agents/daemon_slayer/tests/test_effects_expansion.py", 're.search("effective target armor ['),
         ("ops/claude_settings.example.json", "tools/edit_lint_check.py"),
-        ("tools/liveclient_relay.py", "logging.FileHandler("),
+        ("tools/liveclient_relay.py", "class _LFFileHandler(logging.FileHandler)"),
     ],
 )
 def test_every_symbol_the_modules_cite_still_exists(rel, needle):

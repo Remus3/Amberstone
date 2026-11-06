@@ -147,6 +147,23 @@ CHERRY_NO_DEBOUNCE = False
 BACKOFF_MIN_S = 1.0
 STABLE_SESSION_SECONDS = 30.0
 
+
+class _LFFileHandler(logging.FileHandler):
+    """FileHandler that writes LF rows on every OS (RM-481).
+
+    The stdlib ``FileHandler._open`` passes no ``newline=``, so on Windows each
+    record's LF becomes CRLF. This is an inline copy of
+    ``core.log_rotation.LFFileHandler`` on purpose: the file also runs as a
+    standalone copy with no repo (so no ``core/``) above it, and cannot import it.
+    tests/test_log_handlers_lf_s144p199.py pins the three copies identical.
+    """
+
+    def _open(self):
+        return self._builtin_open(
+            self.baseFilename, self.mode,
+            encoding=self.encoding, errors=self.errors, newline="\n")
+
+
 # RM-154. basicConfig without handlers= installs a StreamHandler on stderr,
 # and the RC-PhaseWatcher task runs this under pythonw.exe where stderr is
 # None - so every record this module emitted went nowhere. Pass explicit
@@ -159,7 +176,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(str(_LOG_FILE), encoding="utf-8"),
+        _LFFileHandler(str(_LOG_FILE), encoding="utf-8"),
     ],
 )
 log = logging.getLogger("phase_watcher")

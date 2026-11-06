@@ -78,7 +78,7 @@ def test_line_cite_pattern_catches_the_old_forms():
         ("modes/shared_vision.py", "_VISION_SERVER ="),
         ("modes/shared_vision.py", "def _capture_screen("),
         ("agents/agent2_backend/pipeline/orchestrator.py", "def _scrape_one("),
-        ("tools/liveclient_relay.py", "logging.FileHandler("),
+        ("tools/liveclient_relay.py", "class _LFFileHandler(logging.FileHandler)"),
     ],
 )
 def test_every_symbol_the_modules_cite_still_exists(rel, needle):

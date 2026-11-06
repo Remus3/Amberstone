@@ -164,6 +164,23 @@ _fg_last_seen = 0.0
 # whether it was the OS capture call or the network upload that stalled.
 STALL_WARN_S   = 2.5
 
+
+class _LFFileHandler(logging.FileHandler):
+    """FileHandler that writes LF rows on every OS (RM-481).
+
+    The stdlib ``FileHandler._open`` passes no ``newline=``, so on Windows each
+    record's LF becomes CRLF. This is an inline copy of
+    ``core.log_rotation.LFFileHandler`` on purpose: the file also runs as a
+    standalone copy with no repo (so no ``core/``) above it, and cannot import it.
+    tests/test_log_handlers_lf_s144p199.py pins the three copies identical.
+    """
+
+    def _open(self):
+        return self._builtin_open(
+            self.baseFilename, self.mode,
+            encoding=self.encoding, errors=self.errors, newline="\n")
+
+
 # RM-154. basicConfig without handlers= installs a StreamHandler on stderr,
 # and the RC-ScreenAgent-* tasks run this under pythonw.exe where stderr is
 # None - so every record this module emitted, including the upload errors,
@@ -176,7 +193,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(str(_LOG_FILE), encoding="utf-8"),
+        _LFFileHandler(str(_LOG_FILE), encoding="utf-8"),
     ],
 )
 log = logging.getLogger("screen_agent")
