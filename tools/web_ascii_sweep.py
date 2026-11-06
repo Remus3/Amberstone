@@ -338,7 +338,8 @@ def _merge(spans: list[Span], total: int) -> list[Span]:
         else:
             out.append(span)
     if out:
-        assert out[0].start == 0 and out[-1].end == total, "span coverage is not total"
+        assert out[0].start == 0, "span coverage is not total"
+        assert out[-1].end == total, "span coverage is not total"
     return out
 
 

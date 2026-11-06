@@ -71,7 +71,7 @@ class HeadlessRouteRefused(RuntimeError):
         self.detail = detail
 
 
-def _read_user_var(name: str) -> Union[str, None, _Absent]:
+def _read_user_var(name: str) -> Union[str, _Absent, None]:
     """The value from HKCU\\Environment, None if absent there, or REGISTRY_ABSENT.
 
     REGISTRY_ABSENT means the store could not be opened (non-Windows, or no

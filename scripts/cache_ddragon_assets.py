@@ -74,6 +74,7 @@ def fetch(url: str, dest: Path, *, retries: int = 2, timeout: float = 6.0) -> bo
                 sys.stderr.write(f"fail {url}: {e}\n")
                 return False
             time.sleep(0.5 * (attempt + 1))
+    return False
 
 def main() -> None:
     version = latest_version()

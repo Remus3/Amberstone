@@ -4,13 +4,12 @@ Neither rule is selected by ruff.toml. Measured 2026-11-05 with ``ruff check --i
 production code carried 13 sites. Seven files assigned a value to a local and returned it on the next
 line (RET504), and one HTTP handler class ended three ``-> None`` methods with a bare ``super().do_X()``
 call after every other branch had ``return``-ed a value (RET503); each now returns the expression directly.
+RM-1692 then ended ``scripts/cache_ddragon_assets.py`` ``fetch`` with an explicit ``return False``.
 
 The baseline is the findings that stay, each for a named reason:
 
 - ``ops/fleet_kit/fleet_suite_gate.py``: a vendored kit file pinned by ``ops/fleet_kit/MANIFEST.json``; never
   edited locally.
-- ``scripts/cache_ddragon_assets.py``: held by another lane branch at the time of this slice; the next cycle
-  that sees it landed drops the row.
 - ``tools/sibling_name_sweep.py``: ``rc`` is assigned inside ``try`` and read again in ``finally``, so the
   assignment is not unnecessary; ruff's finding is a false positive here.
 
@@ -50,7 +49,6 @@ _OUT_OF_SCOPE = (
 # file -> finding count that stays (reasons in the module docstring). Only shrinks.
 _BASELINE = {
     "ops/fleet_kit/fleet_suite_gate.py": 1,
-    "scripts/cache_ddragon_assets.py": 1,
     "tools/sibling_name_sweep.py": 1,
 }
 _FIXED = (
@@ -58,6 +56,7 @@ _FIXED = (
     "agents/agent2_backend/migration_rewind.py",
     "dashboard/_champ_select_deterministic.py",
     "lcu/lcu_rune_writer.py",
+    "scripts/cache_ddragon_assets.py",
     "scripts/retrofill_match_metrics.py",
     "tools/daemon_slayer_extract.py",
     "tools/inbox_responder_runner.py",

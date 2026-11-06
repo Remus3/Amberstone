@@ -102,7 +102,8 @@ class ScraperBase:
     base_url: str = ""  # subclass must set, scheme+host only
 
     def __init__(self, logger_name: str | None = None) -> None:
-        assert self.site and self.base_url, "subclass must set site and base_url"
+        assert self.site, "subclass must set site and base_url"
+        assert self.base_url, "subclass must set site and base_url"
         self._client = get_client()
         self._robots: RobotFileParser | None = None
         self._robots_loaded = False

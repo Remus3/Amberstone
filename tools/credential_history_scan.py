@@ -151,7 +151,8 @@ def _read_blobs(shas: Sequence[str], root: Path = ROOT,
     proc = subprocess.Popen(["git", "cat-file", "--batch"], cwd=root,
                             stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             stderr=subprocess.DEVNULL, creationflags=_NO_WINDOW)
-    assert proc.stdin and proc.stdout
+    assert proc.stdin
+    assert proc.stdout
     stdin = proc.stdin
 
     def _feed() -> None:
