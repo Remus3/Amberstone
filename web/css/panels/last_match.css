@@ -673,6 +673,13 @@
   line-height: 1.3;
   text-align: right;
   margin-top: 4px;
+  /* RM-1784: last_match.js inserts the caption after the rank grid as
+   * a .lm-hero grid child, so auto-placement put it in row 2 column 1 -
+   * under the identity cluster, up to 1300px from the tier averages it
+   * qualifies. Pin it to the hero's last column (the rank column in
+   * every layout) and to the rank grid's right edge. */
+  grid-column: -2 / -1;
+  justify-self: end;
 }
 .lm-rank-estimate-note[hidden] { display: none; }
 /* selector / each cell's grid-area is set inline on the HTML element. */
@@ -799,6 +806,24 @@
  * block gets the full companion width. min-height:auto stops the hero (an
  * explicit min-height card) flex-collapsing under its taller stacked content.
  * The 1920 desktop (never under ~1900) never trips the breakpoint. */
+/* RM-1784: above the 1200px stack, with Detailed stats open and a rank
+ * tier picked, the three sections' min-content (identity 472 + stats 363
+ * + rank 345 + two 18px gaps = 1216px in SR / ARAM, 1169 Arena) was wider
+ * than the hero up to a 1389px window, so the rank grid ran past the hero
+ * and the view scrolled sideways. In that band the rank grid drops under
+ * the Detailed stats, right edges flush (the caption follows it, see
+ * .lm-rank-estimate-note). 1440 and up, a closed disclosure and the
+ * no-tier selector keep the one-row layout. Guard:
+ * tests/snapshot_panels/test_last_match_hero_mid_width.py. */
+@media (width > 1200px) and (width < 1440px) {
+  .lm-hero:has(> .lm-hero-stats-details[open]):has(> .lm-hero-rank-compare:not(.is-empty)) {
+    grid-template-columns: auto 1fr;
+  }
+  .lm-hero:has(> .lm-hero-stats-details[open]) > .lm-hero-rank-compare:not(.is-empty) {
+    grid-column: 2;
+    justify-self: end;
+  }
+}
 @media (max-width: 1200px) {
   .lm-row-half { grid-template-columns: 1fr; }
   .lm-hero {
