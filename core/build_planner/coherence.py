@@ -26,6 +26,7 @@ ASCII only - use " - " for a clause break (repo hard rule).
 """
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 from core.build_planner.champ_kit_data import (
@@ -78,17 +79,73 @@ _W_EFF = 6.0
 # enchanter are clean - see the QA).
 _CARRY_ARCHETYPE = "carry"
 
+# The documented default ``top`` - also the fallback for a junk ``top``.
+_DEFAULT_TOP = 6
+
+
+def _finite(value) -> Optional[float]:
+    """``value`` as a finite float, or None for anything else.
+
+    A bool is rejected (``True`` is not a DPS figure); an int / float / numeric
+    str is accepted the way ``float()`` already accepted it; NaN, +-inf, a
+    non-numeric str, bytes, a container or any other object is None.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        out = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _engaged(fight_length) -> bool:
+    """True only for a real (non-bool) finite fight_length above zero."""
+    if isinstance(fight_length, bool) or not isinstance(fight_length, (int, float)):
+        return False
+    return math.isfinite(fight_length) and fight_length > 0
+
+
+def _norm_top(top) -> int:
+    """A slice length: a non-negative int, never a raise.
+
+    An int (or an integral finite float) is clamped at 0, so a negative never
+    reads as "all rows but the last"; None, a bool, a str, a fractional or a
+    non-finite float is the documented default.
+    """
+    if isinstance(top, bool):
+        return _DEFAULT_TOP
+    if isinstance(top, int):
+        return max(0, top)
+    if isinstance(top, float) and math.isfinite(top) and top.is_integer():
+        return max(0, int(top))
+    return _DEFAULT_TOP
+
+
+def _as_row_list(rows) -> list:
+    """``rows`` as a list, or [] when it is not a row sequence.
+
+    None, a non-iterable, and a str / bytes / dict (iterating one yields
+    characters, ints or keys, never ranker rows) are all [].
+    """
+    if rows is None or isinstance(rows, (str, bytes, bytearray, dict)):
+        return []
+    try:
+        return list(rows)
+    except TypeError:
+        return []
+
 
 def _coherence_adj(row, champion: str, fight_length: Optional[float] = None,
-                   ap_hybrid: Optional[bool] = None) -> float:
+                   ap_hybrid: Optional[bool] = None) -> Optional[float]:
     """A BASE score docked by the wasted-stat penalty and nudged by kit fit.
 
     The BASE is the burst-inclusive ``effective_score`` when ``fight_length`` is
-    engaged (a positive float) - the rank_for / rank_items reweight
+    engaged (a positive finite real number) - the rank_for / rank_items reweight
     ``burst_gain + delta_dps * fight_length`` - so the fight-length reweight
-    survives the coherence sort. When ``fight_length`` is None or <= 0 (the
-    default), the BASE is the raw ``delta_dps`` and the behavior is byte-identical
-    to the pre-L1 re-rank.
+    survives the coherence sort. When ``fight_length`` is None, <= 0 or junk (a
+    bool, a str, NaN, inf), the BASE is the raw ``delta_dps`` and the behavior
+    is byte-identical to the pre-L1 re-rank.
 
     The artifact dock (- mu * pen) and on-axis kit nudge (+ w * fit) use a
     branch-matched (mu, w) pair: (_MU_EFF, _W_EFF) on the effective_score BASE
@@ -106,15 +163,28 @@ def _coherence_adj(row, champion: str, fight_length: Optional[float] = None,
     byte-identical to the pre-DD1 path.
 
     Resolves the item by ``row.item_id`` through the kit_synergy resolver; an
-    unresolvable id (or any metric error) falls back to the chosen BASE so the
-    row keeps its engine score and the re-rank can never crash.
+    unresolvable id, any metric error, or a metric (or adjusted score) that is
+    not a finite number falls back to the chosen BASE so the row keeps its
+    engine score and the re-rank can never crash.
+
+    Returns None when the BASE itself is unusable - NaN, +-inf, a bool, a
+    non-numeric str or any non-number (a drifted DS payload). A missing or
+    falsy base still reads as 0.0, as before. A None row SINKS below every
+    scorable row in coherence_rerank: a non-finite key is unordered, so before
+    this guard an inf row took the top slot and a NaN row scrambled the rows
+    around it.
     """
-    if fight_length is not None and fight_length > 0:
-        base = float(getattr(row, "effective_score", 0.0) or 0.0)
+    if _engaged(fight_length):
+        raw = getattr(row, "effective_score", 0.0)
         mu, w = _MU_EFF, _W_EFF
     else:
-        base = float(getattr(row, "delta_dps", 0.0) or 0.0)
+        raw = getattr(row, "delta_dps", 0.0)
         mu, w = _MU, _W
+    # A falsy base (None, 0, "") reads as 0.0 exactly as the pre-guard
+    # ``float(raw or 0.0)`` did; only a truthy non-finite / non-number is junk.
+    base = 0.0 if not raw else _finite(raw)
+    if base is None:
+        return None
     iid = getattr(row, "item_id", None)
     if iid is None:
         return base
@@ -122,6 +192,9 @@ def _coherence_adj(row, champion: str, fight_length: Optional[float] = None,
         fit = stat_fit(str(iid), champion)
         pen = anti_synergy_penalty(str(iid), champion)
     except Exception:  # noqa: BLE001 - missing kit data -> raw base, no crash
+        return base
+    fit, pen = _finite(fit), _finite(pen)
+    if fit is None or pen is None:
         return base
     if pen and str(iid) in _AP_HYBRID_ITEM_IDS:
         if ap_hybrid is None:
@@ -132,16 +205,23 @@ def _coherence_adj(row, champion: str, fight_length: Optional[float] = None,
         if ap_hybrid:
             # Class member: this item is ON-AXIS, waive the wasted-stat dock.
             pen = 0.0
-    return base - mu * pen + w * fit
+    adj = base - mu * pen + w * fit
+    return adj if math.isfinite(adj) else base
 
 
-def coherence_rerank(rows, champion, top: int = 6, fight_length: Optional[float] = None):
+def coherence_rerank(rows, champion, top: int = _DEFAULT_TOP,
+                     fight_length: Optional[float] = None):
     """Return the top ``top`` rows re-ranked for carry build coherence.
 
     ``rows`` is a list of ranker rows (rank_items ItemScore or the client's
     rank_for rows), each exposing ``.item_id`` / ``.item_name`` / ``.delta_dps``.
     The SAME row objects are returned (a re-sorted sub-list) - nothing is
-    reconstructed, so the caller's row type is preserved.
+    reconstructed, so the caller's row type is preserved. ``rows`` that is not
+    a row sequence (None, a str, bytes, a dict, a non-iterable) gives [].
+
+    ``top`` goes through _norm_top: a negative is 0 (never "every row but the
+    last"); None, a bool, a str or a fractional / non-finite float is the
+    default 6.
 
     Two byte-identical early-returns leave a build UNCHANGED (``rows[:top]``):
       * a non-carry archetype (champ_kit_traits archetype) - the clean mage /
@@ -168,15 +248,20 @@ def coherence_rerank(rows, champion, top: int = 6, fight_length: Optional[float]
 
     ``fight_length`` (L1 crit-burst fix, 2026-07-13) is the OPTIONAL
     fight-length-reweight knob mirrored from the engine. When engaged (a positive
-    float), the re-rank BASE is each row's burst-inclusive ``effective_score``
-    (``burst_delta + delta_dps * fight_length``, set by rank_for / rank_items)
-    so the reweight survives the coherence sort instead of being neutralized by
-    a raw-delta_dps re-sort (root cause #1). When None or <= 0 (the default),
-    the BASE stays raw ``delta_dps`` and the output is byte-identical to the
-    pre-L1 re-rank. The artifact dock + kit nudge and the early-returns are
-    unchanged in both cases.
+    finite real number; a bool or a str never engages), the re-rank BASE is each
+    row's burst-inclusive ``effective_score`` (``burst_delta + delta_dps *
+    fight_length``, set by rank_for / rank_items) so the reweight survives the
+    coherence sort instead of being neutralized by a raw-delta_dps re-sort (root
+    cause #1). When None or <= 0 (the default), the BASE stays raw ``delta_dps``
+    and the output is byte-identical to the pre-L1 re-rank. The artifact dock +
+    kit nudge and the early-returns are unchanged in both cases.
+
+    A row whose BASE is not a finite number (_coherence_adj returns None) sinks
+    below every scorable row, in its original relative order, so a corrupt row
+    can neither take a top slot nor reorder the real rows.
     """
-    rows = list(rows)
+    rows = _as_row_list(rows)
+    top = _norm_top(top)
     try:
         arch = champ_kit_traits(champion).get("archetype")
         caster_mks = is_caster_marksman(champion)
@@ -190,11 +275,14 @@ def coherence_rerank(rows, champion, top: int = 6, fight_length: Optional[float]
         ap_hybrid = is_ap_hybrid_marksman(champion)
     except Exception:  # noqa: BLE001 - unknown champ -> not a member
         ap_hybrid = False
-    # Stable sort: equal-adj rows keep their original engine order (Python's
+
+    def _key(r):
+        adj = _coherence_adj(r, champion, fight_length, ap_hybrid)
+        # (1, adj) for a scorable row, (0, 0.0) for an unusable one: every
+        # sinker sorts below every real row and keeps its relative order.
+        return (0, 0.0) if adj is None else (1, adj)
+
+    # Stable sort: equal-key rows keep their original engine order (Python's
     # sorted is stable and reverse=True does not reorder equal keys).
-    ranked = sorted(
-        rows,
-        key=lambda r: _coherence_adj(r, champion, fight_length, ap_hybrid),
-        reverse=True,
-    )
+    ranked = sorted(rows, key=_key, reverse=True)
     return ranked[:top]
