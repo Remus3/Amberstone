@@ -400,18 +400,21 @@ def _platform(root: Path | None = None) -> str:
 
     Env ``RC_RIOT_PLATFORM``, then the ``platform`` key of the READ checkout's
     ``config/operator_identity.json`` (not this worktree's), then the default.
-    Only that key is read.
+    Only that key is read. The value test is the module's own
+    ``normalize_platform`` (never a re-rolled copy, which drifted once: a BOM
+    file read as absent and ``true`` became "TRUE"), and the file is read as
+    UTF-8 with or without a BOM, exactly as the module reads it.
     """
     from core import operator_identity
     cfg = (root or _ROOT) / "config" / "operator_identity.json"
     try:
-        blob = json.loads(cfg.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        blob = json.loads(cfg.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, RecursionError):
         blob = {}
-    file_val = blob.get("platform", "") if isinstance(blob, dict) else ""
-    for raw in (os.environ.get("RC_RIOT_PLATFORM", ""), str(file_val or "")):
-        val = raw.strip().upper()
-        if val and val.isalnum() and val.isascii():
+    file_val = blob.get("platform") if isinstance(blob, dict) else None
+    for raw in (os.environ.get("RC_RIOT_PLATFORM", ""), file_val):
+        val = operator_identity.normalize_platform(raw)
+        if val:
             return val
     return operator_identity.DEFAULT_PLATFORM
 
