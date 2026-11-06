@@ -355,7 +355,11 @@ header { transition: height 180ms ease; }
   min-width: 0;
 }
 .replay-map-figure {
-  flex: 0 0 300px;
+  /* RM-1785: shrinks with a narrow main pane (the canvas below keeps
+   * its square); from 721 to about 795 px the fixed 300px figure ran past
+   * the pane and was clipped. Alone on its line or beside a wide Timeline
+   * it is 300 px, as before. */
+  flex: 0 1 300px;
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -364,7 +368,10 @@ header { transition: height 180ms ease; }
 .replay-map-figure[hidden] { display: none; }
 .replay-map-canvas {
   width: 300px;
-  height: 300px;
+  /* RM-1785: a square at any width; a fixed 300px height stretched the
+   * 480x480 map to 188x300 when the figure shrank. */
+  height: auto;
+  aspect-ratio: 1 / 1;
   max-width: 100%;
   border: 1px solid var(--border-soft);
   border-radius: var(--panel-radius-sm);
@@ -393,6 +400,45 @@ header { transition: height 180ms ease; }
   flex: 1; overflow: auto;
   border-radius: var(--panel-radius-sm);
   min-height: 360px;
+}
+/* RM-1785: narrow windows and high zoom (300% of the 1920x920 baseline
+ * is 640 wide, 400% is 480; WCAG 1.4.10 reflows at 320) - the 720px line
+ * of Home (RM-1431), Active Match (RM-1772) and the view heads
+ * (RM-1774). Above it the body keeps its `320px 1fr` columns; below it
+ * it did too, so the main pane got 274 px at 720, 194 at 640 and 50 at
+ * 480 and under, and at 360 / 320 the 320 px list alone was wider than the
+ * view, which scrolled sideways (section scrollWidth 426 in 322 / 282,
+ * MEASURED, ui_mock, headless). Here the panes stack in one full-width
+ * column, the match list above the scrubber, and the view section
+ * (overflow-y: auto) scrolls them as one page. The main pane is no
+ * scroller of its own here (a nested scroller in a scrolling page traps
+ * the wheel and the touch drag): overflow-x clip keeps its box and its
+ * RM-1064 background brackets. The list stops at 20rem (about four rows
+ * under its head, the fifth cut as the scroll cue) and scrolls inside, so
+ * a long history never pushes the scrubber a screen down. The scoreboard
+ * keeps scrolling sideways inside .replay-grid-wrap, as the Build Insights
+ * tables do (RM-1777). The Timeline rows reflow on their own section
+ * width (replay_events.css), so they need no rule here.
+ * Guard: tests/snapshot_panels/test_replay_narrow_reflow.py. */
+@media (max-width: 720px) {
+  body:not([data-shell="overlay"]) .replay-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+    flex: 0 0 auto;
+  }
+  body:not([data-shell="overlay"]) .replay-list-pane {
+    height: auto;
+    max-height: 20rem;
+  }
+  /* The compact panel padding (14px, was 20 / 24): at 320 the view, pane,
+   * Timeline and row chrome took 160 of the 320 px, and the event label
+   * was left 32 px. */
+  body:not([data-shell="overlay"]) .replay-main-pane {
+    height: auto;
+    overflow-x: clip;
+    overflow-y: visible;
+    padding: var(--panel-padding-comp);
+  }
 }
 .replay-grid {
   width: 100%;

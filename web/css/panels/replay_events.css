@@ -28,6 +28,8 @@
   border-radius: var(--panel-radius-sm);
   display: flex; flex-direction: column;
   gap: var(--space-2);
+  /* RM-1785: the row reflow below keys off this section's own width. */
+  container: replay-events / inline-size;
 }
 .replay-events-section[hidden] { display: none; }
 
@@ -165,6 +167,55 @@
    * so a future iteration that lifts the nowrap clamp (e.g. ultra-
    * wide ribbon at >120px column) inherits balanced wrap by default. */
   text-wrap: balance;
+}
+
+/* RM-1785: a Timeline narrower than 34rem (544 px of content) wraps
+ * each row. MEASURED (ui_mock, headless): the `64px 1fr 140px 160px` row
+ * needs 418 px before its label gets a pixel, so in a narrow window (the
+ * main pane is 274 px at 720 and the section 224 to 402 up to 900) it
+ * scrolled sideways inside the 320 px event list, and the three 42 px
+ * filters plus the count ran past the section head. The line is the
+ * section's own width, not the window's, so it also holds beside a shown
+ * minimap and in the stacked layout under 720 (primitives.css). Here the
+ * row is a wrapping flex line: the clock and the label fill the first
+ * line, actor and victim share the second as equal halves (each still
+ * ellipsizes; a grid with the clock track above them left the victim
+ * 11 px at 320). Under 20rem a half is too narrow for a portrait and a
+ * name, so each takes its own line. The filters wrap (the head itself is
+ * already a column: the global `header` rule, header.css). At the
+ * 1920x920 baseline the section is far wider and keeps the four tracks.
+ * Guard: tests/snapshot_panels/test_replay_narrow_reflow.py. */
+@container replay-events (width < 34rem) {
+  .replay-events-filters { flex-wrap: wrap; }
+  .replay-events-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: var(--space-1);
+  }
+  /* A zero-height full-width item between the label and the actor is the
+   * line break, whatever the clock and label measure. */
+  .replay-events-row::after {
+    content: "";
+    order: 1;
+    flex: 0 0 100%;
+  }
+  /* The clock is fixed-width digits, so its own width lines the labels up
+   * (the desktop 64px track was 4em here, 18 px wider than mm:ss). */
+  .replay-events-clock { flex: 0 0 auto; }
+  .replay-events-label { flex: 1 1 0; }
+  .replay-events-actor,
+  .replay-events-victim {
+    order: 2;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+@container replay-events (width < 20rem) {
+  .replay-events-actor,
+  .replay-events-victim {
+    flex-basis: 100%;
+  }
 }
 
 /* kind-based label tints. team-tint owns the left border (above);
