@@ -2788,8 +2788,51 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 ### Champ-select (real draft lobby)
 
 - **G4-01** (was A9) Enemy/ban-dependent champ-select captures: OQ9 ban-reason labels (`1bf255ea`),
-  cooldown-watch card (render-gated on committed enemies), UIX1 champ-select SR live capture
-  (`18f37d4f`). SOURCE: LEDGER 726.
+  ~~cooldown-watch card (render-gated on committed enemies)~~, ~~UIX1 champ-select SR live capture
+  (`18f37d4f`)~~. SOURCE: LEDGER 726.
+  **AGE CHECK + READY (lane 9 PREP s144 cycle 82, RM-1671; source read at local main `ba0df749f`,
+  no game up, dashboard not answering; NOT a tick). Two of the three parts are dead; one stays open.**
+  (b) cooldown-watch card - **STRUCK, CLASS 1: the subject is gone, and must not come back.** The
+  champ-select card was removed by the operator's QA 2026-07-03 slice A (B19, LEDGER 765;
+  `web/js/panels/champ_select.js` comment at its imports and again above the TEAM ANALYSIS cluster;
+  `web/index.html` comment above the personal best-build card), and the backend went with it on
+  2026-08-11: `dashboard/routes_cooldown_watch.py` and `agents/daemon_slayer/cooldown_watch.py` are
+  both absent at HEAD, deleted by `538c61e4b` "fix(compliance): remove Riot-banned surfaces" (it
+  joined enemy CC to enemy ability cooldowns, which Riot's third-party rules ban tracking; see the
+  allow-list note in `agents/daemon_slayer/tests/test_cc_conditional_forward_marker.py`). Draining
+  it would mean re-adding a banned surface. (c) UIX1 champ-select SR live capture - **STRUCK,
+  CLASS 1 (superseded) and not live-gated.** The cite `18f37d4f` does not resolve in this clone
+  (`git cat-file -t` fails); the UIX1 commit at HEAD is `7b680e65d` "fix(UIX1): champ-select SR
+  fixture-audit cleanups" (LEDGER 434). What it owed was a Claude_Preview VISUAL of a CSS-only
+  tokenization ("byte-identical render") that could not attach to the live :8888 - a fixture
+  capture, never a game need - and its subject, the YOUR RECORD `.csv-pr-*` block, was removed in
+  the same slice A (A4; `web/css/panels/champ_select_view.css` keeps only the removal comment).
+  (a) OQ9 ban-reason labels - **OPEN, half its scope is gone, READY below.** The global-suggestion
+  half ("meta ban #N", `.csv-sugg-ban-reason`) died with the A2/A7 ghost bans grid in `0b83cce5f`
+  (slice A, 2026-07-03); the backend `rank` field in `dashboard/routes_ban_suggestions.py` survives
+  with no champ-select reader. What remains is the P&B counter-ban label: `_csvBanReasonLabel` in
+  `web/js/panels/champ_select.js` writes `beats you <pct>%` plus ` (<losses>/<encounters>)` when
+  encounters > 0 into `.csv-pb168-reason` under each `.csv-pb168-ban` cell of `#csv-pickban-body`,
+  and "" when pct <= 0. Its input is NOT enemy- or ban-dependent: it is
+  `GET /api/champ-select/pickban-recs?role=<role>&queue=<q>...` (`dashboard/routes_pickban.py`),
+  `performance_bans[0..2]` and `struggle_ban`, read from the operator's own match history, so the
+  only thing a real draft adds is the assigned role. The 2026-07-20 drain session above recorded
+  this row ADVANCED ("render live with provenance tags + a STRUGGLE tier") without a value, source
+  or timestamp in the row, so it does not meet the evidence contract. PROBE, in one real draft SR
+  champ select (q400 / q420) after role assignment: (1) the exact `pickban-recs` URL the panel
+  requested (its `role` and `queue` params) and that response body, with a capture timestamp (the body carries no `ts`); (2) within 5 s of
+  it, from the same page, the text of `.csv-pb168-name`, `.csv-pb168-reason` and
+  `.csv-pb168-struggle` of each of the 4 `#csv-pickban-body .csv-pb168-ban` cells. PASS iff, for
+  each of cells 1-3 whose response row `performance_bans[i]` has pct > 0, the name equals the row's
+  `name` and the reason equals the formatter applied to the row's `pct` / `losses` / `encounters`;
+  each cell whose row is absent or pct <= 0 has no `.csv-pb168-reason`; and cell 4 matches
+  `struggle_ban` by the same rule. At least one cell must carry a non-empty reason, else the pass
+  is vacuous: record "no qualifying loss rate at this role" and leave the row open. SUBSTITUTION
+  CHECK: the STRUGGLE tag alone proves nothing, because the renderer puts it on cell 4 even when
+  `struggle_ban` is null (the placeholder cell reads "-" with STRUGGLE above it), and a unit
+  test (`tests/test_ban_reason_labels_oq9.py`) or a fixture-driven render of the formatter answers whether it COMPUTES a label; only the label text
+  read off the live page, joined to the response the panel itself fetched at that time, answers
+  whether it RENDERED the live rows.
 
 ### `[BATCH DS-SEAM]` - real-enemy / real-ally seams (same restart discipline as GATE 2)
 
