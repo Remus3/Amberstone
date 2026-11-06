@@ -838,7 +838,7 @@ def test_no_budget_flag_when_cycle_budget_is_absent():
     total_cost_usd is a notional API-equivalent price, not money billed, so a cap
     truncates a cycle on a number that does not track actual spend. Time
     (cycle_deadline_sec) is the executor's only real budget."""
-    argv = _sdk(Path("."), executor_cmd="claude.cmd").build_argv(1)
+    argv = _sdk(Path(), executor_cmd="claude.cmd").build_argv(1)
     assert "--max-budget-usd" not in argv
 
 
@@ -1225,7 +1225,7 @@ def test_enforce_leaves_a_correctly_grounded_directive_byte_identical(
     logs, written = [], {}
     out = executor.enforce_directive_grounding(
         4, _GROUNDED_CLEAN, log=logs.append,
-        awrite=lambda p, t: written.__setitem__(Path(p).name, t), ctl=Path("."))
+        awrite=lambda p, t: written.__setitem__(Path(p).name, t), ctl=Path())
     assert out == _GROUNDED_CLEAN
     assert logs == [] and written == {}
 

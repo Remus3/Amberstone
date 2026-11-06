@@ -279,12 +279,12 @@ class AramModifierAppliedTests(unittest.TestCase):
 
 class ArenaItemPoolRuleTests(unittest.TestCase):
     """Arena-specific item rules hold and do not affect other modes:
-      - Arcane Sweeper (3348) trinket stripped from current_item_ids
-        only in ARENA; never elsewhere.
-      - Arcane Sweeper is non-purchasable -> excluded from the candidate
-        pool by _is_purchasable.
-      - Galeforce (446671) is map-30-only via DDragon ``maps`` and is
-        NOT denied globally; legal in ARENA, illegal in SR/ARAM.
+    - Arcane Sweeper (3348) trinket stripped from current_item_ids
+      only in ARENA; never elsewhere.
+    - Arcane Sweeper is non-purchasable -> excluded from the candidate
+      pool by _is_purchasable.
+    - Galeforce (446671) is map-30-only via DDragon ``maps`` and is
+      NOT denied globally; legal in ARENA, illegal in SR/ARAM.
     """
 
     @classmethod

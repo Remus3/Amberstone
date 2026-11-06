@@ -56,7 +56,7 @@ class AccessorTests(unittest.TestCase):
             patch="16.11.1", manifest={}, champions={}, items={},
             scenarios_by_id={}, scenarios_by_lolmath={},
             arena_augments_by_id={}, arena_augments_by_api={},
-            data_root=pathlib.Path("."),
+            data_root=pathlib.Path(),
             wiki_stats={"Caitlyn": {"attack_cast_time": 0.4}},
         )
         self.assertAlmostEqual(snap.wiki_attack_cast_time("Caitlyn"), 0.4)
@@ -66,7 +66,7 @@ class AccessorTests(unittest.TestCase):
             patch="16.11.1", manifest={}, champions={}, items={},
             scenarios_by_id={}, scenarios_by_lolmath={},
             arena_augments_by_id={}, arena_augments_by_api={},
-            data_root=pathlib.Path("."),
+            data_root=pathlib.Path(),
             wiki_stats={"Caitlyn": {"attack_cast_time": 0.4}},
         )
         self.assertIsNone(snap.wiki_attack_cast_time("Jinx"))
@@ -76,7 +76,7 @@ class AccessorTests(unittest.TestCase):
             patch="16.11.1", manifest={}, champions={}, items={},
             scenarios_by_id={}, scenarios_by_lolmath={},
             arena_augments_by_id={}, arena_augments_by_api={},
-            data_root=pathlib.Path("."),
+            data_root=pathlib.Path(),
             wiki_stats={"Jhin": {"attack_cast_time": None}},
         )
         self.assertIsNone(snap.wiki_attack_cast_time("Jhin"))
@@ -87,7 +87,7 @@ class AccessorTests(unittest.TestCase):
             patch="16.11.1", manifest={}, champions={}, items={},
             scenarios_by_id={}, scenarios_by_lolmath={},
             arena_augments_by_id={}, arena_augments_by_api={},
-            data_root=pathlib.Path("."),
+            data_root=pathlib.Path(),
         )
         self.assertEqual(snap.wiki_stats, {})
         self.assertIsNone(snap.wiki_attack_cast_time("Caitlyn"))

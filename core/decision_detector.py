@@ -859,11 +859,11 @@ class DecisionStore:
 
     def reconcile(self, fresh: list[Decision], game_time: float) -> None:
         """Merge newly-detected decisions into the pending list:
-          - keep any pending decision whose id appears in `fresh` (still triggering)
-          - drop pending decisions whose expires_at_game_time < game_time
-          - drop pending decisions whose id no longer appears in `fresh`
-            (condition lifted - e.g., enemies became visible again)
-          - add new ids from `fresh`
+        - keep any pending decision whose id appears in `fresh` (still triggering)
+        - drop pending decisions whose expires_at_game_time < game_time
+        - drop pending decisions whose id no longer appears in `fresh`
+          (condition lifted - e.g., enemies became visible again)
+        - add new ids from `fresh`
         """
         fresh_ids = {d.id for d in fresh}
         with _decisions_critical_section():

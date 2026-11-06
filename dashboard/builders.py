@@ -220,10 +220,10 @@ def _build_session_summary() -> dict:
 
 def _build_history(scope: str) -> dict:
     """List all sessions in scope. Scopes:
-        14d            - last 14 days
-        season         - current season (best-effort: last 90d)
-        prior_season   - 90 -> 180d ago
-        all            - every match in match_history.db
+    14d            - last 14 days
+    season         - current season (best-effort: last 90d)
+    prior_season   - 90 -> 180d ago
+    all            - every match in match_history.db
     """
     from datetime import datetime, timedelta
     now = datetime.now()

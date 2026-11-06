@@ -18,15 +18,15 @@ from pydantic import BaseModel
 def _old_inline_decode(raw_value) -> list:
     """Verbatim reproduction of the pre-P2.2 inline block in every coach:
 
-        _choices_list = []
-        _choices_raw = fields.get("choices", "").strip()
-        if _choices_raw:
-            try:
-                _parsed = json.loads(_choices_raw)
-                if isinstance(_parsed, list):
-                    _choices_list = _parsed
-            except Exception:
-                pass
+    _choices_list = []
+    _choices_raw = fields.get("choices", "").strip()
+    if _choices_raw:
+        try:
+            _parsed = json.loads(_choices_raw)
+            if isinstance(_parsed, list):
+                _choices_list = _parsed
+        except Exception:
+            pass
     """
     _choices_list: list = []
     _choices_raw = (raw_value or "").strip() if isinstance(raw_value, str) else (

@@ -16,4 +16,4 @@ def test_stub_goes_to_patched_dir_with_sanitised_name(tmp_path, monkeypatch):
 
 def test_live_reports_dir_untouched_by_default_fixture():
     live = se._PROJECT_ROOT / "agents" / "agent6_auditor" / "reports"
-    assert se.AGENT6_REPORTS_DIR != live
+    assert live != se.AGENT6_REPORTS_DIR
