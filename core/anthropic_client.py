@@ -31,6 +31,12 @@ vision_relay vs coach_relay from the same client) should call
 `core.cost_tracker.record_anthropic_response(resp, model=..., purpose=...)`
 directly after `messages.create` instead of constructing through this
 shim - or pass a different `purpose=` per construction.
+
+Unwired: no runtime module constructs a client through this shim (measured
+2026-11-06; only tests import it). The shipped call sites record through
+`core.cost_tracker.record_anthropic_response` directly.
+tests/test_test_only_modules_baseline_s144p233.py pins that state, so wiring
+the shim makes it fail until this paragraph and its baseline row are dropped.
 """
 from __future__ import annotations
 
