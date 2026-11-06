@@ -17,9 +17,14 @@ Proof of safety = ops/audit/p3c24_token_equiv.py (non-string tokens
 byte-identical to HEAD; string tokens differ ONLY by this transform).
 """
 
-import os
 import sys
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[2]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from core.polled_json import atomic_write_bytes  # noqa: E402
 
 # Subset of tools/p3_ascii_sweep.GLYPH_MAP - exactly the glyphs the DS-engine
 # residual holds (verified via ops/audit census). Identical mappings.
@@ -70,9 +75,7 @@ def transform(text: str, path: str) -> str:
 
 def _atomic_write_lf(path: Path, text: str) -> None:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    tmp = path.with_suffix(path.suffix + ".b1btmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    tmp.replace(path)
+    atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def main() -> int:

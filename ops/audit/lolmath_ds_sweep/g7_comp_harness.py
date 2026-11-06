@@ -37,7 +37,13 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3].as_posix()
+_REPO = Path(__file__).resolve().parents[3]
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+
+from core.polled_json import atomic_write_bytes  # noqa: E402
+
+ROOT = _REPO.as_posix()
 HERE = f"{ROOT}/ops/audit/lolmath_ds_sweep"
 
 # lolmath's constant default enemy comp (gen_md.py methodology: 4 squishy + 1 tank).
@@ -228,9 +234,7 @@ def main(patch: str = "16.12.1") -> None:
         "rows": [{"champ": c, **{v: ov[v] for v in variants}} for c, ov in rows],
     }
     outp = Path(f"{HERE}/g7_comp_parity.json")
-    tmp = outp.with_suffix(".json.tmp")
-    tmp.write_bytes(json.dumps(out, indent=2).encode("utf-8"))
-    tmp.replace(outp)
+    atomic_write_bytes(outp, json.dumps(out, indent=2).encode("utf-8"))
     print(f"\nWROTE {outp}")
 
 

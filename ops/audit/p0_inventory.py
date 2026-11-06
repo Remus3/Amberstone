@@ -12,6 +12,11 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.polled_json import atomic_write_text  # noqa: E402
+
 OUT_DIR = ROOT / "ops" / "audit"
 SKIP_DIRS = {".git", "__pycache__", "node_modules", ".pytest_cache", ".ruff_cache"}
 
@@ -117,9 +122,7 @@ def main() -> int:
     lines.append("")
 
     md_path = OUT_DIR / "P0_INVENTORY.md"
-    tmp = md_path.with_suffix(".md.tmp")
-    tmp.write_text("\n".join(lines), encoding="utf-8", newline="\n")
-    tmp.replace(md_path)
+    atomic_write_text(md_path, "\n".join(lines))
     print(f"wrote {md_path} + {csv_path}: {total_count} files {mb(total_bytes)} MB")
     return 0
 
