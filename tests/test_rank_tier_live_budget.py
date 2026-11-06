@@ -863,8 +863,9 @@ _LOGOBJATTR = "logobjattr:"
 # (`_attr_specs`): `static` binds nothing, `cls` always binds it, `any` is
 # read both ways (RM-1563: `C.g = lambda self, m: ...` from outside), and
 # `inst:<class>` binds it unless the receiver is the class name itself
-# (`C.g(o, url)` is unbound). As with
-# `_LOGATTR`, the receiver is otherwise not checked: the safe side.
+# (`C.g(o, url)` is unbound). On a call that binds it, the first parameter
+# of a plain method is the receiver itself (`_RECV`). As with `_LOGATTR`, the
+# receiver is otherwise not checked: the safe side.
 _SINKATTR = "sinkattr:"
 
 
@@ -1590,19 +1591,30 @@ def _wrapper_args(call, tainted=frozenset()):
     for kw in call.keywords:
         if kw.arg is None or "dstar" in specs or f"kw:{kw.arg}" in specs:
             out.append(kw.value)
+    if _RECV in specs:
+        out.append(f.value)
     return out
 
 
-def _bound_spec(spec):
+def _bound_specs(spec):
     """RM-1786: `spec` as seen by a call that binds the first parameter
-    itself (`self` / `cls`): every position moves down one, the first one
-    is no longer the caller's (None), and keywords are unchanged."""
+    itself (`self` / `cls`): every position moves down one and keywords are
+    unchanged. RM-1563: the first position is bound from the receiver, so
+    it becomes `recv` (`_wrapper_args` reads the receiver for it), and so
+    does a `*args` parameter that starts at the first position (the
+    receiver is its first item)."""
     if spec.startswith("pos:"):
         i = int(spec[4:])
-        return f"pos:{i - 1}" if i > 0 else None
+        return {f"pos:{i - 1}"} if i > 0 else {_RECV}
     if spec.startswith("star:"):
-        return f"star:{max(int(spec[5:]) - 1, 0)}"
-    return spec
+        n = int(spec[5:])
+        return {f"star:{max(n - 1, 0)}"} | ({_RECV} if n == 0 else set())
+    return {spec}
+
+
+# RM-1563: the spec of a sink parameter bound from the receiver of a call
+# off an attribute (`o.g()` with `def g(self): log.info(self)`).
+_RECV = "recv"
 
 
 def _attr_specs(f, tainted):
@@ -1615,10 +1627,14 @@ def _attr_specs(f, tainted):
     dotted path `O.I`) or an instance: the safe side. RM-1563: an `any`
     mark (a plain function stored on a non-`self` attribute from outside a
     class body) is read both ways off every receiver.
-    Residual: the first parameter itself is not judged on a bound call
-    (`self.g()` with a tainted `self`; the method body sees `self`'s taint
-    through the class state instead). RM-1563: a def re-wrapped by name
-    (`g = staticmethod(g)`) and an alias (`h = g`) keep the wrapper."""
+    RM-1563: a def re-wrapped by name (`g = staticmethod(g)`) and an
+    alias (`h = g`) keep the wrapper. On a bound call the first parameter
+    is the receiver (`_RECV`: `o = C(url); o.g()` with `def g(self):
+    log.info(self)`), except for a classmethod, whose first parameter is
+    the receiver's class, which carries no value of the receiver's.
+    Residual: a `super()` receiver is read as itself, not as the enclosing
+    method's first parameter, so `super().g()` with a tainted `self` is
+    missed."""
     prefix = _SINKATTR + f.attr + " "
     recv = f.value
     specs = set()
@@ -1628,18 +1644,20 @@ def _attr_specs(f, tainted):
         kind, spec = entry[len(prefix):].split(" ", 1)
         owner = kind[len("inst:"):]
         if kind == "static":
-            ways = (spec,)
+            ways = {spec}
         elif kind == "any":
-            ways = (spec, _bound_spec(spec))
-        elif kind == "cls" or (isinstance(recv, ast.Name) and recv.id == "self") or (
+            ways = {spec} | _bound_specs(spec)
+        elif kind == "cls":
+            ways = _bound_specs(spec) - {_RECV}
+        elif (isinstance(recv, ast.Name) and recv.id == "self") or (
                 isinstance(recv, ast.Call) and isinstance(recv.func, ast.Name)
                 and recv.func.id in ("super", owner)):
-            ways = (_bound_spec(spec),)
+            ways = _bound_specs(spec)
         elif isinstance(recv, ast.Name) and recv.id == owner:
-            ways = (spec,)
+            ways = {spec}
         else:
-            ways = (spec, _bound_spec(spec))
-        specs.update(s for s in ways if s is not None)
+            ways = {spec} | _bound_specs(spec)
+        specs |= ways
     return specs
 
 
@@ -3580,6 +3598,43 @@ _CHECKER_SAMPLES = (
     ("lambda stored on a class from outside, called with a sanitized value",
      "class C:\n    pass\nC.g = lambda self, m: log.info(m)\ndef f(url):\n"
      "    C().g(_safe_url(url))\n", False),
+    # RM-1563 the receiver of a bound call: a call that binds the first
+    # parameter binds it from the receiver, so a method that logs `self`
+    # called off a receiver that carries the url is a sink for it.
+    ("method logging self, called off a tainted instance",
+     "class C:\n    def g(self):\n        log.info(self)\n"
+     "def f(url):\n    o = C(url)\n    o.g()\n", True),
+    ("method logging self, called off an instance built in place",
+     "class C:\n    def g(self, m=''):\n        log.info(self)\n"
+     "def f(url):\n    C(url).g()\n", True),
+    ("method logging a self attribute, called off a tainted instance",
+     "class C:\n    def g(self):\n        log.info(self.x)\n"
+     "def f(url):\n    o = C(url)\n    o.g()\n", True),
+    ("self.g() reached through a tainted self",
+     "class C:\n    def g(self):\n        log.info(self)\n"
+     "    def h(self):\n        self.g()\ndef f(url):\n    C.h(url)\n", True),
+    ("star-args method, called off a tainted instance",
+     "class C:\n    def g(*a):\n        log.info(a)\n"
+     "def f(url):\n    o = C(url)\n    o.g()\n", True),
+    ("lambda stored on a class from outside, called off a tainted instance",
+     "class C:\n    pass\nC.g = lambda self: log.info(self)\n"
+     "def f(url):\n    o = C(url)\n    o.g()\n", True),
+    # ... and a receiver binds nothing it does not reach.
+    ("classmethod logging cls, called off a tainted instance",
+     "class C:\n    @classmethod\n    def g(cls):\n        log.info(cls)\n"
+     "def f(url):\n    o = C(url)\n    o.g()\n", False),
+    ("staticmethod, called off a tainted instance",
+     "class C:\n    @staticmethod\n    def g(m=''):\n        log.info(m)\n"
+     "def f(url):\n    o = C(url)\n    o.g()\n", False),
+    ("method logging only its argument, called off a tainted instance",
+     "class C:\n    def g(self, m):\n        log.info(m)\n"
+     "def f(url):\n    o = C(url)\n    o.g('x')\n", False),
+    ("star-args after self, called off a tainted instance",
+     "class C:\n    def g(self, *a):\n        log.info(a)\n"
+     "def f(url):\n    o = C(url)\n    o.g('x')\n", False),
+    ("method logging self, called off a sanitized instance",
+     "class C:\n    def g(self):\n        log.info(self)\n"
+     "def f(url):\n    o = C(_safe_url(url))\n    o.g()\n", False),
 )
 
 
