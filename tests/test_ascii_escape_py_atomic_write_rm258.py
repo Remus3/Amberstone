@@ -26,8 +26,8 @@ from tools import ascii_escape_py as tool
 _ROOT = Path(__file__).resolve().parents[1]
 
 # A comment arrow (transliterated) and a string-literal e-acute (escaped).
-_SRC = "# a \u2192 b\nX = \"caf\u00e9\"\n"
-_OUT = b"# a -> b\nX = \"caf\\xe9\"\n"
+_SRC = '# a \u2192 b\nX = "caf\u00e9"\n'
+_OUT = b'# a -> b\nX = "caf\\xe9"\n'
 
 
 @pytest.fixture

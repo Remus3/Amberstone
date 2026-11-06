@@ -120,6 +120,6 @@ def test_pattern_catches_the_old_forms_and_spares_the_new():
                   "docs/NO_LLM_PRECOMPUTE_PLAN.md:159-163",
                   "`scripts/bootstrap_dev.ps1:105`", "ROADMAP.md:305"):
         assert _LINE_CITE.search(probe), probe
-    for probe in ("(LEDGER item 506)", "docs/NO_LLM_PRECOMPUTE_PLAN.md (\"Fuse",
+    for probe in ("(LEDGER item 506)", 'docs/NO_LLM_PRECOMPUTE_PLAN.md ("Fuse',
                   "BACKLOG.md RM-295a row", "scripts/bootstrap_dev.ps1,"):
         assert not _LINE_CITE.search(probe), probe

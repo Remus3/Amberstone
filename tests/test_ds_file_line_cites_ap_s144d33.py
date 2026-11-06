@@ -42,13 +42,13 @@ AUTHORED_SHA = "0d5cada95"
 NEEDLES = (
     "  * dashboard.routes_dictionary._damage_profile_tag, final return",
     "  * dashboard.routes_pickban._compute_team_damage_mix, per-champ lean",
-    "    TIE -> \"EVEN\". Fed by routes_pickban._load_champ_id_to_info, which",
+    '    TIE -> "EVEN". Fed by routes_pickban._load_champ_id_to_info, which',
     "  * core.build_planner.fed_threat._champ_axis, final comparison",
     "    live consumers agree (routes_dictionary._damage_profile_tag,",
-    "f\"routes_dictionary._damage_profile_tag prints AD on the tie while \"",
-    "\"routes_dictionary._damage_profile_tag no longer resolves a tie to AD\"",
-    "\"routes_pickban._compute_team_damage_mix no longer reports EVEN on a tie\"",
-    "\"fed_threat._champ_axis no longer reports unknown on a tie\"",
+    'f"routes_dictionary._damage_profile_tag prints AD on the tie while "',
+    '"routes_dictionary._damage_profile_tag no longer resolves a tie to AD"',
+    '"routes_pickban._compute_team_damage_mix no longer reports EVEN on a tie"',
+    '"fed_threat._champ_axis no longer reports unknown on a tie"',
 )
 
 
@@ -70,10 +70,10 @@ def _src(rel: str, name: str) -> str:
 def test_patterns_match_the_rotted_shapes():
     for sample in (
         "  * dashboard/routes_dictionary.py:101",
-        "    TIE -> \"AD\". Two things run BEFORE it: routes_dictionary.py:91-98",
-        "    TIE -> \"EVEN\". Fed by routes_pickban.py:218, which merges first.",
-        "        (fed_threat.py:139-151).\"\"\"",
-        "            \"routes_pickban.py:255-260 no longer reports EVEN on a tie\")",
+        '    TIE -> "AD". Two things run BEFORE it: routes_dictionary.py:91-98',
+        '    TIE -> "EVEN". Fed by routes_pickban.py:218, which merges first.',
+        '        (fed_threat.py:139-151)."""',
+        '            "routes_pickban.py:255-260 no longer reports EVEN on a tie")',
     ):
         assert _PY_LINE.search(sample), sample
     for needle in NEEDLES:

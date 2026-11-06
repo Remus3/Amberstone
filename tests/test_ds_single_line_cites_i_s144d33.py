@@ -75,13 +75,13 @@ def _flat(text: str) -> str:
 
 def test_pattern_matches_the_old_shapes():
     for sample in (
-        "Closes the ``ehp.py:21`` Phase-1.5 omission \"Shield throughput",
-        "Closes the ``ehp.py:23`` Phase-6 deliberate omission \"Healing",
+        'Closes the ``ehp.py:21`` Phase-1.5 omission "Shield throughput',
+        'Closes the ``ehp.py:23`` Phase-6 deliberate omission "Healing',
         "# ehp.py:21 deliberate omission). Single ``ItemShield`` per item;",
         "# heal contribution (closes the ehp.py:23 deliberate omission). Single",
         "# from the resolved build, in the same shape engine.py:318-320 uses. It",
         "# FINAL attacks/sec (engine.py:196 resolves it as base_as * (1 + bonus_pct)).",
-        "# ATTACK-SPEED-LOCK GATE: engine.py:439 zeroes item_totals[\"as_pct\"] for a",
+        '# ATTACK-SPEED-LOCK GATE: engine.py:439 zeroes item_totals["as_pct"] for a',
     ):
         assert _LINE_CITE.search(sample), sample
     for symbols in TARGETS.values():
@@ -123,7 +123,7 @@ def test_siblings_drop_the_same_rotted_targets(name):
 
 def test_same_target_pattern_matches_the_old_shapes():
     for sample in (
-        "``ehp.py:23`` deliberate Phase-6 omission \"Healing throughput",
+        '``ehp.py:23`` deliberate Phase-6 omission "Healing throughput',
         "# shield_hp by damage type (closes ehp.py:21 deliberate omission).",
         "per second - ``engine.py:196`` resolves it as ``base_as * (1 + bonus_pct)``.",
         "ATTACK-SPEED-LOCK CHAMPIONS GET ZERO, AND THAT IS DELIBERATE. ``engine.py:439``",

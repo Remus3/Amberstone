@@ -76,7 +76,7 @@ def test_patterns_match_the_rotted_shapes():
     for sample in (
         "    core/defensive_picks.py:83-88.",
         "    the safe degrade; SR map extent ~14800 units per core/vision_tracker.py:55).",
-        "    itemID / displayName (dashboard/_liveclient.py:131,135).\"\"\"",
+        '    itemID / displayName (dashboard/_liveclient.py:131,135)."""',
     ):
         assert _PY_LINE.search(sample), sample
     for needle in NEEDLES:

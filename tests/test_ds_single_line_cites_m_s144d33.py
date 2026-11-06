@@ -48,9 +48,9 @@ TARGETS = {
         "CASTER-DEFENSIVE-STAT header comment",
         "``_passive_damage_overrides._ALL_OUT_BONUS_OVERRIDES``",
         "already rejected in that same GAP-2 header comment",
-        "the ``(\"Taric\", \"P\", 0)`` row of "
+        'the ``("Taric", "P", 0)`` row of '
         "``_passive_damage_overrides._PASSIVE_DAMAGE_OVERRIDES``",
-        "The ``(\"Galio\", \"P\", 0)`` row of "
+        'The ``("Galio", "P", 0)`` row of '
         "``_passive_damage_overrides._PASSIVE_DAMAGE_OVERRIDES``",
     ),
 }
@@ -82,7 +82,7 @@ def test_pattern_matches_the_old_shapes():
         "(``ehp.py:2095-2099``). No term is counted twice anywhere.",
         "    ``_passive_damage_overrides.py:839-843``: it is BILINEAR (caster bonus",
         "    # _passive_damage_overrides.py:852-861) is the WEAKER peer source and is",
-        "    # _passive_damage_overrides.py:867-874, Galio P \"Colossal Smash\":",
+        '    # _passive_damage_overrides.py:867-874, Galio P "Colossal Smash":',
     ):
         assert _LINE_CITE.search(sample), sample
     for symbols in TARGETS.values():

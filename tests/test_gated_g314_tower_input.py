@@ -92,8 +92,8 @@ def test_tool_is_read_only_and_ascii():
     raw = TOOL.read_bytes()
     assert raw.decode("ascii") and b"\r" not in raw
     src = raw.decode("ascii")
-    for banned in ("write_text", "write_bytes", ".unlink(", "os.remove", "shutil", "open(\"w",
-                   "'w')", "\"w\")", "\"a\")", "subprocess", "restart_trigger"):
+    for banned in ("write_text", "write_bytes", ".unlink(", "os.remove", "shutil", 'open("w',
+                   "'w')", '"w")', '"a")', "subprocess", "restart_trigger"):
         assert banned not in src, banned
     assert src.count(".open(") == 1 and 'path.open("rb")' in src
 

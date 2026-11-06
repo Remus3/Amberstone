@@ -369,7 +369,7 @@ def _save_profile_from_body(h, body) -> None:
 def _serve_regions_post(h, body) -> None:
     try:
         if not isinstance(body, dict) or "regions" not in body:
-            _send_json(h, 400, {"ok": False, "error": "body must be {\"regions\": {...}}"})
+            _send_json(h, 400, {"ok": False, "error": 'body must be {"regions": {...}}'})
             return
         if body.get("source") == "profile" or "base" in body:
             _save_profile_from_body(h, body)
@@ -512,7 +512,7 @@ def _serve_reference_post(h, body) -> None:
         if not isinstance(state, str) or not state.strip() \
                 or not isinstance(path, str) or not path.strip():
             _send_json(h, 400, {"ok": False,
-                                "error": "body must be {\"state\": str, \"path\": str}"})
+                                "error": 'body must be {"state": str, "path": str}'})
             return
         source = _ingest_source(path)
         if source is None:

@@ -287,6 +287,6 @@ def test_tool_is_read_only_and_ascii():
     assert src.isascii() and b"\r\n" not in src
     text = src.decode("ascii")
     for banned in ("write_text", "write_bytes", ".unlink(", "os.remove", "shutil",
-                   " open(", "subprocess", "/lol-", "method=\"POST\"", "method='POST'"):
+                   " open(", "subprocess", "/lol-", 'method="POST"', "method='POST'"):
         assert banned not in text, banned
     assert not re.search(r"\b\d{10}\b", text)

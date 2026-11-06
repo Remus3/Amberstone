@@ -80,7 +80,7 @@ class Hist1RowClickWiringTests(unittest.TestCase):
         self.assertIn('sessionStorage.setItem("rc-hpgr-match-ts"', helper)
         self.assertIn('"#historical-pgr"', helper)
         self.assertIn('_viewSaveManual("historical-pgr")', helper)
-        self.assertIn("addEventListener(\"click\"", helper)
+        self.assertIn('addEventListener("click"', helper)
 
     def test_click_helper_keyboard_accessible(self):
         js = _read(MAIN_JS)

@@ -63,7 +63,7 @@ def test_pattern_matches_the_rotted_shapes():
     for sample in (
         "``_effects_data.py:2040-2047`` for SR 2502 and ``:3711-3716`` for",
         "``ehp._armor_factor`` (``ehp.py:147-157``) because",
-        "counterfactual was measured at (ROADMAP.md:268-270: \"1 champ",
+        'counterfactual was measured at (ROADMAP.md:268-270: "1 champ',
         "``tests/test_ad_axis_ability_damage_rm39.py:30`` and the 1.223.0",
     ):
         assert _LINE_CITE.search(sample), sample
@@ -71,7 +71,7 @@ def test_pattern_matches_the_rotted_shapes():
         "``data/daemon_slayer/16.14.1/items_meraki.json`` item 2502",
         "``ehp._armor_factor`` because ``ehp`` is this module's",
         "the 1.223.0 CHANGELOG entry's golden-diff target pair",
-        "``ITEM_EFFECTS[\"2502\"]`` in ``_effects_data.py``",
+        '``ITEM_EFFECTS["2502"]`` in ``_effects_data.py``',
     ):
         assert not _LINE_CITE.search(sample), sample
 

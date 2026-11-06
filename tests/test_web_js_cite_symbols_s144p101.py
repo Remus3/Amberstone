@@ -46,7 +46,7 @@ NEW_PROSE = (
     ("web/js/lib/next_buy_model.js", "`liveclient_summary()` in dashboard/_liveclient.py"),
     ("web/js/lib/next_buy_model.js", "`stage_for` in core/build_planner/scoring.py"),
     ("web/js/lib/next_buy_model.js", "the `upgrade_trinket` action in core/build_planner/replan.py"),
-    ("web/js/panels/objective_gauges.js", "`out[\"game_time_s\"]` in `liveclient_summary()`"),
+    ("web/js/panels/objective_gauges.js", '`out["game_time_s"]` in `liveclient_summary()`'),
     ("web/js/panels/objective_gauges.js", "`_dynamic_epic_callouts` / `_objective_callouts`"),
     ("web/js/panels/objective_gauges.js", "(`_soul_secured_at`)"),
     ("web/js/panels/champ_select.js", "`_LOBBY_QUEUE_NAMES` map in lcu/snapshot_shape.py"),
@@ -62,7 +62,7 @@ NEW_PROSE = (
     ("web/js/lib/summoner_spells.js", "the `/icons/spells/` entry of GET_ROUTES in dashboard/routes_static.py"),
     ("web/js/panels/last_match.js", "the success branch of the rubric fetch in `_setHeroRoleGrade`"),
     ("web/js/panels/build_insights.js", "the CHAMPS.byId slug lookup in `_renderTcRow` of web/js/panels/last_match.js"),
-    ("web/js/panels/active_match.js", "the `out[\"players\"]` block of `liveclient_summary()` in dashboard/_liveclient.py"),
+    ("web/js/panels/active_match.js", 'the `out["players"]` block of `liveclient_summary()` in dashboard/_liveclient.py'),
 )
 
 # (file the anchor must be IN, anchor text) - the replacement still resolves.

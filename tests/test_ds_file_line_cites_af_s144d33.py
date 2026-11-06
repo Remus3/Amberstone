@@ -104,7 +104,7 @@ def _nested(func: ast.AST, name: str) -> ast.FunctionDef:
 def test_patterns_match_the_rotted_shapes():
     for sample in (
         "(``ehp.py`` lines ~1688 /",
-        "not modeled)\", lines ~1035 / ~3778)",
+        'not modeled)", lines ~1035 / ~3778)',
         "``compute_ehp`` line ~590 applies",
         "(Phase 6 wire at line ~583)",
     ):

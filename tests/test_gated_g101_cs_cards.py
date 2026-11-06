@@ -321,8 +321,8 @@ def test_pbw_mode_map_matches_the_page():
 
 def test_detect_mode_mirrors_csv_detect_mode():
     body = re.search(r"function _csvDetectMode\(cs\) \{(.*?)\n\}", _src(CS_JS), re.S).group(1)
-    assert "q === 1700 || q === 1710 || q === 1750) return \"arena\"" in body
-    assert "cs.is_aram || q === 450 || q === 920 || q === 2400) return \"aram\"" in body
+    assert 'q === 1700 || q === 1710 || q === 1750) return "arena"' in body
+    assert 'cs.is_aram || q === 450 || q === 920 || q === 2400) return "aram"' in body
     assert [g.detect_mode(q, a) for q, a in ((420, False), (450, False), (1750, True),
                                              (400, True), (None, None))] == \
         ["sr", "aram", "arena", "aram", "sr"]

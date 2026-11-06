@@ -44,7 +44,7 @@ DISPATCH_BLOCK = "\n".join((
     "- the line(s) this skill names as its chat output, nothing when it names none - "
     "with no narration around it.",
     "> 2. No quick-read or trivial-edit exception in the main thread; this supersedes "
-    "any \"may inline\" line in this file. Its Bash / PowerShell / Read / Edit / Write / "
+    'any "may inline" line in this file. Its Bash / PowerShell / Read / Edit / Write / '
     "Grep / Glob / NotebookEdit calls meet the kit PreToolUse hook "
     "`ops/fleet_kit/fleet_subagent_first.py` (gitignored mode file "
     "`ops/loop/control/subagent_first.mode`: log first, then deny).",

@@ -95,7 +95,7 @@ def test_no_tracked_batch_file_keeps_an_inherited_set_p_value():
     assert seen >= 3, f"the scan sees {seen} set /p reads; expected install.bat x2 + rollback"
     assert not offenders, (
         "`set /p NAME=` leaves NAME as it was on an empty answer or an empty first "
-        "line; clear it first with set \"NAME=\": " + "; ".join(offenders))
+        'line; clear it first with set "NAME=": ' + "; ".join(offenders))
 
 
 win_only = pytest.mark.skipif(sys.platform != "win32", reason="runs a .cmd under cmd.exe")

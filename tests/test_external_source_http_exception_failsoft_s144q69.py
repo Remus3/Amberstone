@@ -57,7 +57,7 @@ REPLIES = {
     "/long-header": (b"HTTP/1.1 200 OK\r\nX-Pad: " + b"a" * 70000
                      + b"\r\nContent-Length: 2\r\n\r\n{}"),
     "/bad-chunk": _CHUNKED_HEAD + b"ZZ\r\n{}\r\n0\r\n\r\n",
-    "/cut-chunk": _CHUNKED_HEAD + b"40\r\n{\"data\": [",
+    "/cut-chunk": _CHUNKED_HEAD + b'40\r\n{"data": [',
     "/empty": b"",
 }
 # The four HTTPException shapes, and the exception http.client raises for each.

@@ -29,7 +29,7 @@ from core import daemon_slayer_client as ds
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _CLIENT = _REPO_ROOT / "core" / "daemon_slayer_client.py"
 _ARCHETYPES = ("carry", "tank", "bruiser", "mage", "assassin", "enchanter", "onhit", "")
-_NON_OBJECT_BODIES = (b"[]", b"[{\"item_id\": \"3031\"}]", b"7", b"\"ranked\"", b"null", b"true")
+_NON_OBJECT_BODIES = (b"[]", b'[{"item_id": "3031"}]', b"7", b'"ranked"', b"null", b"true")
 
 
 class _FakeResp:
@@ -67,7 +67,7 @@ def test_post_json_returns_none_for_a_non_object_body(monkeypatch, raw):
 def test_post_json_still_returns_an_object_body(monkeypatch):
     # Positive control: the stub transport is real, so a None above is the
     # type check, not a broken fake.
-    _serve(monkeypatch, b"{\"ranked\": []}")
+    _serve(monkeypatch, b'{"ranked": []}')
     assert ds._post_json("/rank", {"champion": "Ahri"}) == {"ranked": []}
 
 

@@ -479,7 +479,7 @@ def _discarded_journal_pragmas(source: str) -> list[int]:
 def test_guard_positive_control():
     bad = (
         "conn.execute('PRAGMA journal_mode=WAL')\n"
-        "conn.execute(\"PRAGMA JOURNAL_MODE = wal\").fetchone()\n"
+        'conn.execute("PRAGMA JOURNAL_MODE = wal").fetchone()\n'
     )
     assert _discarded_journal_pragmas(bad) == [1, 2]
     good = (

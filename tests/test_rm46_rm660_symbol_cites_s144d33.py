@@ -58,7 +58,7 @@ def test_pattern_matches_the_rotted_shapes():
     ):
         assert _LINE_CITE.search(sample), sample
     for sample in (
-        "``ITEM_EFFECTS[\"3508\"]`` in ``_effects_data.py``",
+        '``ITEM_EFFECTS["3508"]`` in ``_effects_data.py``',
         "``CallContext.target_current_hp_pct`` in ``_effects_types.py``",
         "DS ``:8860`` serves the main checkout",
     ):

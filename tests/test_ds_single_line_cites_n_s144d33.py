@@ -40,7 +40,7 @@ TARGETS = {
         "Absolute Focus 8233 (``rune_procs.RUNE_PROCS[8233]``) and Gathering "
         "Storm 8236 (``rune_procs.RUNE_PROCS[8236]``)",
         "The Absolute Focus and Gathering Storm paragraphs of the ``rune_procs`` "
-        "\"Conditionally modeled\" item 232 comment block",
+        '"Conditionally modeled" item 232 comment block',
         "``rune_procs._conqueror_adaptive`` states the engine's own contract",
         "ALREADY registered and scored as ``rune_procs.RUNE_PROCS[9923]``. "
         "Adding it here would double-credit it.",
@@ -49,9 +49,9 @@ TARGETS = {
         "``rune_procs._conqueror_adaptive`` assigns the live stack count to the "
         "caller",
         "Already registered as rune_procs.RUNE_PROCS[8236] with proc_type "
-        "\"adaptive\"",
+        '"adaptive"',
         "Already registered as rune_procs.RUNE_PROCS[8233] with proc_type "
-        "\"adaptive\"",
+        '"adaptive"',
         "hardcoded 12. rune_procs._conqueror_adaptive assigns the live stack "
         "count to the caller",
         "``rune_procs._conqueror_adaptive`` puts the live stack count on the "

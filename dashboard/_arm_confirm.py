@@ -216,7 +216,7 @@ CONSUMED = "consumed"
 
 _REASON_DETAIL = {
     ARM_REQUIRED: ("this action is irreversible and needs a two-step: POST "
-                   "{\"action\": \"arm\", \"target_action\": ...} first, then "
+                   '{"action": "arm", "target_action": ...} first, then '
                    "re-send this body with the arm_token it returns"),
     BAD_TOKEN: "no such arm - it was never issued, was disarmed, or has aged out",
     OTHER_ARMED: "that arm_token was issued for a different action or target",

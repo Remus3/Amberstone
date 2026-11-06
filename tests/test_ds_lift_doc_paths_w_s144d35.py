@@ -43,8 +43,8 @@ def _ds_files():
 
 def test_pattern_matches_both_shapes():
     for sample in (
-        f"``docs/{LIFT}`` \"Lift 2\"",
-        f"spec: docs/_archive/{LIFT} \"Lift 3\".",
+        f'``docs/{LIFT}`` "Lift 2"',
+        f'spec: docs/_archive/{LIFT} "Lift 3".',
         "(docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F3)",
     ):
         assert _LIFT_PATH.search(sample), sample

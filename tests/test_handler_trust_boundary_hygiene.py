@@ -287,7 +287,7 @@ def test_chunked_post_is_rejected_with_411(server):
     resp = _raw(server,
                 b"POST /api/command HTTP/1.0\r\nHost: 127.0.0.1\r\n"
                 b"Transfer-Encoding: chunked\r\nContent-Type: application/json"
-                b"\r\n\r\n7\r\n{\"a\":1}\r\n0\r\n\r\n")
+                b'\r\n\r\n7\r\n{"a":1}\r\n0\r\n\r\n')
     status = resp.split(b"\r\n")[0]
     assert b"411" in status, f"chunked POST was not refused: {status!r}"
 
@@ -331,7 +331,7 @@ def test_duplicate_transfer_encoding_headers_cannot_smuggle_a_body(server,
     resp = _raw(server,
                 b"POST /api/command HTTP/1.0\r\nHost: 127.0.0.1\r\n"
                 b"Transfer-Encoding: identity\r\nTransfer-Encoding: chunked"
-                b"\r\n\r\n7\r\n{\"a\":1}\r\n0\r\n\r\n")
+                b'\r\n\r\n7\r\n{"a":1}\r\n0\r\n\r\n')
     status = resp.split(b"\r\n")[0]
     assert b"411" in status, (
         f"duplicate-header chunked POST was not refused: {status!r}")

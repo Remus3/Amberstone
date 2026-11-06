@@ -1214,7 +1214,7 @@ def test_a_real_champion_captures_and_re_derives_through_the_real_engine():
 
 def test_the_tool_stays_read_only_at_source():
     src = TOOL_SRC.read_text(encoding="utf-8")
-    for banned in ("restart_trigger", "taskkill", "method=\"POST\"", "lcu_client",
+    for banned in ("restart_trigger", "taskkill", 'method="POST"', "lcu_client",
                    ".unlink(", "shutil", "subprocess"):
         assert banned not in src
     assert "write_text" not in src

@@ -55,7 +55,7 @@ def test_pattern_matches_the_rotted_shapes():
         assert _LINE_CITE.search(sample), sample
     for sample in (
         "crit-conversion parameter and the table generator drives ``:8860``.",
-        "SHIPPED IE (``ITEM_EFFECTS[\"3031\"]`` in ``_effects_data.py``)",
+        'SHIPPED IE (``ITEM_EFFECTS["3031"]`` in ``_effects_data.py``)',
         "``agents/daemon_slayer/tests/test_crit_conversion_ashe_rm46.py``",
     ):
         assert not _LINE_CITE.search(sample), sample
@@ -100,7 +100,7 @@ def test_rm46_test_path_is_the_real_one():
 
 
 def test_infinity_edge_row_matches_the_prose():
-    assert "ITEM_EFFECTS[\"3031\"]" in _source(TARGETS[0])
+    assert 'ITEM_EFFECTS["3031"]' in _source(TARGETS[0])
     ie = ITEM_EFFECTS["3031"]
     assert ie.name == "Infinity Edge"
     assert ie.crit_damage_bonus == 0.30
@@ -109,7 +109,7 @@ def test_infinity_edge_row_matches_the_prose():
 def test_runaan_rows_have_no_crit_term():
     text = _source(TARGETS[1])
     for item_id in ("3085", "223085"):
-        assert f"ITEM_EFFECTS[\"{item_id}\"]" in text, item_id
+        assert f'ITEM_EFFECTS["{item_id}"]' in text, item_id
         procs = ITEM_EFFECTS[item_id].periodics
         assert [p.name for p in procs] == ["Wind's Fury"], item_id
         src = inspect.getsource(procs[0].bonus_damage)

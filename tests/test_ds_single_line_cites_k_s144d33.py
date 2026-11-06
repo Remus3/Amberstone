@@ -42,8 +42,8 @@ _LINE_CITE = re.compile(r"(?<![\w.])\w+\.py:\d|``:\d")
 
 TARGETS = {
     "_rune_health_grants.py": (
-        "the ``_rune_resist_grants`` module docstring (its \"Only three ids are "
-        "SEEDED\" allowlist paragraph)",
+        'the ``_rune_resist_grants`` module docstring (its "Only three ids are '
+        'SEEDED" allowlist paragraph)',
         "``_passive_health_overrides._SION_STACKS`` / ``_SWAIN_STACKS`` / "
         "``_CHO_STACKS`` for the curves, "
         "``_passive_health_overrides._stacks_at_level`` for the reader",

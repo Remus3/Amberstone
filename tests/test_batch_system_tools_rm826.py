@@ -127,7 +127,7 @@ def test_the_scan_catches_every_spelling_it_claims():
         'start /B "" timeout /t 2',
         '"%SystemRoot%\\System32\\powershell.exe" -Command x',
         "for /f %%T in ('powershell -Command Get-Date') do set T=%%T",
-        "for /f \"usebackq\" %%T in (`where git`) do set G=%%T",
+        'for /f "usebackq" %%T in (`where git`) do set G=%%T',
         "call taskkill /IM x.exe",
         "if exist x taskkill /IM y.exe",
         "if not defined X timeout /t 2",

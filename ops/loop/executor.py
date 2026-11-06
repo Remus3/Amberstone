@@ -812,7 +812,7 @@ def grounding_findings(body, *, head, resolve, is_ancestor, resolve_path=None) -
         # has to be the first thing after the marker.
         out.append(GroundingFinding(
             "unverified-premise", claim,
-            f"UNVERIFIED-PREMISE \"{claim}\" - the directive tagged this claim [UNVERIFIED] "
+            f'UNVERIFIED-PREMISE "{claim}" - the directive tagged this claim [UNVERIFIED] '
             f"itself, so it is not a fact the work below may assume"))
 
     # After the self-declared unknowns, because an unknown is the stronger of the
@@ -823,7 +823,7 @@ def grounding_findings(body, *, head, resolve, is_ancestor, resolve_path=None) -
         named = ", ".join(paths)
         out.append(GroundingFinding(
             "digest-premise", claim,
-            f"FROM-DIGEST-PREMISE \"{claim}\" - the directive sourced this claim from an "
+            f'FROM-DIGEST-PREMISE "{claim}" - the directive sourced this claim from an '
             f"audit digest rather than from the repository, and it names {named}. Re-read "
             f"that file before acting on the claim",
             paths))

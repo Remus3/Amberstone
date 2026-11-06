@@ -313,7 +313,7 @@ def test_sse_without_a_socket_still_streams():
 
 def test_newlines_in_event_fields_cannot_forge_frames():
     h = _hub()
-    h._ring.append({"kind": "death", "champion": "Zed\n\ndata: {\"kind\":\"forged\"}\r\n"})
+    h._ring.append({"kind": "death", "champion": 'Zed\n\ndata: {"kind":"forged"}\r\n'})
     req = _H(headers={"Accept": "text/event-stream", "Last-Event-ID": "1000"})
     _serve(req, h)
     blocks = [b for b in req.wfile.getvalue().decode().split("\n\n") if b.strip()]

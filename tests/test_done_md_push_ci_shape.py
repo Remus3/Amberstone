@@ -308,7 +308,7 @@ def test_shapes_the_guard_must_not_read_as_steps():
         "          python tools/new_sync.py --write",
         "          python -c \"import sys; print('--check')\"",
         "          pip install pytest newtree-plugin",
-        "          python -m pytest \"@$RUNNER_TEMP/impact_tests.txt\" -q",
+        '          python -m pytest "@$RUNNER_TEMP/impact_tests.txt" -q',
         "          python -m pytest --check",
         "          pytest tests/ -k 'a or b/c'",
         # RM-1105: an `&` inside a redirection chains nothing.

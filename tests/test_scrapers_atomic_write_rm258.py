@@ -37,7 +37,7 @@ from lib.scrapers._base import ScraperBase
 # Long enough to clear MIN_BODY_BYTES, no bot-wall marker, and CRLF line ends
 # the way a Windows-authored page is served.
 _CRLF_PAGE = "<!DOCTYPE html>\r\n<html><body>\r\n" + (
-    "<div class=\"item\">Ludens Companion</div>\r\n" * 40) + "</body></html>\r\n"
+    '<div class="item">Ludens Companion</div>\r\n' * 40) + "</body></html>\r\n"
 
 
 class _Stub:

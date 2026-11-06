@@ -57,10 +57,10 @@ NEEDLES = {
     ),
     "tests/test_replan_kept_items_rm483.py": (
         "normalized by ``_resolve_forced``) already",
-        "\"re-plan the remaining build\" call in\n"
+        '"re-plan the remaining build" call in\n'
         "core/build_planner/replan.py at a18bdb66a",
         "(``ItemOverrideStore.is_kept``)",
-        "the \"No-double rule is\nengine-authoritative\" paragraph",
+        'the "No-double rule is\nengine-authoritative" paragraph',
     ),
     "tests/test_build_order_precompute.py": (
         "(`load_build_order_precompute` in\n    "
@@ -70,7 +70,7 @@ NEEDLES = {
         "(``_compute`` in dashboard/routes_ds_relscore.py)",
     ),
     "tests/test_routes_ds_relscore_full_build.py": (
-        "``log.warning(\"api/ds-relscore compute: %s\",\nexc)`` in "
+        '``log.warning("api/ds-relscore compute: %s",\nexc)`` in '
         "``_serve_ds_relscore``",
         "``_NON_INVENTORY_BASE_IDS`` in core/daemon_slayer_resolver.py",
         "``dashboard._liveclient.liveclient_summary`` applied no filter",

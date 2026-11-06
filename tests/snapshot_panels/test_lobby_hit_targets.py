@@ -230,7 +230,7 @@ def test_top8_up_control_owns_its_own_hit_target(mock_server, pw_browser):
     try:
         rows = page.evaluate(
             _HIT_AT_OWN_CENTRE_JS,
-            "#lv-top8-list .lv-top8-reorder-btn[data-action=\"up\"]",
+            '#lv-top8-list .lv-top8-reorder-btn[data-action="up"]',
         )
         assert len(rows) == 3, f"expected 3 up controls, got {len(rows)}"
         dead = [r for r in rows if not r["ownsCentre"]]
@@ -256,7 +256,7 @@ def test_top8_down_control_owns_its_own_hit_target(mock_server, pw_browser):
     try:
         rows = page.evaluate(
             _HIT_AT_OWN_CENTRE_JS,
-            "#lv-top8-list .lv-top8-reorder-btn[data-action=\"down\"]",
+            '#lv-top8-list .lv-top8-reorder-btn[data-action="down"]',
         )
         assert len(rows) == 3, f"expected 3 down controls, got {len(rows)}"
         dead = [r for r in rows if not r["ownsCentre"]]
@@ -362,7 +362,7 @@ def test_top8_reorder_keeps_an_enlarged_hit_target(mock_server, pw_browser):
             got[name] = page.evaluate(
                 _EFFECTIVE_EXTENT_JS,
                 "#lv-top8-list .lv-top8-reorder-btn"
-                f"[data-action=\"{name}\"][data-idx=\"1\"]",
+                f'[data-action="{name}"][data-idx="1"]',
             )
         for name, ext in got.items():
             assert ext and ext.get("ownsCentre"), (

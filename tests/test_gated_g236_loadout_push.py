@@ -137,7 +137,7 @@ def test_switcher_pushes_items_only_as_apply_item_set():
     assert "push_runes: false, push_summoners: false, push_items: true" in body
     route = (ROOT / "dashboard" / "routes_loadout.py").read_text(encoding="utf-8")
     assert f'"cmd":         "{g236.PUSH_VERB}"' in route
-    assert "if push_items: _enqueue(resolved.get(\"item_cmd\"))" in route
+    assert 'if push_items: _enqueue(resolved.get("item_cmd"))' in route
     agent = (ROOT / "tools" / "lcu_agent.py").read_text(encoding="utf-8")
     assert f'if name == "{g236.PUSH_VERB}":' in agent
     assert 'return {"ok": True, "set_uid": set_uid, "title": title}' in agent

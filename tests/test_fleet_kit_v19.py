@@ -83,4 +83,4 @@ def test_pre_push_runs_identity_first_with_the_remote_args():
     lines = [ln for ln in _text(".githooks/pre-push").split("\n")
              if "python" in ln.lower() and ".py" in ln and not ln.lstrip().startswith("#")]
     assert lines, "pre-push runs no python step"
-    assert "fleet_identity.py\" pre-push \"$@\"" in lines[0]
+    assert 'fleet_identity.py" pre-push "$@"' in lines[0]

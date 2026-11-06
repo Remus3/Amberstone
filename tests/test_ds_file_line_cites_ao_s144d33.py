@@ -52,7 +52,7 @@ NEEDLES = {
         "``agents.daemon_slayer.data_loader.canonical_mode``.",
     ),
     CONTRACT: (
-        "# The 5-value state enum the contract locks (the WP-C5 \"TDD test first\"\n"
+        '# The 5-value state enum the contract locks (the WP-C5 "TDD test first"\n'
         "# row of docs/OVERLAY_BUILD_MASTER_PLAN.md as authored at b4aac5c49; the\n"
         "# plan has since condensed WP-C5 to its Section J status row).",
         "# Test doubles - mirror ``_Handler`` in tests/test_ds_preview_e2e_p1l21.py\n"

@@ -134,7 +134,7 @@ def test_baseline_file_carries_shas_and_classes_never_values():
 
 def test_pre_push_hook_runs_the_scan_before_lfs():
     hook = (ROOT / ".githooks" / "pre-push").read_text(encoding="utf-8")
-    scan = hook.index("credential_history_scan.py\" --pre-push")
+    scan = hook.index('credential_history_scan.py" --pre-push')
     lfs = hook.index('git lfs pre-push "$@"')
     assert scan < lfs
     assert 'printf \'%s\\n\' "$REFS" | "$PY" "$ROOT/tools/credential_history_scan.py"' in hook

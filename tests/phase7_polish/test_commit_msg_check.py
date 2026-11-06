@@ -115,7 +115,7 @@ class TestValidate(unittest.TestCase):
         self._ok("docs: note the worktree-agent-<hex> branch shape")
 
     def test_revert_pass_through(self):
-        self._ok("Revert \"feat(arch): foo\"")
+        self._ok('Revert "feat(arch): foo"')
 
     def test_fixup_pass_through(self):
         self._ok("fixup! feat(arch): foo")

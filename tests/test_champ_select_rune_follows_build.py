@@ -185,7 +185,7 @@ class BehaviorTests(unittest.TestCase):
             + "const pages=[{pageId:'p1',keystone:'a'},{pageId:'p1',keystone:'a'},"
             + "{pageId:'p2',keystone:'b'},{pageId:'p3',keystone:'c'}];\n"
             + "function parse(html){\n"
-            + "  const re=/<div class=\"(csv-rune-side-opt[^\"]*)\" data-page-id=\"([^\"]+)\"/g;\n"
+            + '  const re=/<div class="(csv-rune-side-opt[^"]*)" data-page-id="([^"]+)"/g;\n'
             + "  const opts=[]; let m;\n"
             + "  while((m=re.exec(html))!==null){opts.push({pageId:m[2],\n"
             + "    selected:/\\bis-selected\\b/.test(m[1]),\n"

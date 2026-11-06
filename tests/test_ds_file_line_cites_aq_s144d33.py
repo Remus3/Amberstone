@@ -37,8 +37,8 @@ DS_LINE = "DS top items ("
 
 NEEDLES = (
     "# next to the source symbols is deliberate: if a coach changes how",
-    "    \"\"\"coach_integration._coach.CoachIntegration._run - conditional",
-    "    \"\"\"coaches.brawl_coach.Coach._run_coach - the ``user = (...)``",
+    '    """coach_integration._coach.CoachIntegration._run - conditional',
+    '    """coaches.brawl_coach.Coach._run_coach - the ``user = (...)``',
 )
 
 
@@ -64,8 +64,8 @@ def _has_ds_fstring(node: ast.AST) -> bool:
 
 def test_patterns_match_the_rotted_shapes():
     for sample in (
-        "    \"\"\"coach_integration/_coach.py:327-328 - conditional append, the",
-        "    \"\"\"coaches/brawl_coach.py:417-434 - inline f-string, the DS line is",
+        '    """coach_integration/_coach.py:327-328 - conditional append, the',
+        '    """coaches/brawl_coach.py:417-434 - inline f-string, the DS line is',
     ):
         assert _PY_LINE.search(sample), sample
     for needle in NEEDLES:

@@ -591,7 +591,7 @@ def test_overlay_callouts_lead_whitelist(mock_server, pw_browser):
             "  const co = document.getElementById('rn-callouts');"
             "  co.hidden = false;"
             "  co.innerHTML = '<div class=\"rc-co-row\">"
-            "<span class=\"rc-co-line\">Drake spawns - rotate bot</span>"
+            '<span class="rc-co-line">Drake spawns - rotate bot</span>'
             "<span class=\"rc-co-eta\">0:45</span></div>';"
             "}"
         )

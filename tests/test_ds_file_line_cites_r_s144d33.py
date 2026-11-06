@@ -50,14 +50,14 @@ TARGETS = {
     "kit_conversion.py": (
         "(the ``abilities.AbilityForm`` dataclass declares 16 fields and its "
         "``from_dict`` parses exactly those,",
-        "effects_descriptions\", the comment above its "
+        'effects_descriptions", the comment above its '
         "``_PASSIVE_DAMAGE_OVERRIDES`` registry)",
         "(``PassiveDamageEntry.conditional_probability: float = 1.0``)",
         "(the same rule ``hybrid`` states above ``_damage_axis``).",
         "FlatHPPoolMod matches ``ehp._GOLD_PER_HP`` exactly. NOTE "
         "``ehp._GOLD_PER_MR`` is 18.0",
-        "Reproduces the ``_KIT_CONVERSION[\"Olaf\"]`` note (\"nothing is "
-        "off-axis for him except AP\") exactly.",
+        'Reproduces the ``_KIT_CONVERSION["Olaf"]`` note ("nothing is '
+        'off-axis for him except AP") exactly.',
         "the FALLBACK branch of ``hybrid._damage_axis``",
         "reads the kit's ``lolmath.damage_distribution`` FIRST",
     ),

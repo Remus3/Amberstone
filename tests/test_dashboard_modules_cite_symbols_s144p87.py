@@ -48,7 +48,7 @@ def test_line_cite_pattern_catches_the_old_forms():
     for old in (
         "(dashboard/_lcu_inprocess.py:138-196): WARN on CHANGE",
         "(web/css/overlay.css:127). Both are imperative",
-        "#   core/event_callouts.py:120  \"Your lvl-6 spike\"",
+        '#   core/event_callouts.py:120  "Your lvl-6 spike"',
         "(`dashboard/_dispatch.py:114` and `:198`).",
         "(core/vision_tesseract.py:539), rebound",
         "reaches (dashboard/server.py:35).",

@@ -124,7 +124,7 @@ class JsFalsePositivePins(unittest.TestCase):
     def test_glyph_in_template_substitution_is_live(self) -> None:
         # `${}` can nest strings, braces and further templates; the whole
         # template is held LIVE rather than re-entering code mode inside it.
-        text = "const a = `${o[`k \u2500`] || \"\u00b7\"} tail`;\n"
+        text = 'const a = `${o[`k \u2500`] || "\u00b7"} tail`;\n'
         self.assertEqual(_kind_at(text, "js", "\u2500"), LIVE)
         self.assertEqual(_kind_at(text, "js", "\u00b7"), LIVE)
         self.assertEqual(sweep_text(text, "js").changes, [])

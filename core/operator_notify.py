@@ -100,7 +100,7 @@ def build_toast_xml(title: str, body: str, link: str | None = None) -> str:
     if link:
         attrs = f' activationType="protocol" launch={quoteattr(_clean(link, 1000))}'
     return (
-        f"<toast{attrs}><visual><binding template=\"ToastGeneric\">"
+        f'<toast{attrs}><visual><binding template="ToastGeneric">'
         f"<text>{escape(_clean(title, _MAX_TITLE))}</text>"
         f"<text>{escape(_clean(body, _MAX_BODY))}</text>"
         f"</binding></visual></toast>"

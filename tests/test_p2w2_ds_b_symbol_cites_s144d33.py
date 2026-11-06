@@ -68,7 +68,7 @@ def test_pattern_matches_the_rotted_shapes():
     for sample in (
         "  agents/daemon_slayer/engine.py: ResolvedStats, ResolvedStats.get",
         "agents/daemon_slayer/antitank.py:_effective_magnitude, _finite_float,",
-        "``stats.get(\"ap\"/\"ad\")``",
+        '``stats.get("ap"/"ad")``',
         "dps.py:274",
         "test_engine.py:12",
     ):

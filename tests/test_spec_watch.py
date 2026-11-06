@@ -112,7 +112,7 @@ def test_closed_tracker_counts_as_said(env):
     assert len(_events(env)) == 1  # only the operator's closed record
 
 
-@pytest.mark.parametrize("body", [b"<html>down</html>", b"[]", b"{\"v\": 1}", b"[1, 2]"])
+@pytest.mark.parametrize("body", [b"<html>down</html>", b"[]", b'{"v": 1}', b"[1, 2]"])
 def test_unparseable_version_feed_exits_2_and_changes_nothing(env, body):
     _run(env)
     before = env["state"].read_bytes()
@@ -125,7 +125,7 @@ def test_unparseable_version_feed_exits_2_and_changes_nothing(env, body):
 def test_unparseable_data_index_exits_2(env):
     _run(env)
     before = env["state"].read_bytes()
-    (env["replay"] / "ddragon_item.json").write_text("{\"type\": \"item\"}", encoding="ascii")
+    (env["replay"] / "ddragon_item.json").write_text('{"type": "item"}', encoding="ascii")
     code, _summary = _run(env)
     assert code == 2 and env["state"].read_bytes() == before
 

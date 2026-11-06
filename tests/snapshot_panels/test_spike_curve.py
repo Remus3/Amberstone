@@ -217,7 +217,7 @@ def test_peak_triangle_renders_polygon():
     assert "<polygon" in body
     # Three points + fail-soft on missing peak.
     assert "peakMinute == null" in body or "peakMinute === null" in body
-    assert "return \"\"" in body or "return ''" in body
+    assert 'return ""' in body or "return ''" in body
 
 
 def test_item_minutes_threaded_through_ctx():
@@ -337,7 +337,7 @@ def test_phase_strip_failsoft_returns_empty():
     assert m, "_phaseStrip helper not found"
     body = m.group(1)
     # Guards both a null/non-object phases and per-side validation.
-    assert "return \"\"" in body or "return ''" in body
+    assert 'return ""' in body or "return ''" in body
     assert "_validPhaseSide" in body
 
 

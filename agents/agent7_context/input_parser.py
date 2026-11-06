@@ -239,18 +239,18 @@ class InputParser:
                             "for the scheduler or a conversational reply. "
                             "Return ONE JSON object.\n\n"
                             "Conversational reply: "
-                            "{\"reply\":\"...\"}\n\n"
+                            '{"reply":"..."}\n\n'
                             "Task (must use one of the allowed ops):\n"
-                            "{\"task\":{\"op\":\"<one-of-allowed>\","
-                            "\"owner_agent\":\"<0-7>\","
-                            "\"priority\":50,\"payload\":{...}},"
-                            "\"reply\":\"<short confirmation>\"}\n\n"
+                            '{"task":{"op":"<one-of-allowed>",'
+                            '"owner_agent":"<0-7>",'
+                            '"priority":50,"payload":{...}},'
+                            '"reply":"<short confirmation>"}\n\n'
                             f"Allowed op values: {allowed}. If no "
                             "allowed op fits, return either a "
                             "conversational reply OR "
-                            "{\"task\":{\"op\":\"user-unparsed\","
-                            "\"owner_agent\":\"7\",\"priority\":80,"
-                            "\"payload\":{\"reason\":\"...\"}}}. "
+                            '{"task":{"op":"user-unparsed",'
+                            '"owner_agent":"7","priority":80,'
+                            '"payload":{"reason":"..."}}}. '
                             "DO NOT invent op names. Do not use tools."
                         ),
                         "allowed_ops": allowed,

@@ -97,7 +97,7 @@ class StaticSourceGuards(unittest.TestCase):
             self.assertNotIn(
                 wired, block,
                 "a padded pick slot must not fabricate a champion "
-                f"(found {wired}); it renders champId 0 + \"-\"",
+                f'(found {wired}); it renders champId 0 + "-"',
             )
 
     def test_reason_tag_uses_provenance_not_positional_source_key(self) -> None:

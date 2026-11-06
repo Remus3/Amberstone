@@ -170,6 +170,6 @@ def test_done_reaps_worktrees_before_the_section_1_commit():
     done = _text("tools/done.md")
     sec1 = done[done.index("### 1. Auto-commit any pending changes"):done.index("### 2. Push")]
     reap = sec1.index("python ops/fleet_kit/fleet_done.py reap --apply")
-    assert reap < sec1.index("fleet_gitlock.py\" run --owner")
+    assert reap < sec1.index('fleet_gitlock.py" run --owner')
     assert "never --force" in sec1
     assert done.count("fleet_done.py reap --apply") == 1

@@ -169,7 +169,7 @@ def test_done_commits_and_pushes_through_the_git_lock():
     gl = 'python "<repo>/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- '
     assert gl + 'git -C "<repo>" commit -F <tmpfile>' in done
     assert gl + 'git -C "<repo>" push origin <branch>' in done
-    assert "- Otherwise: `git -C \"<repo>\" push origin <branch>`" not in done
+    assert '- Otherwise: `git -C "<repo>" push origin <branch>`' not in done
     assert ('python "<repo>/ops/fleet_kit/fleet_suite_gate.py" run '
             '--owner <id> -- ') in done
     assert "**PATHS (MAIN 2246 ORDER section 3).**" in done

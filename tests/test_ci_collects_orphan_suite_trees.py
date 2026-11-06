@@ -374,7 +374,7 @@ def test_interpreter_spelling_near_misses_are_not_targets():
         "          python -c \"import pytest; print('tools/tests')\"\n",
         "          python -m pip install pytest tools/tests\n",
         "          python tools/tests/run.py\n",
-        "          python -m pytest \"@$RUNNER_TEMP/impact_tests.txt\" -q\n",
+        '          python -m pytest "@$RUNNER_TEMP/impact_tests.txt" -q\n',
     ):
         assert _pytest_targets(line) == [], line
 

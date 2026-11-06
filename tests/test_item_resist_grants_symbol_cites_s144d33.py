@@ -40,12 +40,12 @@ def test_pattern_matches_the_rotted_shapes():
     for sample in (
         "``_ITEM_RESIST_STACK_PROB = 0.5`` at line 123 of",
         "``_effects_data.py:633-634`` sets ``armor_pen_pct=0.30`` /",
-        "3124 4-stack 0.32 cond-AS)\". ``tests/test_pen_pct_catalog_r160.py:105``",
+        '3124 4-stack 0.32 cond-AS)". ``tests/test_pen_pct_catalog_r160.py:105``',
     ):
         assert _LINE_CITE.search(sample), sample
     for sample in (
-        "``ITEM_EFFECTS[\"3302\"].armor_pen_pct`` in ``_effects_data.py``",
-        "``_STACKING_FULL_STACK[\"3302\"]`` pins it",
+        '``ITEM_EFFECTS["3302"].armor_pen_pct`` in ``_effects_data.py``',
+        '``_STACKING_FULL_STACK["3302"]`` pins it',
         "DS ``:8860`` serves the main checkout",
     ):
         assert not _LINE_CITE.search(sample), sample

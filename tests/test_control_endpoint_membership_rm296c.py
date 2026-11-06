@@ -46,7 +46,7 @@ def test_every_lcu_queue_proxy_route_is_a_member():
     owners = set()
     for f in root.glob("*.py"):
         src = f.read_text(encoding="utf-8")
-        if "8889/lcu-cmd\"" in src or "8889/lcu-cmd'" in src:
+        if '8889/lcu-cmd"' in src or "8889/lcu-cmd'" in src:
             owners.add(f.name)
     assert owners == {"routes_loadout.py", "routes_sr_draft.py"}, owners
     for p in QUEUE_WRITERS:

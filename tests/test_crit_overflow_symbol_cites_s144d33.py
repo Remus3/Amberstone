@@ -31,7 +31,7 @@ _LINE_CITE = re.compile(
 
 # Phrases only the replacement prose carries, so deleting the prose fails here.
 _NAMED_IN_PROSE = (
-    "``out[\"crit\"]`` clamp in ``engine._combine_items``",
+    '``out["crit"]`` clamp in ``engine._combine_items``',
     "``crit_total = min(raw_crit + crit_from_effects, 1.0)`` in\n"
     "     ``dps.compute_dps``",
     "``overflow_lifesteal_pct`` docstring in ``_crit_chance_overrides.py``",

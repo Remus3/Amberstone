@@ -41,7 +41,7 @@ TARGETS = {
     ),
     "data_loader.py": (
         "``_norm_name`` in ``core/augment_external_source.py`` (and the "
-        "same ``name.lower().replace(\" \", \"\")`` shape in "
+        'same ``name.lower().replace(" ", "")`` shape in '
         "``coaches/arena_coach.py`` ``_augment_name_map`` and "
         "``_resolve_augment_apiname``)",
     ),
@@ -55,7 +55,7 @@ def _flat(text: str) -> str:
 def test_pattern_matches_the_old_shapes():
     for sample in (
         "#    via ``_item_ability_haste`` into ``ability_dps.py:1113``.",
-        "#    comment here cited `ability_dps.py:49` for \"the engine",
+        '#    comment here cited `ability_dps.py:49` for "the engine',
         "``core/augment_external_source.py:445`` (and the same",
         "``coaches/arena_coach.py:264-272``) rather than inventing",
     ):

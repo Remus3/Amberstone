@@ -378,7 +378,7 @@ def test_two_collapsed_variants_announce_one_pressed_build(
         _mark_nodes(page)
         page.click(
             "#view-champ-select .csv-builds .csv-build-path-row"
-            f"[data-variant=\"sr-collapsed-b\"][data-path-key=\"{target}\"]"
+            f'[data-variant="sr-collapsed-b"][data-path-key="{target}"]'
         )
         _wait_rebuilt(page)
         _wait_targets(page, n_paths)
@@ -402,7 +402,7 @@ def test_a_legacy_pick_unpresses_the_collapsed_path(mock_server, pw_browser):
         )
         legacy = (
             "#view-champ-select .csv-builds"
-            " .csv-build-row[data-variant=\"sr-legacy\"]"
+            ' .csv-build-row[data-variant="sr-legacy"]'
         )
         page.focus(legacy)
         page.keyboard.press("Enter")
@@ -436,7 +436,7 @@ def test_a_path_click_moves_selected_onto_its_variant(mock_server, pw_browser):
         _wait_targets(page, n_paths + 1)
         legacy = (
             "#view-champ-select .csv-builds"
-            " .csv-build-row[data-variant=\"sr-legacy\"]"
+            ' .csv-build-row[data-variant="sr-legacy"]'
         )
         page.click(legacy)
         _wait_targets(page, n_paths + 1)

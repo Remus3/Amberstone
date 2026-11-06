@@ -353,7 +353,7 @@ def test_a_defective_head_post_is_refused_before_dispatch(dashboard,
 
 _BOUND = b"----WebKitFormBoundaryRm773"
 _FORM_BODY = (b"--" + _BOUND + b"\r\n"
-              b"Content-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n"
+              b'Content-Disposition: form-data; name="a"\r\n\r\n1\r\n'
               b"--" + _BOUND + b"--\r\n")
 
 

@@ -331,9 +331,9 @@ class UIFeedbackParser:
                 "You are the UI-feedback channel for a dashboard. Scope is "
                 "CSS/HTML/layout/color + dashboard JS behavior ONLY. Return "
                 "JSON with either:\n"
-                "  {\"reply\": \"prose\"}  - conversational answer\n"
-                "  or {\"reply\": \"...\", \"changes\": [{\"file\": \"<path>\", "
-                "\"content\": \"<FULL new file content>\", \"summary\": \"...\"}]}\n"
+                '  {"reply": "prose"}  - conversational answer\n'
+                '  or {"reply": "...", "changes": [{"file": "<path>", '
+                '"content": "<FULL new file content>", "summary": "..."}]}\n'
                 f"Only these files may be proposed: {allow_list}.\n"
                 "Never modify coach logic, analyzer, scheduler, API keys, or "
                 "anything outside the whitelist - refuse with reply only."

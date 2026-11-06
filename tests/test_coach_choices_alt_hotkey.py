@@ -111,7 +111,7 @@ class BrawlOutputKeysImmediateDroppedTests(unittest.TestCase):
             line = src[idx:line_end]
             self.assertNotIn(
                 '"immediate"', line,
-                f"{name} still lists `\"immediate\"` - drop it; the "
+                f'{name} still lists `"immediate"` - drop it; the '
                 f"prompt no longer emits that field.",
             )
 

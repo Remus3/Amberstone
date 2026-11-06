@@ -167,7 +167,7 @@ def _expected_key_insight() -> str:
     shape = kinds[0] if len(kinds) == 1 else ", ".join(kinds[:-1]) + " or " + kinds[-1]
     return (
         "**Key insight**: check Meraki `passives[].cooldown` (under `items_meraki.json`"
-        f" `items.<id>`; {shape}) before deferring any \"ability-triggered\" item. If an item"
+        f' `items.<id>`; {shape}) before deferring any "ability-triggered" item. If an item'
         " CD exists, use `PeriodicProc.every_n_seconds` = CD - no ability-frequency data needed."
     )
 

@@ -1341,7 +1341,7 @@ def test_a_sha256_digest_is_never_read_as_a_commit_token():
     contain so much as a prefix of the digest.
     """
     body = (f"GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1074 CHAIN-LAST=cycle 5\n"
-            f"Pin ops/loop/slots.py at SHARED_SHA256 = \"{_SYNTHETIC_SHA256}\" and\n"
+            f'Pin ops/loop/slots.py at SHARED_SHA256 = "{_SYNTHETIC_SHA256}" and\n'
             f"re-read f173ce39 before starting.\n")
     g = _Git()
     assert executor.grounding_findings(body, **g.kwargs()) == []
@@ -1378,7 +1378,7 @@ def test_the_live_directive_suffix_sha256_pins_are_not_read_as_commits():
             "a 64-char digest in the live brief must not reach git at all"
     else:
         status = "no live digest - synthetic digest spliced into the live brief"
-        spliced = f"{suffix}\nSHARED_SHA256 = \"{_SYNTHETIC_SHA256}\"\n"
+        spliced = f'{suffix}\nSHARED_SHA256 = "{_SYNTHETIC_SHA256}"\n'
         h = _Git()
         assert executor.grounding_findings(spliced, **h.kwargs()) == []
         assert [t for t in h.probed if t.lower() in _SYNTHETIC_SHA256] == [], \

@@ -269,7 +269,7 @@ class HaikuAugSelectRetiredTests(_Stubbed):
                          "the retired Haiku augment prompt is back")
         src = inspect.getsource(aram_coach.Coach._handle_augment_select)
         self.assertNotIn("messages.create", src)
-        self.assertNotIn("aram_aug_select\"", src)
+        self.assertNotIn('aram_aug_select"', src)
 
 
 class RunVisionLifecycleTests(_Stubbed):
@@ -474,7 +474,7 @@ class PanelRenderTests(_Stubbed):
             + "    m._resetAugmentRecoSig();\n"
             + "    m.renderAugmentReco({aug_reco: [row]});\n"
             + "    const h = document.getElementById('ib-aug-reco-list').innerHTML;\n"
-            + "    const mm = h.match(/class=\"ar-rar ([^\"]*)\"/);\n"
+            + '    const mm = h.match(/class="ar-rar ([^"]*)"/);\n'
             + "    out[row.rarity] = mm ? mm[1] : null;\n"
             + "  }\n"
             + "  m._resetAugmentRecoSig();\n"

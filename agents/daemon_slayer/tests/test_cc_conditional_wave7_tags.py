@@ -319,8 +319,8 @@ class AsciiHygieneTests(unittest.TestCase):
         # entirely ASCII. We sample the lines around the new tag
         # constants by string-matching.
         for needle in (
-            "COND_FRENZY_STATE = \"frenzy_state\"",
-            "COND_RANGE_GATED = \"range_gated\"",
+            'COND_FRENZY_STATE = "frenzy_state"',
+            'COND_RANGE_GATED = "range_gated"',
         ):
             idx = src.find(needle)
             self.assertGreaterEqual(idx, 0, f"missing marker: {needle}")

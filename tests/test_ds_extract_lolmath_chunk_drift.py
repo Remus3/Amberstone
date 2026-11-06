@@ -285,8 +285,8 @@ def test_roles_factory_header_parameter_names_are_not_pinned():
     # 16.21.1 minified the module factory as `(a,i,e)=>{i.exports=` instead of
     # `(e,a,t)=>{a.exports=`; the pinned `a.exports` matched nothing.
     chunk = (
-        ",26080,(a,i,e)=>{i.exports={Aatrox:\"General\",Ahri:\"General\"}}"
-        ",34919,(a,i,e)=>{i.exports={Aatrox:[\"FIGHTER\"],Ahri:[\"MAGE\"]}}"
+        ',26080,(a,i,e)=>{i.exports={Aatrox:"General",Ahri:"General"}}'
+        ',34919,(a,i,e)=>{i.exports={Aatrox:["FIGHTER"],Ahri:["MAGE"]}}'
     )
     assert dse._extract_roles(chunk) == {"Aatrox": ["FIGHTER"], "Ahri": ["MAGE"]}
 

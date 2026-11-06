@@ -90,7 +90,7 @@ def test_no_unclassified_text_mode_writer():
     new = {r: v for r, v in _offenders().items() if r not in _BASELINE}
     assert not new, (
         "text-mode write without newline= / lineterminator= (CRLF on Windows): "
-        f"{new}. Pass newline=\"\\n\" (or write bytes); a payload with no "
+        f'{new}. Pass newline="\\n" (or write bytes); a payload with no '
         "newline joins _BASELINE with its reason.")
 
 

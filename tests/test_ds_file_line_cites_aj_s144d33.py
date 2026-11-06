@@ -45,12 +45,12 @@ NEEDLES = (
     "(its keyword-only seam flags in core/daemon_slayer_client.py)",
     "``_DS_PREVIEW_SCORE_BY_VALUES`` in\n    dashboard/routes_state.py",
     "the ``seams`` dict in ``dispatch_for_coach``",
-    "``extra.get(\"enemy_ad_share\", 0.5)``",
+    '``extra.get("enemy_ad_share", 0.5)``',
     "``test_routes_state_has_no_in_process_engine_import``",
     "the ``_Handler`` of tests/test_routes_ds_preview_scorer.py",
     "``_Stats`` in tests/test_build_order.py",
     "the ``rank_for_primary_archetype`` default in\n# core/daemon_slayer_client.py",
-    "``call_kwargs[\"filter_shared_uniques\"] = True`` AFTER",
+    '``call_kwargs["filter_shared_uniques"] = True`` AFTER',
 )
 
 

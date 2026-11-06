@@ -272,8 +272,8 @@ def test_range_inputs_meet_hit_min():
     assert not failures, (
         f"range inputs below the --hit-min ({floor:g}px) drag-target floor:\n{joined}\n\n"
         "Fix: set `height: var(--hit-min)` ON the input (precedent: "
-        "the .settings-row input[type=\"range\"] rule in web/css/panels/header.css "
-        "and the .ovset-range > input[type=\"range\"] rule in "
+        'the .settings-row input[type="range"] rule in web/css/panels/header.css '
+        'and the .ovset-range > input[type="range"] rule in '
         "web/css/panels/overlay_ds_controls.css), or add an inline "
         f"/* {HIT_MIN_EXCEPTION}: why */ comment.\n\n"
         f"exempt (decorative) rules seen:\n{inventory}"

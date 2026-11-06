@@ -860,7 +860,7 @@ def test_the_zero_bytes_fault_is_not_vacuous(monkeypatch, tmp_path, capsys):
 # --------------------------------------------------------------------------
 def test_pre_push_hook_preserves_the_lfs_invocation_byte_for_byte():
     hook = (REPO_ROOT / ".githooks" / "pre-push").read_text(encoding="utf-8")
-    assert "git lfs pre-push \"$@\"" in hook
+    assert 'git lfs pre-push "$@"' in hook
     for line in (
         "# Git LFS. PORTED to .githooks 2026-07-26 for the same reason as post-checkout.",
         "# This is the hook that UPLOADS LFS objects - losing it means pushes that look",

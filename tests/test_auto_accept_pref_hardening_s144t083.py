@@ -112,7 +112,7 @@ def test_f1_deeply_nested_file_means_off_and_never_raises(pref_file):
 
 
 def test_f1_non_utf8_file_means_off(pref_file):
-    pref_file.write_bytes(b"\xff\xfe{\"enabled\": true}")
+    pref_file.write_bytes(b'\xff\xfe{"enabled": true}')
     assert pref.is_enabled() is False
 
 

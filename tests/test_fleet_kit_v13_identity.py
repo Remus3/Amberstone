@@ -54,8 +54,8 @@ def test_pre_push_identity_gate_runs_first_on_the_captured_refs():
     assert hook.count(line) == 1
     at = hook.index(line)
     assert hook.index('REFS="$(cat)"') < at
-    assert at < hook.index("sibling_name_sweep.py\" --pre-push")
-    assert at < hook.index("credential_history_scan.py\" --pre-push")
+    assert at < hook.index('sibling_name_sweep.py" --pre-push')
+    assert at < hook.index('credential_history_scan.py" --pre-push')
     assert at < hook.index('git lfs pre-push "$@"')
     # LFS stays the LAST command (its exit status is the hook's on a clean path).
     assert hook.rstrip().endswith('git lfs pre-push "$@"')

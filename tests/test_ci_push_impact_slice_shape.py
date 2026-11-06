@@ -213,7 +213,7 @@ def test_the_selector_gets_the_push_base_through_env_not_inline():
     env = step.get("env") or {}
     bound = [k for k, v in env.items() if "github.event.before" in str(v)]
     assert bound, "the push base (github.event.before) is not bound in the step env"
-    assert f"--base \"${bound[0]}\"" in step["run"]
+    assert f'--base "${bound[0]}"' in step["run"]
     assert '--head "$GITHUB_SHA"' in step["run"]
     assert '--github-output "$GITHUB_OUTPUT"' in step["run"]
 

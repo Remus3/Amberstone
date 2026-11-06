@@ -286,7 +286,7 @@ def test_party_action_keeps_focus_across_poll_ticks(mock_server, pw_browser):
         pw_browser, mock_server, poll=True
     )
     try:
-        sel = "#lv-members-list .lv-member-action[data-action=\"copy\"]"
+        sel = '#lv-members-list .lv-member-action[data-action="copy"]'
         page.wait_for_function(
             f"document.querySelectorAll('{sel}').length > 0", timeout=10_000
         )
@@ -345,7 +345,7 @@ def test_party_focus_survives_a_real_rebuild(mock_server, pw_browser):
         pw_browser, mock_server, poll=True, ui_mock=False, lcu=lcu
     )
     try:
-        sel = "#lv-members-list .lv-member-action[data-action=\"copy\"]"
+        sel = '#lv-members-list .lv-member-action[data-action="copy"]'
         page.wait_for_function(
             f"document.querySelectorAll('{sel}').length >= 2", timeout=15_000
         )
@@ -486,7 +486,7 @@ def test_top8_reorder_repeat_moves_same_entry(mock_server, pw_browser):
         assert start == "Alpha,Bravo,Charlie", f"bad seed order {start!r}"
 
         page.locator(
-            "#lv-top8-list [data-action=\"down\"][data-idx=\"0\"]"
+            '#lv-top8-list [data-action="down"][data-idx="0"]'
         ).click()
         page.wait_for_function(
             f"({_TOP8_ORDER_JS}) === 'Bravo,Alpha,Charlie'", timeout=5_000
@@ -518,7 +518,7 @@ def test_top8_reorder_keeps_focus_after_click(mock_server, pw_browser):
     ctx, page, errors = _seed_top8(mock_server, pw_browser)
     try:
         page.locator(
-            "#lv-top8-list [data-action=\"down\"][data-idx=\"0\"]"
+            '#lv-top8-list [data-action="down"][data-idx="0"]'
         ).click()
         page.wait_for_function(
             f"({_TOP8_ORDER_JS}) === 'Bravo,Alpha,Charlie'", timeout=5_000
@@ -585,7 +585,7 @@ def test_top8_reorder_reindexes_rows(mock_server, pw_browser):
     ctx, page, errors = _seed_top8(mock_server, pw_browser)
     try:
         page.locator(
-            "#lv-top8-list [data-action=\"down\"][data-idx=\"0\"]"
+            '#lv-top8-list [data-action="down"][data-idx="0"]'
         ).click()
         page.wait_for_function(
             f"({_TOP8_ORDER_JS}) === 'Bravo,Alpha,Charlie'", timeout=5_000

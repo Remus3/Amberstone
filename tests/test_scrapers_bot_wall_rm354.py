@@ -43,7 +43,7 @@ from lib.scrapers._base import ScraperBase
 
 # A body long enough to clear any minimum-length floor, with no marker in it.
 _GOOD_HTML = "<!DOCTYPE html><html><head><title>Ahri Build</title></head><body>" + (
-    "<div class=\"item\">Ludens Companion</div>" * 200
+    '<div class="item">Ludens Companion</div>' * 200
 ) + "</body></html>"
 
 # The literal shape the row filed: a Cloudflare interstitial served as 200.

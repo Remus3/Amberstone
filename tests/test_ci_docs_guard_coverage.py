@@ -365,7 +365,7 @@ def test_pyyaml_install_probe_reads_the_requirements_file(tmp_path, install_line
     (tmp_path / "ci").mkdir()
     (tmp_path / "ci" / "req.txt").write_text(req_body, encoding="utf-8")
     (tmp_path / "ci" / "outer.txt").write_text("-r req.txt\n", encoding="utf-8")
-    run = f"set -e\n{install_line}\npython -c \"import yaml\"\n"
+    run = f'set -e\n{install_line}\npython -c "import yaml"\n'
     assert _run_text_installs_pyyaml(run, tmp_path) is expected
 
 

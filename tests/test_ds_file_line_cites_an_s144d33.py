@@ -57,12 +57,12 @@ NEEDLES = {
         "UNCONDITIONALLY from ``engine.build_champion`` and early-returns",
         "THE NOT-PLUGGED-IN NOTE IN ``engine.build_champion`` IS MISLEADING",
         "The OTHER half of the build_champion not-plugged-in note",
-        "ARENA branch and the build_champion not-plugged-in note becomes \"",
+        'ARENA branch and the build_champion not-plugged-in note becomes "',
         "The build_champion not-plugged-in note says the table is not",
         "the build_champion not-plugged-in note was corrected",
     ),
     SNOW: (
-        "the ``\"1082\"`` row of ``ITEM_EFFECTS`` in\n"
+        'the ``"1082"`` row of ``ITEM_EFFECTS`` in\n'
         "agents/daemon_slayer/_effects_data.py",
         "the Consumables bucket of ``_NON_SIGNAL_ITEM_IDS`` in\n"
         "core/archetype_mismatch.py",
@@ -105,7 +105,7 @@ def test_patterns_match_the_rotted_shapes():
     for sample in (
         "* ``engine._resolve_mode_addends`` (engine.py:106) - the ARENA/Swiftplay",
         "THE ENGINE NOTE AT engine.py:458 IS MISLEADING, AND IT IS WHY THIS ROW EXISTS.",
-        "16.14.1), agents/daemon_slayer/_effects_data.py:5344-5345 (\"1082\":",
+        '16.14.1), agents/daemon_slayer/_effects_data.py:5344-5345 ("1082":',
         "core/archetype_mismatch.py:109 (2033 listed in the curated Consumables",
         "tests/test_build_plan_contract.py:46-124 so this slice touches no shared test",
         "# ASCII hygiene (repo hard rule) - mirrors tests/test_cc_threat.py:60.",

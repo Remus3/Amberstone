@@ -168,7 +168,7 @@ def test_missing_pref_file_is_the_off_default(agent, pref_file, monkeypatch):
 @pytest.mark.parametrize("raw", [
     b"not json",
     b'{"enabled": "true"}',
-    b"\xff\xfe{\"enabled\": true}",
+    b'\xff\xfe{"enabled": true}',
     b"[]",
 ])
 def test_corrupt_pref_file_is_the_off_default(agent, pref_file, monkeypatch,

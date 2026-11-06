@@ -136,7 +136,7 @@ def test_sources_wiki_still_uses_a_lone_non_integer_record():
 
 def test_sources_wiki_still_refuses_a_module_with_no_champions():
     with pytest.raises(gd_sources.SourceParseError):
-        _wiki("-- <pre>\nreturn {\n  -- [\"Kled\"] = { [\"apiname\"] = \"Kled\" },\n}\n")
+        _wiki('-- <pre>\nreturn {\n  -- ["Kled"] = { ["apiname"] = "Kled" },\n}\n')
 
 
 # ------------------------------------------------- tools/ds_windup_offset_compare.py

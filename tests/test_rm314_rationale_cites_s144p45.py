@@ -233,7 +233,7 @@ def test_pattern_catches_the_old_forms():
                 "(`:108` /vision"):
         assert _BARE_LINE_CITE.search(old), old
     for fine in ("`:8889/vision`", "127.0.0.1:8889", "raw[:200]",
-                 "`anthropic.claude-...-v2:0`", "{\"a\":1}"):
+                 "`anthropic.claude-...-v2:0`", '{"a":1}'):
         assert not _BARE_LINE_CITE.search(fine), fine
 
 

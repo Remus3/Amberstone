@@ -48,7 +48,7 @@ _LINE_CITE = re.compile(r"(?<![A-Za-z_])(?:burst|fight_report)\.py:\d")
 _NAMED_IN_PROSE = {
     "_rune_offense_grants.py": (
         "``burst.compute_burst_damage`` (its rune-proc loop) -> ``if proc is None",
-        "``fight_report._BURST_PROC_TYPES`` -> \"adaptive\" is not in that set:",
+        '``fight_report._BURST_PROC_TYPES`` -> "adaptive" is not in that set:',
         "``burst.compute_burst_damage`` derives its\n``_caster_role`` from attackrange",
     ),
     "dps.py": (

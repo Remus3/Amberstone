@@ -357,7 +357,7 @@ def test_relay_frame_is_still_downscaled_to_1280():
 
 def test_tool_never_writes(monkeypatch):
     src = (ROOT / "tools" / "gated_g241_ocr_native.py").read_text(encoding="utf-8")
-    for banned in ("write_text", "write_bytes", ".save(", "open(\"w", "unlink", "replace("):
+    for banned in ("write_text", "write_bytes", ".save(", 'open("w', "unlink", "replace("):
         assert banned not in src, banned
 
 

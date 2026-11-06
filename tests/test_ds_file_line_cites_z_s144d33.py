@@ -35,7 +35,7 @@ _NOT_A_CITE = re.compile(r"\[:\d+\]|(?<!\w):8860\b|%:\d+%|-lines? (?=\d)")
 SYMBOLS = (
     "``rank.OFFCLASS_MARKSMAN_ITEM_NAMES``, applied via "
     "``_filter_candidates(exclude_names=...)`` from the ranged-marksman "
-    "gate in ``rank_items`` (the ``rec.get(\"name\") in exclude_names`` "
+    'gate in ``rank_items`` (the ``rec.get("name") in exclude_names`` '
     "skip in ``_filter_candidates``)",
     "``rank._SR_EXCLUDED_ITEM_IDS``, the RM-93 support-quest deny",
 )

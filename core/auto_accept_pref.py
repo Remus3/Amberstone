@@ -121,7 +121,7 @@ def is_enabled() -> bool:
         return _DEFAULT_ENABLED if _last_good is None else _last_good
     val = _parse(raw)
     if val is None:
-        _note_problem("corrupt: not {\"enabled\": bool}")
+        _note_problem('corrupt: not {"enabled": bool}')
         return _DEFAULT_ENABLED
     _last_good = val
     _last_problem = None

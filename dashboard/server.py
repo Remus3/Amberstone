@@ -452,7 +452,7 @@ class _DualProtocolHTTPServer(_DualStackMixin, _GuardedThreadStartMixin,
             b"<!doctype html><meta charset=utf-8>"
             b"<title>RC dashboard \xe2\x86\x92 HTTPS</title>"
             b"<p>RC dashboard requires HTTPS. Open "
-            b"<a href=\"" + link + b"\">" + link + b"</a>.</p>"
+            b'<a href="' + link + b'">' + link + b"</a>.</p>"
         )
         resp = (
             b"HTTP/1.1 301 Moved Permanently\r\n"

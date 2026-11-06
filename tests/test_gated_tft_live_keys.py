@@ -186,7 +186,7 @@ def test_census_js_mentions_are_readers_and_writer_upstream_are_not(tmp_path):
         "web/js/p.js": "const s = p.shop_units;\nconst b = p['bench_units_x'];\n",
         g.WRITER_REL: "def f(vs):\n    return vs.get('bench_units')\n",
         "tft/tft_vision_reader.py": "def f(d):\n    return d.get('shop_units')\n",
-        "web/x.html": "<div data-k=\"unit_swap\"></div>\n",
+        "web/x.html": '<div data-k="unit_swap"></div>\n',
         "web/y.tsx": "\nexport const s = (p) => p.bench_units;\n",
     })
     cen = g.census(tmp_path, files)

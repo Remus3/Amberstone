@@ -1830,7 +1830,7 @@ def test_a_word_outside_the_allowlist_never_keeps_the_staged_merge(word):
 
 @pytest.mark.parametrize("keep", [
     "git checkout main -- tools/x.py", "git stash push -- tools/x.py",
-    "git checkout main -- 'tools/x.py'", "git checkout -q -- \"tools/x.py\"",
+    "git checkout main -- 'tools/x.py'", 'git checkout -q -- "tools/x.py"',
     "git checkout -f HEAD -- tools/x.py", "git checkout --theirs tools/x.py",
     "git stash push -q -m park -- tools/x.py", "git stash -- tools/x.py",
     "git stash list", "git checkout main -- tools/x.py & git status -s",

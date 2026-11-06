@@ -30,7 +30,7 @@ def test_stats_benchmark_select_meets_hit_min():
     assert "min-height" in body and "var(--hit-min" in body, (
         ".ovset-sel > select (the relocated stats-panel rank/role selectors) "
         "must reserve min-height: var(--hit-min) (42px) - HIT-TARGETS floor "
-        "(UI_SCALE_SPEC_V2 \"Interaction rules\")"
+        '(UI_SCALE_SPEC_V2 "Interaction rules")'
     )
 
 

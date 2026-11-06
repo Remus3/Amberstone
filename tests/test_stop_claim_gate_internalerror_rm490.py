@@ -19,7 +19,7 @@ from tests.test_stop_claim_gate import (
 
 XDIST_CRASH = "\n".join([
     "INTERNALERROR> Traceback (most recent call last):",
-    "INTERNALERROR>   File \"xdist/dsession.py\", line 190, in loop_once",
+    'INTERNALERROR>   File "xdist/dsession.py", line 190, in loop_once',
     "INTERNALERROR> RuntimeError: Unexpectedly no active workers available",
 ])
 

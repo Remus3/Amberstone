@@ -85,7 +85,7 @@ def test_refused_rename_keeps_doc_and_leaves_no_scratch(doc, monkeypatch):
 
 def test_no_hand_rolled_swap_left():
     src = (_TOOLS / "gen_archmap.py").read_text(encoding="utf-8")
-    assert ".tmp\")" not in src
+    assert '.tmp")' not in src
     assert "tmp.replace(" not in src
 
 

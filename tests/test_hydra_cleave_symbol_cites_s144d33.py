@@ -33,7 +33,7 @@ def _source(path: Path) -> str:
 def test_pattern_matches_the_rotted_shape():
     assert _LINE_CITE.search("``_effects_data.py:609-612`` claimed Tiamat-tree")
     for sample in (
-        "the comment above the Profane Hydra ``\"6698\"`` row claimed",
+        'the comment above the Profane Hydra ``"6698"`` row claimed',
         "DS ``:8860`` serves the main checkout",
     ):
         assert not _LINE_CITE.search(sample), sample

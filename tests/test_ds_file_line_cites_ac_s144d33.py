@@ -63,9 +63,9 @@ def _hits(path: Path) -> list[str]:
 
 def test_pattern_matches_the_old_shapes():
     for sample in (
-        "      (line 190) EXPLICITLY named \"Xin Zhao Q 3rd-attack knockup\"",
+        '      (line 190) EXPLICITLY named "Xin Zhao Q 3rd-attack knockup"',
         "# live file: CHANGELOG.md:1691 wraps the prose",
-        "# onto its own line, and :6979 wraps \"1.25.0 (item 122).",
+        '# onto its own line, and :6979 wraps "1.25.0 (item 122).',
     ):
         assert _LINE_CITE.search(_NOT_A_CITE.sub("", sample)), sample
     for sample in (WAVE21_PHRASE, *TRACKS_PHRASES):

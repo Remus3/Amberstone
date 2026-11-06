@@ -67,7 +67,7 @@ def _win(monkeypatch, table=None):
     'py"thon.exe',
 ])
 def test_head_with_a_double_quote_is_refused_unrun(monkeypatch, tmp_path, head):
-    fake, _ = _win(monkeypatch, {"py\"thon.exe": _WIN_PY, "python.exe": _WIN_PY})
+    fake, _ = _win(monkeypatch, {'py"thon.exe': _WIN_PY, "python.exe": _WIN_PY})
     obs = truth_gate.run_suite_fresh([head, "a"], tmp_path / "o.txt")
     assert fake.calls == [], f"{head!r} was launched"
     assert obs["head_refused"] is True
@@ -89,7 +89,7 @@ def test_string_form_head_with_an_inner_quote_is_refused(monkeypatch, tmp_path):
 
 
 def test_quoted_head_is_refused_before_any_path_lookup(monkeypatch):
-    _, which = _win(monkeypatch, {"py\"thon.exe": _WIN_PY})
+    _, which = _win(monkeypatch, {'py"thon.exe': _WIN_PY})
     assert truth_gate.refused_head(['py"thon.exe', "a"]) == 'py"thon.exe'
     assert which.asked == []
 

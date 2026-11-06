@@ -237,7 +237,7 @@ class ParseJsonContractTests(unittest.TestCase):
         self.assertEqual(inf._parse_json('{"a": 1}'), {"a": 1})
 
     def test_fenced_dict_json_still_parses(self):
-        fenced = "```json\n{\"a\": 1}\n```"
+        fenced = '```json\n{"a": 1}\n```'
         self.assertEqual(inf._parse_json(fenced), {"a": 1})
 
     def test_embedded_dict_json_still_parses(self):

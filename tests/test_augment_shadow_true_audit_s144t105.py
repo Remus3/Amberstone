@@ -120,7 +120,7 @@ _GOOD = {"native": {"take": "Goliath"},
 
 def test_f3_one_invalid_line_does_not_zero_the_report(tmp_path):
     p = tmp_path / "aug.jsonl"
-    p.write_bytes(json.dumps(_GOOD).encode() + b"\n{\"torn\n"
+    p.write_bytes(json.dumps(_GOOD).encode() + b'\n{"torn\n'
                   + json.dumps(_GOOD).encode() + b"\n")
     s = aug.summarize_agreement(p)
     assert s["n"] == 2

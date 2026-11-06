@@ -1005,7 +1005,7 @@ def stall_recovery_directive(cycle):
         "ops/runtime/health.json, and read the tail of ops/loop/control/controller.log; then "
         "either recover THIS cycle (finish the work package, commit + push + /done) OR write a "
         "one-line blocker to ops/loop/control/blocker.txt. Either way FINISH by running: "
-        f"\"{py}\" ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>"
+        f'"{py}" ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>'
     )
 
 # ---- the running image vs the source on disk --------------------------------

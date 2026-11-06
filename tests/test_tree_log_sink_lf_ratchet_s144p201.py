@@ -135,7 +135,7 @@ def test_no_unclassified_crlf_log_sink():
     assert not new, (
         "log sink that writes CRLF on Windows (append open without newline=, "
         "stdlib file handler, or a handler subclass with no _open): "
-        f"{new}. Pass newline=\"\\n\" or use core.log_rotation.LF* handlers.")
+        f'{new}. Pass newline="\\n" or use core.log_rotation.LF* handlers.')
 
 
 def test_baseline_is_exact():

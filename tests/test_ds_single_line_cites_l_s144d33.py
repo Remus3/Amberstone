@@ -48,13 +48,13 @@ _LINE_CITE = re.compile(r"(?<![\w.])\w+\.py:\d|``:\d|\blines \d")
 
 TARGETS = {
     "_rune_flat_mitigation.py": (
-        "the ``_rune_resist_grants`` module docstring (its \"Only three ids are "
-        "SEEDED\" allowlist paragraph) names 8473 explicitly as REJECTED",
+        'the ``_rune_resist_grants`` module docstring (its "Only three ids are '
+        'SEEDED" allowlist paragraph) names 8473 explicitly as REJECTED',
         "``_ASSUMED_FLAT_DR_INSTANCES = 6.0`` in "
         "``_passive_flat_mitigation_overrides``,",
         "the ``_rune_resist_grants._RUNE_ACTIVE_RESIST_PROB`` comment makes for "
         "Aftershock and Unflinching",
-        "expected uptime midpoint\", the "
+        'expected uptime midpoint", the '
         "``PassiveFlatMitigationEntry`` docstring)",
         "the ``compute_ehp`` ``apply_rune_flat_mitigation`` seam",
         "the champion lane's ``flat_mit_*`` locals of ``compute_ehp``",
@@ -75,17 +75,17 @@ _SAME_TARGET = re.compile(
 )
 SIBLINGS = {
     "tests/test_rune_flat_mitigation_rm101.py": (
-        "The ``_rune_resist_grants`` module docstring (its \"Only three ids are "
-        "SEEDED\" allowlist paragraph) names 8473",
+        'The ``_rune_resist_grants`` module docstring (its "Only three ids are '
+        'SEEDED" allowlist paragraph) names 8473',
         "``_ASSUMED_FLAT_DR_INSTANCES = 6.0`` in "
         "``_passive_flat_mitigation_overrides``",
         "(the ``round(..., 6)`` in ``_passive_damage_overrides._lerp_per_level``)",
     ),
     "_rune_shield_grants.py": (
-        "in the ``_rune_resist_grants`` module docstring (its \"Only three ids "
-        "are SEEDED\" allowlist paragraph: \"8465 Guardian ally shield\")",
+        'in the ``_rune_resist_grants`` module docstring (its "Only three ids '
+        'are SEEDED" allowlist paragraph: "8465 Guardian ally shield")',
         "resist term of ``_rune_resist_grants.rune_resist_grants`` (its "
-        "``pct_base == \"bonus\"`` branch)",
+        '``pct_base == "bonus"`` branch)',
         "the percent-of-BONUS clamp of ``_rune_resist_grants.rune_resist_grants``",
     ),
 }
