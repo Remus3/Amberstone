@@ -1568,10 +1568,14 @@ def _def_locals(fn):
     """RM-1563: the names def `fn` binds as its own locals - a plain-name
     store, a for / with / walrus / except / import / match target, or a
     nested def or class name, at the def's own level - minus every name
-    declared `global` or `nonlocal` anywhere inside it.
+    declared `global` or `nonlocal` at that level, or `global` anywhere
+    inside it.
     Nested defs, classes, lambdas and comprehensions are not entered, and a
-    name declared in a nested scope is never counted local: both keep a
-    binding flowing out, the safe side. Kept per scan, like `_scope_names`.
+    name declared `global` in a nested scope is never counted local: both
+    keep a binding flowing out, the safe side. RM-1791: a nested
+    `nonlocal` is not subtracted, since it can only name a function's
+    binding, so a def that binds the name still holds it.
+    Kept per scan, like `_scope_names`.
     RM-1788: a parameter is local too, unless the def may MUTATE the object
     it names (`_mutated_names`): that taint reaches the caller's object, which
     the scan follows by spelling (`self.q.append(url)` taints `self` for the
@@ -1583,6 +1587,7 @@ def _def_locals(fn):
     if hit is not None and hit[0] is fn:
         return hit[1]
     found = set()
+    declared = set()
     todo = list(fn.body)
     while todo:
         node = todo.pop()
@@ -1591,7 +1596,9 @@ def _def_locals(fn):
             continue
         if isinstance(node, _OWN_SCOPES):
             continue
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            declared.update(node.names)
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
             found.add(node.id)
         elif isinstance(node, ast.ExceptHandler) and node.name:
             found.add(node.name)
@@ -1602,8 +1609,12 @@ def _def_locals(fn):
         elif isinstance(node, ast.MatchMapping) and node.rest:
             found.add(node.rest)
         todo.extend(ast.iter_child_nodes(node))
-    declared = {name for node in ast.walk(fn)
-                if isinstance(node, (ast.Global, ast.Nonlocal)) for name in node.names}
+    # RM-1791: a `global` in a nested scope keeps the name flowing out (the
+    # scan follows names by spelling, so the def's own `m` and a nested
+    # global `m` are one entry); a nested `nonlocal` does not, as it names a
+    # binding of the def itself or of a def between, never the module's.
+    declared |= {name for node in ast.walk(fn)
+                 if isinstance(node, ast.Global) for name in node.names}
     params = {name for name, _ in _param_specs(fn)}
     names = frozenset((found | params) - declared - (params & _mutated_names(fn)))
     _LOCALS_CACHE[id(fn)] = (fn, names)
@@ -3961,6 +3972,46 @@ _CHECKER_SAMPLES = (
     ("global declared deeper than the def that also binds the name",
      "def f(url):\n    def g():\n        m = 'x'\n        def h():\n            global m\n"
      "            m = url\n        h()\n    g()\n    raise E(m)\n", True),
+    # RM-1791: a `nonlocal` declared in a NESTED scope names a binding of
+    # some enclosing FUNCTION, never a module one, so it is still the def's
+    # own local when the def binds the name: the nested re-bind reaches the
+    # def's state (the rows above and below) but not the module's.
+    ("parameter re-bound through nonlocal in a nested def does not flow out",
+     "def f(m):\n    def g():\n        nonlocal m\n        m = url\n    g()\nraise E(m)\n",
+     False),
+    ("local re-bound through nonlocal in a nested def does not flow out",
+     "def f():\n    m = 'x'\n    def g():\n        nonlocal m\n        m = url\n    g()\n"
+     "raise E(m)\n", False),
+    ("parameter re-bound through nonlocal does not reach a later def",
+     "def f(m):\n    def g():\n        nonlocal m\n        m = url\n    g()\ndef k(m):\n"
+     "    raise E(m)\n", False),
+    ("logging alias re-bound through nonlocal does not flow out",
+     "def f(p):\n    def g():\n        nonlocal p\n        p = log.info\n    g()\np(url)\n",
+     False),
+    ("method re-binds through nonlocal across a class, which does not flow out",
+     "def f(m):\n    class C:\n        def g(self):\n            nonlocal m\n"
+     "            m = url\n    C().g()\nraise E(m)\n", False),
+    ("parameter re-bound through nonlocal is read inside the def",
+     "def f(m):\n    def g():\n        nonlocal m\n        m = url\n    g()\n    raise E(m)\n",
+     True),
+    ("nonlocal two defs deep is read inside the def it names",
+     "def f(m):\n    def g():\n        def h():\n            nonlocal m\n            m = url\n"
+     "        h()\n    g()\n    raise E(m)\n", True),
+    ("nonlocal across a class is read inside the def it names",
+     "def f(m):\n    class C:\n        def g(self):\n            nonlocal m\n"
+     "            m = url\n    C().g()\n    raise E(m)\n", True),
+    ("nonlocal in the def itself reaches the enclosing def",
+     "def o():\n    m = 'x'\n    def f():\n        nonlocal m\n        m = url\n    f()\n"
+     "    raise E(m)\n", True),
+    ("nonlocal the def does not bind passes through it",
+     "def o():\n    m = 'x'\n    def f():\n        def g():\n            nonlocal m\n"
+     "            m = url\n        g()\n    f()\n    raise E(m)\n", True),
+    ("nonlocal in a nested def mutating the parameter still flows out",
+     "def f(m):\n    def g():\n        nonlocal m\n        m.append(url)\n    g()\n"
+     "raise E(m)\n", True),
+    ("global beside a nested nonlocal of the same name still flows out",
+     "def f():\n    m = 'x'\n    def g():\n        nonlocal m\n        m = 'y'\n"
+     "    def h():\n        global m\n        m = url\n    h()\nraise E(m)\n", True),
     ("parameter mutated inside a nested def",
      "def f(url, q):\n    def g(q):\n        q.append(url)\n    g(q)\n    raise E(q[0])\n",
      True),
