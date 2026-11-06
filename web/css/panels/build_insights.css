@@ -138,9 +138,16 @@
   gap: var(--space-5);
   align-items: flex-start;
 }
+/* RM-1777: a table wider than its pane scrolls sideways inside the
+ * mount (the data-table 1.4.10 exception), never the view. Under the
+ * 1200px line the column stack's align-items:flex-start shrink-wraps the
+ * mount to the table, so max-width caps it at the pane; the table keeps
+ * its own width whenever it fits. */
 .bi-pane-cols > [id$="table-mount"] {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
 }
 .bi-summary {
   flex: 0 0 320px;

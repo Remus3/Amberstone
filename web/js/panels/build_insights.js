@@ -538,12 +538,27 @@ function _restoreSortFocus(mount, key) {
   if (btn) btn.focus();
 }
 
+// RM-1777: in a narrow window the table scrolls sideways inside its mount,
+// and Chrome's focus scroll leaves a partly visible target where it is (the
+// Win Rate button sat 5-56 px past the mount's edge after Tab or a re-sort).
+// Scroll only the mount, only sideways, just far enough to show the whole
+// focused button; the page never moves.
+function _revealInMount(mount, el) {
+  const mr = mount.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const left = mr.left + mount.clientLeft;
+  const right = left + mount.clientWidth;
+  if (r.left < left) mount.scrollLeft -= left - r.left;
+  else if (r.right > right) mount.scrollLeft += r.right - right;
+}
+
 function _wireHeaders(tab, mount) {
   const st = _ST[tab.key];
   const ths = mount.querySelectorAll('th.bi-sortable');
   ths.forEach((th) => {
     const btn = th.querySelector('.bi-sort-btn');
     if (!btn) return;
+    btn.addEventListener('focus', () => _revealInMount(mount, btn));
     const handler = () => {
       const key = th.getAttribute('data-sort');
       if (!key) return;
