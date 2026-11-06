@@ -1,6 +1,8 @@
 """Per-role cohort baselines from T0 sidecar rows."""
 from __future__ import annotations
 
+import pytest
+
 from core import cohort_baseline as cb
 
 
@@ -150,12 +152,9 @@ def test_a_multi_cohort_file_without_a_cohort_raises_rather_than_reading_empty()
     from pathlib import Path
     with tempfile.TemporaryDirectory() as d:
         fp = _write(Path(d), {"tiers": {"GOLD_II": {"roles": _ROLES}}})
-        try:
+        with pytest.raises(ValueError) as excinfo:
             cb.load(fp)
-        except ValueError as exc:
-            assert "GOLD_II" in str(exc)
-        else:
-            raise AssertionError("silently returned instead of raising")
+        assert "GOLD_II" in str(excinfo.value)
 
 
 def test_an_unknown_cohort_names_the_available_ones():
@@ -163,12 +162,9 @@ def test_an_unknown_cohort_names_the_available_ones():
     from pathlib import Path
     with tempfile.TemporaryDirectory() as d:
         fp = _write(Path(d), {"tiers": {"GOLD_II": {"roles": _ROLES}}})
-        try:
+        with pytest.raises(ValueError) as excinfo:
             cb.load(fp, cohort="CHALLENGER")
-        except ValueError as exc:
-            assert "CHALLENGER" in str(exc) and "GOLD_II" in str(exc)
-        else:
-            raise AssertionError("unknown cohort did not raise")
+        assert "CHALLENGER" in str(excinfo.value) and "GOLD_II" in str(excinfo.value)
 
 
 def test_a_cohort_on_a_single_cohort_file_is_ignored_not_an_error():

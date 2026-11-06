@@ -83,13 +83,11 @@ def test_file_task_endpoint_missing_fields_400(live_supervisor) -> None:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    try:
+    with pytest.raises(urllib.error.HTTPError) as excinfo:
         urllib.request.urlopen(req, timeout=3)
-        pytest.fail("expected 400")
-    except urllib.error.HTTPError as e:
-        assert e.code == 400
-        err = json.loads(e.read().decode())
-        assert "required" in err["error"]
+    assert excinfo.value.code == 400
+    err = json.loads(excinfo.value.read().decode())
+    assert "required" in err["error"]
 
 
 @pytest.mark.timeout(10)
@@ -167,22 +165,18 @@ def test_task_detail_endpoint(live_supervisor) -> None:
 
 @pytest.mark.timeout(10)
 def test_task_detail_404_for_unknown(live_supervisor) -> None:
-    try:
+    with pytest.raises(urllib.error.HTTPError) as excinfo:
         urllib.request.urlopen(
             "http://127.0.0.1:8890/api/task/t-does-not-exist", timeout=3,
         )
-        pytest.fail("expected 404")
-    except urllib.error.HTTPError as e:
-        assert e.code == 404
+    assert excinfo.value.code == 404
 
 
 @pytest.mark.timeout(10)
 def test_task_detail_rejects_bad_id(live_supervisor) -> None:
-    try:
+    with pytest.raises(urllib.error.HTTPError) as excinfo:
         urllib.request.urlopen(
             "http://127.0.0.1:8890/api/task/../../etc/passwd", timeout=3,
         )
-        pytest.fail("expected 400")
-    except urllib.error.HTTPError as e:
-        assert e.code in (400, 404)     # traversal rejected either by handler
-                                        # or by earlier path normalization
+    # traversal rejected either by handler or by earlier path normalization
+    assert excinfo.value.code in (400, 404)

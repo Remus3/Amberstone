@@ -111,7 +111,7 @@ class TabUiTests(unittest.TestCase):
 
     def test_tab_hit_target_and_tokens(self):
         # Hit floor on the tab buttons (the --hit-min token in tokens.css, 42px).
-        self.assertRegex(self.css, r"\.pv-tab\s*\{[^}]*min-height:\s*var\(--hit-min", )
+        self.assertRegex(self.css, r"\.pv-tab\s*\{[^}]*min-height:\s*var\(--hit-min")
         # focus-visible ring on the semantic token.
         self.assertRegex(self.css, r"\.pv-tab:focus-visible\s*\{[^}]*var\(--focus-ring\)")
 

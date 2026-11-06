@@ -125,7 +125,7 @@ class TestModels(unittest.TestCase):
         sr = SrPayload.model_validate({"mode": "sr"})
         self.assertIsNone(sr.team_context)
 
-    def test_validate_coaching_payload_with_team_context(self, ):
+    def test_validate_coaching_payload_with_team_context(self):
         # validate_coaching_payload should not warn on a valid SR payload
         # carrying a team_context - proves the splice survives the soft
         # validator that wraps build_state().

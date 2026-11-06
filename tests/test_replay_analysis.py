@@ -9,6 +9,8 @@ point of the slice - not the drake verdict itself.
 """
 from __future__ import annotations
 
+import pytest
+
 from core import replay_analysis as ra
 
 # One synthetic timeline, hand-built so every assertion has a known answer.
@@ -137,8 +139,7 @@ def test_the_verdict_is_late_when_the_jungler_was_far_at_the_lead():
 def test_a_lead_beyond_the_calibrated_support_is_refused():
     # Measured accuracy falls to 0.568 at 60 s and 0.516 at 120 s, so a
     # long-lead verdict would be a confident claim about noise.
-    import pytest as _pt
-    with _pt.raises(ValueError, match="calibrated support"):
+    with pytest.raises(ValueError, match="calibrated support"):
         ra.drake_pathing_verdict(_tl(), participant_id=7, lead_s=60)
 
 

@@ -10,6 +10,8 @@ import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 from tools import gated_g506_debounce_lag as g
 
 DAY = date(2026, 10, 27)
@@ -223,12 +225,9 @@ def test_main_grade_exit_codes_and_required_window(tmp_path, capsys):
     assert g.main(args) == 1
     tp.unlink()
     assert g.main(args + ["--budget-ok"]) == 1  # missing trace: slow call not ruled out
-    try:
+    with pytest.raises(SystemExit) as excinfo:
         g.main(args[:-4])
-    except SystemExit as e:
-        assert e.code == 2  # argparse: --since / --until are required
-    else:
-        raise AssertionError("grade ran without a window")
+    assert excinfo.value.code == 2  # argparse: --since / --until are required
 
 
 def test_powershell_utf16_redirect_is_read(tmp_path):
