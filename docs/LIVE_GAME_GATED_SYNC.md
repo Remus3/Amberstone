@@ -2963,6 +2963,56 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 - **G4-13** (was B38) RC2 P3.3/S0 pulse-rationing remaining eyeball: confirm the suppressed pulses
   were all benign re-emits AND the Emergency tier / one-shot Urgent cross still glows (lethal cues need
   real combat pressure - the item-598 capture verified only the suppression half).
+  **READY (lane 9, s144 cycle 76, PREP only, NOT ticked; no game up: :8888 and :2999 curl status
+  000 at 2026-11-05T22:58-06:00).** AGE CHECK: not stale. The rationing is LIVE in code
+  (operator-approved 2026-06-22, per the `renderRightNow` and `overlay_pulse.js` comments), and no
+  live capture of the glow half exists. Source facts (pinned in
+  `tests/test_gated_g413_pulse_ration.py`): (a) `renderRightNow` (`web/js/panels/right_now.js`)
+  stamps `data-s0-cue` / `data-s0-tier` / `data-s0-pulse` on `#right-now` on every envelope, and
+  `shouldPulse` (`web/js/lib/overlay_priority.js`) arms only on a CUE CROSS into the emergency
+  tier (lethal / objective_steal / urgent_headline) or into a one-shot cue (spike / choices).
+  (b) On the overlay shell `#rn-action` is HIDDEN (`web/css/overlay.css` hides every
+  `#right-now .panel-body` child but rn-lead / rn-choices / rn-callouts), so the headline
+  `rn-pulse-*` glow never shows there. The overlay's only glow is `.ov-pulse`
+  (`web/js/overlay_pulse.js`: a mount mutation while `data-s0-pulse` is "1", 1500 ms
+  per-container throttle, muted by the `pulseNotify` setting), and it lands on `.am-pane-call`,
+  because the live CALL pane (`web/js/panels/active_match.js`) is rebuilt with `innerHTML` on
+  every envelope in the same dispatch, while rn-lead / rn-choices / rn-callouts are
+  signature-deduped. (c) A lethal cross derived from `coach.hp_pct` (above 0 and at most 25 at a fight or urgent band)
+  can arm with the headline text unchanged; the headline glow then stays dark by construction,
+  so only `.ov-pulse` answers it. (d) A NEW headline under a HELD emergency cue (for example two
+  urgent headlines in a row) never pulses, by design; that is the case the operator must judge as
+  benign or not, so the grader lists it as `sustained_emergency_new_text`. (e) A same-value
+  `dataset` write still queues an attribute mutation record, so the recorder logs every render
+  (checked in a headless Chromium dry run on a synthetic page this cycle, `_scratch` only).
+  PROBE (real SR or ARAM game, ideally with at least one low-HP fight; repo root): (1) open a
+  HEADLESS Chromium page on `https://127.0.0.1:8888/?overlay=1` (ignore cert errors), wait 10 s,
+  evaluate `python tools/gated_g413_pulse_ration.py snippet` once (it answers "armed 5 glow
+  targets"); (2) leave it recording through real combat, at least 5 minutes of game time;
+  (3) `curl -sk https://127.0.0.1:8888/api/state > _scratch/g413_state.json`, and within 5 s
+  evaluate `python tools/gated_g413_pulse_ration.py dump` and save the string as
+  `_scratch/g413_log.json`; (4) `python tools/gated_g413_pulse_ration.py grade --state
+  _scratch/g413_state.json --log _scratch/g413_log.json --state-ts <epoch of (3)> --json`. On
+  NO_ARMED keep recording and repeat (3)-(4); a recorder survives until the page reloads.
+  PREDICATES, stated before any game: RATIONED (exit 0) iff the page is the overlay shell with
+  pulseNotify on, every stamp after the first matches the shipped decision (tier = the cue's tier;
+  pulse "1" exactly on an eligible cue cross), every armed stamp got an `.ov-pulse` within 1 s
+  (or the CALL pane glowed in the previous 1.5 s: its per-pane throttle), no `.ov-pulse` fired
+  while the latest stamp was unarmed, and at least one armed stamp got a glow of its own. FAIL (exit 3): DECISION_DRIFT (a stale
+  bundle or moved code: re-read the pins first), GLOW_MISSING, GLOW_LEAK. NO EVIDENCE (exit 4):
+  NO_GAME, STALE_LOG, NOT_OVERLAY, MUTED, TOO_SHORT, NO_ARMED.
+  EVIDENCE CONTRACT: the grade JSON (`armed` with cue, headline_changed and glows per stamp;
+  `suppressed` with cue, prev_cue, headline and class per suppressed headline change;
+  `throttled`; `sustained_emergency_new_text`; game_time_s; lcu_phase; state_ts) plus the
+  operator's overlay read: at least one lethal or urgent cross seen to glow on the Electron
+  overlay, with the game time, and a yes / no that every `suppressed` headline (the
+  `sustained_emergency_new_text` ones first) was safe to show without motion.
+  SUBSTITUTION CHECK: RATIONED proves a headless page computed the decision and added the glow
+  class, the compute-plus-DOM half; it runs its own previous-cue memory, not the operator's
+  Electron overlay, and a class change is not a visible glow (the operator's pulseNotify setting
+  and widget layout differ there). Only the operator's eyeball of the overlay plus the read of the
+  suppressed list ticks G4-13; never tick on the grade alone. Grader:
+  `tools/gated_g413_pulse_ration.py`, tests `tests/test_gated_g413_pulse_ration.py`.
 - **G4-14** (was B39) RC2 P4.1-P4.5 composited-over-a-real-League-game eyeballs at 2560x1440
   borderless: DPI/dock sizing; opacity recede + idle dim + hover zones + drag strip; separated-window
   arrangement; `#ovset` panel selector + Interact-now; Re-arrange + Show dashboard. **P4.6 IS this
