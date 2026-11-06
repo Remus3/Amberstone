@@ -221,9 +221,9 @@ def body_md5(obj) -> str:
     changes no existing hash; a ``str`` is still a JSON value.
     """
     if isinstance(obj, (bytes, bytearray)):
-        return hashlib.md5(bytes(obj)).hexdigest()[:8]
+        return hashlib.md5(bytes(obj), usedforsecurity=False).hexdigest()[:8]
     blob = json.dumps(canonical_body(obj), sort_keys=True, separators=(",", ":"))
-    return hashlib.md5(blob.encode("utf-8")).hexdigest()[:8]
+    return hashlib.md5(blob.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
 
 
 def extract_stamp(obj) -> tuple[str | None, str | None]:

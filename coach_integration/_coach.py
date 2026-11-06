@@ -162,7 +162,7 @@ class CoachIntegration:
                         for obj, t in ot.items() if obj in ("dragon", "baron")
                     ) else 0
                 parts.append(f"{k}={v}")
-            return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
+            return hashlib.sha1("|".join(parts).encode("utf-8"), usedforsecurity=False).hexdigest()
         except Exception:  # noqa: BLE001
             return ""
 

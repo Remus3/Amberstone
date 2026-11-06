@@ -1,0 +1,108 @@
+"""RM-1720 - ruff S324 (hashlib md5 / sha1 without usedforsecurity=False) held in production code.
+
+ruff.toml selects S324 nowhere and no earlier ratchet covers it. Measured 2026-11-06 with
+``ruff check --isolated`` (target py39): production code carried 11 findings in 9 files. Ten are fixed:
+every one is a cache key, an ETag-style change token, a stable id or a train/test split bucket, never a
+credential or signature, so each call now passes ``usedforsecurity=False`` (Python 3.9+, the project
+floor). The digest bytes are identical; the flag only tells an OpenSSL build in FIPS mode that the
+call is not a security use, where a bare ``hashlib.md5()`` raises ``ValueError`` and would take the
+SSE stream, the asset-hash route or the comp-id builder down on such a host.
+
+The finding that stays: ``core/moon_proxy.py`` (a FROZEN file, CLAUDE.md "Frozen files"; an edit needs
+explicit operator approval). A baseline row that stops offending fails ``test_baseline_is_exact`` until
+it is dropped; a new finding anywhere else fails ``test_no_new_findings``.
+
+Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the vendored
+``ops/fleet_kit`` and the ``agents/agent3_testing/suite`` suite are out of scope. The run uses NO config
+(``--isolated``) so a per-file-ignore cannot hide a finding.
+"""
+from __future__ import annotations
+
+import collections
+import importlib.util
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
+
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("ruff") is None,
+    reason="ruff is not importable by this interpreter",
+)
+
+_RULE = "S324"
+_OUT_OF_SCOPE = (
+    "tests/",
+    "tools/tests/",
+    "agents/daemon_slayer/",
+    "agents/agent3_testing/suite/",
+    "ops/fleet_kit/",
+)
+# file -> finding count that stays (reason in the module docstring). Only shrinks.
+_BASELINE = {
+    "core/moon_proxy.py": 1,
+}
+_FIXED = (
+    "coach_integration/_coach.py",
+    "coaches/rune_pages.py",
+    "dashboard/_static.py",
+    "dashboard/routes_spike_curve.py",
+    "dashboard/routes_state.py",
+    "tft/engine/comps.py",
+    "tools/ds_feed_index.py",
+    "tools/mine_event_patterns.py",
+)
+
+
+def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+    proc = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", "--isolated", "--target-version", "py39",
+         "--no-fix", "--no-cache", "--output-format", "json", *args],
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, **kwargs,
+    )
+    # ruff exits 1 when it reports anything; 2 is a real failure.
+    assert proc.returncode in (0, 1), proc.stderr[-400:]
+    return json.loads(proc.stdout)
+
+
+@pytest.fixture(scope="module")
+def tree_counts() -> dict[str, int]:
+    tracked = {relative_posix(p) for p in repo_files(REPO_ROOT, ("*.py",))}
+    assert len(tracked) > 100, "the tracked-file walk returned almost nothing"
+    counts: collections.Counter = collections.Counter()
+    for d in _ruff(["--select", _RULE, "."]):
+        rel = relative_posix(Path(d["filename"]).resolve())
+        if rel in tracked and not rel.startswith(_OUT_OF_SCOPE) and "/tests/" not in rel:
+            counts[rel] += 1
+    return dict(counts)
+
+
+def test_no_new_findings(tree_counts):
+    extra = {f: n for f, n in tree_counts.items() if n > _BASELINE.get(f, 0)}
+    assert not extra, f"ruff {_RULE} findings beyond the baseline, file: count: {extra}"
+
+
+def test_baseline_is_exact(tree_counts):
+    """A baseline row that no longer offends (or offends less) must shrink or go."""
+    stale = {f: n for f, n in _BASELINE.items() if tree_counts.get(f, 0) != n}
+    assert not stale, f"baseline rows to shrink or drop (file: recorded): {stale}"
+
+
+@pytest.mark.parametrize("rel", _FIXED)
+def test_fixed_module_stays_clean(rel, tree_counts):
+    assert (REPO_ROOT / rel).is_file(), f"{rel} missing - update _FIXED"
+    assert rel not in tree_counts
+
+
+def test_probe_is_live():
+    """The isolated run reports a minimal offender, so an empty tree result is a real scan."""
+    probe = "import hashlib\nhashlib.md5(b'x')\n"
+    found = _ruff(["--select", _RULE, "--stdin-filename", "probe_mod.py", "-"], stdin=probe)
+    assert _RULE in {d["code"] for d in found}

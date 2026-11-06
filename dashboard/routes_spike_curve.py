@@ -458,7 +458,7 @@ def _response_cache_key(ally_ids: list[int], enemy_ids: list[int], mode: str) ->
     a = tuple(sorted(ally_ids))
     e = tuple(sorted(enemy_ids))
     raw = f"{a}|{e}|{mode}"
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha1(raw.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
 
 
 def _serve_spike_curve(h) -> None:

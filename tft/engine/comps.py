@@ -615,7 +615,7 @@ def record_id(record: Mapping) -> str:
             text = ""
         if text.strip():
             return text
-    return "anon-" + hashlib.sha1(canonical(record).encode("utf-8")).hexdigest()[:10]
+    return "anon-" + hashlib.sha1(canonical(record).encode("utf-8"), usedforsecurity=False).hexdigest()[:10]
 
 
 def _record_rows(records: Any) -> list:
@@ -823,7 +823,7 @@ def build_catalogue(records: Any, setdata: SetData, *,
     comps = []
     for members in cluster_boards(boards):
         comp = _summarise(members, setdata)
-        comp["comp_id"] = "c-" + hashlib.sha1("|".join(comp.pop("_core_ids")).encode("utf-8")).hexdigest()[:10]
+        comp["comp_id"] = "c-" + hashlib.sha1("|".join(comp.pop("_core_ids")).encode("utf-8"), usedforsecurity=False).hexdigest()[:10]
         comps.append(comp)
     comps.sort(key=_comp_sort_key)
     used: Counter = Counter()

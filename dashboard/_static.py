@@ -71,7 +71,7 @@ def compute_asset_hash() -> str:
             parts.append(f"{rel}:{int(p.stat().st_mtime)}")
         except OSError:
             parts.append(f"{rel}:0")
-    h = _hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:10]
+    h = _hashlib.sha1("|".join(parts).encode("utf-8"), usedforsecurity=False).hexdigest()[:10]
     _ASSET_HASH_CACHE["hash"] = h
     _ASSET_HASH_CACHE["mtime"] = now
     return h

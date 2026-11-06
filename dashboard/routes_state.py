@@ -531,7 +531,7 @@ def _serve_state_stream(h) -> None:
                     return
                 time.sleep(_SSE_TICK_S)
                 continue
-            ph = hashlib.md5(payload).digest()
+            ph = hashlib.md5(payload, usedforsecurity=False).digest()
             now = time.monotonic()
             if ph != last_hash or (now - last_emit) >= _SSE_HEARTBEAT_S:
                 line = b"data: " + payload + b"\n\n"

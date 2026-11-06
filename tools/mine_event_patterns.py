@@ -215,7 +215,7 @@ def holdout_side(match_id: str, frac: float) -> str:
     """
     if frac <= 0:
         return "train"
-    digest = hashlib.sha1(match_id.encode("utf-8")).hexdigest()[:8]
+    digest = hashlib.sha1(match_id.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
     return "test" if int(digest, 16) / 0xFFFFFFFF < frac else "train"
 
 

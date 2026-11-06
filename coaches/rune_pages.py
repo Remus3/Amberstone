@@ -99,7 +99,7 @@ def page_id(perk_ids) -> str:
     """Stable short id for a resolved rune page = the dedup key. Two builds whose
     resolved 9-element perk_ids match collapse to this one id."""
     key = ",".join(str(int(x)) for x in perk_ids)
-    return "p" + hashlib.sha1(key.encode("ascii")).hexdigest()[:12]
+    return "p" + hashlib.sha1(key.encode("ascii"), usedforsecurity=False).hexdigest()[:12]
 
 
 def _parse_slot_table(doc: object) -> dict[int, tuple[int, int]]:
