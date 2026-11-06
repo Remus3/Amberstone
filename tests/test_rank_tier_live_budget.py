@@ -2180,7 +2180,15 @@ class _Flow:
             # before the attribute existed, so the body is walked again with
             # the marks in its entry (the marks only ever add, so this ends);
             # they then flow out with the rest of the class state.
-            _check_sinks(_own_nodes(stmt), stmt, state, self.report, self.ever)
+            # RM-1789: the decorators, defaults, bases and keywords are
+            # ordinary expressions run in THIS scope, so their walrus and
+            # mutator bindings apply here too, before the body is walked
+            # (`def h(x=q.append(url))`, `@(m := url) and deco`), as every
+            # other statement's do (`_expr_step`). Annotations and type
+            # parameter bounds may run lazily (Python 3.14) or never; they
+            # are read as run here, the safe side. The sinks were
+            # checked here before, the bindings were not.
+            state = self._expr_step(list(_own_nodes(stmt)), stmt, state)
             out, returns, inside, hands_back = _walk_scope(
                 stmt.body, state, self.report, self.ever)
             marks = set()
@@ -2370,10 +2378,17 @@ class _Flow:
                 # but its sites are still scanned (see `block`).
                 _Flow(self.report, self.ever).block(stmt.orelse, handler_entry)
             exits = [self.block(stmt.orelse, body_out)]
+            # RM-1789: a handler's type is an expression run when the
+            # handlers are tried, in order, so its walrus and mutator
+            # bindings (`except q.append(url) or E:`) reach its own body and
+            # every later handler (`tried`), as a `match` case's guard does.
+            # Each handler body's entry is watched, so `finally` and the exit
+            # see them too, with no extra join.
+            tried = set(handler_entry)
             for handler in stmt.handlers:
-                _check_sinks([handler.type] if handler.type else [], handler,
-                             handler_entry, self.report, self.ever)
-                entry = set(handler_entry)
+                if handler.type is not None:
+                    tried = self._expr_step([handler.type], handler, tried)
+                entry = set(tried)
                 if handler.name:
                     # A third-party exception can quote the URL it was handed
                     # back at us, so it is untrusted text until it goes through
@@ -3719,6 +3734,70 @@ _CHECKER_SAMPLES = (
     ("method logging self, called off a sanitized instance",
      "class C:\n    def g(self):\n        log.info(self)\n"
      "def f(url):\n    o = C(_safe_url(url))\n    o.g()\n", False),
+    # RM-1789: a def's or class's decorators, defaults, annotations, bases
+    # and keywords, and an except handler's type, run where the statement
+    # stands, so a walrus or mutator in one binds the enclosing scope.
+    ("mutator in a nested def's decorator",
+     "def f(url):\n    q = []\n    @q.append(url) or deco\n    def h():\n"
+     "        pass\n    log.info(q)\n", True),
+    ("mutator in a nested def's parameter default",
+     "def f(url):\n    q = []\n    def h(x=q.append(url)):\n        pass\n"
+     "    log.info(q)\n", True),
+    ("mutator in a nested def's keyword-only default",
+     "def f(url):\n    q = []\n    def h(*, x=q.append(url)):\n        pass\n"
+     "    log.info(q)\n", True),
+    ("mutator in a nested def's annotation",
+     "def f(url):\n    q = []\n    def h(x: q.append(url)):\n        pass\n"
+     "    log.info(q)\n", True),
+    ("mutator in a nested def's return annotation",
+     "def f(url):\n    q = []\n    def h() -> q.append(url):\n        pass\n"
+     "    log.info(q)\n", True),
+    ("mutator in a nested async def's default",
+     "async def f(url):\n    q = []\n    async def h(x=q.append(url)):\n"
+     "        pass\n    log.info(q)\n", True),
+    ("mutator in a nested def's default, logged in its body",
+     "def f(url):\n    q = []\n    def h(x=q.append(url)):\n"
+     "        log.info(q)\n", True),
+    ("mutator in a class decorator",
+     "def f(url):\n    q = []\n    @q.append(url) or deco\n    class C:\n"
+     "        pass\n    log.info(q)\n", True),
+    ("mutator in a class base",
+     "def f(url):\n    q = []\n    class C(q.append(url) or object):\n"
+     "        pass\n    log.info(q)\n", True),
+    ("mutator in a class keyword",
+     "def f(url):\n    q = []\n    class C(metaclass=q.append(url) or type):\n"
+     "        pass\n    log.info(q)\n", True),
+    ("walrus in a nested def's default",
+     "def f(url):\n    def h(x=(m := url)):\n        pass\n    log.info(m)\n", True),
+    ("walrus in a nested def's decorator",
+     "def f(url):\n    @(m := url) and deco\n    def h():\n        pass\n"
+     "    log.info(m)\n", True),
+    ("walrus in a class base",
+     "def f(url):\n    class C((m := url) and object):\n        pass\n"
+     "    log.info(m)\n", True),
+    ("mutator in an except type, logged in its body",
+     "def f(url):\n    q = []\n    try:\n        g()\n"
+     "    except q.append(url) or E:\n        log.info(q)\n", True),
+    ("walrus in an except type, logged in a later handler",
+     "def f(url):\n    try:\n        g()\n    except (m := url) and E:\n"
+     "        pass\n    except F:\n        log.info(m)\n", True),
+    ("mutator in an except type, logged in finally",
+     "def f(url):\n    q = []\n    try:\n        g()\n"
+     "    except q.append(url) or E:\n        pass\n    finally:\n"
+     "        log.info(q)\n", True),
+    ("mutator in an except type, logged after the try",
+     "def f(url):\n    q = []\n    try:\n        g()\n"
+     "    except q.append(url) or E:\n        pass\n    log.info(q)\n", True),
+    # ... and a clean or sanitized value there binds nothing.
+    ("clean mutator in a nested def's default",
+     "def f(url):\n    q = []\n    def h(x=q.append('x')):\n        pass\n"
+     "    log.info(q)\n", False),
+    ("sanitized mutator in a nested def's decorator",
+     "def f(url):\n    q = []\n    @q.append(_safe_url(url)) or deco\n"
+     "    def h():\n        pass\n    log.info(q)\n", False),
+    ("clean mutator in an except type",
+     "def f(url):\n    q = []\n    try:\n        g()\n"
+     "    except q.append('x') or E:\n        log.info(q)\n", False),
 )
 
 
