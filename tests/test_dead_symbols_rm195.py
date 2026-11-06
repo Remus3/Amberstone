@@ -9,10 +9,10 @@ no getattr - measured 2026-10-04. The other two RM-195 symbols are NOT dead:
 `reset_support_route_override_cache` has a test caller. Do not delete those.
 """
 
-import core.decision_detector as decision_detector
-import core.ds_support_route_overrides as ds_support_route_overrides
-import core.theme as theme
-import core.vision_token as vision_token
+from core import decision_detector
+from core import ds_support_route_overrides
+from core import theme
+from core import vision_token
 
 
 def test_dead_symbols_are_gone():

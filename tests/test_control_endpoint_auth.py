@@ -15,7 +15,7 @@ import io
 
 import pytest
 
-import dashboard._dispatch as _dispatch
+from dashboard import _dispatch
 from dashboard._handler import Handler
 
 

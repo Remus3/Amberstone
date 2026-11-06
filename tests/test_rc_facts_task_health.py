@@ -67,7 +67,7 @@ import os
 import time
 from pathlib import Path
 
-import tools.rc_facts as rc_facts
+from tools import rc_facts
 from tests._module_view import bind_subprocess
 
 _DAY = 86400.0

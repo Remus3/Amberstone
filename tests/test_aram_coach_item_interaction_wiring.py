@@ -25,7 +25,7 @@ from coaches.aram_coach import (
     _item_interaction_block,
     _split_item_build_like_ui,
 )
-import coaches.aram_coach as aram_coach
+from coaches import aram_coach
 
 _MODNAME = "core.aram_item_interaction_context"
 

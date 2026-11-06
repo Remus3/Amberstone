@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import unittest
 
-import agents.daemon_slayer as daemon_slayer
+from agents import daemon_slayer
 from agents.daemon_slayer._passive_damage_overrides import _lerp_per_level
 from agents.daemon_slayer._passive_shield_overrides import (
     _PASSIVE_SHIELD_OVERRIDES,

@@ -112,7 +112,7 @@ def test_force_scan_marker_uses_shared_atomic_writer(tmp_path, monkeypatch):
     """core.hotkeys must write the polled marker via the shared
     atomic_write_json helper (module-level import, patchable here).
     Pre-fix this fails: the module wrote via a bare Path.write_text."""
-    import core.hotkeys as hotkeys
+    from core import hotkeys
 
     written = {}
 
@@ -132,7 +132,7 @@ def test_force_scan_marker_uses_shared_atomic_writer(tmp_path, monkeypatch):
 
 
 def test_force_scan_marker_lands_on_disk_valid_json(tmp_path, monkeypatch):
-    import core.hotkeys as hotkeys
+    from core import hotkeys
 
     monkeypatch.setattr(hotkeys, "_APP_DIR", tmp_path)
     monkeypatch.setattr(hotkeys, "_coaches", [])

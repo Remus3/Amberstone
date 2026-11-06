@@ -35,7 +35,7 @@ from __future__ import annotations
 import json
 import time
 
-import tools.rc_facts as rc_facts
+from tools import rc_facts
 from tests._module_view import bind_subprocess
 
 CODE = 2147946720  # 0x800710E0

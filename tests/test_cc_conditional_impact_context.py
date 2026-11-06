@@ -511,7 +511,7 @@ class MathTests(unittest.TestCase):
         # Constants MUST match agents/daemon_slayer/ehp.py exactly
         # (operator-tunable midpoints per items 137 + 138 don't-redo).
         import core.cc_conditional_impact_context as ctx
-        import agents.daemon_slayer.ehp as ehp
+        from agents.daemon_slayer import ehp
         self.assertEqual(ctx._FIGHT_WINDOW_S, ehp._FIGHT_WINDOW_S)
         self.assertEqual(
             ctx._CC_EFFECTIVENESS_FACTOR,

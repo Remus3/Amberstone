@@ -42,7 +42,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import tools.rc_facts as rc_facts  # noqa: E402
+from tools import rc_facts  # noqa: E402
 from tests._replace_faults import scoped_fs_fault  # noqa: E402
 
 _PY = sys.executable

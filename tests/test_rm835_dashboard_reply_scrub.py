@@ -382,7 +382,7 @@ _COMBO_KEYS = {"ok", "champion", "champion_name", "level", "mode", "sequence",
 
 
 def _drive_combo_burst_fault(monkeypatch, marker: str):
-    import agents.daemon_slayer.combo as combo
+    from agents.daemon_slayer import combo
     from dashboard import routes_ds_combo as r
 
     def _boom(*_a, **_k):

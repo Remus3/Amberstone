@@ -167,7 +167,7 @@ def _no_live_client(monkeypatch):
     """
     import types
 
-    import game_reader.poller as poller
+    from game_reader import poller
 
     def _refuse(*_a, **_k):
         raise FileNotFoundError("wmic disabled in tests")

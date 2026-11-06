@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-import tests.guard_data as guard_data
+from tests import guard_data
 from tests.guard_data import GuardDataError, atomic_write, web_live_half
 from tests.test_atomic_write_guard_rm258_rm261 import (
     _EXCLUDED_PREFIXES,

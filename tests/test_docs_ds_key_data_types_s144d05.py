@@ -106,7 +106,7 @@ def test_key_data_types_drops_the_core_originals_prefix_claim():
 
 
 def test_module_map_puts_callcontext_in_effects_types_not_dps():
-    import agents.daemon_slayer.dps as dps
+    from agents.daemon_slayer import dps
 
     assert dps.CallContext is _effects_types.CallContext
     assert _effects_types.CallContext.__module__.endswith("_effects_types")

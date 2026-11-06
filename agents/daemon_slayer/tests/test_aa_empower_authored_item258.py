@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import unittest
 
-import agents.daemon_slayer as daemon_slayer
+from agents import daemon_slayer
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer._ability_amp_overrides import (
     _ABILITY_AMP_OVERRIDES,

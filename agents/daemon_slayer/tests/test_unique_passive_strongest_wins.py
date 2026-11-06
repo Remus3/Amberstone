@@ -22,7 +22,7 @@ from __future__ import annotations
 import unittest
 import unittest.mock
 
-import agents.daemon_slayer as daemon_slayer
+from agents import daemon_slayer
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer._effects_data import ITEM_EFFECTS
 from agents.daemon_slayer._effects_types import (

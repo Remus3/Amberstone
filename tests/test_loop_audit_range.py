@@ -143,7 +143,7 @@ def test_young_repo_single_commit_does_not_raise(lc, tmp_path, monkeypatch):
 # --- backward-compat: auditor() still callable with 2 positional args ---------
 
 def test_auditor_signature_backward_compatible(lc):
-    import unittest.mock as mock
+    from unittest import mock
     with mock.patch.object(lc, "adjudicate", return_value=None), \
             mock.patch.object(lc, "git", return_value="someoutput"):
         verdict = lc.auditor("aaaaaa", "bbbbbb")   # legacy 2-arg call

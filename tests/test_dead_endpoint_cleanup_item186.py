@@ -362,7 +362,7 @@ class SpeakRouteRemovedTests(unittest.TestCase):
         self.assertEqual(calls, [], "the removed route still reached speak()")
 
     def test_speak_has_no_request_model(self):
-        import dashboard.api_schema as api_schema
+        from dashboard import api_schema
         from dashboard._dispatch import _REQUEST_MODELS
 
         self.assertNotIn("/api/speak", _REQUEST_MODELS)

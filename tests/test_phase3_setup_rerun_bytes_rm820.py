@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-import ops.phase3_setup as phase3_setup
+from ops import phase3_setup
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DECISIONS_REL = Path("agents") / "state" / "resolved_decisions.json"

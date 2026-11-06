@@ -11,7 +11,7 @@ from __future__ import annotations
 import socket
 import threading
 
-import tools.rc_facts as rc_facts
+from tools import rc_facts
 from tests._module_view import bind_socket_class
 from tests._timing_budget import fleet_test_guard
 

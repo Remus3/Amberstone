@@ -36,7 +36,7 @@ from __future__ import annotations
 import io
 import time
 
-import tools.rc_facts as rc_facts
+from tools import rc_facts
 
 
 def test_real_phase_verbatim():

@@ -65,7 +65,7 @@ class TestPollerSites:
         PAYLOAD, never the shared module a foreign thread of the xdist worker
         also sees (RM-801, tests/_module_view.py). Returns the call record,
         so a rejecting test proves the fake - not the live relay - answered."""
-        import game_reader.poller as poller
+        from game_reader import poller
         calls = []
         bind_urlopen(monkeypatch, poller, _urlopen_returning(payload, calls))
         return calls

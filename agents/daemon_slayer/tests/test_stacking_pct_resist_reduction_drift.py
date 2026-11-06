@@ -29,7 +29,7 @@ from __future__ import annotations
 import re
 import unittest
 
-import agents.daemon_slayer as daemon_slayer
+from agents import daemon_slayer
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.effects import ITEM_EFFECTS, effective_target_armor
 

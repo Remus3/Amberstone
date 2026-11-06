@@ -25,7 +25,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-import agents.daemon_slayer as daemon_slayer
+from agents import daemon_slayer
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer.abilities import AbilitiesSnapshot, AbilityForm
 from agents.daemon_slayer.ability_hps import (

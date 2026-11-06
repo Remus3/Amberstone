@@ -56,7 +56,7 @@ class _Resp(io.BytesIO):
 
 
 def _serve(monkeypatch, payload, calls=None):
-    import game_reader.poller as poller
+    from game_reader import poller
 
     def fake(req, context=None, timeout=None):
         if calls is not None:
@@ -67,7 +67,7 @@ def _serve(monkeypatch, payload, calls=None):
 
 
 def _raise_http(monkeypatch, code=404):
-    import game_reader.poller as poller
+    from game_reader import poller
     fp = io.BytesIO(b'{"error": "no_liveclient_yet"}')
     err = urllib.error.HTTPError("http://127.0.0.1:8889/x", code, "nf", {}, fp)
 
@@ -200,7 +200,7 @@ def _pool(monkeypatch, answer):
 
 
 def _no_urlopen(monkeypatch):
-    import game_reader.poller as poller
+    from game_reader import poller
     sent = []
 
     def fake(req, context=None, timeout=None):
@@ -255,7 +255,7 @@ def test_read_champ_select_pooled_non_json_2xx_is_none(monkeypatch):
 # ---------------------------------------------------------------------------
 
 def _no_wmic(monkeypatch):
-    import game_reader.poller as poller
+    from game_reader import poller
 
     def _refuse(*_a, **_k):
         raise FileNotFoundError("wmic disabled in tests")

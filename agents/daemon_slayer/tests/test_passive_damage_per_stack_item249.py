@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import unittest
 
-import agents.daemon_slayer as daemon_slayer
+from agents import daemon_slayer
 from agents.daemon_slayer.abilities import AbilitiesSnapshot
 from agents.daemon_slayer.ability_dps import (
     AbilityContext,

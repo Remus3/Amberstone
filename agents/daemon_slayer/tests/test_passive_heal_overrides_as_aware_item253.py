@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import unittest
 
-import agents.daemon_slayer as daemon_slayer
+from agents import daemon_slayer
 from agents.daemon_slayer._passive_damage_overrides import _per_100
 from agents.daemon_slayer._passive_heal_overrides import (
     _PASSIVE_HEAL_OVERRIDES,

@@ -62,12 +62,12 @@ from pathlib import Path
 import pytest
 
 import agents.agent2_backend.db_schema as a2_schema
-import core.riot_api_cache as riot_api_cache
+from core import riot_api_cache
 import lcu.lcu_postgame_collector as postgame
-import lib.rewind_live_writer as rewind_live_writer
-import modules.cache_engine as cache_engine
-import scripts.rewind_catchup as rewind_catchup
-import scripts.rewind_scraper as rewind_scraper
+from lib import rewind_live_writer
+from modules import cache_engine
+from scripts import rewind_catchup
+from scripts import rewind_scraper
 from tests import _repo_walk
 
 _REAL_CONNECT = sqlite3.connect

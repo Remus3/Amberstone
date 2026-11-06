@@ -386,7 +386,7 @@ class KeepaliveDefaults(unittest.TestCase):
 
 
 def test_rc_facts_reads_the_keepalive_as_a_service() -> None:
-    import tools.rc_facts as rc_facts
+    from tools import rc_facts
     assert "RC-DSKeepalive" in rc_facts.LONG_LIVED_SERVICE_TASKS
     verdict, _detail = rc_facts.classify_task_result(
         "RC-DSKeepalive", "Running", rc_facts.TASK_RESULT_RUNNING,
@@ -563,7 +563,7 @@ def test_legion_on_launches_through_the_owner_task_first() -> None:
 
 
 def test_rc_facts_flags_a_held_keepalive(tmp_path) -> None:
-    import tools.rc_facts as rc_facts
+    from tools import rc_facts
     assert rc_facts.ds_keepalive_hold_anomalies(tmp_path) == []
     flag = tmp_path / "ops" / "runtime" / "DS_KEEPALIVE_STOP"
     flag.parent.mkdir(parents=True)
@@ -574,7 +574,7 @@ def test_rc_facts_flags_a_held_keepalive(tmp_path) -> None:
 
 
 def test_rc_facts_main_reports_the_hold(monkeypatch, tmp_path) -> None:
-    import tools.rc_facts as rc_facts
+    from tools import rc_facts
     health = tmp_path / "health.json"
     health.write_text('{"pid": 1, "alive": true, "last_reload_ok": true}',
                       encoding="utf-8")

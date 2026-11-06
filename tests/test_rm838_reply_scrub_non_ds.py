@@ -331,7 +331,7 @@ def test_supervisor_proxy_2xx_body_is_still_forwarded(monkeypatch):
 # ============================================= (c) supervisor auto-analyze
 def test_auto_analyze_failure_summary_never_carries_the_exception_text(
         monkeypatch, capture):
-    import agents.agent2_backend.win_reconcile as win_reconcile
+    from agents.agent2_backend import win_reconcile
     import agents.supervisor as sup_mod
     cap = capture(sup_mod.log.name)
     monkeypatch.setattr(sup_mod, "IDLE_ANALYZE_SEC", 0)

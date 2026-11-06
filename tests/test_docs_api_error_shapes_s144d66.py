@@ -37,7 +37,7 @@ import pytest
 
 import core.http_host_gate as host_gate
 import dashboard._handler as handler_mod
-import dashboard.routes_recordings as routes_recordings
+from dashboard import routes_recordings
 import dashboard.server as server_mod
 from dashboard._errors import GENERIC_ERROR, send_error
 from dashboard._handler import Handler, is_control_endpoint

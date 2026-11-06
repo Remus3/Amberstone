@@ -18,7 +18,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-import agents.daemon_slayer as daemon_slayer
+from agents import daemon_slayer
 from agents.daemon_slayer.abilities import (
     AbilitiesSnapshot,
     DamageBlock,

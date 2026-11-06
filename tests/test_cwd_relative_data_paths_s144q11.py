@@ -41,15 +41,15 @@ from unittest import mock
 
 import pytest
 
-import core.draft_elo_db as draft_elo_db
-import core.item_wpa as item_wpa
-import core.post_game_rubric as post_game_rubric
-import core.post_game_score as post_game_score
-import core.rune_wpa as rune_wpa
-import core.skill_wpa as skill_wpa
-import core.summoner_spell_wpa as summoner_spell_wpa
-import dashboard.routes_personal_vs as routes_personal_vs
-import dashboard.routes_pickban as routes_pickban
+from core import draft_elo_db
+from core import item_wpa
+from core import post_game_rubric
+from core import post_game_score
+from core import rune_wpa
+from core import skill_wpa
+from core import summoner_spell_wpa
+from dashboard import routes_personal_vs
+from dashboard import routes_pickban
 
 ROOT = Path(__file__).resolve().parent.parent
 

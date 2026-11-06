@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-import core.polled_json as polled_json
+from core import polled_json
 import tools.gen_archmap as gam
 
 _REPO = Path(__file__).resolve().parent.parent
