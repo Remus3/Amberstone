@@ -55,7 +55,7 @@ logger = logging.getLogger("rc.tools.ds_keepalive")
 STOP_FLAG = _PROJECT_ROOT / "ops" / "runtime" / "DS_KEEPALIVE_STOP"
 _LOG_FILE = _PROJECT_ROOT / "logs" / "ds_keepalive.log"
 _FALLBACK_LOG_FILE = (
-    Path(os.environ.get("ProgramData") or r"C:\ProgramData")
+    Path(os.environ.get("PROGRAMDATA") or r"C:\ProgramData")
     / "Amberstone" / "ds_keepalive.log"
 )
 

@@ -52,7 +52,7 @@ _LOG_FILE = _PROJECT_ROOT / "logs" / "daemon_slayer_startup.log"
 # SYSTEM-writable - fall back to it so a boot-time failure still leaves a
 # trace instead of vanishing into a swallowed OSError.
 _FALLBACK_LOG_FILE = (
-    Path(os.environ.get("ProgramData") or r"C:\ProgramData")
+    Path(os.environ.get("PROGRAMDATA") or r"C:\ProgramData")
     / "Amberstone" / "daemon_slayer_startup.log"
 )
 
