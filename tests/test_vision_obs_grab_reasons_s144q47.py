@@ -66,6 +66,7 @@ class _StubWs:
         if self.incoming:
             return self.incoming.pop(0)(self.sent)
         await asyncio.Event().wait()
+        raise AssertionError("an Event nobody sets never wakes")
 
 
 def _rid(sent):

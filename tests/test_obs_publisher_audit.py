@@ -66,6 +66,7 @@ class _ScriptedWs:
         if self.incoming:
             return self.incoming.pop(0)
         await asyncio.Event().wait()
+        raise AssertionError("an Event nobody sets never wakes")
 
 
 class _FakeTask:

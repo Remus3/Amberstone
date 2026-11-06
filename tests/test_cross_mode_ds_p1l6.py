@@ -235,7 +235,7 @@ class AramModifierAppliedTests(unittest.TestCase):
         # aramDamageDealt, 102 for aramDamageTaken). An empty result means the
         # snapshot lost its aram_modifiers block - a data regression that must
         # fail, not silently retire both mode-gating tests below.
-        self.fail(f"no champion with non-trivial {key} in the tracked snapshot")
+        raise self.failureException(f"no champion with non-trivial {key} in the tracked snapshot")
 
     def test_aram_damage_dealt_applied_dps_layer(self):
         from agents.daemon_slayer import dps as dps_mod

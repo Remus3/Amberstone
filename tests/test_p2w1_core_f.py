@@ -166,6 +166,7 @@ class _StubWs:
             return self.incoming.pop(0)
         # Nothing pending: block forever so wait_for() times out.
         await asyncio.Event().wait()
+        raise AssertionError("an Event nobody sets never wakes")
 
 
 def test_identify_subscribes_to_no_events():

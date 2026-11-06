@@ -449,7 +449,7 @@ class VeigarEndToEndTests(unittest.TestCase):
         for s in res.per_spell:
             if s.key == key:
                 return s
-        self.fail(f"spell {key} not in per_spell result")
+        raise self.failureException(f"spell {key} not in per_spell result")
 
     def test_veigar_q_per_cast_equals_vendored_textbook(self) -> None:
         vend = _vendored()

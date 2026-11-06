@@ -206,7 +206,7 @@ class R190RegistryMagnitudeTests(unittest.TestCase):
         for row in kit_penetration_rows(champion):
             if row.slot == slot:
                 return row
-        self.fail(f"no {champion} {slot} row")
+        raise self.failureException(f"no {champion} {slot} row")
 
     def test_ambessa_r_percent_armor_pen_max_rank_30(self) -> None:
         # "Passive: Ambessa gains armor penetration." + the structured

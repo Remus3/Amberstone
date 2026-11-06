@@ -55,6 +55,7 @@ class _FakeWS:
         if self._queue:
             return self._queue.pop(0)
         await asyncio.sleep(3600)
+        return None
 
 
 class _Conn:

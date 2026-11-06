@@ -127,7 +127,7 @@ class MissionControlRouteScrubTests(unittest.TestCase):
         for matcher, fn in getattr(mc_routes, table):
             if matcher(path):
                 return fn
-        self.fail(f"{path} not in mc.routes.{table}")
+        raise self.failureException(f"{path} not in mc.routes.{table}")
 
     def test_mc_loop_status_last_resort_is_scrubbed(self):
         from unittest import mock

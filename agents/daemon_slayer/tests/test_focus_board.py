@@ -78,7 +78,7 @@ class _Base(unittest.TestCase):
         for r in board.rows:
             if r.champion_id == champion_id:
                 return r
-        self.fail(f"no row for {champion_id}: {[r.champion_id for r in board.rows]}")
+        raise self.failureException(f"no row for {champion_id}: {[r.champion_id for r in board.rows]}")
 
 
 class SnapshotFixtureTests(_Base):

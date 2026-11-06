@@ -59,6 +59,7 @@ class _StubWs:
                 return item(self.sent)
             return item
         await asyncio.Event().wait()  # block until wait_for() times out
+        raise AssertionError("an Event nobody sets never wakes")
 
 
 def _sent_request_id(sent):

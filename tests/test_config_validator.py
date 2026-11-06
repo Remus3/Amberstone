@@ -116,7 +116,7 @@ class _TmpAppDirCase(unittest.TestCase):
         for r in results:
             if r.file == rel_path:
                 return r
-        self.fail(
+        raise self.failureException(
             f"no ValidationResult for {rel_path!r} - got "
             f"{[r.file for r in results]!r}"
         )
