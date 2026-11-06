@@ -504,7 +504,7 @@ def test_transport_failures_stop_after_n(tmp_path):
     async def body(port):
         rec = make(port, tmp_path, clock, liveclient_failures_to_stop=4)
         await _start_game(rec, clock)
-        for i in range(3):
+        for _i in range(3):
             rec.on_liveclient_snapshot(lc(clock, 0, failure="transport"))
         await rec.tick()
         assert "StopRecord" not in fake.types()

@@ -131,7 +131,7 @@ class LoadoutPollutionCleanupItem213Tests(unittest.TestCase):
 
     def test_b_no_duplicate_item_list_within_variant(self) -> None:
         dups: list[str] = []
-        for cn, vk, mode, v in self._iter_collapsed():
+        for cn, vk, _mode, v in self._iter_collapsed():
             seen: dict[frozenset, str] = {}
             for bp in v.get("build_paths") or []:
                 key = frozenset(_norm(i) for i in (bp.get("items") or []))
@@ -152,7 +152,7 @@ class LoadoutPollutionCleanupItem213Tests(unittest.TestCase):
 
     def test_c_every_variant_two_paths_four_items(self) -> None:
         bad: list[str] = []
-        for cn, vk, mode, v in self._iter_collapsed():
+        for cn, vk, _mode, v in self._iter_collapsed():
             bps = v.get("build_paths") or []
             if len(bps) < 2 and f"{cn}|{vk}" not in _SINGLE_BUILD_OK:
                 bad.append(f"{cn}|{vk}: only {len(bps)} build_paths")

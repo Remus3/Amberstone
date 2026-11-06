@@ -148,7 +148,7 @@ def test_session_position_tail_bucket_caps(tmp_path):
     start = _ANCHOR_UTC_MS
     rows = []
     t = start
-    for i in range(10):
+    for _i in range(10):
         g = _game(t, 1)
         rows.append(g)
         t = g[1] + 5 * 60 * 1000
@@ -297,7 +297,7 @@ def test_readiness_drops_for_tilt_pattern(tmp_path):
     last_session_start = base + 7 * (sh.SESSION_GAP_MS + _DAY_MS)
     t = last_session_start
     ends = []
-    for pos in range(6):
+    for _pos in range(6):
         end = t + 20 * 60 * 1000
         ends.append(end)
         t = end + 5 * 60 * 1000

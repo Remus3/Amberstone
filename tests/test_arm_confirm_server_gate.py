@@ -410,7 +410,7 @@ def test_the_registered_post_handler_is_the_gated_one():
 
 def test_the_arm_table_is_bounded():
     """Client-supplied traffic must not grow a registry without limit."""
-    for i in range(armgate.MAX_ARMED + 10):
+    for _i in range(armgate.MAX_ARMED + 10):
         armgate.arm("interrupt", "interrupt")
     assert armgate.armed_count() <= armgate.MAX_ARMED
 

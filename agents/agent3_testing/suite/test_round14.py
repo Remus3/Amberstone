@@ -88,7 +88,7 @@ def seeded_with_events(tmp_path: Path, monkeypatch):
             (0, 3001, 260),
             (0, 3001, 255),     # itemB n=3 w=0 - below ITEM_MIN_SAMPLE=5
         ]
-        for i, (win, first_iid, ts) in enumerate(matchups):
+        for _i, (win, first_iid, ts) in enumerate(matchups):
             cur = conn.execute(
                 """
                 INSERT INTO matches

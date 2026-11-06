@@ -161,7 +161,7 @@ def test_walk_is_not_recursive():
     # is what a stray rglob would have dragged in.
     excluded = {"build_orders", "laning_scenarios"}
     assert not (set(_INDEX["dirs"]) & excluded)
-    for patch, feeds in _INDEX["dirs"].items():
+    for feeds in _INDEX["dirs"].values():
         assert not (set(feeds) & excluded)
         for feed in feeds:
             assert not any(feed.startswith(x + ".") for x in excluded)
@@ -304,7 +304,7 @@ def _hygiene_sets() -> list[tuple[tuple[str, str], dict[str, tuple[str, str]]]]:
 def _registry() -> dict[str, tuple[str, str]]:
     """Union of every hygiene set's rows (a feed in two sets must agree)."""
     out: dict[str, tuple[str, str]] = {}
-    for _pair_, rows in _hygiene_sets():
+    for _pair, rows in _hygiene_sets():
         for feed, row in rows.items():
             assert out.setdefault(feed, row) == row, (
                 f"{feed} carries {row} live but {out[feed]} in the frozen set - "

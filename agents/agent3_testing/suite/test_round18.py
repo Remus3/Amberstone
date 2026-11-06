@@ -105,7 +105,7 @@ def seeded_ahri(tmp_path: Path, monkeypatch):
             conn.execute(stmt)
         now = datetime.now(timezone.utc).isoformat()
         # 9 matches: 5 wins against Xerath (-> matchup), 4 losses against Morgana
-        for i, (win, enemy) in enumerate([
+        for _i, (win, enemy) in enumerate([
             (1, "Xerath"), (1, "Xerath"), (1, "Xerath"),
             (1, "Xerath"), (1, "Xerath"),
             (0, "Morgana"), (0, "Morgana"), (0, "Morgana"),

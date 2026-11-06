@@ -26,7 +26,7 @@ def test_latency_stats_accumulates_and_caps() -> None:
     from agents.supervisor import Supervisor
     sup = Supervisor()
     # Push 25 samples - buffer caps at 20.
-    for i, v in enumerate([50, 80, 120, 200, 350, 600,
+    for _i, v in enumerate([50, 80, 120, 200, 350, 600,
                            50, 80, 100, 150, 220, 280,
                            40, 90, 110, 170, 230, 310,
                            75, 95, 130, 190, 260, 400, 500]):

@@ -37,7 +37,7 @@ class SpendBaselineTests(unittest.TestCase):
     def _dir(self):
         import tempfile
         d = Path(tempfile.mkdtemp())
-        for i, v in enumerate(("01", "02", "03")):
+        for _i, v in enumerate(("01", "02", "03")):
             _write(d / f"2026-05-{v}.json", 1.0)
         return d
 

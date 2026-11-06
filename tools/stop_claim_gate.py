@@ -1639,7 +1639,7 @@ def audit(ev):
         if EV_BYPASS.search(command) and re.search(r"\bgit\b", command):
             flag("hook_bypass", command, observed=command)
 
-    for sentence, line, turn in _sentences_with_turn(ev["texts"],
+    for sentence, line, _turn in _sentences_with_turn(ev["texts"],
                                                      ev.get("text_turns") or []):
         claims_pass = bool(CLAIM_TESTS_PASS.search(sentence))
         if claims_pass and not ran_pytest:

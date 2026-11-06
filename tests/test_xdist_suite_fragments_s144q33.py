@@ -143,10 +143,8 @@ def _is_gated(span: str) -> bool:
 def _pytest_args(span: str) -> str:
     """The arguments after the last `pytest` word, else the whole span (so the
     gate's own `fleet_suite_gate.py` path is not read as a cited test file)."""
-    last = None
-    for last in _PYTEST_WORD.finditer(span):
-        pass
-    return span if last is None else span[last.end():]
+    words = list(_PYTEST_WORD.finditer(span))
+    return span[words[-1].end():] if words else span
 
 
 def _is_xdist_whole_suite(span: str) -> bool:
