@@ -946,7 +946,6 @@ def redirect_spec_loaded_tool_logs_to_tmp():
         for mod in _iter_loaded_copies(tool_path):
             if hasattr(mod, attr):
                 setattr(mod, attr, _SUITE_LOG_DIR / fname)
-    yield
 
 
 @pytest.fixture(autouse=True)

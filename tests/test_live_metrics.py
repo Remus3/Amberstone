@@ -48,7 +48,6 @@ class _Holder:
 @pytest.fixture(autouse=True)
 def _reset_fake():
     _FakeStreamer.created = []
-    yield
 
 
 # ---------- enabled() / _config_enabled() ----------------------------------

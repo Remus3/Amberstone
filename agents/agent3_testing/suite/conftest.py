@@ -114,4 +114,3 @@ def _fake_headless_route(monkeypatch, tmp_path_factory):
     import subprocess as _sp
 
     monkeypatch.setattr(fleet_route, "_launch", lambda argv, **kw: _sp.run(argv, **kw))
-    yield

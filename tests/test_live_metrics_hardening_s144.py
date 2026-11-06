@@ -53,7 +53,6 @@ def _reset(monkeypatch):
     _FakeStreamer.created = []
     monkeypatch.setattr(live_metrics, "_cfg_warned", False, raising=False)
     monkeypatch.setattr(live_metrics, "_stream_fault", None, raising=False)
-    yield
 
 
 def _cfg(monkeypatch, tmp_path, raw: bytes):

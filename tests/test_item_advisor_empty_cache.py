@@ -60,7 +60,6 @@ def fresh_caches(monkeypatch):
     # Introduced by the fix; ``raising=False`` so the RED run fails on the
     # assertion it is meant to fail on, not on an AttributeError here.
     monkeypatch.setattr(ia, "_WARNED_LOAD_PATHS", set(), raising=False)
-    yield
 
 
 # --------------------------------------------------------------------------
