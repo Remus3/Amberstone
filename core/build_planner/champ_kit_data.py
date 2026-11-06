@@ -27,15 +27,26 @@ distinctness comes from the continuous inputs (damage_distribution floats,
 attackrange, attackspeedperlevel) - two carries with different magical share or
 attack-range get different vectors.
 
+Input hardening (s144 true-audit cycle 161): both JSON files are DS-extracted
+third-party data, so every field is shape-checked where it is read. A NaN /
+inf / bool / junk number reads as 0.0 (as a missing field always did) and is
+coerced per field, so one bad value never zeroes its siblings; a non-object
+section or a non-list tag set is read as absent; a shape-drifted file is a
+load FAILURE (retried after the gate's backoff), never a cached success; a
+champion name also resolves through a case-insensitive alphanumeric fold, so
+"ezreal" resolves like "Ezreal"; current.txt is read BOM-tolerant and a
+path-segment token is refused. Well-formed data gives byte-identical output.
+
 ASCII only - use " - " for a clause break (repo hard rule).
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from core.failed_load_gate import FailedLoadGate
 
@@ -62,13 +73,30 @@ _LOCK = threading.Lock()
 _CHAMP_GATE = FailedLoadGate()
 _RATIO_GATE = FailedLoadGate()
 
+# Case-fold lookup built lazily from (and tied to) one champion index object,
+# so a rebuilt or swapped index never serves a stale fold. (index, fold) pair.
+_FOLD: tuple[Optional[dict], dict[str, dict]] = (None, {})
+
+# A patch token names ONE directory under _DS_DIR. A separator, a drive colon
+# or a parent reference would point the read elsewhere, so it is refused
+# (same set as core/aram_balance_context.py and core/aram_comp_verdict.py).
+_PATCH_FORBIDDEN = ("/", "\\", ":", "..")
+
 
 def _resolve_ds_patch() -> Optional[str]:
+    """The current DS patch token, or None when unreadable, blank or refused.
+
+    utf-8-sig: a PowerShell 5.1 ``-Encoding UTF8`` write leaves a BOM that a
+    plain utf-8 read keeps inside the token, so champions.json went "missing".
+    """
     try:
-        txt = (_DS_DIR / "current.txt").read_text(encoding="utf-8").strip()
-        return txt or None
-    except Exception:  # noqa: BLE001 - missing file -> no data
+        txt = (_DS_DIR / "current.txt").read_text(encoding="utf-8-sig").strip()
+    # UnicodeDecodeError is a ValueError, not an OSError (RM-291A).
+    except (OSError, ValueError):
         return None
+    if not txt or any(bad in txt for bad in _PATCH_FORBIDDEN):
+        return None
+    return txt
 
 
 def _key_variants(name: str):
@@ -81,10 +109,45 @@ def _key_variants(name: str):
     yield name.replace("'", "").replace(" ", "")
 
 
+def _num(value: Any) -> float:
+    """A finite float from a JSON number or numeric string, else 0.0.
+
+    0.0 is what a missing field always read as. A NaN / inf (json.loads takes
+    the bare literals) or a bool is junk, not a share: ``_clamp`` keeps its
+    UPPER bound when handed NaN, so NaN used to read as the maximum weight.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return 0.0
+    try:
+        out = float(value)
+    except (ValueError, OverflowError):
+        return 0.0
+    return out if math.isfinite(out) else 0.0
+
+
+def _obj(value: Any) -> dict:
+    """``value`` when it is a dict, else an empty dict (absent section)."""
+    return value if isinstance(value, dict) else {}
+
+
+def _str_set(value: Any) -> frozenset[str]:
+    """The str members of a JSON list, else empty.
+
+    A bare string is NOT iterated by character, and a nested list or object
+    member (unhashable) is dropped rather than raising TypeError.
+    """
+    if not isinstance(value, (list, tuple)):
+        return frozenset()
+    return frozenset(v for v in value if isinstance(v, str))
+
+
 def _load_champions() -> dict[str, dict]:
     """champions.json 'data' map, indexed by id + display name + stripped variants.
 
-    Fail-soft to {} on any read/parse error (same contract as kit_synergy).
+    Fail-soft to {} on any read/parse error (same contract as kit_synergy). A
+    file that parses but holds no champion object (a non-object top level or
+    'data', or no object entry) is a FAILURE too - never cached as a success.
+    Only str keys with at least one alphanumeric character are indexed.
     """
     global _CHAMP_CACHE
     with _LOCK:
@@ -102,22 +165,29 @@ def _load_champions() -> dict[str, dict]:
         path = _DS_DIR / patch / "champions.json"
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
-            data = raw.get("data", raw)
-            if isinstance(data, dict):
-                for cid, entry in data.items():
-                    if not isinstance(entry, dict):
-                        continue
-                    for k in (cid, entry.get("id"), entry.get("name")):
-                        if k:
-                            for v in _key_variants(str(k)):
-                                index.setdefault(v, entry)
         except FileNotFoundError:
             if _CHAMP_GATE.record_failure():
                 _log.warning("champ_kit_data: %s missing - no champ data", path)
             return {}
-        except Exception as exc:  # noqa: BLE001 - fail-soft to {}
+        except (OSError, ValueError, RecursionError) as exc:
             if _CHAMP_GATE.record_failure():
                 _log.warning("champ_kit_data: champ load failed: %s", exc)
+            return {}
+        data = raw.get("data", raw) if isinstance(raw, dict) else None
+        if isinstance(data, dict):
+            for cid, entry in data.items():
+                if not isinstance(entry, dict):
+                    continue
+                for k in (cid, entry.get("id"), entry.get("name")):
+                    # _key_variants only drops apostrophes and spaces, so every
+                    # variant of a key with an alphanumeric keeps one.
+                    if isinstance(k, str) and _norm(k):
+                        for v in _key_variants(k):
+                            index.setdefault(v, entry)
+        if not index:
+            if _CHAMP_GATE.record_failure():
+                _log.warning("champ_kit_data: %s holds no champion rows - "
+                             "no champ data", path)
             return {}
         _CHAMP_GATE.record_success()
         _CHAMP_CACHE = index
@@ -125,14 +195,18 @@ def _load_champions() -> dict[str, dict]:
 
 
 def _load_ability_ratios() -> dict[str, dict]:
-    """cdragon_ability_ratios.json 'champions' map, keyed by champ id. Fail-soft."""
+    """cdragon_ability_ratios.json 'champions' map, keyed by champ id. Fail-soft.
+
+    A file whose top level is not an object, or whose 'champions' is missing
+    or not an object, is a FAILURE (never a cached success); an empty
+    'champions' object is a legitimate empty map and is cached.
+    """
     global _RATIO_CACHE
     with _LOCK:
         if _RATIO_CACHE is not None:
             return _RATIO_CACHE
         if not _RATIO_GATE.should_attempt():
             return {}
-        out: dict[str, dict] = {}
         patch = _resolve_ds_patch()
         if not patch:
             if _RATIO_GATE.record_failure():
@@ -142,17 +216,21 @@ def _load_ability_ratios() -> dict[str, dict]:
         path = _DS_DIR / patch / "cdragon_ability_ratios.json"
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
-            champs = raw.get("champions", {})
-            if isinstance(champs, dict):
-                out = {str(k): v for k, v in champs.items() if isinstance(v, dict)}
         except FileNotFoundError:
             if _RATIO_GATE.record_failure():
                 _log.info("champ_kit_data: %s missing - ability ratios skipped", path)
             return {}
-        except Exception as exc:  # noqa: BLE001 - fail-soft
+        except (OSError, ValueError, RecursionError) as exc:
             if _RATIO_GATE.record_failure():
                 _log.warning("champ_kit_data: ratio load failed: %s", exc)
             return {}
+        champs = raw.get("champions") if isinstance(raw, dict) else None
+        if not isinstance(champs, dict):
+            if _RATIO_GATE.record_failure():
+                _log.warning("champ_kit_data: %s has no 'champions' object - "
+                             "ability ratios skipped", path)
+            return {}
+        out = {str(k): v for k, v in champs.items() if isinstance(v, dict)}
         _RATIO_GATE.record_success()
         _RATIO_CACHE = out
         return out
@@ -160,23 +238,48 @@ def _load_ability_ratios() -> dict[str, dict]:
 
 def invalidate_cache() -> None:
     """Drop caches so the next read re-pulls (patch refresh / tests)."""
-    global _CHAMP_CACHE, _RATIO_CACHE
+    global _CHAMP_CACHE, _RATIO_CACHE, _FOLD
     with _LOCK:
         _CHAMP_CACHE = None
         _RATIO_CACHE = None
+        _FOLD = (None, {})
         _CHAMP_GATE.reset()
         _RATIO_GATE.reset()
 
 
+def _fold_index(index: dict[str, dict]) -> dict[str, dict]:
+    """``_norm``-keyed view of ``index`` (first entry wins), cached per index."""
+    global _FOLD
+    built_for, fold = _FOLD
+    if built_for is index:
+        return fold
+    fold = {}
+    for k, entry in index.items():
+        fold.setdefault(_norm(k), entry)
+    _FOLD = (index, fold)
+    return fold
+
+
 def _resolve_champ(champ) -> dict:
+    """The champions.json entry for ``champ``, or {} when unresolved.
+
+    Exact name variants are tried first (byte-identical to the pre-fold
+    lookup), then a case-insensitive alphanumeric fold, so a lower-cased or
+    upper-cased name resolves like the canonical one - the coherence re-rank
+    resolves the archetype case-insensitively, so a fold miss here docked a
+    caster marksman's real core. A name with no alphanumeric never resolves.
+    """
     name = str(champ) if champ is not None else ""
-    if not name:
+    key = _norm(name)
+    if not key:
         return {}
     index = _load_champions()
-    for v in _key_variants(name):
+    if not index:
+        return {}
+    for v in _key_variants(name.strip()):
         if v in index:
             return index[v]
-    return {}
+    return _fold_index(index).get(key, {})
 
 
 # Ability-AP-scaling floor separating a genuine hybrid ability-caster from a crit
@@ -216,7 +319,7 @@ def is_caster_marksman(champ) -> bool:
     entry = _resolve_champ(champ)
     if not entry:
         return False
-    tags = set(entry.get("tags") or [])
+    tags = _str_set(entry.get("tags"))
     if not (("Marksman" in tags) and ("Mage" in tags)):
         return False
     return _ability_agg(entry).get("ap", 0.0) >= _CASTER_MKS_ABIL_AP_FLOOR
@@ -281,25 +384,28 @@ def is_ap_hybrid_marksman(champ) -> bool:
 
 def _ability_agg(entry: dict) -> dict[str, float]:
     """Sum ap_pct + total_ad_pct across all spell blocks (top-rank value),
-    normalized to fractions. Used only as a secondary AD/AP confirmation."""
+    normalized to fractions. Used only as a secondary AD/AP confirmation.
+
+    A spell entry that is not a list of objects is skipped (a bare number used
+    to raise TypeError), and a ratio that is not a finite number - NaN, inf,
+    bool - adds nothing: an inf made an auto-attacker a caster marksman and a
+    NaN erased every real ratio summed with it."""
     out = {"ap": 0.0, "total_ad": 0.0}
     cid = entry.get("id")
     if not cid:
         return out
-    blocks = _load_ability_ratios().get(str(cid)) or {}
+    blocks = _obj(_load_ability_ratios().get(str(cid)))
     for arr in blocks.values():
-        for b in (arr or []):
+        if not isinstance(arr, list):
+            continue
+        for b in arr:
             if not isinstance(b, dict):
                 continue
             for src, key in (("ap", "ap_pct"), ("total_ad", "total_ad_pct")):
                 v = b.get(key)
-                if isinstance(v, list) and v:
-                    try:
-                        out[src] += float(v[-1] or 0.0) / 100.0
-                    except (TypeError, ValueError):
-                        pass
-                elif isinstance(v, (int, float)):
-                    out[src] += float(v) / 100.0
+                if isinstance(v, list):
+                    v = v[-1] if v else None
+                out[src] += _num(v) / 100.0
     return out
 
 
@@ -319,29 +425,22 @@ def derive_kit_weights(champ) -> Optional[dict[str, float]]:
     if not entry:
         return None
 
-    lm = entry.get("lolmath") or {}
-    dd = lm.get("damage_distribution") or {}
-    try:
-        phys = float(dd.get("physical") or 0.0)
-        mag = float(dd.get("magical") or 0.0)
-        true_s = float(dd.get("trued") or 0.0)
-    except (TypeError, ValueError):
-        phys = mag = true_s = 0.0
+    # Every section is shape-checked and every number coerced on its own: a
+    # non-object section reads as absent, and a junk / non-finite number reads
+    # as 0.0 without zeroing its siblings (one shared try block used to).
+    lm = _obj(entry.get("lolmath"))
+    dd = _obj(lm.get("damage_distribution"))
+    phys = _num(dd.get("physical"))
+    mag = _num(dd.get("magical"))
+    true_s = _num(dd.get("trued"))
 
-    tags = set(entry.get("tags") or [])
-    roles = set(lm.get("roles") or [])
-    stats = entry.get("stats") or {}
-    try:
-        rng = float(stats.get("attackrange") or 0.0)
-        as_pl = float(stats.get("attackspeedperlevel") or 0.0)
-    except (TypeError, ValueError):
-        rng = as_pl = 0.0
-    ratings = lm.get("ratings") or {}
-    try:
-        util = max(float(ratings.get("healing") or 0.0),
-                   float(ratings.get("shielding") or 0.0))
-    except (TypeError, ValueError):
-        util = 0.0
+    tags = _str_set(entry.get("tags"))
+    roles = _str_set(lm.get("roles"))
+    stats = _obj(entry.get("stats"))
+    rng = _num(stats.get("attackrange"))
+    as_pl = _num(stats.get("attackspeedperlevel"))
+    ratings = _obj(lm.get("ratings"))
+    util = max(_num(ratings.get("healing")), _num(ratings.get("shielding")))
 
     ranged = rng >= 300.0
     is_mks = ("Marksman" in tags) or ("MARKSMAN" in roles)
