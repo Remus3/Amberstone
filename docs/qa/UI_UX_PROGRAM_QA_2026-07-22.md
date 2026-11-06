@@ -828,3 +828,25 @@ At 720 px and under, the dashboard Active Match view stacks its panes in ONE ful
   - HIERARCHY: CALL is the first thing under the view head at every narrow width.
 - FUTURE: the other views' `.view-section-head` carries the same non-shrinking h2, so a long sub line can push past a narrow view elsewhere. Only Active Match was measured and changed here.
 - FUTURE: at 320 the view section's own 18 px margin plus 18 px padding (header.css) leaves the panes 246 px of a 320 px window. A narrow-window margin ruling belongs to the shared `.view-section`, not to one view.
+
+## 2026-11-06 - lane 4 headless, s144 cycle 153 (RM-1773)
+
+### RULING
+- A hover-then-read test waits out the hovered element's transitions, the same as a theme-swap or focus read (RM-1132). A fixed sleep is not a settle: it encodes the transition's duration and goes wrong without failing when that duration changes.
+- Found by the RM-1132 inventory (`tests/snapshot_panels/test_theme_swap_reads_settled.py::test_inventory_covers_every_theme_swapping_reader`), which was red on lane/uiux. Two modules were not in it: RM-1763 `test_build_insights_sort_header_hover.py` and RM-1764 `test_last_match_review_nav_hover.py`.
+- Audit (headless, all six themes, booted with `?theme=`; the RM-1132 detector plus a no-swap `getAnimations()` sweep right after a real mouse hover and right after un-hover):
+  - Build Insights sort header (`.bi-sort-btn`, and the non-sortable "Expected WP" th): nothing transitions on boot, hover or un-hover. No sheet is needed, and none was added.
+  - Last Match Review nav tab (`#lm-go-to-review`) and the Graph tab (`.lm-tab`): background-color and color DO transition (`transition: ... 0.12s`) on hover and on un-hover. The module read them after `page.wait_for_timeout(250)`.
+- Fix (test only; no page change): `test_last_match_review_nav_hover.py` reads through `_hover` / `_unhover`, which await `getAnimations().finished` on the tab (`_SETTLE`, the `test_champ_select_lock_button_focus` pattern). The two sleeps are gone.
+- Alternative: the transitions-off sheet in the opener. Rejected here because awaiting keeps the real 0.12s transition under test, and the pin can then assert the transition still exists (so the verdict is re-audited if it goes away).
+- Pin: two new parametrized tests in test_theme_swap_reads_settled.py (6 themes each). The inventory is now 34 modules.
+  - The BI one asserts nothing runs after hover or un-hover.
+  - The LM one asserts the colour transition runs on the tab itself on a raw hover and a raw un-hover, that `_SETTLE` leaves nothing running after each, that `_hover` / `_unhover` settle, and, by source, that the module has no `wait_for_timeout` and one `page.hover(`.
+  - `_SETTLE` awaits only finite running animations (an infinite or paused one never finishes; the sweep after it still sees one) and throws after 20 waits instead of hanging to the pytest timeout (verifier SHOULD-FIX).
+- Red and mutations (each restored, sha256-checked):
+  - HEAD's inventory: 1 failed.
+  - `_SETTLE` made a no-op: the LM module goes 9 of 9 red, so without a settle every read lands mid-transition. The pin goes 6 red.
+  - The sleep put back in `_unhover`: the pin goes 6 red.
+  - `transition: color 0.3s` added to `.bi-sort-btn`: the BI pin goes 6 red.
+- 5-phase audit: no page, CSS or JS change, so STRUCTURE / TYPOGRAPHY / HIT-TARGETS / HIERARCHY are unchanged. ASCII: 0 non-ASCII bytes and 0 CR in the diff.
+- FUTURE: the inventory regex only catches modules that change the theme. A hover-then-read module booted on the default theme (no `?theme=`) would not be listed, and nothing would check its settle.

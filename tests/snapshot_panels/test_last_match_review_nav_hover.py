@@ -98,10 +98,35 @@ def _open(pw_browser, mock_server, theme, vp=VIEWPORTS[0]):
     return ctx, page, errors
 
 
+# .lm-tab transitions background + colour over 0.12s on hover and on
+# un-hover, so a colour read right after the mouse moves lands mid-
+# transition. Wait out every transition on the element itself (the
+# test_champ_select_lock_button_focus pattern), never a fixed sleep:
+# test_theme_swap_reads_settled pins this.
+# An infinite or paused animation never finishes, so it is not awaited
+# (the pin's sweep after _SETTLE still sees it), and a bounded loop fails
+# loudly instead of hanging until the pytest timeout.
+_SETTLE = """async (sel) => {
+  for (let i = 0; i < 20; i++) {
+    const el = document.querySelector(sel);
+    void getComputedStyle(el).color;
+    const as = el.getAnimations().filter((a) => a.playState === 'running' &&
+      a.effect.getComputedTiming().endTime !== Infinity);
+    if (!as.length) return;
+    await Promise.allSettled(as.map((a) => a.finished));
+  }
+  throw new Error('still animating after 20 waits: ' + sel);
+}"""
+
+
 def _hover(page, sel):
     page.hover(sel)
-    # .lm-tab transitions background + colour over 0.12s.
-    page.wait_for_timeout(250)
+    page.evaluate(_SETTLE, sel)
+
+
+def _unhover(page, sel):
+    page.mouse.move(2, 2)
+    page.evaluate(_SETTLE, sel)
 
 
 @pytest.mark.parametrize("theme", THEMES)
@@ -145,8 +170,7 @@ def test_review_nav_hover_at_both_viewports_in_the_default_theme(
         assert _ratio(rest["color"], hov["color"]) >= MIN_STEP, (rest, hov)
         assert _ratio(hov["color"], _bg(page, _NAV)) >= AA, hov
         # Moving off restores the resting colour.
-        page.mouse.move(2, 2)
-        page.wait_for_timeout(250)
+        _unhover(page, _NAV)
         assert page.evaluate(_COLORS, _NAV)["color"] == rest["color"]
         assert not errors, errors
     finally:

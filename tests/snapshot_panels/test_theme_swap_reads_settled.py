@@ -89,7 +89,19 @@ RM-1549, RM-1550, RM-1551, RM-1554 and RM-1555, landed with no row here:
     colour and background. No transition runs on a re-class; ENEMY ZONE and
     DEEP ENEMY DO run the zoneWarn animation, on box-shadow only, which no
     read touches, so none is needed.
-This module pins all thirty-two verdicts at runtime with each test's own opener,
+Audit (2026-11-06, s144 uiux cycle 153, RM-1773, the same detector plus
+a no-swap sweep right after a real mouse hover and un-hover), the two s144
+uiux hover modules of RM-1763 and RM-1764:
+  - test_build_insights_sort_header_hover: boot-stamped (?theme=), never
+    swaps in-page, no sheet; it reads the sort header's colour right after
+    page.hover() and after the mouse leaves, with no wait. Nothing it reads
+    transitions on boot, hover or un-hover, so none is needed.
+  - test_last_match_review_nav_hover: boot-stamped, never swaps in-page;
+    the Review nav tab and the Graph tab (.lm-tab) DO transition background
+    and colour over 0.12s on hover and un-hover. Its reads were settled only
+    by a 250 ms sleep; they now await getAnimations().finished on the tab
+    (its _SETTLE), and the pin holds the sleep out of the module.
+This module pins all thirty-four verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -178,9 +190,10 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The thirty-two modules audited above, keyed by file name.
+# The thirty-four modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
+    "test_build_insights_sort_header_hover.py",
     "test_champ_select_arena_augment_options.py",
     "test_champ_select_arena_pane_contrast.py",
     "test_champ_select_enemy_wr_slot_contrast.py",
@@ -194,6 +207,7 @@ _COVERED = {
     "test_history_row_hover_marks_contrast.py",
     "test_home_accent2_focus_ring.py",
     "test_home_history_nav_focus_ring.py",
+    "test_last_match_review_nav_hover.py",
     "test_lm_hero_stats_disclosure.py",
     "test_lobby_lane_popup_keyboard.py",
     "test_lobby_mains_tabs.py",
@@ -840,6 +854,119 @@ def test_zone_pill_reads_are_settled(mock_server, pw_browser, theme):
         _check(page, _ZONE_SEL, False, f"zone pill/{theme} swaps")
     finally:
         _close(ctx, page)
+
+
+# Force style on every element sel matches and its ancestors, then list the
+# transitions / animations running on one of them, with no theme change:
+# the read a hover-then-measure module makes right after the mouse moves.
+_RUNNING_NOW = """
+(sel) => {
+  const watched = new Set();
+  for (const el of document.querySelectorAll(sel)) {
+    for (let n = el; n; n = n.parentElement) watched.add(n);
+  }
+  for (const n of watched) {
+    const cs = getComputedStyle(n);
+    void (cs.color + cs.backgroundColor + cs.boxShadow + cs.borderTopColor);
+  }
+  const out = [];
+  for (const a of document.getAnimations()) {
+    const tg = a.effect && a.effect.target;
+    if (!tg || !watched.has(tg)) continue;
+    out.push((tg.id || tg.className) + ' :: ' +
+      (a.transitionProperty || a.animationName || 'animation'));
+  }
+  return out;
+}
+"""
+
+_BOOTED = "document.documentElement.dataset.theme || 'hextech'"
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+def test_bi_sort_header_hover_reads_are_settled(mock_server, pw_browser, theme):
+    # test_build_insights_sort_header_hover boots each theme (?theme=), never
+    # swaps in-page, and reads the sort header's colour right after a real
+    # mouse hover and un-hover, with no wait. Nothing it reads transitions.
+    from tests.snapshot_panels.test_build_insights_sort_header_hover import (
+        _EXP,
+        _SEL,
+    )
+    from tests.snapshot_panels.test_build_insights_sort_header_hover import (
+        _open as _bi_open,
+    )
+
+    ctx, page, _errors = _bi_open(pw_browser, mock_server, theme)
+    try:
+        assert page.evaluate(_BOOTED) == theme, (
+            f"bi sort header: booted on the wrong theme, not {theme}"
+        )
+        # The hovers first, on the booted theme: _check ends on hextech.
+        for sel in (_SEL, _EXP):
+            page.hover(sel)
+            got = page.evaluate(_RUNNING_NOW, sel)
+            assert not got, (
+                f"{theme}: a hovered {sel!r} read would straddle a transition"
+                f" (settle the read in its module): {got}"
+            )
+            page.mouse.move(2, 2)
+            got = page.evaluate(_RUNNING_NOW, sel)
+            assert not got, (
+                f"{theme}: an un-hovered {sel!r} read would straddle a"
+                f" transition (settle the read in its module): {got}"
+            )
+        _check(page, f"{_SEL}, {_EXP}", False, f"bi sort header/{theme}",
+               themes=[theme])
+    finally:
+        _close(ctx, page)
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+def test_review_nav_hover_reads_wait_out_their_transition(mock_server, pw_browser, theme):
+    # test_last_match_review_nav_hover boots each theme (?theme=) and never
+    # swaps in-page (an in-page swap here does transition the tabs' colour),
+    # but .lm-tab DOES transition background and colour on hover and
+    # un-hover, so its colour reads must await the transition.
+    from tests.snapshot_panels import test_last_match_review_nav_hover as lm
+
+    ctx, page, _errors = lm._open(pw_browser, mock_server, theme)
+    try:
+        assert page.evaluate(_BOOTED) == theme, (
+            f"review nav: booted on the wrong theme, not {theme}"
+        )
+        for sel, own in ((lm._NAV, "lm-go-to-review"), (lm._TAB, "lm-tab")):
+            # On the tab itself, not an ancestor: "<id or class> :: color".
+            want = f"{own} :: color"
+            for step, move in (("hover", lambda s=sel: page.hover(s)),
+                               ("un-hover", lambda: page.mouse.move(2, 2))):
+                move()
+                raw = page.evaluate(_RUNNING_NOW, sel)
+                assert want in raw, (
+                    f"{theme}: the {sel!r} {step} colour transition is gone -"
+                    f" re-audit test_last_match_review_nav_hover and update"
+                    f" the verdict: {raw}"
+                )
+                # The module's own settle leaves nothing running.
+                page.evaluate(lm._SETTLE, sel)
+                after = page.evaluate(_RUNNING_NOW, sel)
+                assert not after, (
+                    f"{theme}: {sel!r} still moving after _SETTLE ({step}): {after}"
+                )
+            lm._hover(page, sel)
+            assert not page.evaluate(_RUNNING_NOW, sel), sel
+            lm._unhover(page, sel)
+            assert not page.evaluate(_RUNNING_NOW, sel), sel
+        _check(page, f"{lm._NAV}, {lm._TAB}", False, f"review nav/{theme}",
+               themes=[theme])
+    finally:
+        _close(ctx, page)
+    src = (_HERE / "test_last_match_review_nav_hover.py").read_text(encoding="utf-8")
+    assert "await Promise.allSettled(as.map((a) => a.finished));" in lm._SETTLE
+    assert "wait_for_timeout" not in src, "a fixed sleep stands in for the settle"
+    # Every hover and un-hover in the module goes through the settled pair.
+    assert src.count("page.hover(") == 1 and src.count("page.mouse.move(2, 2)") == 2, (
+        "a hover or un-hover in the module bypasses _hover / _unhover"
+    )
 
 
 def test_positive_control_detects_a_real_transition(mock_server, pw_browser):
