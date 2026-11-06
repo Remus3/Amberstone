@@ -3323,6 +3323,55 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   (`eece8500`, grab base only when League is foreground + once per config) was code-fixed + TDD-tested
   but NEVER re-validated in a live game (base was restored from a still, not re-grabbed clean in-game).
   Also the open auditor proposal to add a `validate_base()` guard to `routes_vision_calibrator.py`.
+  **READY (lane 9, s144 cycle 77, RM-1666, PREP only, no game up: RC :8888 and :2999 refused,
+  re-probed 2026-11-05 about 23:28 -06:00; NOT ticked).** AGE CHECK: the `validate_base()` half
+  is STALE, shipped the same day as the fix (`ffba931c7`, 2026-07-05: `core/vision_profiles.py`
+  `validate_base`, called from `dashboard/routes_vision_calibrator.py` `vp.validate_base`), so only
+  the live re-validation is left. Source facts (pinned in `tests/test_gated_g423_base_capture.py`):
+  the self-grab in `vision_server/_frame.py` calls `save_reference_image(img)` with no force, and the
+  auto path saves only when (a) `health.json` `has_game`, (b) the foreground process is
+  `League of Legends.exe`, (c) no base still exists yet for the active `config_key`, in that order.
+  **Two traps the probe closes:** (1) gate (c) MASKS gate (b): every still under
+  `data/vision_calib_reference/` was written 2026-07-05 / 2026-07-06 (two post-date the fix: the
+  1.6200 base at 22:45, which this row says was restored from a still, and the 3.0000 base at
+  07-06 01:51, auto or manual unknown), none in the four months since, so
+  "the base did not change while I alt-tabbed" on a calibrated config is a SUBSTITUTION: the
+  once-per-config gate refuses before the foreground is consulted. The check is ARMED only when the
+  active config has NO base still at the first sample (a HUD value never played, e.g. a
+  MinimapScale missing from the `refs` list, set in the client BEFORE queueing). (2) a forced write
+  (the `/vision-calibrator` refresh, `capture_reference`, a named-state ingest) bypasses all three
+  gates and looks like an auto write on disk: nobody touches the calibrator during the window.
+  **Idle finding (RM-1666, a FILING for the main session, not this row's verdict):** at idle the
+  active `config_key` reads `unknown`, because League's game.cfg (mtime 2026-10-25) carries no
+  `[General]` Width/Height (its other General keys, `WindowMode` among them, are present), so `core.hud_settings.read_hud_settings` cannot key
+  a profile. If an in-game `refs` read still says `unknown`, the self-grab would file the still as
+  `unknown.jpg` and every HUD profile lookup falls back; the grader calls that window AMBIGUOUS.
+  PROBE (read-only): before queueing, `python tools/gated_g423_base_capture.py refs` (active key,
+  `armed`, every still with its write time and sha12); then from the load screen, `python
+  tools/gated_g423_base_capture.py watch --samples 150 --interval 2 --json` (per sample:
+  `has_game`, foreground-is-League, `armed`, every still's sha12 + meta `ts`). The operator
+  alt-tabs to the desktop as soon as the game is in (has_game true) and stays out at least 10 s,
+  then returns to League; nothing else.
+  PREDICATE (stated before any game): **FAIL** = FAIL_CLOBBER (a new base still with League NOT
+  foreground on both bracketing samples), FAIL_NO_GAME (has_game false on both sides),
+  FAIL_REGRAB (any still, once seen in the window, changes sha or meta ts, the new still after its
+  own write included: gate (c) broken, or a forced write to triage; a still that vanishes VOIDs
+  the window), or NO_WRITE_WHILE_ELIGIBLE (armed, in game, League foreground 60 s, no
+  write: triage the self-grab capture gates on vision `/status`). **PASS needs both:** (a) `watch`
+  PASS_CANDIDATE: armed at the first sample, at least 3 samples spanning 6 s of has_game + NOT
+  League + still absent on the SAME config_key (the alt-tab was exercised and nothing was
+  written), then exactly one new
+  base still for the active key with has_game + League foreground on both bracketing samples and
+  its meta `ts` inside the bracket; (b) the operator's eyeball of that still: an in-game HUD frame,
+  not a desktop and not a load screen (the pixels are the RENDER half; the grade cannot see them).
+  GATE_C_MASKED / NOT_EXERCISED / AMBIGUOUS / VOID / NO_EVIDENCE leave the row open.
+  EVIDENCE CONTRACT: the `refs` JSON before the game, the `watch` JSON verdict + bracket +
+  `alt_tab` stretch, gameMode + queue, the local time of the alt-tab, and the operator's one-line
+  statement about the still. SUBSTITUTION CHECK: does the evidence show the foreground gate
+  REFUSED a write during a real alt-tab and then a clean in-game still was written, or only that an
+  already-calibrated still sat unchanged? The latter, a unit test (`tests/test_vision_profiles.py`)
+  or a manual calibrator capture answers the compute half only. Grader:
+  `tools/gated_g423_base_capture.py`, tests `tests/test_gated_g423_base_capture.py`.
 - **G4-24** (was H6) VISION-OCR box recalibration at 2560x1440 via `/vision-calibrator` against
   `data/vision_calib_reference/*.jpg`, then WIRE the native OCR crops. Native reference-capture is
   live-verified (LEDGER 793); the recalibration needs rendered in-game HUD pixels to validate the field
