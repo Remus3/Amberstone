@@ -1339,7 +1339,10 @@ def _default_bindings(fn, state, late=frozenset()):
     value (or a logging function, as `_LOGFN` marks). A default is evaluated
     where the def stands, so it is judged with the def-time state; a lambda
     inside one reads `late`, as everywhere. Keeps the RM-1561 (c) caveat:
-    a tainted default keeps its parameter tainted however it is called."""
+    a tainted default keeps its parameter tainted however it is called.
+    RM-1787 (a): a default that is itself a wrapper (a lambda, a name
+    bound to one, either arm of a conditional: `_value_wrapper_specs`)
+    makes the parameter one, as `_SINKFN` entries; the same caveat holds."""
     a = fn.args
     pos = a.posonlyargs + a.args
     pairs = list(zip(pos[len(pos) - len(a.defaults):], a.defaults))
@@ -1352,6 +1355,8 @@ def _default_bindings(fn, state, late=frozenset()):
             bound.add(_LOGFN + arg.arg)
         if _is_logger_expr(default, state):
             bound.add(_LOGOBJ + arg.arg)
+        for spec in _value_wrapper_specs(default, state, late):
+            bound.add(f"{_SINKFN}{arg.arg} {spec}")
     return bound
 
 
@@ -1401,8 +1406,9 @@ def _sink_specs(fn, state, late=frozenset()):
     RM-1563: a parameter whose default is a logging function or logger
     object (`def g(m, p=log.info): p(m)`) is one inside the body, as the
     def's own walk has it (RM-1562), so its `_LOGFN` / `_LOGOBJ` mark is
-    put back after the shadowing. The default is judged from `state`; a
-    def is judged from the state after it, a superset of the def-time
+    put back after the shadowing; RM-1787 (a): so is the `_SINKFN` mark
+    of a default that is itself a wrapper (`def g(m, p=h): p(m)`). The
+    default is judged from `state`; a def is judged from the state after it, a superset of the def-time
     state (the safe side). A tainted-VALUE default is not added: the def's
     own walk (RM-1562) already reports the sites it reaches. A caller that
     passes its own `p` is still read as logging through it (the safe
@@ -1423,7 +1429,7 @@ def _sink_specs(fn, state, late=frozenset()):
     base = _readable(set(state) | set(late), _scope_names(body))
     base = frozenset(e for e in base if not shadowed(e))
     base |= {e for e in _default_bindings(fn, state, late)
-             if e.startswith((_LOGFN, _LOGOBJ))}
+             if e.startswith((_LOGFN, _LOGOBJ, _SINKFN))}
     # The answer depends only on `fn` and `base`, and a nested def is judged
     # again on every pass of every walk around it, so it is memoised for one
     # `_message_leak_sites` call (the tree, so every `id`, outlives it).
@@ -3343,6 +3349,56 @@ _CHECKER_SAMPLES = (
     ("class-level tuple alias of a method wrapper keeps the positional shift",
      "class C:\n    def g(self, m, n):\n        log.info(m)\n    h, j = g, fetch\n"
      "    def k(self, url):\n        self.h('x', url)\n", False),
+    # RM-1787 (a): a parameter default that is itself a wrapper makes the
+    # parameter one inside the body, so a parameter the body hands it is a
+    # sink parameter (`_default_bindings` marks `_SINKFN` too).
+    ("wrapper whose default is a lambda wrapper",
+     "def g(m, p=lambda x: log.info(x)):\n    p(m)\ndef f(url):\n    g(url)\n", True),
+    ("wrapper whose default is a name bound to a lambda wrapper",
+     "h = lambda x: log.info(x)\ndef g(m, p=h):\n    p(m)\ndef f(url):\n    g(url)\n",
+     True),
+    ("wrapper whose default is a def wrapper",
+     "def h(x):\n    log.info(x)\ndef g(m, p=h):\n    p(m)\ndef f(url):\n    g(url)\n",
+     True),
+    ("wrapper whose keyword-only default is a wrapper",
+     "def h(x):\n    log.info(x)\ndef g(m, *, p=h):\n    p(m)\ndef f(url):\n    g(url)\n",
+     True),
+    ("wrapper whose default is a conditional over a wrapper",
+     "def h(x):\n    log.info(x)\ndef g(m, p=h if ok else fetch):\n    p(m)\n"
+     "def f(url):\n    g(url)\n", True),
+    ("wrapper whose wrapper default is called by keyword",
+     "def h(x):\n    log.info(x)\ndef g(m, p=h):\n    p(x=m)\ndef f(url):\n    g(url)\n",
+     True),
+    ("lambda wrapper whose default is a wrapper",
+     "def h(x):\n    log.info(x)\ng = lambda m, p=h: p(m)\ndef f(url):\n    g(url)\n", True),
+    ("lambda with a wrapper default called in place",
+     "def h(x):\n    log.info(x)\ndef f(url):\n    (lambda m, p=h: p(m))(url)\n", True),
+    ("lambda whose tainted default is handed to a wrapper default",
+     "def h(x):\n    log.info(x)\ndef f(url):\n    k = lambda m=url, p=h: p(m)\n", True),
+    ("local def whose tainted default is handed to a wrapper default",
+     "def h(x):\n    log.info(x)\ndef f(url):\n    def g(m=url, p=h):\n        p(m)\n", True),
+    ("local wrapper whose default is a wrapper",
+     "def h(x):\n    log.info(x)\ndef f(url):\n    def g(m, p=h):\n        p(m)\n    g(url)\n",
+     True),
+    ("method wrapper whose default is a wrapper",
+     "def h(x):\n    log.info(x)\nclass C:\n    def g(self, m, p=h):\n        p(m)\n"
+     "    def k(self, url):\n        self.g(url)\n", True),
+    # RM-1787 (a) keep-greens.
+    ("wrapper default never handed the parameter",
+     "def h(x):\n    log.info(x)\ndef g(m, p=h):\n    p('x')\ndef f(url):\n    g(url)\n",
+     False),
+    ("wrapper default called with a sanitized value",
+     "def h(x):\n    log.info(x)\ndef g(m, p=h):\n    p(m)\ndef f(url):\n"
+     "    g(_safe_url(url))\n", False),
+    ("wrapper default handed the parameter at a non-sink position",
+     "def h(x, y):\n    log.info(y)\ndef g(m, p=h):\n    p(m, 'x')\ndef f(url):\n"
+     "    g(url)\n", False),
+    ("wrapper default re-bound in the body",
+     "def h(x):\n    log.info(x)\ndef g(m, p=h):\n    p = fetch\n    p(m)\n"
+     "def f(url):\n    g(url)\n", False),
+    ("default read from a name the module re-binds to a wrapper later",
+     "def h(x):\n    log.info(x)\nq = fetch\ndef g(m, p=q):\n    p(m)\nq = h\n"
+     "def f(url):\n    g(url)\n", False),
 )
 
 
