@@ -3100,6 +3100,54 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   overlay build panel in a real **Gwen / Kayle / Kog'Maw** game. Backend + `/api/build-plan` already
   PROVEN live (scorer=onhit, Nashor's present; Syndra=ability / Akali=burst controls held). The
   Electron overlay is agent-blind, so this is operator-only. SOURCE: LEDGER 911, ENGINE 1.216.0.
+  **READY (lane 9, s144 cycle 74, PREP only, NOT ticked; no game up: :8888 and :8860 curl empty
+  at 2026-11-05T22:00-06:00, health.json last updated 2026-11-01).** AGE CHECK: the row is not
+  stale but its "backend proven" half was proven on the WRONG ROUTE for a render question.
+  Source facts (pinned in `tests/test_gated_g417_onhit_render.py`): (a) `/api/build-plan` (LEDGER
+  911's live proof) feeds only the per-icon state badges and the COUNTER chips of the BUILD pane
+  `#am-build-body`; the three painted item rows come from `POST /api/ds-preview` `ranked` ("Daemon
+  Slayer", `.bm-live`, `_maybeRefreshDsPicks`, falling back to the coach payload's
+  `daemon_slayer_picks` while the preview cache is empty) and `POST /api/build-order` `order`
+  ("Meta Build" `.bm-meta` with my items and level; "Ultimate Build" `.bm-ult` at level 18, no
+  items). So no live proof exists yet that the route the Daemon Slayer row paints serves onhit
+  with Nashor's. (b) All three routes take the scorer from `get_archetype_for(champion)
+  ["primary"]` (the client never sends an archetype): `onhit` for Gwen / Kayle / KogMaw by
+  default, but a persisted operator pick in gitignored `data/cs_archetype_picks.json` wins, so only
+  the served reply's `scorer` proves the onhit route ran. (c) The Daemon Slayer row = the preview's
+  `top` 8 family-deduped, capped at 7 (`_BM_SLOT_CAP`), then the in-memory overrides and MUTE
+  (`filterSilenced` DROPS a silenced item from this row only), then owned sorted left; a headless
+  page has no overrides. (d) An owned Nashor's is not in the preview's ranked rows, so read it
+  BEFORE the buy; a full build answers `build_complete` (scorer `dps`, not a drift). (e) The Meta /
+  Ultimate requests echo an `incumbent` for hysteresis that a curl cannot reproduce, so those two
+  rows are ADVISORY; only the Daemon Slayer row is graded strictly. Gwen (coherence 1.0, Nashor's
+  #5 on `/rank-onhit` in LEDGER 911) is the strongest test; Kayle sits at 0.3.
+  PROBE (real SR or ARAM game as Gwen / Kayle / Kog'Maw, before Nashor's is bought, DS :8860 up;
+  repo root): (1) `curl -sk https://127.0.0.1:8888/api/state > _scratch/g417_state.json`; (2) in a
+  HEADLESS Chromium page on `https://127.0.0.1:8888/` (ignore cert errors, Active Match view, open
+  at least 10 s) evaluate `python tools/gated_g417_onhit_render.py snippet` and save the JSON as
+  `_scratch/g417_dom.json` within 5 s of (1); (3) `python tools/gated_g417_onhit_render.py bodies
+  --state _scratch/g417_state.json` and POST its `ds_preview` body to `/api/ds-preview` (save
+  `_scratch/g417_preview.json`), optionally `build_order` and `ultimate` to `/api/build-order`
+  (`_scratch/g417_order.json`, `_scratch/g417_ult.json`); (4) `python
+  tools/gated_g417_onhit_render.py grade --state _scratch/g417_state.json --dom
+  _scratch/g417_dom.json --preview _scratch/g417_preview.json [--order ... --ultimate ...]
+  --state-ts <epoch of (1)> --json`. On a first RENDER_MISMATCH re-run (1)-(4) once on a freshly
+  opened page (the 4 s preview cooldown can leave the row one fetch behind).
+  PREDICATES, stated before any game: RENDER_MATCH (exit 0) iff every supplied reply is ok with
+  scorer `onhit`, Nashor's (3115, or a fallback tile named Nashor's Tooth) is painted, visible
+  and unclipped in the Daemon Slayer row exactly when the preview ranks it in the shown 7, and
+  at least one row paints it. FAIL (exit 3): SCORER_DRIFT, RENDER_MISMATCH, PLAN_NO_NASHOR (no
+  reply ranks it: a DS question at this state, not a render bug), NASHOR_DARK, PLAN_ERROR,
+  ROSTER_BAD, PANE_ABSENT. NO EVIDENCE (exit 4): NO_GAME, STALE_DOM, NOT_ONHIT_CHAMP, FULL_BUILD,
+  NASHOR_OWNED, EMPTY_ROWS.
+  EVIDENCE CONTRACT: the grade JSON (scorers, rows_with_nashor, painted and expected ids,
+  game_time_s, lcu_phase, state_ts) plus the operator's overlay read: which overlay row shows the
+  Nashor's icon, at what game time, and a yes / no that it is the onhit build.
+  SUBSTITUTION CHECK: RENDER_MATCH proves the dashboard page painted what the preview computed,
+  which is the compute half again; the headless page is not the Electron `w-build` widget (its
+  own 412 px width, overrides and MUTE live only in the overlay page), so its clip read is
+  dashboard-only. Only the operator's eyeball of the overlay ticks G4-17; never tick on the
+  grade alone.
 - **G4-18** Jhin AS-lock full lethality eyeball (`c904ddae`) - the Boots of Swiftness half was
   live-confirmed; the lethality core eyeball remains.
 - **G4-19** Overlay `liveclient_cache` self-heal live re-verify (`03868b03`).
