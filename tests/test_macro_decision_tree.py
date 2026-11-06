@@ -8,7 +8,7 @@
 #   - has_capability fail-CLOSED ward gate: core/mode_capabilities.py:80-95.
 #   - advisory chain + 3-row clamp: dashboard/_deterministic_coaching.py
 #     _compute_uncached (macro_response kind="macro_response"
-#     core/macro_response.py:267 - the NEW decision-tree kind is "macro",
+#     core/macro_response.py:295 - the NEW decision-tree kind is "macro",
 #     no collision).
 #   - vision fog per-enemy shape: core/vision_tracker.py:376-388.
 #   - load_vision_state test seam: core/laning_cv_overrides.py:62-72

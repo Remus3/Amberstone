@@ -183,6 +183,123 @@ class FailSoftTests(unittest.TestCase):
             self.fail(f"macro_response_callout raised: {exc!r}")
 
 
+class JunkInputHardeningTests(unittest.TestCase):
+    """s144 true-audit (RM-1953..RM-1957): junk input never fires a row it
+    should not, and one junk entry never hides a real one."""
+
+    _NAN = float("nan")
+    _INF = float("inf")
+
+    def _stall(self, **over: object) -> dict:
+        kw: dict = dict(objective_events=[], lead={"state": "even"},
+                        game_time_s=1400.0, inhib_events=[], stable_for_s=200.0)
+        kw.update(over)
+        return kw
+
+    # RM-1953: a non-finite game time is not a time.
+    def test_nan_game_time_fires_no_lost_objective(self) -> None:
+        # The event is 900 s old at any real time; NaN made every window
+        # compare False, so it read as a FRESH loss.
+        self.assertIsNone(mr.lost_objective_response(
+            [_oe("dragon", "enemy", 500.0)], {"state": "behind"}, self._NAN))
+
+    def test_non_finite_game_time_fires_no_stall(self) -> None:
+        for gt in (self._NAN, self._INF, "nan", "inf"):
+            with self.subTest(gt=gt):
+                self.assertIsNone(mr.stagnation_response(
+                    **self._stall(game_time_s=gt)))
+                self.assertIsNone(mr.macro_response_callout(
+                    **self._stall(game_time_s=gt)))
+
+    # RM-1954: a non-finite or junk stall duration is not a duration.
+    def test_non_finite_stable_for_s_fires_no_stall(self) -> None:
+        for st in (self._NAN, self._INF, "nan"):
+            with self.subTest(st=st):
+                self.assertIsNone(mr.stagnation_response(
+                    **self._stall(stable_for_s=st)))
+
+    def test_numeric_string_stable_for_s_reads_like_game_time(self) -> None:
+        # game_time_s already accepts a numeric string; stable_for_s parsed
+        # it, then compared the RAW str and raised (masked to None).
+        self.assertEqual(
+            mr.stagnation_response(**self._stall(stable_for_s="200")),
+            mr.stagnation_response(**self._stall()))
+        self.assertIsNone(mr.stagnation_response(**self._stall(stable_for_s="30")))
+
+    # RM-1955: one unhashable event name must not hide a real loss.
+    def test_unhashable_name_entry_does_not_hide_real_loss(self) -> None:
+        for junk in ([], {}, ["dragon"]):
+            with self.subTest(junk=junk):
+                evs = [{"name": junk, "killer_team": "enemy", "down_at_s": 605.0},
+                       _oe("baron", "enemy", 600.0)]
+                line = mr.lost_objective_response(evs, {"state": "even"}, 610.0)
+                self.assertIsNotNone(line)
+                self.assertIn("baron", line.lower())
+
+    # RM-1956: one over-long int time must not hide a real loss or stall.
+    def test_overflowing_int_time_entry_is_skipped(self) -> None:
+        huge = 10 ** 400
+        evs = [_oe("dragon", "enemy", huge), _oe("baron", "enemy", 600.0)]
+        line = mr.lost_objective_response(evs, {"state": "even"}, 610.0)
+        self.assertIsNotNone(line)
+        self.assertIn("baron", line.lower())
+        self.assertIsNotNone(mr.stagnation_response(**self._stall(
+            objective_events=[_oe("dragon", "ally", huge)],
+            inhib_events=[{"down_at_s": huge}])))
+
+    def test_overflowing_int_game_time_is_no_row(self) -> None:
+        self.assertIsNone(mr.macro_response_callout(
+            [_oe("baron", "enemy", 600.0)], {"state": "even"}, 10 ** 400, [],
+            stable_for_s=200.0))
+
+    def test_non_finite_event_time_is_skipped(self) -> None:
+        evs = [_oe("baron", "enemy", self._NAN), _oe("dragon", "enemy", 600.0)]
+        line = mr.lost_objective_response(evs, {"state": "behind"}, 610.0)
+        self.assertIn("drake", line.lower())
+        # An event with a NaN time is not evidence of a recent objective.
+        self.assertIsNotNone(mr.stagnation_response(**self._stall(
+            objective_events=[_oe("dragon", "ally", self._NAN)])))
+
+    # RM-1957: "no event data" (None, RM-308(b)) is not "nothing taken".
+    def test_missing_event_data_is_not_a_stall(self) -> None:
+        for oe in (None, "x", {"name": "dragon"}):
+            with self.subTest(objective_events=oe):
+                self.assertIsNone(mr.stagnation_response(
+                    **self._stall(objective_events=oe)))
+
+    def test_missing_inhib_list_is_no_inhib_down(self) -> None:
+        # The resolver drops an EMPTY inhib list (_build_game_state), so a
+        # missing inhib_events is the normal "nothing has fallen" game and
+        # must still allow the stall nudge (verifier catch, s144t165).
+        for ie in (None, "x"):
+            with self.subTest(inhib_events=ie):
+                self.assertIsNotNone(mr.stagnation_response(
+                    **self._stall(inhib_events=ie)))
+
+    def test_stall_fires_through_the_live_resolver_shape(self) -> None:
+        import dashboard._deterministic_coaching as dc
+        lc = {"champion": "Aatrox", "inhib_events": [], "objective_events": []}
+        gs = dc._build_game_state({"champion": "Aatrox"}, lc, "sr")
+        out = mr.macro_response_callout(
+            gs.get("objective_events"), {"state": "even"}, 1400.0,
+            gs.get("inhib_events"), stable_for_s=200.0)
+        self.assertIsNotNone(out)
+        self.assertEqual(out["tag"], "macro_stagnation")
+        # No event data at all (key absent) -> no stall claim.
+        gs2 = dc._build_game_state({"champion": "Aatrox"},
+                                   {"champion": "Aatrox"}, "sr")
+        self.assertIsNone(mr.macro_response_callout(
+            gs2.get("objective_events"), {"state": "even"}, 1400.0,
+            gs2.get("inhib_events"), stable_for_s=200.0))
+
+    def test_missing_inhib_data_still_coaches_a_fresh_loss(self) -> None:
+        # The lost-objective half never read inhib_events; keep it that way.
+        out = mr.macro_response_callout(
+            [_oe("baron", "enemy", 1390.0)], {"state": "even"}, 1400.0, None,
+            stable_for_s=200.0)
+        self.assertEqual(out["tag"], "macro_lost_objective")
+
+
 class LineBudgetAndAsciiTests(unittest.TestCase):
     def test_all_table_lines_within_word_budget(self) -> None:
         for line in mr.LOST_OBJECTIVE_RESPONSE.values():

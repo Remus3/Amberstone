@@ -35,9 +35,24 @@ PURE
     in as ``stable_for_s`` so this function stays stateless + testable with
     explicit timestamps. Fail-soft: any bad / missing input -> ``None`` (no row),
     never raises (the coach hot path contract).
+
+JUNK INPUT (s144 true-audit)
+    A time or duration is a FINITE real number (an int, a float or a numeric
+    str); NaN / inf / an int too long for a float read as "no value". NaN used
+    to make every window compare False, so a 900 s old enemy kill read as a
+    fresh loss and a NaN game time read as a stalled game. One junk event (an
+    unhashable name, an over-long int time) is skipped on its own and no
+    longer nulls the whole call, hiding a real loss in the same list. A
+    non-list objective_events is "no event data" (RM-308(b): the resolver
+    stamps [] for "events read, no takes" and omits the key otherwise), never
+    "nothing was taken", so it blocks the stall nudge. inhib_events has NO
+    such contract - the resolver drops an EMPTY inhib list, so a missing one
+    is the normal "no inhibitor has fallen" game and still reads as no inhib
+    down.
 """
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 # The neutral objectives a LOST kill event coaches (turrets/inhibs are handled
@@ -98,15 +113,19 @@ def _lead_state(lead: object) -> str:
 
 
 def _as_float(val: object) -> Optional[float]:
-    """Fail-soft float read (None on garbage / bool)."""
+    """Fail-soft FINITE float read (None on garbage / bool / NaN / inf).
+
+    An int too long for a float raises OverflowError in ``float()``; it is
+    junk like any other unreadable value, not an error for the caller."""
     if isinstance(val, bool) or val is None:
         return None
     if not isinstance(val, (int, float, str)):
         return None
     try:
-        return float(val)
-    except (TypeError, ValueError):
+        out = float(val)
+    except (TypeError, ValueError, OverflowError):
         return None
+    return out if math.isfinite(out) else None
 
 
 def _recent_enemy_loss(objective_events: object, now_s: float) -> Optional[str]:
@@ -124,7 +143,9 @@ def _recent_enemy_loss(objective_events: object, now_s: float) -> Optional[str]:
         if not isinstance(ev, dict):
             continue
         name = ev.get("name")
-        if name not in _LOST_OBJECTIVES:
+        # isinstance first: an unhashable name raised TypeError in the set
+        # lookup and nulled the call, hiding a real loss in the same list.
+        if not isinstance(name, str) or name not in _LOST_OBJECTIVES:
             continue
         if ev.get("killer_team") != "enemy":
             continue
@@ -216,13 +237,20 @@ def stagnation_response(
 
     ``stable_for_s`` defaults to 0.0 so a caller without window memory never
     produces a false stall (the row simply never fires until the resolver feeds
-    a real duration). Fail-soft.
+    a real duration). A non-list ``objective_events`` is "no event data"
+    (RM-308(b)), which cannot prove the no-objective gate, so it is no stall.
+    A non-list ``inhib_events`` is NOT gated: the resolver
+    (dashboard/_deterministic_coaching.py ``_build_game_state``) drops an
+    empty inhib list, so None is the normal no-inhib-down game. Fail-soft.
     """
     try:
         now_s = _as_float(game_time_s)
         if now_s is None or now_s <= STAGNATION_MIN_GAME_S:
             return None
-        if _as_float(stable_for_s) is None or stable_for_s < STALL_S:
+        stable_s = _as_float(stable_for_s)
+        if stable_s is None or stable_s < STALL_S:
+            return None
+        if not isinstance(objective_events, list):
             return None
         if _any_recent_objective(objective_events, now_s, STALL_S):
             return None
