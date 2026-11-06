@@ -198,7 +198,7 @@ def _is_pure_mojibake_201d(raw: bytes) -> bool:
             break
         nxt = raw[idx + 3:idx + 6]
         prev = raw[max(0, idx - 3):idx]
-        if nxt == _MOJI_NEIGHBOUR or prev == _MOJI_NEIGHBOUR:
+        if _MOJI_NEIGHBOUR in (nxt, prev):
             n_moji += 1
         i = idx + 3
     return n_moji == total

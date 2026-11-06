@@ -408,8 +408,7 @@ class WaveFourteenWiredSitesGrepTests(unittest.TestCase):
     """Wave 14 entry grep-matches in the cc_conditional.py source."""
 
     def _source(self) -> str:
-        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
-        return src
+        return open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
 
     def test_source_mentions_jayce_e_form_0(self) -> None:
         src = self._source()

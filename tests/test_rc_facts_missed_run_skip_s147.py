@@ -63,7 +63,7 @@ def _classify(events, *, last_run_age_s=3600.0, time_limit_s=72 * 3600.0,
 def test_the_two_labels_are_different_strings():
     """Guards the guard: every exact-label test below is worthless if the
     missed-run label still carries the kill wording."""
-    assert KILL != MISSED_153 and KILL != MISSED_201
+    assert KILL not in (MISSED_153, MISSED_201)
     assert "kill" not in MISSED_153.lower()
     assert "kill" not in MISSED_201.lower()
 

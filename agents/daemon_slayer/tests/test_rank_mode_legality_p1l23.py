@@ -155,13 +155,12 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
         length = len(item_id)
         if name not in min_id_len or length < min_id_len[name]:
             min_id_len[name] = length
-    out = {
+    return {
         item_id
         for item_id in out
         if (snap.items.get(item_id) or {}).get("name") is None
         or len(item_id) <= min_id_len[(snap.items.get(item_id) or {}).get("name")]
     }
-    return out
 
 
 class ModeMapIdWiringTests(unittest.TestCase):

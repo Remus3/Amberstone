@@ -47,9 +47,8 @@ _LEAK_AT = {0, 2, 3, 6, 9}
 
 
 def _corpus(n=10, eol=b"\r\n"):
-    lines = [_line(_row(i, [] if i in _LEAK_AT else _ENEMIES), eol)
-             for i in range(n)]
-    return lines
+    return [_line(_row(i, [] if i in _LEAK_AT else _ENEMIES), eol)
+            for i in range(n)]
 
 
 def _sha(b):

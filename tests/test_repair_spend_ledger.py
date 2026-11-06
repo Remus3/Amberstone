@@ -128,13 +128,12 @@ class RepairDirTests(unittest.TestCase):
         real = {"calls": 930, "usd": 3.807435, "tokens": 2965954}
         synth_a = _synth_bucket(39)
         synth_b = _synth_bucket(45)
-        doc = _day({"sr_coach": real, "aram_coach": synth_a,
-                    "arena_coach": synth_b},
-                   model_calls=930 + 39 + 45,
-                   model_tin=2_000_000 + 84 * 10,
-                   model_tout=965_954 + 84 * 20,
-                   model_usd=round(3.807435 + 84 * _SYNTH_USD, 6))
-        return doc
+        return _day({"sr_coach": real, "aram_coach": synth_a,
+                     "arena_coach": synth_b},
+                    model_calls=930 + 39 + 45,
+                    model_tin=2_000_000 + 84 * 10,
+                    model_tout=965_954 + 84 * 20,
+                    model_usd=round(3.807435 + 84 * _SYNTH_USD, 6))
 
     def test_real_lane_survives_and_synthetic_lanes_go(self) -> None:
         path = self._write("2026-06-21.json", self._mixed_day())

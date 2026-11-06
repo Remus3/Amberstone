@@ -51,11 +51,10 @@ _CRIT = {"key": "crit", "keystone": "Lethal Tempo", "primary": "Precision",
 def _ub(uid, keystone="Lethal Tempo", primary="Precision", secondary="Domination",
         minor_primary=None, minor_secondary=None, items=("Infinity Edge",),
         label="test build"):
-    rec = {"id": uid, "label": label, "items": list(items), "runes": {
+    return {"id": uid, "label": label, "items": list(items), "runes": {
         "keystone": keystone, "primary": primary, "secondary": secondary,
         "minor_primary": list(minor_primary or []),
         "minor_secondary": list(minor_secondary or [])}}
-    return rec
 
 
 def _enumerate(variants=(), user_builds=(), champ="Jinx", mode="SR"):

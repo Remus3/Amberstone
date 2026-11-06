@@ -41,8 +41,7 @@ def _thresholds(markers, kind):
 
 
 def _next(result):
-    nxt = [m for m in result.markers if m.next]
-    return nxt
+    return [m for m in result.markers if m.next]
 
 
 class LevelThresholdTests(unittest.TestCase):

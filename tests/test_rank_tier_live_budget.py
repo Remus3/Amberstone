@@ -421,7 +421,7 @@ def test_defect_d_config_identity_is_stable_and_endpoint_sensitive():
     b = RTS._config_identity({"endpoint": "https://b.example/x", "tier_param": "tier"})
     c = RTS._config_identity({"endpoint": "https://a.example/x", "tier_param": "rank"})
     assert a == a2                      # stable across calls
-    assert a != b and a != c            # endpoint + tier_param both bind
+    assert a not in (b, c)              # endpoint + tier_param both bind
     assert len(a) <= 32 and a.isalnum()  # short digest, not a URL
 
 

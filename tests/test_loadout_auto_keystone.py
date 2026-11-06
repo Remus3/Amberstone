@@ -27,8 +27,8 @@ from lcu.lcu_rune_writer import load_rune_rec  # noqa: E402
 
 class AutoKeystoneSurfacedTests(unittest.TestCase):
     def _auto_for(self, champion: str, writer_mode: str):
-        rec = load_rune_rec(champion, writer_mode)
-        return rec  # (keystone, primary_tree, secondary_tree) or None
+        # (keystone, primary_tree, secondary_tree) or None
+        return load_rune_rec(champion, writer_mode)
 
     def test_caitlyn_sr_rows_carry_auto_keystone_from_writer_source(self):
         rec = self._auto_for("Caitlyn", "CLASSIC")

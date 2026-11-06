@@ -215,9 +215,8 @@ def _wire(monkeypatch, ratings):
         "data_chunk_bytes": 1,
         "block_sources": {"aram_modifiers": "u/aram.js"},
     })
-    champions = {cid: {"key": str(i + 1), "name": cid, "stats": {}}
-                 for i, cid in enumerate(ids)}
-    return champions
+    return {cid: {"key": str(i + 1), "name": cid, "stats": {}}
+            for i, cid in enumerate(ids)}
 
 
 def _args(allow=None) -> argparse.Namespace:
