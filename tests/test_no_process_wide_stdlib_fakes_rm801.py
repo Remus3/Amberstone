@@ -341,8 +341,14 @@ _COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 
 
 class _Scope:
-    __slots__ = ("node", "parent", "locals", "globals", "nonlocals",
-                 "bindings")
+    __slots__ = (
+        "bindings",
+        "globals",
+        "locals",
+        "node",
+        "nonlocals",
+        "parent",
+    )
 
     def __init__(self, node: ast.AST, parent: "_Scope | None") -> None:
         self.node = node

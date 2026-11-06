@@ -23,9 +23,9 @@ from ._atomic import atomic_write_bytes, atomic_write_json, atomic_write_text, r
 __version__ = "0.1.0"
 
 __all__ = [
+    "__version__",
     "atomic_write_bytes",
     "atomic_write_json",
     "atomic_write_text",
     "read_json_dict",
-    "__version__",
 ]
