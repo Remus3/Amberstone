@@ -182,7 +182,6 @@ def test_wiring_without_an_lcu_snapshot_still_writes(tmp_path, monkeypatch):
 
 def test_wiring_tolerates_a_garbage_lcu_snapshot(tmp_path, monkeypatch):
     _patch_loader(monkeypatch)
-    p = tmp_path / "hz.jsonl"
     for bad in (None, "nope", {"game_id": None}, {"game_id": ""}, {}):
         coach, lc = _coach_lc()
         target = tmp_path / f"hz_{abs(hash(str(bad)))}.jsonl"

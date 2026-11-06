@@ -149,7 +149,6 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(champs["Aatrox"], {"aramDamageDealt": 1.05})
 
     def test_get_routes_registered(self):
-        paths = [m.__doc__ for m, _ in routes_aram_balance.GET_ROUTES]
         # Structural: exactly one GET route + no POST routes.
         self.assertEqual(len(routes_aram_balance.GET_ROUTES), 1)
         self.assertEqual(routes_aram_balance.POST_ROUTES, [])

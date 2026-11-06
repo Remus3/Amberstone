@@ -403,7 +403,6 @@ def test_newest_generation_is_never_eligible_for_any_keep_count(tmp_path):
 def test_superseded_helper_never_returns_the_newest_sibling(tmp_path):
     """The contract stated in the helper's own docstring, at the helper."""
     _seed(tmp_path)
-    parent = tmp_path / "daemon_slayer" / "laning_scenarios"
 
     for k in (0, -1, -5, 1, 2):
         names = {p.name for p in dr._superseded_patch_dirs(tmp_path, k)}

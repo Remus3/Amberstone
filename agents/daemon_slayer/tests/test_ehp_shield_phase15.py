@@ -327,7 +327,6 @@ class MawShieldTests(unittest.TestCase):
 
     def test_maw_does_not_lift_physical_ehp(self) -> None:
         # Magic-only shield does NOT enter physical_ehp.
-        r0 = compute_ehp(self.snap, "Aatrox", level=11, item_ids=[], mode="SR")
         r = compute_ehp(
             self.snap, "Aatrox", level=11, item_ids=["3156"], mode="SR"
         )

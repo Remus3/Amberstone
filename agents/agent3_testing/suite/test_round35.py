@@ -154,7 +154,7 @@ def test_cli_weekday_cross_mode_default(tmp_path: Path, monkeypatch, capsys) -> 
     _init(tmp_path, monkeypatch)
     _insert(tmp_path / "aram.db", "Ahri", 1, 10, 3, 15, _on_weekday(2))
     _insert(tmp_path / "sr_ranked.db", "Vlad", 1, 10, 3, 15, _on_weekday(2))
-    rc = main(["--weekday", "-f", "json"])
+    main(["--weekday", "-f", "json"])
     data = json.loads(capsys.readouterr().out)
     assert data["mode"] == "all"
     assert data["total_games"] == 2

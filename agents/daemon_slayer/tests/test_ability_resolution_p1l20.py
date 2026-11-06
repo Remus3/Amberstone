@@ -607,7 +607,6 @@ class MaxPriorityComboConsumptionTests(unittest.TestCase):
                          "R and R2 should share the same form")
         forms = AbilitiesSnapshot.load().get_abilities("Akali")["R"]
         form = forms[r1.form_index]
-        dmg = _damage_blocks(form)
         ctx = AbilityContext.from_build(
             stats={"ad": 60.0, "hp": 2000.0, "armor": 30.0, "mr": 32.0,
                    "mp": 200.0, "mpregen": 8.0},

@@ -153,8 +153,6 @@ class BuildOrderRouteTests(unittest.TestCase):
     def test_registered_in_route_table_and_schema(self, m_arch, m_rk):
         from dashboard.routes_state import POST_ROUTES
         from dashboard._dispatch import _REQUEST_MODELS
-        paths = [m.__self__.args[0] if hasattr(m, "__self__") else None
-                 for m, _ in POST_ROUTES]
         # matcher is equals("/api/build-order"); just assert the handler is wired
         handlers = [fn.__name__ for _, fn in POST_ROUTES]
         self.assertIn("_serve_build_order_post", handlers)

@@ -653,7 +653,7 @@ class MagicPenItemTests(unittest.TestCase):
 
     def test_armor_pen_unaffected_by_magic_pen_layer(self) -> None:
         # Sanity: physical pen pipeline is independent of magic pen.
-        ldr = ITEM_EFFECTS["3036"]
+        self.assertIn("3036", ITEM_EFFECTS)
         # Even when MR pen is present, armor pen still resolves correctly.
         with_both = compute_dps(
             self.snap, "Aatrox", level=11,
@@ -2158,7 +2158,6 @@ class LifelineUniquePassiveTests(unittest.TestCase):
         # This isn't strictly a unique-passive test, but it's a useful
         # safety net for the tagging change: we shouldn't have
         # accidentally promoted any of them to a DPS-positive entry.
-        bare = compute_dps(self.snap, "Aatrox", level=11)
         for iid in ("6673", "3053", "3156"):
             with self.subTest(item=iid):
                 r = compute_dps(self.snap, "Aatrox", level=11, item_ids=[iid])
@@ -7172,7 +7171,6 @@ class Batch57VoidImmolationGoldenSpatulaTests(unittest.TestCase):
         self.assertAlmostEqual(dmg, 65.0, places=1)
 
     def test_223069_raises_dps_vs_naked(self) -> None:
-        bare = compute_dps(self.snap, "Malphite", level=11, item_ids=["3068"])
         with_vi = compute_dps(self.snap, "Malphite", level=11, item_ids=["223069"])
         # Void Immolation (TRUE damage bypasses armor) should contribute DPS
         self.assertGreater(with_vi.weighted_dps, 0)

@@ -46,42 +46,43 @@ FIXED = (
     "tools/daemon_slayer_pickban_targets_generate.py",
     "tools/ds_cc_output_build.py",
     "tools/phase_watcher.py",
+    "agents/agent3_testing/suite/test_round34.py",
+    "agents/agent3_testing/suite/test_round35.py",
+    "agents/agent3_testing/suite/test_round36.py",
+    "agents/agent3_testing/suite/test_round37.py",
+    "agents/agent3_testing/suite/test_round38.py",
+    "agents/daemon_slayer/tests/test_ability_resolution_p1l20.py",
+    "agents/daemon_slayer/tests/test_block_index_overrides.py",
+    "agents/daemon_slayer/tests/test_effects_expansion.py",
+    "agents/daemon_slayer/tests/test_ehp_shield_phase15.py",
+    "agents/daemon_slayer/tests/test_rank_enchanter.py",
+    "agents/daemon_slayer/tests/test_rank_offclass_win_exempt.py",
+    "tests/phase2_smoke/test_snapshot_translation.py",
+    "tests/phase8_smoke/test_sr_user_builds.py",
+    "tests/snapshot_panels/test_spike_curve.py",
+    "tests/test_aram_balance_grid.py",
+    "tests/test_b4_shadow_match_id.py",
+    "tests/test_data_retention.py",
+    "tests/test_historical_pgr_dom.py",
+    "tests/test_overlay_settings_panel_dom.py",
+    "tests/test_routes_build_order.py",
+    "tests/test_routes_cc_blended_ehp_threat.py",
+    "tests/test_routes_cc_conditional_pressure.py",
+    "tests/test_routes_peel_priority.py",
+    "tests/test_snowball_elasticity.py",
+    "tests/test_tft_coach_engine_audit.py",
+    "tests/test_vision_atlas_precompute.py",
 )
 
 # rel path -> number of unused locals it may keep. Only shrinks.
-# Frozen: core/log_setup.py, lcu/lcu_client.py. The rest are DS (lane ds) and
-# test scaffolding. RM-1539 cleaned tools/ddragon_mirror_refresh.py, the
+# Frozen: core/log_setup.py, lcu/lcu_client.py. agents/daemon_slayer/ability_dps.py
+# keeps a dead `true_score` for the next DS batch. RM-1676 cleaned the 26 test
+# modules that were baselined here (now in FIXED). RM-1539 cleaned tools/ddragon_mirror_refresh.py, the
 # dsv5 probe script and performance_tracker.py (an unread _identify_comp call).
 _BASELINE = {
-    "agents/agent3_testing/suite/test_round34.py": 1,
-    "agents/agent3_testing/suite/test_round35.py": 1,
-    "agents/agent3_testing/suite/test_round36.py": 2,
-    "agents/agent3_testing/suite/test_round37.py": 1,
-    "agents/agent3_testing/suite/test_round38.py": 1,
     "agents/daemon_slayer/ability_dps.py": 1,
-    "agents/daemon_slayer/tests/test_ability_resolution_p1l20.py": 1,
-    "agents/daemon_slayer/tests/test_block_index_overrides.py": 2,
-    "agents/daemon_slayer/tests/test_effects_expansion.py": 3,
-    "agents/daemon_slayer/tests/test_ehp_shield_phase15.py": 1,
-    "agents/daemon_slayer/tests/test_rank_enchanter.py": 1,
-    "agents/daemon_slayer/tests/test_rank_offclass_win_exempt.py": 1,
     "core/log_setup.py": 1,
     "lcu/lcu_client.py": 1,
-    "tests/phase2_smoke/test_snapshot_translation.py": 1,
-    "tests/phase8_smoke/test_sr_user_builds.py": 1,
-    "tests/snapshot_panels/test_spike_curve.py": 1,
-    "tests/test_aram_balance_grid.py": 1,
-    "tests/test_b4_shadow_match_id.py": 1,
-    "tests/test_data_retention.py": 1,
-    "tests/test_historical_pgr_dom.py": 1,
-    "tests/test_overlay_settings_panel_dom.py": 1,
-    "tests/test_routes_build_order.py": 1,
-    "tests/test_routes_cc_blended_ehp_threat.py": 1,
-    "tests/test_routes_cc_conditional_pressure.py": 1,
-    "tests/test_routes_peel_priority.py": 1,
-    "tests/test_snowball_elasticity.py": 1,
-    "tests/test_tft_coach_engine_audit.py": 1,
-    "tests/test_vision_atlas_precompute.py": 3,
 }
 
 

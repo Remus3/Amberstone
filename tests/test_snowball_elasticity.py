@@ -38,7 +38,6 @@ def _match(mid, win, diff_by_ts, tracked_team=100, map_id=11, has_timeline=1):
     Team 100 = participant ids 1-5, team 200 = ids 6-10. Enemy team totals
     5000; tracked team totals 5000+diff, so the differential is exactly diff.
     """
-    enemy_team = 200 if tracked_team == 100 else 100
     parts = ([(mid, pid, 100) for pid in range(1, 6)]
              + [(mid, pid, 200) for pid in range(6, 11)])
     frames = []

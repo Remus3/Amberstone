@@ -190,9 +190,8 @@ class FilterPipelineTests(unittest.TestCase):
             include_components=True, only_item_ids=None,
             enchanter_only=False, top_n=50,
         )
-        # Should have at least some non-terminal items in the candidate pool.
-        non_terminal = [row for row in r.ranked if not row.is_terminal]
-        # Allowed but not required to be present; just verify the flag plumbs.
+        # Non-terminal rows are allowed but not required; just verify the
+        # flag plumbs.
         self.assertEqual(r.sort_by, "delta")
 
     def test_arena_trinket_stripped(self) -> None:

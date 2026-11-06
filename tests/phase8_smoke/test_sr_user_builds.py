@@ -113,7 +113,7 @@ class TestCrudHappyPath(_HermeticStoreCase):
 
     def test_two_champions_isolated(self):
         a = sr_user_builds.add("Tristana", {"label": "a", "items": ["IE"]})
-        b = sr_user_builds.add("Jhin",     {"label": "b", "items": ["The Collector"]})
+        sr_user_builds.add("Jhin",     {"label": "b", "items": ["The Collector"]})
         self.assertEqual(len(sr_user_builds.list_for("Tristana")), 1)
         self.assertEqual(len(sr_user_builds.list_for("Jhin")),     1)
         sr_user_builds.delete("Tristana", a)

@@ -121,10 +121,6 @@ class Rc2Stage42ControlsTests(unittest.TestCase):
         self.assertIn("clickThroughZones", self.helper)
 
     def test_opacity_row_meets_hit_floor(self):
-        m = re.search(
-            r"\.ovset-range[^{]*\{[^}]*\}\s*\.ovset-range\s*>\s*input",
-            self.css, re.DOTALL,
-        )
         # the range input carries the --hit-min height floor for game-distance use
         self.assertIn("--hit-min", self.css)
         self.assertIn(".ovset-range", self.css)

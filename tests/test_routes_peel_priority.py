@@ -292,8 +292,6 @@ class AsciiHygieneTests(unittest.TestCase):
             )
 
     def test_self_is_ascii(self) -> None:
-        bad = {chr(0x2013), chr(0x2014), chr(0x2018), chr(0x2019),
-               chr(0x201C), chr(0x201D)}
         from pathlib import Path
         text = Path(__file__).read_text(encoding="utf-8")
         nonascii_lines = [

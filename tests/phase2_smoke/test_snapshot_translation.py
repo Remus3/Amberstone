@@ -32,7 +32,7 @@ class TestRiftSnapshotTranslation(unittest.TestCase):
 
     def test_to_rift_snapshot_empty_dict_non_fatal(self):
         from game_reader import GameReader
-        result = GameReader.to_rift_snapshot({})
+        GameReader.to_rift_snapshot({})
         # May return a default snapshot or None - must not raise
         # (None is acceptable; crash is not)
 

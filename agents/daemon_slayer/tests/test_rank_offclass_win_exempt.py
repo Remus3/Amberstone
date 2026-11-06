@@ -97,7 +97,7 @@ class ExemptLoaderFailSoftTests(unittest.TestCase):
             self.assertEqual(_load_offclass_exemptions(), {})
         finally:
             rank_mod._OFFCLASS_EXEMPT_PATH = orig_path
-            rank_mod._OFFCLASS_EXEMPT_CACHE = None
+            rank_mod._OFFCLASS_EXEMPT_CACHE = orig_cache
 
 
 class OffClassExemptSeamTests(unittest.TestCase):

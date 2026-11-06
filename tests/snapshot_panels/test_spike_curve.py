@@ -82,8 +82,7 @@ def test_index_html_has_mount_point():
     # Verify ordering: head, then mount, then body within am-pane-build.
     pane_start = html.find('class="am-pane am-pane-build"')
     assert pane_start >= 0, "am-pane-build not found in markup"
-    pane_end = html.find("</div>", pane_start)
-    # Walk forward past nested closes - just confirm both ids appear
+    # Just confirm both ids appear
     # after the pane start in the right order.
     spike_pos = html.find('id="am-spike-curve"', pane_start)
     build_body_pos = html.find('id="am-build-body"', pane_start)

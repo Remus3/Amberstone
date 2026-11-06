@@ -332,7 +332,6 @@ class TestHpTypeAgreement(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             eng = _engine(Path(d))
-            live = Path(__file__).parent.parent / "data" / "tft_live_data.json"
             with patch.object(Path, "read_text",
                               side_effect=lambda *a, **k: json.dumps({"hp": True})):
                 hp = eng._resolve_hp({"health": 55})

@@ -4345,8 +4345,7 @@ class BackwardCompatTests(unittest.TestCase):
             self.snap, "Veigar", level=11, mode="SR", target_mr=30.0,
             block_index_overrides={},
         )
-        # Veigar has R in registry - must NOT match here. So skip Veigar and
-        # use another unmapped champion.
+        self.assertEqual(r_default.total_ability_dps, r_empty_explicit.total_ability_dps)
 
     def test_unmapped_keys_inside_mapped_champion_use_global_strategy(self) -> None:
         """Veigar has only {R:1} in the registry. Q, W, E must still use

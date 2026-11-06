@@ -127,7 +127,7 @@ def test_cooldown_prevents_duplicate(tmp_path: Path, monkeypatch) -> None:
         _insert_match(tmp_path / "aram.db", "Ahri", 0, 1200, ts)
 
     sched = FakeScheduler()
-    first = detect_insights_and_file(sched, modes=("aram",), severity_floor=0.7)
+    detect_insights_and_file(sched, modes=("aram",), severity_floor=0.7)
     initial = len(sched.filed)
     assert initial >= 1
     second = detect_insights_and_file(sched, modes=("aram",), severity_floor=0.7)

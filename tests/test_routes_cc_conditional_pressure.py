@@ -275,11 +275,9 @@ class AsciiHygieneTests(unittest.TestCase):
             )
 
     def test_self_is_ascii(self) -> None:
-        bad = {chr(0x2013), chr(0x2014), chr(0x2018), chr(0x2019),
-               chr(0x201C), chr(0x201D)}
         from pathlib import Path
         text = Path(__file__).read_text(encoding="utf-8")
-        # Skip chr-built BAD set lines themselves to avoid false positives.
+        # Any line holding a chr( glyph builder is skipped to avoid false positives.
         nonascii_lines = [
             i for i, line in enumerate(text.split("\n"))
             if any(ord(c) > 127 for c in line) and "chr(" not in line

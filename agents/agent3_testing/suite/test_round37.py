@@ -216,7 +216,7 @@ def test_cli_digest_cross_mode_default(tmp_path: Path, monkeypatch, capsys) -> N
         "avg_kda": {"ratio": 4.0, "sample": 30},
         "recent_kda": {"ratio": 2.0, "sample": 10, "delta_ratio": -2.0},
     })
-    rc = main(["--digest", "-f", "json"])
+    main(["--digest", "-f", "json"])
     data = json.loads(capsys.readouterr().out)
     assert data["mode"] == "all"
 

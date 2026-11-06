@@ -281,11 +281,9 @@ class AsciiHygieneTests(unittest.TestCase):
             )
 
     def test_self_is_ascii(self) -> None:
-        bad = {chr(0x2013), chr(0x2014), chr(0x2018), chr(0x2019),
-               chr(0x201C), chr(0x201D)}
         from pathlib import Path
         text = Path(__file__).read_text(encoding="utf-8")
-        # Skip the explicit chr-built set above to avoid false positives.
+        # Any line holding a chr( glyph builder is skipped to avoid false positives.
         # We can do a plain "no smart quote in test docstrings" check by
         # confirming non-ASCII content count is bounded.
         nonascii_lines = [

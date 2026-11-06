@@ -180,7 +180,7 @@ def test_cli_duration_champion_filter(tmp_path: Path, monkeypatch, capsys) -> No
     for _ in range(3):
         _insert(tmp_path / "aram.db", "Ahri", 1, 1200, 10, 3, 15)
     _insert(tmp_path / "aram.db", "Jinx", 1, 1200, 10, 3, 15)
-    rc = main(["--duration", "-m", "aram", "-c", "Ahri", "-f", "json"])
+    main(["--duration", "-m", "aram", "-c", "Ahri", "-f", "json"])
     data = json.loads(capsys.readouterr().out)
     assert data["total_games"] == 3
     assert data["champion"] == "Ahri"
@@ -191,7 +191,7 @@ def test_cli_duration_cross_mode_default(tmp_path: Path, monkeypatch, capsys) ->
     _init(tmp_path, monkeypatch)
     _insert(tmp_path / "aram.db", "Ahri", 1, 1200, 5, 2, 7)
     _insert(tmp_path / "sr_ranked.db", "Vlad", 1, 2000, 5, 2, 7)
-    rc = main(["--duration", "-f", "json"])
+    main(["--duration", "-f", "json"])
     data = json.loads(capsys.readouterr().out)
     assert data["mode"] == "all"
     assert data["total_games"] == 2

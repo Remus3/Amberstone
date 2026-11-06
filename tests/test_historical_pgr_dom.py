@@ -213,7 +213,6 @@ class Hist2NoClobberInvariantTests(unittest.TestCase):
         state was never mutated, so re-fetching is unnecessary and would
         only mask a clobber bug. Guard that it is absent from the handler."""
         js = _read(HPGR_JS)
-        back = js.split('id === "hpgr-back"', 1)[-1]  # fall through if absent
         # Whole-file guard is the real assertion (panel never imports it).
         self.assertNotIn("fetchAndRenderLastMatch", js)
 

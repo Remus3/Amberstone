@@ -128,7 +128,7 @@ def test_load_missing_is_empty(tmp_path):
 # CV2-GATED - real icon decode + full manifest build (self-skip without cv2).
 # --------------------------------------------------------------------------- #
 def test_icon_hash_real():
-    cv2 = pytest.importorskip("cv2")
+    pytest.importorskip("cv2")
     ids = vtm.list_ids("items")
     # data/icons/items/ is TRACKED (36 committed icons), so an empty list means
     # list_ids() or the committed icon set broke. cv2 above is the only real
@@ -140,7 +140,7 @@ def test_icon_hash_real():
 
 
 def test_build_manifest_schema():
-    cv2 = pytest.importorskip("cv2")
+    pytest.importorskip("cv2")
     m = vap.build_manifest(["items"])
     assert m["schema_version"] == 1
     assert m["hash_algo"] == "dhash"
@@ -158,7 +158,7 @@ def test_build_manifest_schema():
 
 
 def test_build_manifest_nearest_selfmatch():
-    cv2 = pytest.importorskip("cv2")
+    pytest.importorskip("cv2")
     m = vap.build_manifest(["items"])
     icons = m["categories"]["items"]["icons"]
     stem, hx = next(iter(sorted(icons.items())))
