@@ -1321,6 +1321,11 @@ function _amRenderLiveFallback(fb, p, ctx) {
       _AM_MAP.pollHandle = null;
     }
     _AM_MAP.vsCache = null;
+    // RM-1769: no canvas to fit either - release the fit observer.
+    if (_AM_MAP.fitObserver) {
+      _AM_MAP.fitObserver.disconnect();
+      _AM_MAP.fitObserver = null;
+    }
     const tag = "fallback:" + JSON.stringify([fb.map, fb.players || [], fb.asOf || null]);
     if (_AM_MAP.attachedMode !== tag) {
       _AM_MAP.attachedMode = tag;
@@ -2110,6 +2115,7 @@ const _AM_MAP = {
   attachedMode: null,    // last mode we rendered the shell for
   pollHandle:   null,    // setInterval handle
   vsCache:      null,    // last successful /api/vision-state response
+  fitObserver:  null,    // ResizeObserver re-fitting the canvas (RM-1769)
 };
 
 function _renderAmMap(host, mode, payload) {
@@ -2118,6 +2124,10 @@ function _renderAmMap(host, mode, payload) {
   const knownMode = (mode in _AM_MAP_FILE) ? mode : "sr";
   if (_AM_MAP.attachedMode !== knownMode) {
     _AM_MAP.attachedMode = knownMode;
+    if (_AM_MAP.fitObserver) {
+      _AM_MAP.fitObserver.disconnect();
+      _AM_MAP.fitObserver = null;
+    }
     host.innerHTML = "";
     const shell = document.createElement("div");
     shell.className = "am-map-shell";
@@ -2169,13 +2179,21 @@ function _renderAmMap(host, mode, payload) {
         // visible box so the figure still occupies its slot.
         img.style.display = "none";
         figure.classList.add("am-map-noimg");
+        _amFitOverlay();
       }
     };
-    img.onload = () => { figure.classList.remove("am-map-noimg"); };
+    img.onload = () => {
+      figure.classList.remove("am-map-noimg");
+      _amDrawDots(_AM_MAP.vsCache);
+    };
     figure.appendChild(img);
+    // RM-1769: the canvas starts HIDDEN. An unsized canvas is a default
+    // 300 x 150 box at the figure's top-left - off the map image, and past
+    // a narrow figure (a horizontal scroller in the pane body). It is shown
+    // only once _amFitOverlay has laid it exactly over the image box.
     const canvas = document.createElement("canvas");
     canvas.id = "am-map-overlay";
-    canvas.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;";
+    canvas.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;display:none;";
     figure.appendChild(canvas);
     const ganker = document.createElement("div");
     ganker.id = "am-map-gank";
@@ -2183,6 +2201,17 @@ function _renderAmMap(host, mode, payload) {
     figure.appendChild(ganker);
     shell.appendChild(figure);
     host.appendChild(shell);
+    // RM-1769: re-fit (and re-draw) the canvas the moment the figure
+    // or the image changes size - a window resize, or the pane re-laying
+    // out as other panes fill - not on the next 500 ms vision poll, and
+    // even when /api/vision-state never answers.
+    if (typeof ResizeObserver === "function") {
+      _AM_MAP.fitObserver = new ResizeObserver(() => {
+        _amDrawDots(_AM_MAP.vsCache);
+      });
+      _AM_MAP.fitObserver.observe(figure);
+      _AM_MAP.fitObserver.observe(img);
+    }
     // Kick off the polling loop if not already running.
     _amStartMapPolling();
   }
@@ -2287,26 +2316,49 @@ function _amDrawOverlay(vs) {
   // Text layers first - they must tick even when the base image is
   // missing (no local asset + no live crop frame).
   _amUpdateMapText(vs);
+  _amDrawDots(vs);
+}
 
+// RM-1769: lay the overlay canvas exactly over the rendered image box
+// and show it; hide it when there is no image to lie over (still loading,
+// or the am-map-noimg branch) or the box is degenerate. Returns the canvas
+// pixel size {w, h}, or null when hidden. Pure geometry - the vision text
+// layers never depend on it.
+function _amFitOverlay() {
   const img    = document.getElementById("am-map-img");
   const canvas = document.getElementById("am-map-overlay");
-  const ganker = document.getElementById("am-map-gank");
-  if (!img || !canvas) return;
-  if (!img.complete || !img.naturalWidth) return;
+  if (!canvas) return null;
+  const hide = () => { canvas.style.display = "none"; return null; };
+  if (!img || img.style.display === "none") return hide();
+  if (!img.complete || !img.naturalWidth) return hide();
   const rect = img.getBoundingClientRect();
   const hostRect = img.parentElement.getBoundingClientRect();
   const w = Math.round(rect.width);
   const h = Math.round(rect.height);
-  if (w < 4 || h < 4) return;
+  if (w < 4 || h < 4) return hide();
   canvas.style.left   = (rect.left - hostRect.left) + "px";
   canvas.style.top    = (rect.top  - hostRect.top)  + "px";
   canvas.style.width  = w + "px";
   canvas.style.height = h + "px";
+  canvas.style.display = "block";
   if (canvas.width  !== w) canvas.width  = w;
   if (canvas.height !== h) canvas.height = h;
+  return { w, h };
+}
+
+// Dot / MIA-badge / gank-band layer. Called by every vision tick (through
+// _amDrawOverlay) and by the fit observer on a resize, with the cached
+// state (null before the first answer: fit only, nothing to draw).
+function _amDrawDots(vs) {
+  const canvas = document.getElementById("am-map-overlay");
+  const ganker = document.getElementById("am-map-gank");
+  const fit = _amFitOverlay();
+  if (!fit) return;
+  const { w, h } = fit;
 
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, w, h);
+  if (!vs) return;
 
   const enemies = (vs && vs.enemies) || {};
   const enemyList = Object.entries(enemies);
