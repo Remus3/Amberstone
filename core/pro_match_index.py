@@ -14,6 +14,11 @@ stdlib zipfile + ElementTree against the two parts that matter:
 
 Read-only by construction: the DB is opened `mode=ro` via URI. This module never
 writes.
+
+Unwired: no runtime module imports this one (measured 2026-11-06; only the
+tests/test_pro_match_index*.py files do). tests/test_stale_prose_claims_s144p227.py
+re-checks that line against the import graph, so wiring the module makes it
+fail until the line is dropped.
 """
 
 from __future__ import annotations

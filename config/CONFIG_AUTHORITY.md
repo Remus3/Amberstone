@@ -1,6 +1,6 @@
 # CONFIG_AUTHORITY.md
 # Amberstone - Config File Authority and Domain Ownership
-# Phase 1 Step 1 - documentation only, no behavior changes.
+# Documentation only: this file describes which config file owns what and changes no behavior.
 
 ---
 

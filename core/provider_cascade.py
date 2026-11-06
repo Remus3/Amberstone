@@ -27,6 +27,12 @@ so one nice-to-have outage does not discard an otherwise good answer. See
 Deliberately NOT included: any aggregator scraping. This is the resolution
 primitive only. What gets registered as a provider is a separate decision with
 its own policy weight.
+
+Unwired: no runtime module imports this one (measured 2026-11-06; only
+tests/test_provider_cascade.py does), so the duo-synergy lane and the other
+hand-rolled cascades above still carry their own copies.
+tests/test_stale_prose_claims_s144p227.py re-checks that line against the
+import graph, so wiring the module makes it fail until the line is dropped.
 """
 
 from __future__ import annotations

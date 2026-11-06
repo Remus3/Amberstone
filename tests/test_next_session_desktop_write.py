@@ -1,4 +1,11 @@
-"""Every /done writes Desktop/RC-NEXT-SESSION.txt, not just the rare ones.
+"""Every /done writes the RC- hand-off file, not just the rare ones.
+
+UPDATED 2026-11-06 (RM-1732): the file moved from the Desktop to the repo
+root the same day this was written (tools/done.md section 10; `ops/loop/intents.py`
+`DEFAULT_NEXT_SESSION_PATH` is now the tracked `RC-NEXT-SESSION.txt`, and a
+Desktop copy is forbidden). The "Desktop" wording below is the 2026-09-06
+incident as measured, kept as the record; the test bodies assert only that
+section 10 carries the unconditional `--write-prompt`, which still holds.
 
 MEASURED 2026-09-06. The Desktop hand-off file was three days stale while every
 sibling project's was current the same day:

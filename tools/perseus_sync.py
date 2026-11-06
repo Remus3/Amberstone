@@ -3,7 +3,8 @@
 Perseus Vault is the local, no-cloud semantic-recall layer that stops agents from
 redoing closed work, re-pitching refuted ideas, or acting on stale docs. It is a
 MIRROR, never a source of truth: the source of truth stays CLAUDE.md / the
-`memory/*.md` files / docs/LEDGER.md / ROADMAP.md / BACKLOG.md. Re-run this after
+Claude project memory files (source 2 below; no `memory/` directory exists in
+the repo) / docs/LEDGER.md / ROADMAP.md / BACKLOG.md. Re-run this after
 any of those change so recall cannot drift stale.
 
 Sources, highest signal first:
