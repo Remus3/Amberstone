@@ -867,6 +867,17 @@ _LOGOBJATTR = "logobjattr:"
 # of a plain method is the receiver itself (`_RECV`). As with `_LOGATTR`, the
 # receiver is otherwise not checked: the safe side.
 _SINKATTR = "sinkattr:"
+# RM-1790: a def that puts one parameter's value INTO the object another
+# parameter names (`def h(q, v): q.append(v)`, `def h(self, v): self.q = v`)
+# is a MUTATING helper, held as `_MUTFN + name + " " + dst + ">" + src`, one
+# entry per (mutated parameter spec, source parameter spec) pair, in the
+# `_SINKFN` spec grammar (`_mut_specs`). A call through it whose `src`
+# argument is tainted taints the names of its `dst` argument, add-only, as
+# `q.append(url)` taints `q` (`_bind_mut_calls`). A class body turns one into
+# `_MUTATTR + name + " " + kind + " " + dst + ">" + src`, read off an
+# attribute call as `_SINKATTR` is, so `self.h(url)` taints `self`.
+_MUTFN = "mutfn:"
+_MUTATTR = "mutattr:"
 
 
 def _object_only(name, tainted) -> bool:
@@ -1414,7 +1425,10 @@ def _def_locals(fn):
     RM-1788: a parameter is local too, unless the def may MUTATE the object
     it names (`_mutated_names`): that taint reaches the caller's object, which
     the scan follows by spelling (`self.q.append(url)` taints `self` for the
-    next method). A re-binding (`m = url`, `p = log.info`) stays inside."""
+    next method). A re-binding (`m = url`, `p = log.info`) stays inside.
+    RM-1790: a parameter passed to the mutated parameter of a helper is
+    mutated as well; that depends on the state, so the def arm takes it off
+    this set (`_call_mutated_names`)."""
     hit = _LOCALS_CACHE.get(id(fn))
     if hit is not None and hit[0] is fn:
         return hit[1]
@@ -1470,10 +1484,43 @@ def _mutated_names(fn):
     return found
 
 
+def _chain_root(expr):
+    """The name an attribute / element chain hangs off (`a` for `a.b[c].d`),
+    or None if it hangs off anything else (a call, a literal)."""
+    while isinstance(expr, (ast.Attribute, ast.Subscript, ast.Starred)):
+        expr = expr.value
+    return expr.id if isinstance(expr, ast.Name) else None
+
+
+def _mutated_containers(fn):
+    """RM-1790: the names of the OBJECTS `fn` (nested scopes included) may
+    change in place: the root of an attribute or element store target
+    (`m.x = v`, `q[k] = v`: `m`, `q`, never the index `k`), of a
+    `_MUTATORS` call's receiver (`q[k].append(v)`: `q`) and the plain-name
+    target of an augmented assignment. The narrow half of `_mutated_names`,
+    which also keeps every name in the target (the safe side for flow-out)."""
+    found = set()
+    for node in ast.walk(fn):
+        if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+            found.add(node.target.id)
+            continue
+        if (isinstance(node, (ast.Attribute, ast.Subscript))
+                and isinstance(node.ctx, ast.Store)):
+            root = _chain_root(node)
+        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr in _MUTATORS):
+            root = _chain_root(node.func.value)
+        else:
+            continue
+        if root is not None:
+            found.add(root)
+    return found
+
+
 _LOCALS_CACHE = {}
 # The class attribute marks are about an ATTRIBUTE, which a local of the same
 # spelling does not hold, so they always flow out of a def.
-_ATTR_MARKS = (_LOGATTR, _LOGOBJATTR, _SINKATTR)
+_ATTR_MARKS = (_LOGATTR, _LOGOBJATTR, _SINKATTR, _MUTATTR)
 
 
 def _drop_locals(state, names):
@@ -1483,10 +1530,88 @@ def _drop_locals(state, names):
 
 
 def _drop_wrapper(name, tainted) -> None:
-    """A re-binding of `name` replaces whatever wrapper it named."""
-    prefix = _SINKFN + name + " "
-    for entry in [e for e in tainted if e.startswith(prefix)]:
+    """A re-binding of `name` replaces whatever wrapper (RM-1790: or
+    mutating helper) it named."""
+    prefixes = (_SINKFN + name + " ", _MUTFN + name + " ")
+    for entry in [e for e in tainted if e.startswith(prefixes)]:
         tainted.discard(entry)
+
+
+def _has_mut_marks(view) -> bool:
+    return any(e.startswith((_MUTFN, _MUTATTR)) for e in view)
+
+
+def _mut_pairs(call, view):
+    """RM-1790: the (dst spec, src spec) pairs of the mutating helper
+    `call` goes through (`_MUTFN` off a name, `_MUTATTR` off an attribute,
+    each attribute pair read for how the call binds the first parameter,
+    as `_attr_specs` reads a `_SINKATTR` spec). A classmethod's first
+    parameter is the receiver's class: as a SOURCE it carries none of the
+    receiver's value (`_attr_specs`), but as a DESTINATION a store into it
+    is read back off the receiver (`self.q` finds a class attribute), so
+    there it is bound from the receiver: the safe side."""
+    f = call.func
+    pairs = set()
+    if isinstance(f, ast.Name):
+        prefix = _MUTFN + f.id + " "
+        for entry in view:
+            if entry.startswith(prefix):
+                dst, src = entry[len(prefix):].split(">", 1)
+                pairs.add((dst, src))
+    elif isinstance(f, ast.Attribute):
+        prefix = _MUTATTR + f.attr + " "
+        for entry in view:
+            if not entry.startswith(prefix):
+                continue
+            kind, pair = entry[len(prefix):].split(" ", 1)
+            dst, src = pair.split(">", 1)
+            for way in _attr_ways(kind, f.value):
+                if way == "cls":
+                    dsts, srcs = _bound_specs(dst), _bound_specs(src) - {_RECV}
+                elif way == "bound":
+                    dsts, srcs = _bound_specs(dst), _bound_specs(src)
+                else:
+                    dsts, srcs = {dst}, {src}
+                pairs |= {(d, s) for d in dsts for s in srcs}
+    return pairs
+
+
+def _call_mutated_names(fn, view):
+    """RM-1790: the root name (`_chain_root`) of every argument (or
+    receiver) that a call inside `fn` (nested scopes included, as
+    `_mutated_names`) passes to the MUTATED parameter of a helper `view`
+    knows (`_mut_pairs`). The value
+    passed for the source is not judged: this is what the call MAY mutate,
+    the safe side of `_def_locals`."""
+    if not _has_mut_marks(view):
+        return set()
+    found = set()
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.Call):
+            continue
+        for dst, _ in _mut_pairs(node, view):
+            for arg in _spec_args(node, {dst}):
+                root = _chain_root(arg)
+                if root is not None:
+                    found.add(root)
+    return found
+
+
+def _bind_mut_calls(nodes, tainted, late=frozenset()) -> None:
+    """RM-1790: a call through a mutating helper whose source argument is
+    tainted leaves its destination argument's names carrying the value, as
+    `q.append(url)` leaves `q` (`_bind_mutators`): `h(q, url)` with
+    `def h(q, v): q.append(v)` taints `q`, and `self.h(url)` with
+    `def h(self, v): self.q.append(v)` taints `self`. Add-only; each call
+    is judged with the view `_call_views` gives it."""
+    for node in nodes:
+        calls = []
+        _call_views(node, tainted, late, calls)
+        for call, seen in calls:
+            for dst, src in _mut_pairs(call, seen):
+                if any(_is_tainted(a, seen, late) for a in _spec_args(call, {src})):
+                    for arg in _spec_args(call, {dst}):
+                        _bind_names(arg, True, tainted, clear=False)
 
 
 def _param_specs(fn):
@@ -1529,19 +1654,8 @@ def _sink_specs(fn, state, late=frozenset()):
     if not params:
         return set()
     names = {n for n, _ in params}
-    marks = (_OBJ, _LOGFN, _LOGOBJ)
-
-    def shadowed(entry):
-        return (entry in names or any(entry == m + n for m in marks for n in names)
-                or any(entry.startswith(_SINKFN + n + " ") for n in names))
-
     body = _fn_body(fn)
-    # RM-1656: only the entries the body can read decide the answer (see
-    # `_walk_scope`), so the key is projected onto them.
-    base = _readable(set(state) | set(late), _scope_names(body))
-    base = frozenset(e for e in base if not shadowed(e))
-    base |= {e for e in _default_bindings(fn, state, late)
-             if e.startswith((_LOGFN, _LOGOBJ, _SINKFN))}
+    base = _param_base(fn, names, state, late)
     # The answer depends only on `fn` and `base`, and a nested def is judged
     # again on every pass of every walk around it, so it is memoised for one
     # `_message_leak_sites` call (the tree, so every `id`, outlives it).
@@ -1552,6 +1666,81 @@ def _sink_specs(fn, state, late=frozenset()):
 
 
 _SPEC_CACHE = {}
+
+
+def _param_base(fn, names, state, late):
+    """The entry `_sink_specs` and `_mut_specs` walk def `fn`'s body from:
+    what the scope around it may hold (`state | late`) less the entries
+    about its parameters `names`, which shadow them, plus what the
+    parameters' defaults bind (see `_sink_specs`)."""
+    marks = (_OBJ, _LOGFN, _LOGOBJ)
+
+    def shadowed(entry):
+        return (entry in names or any(entry == m + n for m in marks for n in names)
+                or any(entry.startswith((_SINKFN + n + " ", _MUTFN + n + " "))
+                       for n in names))
+
+    # RM-1656: only the entries the body can read decide the answer (see
+    # `_walk_scope`), so the key is projected onto them.
+    base = _readable(set(state) | set(late), _scope_names(_fn_body(fn)))
+    base = frozenset(e for e in base if not shadowed(e))
+    return base | {e for e in _default_bindings(fn, state, late)
+                   if e.startswith((_LOGFN, _LOGOBJ, _SINKFN))}
+
+
+def _mut_specs(fn, state, late=frozenset()):
+    """RM-1790: the `_MUTFN` pairs (`dst>src`) of def `fn`: a parameter
+    `dst` the def may mutate in place (`_mutated_names`, or passed on to a
+    helper's mutated parameter: `_call_mutated_names`) that leaves the body
+    carrying the value when parameter `src` does. Only a CONTAINER counts
+    as mutated (`_mutated_containers`): the index of a store
+    (`cache[url] = body`) is read, not changed, so it is never a `dst`.
+    Judged as `_sink_specs` judges a sink parameter: from the same entry,
+    one walk per parameter (memoised, so the walks `_sink_specs` already
+    made are reused), into a throwaway report. What `dst` carries is read
+    from every state the body may leave it in (fall-through, `return` and
+    every state inside, as the def arm's flow-out is). Residuals: a lambda,
+    an alias (`k = h`), a helper stored on an attribute from outside a
+    class body and `setattr(o, 'u', v)` make no pair; a helper that stores
+    an ENCLOSING tainted name (`q.append(G)`) makes a pair only for a
+    tainted argument, so `h(r, 'x')` is missed (a pair needing no argument
+    pre-tainted the parameters of every wrapper that calls the helper, and
+    so hid their sink parameters from `_sink_specs`); a parameter mutated
+    and then re-bound (`q.append('x'); q = [v]`) is read as still carrying
+    `v`, the RM-1788 safe side."""
+    params = _param_specs(fn)
+    if len(params) < 2:
+        return set()
+    names = {n for n, _ in params}
+    base = _param_base(fn, names, state, late)
+    dsts = names & (_mutated_containers(fn) | _call_mutated_names(fn, base))
+    if not dsts:
+        return set()
+    key = ("mut", id(fn), base)
+    if key not in _SPEC_CACHE:
+        _SPEC_CACHE[key] = frozenset(_judge_mut_params(_fn_body(fn), params, dsts, base))
+    return _SPEC_CACHE[key]
+
+
+def _judge_mut_params(body, params, dsts, base):
+    """The uncached body of `_mut_specs`."""
+
+    def carried(extra):
+        out, returns, inside, _ = _walk_scope(body, base | extra, lambda e, f: None)
+        flowed = _join(out, *returns, *inside) or set()
+        return {d for d in dsts if d in flowed or _OBJ + d in flowed}
+
+    specs = dict(params)
+    pairs = set()
+    for src, src_specs in params:
+        for dst in carried({src}) - {src}:
+            pairs |= {f"{d}>{s}" for d in specs[dst] for s in src_specs}
+    return pairs
+
+
+def _bind_mut(name, pairs, tainted) -> None:
+    for pair in pairs:
+        tainted.add(f"{_MUTFN}{name} {pair}")
 
 
 def _fn_body(fn):
@@ -1608,6 +1797,14 @@ def _wrapper_args(call, tainted=frozenset()):
         return None
     if not specs:
         return None
+    return _spec_args(call, specs)
+
+
+def _spec_args(call, specs):
+    """The arguments of `call` bound to a parameter spec in `specs` (the
+    `_SINKFN` grammar, `_RECV` included). Shared by `_wrapper_args` and
+    the RM-1790 mutating-helper reads (`_bind_mut_calls`)."""
+    f = call.func
     stars = [int(s[5:]) for s in specs if s.startswith("star:")]
     out, shifted = [], False
     for i, arg in enumerate(call.args):
@@ -1619,7 +1816,7 @@ def _wrapper_args(call, tainted=frozenset()):
     for kw in call.keywords:
         if kw.arg is None or "dstar" in specs or f"kw:{kw.arg}" in specs:
             out.append(kw.value)
-    if _RECV in specs:
+    if _RECV in specs and isinstance(f, ast.Attribute):
         out.append(f.value)
     return out
 
@@ -1664,29 +1861,39 @@ def _attr_specs(f, tainted):
     method's first parameter, so `super().g()` with a tainted `self` is
     missed."""
     prefix = _SINKATTR + f.attr + " "
-    recv = f.value
     specs = set()
     for entry in tainted:
         if not entry.startswith(prefix):
             continue
         kind, spec = entry[len(prefix):].split(" ", 1)
-        owner = kind[len("inst:"):]
-        if kind == "static":
-            ways = {spec}
-        elif kind == "any":
-            ways = {spec} | _bound_specs(spec)
-        elif kind == "cls":
-            ways = _bound_specs(spec) - {_RECV}
-        elif (isinstance(recv, ast.Name) and recv.id == "self") or (
-                isinstance(recv, ast.Call) and isinstance(recv.func, ast.Name)
-                and recv.func.id in ("super", owner)):
-            ways = _bound_specs(spec)
-        elif isinstance(recv, ast.Name) and recv.id == owner:
-            ways = {spec}
-        else:
-            ways = {spec} | _bound_specs(spec)
-        specs |= ways
+        for way in _attr_ways(kind, f.value):
+            if way == "cls":
+                specs |= _bound_specs(spec) - {_RECV}
+            elif way == "bound":
+                specs |= _bound_specs(spec)
+            else:
+                specs.add(spec)
     return specs
+
+
+def _attr_ways(kind, recv):
+    """How a call off receiver `recv` binds the first parameter of a method
+    mark of kind `kind` (`_attr_specs`): `plain` (unbound), `bound` (off
+    the receiver) or `cls` (off the receiver's class), one or more of them."""
+    owner = kind[len("inst:"):]
+    if kind == "static":
+        return ("plain",)
+    if kind == "any":
+        return ("plain", "bound")
+    if kind == "cls":
+        return ("cls",)
+    if (isinstance(recv, ast.Name) and recv.id == "self") or (
+            isinstance(recv, ast.Call) and isinstance(recv.func, ast.Name)
+            and recv.func.id in ("super", owner)):
+        return ("bound",)
+    if isinstance(recv, ast.Name) and recv.id == owner:
+        return ("plain",)
+    return ("plain", "bound")
 
 
 _COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
@@ -1811,7 +2018,7 @@ def _entry_name(entry):
     for mark in (_OBJ, _LOGFN, _LOGOBJ, _LOGATTR, _LOGOBJATTR):
         if entry.startswith(mark):
             return entry[len(mark):]
-    for mark in (_SINKFN, _SINKATTR):
+    for mark in (_SINKFN, _SINKATTR, _MUTFN, _MUTATTR):
         if entry.startswith(mark):
             return entry[len(mark):].split(" ", 1)[0]
     return entry
@@ -2040,13 +2247,16 @@ def _class_attr_marks(body, out, cls_name=""):
         if _LOGOBJ + name in out:
             marks.add(_LOGOBJATTR + name)
     kinds = _class_method_kinds(body)
+    # RM-1790: a mutating helper (`_MUTFN`) left bound is a `_MUTATTR`
+    # method mark, kind for kind as a wrapper is.
     for entry in out:
-        if not entry.startswith(_SINKFN):
-            continue
-        name, spec = entry[len(_SINKFN):].split(" ", 1)
-        for kind in kinds.get(name, ()):
-            tag = f"inst:{cls_name}" if kind == "inst" else kind
-            marks.add(f"{_SINKATTR}{name} {tag} {spec}")
+        for fn_mark, attr_mark in ((_SINKFN, _SINKATTR), (_MUTFN, _MUTATTR)):
+            if not entry.startswith(fn_mark):
+                continue
+            name, spec = entry[len(fn_mark):].split(" ", 1)
+            for kind in kinds.get(name, ()):
+                tag = f"inst:{cls_name}" if kind == "inst" else kind
+                marks.add(f"{attr_mark}{name} {tag} {spec}")
     return marks
 
 
@@ -2134,6 +2344,7 @@ class _Flow:
             before = len(state)
             _bind_walrus(nodes, state, self.ever)
             _bind_mutators(nodes, state, self.ever)
+            _bind_mut_calls(nodes, state, self.ever)
             if len(state) == before:
                 break
         _check_sinks(nodes, stmt, state, self.report, self.ever)
@@ -2216,7 +2427,12 @@ class _Flow:
                 # enclosing `p` alone). Only the body's additions are
                 # dropped: the enclosing state is kept whole by the union.
                 # RM-1788: so is a parameter it never mutates.
-                flowed = _drop_locals(flowed, _def_locals(stmt))
+                # RM-1790: a parameter passed to a helper's mutated
+                # parameter is mutated (`self.h(url)` mutates `self`), as
+                # the def-time state or the late view knows the helper.
+                params = {n for n, _ in _param_specs(stmt)}
+                kept = params & _call_mutated_names(stmt, state | self.ever)
+                flowed = _drop_locals(flowed, _def_locals(stmt) - kept)
             state = state | flowed
             if hands_back and not isinstance(stmt, ast.ClassDef):
                 state.add(stmt.name)
@@ -2227,6 +2443,9 @@ class _Flow:
             if not isinstance(stmt, ast.ClassDef):
                 _bind_wrapper(stmt.name, _sink_specs(stmt, state, self.ever),
                               state)
+                # RM-1790: and it names this mutating helper, judged the
+                # same way.
+                _bind_mut(stmt.name, _mut_specs(stmt, state, self.ever), state)
             return state
         if isinstance(stmt, ast.Return):
             # `return (m := url)` binds before leaving, and a `finally` or a
@@ -3798,6 +4017,100 @@ _CHECKER_SAMPLES = (
     ("clean mutator in an except type",
      "def f(url):\n    q = []\n    try:\n        g()\n"
      "    except q.append('x') or E:\n        log.info(q)\n", False),
+    # RM-1790: a call through a MUTATING helper - a def that puts one
+    # parameter's value into the object another names - taints the object
+    # the caller passed, as `q.append(url)` does, so a later read of it is a
+    # leak: off a plain call, off `self` (the receiver is the first
+    # parameter), from a helper defined after its caller, through a chain of
+    # helpers, and off a staticmethod / classmethod. The clean rows keep it
+    # tied to the value: a clean source, a sanitized one, a helper that
+    # stores something else, one that only re-binds its parameter, and a
+    # url passed to no source parameter.
+    ("helper method mutates self, a later method logs it",
+     "class C:\n    def h(self, v):\n        self.q.append(v)\n"
+     "    def b(self, url):\n        self.h(url)\n    def c(self):\n"
+     "        log.info(self.q)\n", True),
+    ("helper method mutates self, the caller logs it",
+     "class C:\n    def h(self, v):\n        self.q.append(v)\n"
+     "    def b(self, url):\n        self.h(url)\n        log.info(self.q)\n", True),
+    ("helper method stores an attribute of self",
+     "class C:\n    def h(self, v):\n        self.u = v\n    def b(self, url):\n"
+     "        self.h(url)\n    def c(self):\n        log.info(self.u)\n", True),
+    ("helper method defined after its caller",
+     "class C:\n    def b(self, url):\n        self.h(url)\n    def h(self, v):\n"
+     "        self.q.append(v)\n    def c(self):\n        log.info(self.q)\n", True),
+    ("helper function mutates a parameter, the caller logs it",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    q = []\n    h(q, url)\n"
+     "    log.info(q)\n", True),
+    ("helper function called with a keyword source",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    q = []\n    h(q, v=url)\n"
+     "    log.info(q)\n", True),
+    ("helper function defined after its caller",
+     "def f(url):\n    q = []\n    h(q, url)\n    log.info(q)\ndef h(q, v):\n"
+     "    q.append(v)\n", True),
+    ("helper function reached through another helper",
+     "def h(q, v):\n    q.append(v)\ndef h2(q, v):\n    h(q, v)\ndef f(url):\n"
+     "    q = []\n    h2(q, url)\n    log.info(q)\n", True),
+    ("helper method reached through another method",
+     "class C:\n    def h(self, v):\n        self.q.append(v)\n    def h2(self, v):\n"
+     "        self.h(v)\n    def b(self, url):\n        self.h2(url)\n"
+     "    def c(self):\n        log.info(self.q)\n", True),
+    ("helper function mutating through a nested def",
+     "def h(q, v):\n    def k():\n        q.append(v)\n    k()\ndef f(url):\n"
+     "    q = []\n    h(q, url)\n    log.info(q)\n", True),
+    ("staticmethod helper called off self",
+     "class C:\n    @staticmethod\n    def h(q, v):\n        q.append(v)\n"
+     "    def b(self, url):\n        q = []\n        self.h(q, url)\n"
+     "        log.info(q)\n", True),
+    ("classmethod helper mutates its class, read off self",
+     "class C:\n    @classmethod\n    def h(cls, v):\n        cls.q.append(v)\n"
+     "    def b(self, url):\n        self.h(url)\n    def c(self):\n"
+     "        log.info(self.q)\n", True),
+    # A helper that caches under its url key mutates its cache, not the
+    # key: a wrapper that calls it keeps its sink parameter, so the call
+    # site that hands the wrapper a url is still flagged.
+    ("wrapper calling a helper that caches under its url key",
+     "CACHE = {}\ndef fetch(url):\n    body = get(url)\n    CACHE[url] = body\n"
+     "    return body\ndef disc(over):\n    fetch(over)\n    log.info(over)\n"
+     "def f(args):\n    disc(args.chunk_url)\n", True),
+    ("helper method stores a tainted module name into self",
+     "G = url\nclass C:\n    def h(self):\n        self.q.append(G)\n"
+     "    def b(self):\n        self.h()\n    def c(self):\n        log.info(self.q)\n",
+     True),
+    ("helper method puts its receiver into a parameter",
+     "class C:\n    def h(self, q):\n        q.append(self)\ndef f(url):\n"
+     "    o = C(url)\n    q = []\n    o.h(q)\n    log.info(q)\n", True),
+    ("helper function called with a clean source",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    q = []\n    h(q, 'x')\n"
+     "    log.info(q)\n", False),
+    ("helper method called with a clean source",
+     "class C:\n    def h(self, v):\n        self.q.append(v)\n"
+     "    def b(self, url):\n        self.h('x')\n    def c(self):\n"
+     "        log.info(self.q)\n", False),
+    ("helper function sanitizes its source",
+     "def h(q, v):\n    q.append(_safe_url(v))\ndef f(url):\n    q = []\n"
+     "    h(q, url)\n    log.info(q)\n", False),
+    ("helper function stores a literal, not its source",
+     "def h(q, v):\n    q.append('x')\ndef f(url):\n    q = []\n    h(q, url)\n"
+     "    log.info(q)\n", False),
+    ("helper function only re-binds its parameter",
+     "def h(q, v):\n    q = [v]\ndef f(url):\n    q = []\n    h(q, url)\n"
+     "    log.info(q)\n", False),
+    ("helper function stores a clean module name whatever is passed",
+     "G = 'x'\ndef h(q, v):\n    q.append(G)\ndef f(url):\n    r = []\n    h(r, 'x')\n"
+     "    log.info(r)\n", False),
+    ("helper function stores under a key, the key is logged",
+     "def put(d, k, v):\n    d[k] = v\ndef f(url, name):\n    c = {}\n"
+     "    put(c, name, url)\n    log.info(name)\n", False),
+    ("helper given an element whose key is a parameter",
+     "def h(q, v):\n    q.append(v)\ndef w(k, url):\n    c = {}\n    h(c[k], url)\n"
+     "def f(k):\n    log.info(k)\n", False),
+    ("helper function caches a tainted module name under its key",
+     "G = url\nCACHE = {}\ndef put(k):\n    CACHE[k] = G\ndef f(name):\n"
+     "    put(name)\n    log.info(name)\n", False),
+    ("helper function given the url for no source parameter",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    q = []\n    h(v='x', q=q)\n"
+     "    log.info(q)\n", False),
 )
 
 
