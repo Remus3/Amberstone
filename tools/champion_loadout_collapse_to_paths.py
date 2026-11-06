@@ -291,12 +291,16 @@ def pick_primary_key(variants: dict, default_key: str, mode: str = SR_MODE) -> s
     2. first hand-curated variant in iteration order
     3. first variant of any kind in this mode
     """
-    if default_key and default_key in variants and variant_is_mode(variants[default_key], mode):
-        # If the prior default already points at the collapsed key, fall
-        # through so we re-pick a real source variant (idempotent
-        # collapse on already-collapsed input).
-        if default_key != collapsed_key_for(mode):
-            return default_key
+    # If the prior default already points at the collapsed key, fall
+    # through so we re-pick a real source variant (idempotent
+    # collapse on already-collapsed input).
+    if (
+        default_key
+        and default_key in variants
+        and variant_is_mode(variants[default_key], mode)
+        and default_key != collapsed_key_for(mode)
+    ):
+        return default_key
     for vk, v in variants.items():
         if vk == collapsed_key_for(mode):
             continue

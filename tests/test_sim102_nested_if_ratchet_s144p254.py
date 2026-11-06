@@ -6,11 +6,15 @@ kit. Twelve are now one ``if A and B:`` each, in four production modules (``comp
 either ``if``, so the merged condition runs the same body for exactly the same inputs, and ``and`` short-circuits in
 the same order the nested form evaluated its tests.
 
+A third slice (RM-1755) merged 8 more in six ``tools/`` scripts (``champion_loadout_align`` x2,
+``champion_loadout_cleanup_pollution_item213`` x2, ``champion_loadout_collapse_to_paths``, ``ds_cdragon_drift_audit``,
+``gated_g232_layout_diff``, ``upstream_drift_check``), each with no ``else`` on either ``if``.
+
 A second slice (RM-1754) merged 8 more, one per module in ``core/`` x5 and ``vision_server/`` x3; the merge
 kept every ``and`` operand in the nested form's order, and only the ``elif state == STOPPED`` site in
 ``core/obs_recorder.py`` moved a nested ``if`` into an ``elif`` test, where its chain has no later branch.
 
-The other 22 are the baseline below: one frozen file (``ops/rc_supervisor.py``), one file the uiux lane's branch
+The other 14 are the baseline below: one frozen file (``ops/rc_supervisor.py``), one file the uiux lane's branch
 changes (``agents/agent5_ui/champion_fallback.py``) and the rest left for later slices. The count per file can only
 fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 
@@ -53,13 +57,7 @@ _BASELINE = {
     "ops/rc_supervisor.py": 2,
     "scripts/fetch_cdragon_pbe.py": 1,
     "tft/tft_coach_engine.py": 1,
-    "tools/champion_loadout_align.py": 2,
-    "tools/champion_loadout_cleanup_pollution_item213.py": 2,
-    "tools/champion_loadout_collapse_to_paths.py": 1,
-    "tools/ds_cdragon_drift_audit.py": 1,
-    "tools/gated_g232_layout_diff.py": 1,
     "tools/package_portable.py": 1,
-    "tools/upstream_drift_check.py": 1,
 }
 _FIXED = (
     "composition_advisor.py",
@@ -74,6 +72,12 @@ _FIXED = (
     "vision_server/_frame.py",
     "vision_server/_inference.py",
     "vision_server/_relay.py",
+    "tools/champion_loadout_align.py",
+    "tools/champion_loadout_cleanup_pollution_item213.py",
+    "tools/champion_loadout_collapse_to_paths.py",
+    "tools/ds_cdragon_drift_audit.py",
+    "tools/gated_g232_layout_diff.py",
+    "tools/upstream_drift_check.py",
 )
 
 

@@ -178,13 +178,11 @@ def _detect_archetype(variant_key: str, variant: dict) -> str:
         return explicit
     # Variant key like "sr-bruiser" / "aram-mage" / "arena-tank".
     parts = variant_key.split("-")
-    if len(parts) >= 2 and parts[0] in {"sr", "aram", "arena"}:
-        if parts[-1] in _VALID_ARCHES:
-            return parts[-1]
+    if len(parts) >= 2 and parts[0] in {"sr", "aram", "arena"} and parts[-1] in _VALID_ARCHES:
+        return parts[-1]
     # auto-<mode>-<slot>-<arch>
-    if variant_key.startswith("auto-") and len(parts) >= 4:
-        if parts[-1] in _VALID_ARCHES:
-            return parts[-1]
+    if variant_key.startswith("auto-") and len(parts) >= 4 and parts[-1] in _VALID_ARCHES:
+        return parts[-1]
     # Legacy token scan: walk the ordered table, first matching token
     # in the variant key wins. Catches "ap-burst", "adc-crit",
     # "tank-engage", etc.

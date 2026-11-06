@@ -506,9 +506,8 @@ class Cleaner:
         if n in _JOKE_NAMES or "spatula" in n:
             return True
         # off-mode: not on this mode's map AND it resolves to a known item
-        if mode in ("sr", "aram") and self.item_idx.get(n):
-            if not _on_map(self.item_idx, name, mode):
-                return True
+        if mode in ("sr", "aram") and self.item_idx.get(n) and not _on_map(self.item_idx, name, mode):
+            return True
         return False
 
     def _families_in(self, items: list[str]) -> set[str]:
@@ -621,9 +620,8 @@ class Cleaner:
     ) -> list[str]:
         out: list[str] = []
         for it in items:
-            if "spatula" in _norm(it):
-                if mode in ("sr", "aram"):
-                    self.gs_before += 1
+            if "spatula" in _norm(it) and mode in ("sr", "aram"):
+                self.gs_before += 1
             if self._is_polluted(it, mode):
                 self.stripped[it.strip()] = self.stripped.get(
                     it.strip(), 0

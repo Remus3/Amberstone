@@ -134,9 +134,8 @@ def clamp_problem(entry: dict, width: int | None, height: int | None) -> str | N
         return None
     if x < 0 or y < 0:
         return "below 0"
-    if width and height:
-        if x > max(0, width - MIN_VISIBLE) or y > max(0, height - MIN_VISIBLE):
-            return f"past {width}x{height} minus {MIN_VISIBLE}"
+    if width and height and (x > max(0, width - MIN_VISIBLE) or y > max(0, height - MIN_VISIBLE)):
+        return f"past {width}x{height} minus {MIN_VISIBLE}"
     return None
 
 

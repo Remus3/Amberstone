@@ -146,10 +146,9 @@ def classify_row(row: dict) -> str:
             return "large_divergence"
 
     # 4. Rank shape mismatch
-    if len(meraki) != len(cdragon):
-        # Check if the extra length is benign (cdragon longer by 1-2, prefix matches)
-        if not _is_benign_trailing_extra(meraki, cdragon):
-            return "rank_shape_mismatch"
+    # A length difference is fine when the extra length is benign (cdragon longer by 1-2, prefix matches).
+    if len(meraki) != len(cdragon) and not _is_benign_trailing_extra(meraki, cdragon):
+        return "rank_shape_mismatch"
 
     # 5. Clean balance drift - expected live re-source change
     return "clean_balance_drift"

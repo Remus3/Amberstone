@@ -793,12 +793,11 @@ def main(argv: list[str] | None = None) -> int:
         else:
             logger.info("no upstream drift (sentinel advanced)")
 
-        if args.spec_watch:
-            # Unlike the side effects above this one is NOT fail-soft: the
-            # promise it keeps is "a spec we cannot read is a failure, never a
-            # quiet pass" (P1-3), so its exit 2 becomes this run's exit 2.
-            if _run_spec_watch() == 2:
-                return 2
+        # Unlike the side effects above this one is NOT fail-soft: the
+        # promise it keeps is "a spec we cannot read is a failure, never a
+        # quiet pass" (P1-3), so its exit 2 becomes this run's exit 2.
+        if args.spec_watch and _run_spec_watch() == 2:
+            return 2
         return 0
     except Exception as e:  # noqa: BLE001 - hard unexpected failure -> exit 2
         logger.exception("upstream_drift_check hard error: %s", e)
