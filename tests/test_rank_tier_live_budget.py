@@ -857,11 +857,13 @@ _LOGOBJATTR = "logobjattr:"
 # RM-1786: a WRAPPER (`_SINKFN`) the class body binds at its own level - a
 # def, a lambda, or a staticmethod / classmethod over one - is a method, held
 # as `_SINKATTR + name + " " + kind + " " + spec` (`_class_attr_marks`), and a
-# lambda stored on an attribute (`self.g = lambda m: log.info(m)`) makes the
-# same mark with kind `static` (`_retaint`). The kind says how a call off an
-# attribute of that name binds the first parameter (`_attr_specs`): `static`
-# binds nothing, `cls` always binds it, and `inst:<class>` binds it unless the
-# receiver is the class name itself (`C.g(o, url)` is unbound). As with
+# wrapper stored on an attribute (`self.g = lambda m: log.info(m)`) makes the
+# same mark with the kind `_attr_store_kinds` gives it (`_retaint`). The kind
+# says how a call off an attribute of that name binds the first parameter
+# (`_attr_specs`): `static` binds nothing, `cls` always binds it, `any` is
+# read both ways (RM-1563: `C.g = lambda self, m: ...` from outside), and
+# `inst:<class>` binds it unless the receiver is the class name itself
+# (`C.g(o, url)` is unbound). As with
 # `_LOGATTR`, the receiver is otherwise not checked: the safe side.
 _SINKATTR = "sinkattr:"
 
@@ -904,10 +906,10 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # RM-1563: `self.p = log.info` stores the alias in an attribute, as a
     # class body's `p = log.info` does, so it makes the same mark. Add-only:
     # one store does not replace what another instance or the class holds.
-    # RM-1786: a wrapper lambda stored on an attribute is a `static`
-    # method mark: a function held on an instance binds no `self`. Residual:
-    # one stored on a CLASS from outside (`C.g = lambda self, m: ...`) does
-    # bind `self` off an instance, and is read unshifted.
+    # RM-1786: a wrapper stored on an attribute is a method mark, its kind
+    # read off the receiver and the value (`_attr_store_kinds`). RM-1563:
+    # a store off any receiver but `self` may land on a class
+    # (`C.g = lambda self, m: ...`, `cls.g = ...`), which binds `self`.
     attr_marks = set()
     for target in targets if plain else []:
         if isinstance(target, ast.Attribute):
@@ -915,8 +917,11 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
                 attr_marks.add(_LOGATTR + target.attr)
             if _is_logger_expr(value, tainted):
                 attr_marks.add(_LOGOBJATTR + target.attr)
-            attr_marks.update(f"{_SINKATTR}{target.attr} static {spec}"
-                              for spec in wrapper)
+            if wrapper:
+                attr_marks.update(
+                    f"{_SINKATTR}{target.attr} {kind} {spec}"
+                    for kind in _attr_store_kinds(target.value, value)
+                    for spec in wrapper)
     tainted |= attr_marks
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
@@ -981,6 +986,33 @@ def _value_kinds(value):
 
 
 _METHOD_KIND = {"staticmethod": "static", "classmethod": "cls"}
+
+
+def _attr_store_kinds(recv, value):
+    """RM-1786 / RM-1563: the `_SINKATTR` kinds of a wrapper `value`
+    stored on an attribute of `recv` from outside a class body (`_retaint`).
+    A staticmethod binds nothing wherever it is stored: `static`. Off
+    `self` the store lands on an instance, where a plain function (a
+    lambda, or a name: a def) binds nothing either: `static`. Off any other
+    receiver it may land on a class (`C.g = lambda self, m: ...`,
+    `cls.g = ...`), where a plain function binds `self` off an instance and
+    nothing off the class, and the receiver's own nature is unknown, so it
+    is read both ways: `any`; a classmethod stored there always binds its
+    first parameter: `cls`. A classmethod stored off `self` is read both
+    ways too: the safe side. A conditional gives the union of its arms."""
+    own, sources = _value_kinds(value)
+    if sources or not own:
+        own = own | {"inst"}
+    on_self = isinstance(recv, ast.Name) and recv.id == "self"
+    kinds = set()
+    for kind in own:
+        if kind == "static" or (on_self and kind == "inst"):
+            kinds.add("static")
+        elif kind == "cls" and not on_self:
+            kinds.add("cls")
+        else:
+            kinds.add("any")
+    return kinds
 
 
 def _is_tainted(expr, tainted, late=frozenset()) -> bool:
@@ -1580,7 +1612,9 @@ def _attr_specs(f, tainted):
     bound off `self`, `super()` or a new instance of its own class (`C()`),
     unbound off its own class name, and read BOTH ways off any other
     receiver, which may be a class (`cls`, `type(self)`, a subclass `D`, a
-    dotted path `O.I`) or an instance: the safe side.
+    dotted path `O.I`) or an instance: the safe side. RM-1563: an `any`
+    mark (a plain function stored on a non-`self` attribute from outside a
+    class body) is read both ways off every receiver.
     Residual: the first parameter itself is not judged on a bound call
     (`self.g()` with a tainted `self`; the method body sees `self`'s taint
     through the class state instead). RM-1563: a def re-wrapped by name
@@ -1595,6 +1629,8 @@ def _attr_specs(f, tainted):
         owner = kind[len("inst:"):]
         if kind == "static":
             ways = (spec,)
+        elif kind == "any":
+            ways = (spec, _bound_spec(spec))
         elif kind == "cls" or (isinstance(recv, ast.Name) and recv.id == "self") or (
                 isinstance(recv, ast.Call) and isinstance(recv.func, ast.Name)
                 and recv.func.id in ("super", owner)):
@@ -3500,6 +3536,50 @@ _CHECKER_SAMPLES = (
     ("attribute alias stored beside a local of the same name",
      "class C:\n    def __init__(self):\n        p = 1\n        self.p = log.info\n"
      "    def m(self, url):\n        self.p(url)\n", True),
+    # RM-1563 wrappers stored on an attribute from outside the class body.
+    # Only a store off `self` is known to land on an instance, where a
+    # function binds nothing. Off any other receiver it may land on a class
+    # (`C.g = lambda self, m: ...`), where a function binds `self` off an
+    # instance, so a plain function is read both ways; a staticmethod still
+    # binds nothing, and a classmethod stored off a non-`self` receiver
+    # always binds its first parameter.
+    ("lambda stored on a class from outside, called off an instance",
+     "class C:\n    pass\nC.g = lambda self, m: log.info(m)\ndef f(url):\n"
+     "    C().g(url)\n", True),
+    ("lambda stored on a class from outside, called off self",
+     "class C:\n    def h(self, url):\n        self.g(url)\n"
+     "C.g = lambda self, m: log.info(m)\n", True),
+    ("module wrapper stored on a class from outside",
+     "def g(s, m):\n    log.info(m)\nclass C:\n    pass\nC.h = g\ndef f(o, url):\n"
+     "    o.h(url)\n", True),
+    ("classmethod lambda stored on a class from outside",
+     "class C:\n    pass\nC.g = classmethod(lambda cls, m: log.info(m))\n"
+     "def f(url):\n    C.g(url)\n", True),
+    ("lambda stored on cls in a classmethod",
+     "class C:\n    @classmethod\n    def setup(cls):\n"
+     "        cls.g = lambda self, m: log.info(m)\n    def h(self, url):\n"
+     "        self.g(url)\n", True),
+    ("conditional method wrapper stored on a class from outside",
+     "class C:\n    pass\nC.g = (lambda self, m: log.info(m)) if c else fetch\n"
+     "def f(url):\n    C().g(url)\n", True),
+    ("lambda stored on another object, called off it",
+     "def f(o, url):\n    o.g = lambda m: log.info(m)\n    o.g(url)\n", True),
+    ("lambda stored on another object, called off self",
+     "class C:\n    def setup(self, o):\n        o.g = lambda m: log.info(m)\n"
+     "    def h(self, url):\n        self.g(url)\n", True),
+    # ... and the kinds a store DOES know keep their positions.
+    ("staticmethod stored on a class from outside keeps its positions",
+     "class C:\n    pass\nC.g = staticmethod(lambda m, n: log.info(n))\n"
+     "def f(url):\n    C().g(url, 'x')\n", False),
+    ("classmethod stored on a class from outside keeps the shift",
+     "class C:\n    pass\nC.g = classmethod(lambda cls, m, n: log.info(m))\n"
+     "def f(url):\n    C.g('x', url)\n", False),
+    ("lambda stored on self keeps its positions",
+     "class C:\n    def __init__(self):\n        self.g = lambda m, n: log.info(n)\n"
+     "    def h(self, url):\n        self.g(url, 'x')\n", False),
+    ("lambda stored on a class from outside, called with a sanitized value",
+     "class C:\n    pass\nC.g = lambda self, m: log.info(m)\ndef f(url):\n"
+     "    C().g(_safe_url(url))\n", False),
 )
 
 
