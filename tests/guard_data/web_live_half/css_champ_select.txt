@@ -1,5 +1,5 @@
 # Live-half digests for web/css/panels/champ_select_view.css - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-4bd3096bfeff4b4cc10f344994c078e6c6f45cb4eca2342969999de4c779471b  web/css/panels/champ_select_view.css
+3fe62b1917672ddfd0f0c24e4c04c8b86663127e8c81dda27c95f4283498947b  web/css/panels/champ_select_view.css
 

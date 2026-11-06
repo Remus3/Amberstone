@@ -1438,6 +1438,118 @@
   #view-champ-select .csv-card-mypick .csv-card-body { overflow-y: visible; }
 }
 
+/* RM-1780 (s144 lane uiux): at 720 px and under (300 percent zoom of
+ * the 1920 baseline is 640, 400 percent is 480, WCAG 1.4.10 reflows at
+ * 320) every Champ Select card fits the view and nothing in a card runs
+ * past it. Measured before this block (ui_mock, headless Chromium): the
+ * 1fr track above cannot shrink below its widest card's min-content, so
+ * every card was 640 px wide at every narrow width and the view scrolled
+ * sideways (658 in 602 at 640, 658 in 282 at 320); with the track freed,
+ * at 320 the My Pick portrait row, the build path rows, the ARAM bench and
+ * build row and the Arena duo / augment / team rows ran past their card.
+ * A row of N equal cells keeps its N columns while each cell keeps its
+ * floor (the max() term), then holds as many as fit; the "- 1px" keeps
+ * the N-column case from rounding down to N - 1. */
+@media (max-width: 720px) {
+  #view-champ-select .csv-grid,
+  #view-champ-select[data-cs-mode="aram"]  .csv-grid,
+  #view-champ-select[data-cs-mode="arena"] .csv-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* ARAM bench: two rows of five (48 px icon cell, 58 px floor). */
+  #view-champ-select .csv-bench-row {
+    grid-template-columns: repeat(auto-fill,
+      minmax(max(58px, calc((100% - 25px) / 5)), 1fr));
+  }
+  /* Arena: me + two teammates; a 64 px icon cell keeps 84 px. */
+  #view-champ-select .csv-duo-row {
+    grid-template-columns: repeat(auto-fill,
+      minmax(max(84px, calc((100% - 17px) / 3)), 1fr));
+  }
+  #view-champ-select .csv-duo-cell { min-width: 0; }
+  #view-champ-select .csv-duo-cell-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Arena augments: a PRISMATIC grade label needs 92 px. */
+  #view-champ-select .csv-augment-slots {
+    grid-template-columns: repeat(auto-fill,
+      minmax(max(96px, calc((100% - 13px) / 3)), 1fr));
+  }
+  #view-champ-select .csv-augment-slot { min-width: 0; }
+  /* Arena enemy sub-teams: icon + lock mark + an elided name. */
+  #view-champ-select .csv-arena-team-row {
+    grid-template-columns: repeat(auto-fill,
+      minmax(max(96px, calc((100% - 13px) / 3)), 1fr));
+  }
+  #view-champ-select .csv-arena-cell { min-width: 0; }
+  /* The build list and the 200 px rune side rail share one flex row; the
+   * rail drops under the builds when both do not fit (it held the builds
+   * column to 14 px at 320) and then spans the line. */
+  #view-champ-select .csv-builds-row { flex-wrap: wrap; }
+  #view-champ-select .csv-rune-side {
+    flex: 1 0 200px;
+    width: auto;
+  }
+  /* A build path's six item icons wrap rather than run past the row. */
+  #view-champ-select .csv-build-path-items,
+  #view-champ-select .csv-build-items {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  /* An ARAM / Arena / experimental build row (checkbox | meta | spells |
+   * items) wraps instead of squeezing: its grid let the meta column fall
+   * under the 200 px badge, which then drew over the spells and items
+   * (meta 0 px at 640 before this block). The meta keeps the badge's
+   * width while the line holds it (less the 12 px checkbox and its gap,
+   * so the checkbox never sits alone), and the items drop to their own
+   * line only when the row cannot hold all four; capped at the row less
+   * the 20 px spells and a gap, they then share a line with the spells. */
+  #view-champ-select .csv-build-row:not(.csv-build-row-collapsed) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 6px;
+  }
+  #view-champ-select .csv-build-row:not(.csv-build-row-collapsed) .csv-build-meta {
+    flex: 1 1 min(200px, calc(100% - 22px));
+    width: auto;
+  }
+  #view-champ-select .csv-build-row .csv-build-items {
+    max-width: calc(100% - 30px);
+  }
+  /* The badge never runs past its column: a long name wraps inside the
+   * pill (never elides) once the line is narrower than 200 px. */
+  #view-champ-select .csv-build-row .csv-build-badge {
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+  }
+}
+/* At 480 px and under the side-by-side rows stack. The My Pick state,
+ * portrait and name go one under another (the portrait stays centred);
+ * a build path's label sits above its items. */
+@media (max-width: 480px) {
+  #view-champ-select .csv-mypick-portrait-row {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    row-gap: 6px;
+  }
+  #view-champ-select .csv-mypick-state,
+  #view-champ-select .csv-mypick-text {
+    justify-self: center;
+    max-width: 100%;
+  }
+  #view-champ-select .csv-mypick-text { align-items: center; }
+  #view-champ-select .csv-build-path-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+  }
+}
+
 /* In ARAM the allies cell layout drops the role pip - collapse
  * the 4th column so the summoner name flexes into the freed space.
  * (allowRolePip:false in the JS render path prevents the pip element
