@@ -895,8 +895,10 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # RM-1563: `p = lambda m: log.info(m)` makes `p` a wrapper. Only a bare
     # name target is tracked (residual: tuple targets, walrus, for).
     # RM-1786: so does a staticmethod / classmethod over a lambda.
-    fn = _wrapped_lambda(value)
-    wrapper = _sink_specs(fn, tainted, late) if plain and fn is not None else set()
+    # RM-1563: and an alias of a wrapper (`h = g`), a conditional over
+    # one, and a re-wrap by name (`g = staticmethod(g)`), judged before the
+    # binding drops the target's own wrapper.
+    wrapper = _value_wrapper_specs(value, tainted, late) if plain else set()
     # RM-1563: `self.p = log.info` stores the alias in an attribute, as a
     # class body's `p = log.info` does, so it makes the same mark. Add-only:
     # one store does not replace what another instance or the class holds.
@@ -928,13 +930,56 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
 _METHOD_WRAPPERS = ("staticmethod", "classmethod")
 
 
-def _wrapped_lambda(value):
-    """RM-1786: the lambda `value` binds as a callable - the lambda itself,
-    or the one a staticmethod / classmethod wraps - or None."""
+def _method_wrapped(value):
+    """RM-1786: the callable a staticmethod / classmethod call `value`
+    wraps, or None if `value` is no such call."""
     if (isinstance(value, ast.Call) and _call_name(value) in _METHOD_WRAPPERS
             and value.args):
-        value = value.args[0]
-    return value if isinstance(value, ast.Lambda) else None
+        return value.args[0]
+    return None
+
+
+def _value_wrapper_specs(value, tainted, late=frozenset()):
+    """The `_SINKFN` specs of the callable `value` evaluates to, judged with
+    `tainted` as it stands: a lambda's own (RM-1563), the one a staticmethod
+    / classmethod wraps (RM-1786), and RM-1563: a name already bound to
+    a wrapper (`h = g`, and `g = staticmethod(g)` through the wrapper call)
+    and either arm of a conditional. Empty for any other value."""
+    inner = _method_wrapped(value)
+    if inner is not None:
+        return _value_wrapper_specs(inner, tainted, late)
+    if isinstance(value, ast.Lambda):
+        return set(_sink_specs(value, tainted, late))
+    if isinstance(value, ast.Name):
+        prefix = _SINKFN + value.id + " "
+        return {e[len(prefix):] for e in tainted if e.startswith(prefix)}
+    if isinstance(value, ast.IfExp):
+        return (_value_wrapper_specs(value.body, tainted, late)
+                | _value_wrapper_specs(value.orelse, tainted, late))
+    return set()
+
+
+def _value_kinds(value):
+    """RM-1786 / RM-1563: how a class body's binding of `value` binds
+    the first parameter: (kinds, alias source names). A staticmethod /
+    classmethod call gives `static` / `cls`, a lambda `inst`, a name the
+    kinds of what it names (resolved by `_class_method_kinds`), and a
+    conditional the union of its arms."""
+    inner = _method_wrapped(value)
+    if inner is not None:
+        return {_METHOD_KIND[_call_name(value)]}, set()
+    if isinstance(value, ast.Lambda):
+        return {"inst"}, set()
+    if isinstance(value, ast.Name):
+        return set(), {value.id}
+    if isinstance(value, ast.IfExp):
+        k1, s1 = _value_kinds(value.body)
+        k2, s2 = _value_kinds(value.orelse)
+        return k1 | k2, s1 | s2
+    return set(), set()
+
+
+_METHOD_KIND = {"staticmethod": "static", "classmethod": "cls"}
 
 
 def _is_tainted(expr, tainted, late=frozenset()) -> bool:
@@ -1412,10 +1457,10 @@ def _attr_specs(f, tainted):
     unbound off its own class name, and read BOTH ways off any other
     receiver, which may be a class (`cls`, `type(self)`, a subclass `D`, a
     dotted path `O.I`) or an instance: the safe side.
-    Residuals: the first parameter itself is not judged on a bound call
+    Residual: the first parameter itself is not judged on a bound call
     (`self.g()` with a tainted `self`; the method body sees `self`'s taint
-    through the class state instead), and a def re-wrapped by name
-    (`g = staticmethod(g)`) drops its wrapper, like the open `h = g` alias."""
+    through the class state instead). RM-1563: a def re-wrapped by name
+    (`g = staticmethod(g)`) and an alias (`h = g`) keep the wrapper."""
     prefix = _SINKATTR + f.attr + " "
     recv = f.value
     specs = set()
@@ -1628,10 +1673,19 @@ def _class_method_kinds(body):
     a lambda (or a staticmethod / classmethod over one), at class body
     `body`'s own level - its branches, loops and handlers included, never
     inside a method, nested class, lambda or comprehension. A name bound
-    more than once keeps every kind: the safe side. Kept per scan."""
+    more than once keeps every kind: the safe side. Kept per scan.
+
+    RM-1563: a name bound to another name (`h = g`) takes that name's
+    kinds, to a fixed point over alias chains; a name the body binds to no
+    def, lambda or method wrapper of its own (a module function) is a plain
+    function, so `inst`. A re-wrap by name (`g = staticmethod(g)`) adds its
+    kind to the def's own: both are read, the safe side. Residual: kinds
+    ignore statement order, so an alias written BEFORE a same-name def
+    (`h = g` naming a module `g`, then `@staticmethod def g`) takes only
+    the later def's kind."""
     hit = _CLASS_KINDS_CACHE.get(id(body))
     if hit is None or hit[0] is not body:
-        kinds, stack = {}, list(body)
+        kinds, aliases, stack = {}, [], list(body)
         while stack:
             node = stack.pop()
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -1641,19 +1695,34 @@ def _class_method_kinds(body):
                 continue
             if isinstance(node, _OWN_SCOPES):
                 continue
-            if (isinstance(node, (ast.Assign, ast.AnnAssign))
-                    and _wrapped_lambda(node.value) is not None):
-                kind = {"staticmethod": "static", "classmethod": "cls"}.get(
-                    _call_name(node.value) if isinstance(node.value, ast.Call)
-                    else "", "inst")
+            if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
+                own, sources = _value_kinds(node.value)
                 targets = (node.targets if isinstance(node, ast.Assign)
                            else [node.target])
                 for target in targets:
                     if isinstance(target, ast.Name):
-                        kinds.setdefault(target.id, set()).add(kind)
+                        if own:
+                            kinds.setdefault(target.id, set()).update(own)
+                        aliases.extend((target.id, s) for s in sources)
             stack.extend(ast.iter_child_nodes(node))
+        alias_targets = {t for t, _ in aliases}
+        changed = True
+        while changed:
+            changed = False
+            for target, source in aliases:
+                got = (kinds.get(source, set())
+                       if source in kinds or source in alias_targets else {"inst"})
+                have = kinds.setdefault(target, set())
+                if not got <= have:
+                    have.update(got)
+                    changed = True
+        # An alias left with no kind reads only other aliases (`g = g`, or a
+        # cycle) and so names what the enclosing scope held: a plain function.
+        for target in alias_targets:
+            if not kinds.get(target):
+                kinds[target] = {"inst"}
         hit = _CLASS_KINDS_CACHE[id(body)] = (
-            body, {n: frozenset(k) for n, k in kinds.items()})
+            body, {n: frozenset(k) for n, k in kinds.items() if k})
     return hit[1]
 
 
@@ -2910,6 +2979,57 @@ _CHECKER_SAMPLES = (
     ("a wrapper nested in a method is not an attribute",
      "class C:\n    def a(self):\n        def g(s, m):\n            log.info(m)\n"
      "    def h(self, url):\n        self.g(url)\n", False),
+    # RM-1563 wrapper aliases: a name bound to a wrapper (`h = g`), or to
+    # a staticmethod / classmethod over one (`g = staticmethod(g)`), is the
+    # same wrapper; in a class body it takes the kind the value gives it.
+    ("alias of a wrapper def",
+     "def g(m):\n    log.info(m)\nh = g\ndef f(url):\n    h(url)\n", True),
+    ("alias of a wrapper lambda",
+     "g = lambda m: log.info(m)\nh = g\ndef f(url):\n    h(url)\n", True),
+    ("alias chain of a wrapper",
+     "def g(m):\n    log.info(m)\nh = g\nk = h\ndef f(url):\n    k(url)\n", True),
+    ("local alias of a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    h = g\n    h(url)\n", True),
+    ("conditional alias of a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url, c):\n    h = g if c else fetch\n"
+     "    h(url)\n", True),
+    ("annotated alias of a wrapper",
+     "def g(m):\n    log.info(m)\nh: Any = g\ndef f(url):\n    h(url)\n", True),
+    ("def re-wrapped by name as a staticmethod",
+     "class C:\n    def g(m):\n        log.info(m)\n    g = staticmethod(g)\n"
+     "    def h(self, url):\n        self.g(url)\n", True),
+    ("def re-wrapped by name as a classmethod",
+     "class C:\n    def g(cls, m):\n        log.info(m)\n    g = classmethod(g)\n"
+     "def f(url):\n    C.g(url)\n", True),
+    ("class-level alias of a method wrapper",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    h = g\n"
+     "    def k(self, url):\n        self.h(url)\n", True),
+    ("class-level alias of a staticmethod wrapper",
+     "class C:\n    @staticmethod\n    def g(m):\n        log.info(m)\n    h = g\n"
+     "    def k(self, url):\n        self.h(url)\n", True),
+    ("staticmethod over a module wrapper in a class body",
+     "def g(m):\n    log.info(m)\nclass C:\n    h = staticmethod(g)\n"
+     "    def k(self, url):\n        self.h(url)\n", True),
+    ("module wrapper aliased in a class body is a method",
+     "def g(s, m):\n    log.info(m)\nclass C:\n    h = g\n"
+     "    def k(self, url):\n        self.h(url)\n", True),
+    ("module wrapper stored on an instance attribute",
+     "def g(m):\n    log.info(m)\nclass C:\n    def __init__(self):\n        self.h = g\n"
+     "    def k(self, url):\n        self.h(url)\n", True),
+    # RM-1563 wrapper-alias keep-greens.
+    ("alias of a function that does not log its parameter",
+     "def g(m):\n    log.info('x')\nh = g\ndef f(url):\n    h(url)\n", False),
+    ("alias of a wrapper re-bound before the call",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    h = g\n    h = fetch\n    h(url)\n",
+     False),
+    ("staticmethod re-wrap of a non-wrapper",
+     "class C:\n    def g(m):\n        log.info('x')\n    g = staticmethod(g)\n"
+     "    def h(self, url):\n        self.g(url)\n", False),
+    ("alias of a wrapper called with a sanitized value",
+     "def g(m):\n    log.info(m)\nh = g\ndef f(url):\n    h(_safe_url(url))\n", False),
+    ("class-level alias of a method wrapper keeps the positional shift",
+     "class C:\n    def g(self, m, n):\n        log.info(m)\n    h = g\n"
+     "    def k(self, url):\n        self.h('x', url)\n", False),
 )
 
 
