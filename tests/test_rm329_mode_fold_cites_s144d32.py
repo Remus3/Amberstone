@@ -55,9 +55,9 @@ def _is_canonical_mode_call(node: ast.AST) -> bool:
 def _folds_mode(fn: ast.FunctionDef) -> bool:
     """True when the body rebinds ``mode`` to a ``canonical_mode(...)`` call."""
     for node in ast.walk(fn):
-        if isinstance(node, ast.Assign) and _is_canonical_mode_call(node.value):
-            if any(isinstance(t, ast.Name) and t.id == "mode" for t in node.targets):
-                return True
+        if (isinstance(node, ast.Assign) and _is_canonical_mode_call(node.value)
+                and any(isinstance(t, ast.Name) and t.id == "mode" for t in node.targets)):
+            return True
     return False
 
 

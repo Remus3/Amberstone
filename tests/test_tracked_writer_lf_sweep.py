@@ -134,9 +134,9 @@ def force_crlf(monkeypatch):
                                newline="\r\n" if newline is None else newline)
 
     def _open(file, mode="r", *args, **kwargs):
-        if "b" not in mode and any(c in mode for c in "wax+"):
-            if len(args) < 3 and kwargs.get("newline") is None:
-                kwargs["newline"] = "\r\n"
+        if ("b" not in mode and any(c in mode for c in "wax+")
+                and len(args) < 3 and kwargs.get("newline") is None):
+            kwargs["newline"] = "\r\n"
         return orig_open(file, mode, *args, **kwargs)
 
     monkeypatch.setattr(pathlib.Path, "write_text", _write_text)

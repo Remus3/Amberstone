@@ -98,9 +98,8 @@ def _mentions_elapsed(node: ast.AST) -> bool:
         return _spells_span(node.attr) or _mentions_elapsed(node.value)
     if isinstance(node, ast.Subscript):
         key = node.slice
-        if isinstance(key, ast.Constant) and isinstance(key.value, str):
-            if _spells_span(key.value):
-                return True
+        if isinstance(key, ast.Constant) and isinstance(key.value, str) and _spells_span(key.value):
+            return True
         return _mentions_elapsed(node.value)
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
             and node.func.attr == "get" and node.args:

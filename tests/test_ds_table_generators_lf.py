@@ -42,9 +42,9 @@ def force_crlf_fdopen(monkeypatch):
     orig = os.fdopen
 
     def _fdopen(fd, mode="r", *args, **kwargs):
-        if "b" not in mode and any(c in mode for c in "wax+"):
-            if len(args) < 3 and kwargs.get("newline") is None:
-                kwargs["newline"] = "\r\n"
+        if ("b" not in mode and any(c in mode for c in "wax+")
+                and len(args) < 3 and kwargs.get("newline") is None):
+            kwargs["newline"] = "\r\n"
         return orig(fd, mode, *args, **kwargs)
 
     monkeypatch.setattr(os, "fdopen", _fdopen)

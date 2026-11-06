@@ -115,11 +115,11 @@ class AllyNotesHeuristicTests(unittest.TestCase):
         # only names present in allies may appear
         for word in out["ally_notes"].replace(";", " ").split():
             cap = word.strip(".,-")
-            if cap and cap[0].isupper():
-                # capitalized leading words that are champ-shaped must be allies
-                if cap in {"Lux", "Leona", "Ashe", "Malphite", "Caitlyn",
-                           "Orianna", "Yasuo", "Garen", "Jinx"}:
-                    self.assertIn(cap, allies)
+            # capitalized leading words that are champ-shaped must be allies
+            if (cap and cap[0].isupper()
+                    and cap in {"Lux", "Leona", "Ashe", "Malphite", "Caitlyn",
+                                "Orianna", "Yasuo", "Garen", "Jinx"}):
+                self.assertIn(cap, allies)
 
 
 class DeterminismTests(unittest.TestCase):

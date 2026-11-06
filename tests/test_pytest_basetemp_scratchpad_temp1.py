@@ -85,10 +85,10 @@ def test_rootdir_conftest_reexports_the_guard_hook():
     tree = ast.parse((REPO / "conftest.py").read_text(encoding="utf-8"))
     found = False
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "tests._basetemp_guard":
-            if any(a.name == "pytest_configure" and a.asname in (None, "pytest_configure")
-                   for a in node.names):
-                found = True
+        if (isinstance(node, ast.ImportFrom) and node.module == "tests._basetemp_guard"
+                and any(a.name == "pytest_configure" and a.asname in (None, "pytest_configure")
+                        for a in node.names)):
+            found = True
     assert found, "conftest.py must `from tests._basetemp_guard import pytest_configure`"
 
 

@@ -341,9 +341,8 @@ class StructuralGuardTests(unittest.TestCase):
                     for n in node.names:
                         if n.name.startswith("agents.daemon_slayer"):
                             offenders.append(n.name)
-                elif isinstance(node, ast.ImportFrom):
-                    if (node.module or "").startswith("agents.daemon_slayer"):
-                        offenders.append(node.module or "")
+                elif isinstance(node, ast.ImportFrom) and (node.module or "").startswith("agents.daemon_slayer"):
+                    offenders.append(node.module or "")
             self.assertEqual(
                 offenders, [],
                 f"{src_path.name} imports the engine in-process {offenders!r} "

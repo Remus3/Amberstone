@@ -685,11 +685,13 @@ class AutoAttackDisjointnessTests(unittest.TestCase):
 
         for node in ast.walk(tree):
             # rotation["key"]
-            if isinstance(node, ast.Subscript) and _is_rotation_ref(node.value):
-                if isinstance(node.slice, ast.Constant) and isinstance(
-                    node.slice.value, str
-                ):
-                    found.add(node.slice.value)
+            if (
+                isinstance(node, ast.Subscript)
+                and _is_rotation_ref(node.value)
+                and isinstance(node.slice, ast.Constant)
+                and isinstance(node.slice.value, str)
+            ):
+                found.add(node.slice.value)
             # rotation.get("key", ...)
             if (
                 isinstance(node, ast.Call)

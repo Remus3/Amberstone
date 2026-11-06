@@ -411,9 +411,8 @@ def _depth1_only_seams() -> dict[str, list[str]]:
             # from another file. The tri-state residue gets its own tier below,
             # exactly as RM-202 gave the depth-1 residue its own rather than
             # appending to STRANDED_TODAY.
-            if p.name.startswith(("assume_", "apply_", "use_")) and p.default is False:
-                if p.name not in depth0:
-                    seams.setdefault(p.name, []).append(fq)
+            if p.name.startswith(("assume_", "apply_", "use_")) and p.default is False and p.name not in depth0:
+                seams.setdefault(p.name, []).append(fq)
     return seams
 
 

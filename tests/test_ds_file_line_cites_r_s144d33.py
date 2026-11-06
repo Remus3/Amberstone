@@ -139,12 +139,10 @@ def test_passive_overrides_precedent_still_stands():
 def _imports_core(name: str) -> bool:
     tree = ast.parse((DS / name).read_text(encoding="utf-8"))
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            if any(a.name.split(".")[0] == "core" for a in node.names):
-                return True
-        if isinstance(node, ast.ImportFrom) and node.level == 0:
-            if (node.module or "").split(".")[0] == "core":
-                return True
+        if isinstance(node, ast.Import) and any(a.name.split(".")[0] == "core" for a in node.names):
+            return True
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and (node.module or "").split(".")[0] == "core":
+            return True
     return False
 
 

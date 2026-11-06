@@ -186,9 +186,8 @@ def test_laning_verdicts_imports_only_the_string_helper():
     tree = ast.parse((_ROOT / "core" / "laning_verdicts.py").read_text(encoding="utf-8"))
     imported = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module:
-            if _PRECOMPUTE_MODULE in node.module:
-                imported.update(a.name for a in node.names)
+        if isinstance(node, ast.ImportFrom) and node.module and _PRECOMPUTE_MODULE in node.module:
+            imported.update(a.name for a in node.names)
     assert imported == {"laning_trigger"}, (
         f"core/laning_verdicts.py imports {sorted(imported)} from the retired "
         "precompute; only the pure `laning_trigger` string helper is permitted "

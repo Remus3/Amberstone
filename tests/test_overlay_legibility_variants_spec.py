@@ -158,9 +158,8 @@ def _const_str(tree, name):
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
             isinstance(t, ast.Name) and t.id == name for t in node.targets
-        ):
-            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-                return node.value.value
+        ) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            return node.value.value
     raise AssertionError(f"{name} is not a module-level string constant")
 
 

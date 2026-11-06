@@ -90,10 +90,10 @@ def _producer_callers() -> list[str]:
         if "log_ds_run" not in src:
             continue
         for node in ast.walk(ast.parse(src)):
-            if isinstance(node, ast.ImportFrom) and node.module == "core.ds_calibration":
-                if any(a.name == "log_ds_run" for a in node.names):
-                    found.append(rel)
-                    break
+            if (isinstance(node, ast.ImportFrom) and node.module == "core.ds_calibration"
+                    and any(a.name == "log_ds_run" for a in node.names)):
+                found.append(rel)
+                break
             if isinstance(node, ast.Import) and any(
                     a.name == "core.ds_calibration" for a in node.names):
                 found.append(rel)

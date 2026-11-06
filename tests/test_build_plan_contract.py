@@ -264,9 +264,8 @@ class StructuralGuardTests(unittest.TestCase):
             if isinstance(node, ast.Import):
                 offenders += [n.name for n in node.names
                               if n.name.startswith("agents.daemon_slayer")]
-            elif isinstance(node, ast.ImportFrom):
-                if (node.module or "").startswith("agents.daemon_slayer"):
-                    offenders.append(node.module)
+            elif isinstance(node, ast.ImportFrom) and (node.module or "").startswith("agents.daemon_slayer"):
+                offenders.append(node.module)
         self.assertEqual(offenders, [], f"in-process engine import: {offenders!r}")
 
     def test_route_does_not_call_target_stats_from_items(self):

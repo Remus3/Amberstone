@@ -229,9 +229,8 @@ def test_no_smart_quotes_in_authored_source() -> None:
             if not n:
                 continue
             # Mojibake allowance for U+201D
-            if cp == 0x201D and rel_posix in _MOJIBAKE_TOLERATED:
-                if _is_pure_mojibake_201d(raw):
-                    continue  # all U+201D are mojibake context; tolerated
+            if cp == 0x201D and rel_posix in _MOJIBAKE_TOLERATED and _is_pure_mojibake_201d(raw):
+                continue  # all U+201D are mojibake context; tolerated
             violations.append((rel_posix, cp, name, n))
 
     if violations:

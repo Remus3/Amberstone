@@ -155,9 +155,9 @@ class DeadRouteAbsenceTests(unittest.TestCase):
                     if not any(name in ("GET_ROUTES", "POST_ROUTES") for name in targets):
                         continue
                     for sub in ast.walk(node.value):
-                        if isinstance(sub, ast.Constant) and isinstance(sub.value, str):
-                            if sub.value in _DELETED_ROUTES:
-                                offenders.append(f"{mod_path}: route {sub.value!r}")
+                        if (isinstance(sub, ast.Constant) and isinstance(sub.value, str)
+                                and sub.value in _DELETED_ROUTES):
+                            offenders.append(f"{mod_path}: route {sub.value!r}")
         self.assertEqual(
             offenders, [],
             "Deleted routes reappeared in route tables: " + "; ".join(offenders),

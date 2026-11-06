@@ -843,9 +843,8 @@ def _call_segments(expr: ast.Call, model: _Model, scope, seen: frozenset, depth:
             return _segments(expr.func.value, model, scope, seen, depth + 1)
         if args:
             return _segments(args[0], model, scope, seen, depth + 1)
-    if tail in ("sorted", "list", "next", "str"):
-        if args:
-            return _segments(args[0], model, scope, seen, depth + 1)
+    if tail in ("sorted", "list", "next", "str") and args:
+        return _segments(args[0], model, scope, seen, depth + 1)
     if tail in ("glob", "iglob", "rglob"):
         if fname.endswith(("glob.glob", "glob.iglob")):
             return _segments(args[0], model, scope, seen, depth + 1) if args else None

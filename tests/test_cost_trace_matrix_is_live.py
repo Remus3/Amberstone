@@ -97,9 +97,8 @@ def _site_path(cell: str, root: pathlib.Path = _ROOT) -> str | None:
     units.append(cell.strip("~* \t"))
     for unit in units:
         spaced = _SPACED_SITE.fullmatch(unit)
-        if spaced is not None and " " in spaced.group(1):
-            if (root / spaced.group(1)).is_file():
-                return spaced.group(1)
+        if spaced is not None and " " in spaced.group(1) and (root / spaced.group(1)).is_file():
+            return spaced.group(1)
     return plain
 
 _LIVE_TIERS = {"HAIKU", "SONNET", "OPUS"}

@@ -149,12 +149,11 @@ def _function(path: Path, name: str) -> ast.FunctionDef:
 
 def _constant(path: Path, name: str) -> object:
     for node in ast.parse(path.read_text(encoding="utf-8")).body:
-        if isinstance(node, ast.Assign):
-            if any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
-                value = node.value
-                if isinstance(value, ast.Call):     # frozenset({...})
-                    value = value.args[0]
-                return ast.literal_eval(value)
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
+            value = node.value
+            if isinstance(value, ast.Call):     # frozenset({...})
+                value = value.args[0]
+            return ast.literal_eval(value)
     raise AssertionError(f"{path.name} has no module constant {name}")
 
 

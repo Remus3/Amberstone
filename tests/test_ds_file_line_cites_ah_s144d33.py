@@ -139,12 +139,11 @@ def _top(rel: str, name: str) -> ast.AST:
 
 def _top_assign(rel: str, name: str) -> ast.expr:
     for node in _tree(rel).body:
-        if isinstance(node, ast.Assign):
-            if any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
-                return node.value
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            if node.target.id == name and node.value is not None:
-                return node.value
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in node.targets):
+            return node.value
+        if (isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
+                and node.target.id == name and node.value is not None):
+            return node.value
     raise AssertionError(f"{name} not assigned at top level of {rel}")
 
 
