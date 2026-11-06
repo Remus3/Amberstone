@@ -859,8 +859,16 @@
 /* s219 v6: tab strip uses a fixed-width per tab so the labels space
  * uniformly regardless of text length. Color-tying to the active panel
  * is deferred (operator wants the UI agent to weigh in first). */
+/* RM-1782: the strip wraps BETWEEN tabs, so no tab shrinks and no
+ * label breaks inside itself. As one nowrap row of four 96px-min tabs it
+ * was 409px wide and ran past the nav from 480 down (to x 481 in a nav
+ * ending at 248 at 320), and from about 560 the tabs shrank until AI
+ * Analysis and Review broke onto two lines. Where the four fit one line
+ * nothing moves. A wrapped Review keeps its margin-left: auto and ends
+ * its line at the nav's right edge. Guard:
+ * tests/snapshot_panels/test_last_match_tabs_narrow.py. */
 .lm-tabs-strip {
-  display: flex; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: 6px;
 }
 .lm-tab {
   font-size: var(--fs-sm);   /* item 182 v2.1: 19 -> 18 (tab nav) */
