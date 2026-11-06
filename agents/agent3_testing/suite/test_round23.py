@@ -47,7 +47,7 @@ def test_migrate_adds_missing_columns(tmp_path: Path) -> None:
     _make_old_mode_db(db)
 
     result = ensure_kda_columns(db)
-    assert result == {c: True for c in KDA_COLUMNS}
+    assert result == dict.fromkeys(KDA_COLUMNS, True)
 
     with sqlite3.connect(db) as conn:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(matches)")}

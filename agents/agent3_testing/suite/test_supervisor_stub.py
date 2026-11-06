@@ -43,9 +43,8 @@ def test_nonzero_exit_raises_spawn_failed() -> None:
         stdout="", stderr="intentional test failure",
     )
     with patch("agents.supervisor.shutil.which", return_value="/fake/claude"), \
-         patch("agents.supervisor.subprocess.run", return_value=fake_proc):
-        with pytest.raises(EphemeralSpawnFailed) as ei:
-            spawn_ephemeral_llm("6", "t-exitfail", "demo", {})
+         patch("agents.supervisor.subprocess.run", return_value=fake_proc), pytest.raises(EphemeralSpawnFailed) as ei:
+        spawn_ephemeral_llm("6", "t-exitfail", "demo", {})
     assert "exit 2" in str(ei.value)
 
 

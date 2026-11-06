@@ -87,9 +87,8 @@ def test_failure_rolls_back_user_message() -> None:
     s = _patched_session()
     fake_client = MagicMock()
     fake_client.messages.create.side_effect = RuntimeError("boom")
-    with patch("anthropic.Anthropic", return_value=fake_client):
-        with pytest.raises(WarmSessionError):
-            s.send("ping")
+    with patch("anthropic.Anthropic", return_value=fake_client), pytest.raises(WarmSessionError):
+        s.send("ping")
     assert s._messages == []     # no stale trailing user
 
 

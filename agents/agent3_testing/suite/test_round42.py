@@ -20,7 +20,7 @@ import pytest
 # -- ui_applier: whitelist + atomic write ----------------------------
 
 def test_applier_accepts_whitelisted_css(tmp_path: Path, monkeypatch) -> None:
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     css_target = tmp_path / "web" / "css" / "panels" / "base.css"
     css_target.parent.mkdir(parents=True)
@@ -39,7 +39,7 @@ def test_applier_accepts_whitelisted_css(tmp_path: Path, monkeypatch) -> None:
 
 def test_applier_accepts_panel_js(tmp_path: Path, monkeypatch) -> None:
     """Live per-panel ESM modules are prefix-allowed."""
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     js_target = tmp_path / "web" / "js" / "panels" / "champ_select.js"
     js_target.parent.mkdir(parents=True)
@@ -56,7 +56,7 @@ def test_applier_accepts_panel_js(tmp_path: Path, monkeypatch) -> None:
 def test_applier_rejects_dead_dashboard_targets(tmp_path: Path, monkeypatch) -> None:
     """s236 invariant: the quarantined / removed legacy targets are no
     longer writable through this channel."""
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     for dead in (
         "web/js/dashboard.js",
@@ -72,7 +72,7 @@ def test_applier_rejects_dead_dashboard_targets(tmp_path: Path, monkeypatch) -> 
 
 def test_applier_rejects_nested_panel_subdir(tmp_path: Path, monkeypatch) -> None:
     """panels/ is flat - no sub-subdirs."""
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     with pytest.raises(ui_applier.UIApplyError):
         ui_applier.apply_ui_proposal({
@@ -81,7 +81,7 @@ def test_applier_rejects_nested_panel_subdir(tmp_path: Path, monkeypatch) -> Non
 
 
 def test_applier_rejects_out_of_whitelist(tmp_path: Path, monkeypatch) -> None:
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     with pytest.raises(ui_applier.UIApplyError) as exc:
         ui_applier.apply_ui_proposal({
@@ -94,7 +94,7 @@ def test_applier_rejects_out_of_whitelist(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_applier_rejects_traversal(tmp_path: Path, monkeypatch) -> None:
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     with pytest.raises(ui_applier.UIApplyError):
         ui_applier.apply_ui_proposal({
@@ -106,7 +106,7 @@ def test_applier_rejects_traversal(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_applier_rejects_empty_changes(tmp_path: Path, monkeypatch) -> None:
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     with pytest.raises(ui_applier.UIApplyError):
         ui_applier.apply_ui_proposal({"changes": []})
@@ -114,7 +114,7 @@ def test_applier_rejects_empty_changes(tmp_path: Path, monkeypatch) -> None:
 
 def test_applier_rejects_too_many_changes(tmp_path: Path, monkeypatch) -> None:
     """Sanity cap: >4 changes likely means something's wrong."""
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     with pytest.raises(ui_applier.UIApplyError):
         ui_applier.apply_ui_proposal({
@@ -130,7 +130,7 @@ def test_applier_rejects_too_many_changes(tmp_path: Path, monkeypatch) -> None:
 
 def test_applier_rejects_truncated_main_js(tmp_path: Path, monkeypatch) -> None:
     """main.js under 2 KB is suspiciously short (truncated write)."""
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     (tmp_path / "web" / "js").mkdir(parents=True)
     with pytest.raises(ui_applier.UIApplyError) as exc:
@@ -144,7 +144,7 @@ def test_applier_rejects_truncated_main_js(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_applier_atomic_no_tmp_lingering(tmp_path: Path, monkeypatch) -> None:
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     css = tmp_path / "web" / "css" / "panels" / "base.css"
     css.parent.mkdir(parents=True)
@@ -159,7 +159,7 @@ def test_applier_atomic_no_tmp_lingering(tmp_path: Path, monkeypatch) -> None:
 
 def test_applier_validates_all_before_writing_any(tmp_path: Path, monkeypatch) -> None:
     """All-or-nothing: one bad change cancels the whole batch."""
-    import agents.agent4_coach_mentor.ui_applier as ui_applier
+    from agents.agent4_coach_mentor import ui_applier
     monkeypatch.setattr(ui_applier, "_PROJECT_ROOT", tmp_path)
     css = tmp_path / "web" / "css" / "panels" / "base.css"
     css.parent.mkdir(parents=True)
