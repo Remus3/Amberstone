@@ -614,10 +614,7 @@ def cached_get(
     the next call rather than poisoning the cache with empty rows).
     """
     cache = get_cache()
-    if ttl_s is None:
-        cached = cache.get_immutable(key)
-    else:
-        cached = cache.get_ttl(key)
+    cached = cache.get_immutable(key) if ttl_s is None else cache.get_ttl(key)
     if cached is not None:
         return cached
     fresh = fetch_fn()

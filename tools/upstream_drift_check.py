@@ -715,10 +715,7 @@ def main(argv: list[str] | None = None) -> int:
                   f"({snap['entry_count']} queues, fp {snap['fingerprint']})")
             return 0
 
-        if args.patch:
-            ddragon = args.patch
-        else:
-            ddragon = probe_ddragon_version()
+        ddragon = args.patch or probe_ddragon_version()
         meraki = probe_meraki_content_patch()
         cdragon = probe_cdragon_content_version()
         qq_shape = probe_qq_synergy_shape()

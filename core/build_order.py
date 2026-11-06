@@ -666,11 +666,8 @@ def plan_build_order(
         and remaining >= 2  # need at least 2 slots to inject boots at slot 2
     )
     boots_inserted = False
-    if boots_needed:
-        # Boots consume one of the remaining slots; engine picks one less.
-        engine_picks_count = remaining - 1
-    else:
-        engine_picks_count = remaining
+    # Boots consume one of the remaining slots; engine picks one less.
+    engine_picks_count = remaining - 1 if boots_needed else remaining
     boots_id: str = ""
     boots_name: str = ""
     if boots_needed:

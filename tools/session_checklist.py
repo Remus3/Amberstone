@@ -236,10 +236,7 @@ def emit(text: str, stream=None) -> str | None:
     out = sys.stdout if stream is None else stream
     kit = kit_checklist()
     kit_emit = getattr(kit, "emit", None) if kit is not None else None
-    if callable(kit_emit):
-        written = kit_emit(text, out)
-    else:
-        written = _local_emit(text, out)
+    written = kit_emit(text, out) if callable(kit_emit) else _local_emit(text, out)
     if written is not None:
         try:
             out.flush()

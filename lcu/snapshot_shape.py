@@ -232,10 +232,7 @@ def _slim_lobby_member(request: Callable[..., tuple], m, *,
             if not lvl:
                 lvl = _coerce_int(prof.get("summonerLevel") or 0)
 
-    if game_name and tag_line:
-        riot_id = f"{game_name}#{tag_line}"
-    else:
-        riot_id = summ_name
+    riot_id = f"{game_name}#{tag_line}" if game_name and tag_line else summ_name
 
     # is_self: prefer summoner-id match (reliable on current LCU builds);
     # fall back to the LCU ``isLocalMember`` flag (works on older builds).
@@ -246,10 +243,7 @@ def _slim_lobby_member(request: Callable[..., tuple], m, *,
     # rather than silently marking every member "not me".
     _local_sid = (None if local_summoner_id is None
                   else _coerce_int(local_summoner_id, default=0))
-    if _local_sid and sid:
-        is_self = (sid == _local_sid)
-    else:
-        is_self = bool(m.get("isLocalMember"))
+    is_self = (sid == _local_sid) if (_local_sid and sid) else bool(m.get("isLocalMember"))
 
     return {
         "puuid":          str(m.get("puuid") or ""),

@@ -238,12 +238,9 @@ def _extract_ward_inventory(
                 continue  # no known count: not tracked this tick
             count = 1  # a trinket's count is never read
         flags = usable[iid]
-        if flags:
-            can_use = any(flags)
-        else:
-            # Not known usable: an absent / junk canUse can neither fire a
-            # True -> False edge nor re-open one mid-cooldown.
-            can_use = before[1] if before else False
+        # Not known usable (empty flags): an absent / junk canUse can neither
+        # fire a True -> False edge nor re-open one mid-cooldown.
+        can_use = any(flags) if flags else (before[1] if before else False)
         out[iid] = (count, can_use)
     return out
 

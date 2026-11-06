@@ -149,10 +149,7 @@ def compute_minimap_rect(
     margin_r = MARGIN_R_FRAC_W * target_w
     margin_b = MARGIN_B_FRAC_H * target_h
 
-    if want_flip:
-        left = margin_r
-    else:
-        left = target_w - margin_r - side
+    left = margin_r if want_flip else target_w - margin_r - side
     top = target_h - margin_b - side
 
     x, y = int(round(left)), int(round(top))

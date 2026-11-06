@@ -367,10 +367,7 @@ def _normalize_record(
     # the operator's build.
     items = [str(x)[:MAX_ITEM_NAME_LEN] for x in items_in if x][:MAX_ITEMS]
     role = build.get("role")
-    if isinstance(role, str):
-        role = role.strip().upper() or None
-    else:
-        role = None
+    role = (role.strip().upper() or None) if isinstance(role, str) else None
     notes = build.get("notes")
     notes = str(notes).strip()[:MAX_NOTES_LEN] if isinstance(notes, str) else ""
     minor_primary_in   = runes_in.get("minor_primary")   or []

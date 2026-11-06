@@ -156,10 +156,7 @@ def _field_dmz_impl(bubbles):
     row_path = _row_crossings(grid, n, step)
     col_path = _col_crossings(grid, n, step)
 
-    if len(row_path) >= len(col_path):
-        path = row_path
-    else:
-        path = col_path
+    path = row_path if len(row_path) >= len(col_path) else col_path
 
     if len(path) < 2:
         return None
