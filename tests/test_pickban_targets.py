@@ -171,7 +171,7 @@ class GeneratorPayloadTests(unittest.TestCase):
         self.assertEqual(payload["top_k"], 8)
         self.assertEqual(payload["ranking"], "debiased_relative")
         self.assertEqual(set(payload["targets"]), set(self.roster))
-        for champ, entry in payload["targets"].items():
+        for entry in payload["targets"].values():
             self.assertIn("counters", entry)
             self.assertIn("good_against", entry)
 

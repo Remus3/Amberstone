@@ -38,7 +38,7 @@ def _run(script, dry_run=False):
     records = []
     longest = max(len(v) for v in script.values())
     for _ in range(longest):
-        for target, steps in script.items():
+        for target in script:
             if probe._script[target]:
                 rec = w.poll(target)
                 if rec is not None:

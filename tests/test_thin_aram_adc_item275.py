@@ -33,7 +33,7 @@ def _norm(s: str) -> str:
 def _family_map() -> dict[str, str]:
     from agents.daemon_slayer._effects_data import ITEM_EFFECTS
     out: dict[str, str] = {}
-    for _iid, eff in ITEM_EFFECTS.items():
+    for eff in ITEM_EFFECTS.values():
         upk = getattr(eff, "unique_passive_key", None)
         nm = getattr(eff, "name", None)
         if upk and nm:
@@ -89,7 +89,7 @@ class ThinAramAdcItem275Tests(unittest.TestCase):
 
     def test_no_thin_named_adc_carry_remains(self) -> None:
         # The 4 named primaries must not be < 5 items anymore.
-        for (champ, key), _ in hf._EXTEND.items():
+        for champ, key in hf._EXTEND:
             bp = _aram_path(self.lo, champ, key)
             self.assertGreaterEqual(len(bp["items"]), 5)
 

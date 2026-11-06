@@ -500,13 +500,13 @@ def enumerate_assets(version: str, bundles: dict[str, Any]) -> list[Asset]:
             out.append(Asset("item", f"{base}/item/{bn}", f"img/item/{bn}"))
 
     # Summoner spells
-    for _key, meta in bundles.get("summoner", {}).get("data", {}).items():
+    for meta in bundles.get("summoner", {}).get("data", {}).values():
         bn = _safe_basename((meta.get("image") or {}).get("full"))
         if bn:
             out.append(Asset("spell", f"{base}/spell/{bn}", f"img/spell/{bn}"))
 
     # Profile icons
-    for _key, meta in bundles.get("profileicon", {}).get("data", {}).items():
+    for meta in bundles.get("profileicon", {}).get("data", {}).values():
         bn = _safe_basename((meta.get("image") or {}).get("full"))
         if bn:
             out.append(Asset("profileicon", f"{base}/profileicon/{bn}", f"img/profileicon/{bn}"))

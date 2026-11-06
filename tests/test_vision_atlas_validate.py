@@ -110,7 +110,7 @@ def test_validate_category_spells_shape_and_ceiling():
     assert nonzero and nonzero[0] >= 0.2
     # threshold_sweep is keyed by each configured threshold and partitions n.
     assert set(res["threshold_sweep"].keys()) == set(vav.THRESHOLDS)
-    for _thr, cell in res["threshold_sweep"].items():
+    for cell in res["threshold_sweep"].values():
         assert cell["confident_correct"] + cell["confident_wrong"] + cell["abstain"] == 18
     # confusions carry a nearest-confuser margin, smallest first.
     margins = [c["margin"] for c in res["confusions"]]

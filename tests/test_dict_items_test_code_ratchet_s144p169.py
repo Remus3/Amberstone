@@ -80,7 +80,7 @@ def test_items_and_index_loops_agree_and_inplace_mutation_lands():
     by_index = [(k, sorted(table[k])) for k in table]
     by_items = [(k, sorted(v)) for k, v in table.items()]
     assert by_index == by_items
-    for _key, bucket in table.items():
+    for bucket in table.values():
         bucket.add(9)
     assert table == {"a": {1, 9}, "b": {2, 3, 9}}
 

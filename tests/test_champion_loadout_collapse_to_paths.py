@@ -378,7 +378,7 @@ class LiveSchemaInvariantTests(unittest.TestCase):
         collapsed = (c.get("variants") or {}).get(COLLAPSED_KEY)
         if not collapsed:
             # Find ANY champion with a collapsed entry to sample.
-            for cn, c in self.loadouts["champions"].items():
+            for c in self.loadouts["champions"].values():
                 v = (c.get("variants") or {}).get(COLLAPSED_KEY)
                 if v:
                     collapsed = v

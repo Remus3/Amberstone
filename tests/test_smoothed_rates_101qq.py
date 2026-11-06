@@ -190,7 +190,7 @@ class LaplaceSmoothingTests(unittest.TestCase):
         ashe_seraphine = S101.pair_synergy("Ashe", "Seraphine")  # itemp 4.78%
         # Find a thin-sample record by scanning for itemp <= 0.5%
         thin_rec = None
-        for sup_id, lst in S101._BOTS_BY_SUP.items():
+        for lst in S101._BOTS_BY_SUP.values():
             for r in lst:
                 if r["itemp_bot"] <= 0.005 and r["doublewinrate"] > 0.55:
                     thin_rec = r

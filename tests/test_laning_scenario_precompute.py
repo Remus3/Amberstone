@@ -219,17 +219,17 @@ class EngineCharacterizationTests(unittest.TestCase):
         )
         scen = payload["scenarios"]
         leaves = 0
-        for my, per_enemy in scen.items():
-            for en, per_band in per_enemy.items():
+        for per_enemy in scen.values():
+            for per_band in per_enemy.values():
                 for band, per_mana in per_band.items():
-                    for mana, per_cd in per_mana.items():
-                        for cd, per_item in per_cd.items():
+                    for per_cd in per_mana.values():
+                        for per_item in per_cd.values():
                             # v4 item-state prune: L6 -> {none, one_item};
                             # L11 -> {none, one_item, two_item}.
                             self.assertEqual(
                                 set(per_item), set(lsp.item_states_for_band(band))
                             )
-                            for istate, cell in per_item.items():
+                            for cell in per_item.values():
                                 self.assertIn(cell["verdict"], lsp.VALID_VERDICTS)
                                 self.assertNotIn("sequence", cell)
                                 # v4 blocks present on every leaf.

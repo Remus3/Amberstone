@@ -740,7 +740,7 @@ def extract(patch: str, sleep_s: float, limit: Optional[int], verbose: bool,
             continue
         pages = ((doc or {}).get("query") or {}).get("pages") or {}
         got = 0
-        for _pid, page in pages.items():
+        for page in pages.values():
             title = page.get("title") or ""
             ident = title_for.get(title)
             if ident is None:

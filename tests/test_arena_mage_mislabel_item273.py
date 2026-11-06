@@ -46,7 +46,7 @@ def _ap_ad_maps() -> tuple[dict[str, float], dict[str, float]]:
         data = json.load(f)["data"]
     ap_map: dict[str, float] = {}
     ad_map: dict[str, float] = {}
-    for _iid, rec in data.items():
+    for rec in data.values():
         nm = rec.get("name", "")
         if not nm:
             continue

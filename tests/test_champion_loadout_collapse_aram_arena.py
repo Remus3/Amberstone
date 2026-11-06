@@ -658,7 +658,7 @@ class Item179LiveSchemaTests(unittest.TestCase):
     def test_aram_collapsed_carries_required_fields(self) -> None:
         # Pick any champion with aram-collapsed and verify shape.
         collapsed = None
-        for cn, c in self._champs().items():
+        for c in self._champs().values():
             v = (c.get("variants") or {}).get("aram-collapsed")
             if v:
                 collapsed = v
@@ -676,7 +676,7 @@ class Item179LiveSchemaTests(unittest.TestCase):
 
     def test_arena_collapsed_carries_required_fields(self) -> None:
         collapsed = None
-        for cn, c in self._champs().items():
+        for c in self._champs().values():
             v = (c.get("variants") or {}).get("arena-collapsed")
             if v:
                 collapsed = v
