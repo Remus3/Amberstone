@@ -124,10 +124,7 @@ def _covers_every_window(scans: list, *, search_end: float, window: float) -> bo
     depend on a lucky alignment."""
     step = 0.25
     starts = [i * step for i in range(int(search_end / step) + 1)]
-    for w in starts:
-        if not any(w <= s <= w + window for s in scans):
-            return False
-    return True
+    return all(any(w <= s <= w + window for s in scans) for w in starts)
 
 
 class SelectIntervalUnitTests(unittest.TestCase):

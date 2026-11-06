@@ -208,9 +208,7 @@ def repo_module_aliases() -> dict[str, str]:
             tree = ast.parse(text)
         except SyntaxError:
             continue
-        for name, term in _aliases(tree).items():
-            if name not in SHARED_ATTRS:
-                out[name] = term
+        out.update({name: term for name, term in _aliases(tree).items() if name not in SHARED_ATTRS})
     return out
 
 

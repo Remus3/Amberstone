@@ -1030,10 +1030,10 @@ def collect_electron(dist: Optional[Path], lock: Optional[Mapping[str, object]])
                 f"bundled binary ({flag[1]}) in the Electron runtime",
                 note="dynamically linked, shipped unmodified by Electron; source and licence via Chromium credits",
             ))
-    credits = dist / "LICENSES.chromium.html"
+    credits_file = dist / "LICENSES.chromium.html"
     count = 0
-    if credits.is_file():
-        products = parse_chromium_credits(_read_text(credits))
+    if credits_file.is_file():
+        products = parse_chromium_credits(_read_text(credits_file))
         count = len(products)
         if not products:
             problems.append("electron: LICENSES.chromium.html lists no product")
