@@ -3,6 +3,18 @@
 
 Pure read-only consumer of the DS antitank scorer and archetype registry.
 No engine files are modified. Deterministic, never raises.
+
+Name forms (RM-1854): the live ARAM coach passes the Live Client
+``championName`` - a DISPLAY name ("Kog'Maw", "K'Sante", "Jarvan IV") - while
+the DS anti-tank registry keys on canonical DDragon ids ("KogMaw"). The local
+player's champion is therefore bridged through
+``core.archetype_picks.canonical_champion_id`` before scoring; the echoed
+``my_champion`` stays the caller's stripped form. Enemy classification needs no
+bridge (``get_archetype_for`` resolves both forms).
+
+Input contract: a non-str ``my_champion`` is treated as blank; ``enemy_champions``
+must be a list or tuple (anything else is treated as empty) and a non-str entry
+is skipped; ``mode`` is stripped and a non-str or blank mode becomes "SR".
 """
 from __future__ import annotations
 
@@ -40,14 +52,17 @@ def build_antitank_hint(
     Parameters
     ----------
     my_champion:
-        DDragon champion id for the local player (e.g. "Vayne"). Blank or None
-        -> applies=False with zeroed fields, no raise.
+        Champion for the local player: a DDragon id ("KogMaw") or a Live
+        Client display name ("Kog'Maw"), bridged to the id before scoring.
+        Blank, None or non-str -> applies=False with zeroed fields, no raise.
     enemy_champions:
-        List of DDragon champion ids for the five enemies. None -> treated as
-        []. Blank / None entries are skipped. Unknown ids are treated as
-        non-tanky (never raises for a single bad entry).
+        List (or tuple) of champion ids / display names for the five enemies.
+        None or any non-list/tuple -> treated as []. Blank, None and non-str
+        entries are skipped. Unknown ids are treated as non-tanky (never raises
+        for a single bad entry).
     mode:
-        Game mode string passed through to compute_antitank (default "SR").
+        Game mode string passed through to compute_antitank (default "SR");
+        stripped, and a non-str or blank mode becomes "SR".
 
     Returns
     -------
@@ -64,25 +79,35 @@ def build_antitank_hint(
         recommend_antitank_items (bool)- True when comp is tanky + kit is not.
         hint (str)                     - coaching string, ASCII, "" when N/A.
     """
-    # --- fail-soft on blank my_champion -------------------------------------
-    safe_champion = (my_champion or "").strip()
-    if not safe_champion:
-        return _zero_result("", mode)
+    safe_mode = _safe_mode(mode)
 
-    safe_mode = mode or "SR"
+    # --- fail-soft on blank / non-str my_champion ---------------------------
+    safe_champion = my_champion.strip() if isinstance(my_champion, str) else ""
+    if not safe_champion:
+        return _zero_result("", safe_mode)
+
+    # local imports keep tests fast and avoid circular-import risk
+    from agents.daemon_slayer.antitank import compute_antitank
+    from core.archetype_picks import canonical_champion_id, get_archetype_for
 
     # --- antitank score for local player ------------------------------------
-    from agents.daemon_slayer.antitank import compute_antitank  # local import keeps tests fast
-    my = compute_antitank(safe_champion, safe_mode)
+    # Bridge a Live Client display name to the registry's DDragon id; an
+    # unknown name passes through unchanged (and scores 0.0 downstream).
+    score_id = canonical_champion_id(safe_champion) or safe_champion
+    my = compute_antitank(score_id, safe_mode)
 
     # --- classify enemies ---------------------------------------------------
-    if enemy_champions is None:
+    if not isinstance(enemy_champions, (list, tuple)):
+        if enemy_champions is not None:
+            _log.debug(
+                "ds_antitank_hint: enemy_champions is %s, not a list - treated as empty",
+                type(enemy_champions).__name__,
+            )
         enemy_champions = []
 
-    from core.archetype_picks import get_archetype_for  # local import avoids circular risk
     tanky_enemies: list[str] = []
     for champ in enemy_champions:
-        safe_ec = (champ or "").strip()
+        safe_ec = champ.strip() if isinstance(champ, str) else ""
         if not safe_ec:
             continue
         try:
@@ -127,12 +152,21 @@ def build_antitank_hint(
     }
 
 
+def _safe_mode(mode: object) -> str:
+    """Return the stripped mode string, "SR" for a non-str or blank mode."""
+    if isinstance(mode, str):
+        stripped = mode.strip()
+        if stripped:
+            return stripped
+    return "SR"
+
+
 def _zero_result(champion: str, mode: str) -> dict:
     """Return an all-zero/false hint dict for a blank or invalid champion."""
     return {
         "applies": False,
         "my_champion": champion,
-        "mode": mode or "SR",
+        "mode": _safe_mode(mode),
         "my_antitank_score": 0.0,
         "my_top_kind": "",
         "shreds_resist": False,
