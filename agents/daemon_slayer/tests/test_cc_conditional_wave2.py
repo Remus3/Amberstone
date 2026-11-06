@@ -162,8 +162,8 @@ class WaveTwoNewEntryShapeTests(unittest.TestCase):
             COND_DUAL_ENEMY,
             COND_MODE_GATED,
         }
-        for champ in WAVE_TWO_EXPECTED:
-            for spell_key in WAVE_TWO_EXPECTED[champ]:
+        for champ, spell_keys in WAVE_TWO_EXPECTED.items():
+            for spell_key in spell_keys:
                 entry = _PER_SPELL_CC_CONDITIONAL[champ][spell_key]
                 self.assertIn(
                     entry.condition,

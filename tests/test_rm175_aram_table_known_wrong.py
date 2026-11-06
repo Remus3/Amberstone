@@ -175,9 +175,9 @@ def test_which_economy_axes_move_per_band(monkeypatch):
             shipped = _mode_blind_economy(band, mana_state, manaless, monkeypatch)
             monkeypatch.undo()
             corrected = lsp.economy_cell(band, mana_state, "ARAM", manaless)
-            for field in moved:
+            for field, bands in moved.items():
                 if shipped[field] != corrected[field]:
-                    moved[field].add(band)
+                    bands.add(band)
                     if field == "recall":
                         recall_combo_hits[band] += 1
 

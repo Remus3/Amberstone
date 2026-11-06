@@ -260,8 +260,8 @@ def test_landed_heading_matches_the_tree(sid):
 
 def test_unlanded_start_lines_run_in_plan_order():
     _plan_text()
-    for prefix in SOURCES:
-        src = _read(SOURCES[prefix])
+    for prefix, source in SOURCES.items():
+        src = _read(source)
         offs = []
         for s in SLICES:
             if s["prefix"] == prefix and not _landed(s):
