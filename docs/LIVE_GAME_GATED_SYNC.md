@@ -3458,6 +3458,34 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
 - **G4-27** (was F6) R47 PGR child-panel capture - UNCLEAR / likely moot (the entry itself says the
   baseline render is byte-identical, so there is no pixel delta to capture). **Operator call to
   discharge as a no-op.** SOURCE: LEDGER 702.
+  **MIS-GATED, NOT A GATE 4 ROW (lane 9 PREP s144 cycle 78, RM-1667, source read at `f81e482c7`,
+  2026-11-06; NOT a tick, NOT struck; no game up: :8888 and :2999 curl status 000 at
+  2026-11-06T00:00-06:00).** Three measured facts. (1) THE "NO DELTA" PREMISE IS HALF TRUE. The R47
+  work commit is `43ed22bf1` (LEDGER 702 cites the pre-rewrite `4f4f05d3`). Its `pgr_winprob.css`
+  hunk adds a comment only (zero pixels at any width), but its `pgr_loadout.css` hunk DELETES
+  `.pld-aug-name { font-size: 13px; }` from inside `@media (max-width: 900px)`, so at a viewport of
+  900 px or less the augment names now render at the base `var(--fs-xs, 16px)`
+  (`web/css/panels/pgr_loadout.css:114-115`, the media block `:128`). R47's "never rendered" rested
+  on the 1920x1080 Chrome dashboard, retired 2026-06-27. The surface today is the frameless
+  (`rc-shell/src/main.js:686`) companion, whose presets are compact 380x720, standard 920x1280
+  (the default) and tall 1100x1560 (`rc-shell/src/config.js:36-38`). The web side has no
+  preset-specific CSS (no `sizePreset` / compact selector under `web/js` or `web/css`), so the
+  default and tall presets show no delta, but compact (380) is inside the media block and does.
+  (2) NO GAME IS NEEDED EITHER WAY. The PGR panels render from stored post-game data: the
+  archive view `#view-historical-pgr` (`web/index.html:2178`, reached from a History row) and
+  `#view-last-match` (`:1803`) render whenever RC serves them, with no game up. This is the
+  same class as the OQ12 PGR bench-line companion capture already listed under "Not actually
+  live-gated". (3) THE CAPTURE WOULD NOT ISOLATE R47 NOW: `pgr_loadout.css` is unchanged since
+  `43ed22bf1`, but `pgr_winprob.css` has moved since (`70643997a` RM-531 tokens, `820b5f005`
+  RM-638 pins). The CSS contract R47 shipped is held by `tests/test_pgr_child_panel_floor_guard.py`.
+  RE-FILE PROPOSAL (a human moves it; the lane does not): out of GATE 4 into "Not actually
+  live-gated" as an anytime companion capture, owner the uiux lane. ANYTIME CHECK, predicate stated
+  before any look: open one stored match in PGR at the compact preset (or a headless Chromium
+  viewport 380 px wide on the same stored match; no `ui_mock` PGR fixture was found, so it needs RC
+  serving, not a game); PASS iff every rendered `.pld-aug-name` has a computed
+  `font-size` of 16px or more and none overflows its `.pld-row` (`scrollWidth <= clientWidth`);
+  then the same at 920 px. An empty loadout strip (no augments in the match) is NO RESULT, not a
+  pass. The operator no-op call stays available: the default preset has no delta to see.
 - **G4-28** (was F7) ~~Home "Tonight's Pick" hardcoded dummy (`web/js/main.js:3080`,
   `dashboard/builders_home.py:148,105`): wire to real post-game `queue_id` ingest. DEFER until
   queue_id ingest ships; gated on real post-game Match-V5 rows.~~ **MIS-FILED, CLASS 1: the answer is
@@ -5473,6 +5501,10 @@ by fixture, harness, dev-preview, replay corpus, unit test, or synthetic livecli
   in-game value this row asks for. The headless answer is CommunityDragon 16.21 game data for 444644
   (RM-871 step 1, mandatory), and the row moves only if that data states 90%. The tooltip CHECK in the
   G5-08 row reads the same client string as DDragon, so it is a cross-check, not proof.
+- **CANDIDATE (lane 9 s144 cycle 78, 2026-11-06, RM-1667; a human moves it, the lane does not):**
+  G4-27 R47 PGR child-panel capture. PGR renders from stored post-game data with no game up, and the
+  only R47 pixel delta (`.pld-aug-name` 13px -> 16px inside `@media (max-width: 900px)`) shows only
+  at the companion's compact 380 px preset. The anytime CHECK and its predicate are in the G4-27 row.
 - I3 loop stall-recovery + all pure-function loop-controller patches - Tier-1 unit tests.
 - item-WPA / GPI radar / build-insights / perf-curve / WPA-lane views - static Legion-local dashboard
   views over the local corpus; a rendered-pixel eyeball is anytime, NOT game-gated.
