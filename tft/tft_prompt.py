@@ -505,10 +505,10 @@ def _meta_line(prof: SetProfile) -> str:
 def _assemble(prof: SetProfile) -> str:
     output = _OUTPUT.format(label=prof.pick_label, desc=_PICK_DESC[prof.pick_label])
     meta = _meta_line(prof)
-    fixed = "\n\n".join((_HEAD, "", meta, _RULES, output))
+    fixed = f"{_HEAD}\n\n\n\n{meta}\n\n{_RULES}\n\n{output}"
     budget = MAX_PROMPT_CHARS - len(fixed) - 4
     block = _set_block(prof, budget)
-    return "\n\n".join((_HEAD, block, meta, _RULES, output))
+    return f"{_HEAD}\n\n{block}\n\n{meta}\n\n{_RULES}\n\n{output}"
 
 
 def build_system_prompt(set_number=None, *, pbe=None, root=None) -> str:

@@ -101,8 +101,12 @@ import logging
 import threading
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import portalocker
+
+if TYPE_CHECKING:  # annotation only: typing.Self needs Python 3.11, the ruff target is 3.9
+    from typing import Self
 
 _log = logging.getLogger(__name__)
 
@@ -402,7 +406,7 @@ class _CombinedLock:
         self._has_file_lock = False
         self._has_thread_lock = False
 
-    def __enter__(self) -> "_CombinedLock":
+    def __enter__(self) -> "Self":
         # 1. In-process lock - serializes coach + dashboard threads. Bounded:
         #    an unbounded acquire here was the one path that could block a
         #    coach thread forever, which is the exact outcome this module's
