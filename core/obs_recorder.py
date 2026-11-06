@@ -531,12 +531,11 @@ class ObsRecorder:
                 elif g.owned and path != g.token:
                     g.owned = False
                     g.diag["ownership_lost"] = "restarted_externally"
-            elif state == STOPPED:
-                if g.owned and (path is None or g.token is None or path == g.token):
-                    g.owned = False
-                    g.output_path = path or g.token
-                    if not g.stopping:
-                        g.diag["ownership_lost"] = "stopped_externally"
+            elif state == STOPPED and g.owned and (path is None or g.token is None or path == g.token):
+                g.owned = False
+                g.output_path = path or g.token
+                if not g.stopping:
+                    g.diag["ownership_lost"] = "stopped_externally"
 
     # -- OBS requests -------------------------------------------------------------
 

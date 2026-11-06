@@ -599,12 +599,11 @@ def get_latest_frame(source: str | None = None) -> dict:
         if source is not None:
             return dict(_frames_by_source.get(source, {"b64": None, "ts": 0.0}))
         snap = dict(_latest_frame)
-    if GAME_HOST in _LOCAL_HOSTS:
-        # RM-269 / RM-1045: a future ts (backward wall-clock step) or a
-        # junk one is STALE; a bare now - ts went negative and served an
-        # arbitrarily old frame as current.
-        if is_stale(snap.get("ts"), _SELF_GRAB_STALE_S, now=time.time()):
-            fresh = _maybe_self_grab()
-            if fresh is not None:
-                return fresh
+    # RM-269 / RM-1045: a future ts (backward wall-clock step) or a
+    # junk one is STALE; a bare now - ts went negative and served an
+    # arbitrarily old frame as current.
+    if GAME_HOST in _LOCAL_HOSTS and is_stale(snap.get("ts"), _SELF_GRAB_STALE_S, now=time.time()):
+        fresh = _maybe_self_grab()
+        if fresh is not None:
+            return fresh
     return snap

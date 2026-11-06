@@ -6,7 +6,11 @@ kit. Twelve are now one ``if A and B:`` each, in four production modules (``comp
 either ``if``, so the merged condition runs the same body for exactly the same inputs, and ``and`` short-circuits in
 the same order the nested form evaluated its tests.
 
-The other 30 are the baseline below: one frozen file (``ops/rc_supervisor.py``), one file the uiux lane's branch
+A second slice (RM-1754) merged 8 more, one per module in ``core/`` x5 and ``vision_server/`` x3; the merge
+kept every ``and`` operand in the nested form's order, and only the ``elif state == STOPPED`` site in
+``core/obs_recorder.py`` moved a nested ``if`` into an ``elif`` test, where its chain has no later branch.
+
+The other 22 are the baseline below: one frozen file (``ops/rc_supervisor.py``), one file the uiux lane's branch
 changes (``agents/agent5_ui/champion_fallback.py``) and the rest left for later slices. The count per file can only
 fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 
@@ -42,11 +46,6 @@ _BASELINE = {
     "agents/agent2_backend/migration_rewind.py": 1,
     "agents/agent5_ui/champion_fallback.py": 1,
     "coach_integration/_sr_prompt.py": 1,
-    "core/branch_review.py": 1,
-    "core/decision_detector.py": 1,
-    "core/live_benchmark_band_shadow.py": 1,
-    "core/obs_recorder.py": 1,
-    "core/session_hygiene.py": 1,
     "dashboard/_handler.py": 1,
     "game_reader/snapshot_normalizer.py": 1,
     "item_advisor.py": 1,
@@ -61,15 +60,20 @@ _BASELINE = {
     "tools/gated_g232_layout_diff.py": 1,
     "tools/package_portable.py": 1,
     "tools/upstream_drift_check.py": 1,
-    "vision_server/_frame.py": 1,
-    "vision_server/_inference.py": 1,
-    "vision_server/_relay.py": 1,
 }
 _FIXED = (
     "composition_advisor.py",
     "role_profiles.py",
     "core/config_validator.py",
     "core/vision_fusion.py",
+    "core/branch_review.py",
+    "core/decision_detector.py",
+    "core/live_benchmark_band_shadow.py",
+    "core/obs_recorder.py",
+    "core/session_hygiene.py",
+    "vision_server/_frame.py",
+    "vision_server/_inference.py",
+    "vision_server/_relay.py",
 )
 
 

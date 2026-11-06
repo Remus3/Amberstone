@@ -384,9 +384,8 @@ def _light(base: str, flags: list) -> str:
         return "red"
     if state == "unknown":
         return state
-    if any(f.get("kind") == "override" for f in flags):
-        if _LIGHT_RANK[state] < _LIGHT_RANK["yellow"]:
-            state = "yellow"
+    if any(f.get("kind") == "override" for f in flags) and _LIGHT_RANK[state] < _LIGHT_RANK["yellow"]:
+        state = "yellow"
     if len(flags) == 2 and state == "green":
         state = "yellow"
     return state

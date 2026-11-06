@@ -273,9 +273,8 @@ def _next_objective_spawn(events: list, game_time: float, *,
             continue
         if ev.get("EventName") == kill_event:
             t = ev.get("EventTime")
-            if isinstance(t, (int, float)):
-                if last_kill_t is None or t > last_kill_t:
-                    last_kill_t = t
+            if isinstance(t, (int, float)) and (last_kill_t is None or t > last_kill_t):
+                last_kill_t = t
     if last_kill_t is None:
         # Not yet killed: first_at is the (only) known spawn time, whether
         # the clock is before it (upcoming) or past it (still up, untaken).

@@ -231,11 +231,10 @@ def load_branch_series(game_run_id: str | None = None, *,
         poisoned = bool(row.get(PRECOMPUTE_SOURCE_KEY))
         any_excluded = any_excluded or poisoned
         choices = [] if poisoned else _choices(row.get("choices"))
-        if not choices:
-            # A coverage miss (or a poisoned column) leaves no branch to show.
-            # The tick still counted toward ticks_total above.
-            if not poisoned:
-                continue
+        # A coverage miss (or a poisoned column) leaves no branch to show.
+        # The tick still counted toward ticks_total above.
+        if not choices and not poisoned:
+            continue
         cv = row.get("cv_override")
         branches.append({
             "game_time_s": _clock(row),

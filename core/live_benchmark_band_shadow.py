@@ -91,9 +91,8 @@ def _clock(value) -> int | float | None:
         return None
     if isinstance(value, int):
         return value if 0 <= value <= _MAX_GAME_TIME_S else None
-    if isinstance(value, float) and math.isfinite(value):
-        if 0.0 <= value <= _MAX_GAME_TIME_S:
-            return value + 0.0  # -0.0 -> 0.0
+    if isinstance(value, float) and math.isfinite(value) and 0.0 <= value <= _MAX_GAME_TIME_S:
+        return value + 0.0  # -0.0 -> 0.0
     return None
 
 

@@ -289,11 +289,10 @@ def get_latest_liveclient() -> dict:
         snap = dict(_liveclient)
     # 1-PC self-heal: when the relayed snapshot is stale/missing and League is
     # on this host, read :2999 in-process so the relay agent is non-integral.
-    if GAME_HOST in _LOCAL_HOSTS:
-        # RM-269: is_stale also treats a FUTURE ts (backward clock step) as
-        # stale, where a bare subtraction read it as perfectly fresh.
-        if is_stale(snap.get("ts") or 0.0, _SELF_READ_STALE_S):
-            fresh = _maybe_self_read()
-            if fresh is not None:
-                return fresh
+    # RM-269: is_stale also treats a FUTURE ts (backward clock step) as
+    # stale, where a bare subtraction read it as perfectly fresh.
+    if GAME_HOST in _LOCAL_HOSTS and is_stale(snap.get("ts") or 0.0, _SELF_READ_STALE_S):
+        fresh = _maybe_self_read()
+        if fresh is not None:
+            return fresh
     return snap
