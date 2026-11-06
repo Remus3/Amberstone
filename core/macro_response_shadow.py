@@ -119,7 +119,7 @@ def log_macro_response(
         }
 
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("a", encoding="utf-8") as fh:
+        with target.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(json.dumps(record) + "\n")
         _LAST_SIG[tkey] = sig
         if game_time_s is not None:

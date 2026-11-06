@@ -243,7 +243,7 @@ def _log_merge_drops(requested, returned: dict, dropped: dict,
         }, ensure_ascii=True, default=str)
         path = _merge_shadow_path()
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as fh:
+        with path.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(row + "\n")
     except Exception as exc:  # noqa: BLE001
         _log.debug("vision_routing: merge-drop log failed: %s", exc)
@@ -281,7 +281,7 @@ def _log_ocr_shadow(ocr: dict, sonnet: dict, shadow: set) -> None:
             }, ensure_ascii=True))
         if rows:
             path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open("a", encoding="utf-8") as fh:
+            with path.open("a", encoding="utf-8", newline="\n") as fh:
                 fh.write("\n".join(rows) + "\n")
     except Exception as exc:  # noqa: BLE001
         _log.debug("vision_routing: shadow log failed: %s", exc)

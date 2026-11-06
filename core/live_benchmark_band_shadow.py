@@ -205,7 +205,7 @@ def log_live_bands(
             line = json.dumps(record, allow_nan=False)
 
             target.parent.mkdir(parents=True, exist_ok=True)
-            with target.open("a", encoding="utf-8") as fh:
+            with target.open("a", encoding="utf-8", newline="\n") as fh:
                 fh.write(line + "\n")
             _LAST_SIG[str(target)] = sig
 

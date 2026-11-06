@@ -223,7 +223,7 @@ def _log_fusion_shadow(cv_reads) -> None:
         # Single write of one full line: readers of the JSONL lane never
         # see a torn record (R101 writer precedent).
         line = json.dumps(rec, ensure_ascii=True, default=str) + "\n"
-        with path.open("a", encoding="utf-8") as fh:
+        with path.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(line)
     except Exception as exc:  # noqa: BLE001 - shadow lane must never raise
         logger.debug("fusion shadow log failed: %s", exc)
