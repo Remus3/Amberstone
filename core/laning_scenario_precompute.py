@@ -1138,15 +1138,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     bands = _parse_csv(args.bands) or list(GEN_BANDS)
     for band in bands:
         if band not in LEVEL_BANDS:
-            logger.info(f"unknown band {band!r} (valid: {list(LEVEL_BANDS)})",
-                  file=sys.stderr)
+            logger.error("unknown band %r (valid: %s)", band, list(LEVEL_BANDS))
             return 2
 
     try:
         snapshot = DataSnapshot.load()
     except Exception as exc:  # noqa: BLE001 - a dead data set must not write
-        logger.info(f"DataSnapshot.load() failed ({exc}); refusing to write an empty "
-              "table.", file=sys.stderr)
+        logger.error("DataSnapshot.load() failed (%s); refusing to write an empty table.", exc)
         return 2
 
     patch = resolve_patch()
@@ -1215,4 +1213,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    # A CLI run shows its progress: the module logs through its own logger and nothing else
+    # configures the root logger, so INFO would vanish (RM-1722).
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     sys.exit(main())

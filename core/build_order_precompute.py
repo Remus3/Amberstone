@@ -981,9 +981,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.static:
         _install_static_transport()
     elif not args.dry_run and not _engine_up():
-        logger.info("DS engine at 127.0.0.1:8860 is not responding. Start it via "
-              '`"%LOCALAPPDATA%\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
-              "refuses to write tables against a dead engine).", file=sys.stderr)
+        logger.error("DS engine at 127.0.0.1:8860 is not responding. Start it via "
+                     '`"%LOCALAPPDATA%\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
+                     "refuses to write tables against a dead engine).")
         return 2
 
     patch = resolve_patch()
@@ -1028,4 +1028,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    # A CLI run shows its progress: the module logs through its own logger and nothing else
+    # configures the root logger, so INFO would vanish (RM-1722).
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     sys.exit(main())

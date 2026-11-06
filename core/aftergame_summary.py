@@ -443,6 +443,7 @@ def write_to_client_coaching_data(summary: dict,
 
 if __name__ == "__main__":
     import sys
+    logging.basicConfig(level=logging.INFO, format="%(message)s")  # RM-1722: show the INFO lines
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     write_flag = "--write" in sys.argv
     mid = args[0] if args else "NA1_5182398158"
@@ -452,5 +453,5 @@ if __name__ == "__main__":
         sys.exit(1)
     if write_flag:
         ok = write_to_client_coaching_data(s)
-        logger.error(f"wrote data/coaching_data.json: {ok}")
+        logger.info("wrote data/coaching_data.json: %s", ok)
     print(json.dumps(s, indent=2, ensure_ascii=False))
