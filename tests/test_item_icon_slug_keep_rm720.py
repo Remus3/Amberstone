@@ -12,11 +12,11 @@ requested. Measured s134 (lane 7), two of them ARE requested:
     through coaches/_arena_item_advisor.py `_resolve_build_path`, then
     coaches/arena_coach.py `item_build`, then legacy `renderItemBuildStrip`,
     which slugs each one to liandry-anguish / navori-flickerblades.
-The other two (deaths-dance, lichbane) come only from the misspelled
-"Deaths Dance" / "Lichbane" in aram_champion_builds.json `full_build`. The
-only path that turns that list into `item_build` is the advisor's aram
-fallback, which does not fire for Kayn or Twisted Fate (the Arena / Brawl
-coaches read it only into a Haiku build note), so this guard does not pin them.
+The other two (deaths-dance, lichbane) came only from the misspelled
+"Deaths Dance" / "Lichbane" in aram_champion_builds.json `full_build`. Those
+two entries are respelled "Death's Dance" / "Lich Bane" and the two duplicate
+files are gone (RM-720 (a) residue, s144); the tests at the end of this file
+pin both halves, so the misspelling cannot come back and request a missing icon.
 
 This guard fails if a pinned file is removed while the build data still names
 it, or if the JS slug rule changes under the Python mirror below.
@@ -91,3 +91,41 @@ def test_each_keep_spelling_is_still_on_disk() -> None:
         f"{missing} removed while the arena build data still names them: the "
         "legacy item-build strip would 404 those icons (RM-720 (a) narrowed)."
     )
+
+
+# RM-720 (a) residue (s144): the other two spellings were NOT requested by any
+# canonical name. They came from two misspelled `full_build` entries in
+# aram_champion_builds.json (Kayn "Deaths Dance", Twisted Fate "Lichbane"), so
+# the fix is to spell those two items as every other build row does and to
+# drop the byte-identical duplicate icons nothing can now request.
+_ARAM_BUILDS = _ROOT / "data" / "meta_build" / "aram_champion_builds.json"
+_MISSPELLED = {"Deaths Dance": "Death's Dance", "Lichbane": "Lich Bane"}
+_DROPPED_SLUGS = ("deaths-dance", "lichbane")
+
+
+def _aram_build_names() -> set[str]:
+    data = json.loads(_ARAM_BUILDS.read_text(encoding="utf-8"))
+    names: set[str] = set()
+    for row in data.values():
+        if isinstance(row, dict):
+            for key in ("full_build", "core_items"):
+                names.update(n for n in row.get(key) or [] if isinstance(n, str))
+    return names
+
+
+def test_aram_builds_spell_the_two_items_canonically() -> None:
+    names = _aram_build_names()
+    assert len(names) > 100, f"aram build names look empty: {len(names)}"
+    stale = sorted(n for n in _MISSPELLED if n in names)
+    assert not stale, f"misspelled item names in aram_champion_builds.json: {stale}"
+    for good in _MISSPELLED.values():
+        assert good in names, f"{good!r} not named by any aram build"
+        assert (_ICON_DIR / f"{_item_slug(good)}.png").is_file(), good
+
+
+def test_the_two_duplicate_icon_spellings_are_gone() -> None:
+    for bad, good in _MISSPELLED.items():
+        slug = _item_slug(bad)
+        assert slug in _DROPPED_SLUGS, (bad, slug)
+        assert slug != _item_slug(good)
+        assert not (_ICON_DIR / f"{slug}.png").exists(), f"{slug}.png is back"
