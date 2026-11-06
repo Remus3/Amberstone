@@ -51,7 +51,7 @@ class TestQueueFamily:
         from core.queue_modes import QUEUE_ID_TO_MODE_KEY
 
         expected = {q for q, m in QUEUE_ID_TO_MODE_KEY.items() if m == "aram"}
-        assert meta_crawl.ARAM_QUEUE_IDS == expected
+        assert expected == meta_crawl.ARAM_QUEUE_IDS
 
     def test_mayhem_queue_is_included(self):
         assert 2400 in meta_crawl.ARAM_QUEUE_IDS

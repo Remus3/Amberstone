@@ -106,11 +106,11 @@ def test_false_fold_claim_removed():
 
 def test_both_scorers_call_the_mirrored_amp_and_pen_helpers():
     ability = _called_names(_function(ABILITY_DPS, "compute_ability_dps"))
-    assert _MIRRORED <= ability, sorted(_MIRRORED - ability)
+    assert ability >= _MIRRORED, sorted(_MIRRORED - ability)
     # compute_dps reaches several of these through module helpers, so the
     # mirror is measured over dps.py as a whole.
     dps = _called_names(ast.parse(_text(DPS)))
-    assert _MIRRORED <= dps, sorted(_MIRRORED - dps)
+    assert dps >= _MIRRORED, sorted(_MIRRORED - dps)
 
 
 def test_proc_fold_passes_ability_dot_only_true():

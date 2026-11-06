@@ -71,4 +71,4 @@ def test_dsv1_burn_test_names_the_symbol():
 
 def test_ability_scorer_still_calls_the_amp_and_pen_helpers():
     called = _called_names(ABILITY_DPS, "compute_ability_dps")
-    assert _AMP_PEN <= called, sorted(_AMP_PEN - called)
+    assert called >= _AMP_PEN, sorted(_AMP_PEN - called)

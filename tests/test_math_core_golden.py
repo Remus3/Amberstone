@@ -263,7 +263,7 @@ def test_ds_penetration_pipelines_match_golden(case):
 
 
 def test_ds_known_divergence_ids_are_real_cases():
-    assert DS_KNOWN_DIVERGENCE <= {c["id"] for c in DS_PEN}
+    assert {c["id"] for c in DS_PEN} >= DS_KNOWN_DIVERGENCE
 
 
 # --------------------------------------------------------------------------

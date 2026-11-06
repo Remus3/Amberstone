@@ -1026,7 +1026,7 @@ class TestEngineDefaultCast:
         # the engine-default fill MUST equal combo.py's own AA-windup fallback so
         # default-filled champs stay byte-identical to the no-sidecar path.
         from agents.daemon_slayer import combo as _cb
-        assert W._ENGINE_DEFAULT_CAST_TIME == pytest.approx(_cb._DEFAULT_AA_WINDUP_S)
+        assert pytest.approx(_cb._DEFAULT_AA_WINDUP_S) == W._ENGINE_DEFAULT_CAST_TIME
 
     def test_default_fills_unmeasured_cast(self, monkeypatch):
         self._common(monkeypatch)

@@ -107,7 +107,7 @@ def test_relay_log_file_honours_the_env_then_falls_back(monkeypatch, tmp_path):
     import tools.liveclient_relay as relay
     assert relay.LOG_FILE_ENV == "RC_LIVECLIENT_RELAY_LOG"
     default = REPO / "logs" / "liveclient_relay.log"
-    assert relay._DEFAULT_LOG_FILE == default
+    assert default == relay._DEFAULT_LOG_FILE
     monkeypatch.setenv(relay.LOG_FILE_ENV, str(tmp_path / "relay.log"))
     assert relay._log_file() == tmp_path / "relay.log"
     for blank in ("", "   "):

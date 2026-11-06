@@ -268,5 +268,5 @@ def test_the_real_store_is_never_touched_by_this_module(with_inbox, tmp_path, mo
     """Belt and braces: `_ROOT` is redirected, so nothing here can address the
     live ops/runtime/sync_inbox_seen.json even if an arm above regressed."""
     root = _make_root(tmp_path, monkeypatch, with_inbox=with_inbox)
-    assert rc_facts._ROOT == root
+    assert root == rc_facts._ROOT
     assert _store(root) != Path("C:/Riot Commander/ops/runtime/sync_inbox_seen.json")

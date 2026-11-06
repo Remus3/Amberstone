@@ -232,10 +232,10 @@ def test_web_render_refuses_an_area_with_no_rows():
 
 def test_atomic_guard_reads_the_real_rows():
     real = atomic_write.load()
-    assert SANCTIONED == real.sanctioned
-    assert _RUNTIME_TOOLS == real.runtime_tools
-    assert _TOOLS_UNCLASSIFIED == real.tools_unclassified
-    assert _EXCLUDED_PREFIXES == real.excluded_prefixes
+    assert real.sanctioned == SANCTIONED
+    assert real.runtime_tools == _RUNTIME_TOOLS
+    assert real.tools_unclassified == _TOOLS_UNCLASSIFIED
+    assert real.excluded_prefixes == _EXCLUDED_PREFIXES
     assert ("core/polled_json.py", "_replace_with_retry") in SANCTIONED
     assert ("ops/launcher/service_host.py", "HostLog.write") in SANCTIONED
     assert ("tools/shadow_archive_split.py", "_swap_in") in SANCTIONED

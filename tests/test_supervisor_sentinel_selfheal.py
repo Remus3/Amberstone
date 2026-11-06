@@ -385,7 +385,7 @@ def test_acquire_lock_marks_this_process_as_the_owner(
     """The owner flag is set by winning the exclusive create, nothing else."""
     state = _point_state_at(tmp_path, monkeypatch)
     assert common.acquire_lock() is True
-    assert common._LOCK_OWNER_PID == os.getpid()
+    assert os.getpid() == common._LOCK_OWNER_PID
 
     # End-to-end: the very failure that was measured live. Something removes
     # the sentinel under the running daemon; one heartbeat re-arms it.
@@ -402,7 +402,7 @@ def test_acquire_lock_failure_does_not_mark_ownership(
     (state / "lockfile.sentinel").write_bytes(str(live_foreign_pid).encode("ascii"))
 
     assert common.acquire_lock() is False
-    assert common._LOCK_OWNER_PID != os.getpid()
+    assert os.getpid() != common._LOCK_OWNER_PID
 
     # And a losing starter's heartbeat cannot repair its way into ownership.
     (state / "lockfile.sentinel").unlink()

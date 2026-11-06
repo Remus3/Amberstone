@@ -245,7 +245,7 @@ def test_inject_ids_has_one_caller_whose_table_holds_no_sweeper():
 
 
 def test_strip_arena_trinkets_behaviour():
-    assert rank.ARENA_TRINKET_IDS == frozenset({_SWEEPER})
+    assert frozenset({_SWEEPER}) == rank.ARENA_TRINKET_IDS
     for mode in ("ARENA", "arena", "Arena"):
         assert rank.strip_arena_trinkets(("3031", _SWEEPER), mode) == (("3031",), (_SWEEPER,))
     for mode in ("SR", "ARAM", "BRAWL"):

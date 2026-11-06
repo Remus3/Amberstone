@@ -237,7 +237,7 @@ def test_non_mana_non_energy_resource_types_are_excluded(rtype):
 
 
 def test_tracked_resource_types_are_exactly_mana_and_energy():
-    assert scl.TRACKED_RESOURCES == frozenset({"MANA", "ENERGY"})
+    assert frozenset({"MANA", "ENERGY"}) == scl.TRACKED_RESOURCES
     assert scl.is_tracked_resource("mana") and scl.is_tracked_resource("Energy")
 
 

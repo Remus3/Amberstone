@@ -782,7 +782,7 @@ def test_grid_no_grid_declaration_stays_cached(tmp_path, monkeypatch):
     target = _point_md(tmp_path, monkeypatch)
     target.write_text(json.dumps({"districts": []}), encoding="utf-8")
     assert md.load_grid("sr") is None
-    assert md._CACHE == {("sr", str(md._CONFIG_DIR)): None}
+    assert {("sr", str(md._CONFIG_DIR)): None} == md._CACHE
 
 
 # -- replay_history match_detail ------------------------------------------------

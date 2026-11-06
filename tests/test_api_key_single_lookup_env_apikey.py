@@ -360,7 +360,7 @@ def test_key_file_with_an_internal_space_is_rejected(key_root, monkeypatch):
 
 def test_default_root_is_the_repo_root_derived_from_the_module_path():
     from core import anthropic_key
-    assert anthropic_key.REPO_ROOT == Path(anthropic_key.__file__).resolve().parent.parent
+    assert Path(anthropic_key.__file__).resolve().parent.parent == anthropic_key.REPO_ROOT
     assert anthropic_key.REPO_ROOT == REPO
     assert anthropic_key.KEY_FILENAME == KEY_FILE
     assert anthropic_key.ENV_VAR == ENV_VAR

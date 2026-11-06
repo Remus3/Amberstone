@@ -114,7 +114,7 @@ def test_baseline_is_exact(tree_findings):
     still = {rel for rel, _ in tree_findings}
     assert sorted(_BASELINE - still) == [], "drop these from _BASELINE: they are clean now"
     tracked = {relative_posix(p) for p in repo_files(REPO_ROOT, ("*.py",))}
-    assert _BASELINE <= tracked
+    assert tracked >= _BASELINE
 
 
 @pytest.mark.parametrize("rel", _FIXED)

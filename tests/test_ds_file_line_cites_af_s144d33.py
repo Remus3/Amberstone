@@ -145,7 +145,7 @@ def test_phys_only_multipliers_enter_only_the_physical_denominators():
     (phys,) = _assign_values(func, "physical_ehp")
     (mag,) = _assign_values(func, "magical_ehp")
     (true,) = _assign_values(func, "true_ehp")
-    assert _PHYS_ONLY <= _names(phys)
+    assert _names(phys) >= _PHYS_ONLY
     assert not _PHYS_ONLY & (_names(mag) | _names(true))
     for name in ("physical_ehp", "magical_ehp", "true_ehp"):
         (expr,) = _assign_values(func, name)
@@ -154,7 +154,7 @@ def test_phys_only_multipliers_enter_only_the_physical_denominators():
     (p,) = _assign_values(blend, "p")
     (m,) = _assign_values(blend, "m")
     (t,) = _assign_values(blend, "t")
-    assert _PHYS_ONLY <= _names(p)
+    assert _names(p) >= _PHYS_ONLY
     assert not _PHYS_ONLY & (_names(m) | _names(t))
 
 

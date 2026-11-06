@@ -143,9 +143,9 @@ def pbe(monkeypatch):
 
 def test_the_default_targets_are_the_data_meta_files(pbe):
     meta = ROOT / "data" / "meta"
-    assert pbe.CODES_FILE == meta / _CODES_NAME
-    assert pbe.TEAMPLANNER_RAW == meta / "cdragon_teamplanner_pbe.json"
-    assert pbe.TFT_RAW == meta / "cdragon_tft_pbe.json"
+    assert meta / _CODES_NAME == pbe.CODES_FILE
+    assert meta / "cdragon_teamplanner_pbe.json" == pbe.TEAMPLANNER_RAW
+    assert meta / "cdragon_tft_pbe.json" == pbe.TFT_RAW
 
 
 def test_set17_codes_keeps_only_named_set17_rows_with_a_code(pbe):

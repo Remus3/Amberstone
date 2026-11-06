@@ -74,7 +74,7 @@ def test_code_side_parses_to_real_bounds():
     topic = _code_topic_bound()
     assert topic > 0 and NOTE_NAME_MAX > 0
     # The length cap is the OUTER bound (the in-code comment's composition).
-    assert NOTE_NAME_MAX > topic
+    assert topic < NOTE_NAME_MAX
 
 
 def test_spec_recites_the_exact_note_name_regex():

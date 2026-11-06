@@ -78,7 +78,7 @@ class TestEnchanterSurvivabilityLoader(unittest.TestCase):
 
     def test_rakan_ids(self) -> None:
         ids = survivability_credit.survivability_item_ids_enchanter("Rakan")
-        self.assertTrue(_RAKAN_SURV <= ids)
+        self.assertTrue(ids >= _RAKAN_SURV)
 
     def test_unknown_and_blank_empty(self) -> None:
         # A real enchanter NOT tabled (Soraka) + blank both yield empty.

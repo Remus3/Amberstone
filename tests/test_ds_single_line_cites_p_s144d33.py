@@ -88,8 +88,8 @@ def test_names_the_symbols(name):
 def test_guardian_restates_the_reactive_spell_shield_price():
     reactive = _champion_spell_shield_overrides._SPELL_SHIELD_REACTIVE_PROB
     assert reactive == 0.2
-    assert _item_spell_shield_overrides._ITEM_SPELL_SHIELD_PROB == reactive
-    assert _rune_shield_grants._RUNE_GUARDIAN_SHIELD_PROB == reactive
+    assert reactive == _item_spell_shield_overrides._ITEM_SPELL_SHIELD_PROB
+    assert reactive == _rune_shield_grants._RUNE_GUARDIAN_SHIELD_PROB
 
 
 def test_terminus_cites_resolve_to_the_stated_values():

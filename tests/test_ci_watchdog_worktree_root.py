@@ -34,7 +34,7 @@ def test_blank_env_is_ignored(tmp_path):
 
 
 def test_module_default_matches_the_resolver():
-    assert cw.WORKTREE == cw.resolve_worktree()
+    assert cw.resolve_worktree() == cw.WORKTREE
 
 
 def test_no_drive_rooted_worktree_literal_in_the_module():

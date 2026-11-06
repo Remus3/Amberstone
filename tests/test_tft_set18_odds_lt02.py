@@ -92,8 +92,8 @@ def test_table_covers_levels_1_to_11_and_every_row_sums_to_one():
 
 
 def test_per_level_pin_is_exactly_the_hud_levels():
-    assert tft_data.TIER_ODDS_VERIFIED_LEVELS == frozenset(HUD)
-    assert tft_data.TIER_ODDS_VERIFIED_LEVELS < frozenset(tft_data.TIER_ODDS)
+    assert frozenset(HUD) == tft_data.TIER_ODDS_VERIFIED_LEVELS
+    assert frozenset(tft_data.TIER_ODDS) > tft_data.TIER_ODDS_VERIFIED_LEVELS
 
 
 def test_whole_module_pin_stays_false_until_pools_and_all_levels_are_read():

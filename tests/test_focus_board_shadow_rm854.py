@@ -169,8 +169,8 @@ def _board_threads():
 # -- the contract the shadow keys on ----------------------------------------------
 
 def test_transient_statuses_are_the_not_yet_ready_ones():
-    assert fbl.TRANSIENT_STATUSES == frozenset({
-        fbl.STATUS_WARMING, fbl.STATUS_THROTTLED, fbl.STATUS_PENDING})
+    assert frozenset({
+        fbl.STATUS_WARMING, fbl.STATUS_THROTTLED, fbl.STATUS_PENDING}) == fbl.TRANSIENT_STATUSES
     # A settled answer is never transient (it must not be re-logged).
     for settled in (fbl.STATUS_OK, fbl.STATUS_NO_BOARD, fbl.STATUS_NO_ROSTER,
                     fbl.STATUS_UNAVAILABLE, fbl.STATUS_ERROR,

@@ -171,7 +171,7 @@ class TftOverlayLayout(unittest.TestCase):
 
     def test_every_tft_default_stays_on_screen(self):
         for wid, b in tft_default_boxes().items():
-            self.assertTrue(0 <= b[0] and b[2] <= DESIGN_W and 0 <= b[1] and b[3] <= DESIGN_H,
+            self.assertTrue(b[0] >= 0 and b[2] <= DESIGN_W and b[1] >= 0 and b[3] <= DESIGN_H,
                             f"{wid} {b} leaves the 1920x1080 design field")
 
     def test_no_tft_default_covers_the_tft_hud(self):

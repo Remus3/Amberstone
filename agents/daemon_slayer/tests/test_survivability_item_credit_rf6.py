@@ -128,7 +128,7 @@ class TestRellInjectSeam(unittest.TestCase):
 
     def test_rell_ids(self) -> None:
         ids = survivability_credit.survivability_item_ids_tank("Rell")
-        self.assertTrue(_RELL_SURV <= ids)
+        self.assertTrue(ids >= _RELL_SURV)
 
     def test_off_is_byte_identical(self) -> None:
         a = rank_items_by_ehp(self.snap, "Rell", _LEVEL, mode="ARAM", top_n=_TOP)

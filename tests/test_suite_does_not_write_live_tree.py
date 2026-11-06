@@ -548,7 +548,7 @@ def test_after_measurement_is_exactly_the_census_exceptions():
         f"measured {sorted(_AFTER_LIVE_WRITE_PATHS)}, declared "
         f"{sorted(exceptions)}. Re-run the tracer rather than editing either "
         "list to match the other.")
-    assert _AFTER_LIVE_WRITE_UNITS == sum(exceptions.values()), (
+    assert sum(exceptions.values()) == _AFTER_LIVE_WRITE_UNITS, (
         f"AFTER total {_AFTER_LIVE_WRITE_UNITS} != the declared exception "
         f"bytes {sum(exceptions.values())}")
     fixed_paths = {row[0] for row in _CENSUS if row[3] == _FIXED}

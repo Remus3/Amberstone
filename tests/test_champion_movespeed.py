@@ -340,7 +340,7 @@ class TestFallbackConsistentWithTheRoster:
             f"_FALLBACK_MS {cms._FALLBACK_MS} covers only {covered}/{len(speeds)} "
             "of the roster - it is no longer conservative for reachability"
         )
-        assert cms._FALLBACK_MS >= _modal_movespeed()
+        assert _modal_movespeed() <= cms._FALLBACK_MS
 
     def test_module_text_makes_no_unchecked_modality_claim(self):
         """THE DEFECT CLASS: a hardcoded live constant whose comment justifies
@@ -356,7 +356,7 @@ class TestFallbackConsistentWithTheRoster:
         ]
         if not claims:
             return  # corrected prose makes no modality claim - nothing to check
-        assert cms._FALLBACK_MS == _modal_movespeed(), (
+        assert _modal_movespeed() == cms._FALLBACK_MS, (
             "module text claims the fallback is the most common base MS, but "
             f"the mirror's mode is {_modal_movespeed()} and _FALLBACK_MS is "
             f"{cms._FALLBACK_MS}. Offending lines: {claims}"

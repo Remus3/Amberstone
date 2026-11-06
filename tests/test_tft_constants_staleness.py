@@ -107,7 +107,7 @@ def test_verified_implies_current_and_complete(mod):
     if not mod.CONSTANTS_SET_VERIFIED:
         return
     lane = _lane_set()
-    assert mod.CONSTANTS_SET == lane, (
+    assert lane == mod.CONSTANTS_SET, (
         f"{mod.__name__} claims in-client verification but declares set "
         f"{mod.CONSTANTS_SET} while the lane is on set {lane}"
     )
@@ -121,7 +121,7 @@ def test_a_stale_module_is_never_silently_stale(mod):
     """Declared set != lane set must surface as a reported problem."""
     lane = _lane_set()
     problems = ro.constants_health()["problems"]
-    if mod.CONSTANTS_SET == lane:
+    if lane == mod.CONSTANTS_SET:
         return
     assert any(
         mod.__name__ in p and "STALE" in p for p in problems

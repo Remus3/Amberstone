@@ -82,7 +82,7 @@ def test_no_present_tense_count_outside_the_live_sentence(axis_counts):
 def test_credited_damage_types_named_in_row_match_the_constant():
     row = _hybrid_row()
     assert "from PHYSICAL to PHYSICAL + TRUE" in row
-    assert hybrid._AD_AXIS_CREDITED_DAMAGE_TYPES == frozenset({"PHYSICAL", "TRUE"})
+    assert frozenset({"PHYSICAL", "TRUE"}) == hybrid._AD_AXIS_CREDITED_DAMAGE_TYPES
 
 
 def test_three_gate_sites_call_the_physical_ability_term():

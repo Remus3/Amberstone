@@ -133,7 +133,7 @@ def test_sr_game_modes_restate_production_gate():
     src = (ROOT / "core" / "sr_aram_worker.py").read_text(encoding="utf-8")
     m = re.search(r"is_sr_mode = gm_upper in \(([^)]*)\)", src)
     assert m, "sr_aram_worker SR gate moved; re-pin SR_GAME_MODES"
-    assert g242.SR_GAME_MODES == set(re.findall(r'"([A-Z]+)"', m.group(1)))
+    assert set(re.findall(r'"([A-Z]+)"', m.group(1))) == g242.SR_GAME_MODES
 
 
 def test_fog_output_never_carries_a_summoner_name():

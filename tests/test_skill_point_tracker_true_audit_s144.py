@@ -160,8 +160,8 @@ def test_out_of_range_reading_is_none(src):
 
 def test_bounds_admit_every_real_kit_and_level():
     # Udyr / Jayce rank a slot to 6; a mode levels past 18.
-    assert spt._MAX_RANK >= max(k.basic_max for k in spt.SPECIAL_KITS.values())
-    assert spt._MAX_RANK >= max(k.r_max for k in spt.SPECIAL_KITS.values())
+    assert max(k.basic_max for k in spt.SPECIAL_KITS.values()) <= spt._MAX_RANK
+    assert max(k.r_max for k in spt.SPECIAL_KITS.values()) <= spt._MAX_RANK
     rd = spt.read_skill_snapshot(_src(spt._MAX_LEVEL, q=spt._MAX_RANK))
     assert rd is not None and rd.ranks["q"] == spt._MAX_RANK
     rd = spt.read_skill_snapshot(_src(18.0, q=6.0, w=6.0, e=6.0, r=0))

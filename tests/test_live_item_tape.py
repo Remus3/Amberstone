@@ -342,8 +342,8 @@ def test_events_carry_their_game_segment(catalog):
 
 
 def test_persisted_types_are_the_three_timeline_types():
-    assert lit.PERSISTED_TYPES == frozenset(
-        {"ITEM_PURCHASED", "ITEM_SOLD", "ITEM_COMBINED"})
+    assert frozenset(
+        {"ITEM_PURCHASED", "ITEM_SOLD", "ITEM_COMBINED"}) == lit.PERSISTED_TYPES
 
 
 # ---------------------------------------------------------------- exclusions

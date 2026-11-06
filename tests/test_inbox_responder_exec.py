@@ -79,7 +79,7 @@ def _precheck(argv, runner, **kw):
 
 
 def test_held_verbs_is_a_frozenset_of_exactly_status_and_check_ignore():
-    assert rexec.HELD_VERBS == frozenset({"status", "check-ignore"})
+    assert frozenset({"status", "check-ignore"}) == rexec.HELD_VERBS
     assert isinstance(rexec.HELD_VERBS, frozenset)
 
 
@@ -641,4 +641,4 @@ def test_every_declared_gate_id_is_reachable_by_name():
         "non-ascii", "control-char", "oversize", "grammar-question",
         "target-not-named", "empty-body", "tag-missing", "tag-hop-word",
     }
-    assert rexec.FILTER_GATES == declared
+    assert declared == rexec.FILTER_GATES

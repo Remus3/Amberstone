@@ -174,7 +174,7 @@ def test_filter_renders_a_redacted_exc_text():
     exc = _raised(f"bad {KEY}")
     rec = _filtered("route failed", exc_info=(type(exc), exc, exc.__traceback__))
     assert KEY not in rec.exc_text
-    assert "route failed" == rec.getMessage()
+    assert rec.getMessage() == "route failed"
 
 
 # -- F4: a caller-set exc_text -------------------------------------------------

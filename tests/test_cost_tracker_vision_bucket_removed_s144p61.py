@@ -97,7 +97,7 @@ def test_no_tracked_config_carries_the_keys():
         walked.add(rel)
         text = path.read_text(encoding="utf-8", errors="replace")
         hits.extend((rel, k) for k in _GONE_KEYS if k in text)
-    assert _CONFIG_ANCHORS <= walked, sorted(_CONFIG_ANCHORS - walked)
+    assert walked >= _CONFIG_ANCHORS, sorted(_CONFIG_ANCHORS - walked)
     assert hits == []
 
 

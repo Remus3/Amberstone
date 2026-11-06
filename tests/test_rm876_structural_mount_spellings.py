@@ -94,12 +94,12 @@ def test_the_structural_head_is_the_needle_drive_head_less_the_posix_drive():
     the config-free arm reads too, except the one measured-noisy head. A
     future widening of the DRIVE head reaches this arm with no second edit."""
     assert sweep._POSIX_DRIVE in sweep._DRIVE_HEAD_PARTS
-    assert sweep._STRUCTURAL_HEAD_PARTS == tuple(
+    assert tuple(
         p for p in sweep._DRIVE_HEAD_PARTS if p != sweep._POSIX_DRIVE
-    )
-    assert sweep._DRIVE_HEAD == (
+    ) == sweep._STRUCTURAL_HEAD_PARTS
+    assert (
         "(?<![A-Za-z0-9_])(?:" + "|".join(sweep._DRIVE_HEAD_PARTS) + ")"
-    )
+    ) == sweep._DRIVE_HEAD
     assert len(sweep._STRUCTURAL_RES) == len(sweep._STRUCTURAL_HEAD_PARTS)
     for rx, part in zip(sweep._STRUCTURAL_RES, sweep._STRUCTURAL_HEAD_PARTS):
         assert rx.pattern.startswith("(?<![A-Za-z0-9_])(?:" + part + ")")

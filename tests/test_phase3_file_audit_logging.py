@@ -74,7 +74,7 @@ def test_default_log_path_is_repo_root_relative_not_cwd(
     """Resolved from __file__, so a stray WorkingDirectory cannot relocate it."""
     monkeypatch.chdir(tmp_path)
     expected = Path(pfa.__file__).resolve().parent.parent / "logs" / "phase3_file_audit.log"
-    assert pfa.LOG_PATH == expected
+    assert expected == pfa.LOG_PATH
     assert pfa.LOG_PATH.name == "phase3_file_audit.log"
 
 

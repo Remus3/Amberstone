@@ -167,6 +167,6 @@ def test_never_raises_over_a_junk_grid():
                 for h in _JUNK + [1080]:
                     r = compute_minimap_rect(scale, flip, w, h)
                     if r is not None:
-                        assert 0 <= r.x and 0 <= r.y
+                        assert r.x >= 0 and r.y >= 0
                         assert r.x + r.w <= 1920 and r.y + r.h <= 1080
                         assert isinstance(r.flip, bool)

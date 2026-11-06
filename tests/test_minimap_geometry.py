@@ -89,7 +89,7 @@ def test_rect_always_within_screen():
         for flip in (False, True):
             r = compute_minimap_rect(scale, flip, 1920, 1080)
             assert r is not None
-            assert 0 <= r.x and 0 <= r.y
+            assert r.x >= 0 and r.y >= 0
             assert r.x + r.w <= 1920
             assert r.y + r.h <= 1080
 

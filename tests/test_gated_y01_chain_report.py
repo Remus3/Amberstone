@@ -127,7 +127,7 @@ def _five_pass(lab: Lab) -> None:
 
 def test_chain_window_derives_from_the_writer_schedule():
     from lib import rewind_live_writer as rlw
-    assert y.CHAIN_WINDOW_S == rlw.DEFAULT_DELAY_S + sum(rlw.STAGED_DELAYS_S) + 120.0
+    assert rlw.DEFAULT_DELAY_S + sum(rlw.STAGED_DELAYS_S) + 120.0 == y.CHAIN_WINDOW_S
     assert y.CHAIN_WINDOW_S == 1290.0
 
 

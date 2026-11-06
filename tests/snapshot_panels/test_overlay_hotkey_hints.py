@@ -533,8 +533,8 @@ def test_hint_audit_capture(mock_server, pw_browser):
             assert h["font"] == "12px", where
             assert h["pointer"] == "none", where
             assert h["onText"] == [], where
-            assert 0 <= h["box"]["x"] and h["box"]["r"] <= 1920, where
-            assert 0 <= h["box"]["y"] and h["box"]["b"] <= 1080, where
+            assert h["box"]["x"] >= 0 and h["box"]["r"] <= 1920, where
+            assert h["box"]["y"] >= 0 and h["box"]["b"] <= 1080, where
             if h["id"] == "w-launcher":
                 assert h["box"]["b"] <= 72, where
                 assert h["box"]["r"] <= 70, where

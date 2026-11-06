@@ -116,7 +116,7 @@ def _capture(rec_budget, **overrides):
 def test_creation_flags_is_create_no_window_on_nt_and_zero_elsewhere():
     import os
     expected = 0x08000000 if os.name == "nt" else 0
-    assert procs.CREATION_FLAGS == expected
+    assert expected == procs.CREATION_FLAGS
 
 
 def test_popen_call_carries_creationflags_and_the_three_pipes(monkeypatch):

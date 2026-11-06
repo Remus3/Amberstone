@@ -89,8 +89,8 @@ def test_the_filter_skips_by_name():
 
 
 def test_the_restated_deny_sets():
-    assert rank.CARRY_POOL_WIDEN_ITEM_NAMES == frozenset({
+    assert frozenset({
         "Black Cleaver", "Spear of Shojin", "Stridebreaker", "Sterak's Gage",
-    })
+    }) == rank.CARRY_POOL_WIDEN_ITEM_NAMES
     assert rank.CARRY_POOL_WIDEN_ITEM_NAMES <= rank.OFFCLASS_MARKSMAN_ITEM_NAMES
     assert "3877" in rank._SR_EXCLUDED_ITEM_IDS

@@ -90,10 +90,10 @@ def test_f2_level_bounds_are_inclusive(built, level, status):
 
 def test_f2_level_domain_is_the_tft_one():
     assert (recommend.LEVEL_MIN, recommend.LEVEL_MAX) == (1, 11)
-    assert recommend.LEVEL_MAX >= max(milestones.LEVELS)
+    assert max(milestones.LEVELS) <= recommend.LEVEL_MAX
     # The default odds bundle is the measured level domain: advice must never
     # call a level the odds table knows a misread.
-    assert recommend.LEVEL_MAX >= max(tft_roll_odds.default_constants().tier_odds)
+    assert max(tft_roll_odds.default_constants().tier_odds) <= recommend.LEVEL_MAX
 
 
 def test_f2_level_11_advice_reads_the_curve():

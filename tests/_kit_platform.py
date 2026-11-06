@@ -100,5 +100,5 @@ def assert_kit_killed(plat, kills, proc_killed, pid):
         assert GROUP_SIGNALS == [], "no process-group signal on win32"
     else:
         assert kills == [], "the kit runs no taskkill on POSIX"
-        assert GROUP_SIGNALS == [(pid, signal.SIGTERM), (pid, _SIGKILL)], \
+        assert [(pid, signal.SIGTERM), (pid, _SIGKILL)] == GROUP_SIGNALS, \
             "the child's WHOLE group: SIGTERM, then SIGKILL"

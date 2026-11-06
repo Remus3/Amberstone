@@ -622,7 +622,7 @@ def test_a_small_control_cannot_pass_a_wrong_resist_into_a_finding():
 
 
 def test_a_control_at_the_floor_counts_and_a_small_control_miss_still_voids():
-    assert g240.CONTROL_MIN_PREDICTED == pytest.approx(2.0 / 0.03)
+    assert pytest.approx(2.0 / 0.03) == g240.CONTROL_MIN_PREDICTED
     abilities = _Abilities({"Testchamp": {
         "Q": (_form([_dmg("Edge", base=(67.0,))]),),
         "R": (_form([_dmg("Small", base=(10.0,))]),),

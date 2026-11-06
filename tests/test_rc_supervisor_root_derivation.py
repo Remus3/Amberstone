@@ -23,7 +23,7 @@ _PATH_KEYS = ("project_root", "runtime_dir", "health_file", "deploy_script")
 
 
 def test_module_root_is_the_checkout():
-    assert sup._REPO_ROOT == REPO.resolve()
+    assert REPO.resolve() == sup._REPO_ROOT
 
 
 def test_absent_keys_derive_from_the_file_location(tmp_path):

@@ -1581,7 +1581,7 @@ def test_the_ci_wait_outlasts_the_graded_jobs_own_ceiling():
     ceiling_min = job.get("timeout-minutes")
     assert isinstance(ceiling_min, int) and ceiling_min > 0, (
         f"{qloop.CI_WORKFLOW}:{qloop.CI_JOB} declares no job timeout-minutes")
-    assert qloop.DEFAULT_CI_WAIT_S >= ceiling_min * 60, (
+    assert ceiling_min * 60 <= qloop.DEFAULT_CI_WAIT_S, (
         f"DEFAULT_CI_WAIT_S={qloop.DEFAULT_CI_WAIT_S}s is under the "
         f"{qloop.CI_JOB} job ceiling ({ceiling_min}m = {ceiling_min * 60}s), so "
         "the driver abandons a run CI may still pass")

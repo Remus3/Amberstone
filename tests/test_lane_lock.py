@@ -128,7 +128,7 @@ def test_the_synthetic_dead_pid_really_is_dead():
         f"pid {DEAD_PID} was expected to be unissuable on this OS")
     assert slots.pid_alive(FOREIGN_LIVE_PID), (
         f"pid {FOREIGN_LIVE_PID} was expected to be a live system process")
-    assert FOREIGN_LIVE_PID != os.getpid()
+    assert os.getpid() != FOREIGN_LIVE_PID
 
 
 def test_lane_roster_and_single_slot():

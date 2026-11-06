@@ -64,7 +64,7 @@ def _counting_pid_alive(monkeypatch, verdict: bool = True) -> list[int]:
 def test_live_holder_just_past_stale_after_is_kept_by_the_pid_arm(tmp_path, monkeypatch):
     """C4: below the hard ceiling a live holder keeps its slot; age alone is
     not evidence the holder is gone, so pid_alive is consulted exactly once."""
-    assert 1.5 < slots.HARD_STALE_MULTIPLE
+    assert slots.HARD_STALE_MULTIPLE > 1.5
     calls = _counting_pid_alive(monkeypatch, verdict=True)
     assert slots.is_stale(_lock(tmp_path, 1.5 * STALE_AFTER), STALE_AFTER) is False
     assert calls == [os.getpid()]

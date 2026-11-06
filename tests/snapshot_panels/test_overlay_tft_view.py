@@ -152,7 +152,7 @@ def test_tft_overlay_layout_clears_the_tft_hud_at_1080_and_1440(mock_server, pw_
             _wait_tft(page)
             page.wait_for_function("() => !document.getElementById('ovt-lobby').hidden", timeout=10_000)
             visible = page.evaluate(_VISIBLE_WIDGETS_JS)
-            assert TFT_IDS <= set(visible), sorted(visible)
+            assert set(visible) >= TFT_IDS, sorted(visible)
             for wid in TFT_IDS:
                 box = visible[wid]
                 w = want[wid]

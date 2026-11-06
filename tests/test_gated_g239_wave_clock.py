@@ -25,7 +25,7 @@ def test_bracket_bounds_restate_production_constants():
 
 def test_sr_mode_keys_restate_production_map():
     from dashboard import _deterministic_coaching as dc
-    assert g239.SR_MODE_KEYS == {k for k, v in dc._MODE_KEY_TO_LOWER.items() if v == "sr"}
+    assert {k for k, v in dc._MODE_KEY_TO_LOWER.items() if v == "sr"} == g239.SR_MODE_KEYS
 
 
 def test_schedule_is_production_wave_callout_walked_forward():

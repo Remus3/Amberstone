@@ -139,7 +139,7 @@ def test_name_sweep_fires_on_a_planted_copy():
     word = "in" + name.lower() + "ate"
     assert _name_hits(f"we {word} it", name) == 1
     assert _name_hits(f"we {word} it; tft{name} = 1", name, allowed=frozenset({word})) == 1
-    assert ALLOWED_CONTAINING_WORDS == frozenset()
+    assert frozenset() == ALLOWED_CONTAINING_WORDS
 
 
 # --------------------------------------------- 2-4. AST / literal sweeps

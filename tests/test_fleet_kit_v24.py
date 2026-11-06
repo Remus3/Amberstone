@@ -219,7 +219,7 @@ def test_no_kit_line_spells_the_sidecar_root_drive_rooted():
     assert hits == []
     # KIT-SIDECAR-PATH: built from parts, the value is unchanged.
     lanes = _load("fleet_lanes")
-    assert lanes.SIDECAR_DEFAULT == ("E:" + os.sep + "Sidecars" if os.name == "nt" else "")
+    assert ("E:" + os.sep + "Sidecars" if os.name == "nt" else "") == lanes.SIDECAR_DEFAULT
 
 
 def test_rc_sweep_dropped_the_sidecars_allow_segment_and_reads_the_kit_clean():

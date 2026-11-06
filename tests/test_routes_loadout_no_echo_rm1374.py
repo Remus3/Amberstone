@@ -156,5 +156,5 @@ def test_the_fixed_texts_carry_no_format_field():
     for text in (rt._UB_NOT_FOUND, rt._UB_MALFORMED, rt._VARIANT_NOT_FOUND):
         assert isinstance(text, str) and text
         assert "{" not in text and "%" not in text
-    assert rt._FIXED_RESOLVE_ERRS == frozenset(
-        {rt._UB_NOT_FOUND, rt._UB_MALFORMED})
+    assert frozenset(
+        {rt._UB_NOT_FOUND, rt._UB_MALFORMED}) == rt._FIXED_RESOLVE_ERRS

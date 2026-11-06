@@ -63,7 +63,7 @@ def test_hyper_roll_still_detected():
 
 
 def test_double_up_queue_is_the_measured_one():
-    assert tsr.DOUBLE_UP_QUEUES == frozenset({1160})
+    assert frozenset({1160}) == tsr.DOUBLE_UP_QUEUES
 
 
 def test_time_table_accessor_is_set_aware(monkeypatch):

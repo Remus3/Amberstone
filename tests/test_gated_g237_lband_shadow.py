@@ -61,7 +61,7 @@ def test_band_vocab_is_rank_value_output():
 
 def test_sr_mode_keys_restate_production_map():
     from dashboard import _deterministic_coaching as dc
-    assert g237.SR_MODE_KEYS == {k for k, v in dc._MODE_KEY_TO_LOWER.items() if v == "sr"}
+    assert {k for k, v in dc._MODE_KEY_TO_LOWER.items() if v == "sr"} == g237.SR_MODE_KEYS
 
 
 def test_rows_from_the_production_writer_pass(tmp_path, monkeypatch):

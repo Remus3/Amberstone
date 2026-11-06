@@ -52,7 +52,7 @@ def test_the_vendored_kit_is_v19_with_the_board_helper():
     # Kit v20 (MAIN 2026-10-18 1812) superseded v19; the board helper stays.
     assert man["version"] >= 19
     assert "fleet_board.py" in man["files"]
-    assert _load("fleet_headless").KIT_VERSION == man["version"]
+    assert man["version"] == _load("fleet_headless").KIT_VERSION
 
 
 def test_status_board_config_is_tracked_ascii_lf_and_names_rc():

@@ -845,7 +845,7 @@ def test_acknowledged_disarm_roster_matches_the_2026_09_11_operator_stop():
     for name, why in rc_facts.ACKNOWLEDGED_DISARMS.items():
         assert why.strip(), name
         assert "2026-09-11" in why, name
-    assert rc_facts.DISARM_REQUIRED_TASKS == frozenset({"RC-InboxResponder"})
+    assert frozenset({"RC-InboxResponder"}) == rc_facts.DISARM_REQUIRED_TASKS
 
 
 def test_an_acknowledged_disarm_is_visible_but_not_an_anomaly(tmp_path):

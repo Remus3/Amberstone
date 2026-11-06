@@ -182,8 +182,8 @@ def test_f2_refusal_text_does_not_list_default_as_valid(picks):
 
 
 def test_f2_saveable_sources_are_valid_sources_minus_default():
-    assert archetype_picks.SAVEABLE_SOURCES == (
-        archetype_picks.VALID_SOURCES - {archetype_picks.SOURCE_DEFAULT})
+    assert (
+        archetype_picks.VALID_SOURCES - {archetype_picks.SOURCE_DEFAULT}) == archetype_picks.SAVEABLE_SOURCES
     # The resolver label set is unchanged.
     assert archetype_picks.SOURCE_DEFAULT in archetype_picks.VALID_SOURCES
 

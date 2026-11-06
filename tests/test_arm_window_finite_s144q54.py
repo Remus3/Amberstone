@@ -43,7 +43,7 @@ def test_the_cap_exists_and_sits_above_the_default():
     cap = getattr(armgate, "MAX_WINDOW_S", None)
     assert isinstance(cap, float)
     assert math.isfinite(cap)
-    assert armgate.DEFAULT_WINDOW_S < cap
+    assert cap > armgate.DEFAULT_WINDOW_S
 
 
 @pytest.mark.parametrize("raw", ["inf", "+inf", "-inf", "Infinity", "INF",

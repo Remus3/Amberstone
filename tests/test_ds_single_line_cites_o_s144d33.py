@@ -97,7 +97,7 @@ def test_cited_constants_exist_with_the_restated_values():
     assert ehp._MISSING_HP_SHARE_FOR_HEALS == 0.5
     assert ehp._FIGHT_WINDOW_S == 6.0
     share = ehp._MISSING_HP_SHARE_FOR_HEALS
-    assert _rune_self_heal._MISSING_HP_SHARE_FOR_HEALS == share
+    assert share == _rune_self_heal._MISSING_HP_SHARE_FOR_HEALS
     assert _rune_self_heal._FIGHT_WINDOW_S == ehp._FIGHT_WINDOW_S
 
 

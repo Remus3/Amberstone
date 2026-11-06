@@ -2311,9 +2311,9 @@ def test_non_string_edit_target_is_ignored(tmp_path):
 
 
 def test_clearable_set_is_exactly_the_coordinator_list():
-    assert gate.CLEARABLE == frozenset({
+    assert frozenset({
         "tests_pass_without_run", "vacuous_run", "full_suite_claim_over_filtered_run",
         "count_mismatch", "file_claim_without_edit", "ci_claim_without_probe",
         "commit_claim_without_commit", "push_claim_without_push",
-        "merge_claim_without_merge"})
+        "merge_claim_without_merge"}) == gate.CLEARABLE
     assert "subagent_hook_bypass" in gate.ADVISORY_CHECKS

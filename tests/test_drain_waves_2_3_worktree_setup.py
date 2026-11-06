@@ -367,7 +367,7 @@ def wt_copy(tmp_path, monkeypatch):
     mod = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, name, mod)
     spec.loader.exec_module(mod)
-    assert mod.ROOT == wt.resolve()
+    assert wt.resolve() == mod.ROOT
     return SimpleNamespace(mod=mod, main=main.resolve(), wt=wt.resolve())
 
 

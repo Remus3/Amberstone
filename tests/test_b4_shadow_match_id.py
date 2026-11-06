@@ -119,7 +119,7 @@ def test_every_pre_existing_key_survives(tmp_path):
     written against them must keep working."""
     p = tmp_path / "hz.jsonl"
     r = _log(p, game_time_s=300.0)
-    assert _ORIGINAL_KEYS <= set(r)
+    assert set(r) >= _ORIGINAL_KEYS
 
 
 def test_new_keys_are_appended_last(tmp_path):

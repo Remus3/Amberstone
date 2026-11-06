@@ -87,7 +87,7 @@ def _source_logger_names() -> dict[str, str]:
 
 def test_source_enumeration_finds_every_known_engine_logger():
     names = _source_logger_names()
-    assert _KNOWN <= set(names), sorted(_KNOWN - set(names))
+    assert set(names) >= _KNOWN, sorted(_KNOWN - set(names))
 
 
 def test_the_name_list_matches_the_source_exactly():

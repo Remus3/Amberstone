@@ -126,7 +126,7 @@ def test_urf_fields_have_no_consumer_outside_the_reader():
 
 def test_fix_time_pins_the_hand_read_committer_time():
     # A pin, not a derivation: the value was read by hand from bfa4bbfbe.
-    assert g.FIX_COMMITTED_UTC == datetime(2026, 10, 25, 7, 1, 1, tzinfo=timezone.utc)
+    assert datetime(2026, 10, 25, 7, 1, 1, tzinfo=timezone.utc) == g.FIX_COMMITTED_UTC
 
 
 # -- predicates ----------------------------------------------------------------

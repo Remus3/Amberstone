@@ -82,11 +82,11 @@ class TestTankSurvivabilityLoader(unittest.TestCase):
 
     def test_ksante_ids(self) -> None:
         ids = survivability_credit.survivability_item_ids_tank("KSante")
-        self.assertTrue(_KSANTE_SURV <= ids)
+        self.assertTrue(ids >= _KSANTE_SURV)
 
     def test_rell_ids(self) -> None:
         ids = survivability_credit.survivability_item_ids_tank("Rell")
-        self.assertTrue(_RELL_SURV <= ids)
+        self.assertTrue(ids >= _RELL_SURV)
 
     def test_unknown_and_blank_empty(self) -> None:
         # A real tank NOT tabled (Malphite) + blank both yield empty.

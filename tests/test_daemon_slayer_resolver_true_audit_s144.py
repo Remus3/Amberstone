@@ -113,7 +113,7 @@ def test_derivation_survives_junk_rows(res, tmp_path):
         "2052": {"stats": {}, "tags": [], "consumed": True, "inStore": False},
     }})
     out = res._derive_non_inventory_ids(path)
-    assert res._NON_INVENTORY_BASE_IDS <= out
+    assert out >= res._NON_INVENTORY_BASE_IDS
     assert {"4", "2052"} <= out
     # A junk stats block is not proof the row is stat-less: keep its slot.
     assert "1" not in out

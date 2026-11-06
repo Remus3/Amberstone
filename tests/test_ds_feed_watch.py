@@ -456,8 +456,8 @@ def test_feed_state_files_live_under_data_not_tools():
     # among the scripts in tools/. Both constants point there, both files
     # exist there, and the old tools/ copies are gone.
     data = ROOT / "data" / "daemon_slayer"
-    assert fi._INDEX_PATH == data / "ds_feed_index.json"
-    assert fw.WATCH_FILE == data / "ds_feed_watch.json"
+    assert data / "ds_feed_index.json" == fi._INDEX_PATH
+    assert data / "ds_feed_watch.json" == fw.WATCH_FILE
     for name in ("ds_feed_index.json", "ds_feed_watch.json"):
         assert (data / name).is_file(), name
         assert not (ROOT / "tools" / name).exists(), f"tools/{name} came back"
