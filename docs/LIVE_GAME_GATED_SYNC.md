@@ -2891,6 +2891,75 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 - **G4-12** (was B37) L4 capability-gap live validation - `RC_CAPGAP_SURFACE` is DEFAULT-ON in code
   since LEDGER 765 and the served `capability_gap` dict is live-verified on `/api/ds-preview`. The
   ONLY remaining gate is the in-game EYEBALL of the chip CONTENT vs a real enemy comp. SOURCE: RM-07.
+  **READY (lane 9 PREP s144 cycle 72, source read at `6bd02cfdd`; NOT a tick; no game up: :8888 and
+  :2999 curl 000 at 2026-11-05T20:49-06:00).** AGE CHECK: NOT stale. The flag still defaults ON
+  (`dashboard/routes_state.py` `os.environ.get("RC_CAPGAP_SURFACE", "1")`), the chip is not behind the
+  B4 live-directive gate (`live_directive_gate.js` blanks the coach imperatives only). It is REPAINTED
+  only while live AND while `_amDsSyntheticCs` resolves the coach champion to a numeric id: otherwise
+  `renderActiveMatch` (the not-live early return) and `_amRenderDsCluster` (the null synthetic-cs
+  return) both return BEFORE the chip call, so its own not-live hide branch never runs and the chip
+  KEEPS ITS LAST PAINT; a post-game or lobby page can still show the previous game's gap. Only a
+  capture inside a live game counts, and a chip seen after the game ends is a finding to record, not
+  a pass (the stale last paint is filed provisionally as RM-1662 for the merger to mint; this live
+  read confirms or refutes it: one look at the dashboard after the game ends). It paints twice
+  in-game: the dashboard Active Match BUILD pane mount `#am-sugg-capability-gap` (`web/index.html`)
+  and, inside the same pane, the overlay widget `w-build` (`overlay_layout.js`; `overlay.css` hides
+  only ds-sweep / ds-matchup / ds-combo / ds-relscore there, not this chip). The client caches the
+  answer per champion + roster + mode for the life of the page. It posts `/api/state` `coach.champion`
+  (`main.js` `coachPayload = st.coach || st`) with `mode_key` upper-cased; the route canonicalises the
+  champion (`canonical_champion_id`) before `build_capability_gap`, and the grader's in-process path
+  does the same.
+  A LIVE-ONLY RISK the eyeball must exclude first: the client posts every `liveclient.allPlayers` row
+  whose team differs from `_resolveMyTeam`, and when that resolve finds no name match it returns null
+  and the skip never fires, so all 10 players (me and my allies too) are posted as "enemies"; the
+  server keeps its own `enemy_team` by a different rule (`dashboard/_liveclient.py`). The stale
+  "default-OFF" comments in `active_match.js`, `champ_select.js` and `web/index.html` are filed
+  provisionally as RM-1661 (code lane) for the merger to mint, not edited here.
+  PROBE (real SR game, ideally a comp with 2 or more heavy-sustain / artillery / tank enemies so a gap
+  fires; any time after the roster loads), from the repo root, in one minute:
+  (1) `curl -sk https://127.0.0.1:8888/api/state > _scratch/g412_state.json`;
+  (2) in a HEADLESS Chromium page on `https://127.0.0.1:8888/` (ignore cert errors, Active Match
+  view), opened at least 10 s earlier so its own `/api/ds-preview` fetch has landed, evaluate
+  `python tools/gated_g412_capgap_chip.py snippet` and save the JSON as `_scratch/g412_dom.json`
+  within 5 s of (1); when (3) first prints a RENDER_MISMATCH whose problems include "gap expected
+  but chip not visible", re-run (1) and (2) together once and grade again (the DOM must stay within
+  5 s of the state) before it counts as a FAIL;
+  (3) `python tools/gated_g412_capgap_chip.py grade --state _scratch/g412_state.json --dom
+  _scratch/g412_dom.json --state-ts <epoch of (1)> --json` (expected computed in-process);
+  (4) optional cross-check with the SERVED payload, using the `posted_champion` and `enemies` that (3)
+  printed: `curl -sk -X POST https://127.0.0.1:8888/api/ds-preview -H "Content-Type: application/json"
+  -d '{"champion": "<posted_champion>", "enemies": [<enemies>], "mode": "SR", "level": 6, "items":
+  []}' > _scratch/g412_preview.json`, then (3) again with `--preview _scratch/g412_preview.json`; the
+  two verdicts must agree;
+  (5) the operator, on the overlay `w-build` widget within the same minute: the GAP badge, its axis
+  label and verdict line, read aloud or typed; then ONE yes / no: is that gap real for the 5 enemies
+  on the scoreboard (e.g. "Anti-heal" against a comp with 2 or more real healers)?
+  FIELD PATHS: `/api/state` -> `mode_key`, `lcu.phase` (must be InProgress), `coach.champion`,
+  `liveclient.activePlayer`, `liveclient.allPlayers[].team /
+  championName`, `liveclient.champion`, `liveclient.enemy_team`, `liveclient.game_time_s`;
+  `/api/ds-preview` -> `capability_gap.applies / top_gap / verdict / gaps[].axis`; DOM ->
+  `#am-sugg-capability-gap` `hidden`, `data-capgap-axis`, `.capability-gap-axis`,
+  `.capability-gap-verdict`, computed `display`, bounding box, `offsetParent`.
+  PREDICATE (stated before any game): PASS iff the grader prints RENDER_MATCH (team resolved, exactly
+  5 posted enemies equal to the server `enemy_team`, the posted `coach.champion` equal to my roster
+  row's champion, chip visible, axis label = the client label of `top_gap`, `data-capgap-axis` =
+  `top_gap` (or `none` when empty), verdict text = `verdict`) AND the operator's overlay read names
+  the same axis and verdict AND the operator answers yes. FAIL iff ROSTER_BAD, CHIP_ABSENT or
+  RENDER_MISMATCH (each prints its named problems; a "chip not visible" mismatch only after the one
+  step-(2) re-capture), or the operator answers no (a wrong gap for the
+  comp is a content defect: record the 5 enemies and `gaps[]`). NO_GAME, STALE_DOM or
+  NO_GAP_CONSISTENT (no gap fired for that comp, chip correctly hidden) = no evidence: re-sample later
+  or in another game, never a pass.
+  EVIDENCE CONTRACT: the grader JSON (verdict, `my_champion`, `posted_champion`, `enemies`, `top_gap`,
+  `axis_label`, `verdict_text`, `gaps`, `game_time_s`, `state_ts`, `dom_ts`, `expected_source`), the
+  operator's overlay read with its local time, and the yes / no, with mode, queue and `game_time_s`.
+  Champion names only: never a player name, game id or puuid (RM-906).
+  SUBSTITUTION: the served `capability_gap` (or the in-process `build_capability_gap`) is the COMPUTE
+  half and RENDER_MATCH only shows the dashboard painted what was computed; neither answers the row.
+  The row is answered only by the operator's overlay read plus the yes / no that the named gap is real
+  for that comp, taken in a live game. A `?ui_mock=1` render seeds the chip from a fixture
+  (`AM_MOCK_FIXTURES`) and proves nothing here. Grader: `tools/gated_g412_capgap_chip.py`, tests
+  `tests/test_gated_g412_capgap_chip.py`.
 - **G4-13** (was B38) RC2 P3.3/S0 pulse-rationing remaining eyeball: confirm the suppressed pulses
   were all benign re-emits AND the Emergency tier / one-shot Urgent cross still glows (lethal cues need
   real combat pressure - the item-598 capture verified only the suppression half).
