@@ -923,7 +923,8 @@ class DecisionStore:
         with _decisions_critical_section():
             try:
                 self._log_path.parent.mkdir(parents=True, exist_ok=True)
-                with self._log_path.open("a", encoding="utf-8") as f:
+                with self._log_path.open("a", encoding="utf-8",
+                                         newline="\n") as f:
                     f.write(line)
             except OSError as exc:
                 _log.warning("coach_choice log append failed: %s", exc)
@@ -971,7 +972,8 @@ class DecisionStore:
                 return None
             try:
                 self._log_path.parent.mkdir(parents=True, exist_ok=True)
-                with self._log_path.open("a", encoding="utf-8") as f:
+                with self._log_path.open("a", encoding="utf-8",
+                                         newline="\n") as f:
                     f.write(json.dumps(entry) + "\n")
             except OSError as exc:
                 _log.warning("decisions_log append failed: %s - restoring %s "

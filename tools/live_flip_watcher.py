@@ -198,7 +198,7 @@ def _emit(champ: str, mode: str, preset: str, verdict: dict, enemies: list[str])
     if verdict["n_moved"] == 0:
         lines.append("(no seam moves this champ's top-6 - any build is baseline)")
     _VERDICT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    with _VERDICT_JSONL.open("a", encoding="utf-8") as fh:
+    with _VERDICT_JSONL.open("a", encoding="utf-8", newline="\n") as fh:
         fh.write(json.dumps({"champ": champ, "mode": mode, "preset": preset,
                              "enemies": enemies, "verdict": verdict}) + "\n")
     print(f"[watcher] emitted verdict: {champ} ({mode}) vs {preset}-comp; "

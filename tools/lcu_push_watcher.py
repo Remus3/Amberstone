@@ -284,7 +284,7 @@ def _emit(record: dict) -> None:
     print(f"[lcu-push-watcher] notify: {_detail}")
 
     try:
-        with _VERDICT_JSONL.open("a", encoding="utf-8") as fh:
+        with _VERDICT_JSONL.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(json.dumps(record) + "\n")
         _VERDICT_MD.write_text(render_verdict_md(record), encoding="utf-8",
                                newline="\n")
