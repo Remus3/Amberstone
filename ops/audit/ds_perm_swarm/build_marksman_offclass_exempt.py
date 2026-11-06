@@ -39,16 +39,20 @@ from __future__ import annotations
 
 import glob
 import json
-import os
+import sys
 from pathlib import Path
 
-from agents.daemon_slayer.data_loader import DataSnapshot
-from agents.daemon_slayer.rank import (
+_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from agents.daemon_slayer.data_loader import DataSnapshot  # noqa: E402
+from agents.daemon_slayer.rank import (  # noqa: E402
     OFFCLASS_MARKSMAN_ITEM_NAMES,
     _is_ranged_marksman,
 )
+from core.polled_json import atomic_write_text  # noqa: E402
 
-_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _CROSS_EVAL_DIR = _ROOT / "ops" / "audit" / "ds_cross_eval" / "data"
 _OUT_PATH = _ROOT / "agents" / "daemon_slayer" / "marksman_offclass_exempt.json"
 
@@ -125,10 +129,8 @@ def build_table(
 def main() -> None:
     table = build_table()
     text = json.dumps(table, indent=2, ensure_ascii=True, sort_keys=False)
-    # Atomic write, LF line endings (repo EOL guard).
-    tmp = _OUT_PATH.with_suffix(".json.tmp")
-    tmp.write_text(text + "\n", encoding="utf-8", newline="\n")
-    os.replace(tmp, _OUT_PATH)
+    # Atomic, LF-only write (core.polled_json: per-writer scratch name).
+    atomic_write_text(_OUT_PATH, text + "\n")
     champs = table["champions"]
     print(f"wrote {_OUT_PATH}")
     print(

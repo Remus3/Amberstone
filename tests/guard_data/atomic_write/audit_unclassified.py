@@ -1,9 +1,11 @@
 """`_AUDIT_UNCLASSIFIED` of the atomic-write guard: only shrinks."""
 # RM-258 residual (s144): ops/audit/ was exempted wholesale as the row's
-# "one-shot generator tree". It is IN scope now; these eleven modules are the
+# "one-shot generator tree". It is IN scope now; the modules below are the
 # ones that still hand-roll a rename or a destination-derived scratch name
-# (measured 2026-11-05: 11 renames + 10 scratch names across 38 modules; the
-# other 27, ds_cross_eval included, are clean). Each is a one-shot audit
+# (measured 2026-11-05: 11 modules offended, 11 renames + 10 scratch names, of 38;
+# the other 27, ds_cross_eval included, were clean; RM-1713 converted the two
+# ds_perm_swarm table builders, build_aram_archetype_override and
+# build_marksman_offclass_exempt). Each is a one-shot audit
 # script: no importer outside ops/audit/ and tests (the two cited from
 # core/archetype_picks.py and agents/daemon_slayer/rank.py are named in
 # comments only), no scheduled task, no poller reading what it writes (the one
@@ -13,8 +15,6 @@
 # ops/audit/ writer starts guarded, and an entry that stops offending fails
 # test_ops_audit_baseline_is_exact until it is dropped.
 ROWS = {
-    "ops/audit/ds_perm_swarm/build_aram_archetype_override.py",
-    "ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py",
     "ops/audit/ds_perm_swarm/dsp10_pass2_verify.py",
     "ops/audit/ds_perm_swarm/live_flip_eyeball.py",
     "ops/audit/ds_perm_swarm/rf4_verify.py",

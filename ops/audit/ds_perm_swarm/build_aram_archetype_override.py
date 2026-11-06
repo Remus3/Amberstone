@@ -45,10 +45,15 @@ from __future__ import annotations
 
 import glob
 import json
-import os
+import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from core.polled_json import atomic_write_text  # noqa: E402
+
 _CE_DIR = _ROOT / "ops" / "audit" / "ds_cross_eval"
 _VERDICTS_DIR = _CE_DIR / "verdicts"
 _DATA_DIR = _CE_DIR / "data"
@@ -224,9 +229,7 @@ def build_table(
 def main() -> None:
     table = build_table()
     text = json.dumps(table, indent=2, ensure_ascii=True, sort_keys=False)
-    tmp = _OUT_PATH.with_suffix(".json.tmp")
-    tmp.write_text(text + "\n", encoding="utf-8", newline="\n")
-    os.replace(tmp, _OUT_PATH)
+    atomic_write_text(_OUT_PATH, text + "\n")
     champs = table["champions"]
     print(f"wrote {_OUT_PATH}")
     print(
