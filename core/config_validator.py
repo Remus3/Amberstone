@@ -178,9 +178,8 @@ def _check_type(value: Any, expected: str) -> bool:
         return True  # unknown type spec - pass
     # Reject bool for any numeric type ('integer' or 'number').
     # This check must come before isinstance() because bool is a subclass of int.
-    if expected in ("integer", "number"):
-        if isinstance(value, bool):
-            return False
+    if expected in ("integer", "number") and isinstance(value, bool):
+        return False
     if expected == "integer":
         return isinstance(value, int)
     return isinstance(value, expected_types)
@@ -256,14 +255,14 @@ def _validate_config(
         if key not in data:
             issues.append(f"ERROR: required key '{key}' is missing")
             continue
-        if key in field_types and field_types[key] in _PYTHON_TYPE_MAP:
-            if not _check_type(data[key], field_types[key]):
-                actual_type = type(data[key]).__name__
-                issues.append(
-                    f"ERROR: required key '{key}' has wrong type "
-                    f"(expected {field_types[key]}, got {actual_type})"
-                )
-                continue
+        if (key in field_types and field_types[key] in _PYTHON_TYPE_MAP
+                and not _check_type(data[key], field_types[key])):
+            actual_type = type(data[key]).__name__
+            issues.append(
+                f"ERROR: required key '{key}' has wrong type "
+                f"(expected {field_types[key]}, got {actual_type})"
+            )
+            continue
         if _is_empty_value(data[key]):
             issues.append(
                 f"ERROR: required key '{key}' is present but empty "
@@ -272,13 +271,13 @@ def _validate_config(
 
     # Check optional key types (wrong type -> WARNING not ERROR)
     for key in optional_keys:
-        if key in data and field_types.get(key) in _PYTHON_TYPE_MAP:
-            if not _check_type(data[key], field_types[key]):
-                actual_type = type(data[key]).__name__
-                warnings.append(
-                    f"WARNING: optional key '{key}' has wrong type "
-                    f"(expected {field_types[key]}, got {actual_type})"
-                )
+        if (key in data and field_types.get(key) in _PYTHON_TYPE_MAP
+                and not _check_type(data[key], field_types[key])):
+            actual_type = type(data[key]).__name__
+            warnings.append(
+                f"WARNING: optional key '{key}' has wrong type "
+                f"(expected {field_types[key]}, got {actual_type})"
+            )
 
     # Range check (RM-161). Runs after both type loops so a value that failed
     # its type check is reported once, by the type pass, and never reaches a

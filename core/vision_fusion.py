@@ -111,9 +111,8 @@ def is_plausible_cv(field, cv_value, lc_value=None) -> bool:
     try:
         cv = _numeric(cv_value)
         lo_hi = PLAUSIBLE_RANGES.get(field)
-        if cv is not None and lo_hi is not None:
-            if cv < lo_hi[0] or cv > lo_hi[1]:
-                return False
+        if cv is not None and lo_hi is not None and (cv < lo_hi[0] or cv > lo_hi[1]):
+            return False
 
         lc = _numeric(lc_value)
         if lc is None:
@@ -127,9 +126,8 @@ def is_plausible_cv(field, cv_value, lc_value=None) -> bool:
 
         hi = max(abs(cv), abs(lc))
         lo = min(abs(cv), abs(lc))
-        if hi >= CV_DIVERGENCE_ABS_FLOOR:
-            if hi / max(lo, 1.0) >= CV_ORDER_OF_MAGNITUDE_FACTOR:
-                return False
+        if hi >= CV_DIVERGENCE_ABS_FLOOR and hi / max(lo, 1.0) >= CV_ORDER_OF_MAGNITUDE_FACTOR:
+            return False
         return True
     except Exception:  # noqa: BLE001 - fail-soft: an unjudgeable read is open
         return True

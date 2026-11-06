@@ -286,12 +286,10 @@ def get_role_profile(champion: str, role: str = "bot") -> str:
         return VAYNE_TOP_PROFILE.strip()
 
     # Role lookups
-    if role == "mid":
-        if champion in MID_MAGE_PROFILES:
-            return MID_MAGE_PROFILES[champion]
-    if role in ("apc", "bot_apc"):
-        if champion in APC_BOT_PROFILES:
-            return APC_BOT_PROFILES[champion]
+    if role == "mid" and champion in MID_MAGE_PROFILES:
+        return MID_MAGE_PROFILES[champion]
+    if role in ("apc", "bot_apc") and champion in APC_BOT_PROFILES:
+        return APC_BOT_PROFILES[champion]
     if role in ("support", "sup"):
         if champion in TANK_SUPPORT_PROFILES:
             return TANK_SUPPORT_PROFILES[champion]

@@ -51,15 +51,15 @@ _FIXED = (
     "tools/compare_101qq_vs_ddragon.py",
     "tools/live_flip_watcher.py",
     "tools/probe_101qq_hero_rank_double.py",
+    "tests/test_gated_lx09_mark_check.py",
+    "tests/test_overlay_default_layout_collision.py",
+    "tests/test_repin_subagent_cli_rm795.py",
+    "tests/test_rm876_structural_mount_spellings.py",
+    "tests/test_routes_state_health_scrub.py",
 )
 # file -> number of findings still there. Only shrinks.
 _BASELINE = {
     "agents/daemon_slayer/engine.py": 1,
-    "tests/test_gated_lx09_mark_check.py": 1,
-    "tests/test_overlay_default_layout_collision.py": 1,
-    "tests/test_repin_subagent_cli_rm795.py": 1,
-    "tests/test_rm876_structural_mount_spellings.py": 1,
-    "tests/test_routes_state_health_scrub.py": 1,
 }
 
 

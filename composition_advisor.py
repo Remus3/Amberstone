@@ -141,28 +141,25 @@ def validate_item(item_name: str, champion: str,
             )
 
     # -- Heavy MR vs AD-heavy team ---------------------------------------
-    if any(m.lower() in item_lower for m in MR_ITEMS):
-        if ad_pct >= 0.75:
-            return False, (
-                f"Enemy team is {ad_pct:.0%} AD - {item_name} provides MR with minimal value. "
-                f"Build armor (Thornmail, Randuin's, Frozen Heart) instead."
-            )
+    if any(m.lower() in item_lower for m in MR_ITEMS) and ad_pct >= 0.75:
+        return False, (
+            f"Enemy team is {ad_pct:.0%} AD - {item_name} provides MR with minimal value. "
+            f"Build armor (Thornmail, Randuin's, Frozen Heart) instead."
+        )
 
     # -- Heavy armor vs AP-heavy team ------------------------------------
-    if any(m.lower() in item_lower for m in ARMOR_ITEMS) and item_name != "Warmog's Armor":
-        if ap_pct >= 0.75:
-            return False, (
-                f"Enemy team is {ap_pct:.0%} AP - {item_name} provides armor with minimal value. "
-                f"Build MR (Banshee's, Force of Nature, Spirit Visage) instead."
-            )
+    if any(m.lower() in item_lower for m in ARMOR_ITEMS) and item_name != "Warmog's Armor" and ap_pct >= 0.75:
+        return False, (
+            f"Enemy team is {ap_pct:.0%} AP - {item_name} provides armor with minimal value. "
+            f"Build MR (Banshee's, Force of Nature, Spirit Visage) instead."
+        )
 
     # -- Collector/lethality vs tanks ------------------------------------
-    if any(m.lower() in item_lower for m in LETHALITY_ITEMS):
-        if tanks >= 3:
-            return False, (
-                f"{item_name} has lethality (flat armor pen) - poor vs {tanks} tanks. "
-                f"Build Last Whisper, Black Cleaver, or Void Staff for % armor penetration instead."
-            )
+    if any(m.lower() in item_lower for m in LETHALITY_ITEMS) and tanks >= 3:
+        return False, (
+            f"{item_name} has lethality (flat armor pen) - poor vs {tanks} tanks. "
+            f"Build Last Whisper, Black Cleaver, or Void Staff for % armor penetration instead."
+        )
 
     # -- No Grievous Wounds vs heavy healing -----------------------------
     # (Not a flag but a reminder - handled in suggestions)
@@ -224,24 +221,24 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
                 f"{tanks} tanks in enemy comp - % magic penetration is required"))
 
     # -- Defensive items based on enemy damage type ----------------------
-    if ap_pct >= 0.6 and role not in ("marksman", "assassin"):
-        if not any(m.lower() in owned_lower for m in ("banshee", "spirit visage", "force of nature")):
-            if champ_data.get("sustain"):
-                suggestions.append(("Spirit Visage",
-                    f"Amplifies your healing vs {ap_pct:.0%} AP team"))
-            else:
-                suggestions.append(("Banshee's Veil",
-                    f"Spellshield blocks initiation vs {ap_pct:.0%} AP team"))
+    if (ap_pct >= 0.6 and role not in ("marksman", "assassin")
+            and not any(m.lower() in owned_lower for m in ("banshee", "spirit visage", "force of nature"))):
+        if champ_data.get("sustain"):
+            suggestions.append(("Spirit Visage",
+                f"Amplifies your healing vs {ap_pct:.0%} AP team"))
+        else:
+            suggestions.append(("Banshee's Veil",
+                f"Spellshield blocks initiation vs {ap_pct:.0%} AP team"))
 
-    if ad_pct >= 0.6 and role not in ("marksman", "mage"):
-        if not any(m.lower() in owned_lower for m in ("thornmail", "frozen heart", "randuin")):
-            has_adc_enemy = any(CHAMPIONS.get(e, {}).get("role") == "marksman" for e in enemy_champs)
-            if has_adc_enemy:
-                suggestions.append(("Thornmail",
-                    f"Reflect damage to enemy ADC; Grievous Wounds for their healers vs {ad_pct:.0%} AD team"))
-            else:
-                suggestions.append(("Frozen Heart",
-                    f"Reduces nearby attack speed vs {ad_pct:.0%} AD team"))
+    if (ad_pct >= 0.6 and role not in ("marksman", "mage")
+            and not any(m.lower() in owned_lower for m in ("thornmail", "frozen heart", "randuin"))):
+        has_adc_enemy = any(CHAMPIONS.get(e, {}).get("role") == "marksman" for e in enemy_champs)
+        if has_adc_enemy:
+            suggestions.append(("Thornmail",
+                f"Reflect damage to enemy ADC; Grievous Wounds for their healers vs {ad_pct:.0%} AD team"))
+        else:
+            suggestions.append(("Frozen Heart",
+                f"Reduces nearby attack speed vs {ad_pct:.0%} AD team"))
 
     # -- ARAM-specific extras --------------------------------------------
     if is_aram:
