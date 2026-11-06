@@ -393,6 +393,20 @@ function _arrow(st, col) {
   return st.sortDir === 'asc' ? ' ^' : ' v';
 }
 
+// RM-1762: the APG sortable-table shape. The cell stays a column header
+// (a role="button" override dropped it from that role, so aria-sort could not
+// apply); a real <button> inside it is the tab stop and the click target, and
+// aria-sort sits on the sorted column only. The visible arrow is aria-hidden,
+// so the button is named by the column alone.
+function _sortHeadHtml(st, cls, col, label) {
+  const sorted = st.sortKey === col;
+  const aria = sorted
+    ? ` aria-sort="${st.sortDir === 'asc' ? 'ascending' : 'descending'}"` : '';
+  const arrow = sorted ? `<span aria-hidden="true">${_arrow(st, col)}</span>` : '';
+  return `<th class="${cls} bi-sortable" data-sort="${col}"${aria}>` +
+    `<button type="button" class="bi-sort-btn">${label}${arrow}</button></th>`;
+}
+
 function _rowHtml(tab, it) {
   return `<tr>${tab.rowCells(it)}` +
     `<td class="bi-c-wpa">${_confCellHtml(it)}</td>` +
@@ -408,10 +422,10 @@ function _tableHtml(tab, st) {
     `<thead><tr>` +
     `<th class="bi-c-head">${tab.headLabel}</th>` +
     (tab.extraHead ? `<th class="bi-c-extra">${tab.extraHead}</th>` : '') +
-    `<th class="bi-c-wpa bi-sortable" data-sort="wpa" tabindex="0" role="button">WPA${_arrow(st, 'wpa')}</th>` +
-    `<th class="bi-c-n bi-sortable" data-sort="n" tabindex="0" role="button">${tab.nLabel}${_arrow(st, 'n')}</th>` +
+    _sortHeadHtml(st, 'bi-c-wpa', 'wpa', 'WPA') +
+    _sortHeadHtml(st, 'bi-c-n', 'n', tab.nLabel) +
     `<th class="bi-c-exp">Expected WP</th>` +
-    `<th class="bi-c-wr bi-sortable" data-sort="observed_winrate" tabindex="0" role="button">Win Rate${_arrow(st, 'observed_winrate')}</th>` +
+    _sortHeadHtml(st, 'bi-c-wr', 'observed_winrate', 'Win Rate') +
     `</tr></thead>`;
   const body = '<tbody>' + st.items.map((it) => _rowHtml(tab, it)).join('') + '</tbody>';
   return `<table class="bi-table">${head}${body}</table>`;
@@ -519,14 +533,17 @@ function _captureSortFocus(mount) {
 
 function _restoreSortFocus(mount, key) {
   if (!key) return;
-  const th = mount.querySelector(`th.bi-sortable[data-sort="${CSS.escape(key)}"]`);
-  if (th) th.focus();
+  const btn = mount.querySelector(
+    `th.bi-sortable[data-sort="${CSS.escape(key)}"] .bi-sort-btn`);
+  if (btn) btn.focus();
 }
 
 function _wireHeaders(tab, mount) {
   const st = _ST[tab.key];
   const ths = mount.querySelectorAll('th.bi-sortable');
   ths.forEach((th) => {
+    const btn = th.querySelector('.bi-sort-btn');
+    if (!btn) return;
     const handler = () => {
       const key = th.getAttribute('data-sort');
       if (!key) return;
@@ -538,9 +555,11 @@ function _wireHeaders(tab, mount) {
       }
       _render(tab);
     };
-    th.addEventListener('click', handler);
-    th.addEventListener('keydown', (e) => {
+    btn.addEventListener('click', handler);
+    btn.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
+      // preventDefault also stops the native button's own activation, so a
+      // press is exactly one sort (the handler below), never two.
       e.preventDefault();
       // RM-1322: a held key is one press, or each autorepeat flips the order.
       if (!e.repeat) handler();

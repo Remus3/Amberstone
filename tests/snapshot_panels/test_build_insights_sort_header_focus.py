@@ -15,6 +15,11 @@ a held key is one press.
 
 Positive controls: a mouse click still sorts; a click elsewhere in the page
 (focus outside the table) is not stolen by a later re-render.
+
+RM-1762 moved the tab stop from the `<th>` to a `<button class=
+"bi-sort-btn">` inside it (the APG sortable table, aria-sort on the cell;
+test_build_insights_sort_header_aria.py), so focus is read off the button
+and its header cell's data-sort key.
 """
 import pytest
 
@@ -32,7 +37,8 @@ _STATE = """
     document.querySelectorAll('#bi-table-mount th.bi-sortable'));
   return {
     focusTag: a ? a.tagName : null,
-    focusSort: a ? a.getAttribute('data-sort') : null,
+    focusSort: (a && a.closest('th.bi-sortable'))
+      ? a.closest('th.bi-sortable').getAttribute('data-sort') : null,
     focusInMount: !!(a && document.getElementById('bi-table-mount').contains(a)),
     focusVisible: !!(a && a.matches(':focus-visible')),
     focusH: a ? Math.round(a.getBoundingClientRect().height) : 0,
@@ -53,7 +59,7 @@ def _open(pw_browser, mock_server, vp):
 
 
 def _focus_head(page, key):
-    page.focus(f"#bi-table-mount th.bi-sortable[data-sort='{key}']")
+    page.focus(f"#bi-table-mount th.bi-sortable[data-sort='{key}'] .bi-sort-btn")
 
 
 @pytest.mark.parametrize("vp", VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
@@ -66,7 +72,7 @@ def test_keyboard_sort_keeps_focus_on_the_header(mock_server, pw_browser, vp, ke
         s1 = page.evaluate(_STATE)
         # heads = [WPA, <tab's n label>, Win Rate]; the n column sorts desc.
         assert s1["heads"][1].endswith("v"), s1
-        assert s1["focusTag"] == "TH" and s1["focusSort"] == "n", (
+        assert s1["focusTag"] == "BUTTON" and s1["focusSort"] == "n", (
             f"focus left the sorted header after one press: {s1}")
         # The kept focus still paints the keyboard ring (test_focus_ring_
         # token_sites.py pins its 2px shape).
@@ -133,7 +139,8 @@ def test_control_rerender_never_steals_focus_from_outside(mock_server, pw_browse
         # same _render) must leave focus where it is.
         page.evaluate(
             "() => document.querySelector("
-            "\"#bi-table-mount th.bi-sortable[data-sort='n']\").click()")
+            "\"#bi-table-mount th.bi-sortable[data-sort='n'] .bi-sort-btn\")"
+            ".click()")
         s = page.evaluate(_STATE)
         assert s["focusInMount"] is False, s
         assert page.evaluate("document.activeElement.id") == "bi-min-n"

@@ -11,7 +11,7 @@ b6eb81ecc296b6388abb6481800ea54e7ad05b8bb5eb6918c9dd0e4654dab13d  web/js/panels/
 
 0a19074904b4c19e1d580c4cdcd369b427266453058ef5121a856541c52b008c  web/js/panels/branch_review.js
 
-530bbb022cf0f0c66a75f9c13e6701c8f9fe061fe1e56dc458e2d05a66bc3545  web/js/panels/build_insights.js
+5c6810d3f81fddc119fdcb95a67a7ef7d6502e009177eff065020c39335dd6f2  web/js/panels/build_insights.js
 
 736286f8f5bdb3e5363a98972644eca2e60a8a6d0a913afc158e5a31cc30bd78  web/js/panels/build_order.js
 

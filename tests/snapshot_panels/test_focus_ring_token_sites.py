@@ -5,6 +5,7 @@ theme in web/css/themes.css) is a BOX-SHADOW value, "0 0 0 2px <color>".
 Six :focus-visible rules fed it to `outline:` instead:
 
 - web/css/panels/build_insights.css  .bi-tab, #bi-min-n, th.bi-sortable
+  (since RM-1762 the ring is on the .bi-sort-btn inside that cell)
 - web/css/panels/duration_winrate.css  .dw-champ-input, .dw-champ-clear
 - web/css/panels/replay_events.css  .replay-events-row
 
@@ -173,7 +174,8 @@ def test_build_insights_controls_paint_a_focus_ring(mock_server, pw_browser, vp)
         _assert_rings(_rings(page, "#view-build-insights .bi-tab"), ".bi-tab", 9)
         _assert_rings(_rings(page, "#bi-min-n"), "#bi-min-n", 1)
         _assert_rings(
-            _rings(page, "#bi-table-mount th.bi-sortable"), "th.bi-sortable", 2
+            _rings(page, "#bi-table-mount th.bi-sortable .bi-sort-btn"),
+            ".bi-sort-btn", 2
         )
         # Game Length tab mounts the duration panel's champion picker.
         page.click(".bi-tab[data-bi-tab='duration']")

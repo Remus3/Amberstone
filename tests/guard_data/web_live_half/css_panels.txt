@@ -11,7 +11,7 @@ db2ec7fc3c57c747dfe492fff2f2906e54de2dc2dd5dc9d3823b8939af1b99ce  web/css/panels
 
 a923d6de4797af53e3e3cdc90d985269bbfe6244c9e677348ee32f54fdc67234  web/css/panels/branch_review.css
 
-61528c22a50359e04691c659ce2c94099e0a2cfa99a34a347878a3a43dc2fb5f  web/css/panels/build_insights.css
+cf1e49a940e207044815d2ef05f532c2344f525de4c9e38ece666e7ab81e5b0f  web/css/panels/build_insights.css
 
 bd26d9196686efcec53dee244212e7b8e3176499981af94cfae268bcf745d607  web/css/panels/build_module.css
 

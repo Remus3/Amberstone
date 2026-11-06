@@ -230,18 +230,39 @@
   border-bottom: 2px solid var(--border);
   white-space: nowrap;
 }
+/* RM-1762: the sort control is a <button> filling its <th aria-sort>
+ * (APG sortable table), so the cell gives its padding to the button and the
+ * whole header stays the --hit-min click target. */
 .bi-table th.bi-sortable {
-  cursor: pointer;
-  /* height (not min-height) so the --hit-min sort target is honored:
-   * min-height does not apply to a display:table-cell box, height does. */
+  padding: 0;
+  /* height (not min-height): min-height does not apply to a
+   * display:table-cell box, height does. */
   height: var(--hit-min);
+}
+.bi-table .bi-sort-btn {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--hit-min);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  white-space: nowrap;
+  cursor: pointer;
   user-select: none;
 }
-.bi-table th.bi-sortable:hover {
+.bi-table .bi-sort-btn:hover {
   color: var(--accent);
 }
 /* Drawn inside the cell (was outline-offset -2px), the RM-972 pattern. */
-.bi-table th.bi-sortable:focus-visible {
+.bi-table .bi-sort-btn:focus-visible {
   outline: none;
   box-shadow: inset var(--focus-ring);
 }
