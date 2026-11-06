@@ -406,7 +406,7 @@ def _log_line(text: str) -> None:
     try:
         _LOG.parent.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).isoformat()
-        with _LOG.open("a", encoding="utf-8") as fh:
+        with _LOG.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(stamp + " " + text + "\n")
     except OSError:
         pass

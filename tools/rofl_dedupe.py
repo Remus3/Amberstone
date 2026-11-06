@@ -119,7 +119,7 @@ def append_sample(root: Path, stamp: str) -> Path:
     dest = Path(__file__).parent.parent / "data" / "rofl_archive_growth.jsonl"
     dest.parent.mkdir(parents=True, exist_ok=True)
     row = dict(sample_size(root), at=stamp)
-    with dest.open("a", encoding="utf-8") as fh:
+    with dest.open("a", encoding="utf-8", newline="\n") as fh:
         fh.write(json.dumps(row) + "\n")
     return dest
 

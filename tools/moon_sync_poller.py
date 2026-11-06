@@ -341,7 +341,8 @@ def _atomic_write(target: Path, text: str) -> None:
 
 def _log_line(text: str) -> None:
     try:
-        with (state_dir() / "poller.log").open("a", encoding="utf-8") as fh:
+        with (state_dir() / "poller.log").open(
+                "a", encoding="utf-8", newline="\n") as fh:
             fh.write(f"{_utcnow()} {text}\n")
     except OSError:
         pass
