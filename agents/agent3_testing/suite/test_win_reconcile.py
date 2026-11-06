@@ -11,27 +11,20 @@ from agents.agent2_backend.db_schema import SCHEMA_STATEMENTS
 
 
 def _make_postgame_db(path: Path) -> None:
-    """Stand up just the minimum columns the reconciler queries on."""
-    with sqlite3.connect(path) as conn:
-        conn.execute("""
-            CREATE TABLE aram_player_stats (
-                id INTEGER PRIMARY KEY,
-                match_id TEXT, game_mode TEXT,
-                champion_name TEXT, team_id INTEGER,
-                team_result TEXT, is_local_player INTEGER,
-                captured_at TEXT
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE sr_player_stats (
-                id INTEGER PRIMARY KEY,
-                match_id TEXT, game_mode TEXT,
-                champion_name TEXT, team_id INTEGER,
-                team_result TEXT, is_local_player INTEGER,
-                captured_at TEXT
-            )
-        """)
+    """Stand up the REAL collector schema (RM-1946).
+
+    The fixture used to invent a ``captured_at`` column on
+    ``<mode>_player_stats``; the collector keeps it on ``<mode>_matches``
+    only, so every test here passed against a schema no real DB has.
+    """
+    from lcu.lcu_postgame_collector import _MODES_SQL
+    conn = sqlite3.connect(path)
+    try:
+        for sql in _MODES_SQL.values():
+            conn.executescript(sql)
         conn.commit()
+    finally:
+        conn.close()
 
 
 def _make_mode_db(path: Path) -> None:
@@ -78,21 +71,36 @@ def _insert_live_match(
         return int(cur.lastrowid)
 
 
+_PG_SEQ = {"n": 0}
+
+
 def _insert_postgame_stats(
     pg_path: Path, table: str, champion: str,
     captured_at: datetime, team_result: str, is_local: int = 1,
 ) -> None:
-    with sqlite3.connect(pg_path) as conn:
+    """One match row (carries captured_at, collector UTC format) plus
+    its local player row, as the collector writes them."""
+    _PG_SEQ["n"] += 1
+    mid = f"SYN-{_PG_SEQ['n']}"
+    tbl = table.replace("_player_stats", "")
+    mode = tbl.upper()
+    cap = captured_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    conn = sqlite3.connect(pg_path)
+    try:
         conn.execute(
-            f"""
-            INSERT INTO {table}
-              (match_id, game_mode, champion_name, team_id,
-               team_result, is_local_player, captured_at)
-            VALUES ('mid-?', 'ARAM', ?, 100, ?, ?, ?)
-            """,
-            (champion, team_result, is_local, captured_at.isoformat()),
+            f"INSERT INTO {tbl}_matches (match_id, game_mode, captured_at)"
+            " VALUES (?, ?, ?)",
+            (mid, mode, cap),
+        )
+        conn.execute(
+            f"INSERT INTO {table} (match_id, game_mode, champion_name,"
+            " team_id, team_result, is_local_player)"
+            " VALUES (?, ?, ?, 100, ?, ?)",
+            (mid, mode, champion, team_result, is_local),
         )
         conn.commit()
+    finally:
+        conn.close()
 
 
 def test_reconcile_populates_win(wired: Path) -> None:
