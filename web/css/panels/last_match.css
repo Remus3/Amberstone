@@ -902,9 +902,13 @@
   margin-left: auto;
   color: var(--accent);
 }
+/* RM-1764: hover brightens to --text like .lm-tab:hover (was --accent,
+ * the resting colour: no text step in any theme, and 4.00:1 on the arcane
+ * --hextech-border tint, under AA 4.5). The tint stays so Review still
+ * hovers differently from a panel tab. */
 .lm-tab-nav:hover {
   background: var(--hextech-border);
-  color: var(--accent);
+  color: var(--text);
 }
 
 .lm-tab-panel { display: none; }
