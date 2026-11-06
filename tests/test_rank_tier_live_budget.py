@@ -1034,13 +1034,18 @@ _MUTATORS = frozenset({"append", "appendleft", "extend", "extendleft", "insert",
 
 def _bind_mutators(nodes, tainted, late=frozenset()) -> None:
     """`q.append(url)` leaves `q` carrying the url for the rest of the scope.
-    Applied with the walrus bindings, before the statement's sinks."""
+    Applied with the walrus bindings, before the statement's sinks.
+    RM-1563: each call is judged with the view `_call_views` gives it, so
+    one in a comprehension sees the comprehension's targets
+    (`[q.append(x) for x in [url]]`)."""
     for node in nodes:
-        for sub in ast.walk(node):
-            if (isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute)
+        calls = []
+        _call_views(node, tainted, late, calls)
+        for sub, seen in calls:
+            if (isinstance(sub.func, ast.Attribute)
                     and sub.func.attr in _MUTATORS):
                 args = list(sub.args) + [kw.value for kw in sub.keywords]
-                if any(_is_tainted(a, tainted, late) for a in args):
+                if any(_is_tainted(a, seen, late) for a in args):
                     _bind_names(sub.func.value, True, tainted, clear=False)
 
 
@@ -1058,15 +1063,19 @@ def _bind_mutators(nodes, tainted, late=frozenset()) -> None:
 def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
     """`(m := url)` binds `m` for the rest of the scope. Applied BEFORE a
     statement's sinks are checked: a sink in the same expression may run
-    after the walrus (`log.info(m) if (m := url) else None`)."""
+    after the walrus (`log.info(m) if (m := url) else None`).
+    RM-1563: the value is judged with the view `_call_views` gives it, so
+    a walrus in a comprehension sees the comprehension's targets
+    (`[(m := x) for x in [url]]`); it still binds the enclosing scope."""
     for node in nodes:
-        for sub in ast.walk(node):
-            if isinstance(sub, ast.NamedExpr):
-                is_alias = _is_log_callable(sub.value, tainted)
-                is_obj = _is_logger_expr(sub.value, tainted)
-                _bind_names(sub.target, _is_tainted(sub.value, tainted, late),
-                            tainted, clear=False)
-                _bind_log_alias(sub.target, is_alias, tainted, is_obj)
+        sites = []
+        _call_views(node, tainted, late, sites, kinds=ast.NamedExpr)
+        for sub, seen in sites:
+            is_alias = _is_log_callable(sub.value, seen)
+            is_obj = _is_logger_expr(sub.value, seen)
+            _bind_names(sub.target, _is_tainted(sub.value, seen, late),
+                        tainted, clear=False)
+            _bind_log_alias(sub.target, is_alias, tainted, is_obj)
 
 
 # Context managers whose __enter__ hands back the object they were given.
@@ -1495,8 +1504,35 @@ def _attr_specs(f, tainted):
     return specs
 
 
-def _call_views(node, view, late, out) -> None:
-    """Append (call, state the call reads) for every call in `node`.
+_COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+
+
+def _comp_bind(gen, view, late):
+    """RM-1563: a copy of `view` with comprehension generator `gen`'s
+    target bound from its iterable, as `_Flow._for` binds a `for` target:
+    add-only (an outer tainted name the target shadows stays tainted, the
+    safe side), the value judged before the binding, plus the logging
+    aliases a literal iterable gives (`for p in (log.info,)`)."""
+    found = _is_tainted(gen.iter, view, late)
+    aliases = _iter_alias_bindings(gen.target, gen.iter, view)
+    inner = set(view)
+    _bind_names(gen.target, found, inner, clear=False)
+    for name, is_alias, is_obj in aliases:
+        _bind_log_alias(name, is_alias, inner, is_obj)
+    return inner
+
+
+def _call_views(node, view, late, out, kinds=ast.Call) -> None:
+    """Append (call, state the call reads) for every call in `node` (every
+    node of type `kinds`: `_bind_walrus` asks for `ast.NamedExpr`).
+
+    RM-1563: a comprehension's parts read its targets. Each generator's
+    iterable reads the view before its own target is bound (the first one
+    the enclosing view), then its target, conditions and every later part
+    read the view with that target bound (`_comp_bind`). The bindings are
+    local to the comprehension: a copy, never the enclosing view, so they
+    reach no sibling and do not flow out. A generator expression's parts
+    all read the late view, as below.
 
     A call inside a lambda or generator (`_DEFERRED`) reads the late view
     (`view | late`): it runs after the statement, maybe after a re-binding.
@@ -1507,22 +1543,31 @@ def _call_views(node, view, late, out) -> None:
     stands, so they are judged with `view`; the parameters are local, so they
     reach only that body and the lambdas nested in it, never a sibling or the
     enclosing scope. The calls inside a default keep the late view."""
-    if isinstance(node, _DEFERRED):
-        late_view = set(view) | set(late)
-        if isinstance(node, ast.Lambda):
-            a = node.args
-            for d in a.defaults + [d for d in a.kw_defaults if d is not None]:
-                _call_views(d, late_view, late, out)
-            body_view = late_view | _default_bindings(node, view, late)
-            _call_views(node.body, body_view, late, out)
-            return
-        for child in ast.iter_child_nodes(node):
-            _call_views(child, late_view, late, out)
+    if isinstance(node, _COMPREHENSIONS):
+        inner = set(view) | set(late) if isinstance(node, _DEFERRED) else view
+        for gen in node.generators:
+            _call_views(gen.iter, inner, late, out, kinds)
+            inner = _comp_bind(gen, inner, late)
+            _call_views(gen.target, inner, late, out, kinds)
+            for cond in gen.ifs:
+                _call_views(cond, inner, late, out, kinds)
+        parts = ((node.key, node.value) if isinstance(node, ast.DictComp)
+                 else (node.elt,))
+        for part in parts:
+            _call_views(part, inner, late, out, kinds)
         return
-    if isinstance(node, ast.Call):
+    if isinstance(node, ast.Lambda):
+        late_view = set(view) | set(late)
+        a = node.args
+        for d in a.defaults + [d for d in a.kw_defaults if d is not None]:
+            _call_views(d, late_view, late, out, kinds)
+        body_view = late_view | _default_bindings(node, view, late)
+        _call_views(node.body, body_view, late, out, kinds)
+        return
+    if isinstance(node, kinds):
         out.append((node, view))
     for child in ast.iter_child_nodes(node):
-        _call_views(child, view, late, out)
+        _call_views(child, view, late, out, kinds)
 
 
 def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
@@ -3076,6 +3121,56 @@ _CHECKER_SAMPLES = (
     ("default read from a name the module re-binds to a logger later",
      "q = fetch\ndef g(m, p=q):\n    p(m)\nq = log.info\ndef f(url):\n    g(url)\n",
      False),
+    # RM-1563 comprehension targets: a comprehension's `for` target is
+    # bound from its iterable, as a `for` statement's is (add-only), so a
+    # wrapper, a logging call, a walrus or a mutator in its parts sees it.
+    ("wrapper called in a list comprehension",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [g(x) for x in [url]]\n", True),
+    ("wrapper called in a set comprehension",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    {g(x) for x in [url]}\n", True),
+    ("wrapper called in a dict comprehension value",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    {x: g(x) for x in [url]}\n", True),
+    ("wrapper called in a generator expression",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    list(g(x) for x in [url])\n", True),
+    ("logging call in a comprehension over a tainted name",
+     "def f(url):\n    us = [url]\n    [log.info(x) for x in us]\n", True),
+    ("logging call in a comprehension condition",
+     "def f(url):\n    [1 for x in [url] if log.info(x)]\n", True),
+    ("wrapper in a nested comprehension generator",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [g(y) for x in [[url]] for y in x]\n",
+     True),
+    ("lambda wrapper called in a comprehension",
+     "g = lambda m: log.info(m)\ndef f(url):\n    [g(x) for x in [url]]\n", True),
+    ("method wrapper called in a comprehension",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    def h(self, url):\n"
+     "        [self.g(x) for x in [url]]\n", True),
+    ("comprehension target bound to a logging function",
+     "def f(url):\n    [p(url) for p in (log.info,)]\n", True),
+    ("lambda in a comprehension reads its target",
+     "def f(url):\n    [(lambda: log.info(x))() for x in [url]]\n", True),
+    ("walrus in a comprehension binds its target's value",
+     "def f(url):\n    [(m := x) for x in [url]]\n    log.info(m)\n", True),
+    ("walrus in a generator expression binds its target's value",
+     "def f(url):\n    any((m := x) for x in [url])\n    log.info(m)\n", True),
+    ("mutator in a comprehension fills its receiver",
+     "def f(url):\n    q = []\n    [q.append(x) for x in [url]]\n    log.info(q)\n", True),
+    # RM-1563 comprehension keep-greens.
+    ("comprehension wrapper over a clean iterable",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [g(x) for x in ['a']]\n", False),
+    ("comprehension wrapper called with a sanitized value",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [g(_safe_url(x)) for x in [url]]\n",
+     False),
+    ("comprehension over a function that does not log its parameter",
+     "def g(m):\n    log.info('x')\ndef f(url):\n    [g(x) for x in [url]]\n", False),
+    ("comprehension target does not flow out of the comprehension",
+     "def f(url):\n    [0 for x in [url]]\n    log.info(x)\n", False),
+    ("comprehension target does not reach a sibling comprehension",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    ([0 for x in [url]], [g(x) for x in 'a'])\n",
+     False),
+    ("a later generator's target does not reach an earlier iterable",
+     "def f(url, xs):\n    [0 for y in [log.info(x) for x in 'a'] for x in [url]]\n", False),
+    ("a generator's own target does not reach its own iterable",
+     "def f(url):\n    [0 for x in (url, log.info(x))]\n", False),
 )
 
 
