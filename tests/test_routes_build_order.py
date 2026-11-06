@@ -168,7 +168,7 @@ class IncumbentPassthroughTests(unittest.TestCase):
 
         def _capture(champion, archetype, **kw):
             captured.update(kw)
-            return None  # the route is fail-soft on a None plan
+            # returns None: the route is fail-soft on a None plan
 
         with mock.patch("core.build_order.plan_build_order", _capture):
             h = _Handler()
@@ -183,7 +183,6 @@ class IncumbentPassthroughTests(unittest.TestCase):
 
         def _capture(champion, archetype, **kw):
             captured.update(kw)
-            return None
 
         with mock.patch("core.build_order.plan_build_order", _capture):
             h = _Handler()

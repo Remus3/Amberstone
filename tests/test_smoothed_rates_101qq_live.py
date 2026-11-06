@@ -64,7 +64,7 @@ class LiveWiringTests(unittest.TestCase):
         self.assertIsNotNone(S101.pair_synergy("Ashe", "Seraphine"))
 
     def test_static_fallback_when_live_empty(self) -> None:
-        S101._live_data_rows = lambda: []
+        S101._live_data_rows = list
         S101._reset_cache()
         self.assertEqual(S101.source(), "static")
 

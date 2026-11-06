@@ -131,7 +131,6 @@ class AramReaderTests(unittest.TestCase):
         def _fake_read_tiered(self_, *a, **k):
             seen["use_relay"] = self_.USE_RELAY
             seen["prompt"] = self_.PROMPT
-            return None
 
         c = aram_coach.Coach.__new__(aram_coach.Coach)
         c._api_key = "sk-ant-test"

@@ -183,7 +183,7 @@ class LiveAutoReadTests(_Base):
         self.assertEqual(len(body["ranked"]), 2)
 
     def test_absent_ally_no_game_returns_no_live_roster(self) -> None:
-        rt._live_ally_roster = lambda: []
+        rt._live_ally_roster = list
         h = _do("/api/peel-priority")
         body = h.parsed()
         self.assertEqual(h.last_status, 200)

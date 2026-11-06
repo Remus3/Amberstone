@@ -100,7 +100,6 @@ class _Rec:
 
     def capture(self, pid, app_dir):
         self.captures.append(pid)
-        return None
 
 
 def _build(rec, **kw):

@@ -276,7 +276,7 @@ def test_flag_on_empty_roster_skips_identity(monkeypatch):
     monkeypatch.setenv("RC_ZOI_IDENTITY", "1")
     crop = _fixture_crop()
     monkeypatch.setattr(mbd, "_grab_native_minimap", lambda rect: crop)
-    monkeypatch.setattr(mbd, "_live_roster", lambda: [])
+    monkeypatch.setattr(mbd, "_live_roster", list)
 
     def boom(*a, **k):
         raise AssertionError("identity must not run on an empty roster")

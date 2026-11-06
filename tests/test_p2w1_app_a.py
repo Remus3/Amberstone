@@ -60,7 +60,7 @@ def _build_reader(monkeypatch):
     r._try_lcu_game_id = lambda: ""
     r._read_my_runes = lambda: ""
     r._read_enemy_runes = lambda enemies: {}
-    r._read_my_abilities = lambda: {}
+    r._read_my_abilities = dict
     return r
 
 

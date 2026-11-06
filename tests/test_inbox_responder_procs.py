@@ -266,7 +266,6 @@ def test_kill_tree_on_nt_runs_taskkill_with_the_flag_and_a_timeout(monkeypatch):
     def fake_run(argv, **kwargs):
         seen["argv"] = argv
         seen["kwargs"] = kwargs
-        return None
 
     bind_subprocess(monkeypatch, procs, run=fake_run)
     procs.kill_tree(4321)

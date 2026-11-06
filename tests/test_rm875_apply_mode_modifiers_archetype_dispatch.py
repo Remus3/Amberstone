@@ -261,7 +261,6 @@ def test_with_build_order_planner_gets_the_seam_only_when_on():
 
     def _fake_plan(*_a, **kw):
         seen.append(kw.get("rank_kwargs"))
-        return None
 
     with mock.patch("core.build_order.plan_build_order", _fake_plan):
         _dispatch("carry", with_build_order=True, apply_mode_modifiers=True)

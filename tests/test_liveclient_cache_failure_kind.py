@@ -27,7 +27,7 @@ def _patch(monkeypatch, behaviour):
             raise behaviour
         return _Resp(behaviour)
     monkeypatch.setattr(lc, "urlopen", fake_urlopen)
-    monkeypatch.setattr(lc, "_auth_headers", lambda: {})
+    monkeypatch.setattr(lc, "_auth_headers", dict)
 
 
 def test_default_field_is_empty_and_last():

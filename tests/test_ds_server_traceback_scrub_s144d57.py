@@ -62,7 +62,7 @@ def _handler(path: str) -> tuple[server.Handler, list[int]]:
     sent: list[int] = []
     h._send_error = lambda status, message, detail=None: sent.append(status)
     h._drain_request_body = lambda: None
-    h._read_json_body = lambda: {}
+    h._read_json_body = dict
     return h, sent
 
 

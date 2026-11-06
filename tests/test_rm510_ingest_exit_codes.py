@@ -40,12 +40,10 @@ from tools import timeline_ingest as ti  # noqa: E402
 
 def _throttle(*_a, **_k):
     RA._record_outcome("429")
-    return None
 
 
 def _not_found(*_a, **_k):
     RA._record_outcome("not_found")
-    return None
 
 
 def _ok(value):

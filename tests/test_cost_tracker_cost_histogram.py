@@ -25,7 +25,7 @@ class CostHistogramTests(unittest.TestCase):
     def setUp(self):
         self._td = tempfile.mkdtemp()
         self.tracker = cost_tracker.CostTracker(
-            config_provider=lambda: {}, spend_dir=Path(self._td))
+            config_provider=dict, spend_dir=Path(self._td))
 
     def test_observed_once_per_record_call_with_labels_and_value(self):
         before = _hist_entry("claude-haiku-4-5-20251001", "aram_coach")

@@ -291,7 +291,6 @@ def test_flush_and_close_honour_their_timeout_when_the_queue_is_full(tmp_path, m
     def stalled_vision():
         entered.set()
         gate.wait(10)
-        return None
 
     rec = _recorder(tmp_path)
     rec._vision_provider = stalled_vision

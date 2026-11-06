@@ -93,7 +93,6 @@ def _open_a2_open_db(monkeypatch, db):
 def _open_a2_init_mode(monkeypatch, db):
     monkeypatch.setattr(a2_schema, "db_path", lambda mode: db)
     a2_schema.init_mode("aram")
-    return None
 
 
 def _open_postgame(monkeypatch, db):
@@ -103,7 +102,6 @@ def _open_postgame(monkeypatch, db):
 
 def _open_cache_engine(monkeypatch, db):
     cache_engine.CacheEngine(db)
-    return None
 
 
 def _open_rewind_catchup(monkeypatch, db):

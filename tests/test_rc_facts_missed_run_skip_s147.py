@@ -337,7 +337,7 @@ def test_main_prints_the_missed_run_label_end_to_end(monkeypatch, tmp_path):
     monkeypatch.setattr(rc_facts, "_HEALTH", health)
     monkeypatch.setattr(rc_facts, "_APP", tmp_path)
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: True)
-    monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
+    monkeypatch.setattr(rc_facts, "_health_all", dict)
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
     monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: [
         _row("RC-ClaudeQuotaWatch", last_run=_iso(now, 3600.0))])

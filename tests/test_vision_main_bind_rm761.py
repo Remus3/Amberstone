@@ -33,7 +33,7 @@ def _free_port() -> int:
 def stubbed_main(monkeypatch):
     monkeypatch.setattr(vision_server, "api_key_present", lambda: True)
     monkeypatch.setattr(vision_server, "PORT", _free_port())
-    monkeypatch.setattr(_reap, "reap_stale_vision_instances", lambda: [])
+    monkeypatch.setattr(_reap, "reap_stale_vision_instances", list)
     monkeypatch.setattr(vision_server, "_get_client", lambda: None)
     return monkeypatch
 

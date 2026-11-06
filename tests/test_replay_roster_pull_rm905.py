@@ -96,7 +96,6 @@ def test_forbidden_listing_records_nothing_and_stops_the_route(tmp_path, monkeyp
     def _replays(_puuid):
         listing["n"] += 1
         RA._record_outcome("forbidden")
-        return None
 
     monkeypatch.setattr(RA, "get_account_by_riot_id",
                         _outcome({"puuid": "P"}, "ok"))

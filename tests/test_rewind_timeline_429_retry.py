@@ -75,12 +75,10 @@ def _timeline() -> dict:
 
 def _rate_limited(*_a, **_k):
     RA._record_outcome("429")
-    return None
 
 
 def _not_found(*_a, **_k):
     RA._record_outcome("404")
-    return None
 
 
 def _returns(value):

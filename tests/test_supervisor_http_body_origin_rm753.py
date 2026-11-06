@@ -53,7 +53,6 @@ class _Scheduler:
 
     def get(self, task_id):
         self.calls.append(("get", task_id))
-        return None
 
     def __getattr__(self, name):            # anything else is a dispatch too
         def _rec(*a, **kw):

@@ -66,7 +66,6 @@ def _run_and_capture(coach, state):
 
     def _fake_dispatch(**kwargs):
         seen["item_ids"] = list(kwargs.get("item_ids") or [])
-        return None
 
     with mock.patch(
         "coach_integration.archetype_dispatch.dispatch_for_coach", _fake_dispatch

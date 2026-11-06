@@ -373,8 +373,8 @@ class BuildStateIntegrationTests(unittest.TestCase):
         try:
             # Minimal health -> mode_key "client" -> coaching_data.json.
             sb.read_json = lambda p: {} if "health" in p else {"action": "Push the wave"}
-            sb.lcu_summary = lambda: {}
-            sb.liveclient_summary = lambda: {}
+            sb.lcu_summary = dict
+            sb.liveclient_summary = dict
             sb.get_team_context = lambda: None
             # zoi kwarg mirrors the live call site (_state_builder passes
             # zoi=zoi since ZOI Wave 2); the stub accepts + ignores it.

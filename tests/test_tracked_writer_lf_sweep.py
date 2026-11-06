@@ -351,7 +351,7 @@ def test_audit_api_surface_writers_emit_lf(tmp_path, force_crlf, monkeypatch):
     aas.write_csv([row, dict(row, line=2)], csv_out)
     assert _crlf_count(csv_out) == 0
 
-    monkeypatch.setattr(aas, "iter_source_files", lambda: [])
+    monkeypatch.setattr(aas, "iter_source_files", list)
     monkeypatch.setattr(aas, "render_markdown", lambda grouped: "# t\n\nbody\n")
     md_out = tmp_path / "API_SURFACE_AUDIT.md"
     monkeypatch.setattr(sys, "argv", ["audit_api_surface.py", "--md", str(md_out)])

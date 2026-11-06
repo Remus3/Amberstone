@@ -241,7 +241,7 @@ def test_upstream_drift_check_runs_the_watch_only_when_asked(monkeypatch):
     for name in ("probe_ddragon_version", "probe_meraki_content_patch", "probe_cdragon_content_version",
                  "probe_qq_synergy_shape", "probe_cdragon_queue_catalog"):
         monkeypatch.setattr(udc, name, lambda: "x")
-    monkeypatch.setattr(udc, "load_sentinel", lambda: {})
+    monkeypatch.setattr(udc, "load_sentinel", dict)
     monkeypatch.setattr(udc, "advance_sentinel", lambda *a, **k: None)
     assert udc.main([]) == 0 and calls == []
     assert udc.main(["--spec-watch"]) == 0 and calls == [1]

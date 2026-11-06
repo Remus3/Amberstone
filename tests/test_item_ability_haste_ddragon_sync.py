@@ -131,7 +131,7 @@ def test_unknown_tag_ah_line_surfaces_as_unparsed(tmp_path: Path) -> None:
 
 def test_main_reports_ornn_excluded_by_design(tmp_path: Path, monkeypatch, capsys) -> None:
     p = _fixture(tmp_path, {"228002": _ORNN_DESC})
-    monkeypatch.setattr(ahc, "_load_pin", lambda: {})
+    monkeypatch.setattr(ahc, "_load_pin", dict)
     monkeypatch.setattr("sys.argv", ["item_ah_drift_check.py", str(p)])
     rc = ahc.main()
     out = capsys.readouterr().out
@@ -141,7 +141,7 @@ def test_main_reports_ornn_excluded_by_design(tmp_path: Path, monkeypatch, capsy
 
 def test_main_fails_on_unparsed_ah_line(tmp_path: Path, monkeypatch, capsys) -> None:
     p = _fixture(tmp_path, {"9999": _ODD_DESC})
-    monkeypatch.setattr(ahc, "_load_pin", lambda: {})
+    monkeypatch.setattr(ahc, "_load_pin", dict)
     monkeypatch.setattr("sys.argv", ["item_ah_drift_check.py", str(p)])
     assert ahc.main() == 1
     assert "UNPARSED" in capsys.readouterr().out

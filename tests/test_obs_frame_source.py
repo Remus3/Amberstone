@@ -215,7 +215,7 @@ def test_async_loop_keep_warm_is_flag_gated():
 def test_get_obs_frame_default_off_returns_none(monkeypatch):
     from core import obs_frame_source as ofs
 
-    monkeypatch.setattr(ofs, "_get_obs_cfg", lambda: {})
+    monkeypatch.setattr(ofs, "_get_obs_cfg", dict)
     # if the facade wrongly attempted a fetch, it would return b"leak"
     monkeypatch.setattr(ofs, "_fetch_once", lambda cfg, t: b"leak")
     assert ofs.get_obs_frame() is None

@@ -1312,7 +1312,7 @@ def _no_live_standalone_tft():
         return
     _absent = Path(__file__).resolve().parent / "_no_such_tft_eog_stats.json"
     patchers = [
-        mock.patch.object(tft_standalone, "_process_snapshot", lambda: {}),
+        mock.patch.object(tft_standalone, "_process_snapshot", dict),
         mock.patch.object(tft_standalone, "relay_lcu_snapshot", lambda: None),
         mock.patch.object(tft_standalone, "eog_stats_path", lambda: _absent),
     ]

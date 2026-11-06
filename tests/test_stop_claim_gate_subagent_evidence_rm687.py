@@ -540,7 +540,6 @@ def _main_in_process(tmp_path, monkeypatch, transcript):
 
     def recorder(*args, **kwargs):
         calls.append((args, kwargs))
-        return None
 
     monkeypatch.setattr(gate, "subagent_evidence", recorder)
     monkeypatch.setattr(sys, "stdin", io.StringIO(_payload(transcript)))

@@ -85,9 +85,9 @@ def test_main_returns_within_the_budget_when_every_probe_hangs(
 def test_fast_probes_report_exactly_as_before(tmp_path, monkeypatch):
     buf = _world(tmp_path, monkeypatch)
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: False)
-    monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
+    monkeypatch.setattr(rc_facts, "_health_all", dict)
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
-    monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: [])
+    monkeypatch.setattr(rc_facts, "_legion_tasks", list)
     monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)
     assert rc_facts.main(session=None) == 0
     text = buf.getvalue()
@@ -103,7 +103,7 @@ def test_a_probe_that_raises_is_unmeasured_not_a_crash(tmp_path, monkeypatch):
         raise RuntimeError("synthetic")
 
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: True)
-    monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
+    monkeypatch.setattr(rc_facts, "_health_all", dict)
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
     monkeypatch.setattr(rc_facts, "_legion_tasks", boom)
     monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)

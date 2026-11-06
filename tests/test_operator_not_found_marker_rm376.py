@@ -22,8 +22,8 @@ def _reader(monkeypatch):
     r = GameReader()
     r._try_lcu_game_id = lambda: ""
     r._read_enemy_runes = lambda enemies: {}
-    r._read_my_abilities = lambda: {}
-    r._read_my_runes_structured = lambda: {}
+    r._read_my_abilities = dict
+    r._read_my_runes_structured = dict
 
     def _get(url, *a, **k):
         raise RuntimeError("hermetic")

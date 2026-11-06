@@ -411,7 +411,7 @@ def vision_main(monkeypatch):
         return _Srv()
 
     monkeypatch.setattr(vision_server, "api_key_present", lambda: True)
-    monkeypatch.setattr(_reap, "reap_stale_vision_instances", lambda: [])
+    monkeypatch.setattr(_reap, "reap_stale_vision_instances", list)
     monkeypatch.setattr(vision_server, "_get_client", lambda: None)
     monkeypatch.setattr(vision_server, "make_server", _make)
     monkeypatch.setattr(vision_server, "_HANDOFF_POLL_S", 0.05, raising=False)

@@ -179,7 +179,6 @@ class TestCachedGet(unittest.TestCase):
         calls = []
         def fetch():
             calls.append(1)
-            return None
         out1 = cached_get("k-none", fetch, ttl_s=None)
         out2 = cached_get("k-none", fetch, ttl_s=None)
         self.assertIsNone(out1)

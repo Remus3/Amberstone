@@ -82,7 +82,6 @@ class _Recorder:
 
     def capture(self, pid, app_dir):
         self.captures.append(pid)
-        return None
 
 
 def _build(rec, clock=None, **kw):

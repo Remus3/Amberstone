@@ -55,7 +55,7 @@ def _finite_float_or_none(text: str) -> float | None:
 
 def _non_finite_constant(_name: str) -> None:
     """json parse_constant hook: NaN / Infinity / -Infinity parse to None."""
-    return None
+    return
 
 
 def _safe_load(path: pathlib.Path) -> dict:

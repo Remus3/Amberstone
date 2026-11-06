@@ -192,7 +192,6 @@ class _PinBase(unittest.TestCase):
         def fake_timeline(match_id, region="americas"):
             calls["timeline"].append(match_id)
             riot_api._record_outcome("not_found")
-            return None
 
         def fake_account(name, tag, region="americas"):
             calls["account"].append((name, tag, region))

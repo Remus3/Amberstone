@@ -569,7 +569,7 @@ class TestExtract:
         monkeypatch.setattr(W, "_load_champion_ids", lambda p: ids)
         monkeypatch.setattr(W, "_load_display_names", lambda p: names)
         monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {})
-        monkeypatch.setattr(W, "_load_wiki_table", lambda: {})  # empty -> getter fallback
+        monkeypatch.setattr(W, "_load_wiki_table", dict)  # empty -> getter fallback
         monkeypatch.setattr(
             W, "_fetch_field",
             lambda disp, field, stats_fallback: 0.3 if field == "attack_cast_time" else None,
@@ -623,7 +623,7 @@ class TestExtract:
         monkeypatch.setattr(W, "_load_champion_ids", lambda p: ids)
         monkeypatch.setattr(W, "_load_display_names", lambda p: {i: i for i in ids})
         monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {})
-        monkeypatch.setattr(W, "_load_wiki_table", lambda: {})
+        monkeypatch.setattr(W, "_load_wiki_table", dict)
         monkeypatch.setattr(W, "_fetch_field", lambda disp, field, stats_fallback: 0.25)
         out = W.extract("16.11.1", sleep_s=0, limit=2, verbose=False, source="wiki")
         assert out["_champ_count"] == 2
@@ -632,7 +632,7 @@ class TestExtract:
         monkeypatch.setattr(W, "_load_champion_ids", lambda p: ["Aatrox"])
         monkeypatch.setattr(W, "_load_display_names", lambda p: {"Aatrox": "Aatrox"})
         monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {})
-        monkeypatch.setattr(W, "_load_wiki_table", lambda: {})
+        monkeypatch.setattr(W, "_load_wiki_table", dict)
 
         def boom(disp, field, stats_fallback):
             raise RuntimeError("blocked")
@@ -667,7 +667,7 @@ class TestExtract:
         monkeypatch.setattr(W, "_load_champion_ids", lambda p: ["Aatrox"])
         monkeypatch.setattr(W, "_load_display_names", lambda p: {"Aatrox": "Aatrox"})
         monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {})
-        monkeypatch.setattr(W, "_load_wiki_table", lambda: {})
+        monkeypatch.setattr(W, "_load_wiki_table", dict)
         monkeypatch.setattr(W, "_fetch_field", lambda disp, field, stats_fallback: 0.3)
         out = W.extract("16.11.1", sleep_s=0, limit=None, verbose=False, source="wiki")
         json.dumps(out, ensure_ascii=True)  # must not raise
@@ -976,7 +976,7 @@ class TestExtractBackfill:
         monkeypatch.setattr(W, "_load_champion_ids", lambda p: ["Aatrox"])
         monkeypatch.setattr(W, "_load_display_names", lambda p: {"Aatrox": "Aatrox"})
         monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {"Aatrox": 175.0})
-        monkeypatch.setattr(W, "_load_wiki_table", lambda: {})
+        monkeypatch.setattr(W, "_load_wiki_table", dict)
         monkeypatch.setattr(W, "_fetch_field", lambda disp, field, stats_fallback: None)
 
         def cd_boom(cid, ar):
@@ -994,7 +994,7 @@ class TestExtractBackfill:
         monkeypatch.setattr(W, "_load_champion_ids", lambda p: ["Aatrox"])
         monkeypatch.setattr(W, "_load_display_names", lambda p: {"Aatrox": "Aatrox"})
         monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {"Aatrox": 175.0})
-        monkeypatch.setattr(W, "_load_wiki_table", lambda: {})
+        monkeypatch.setattr(W, "_load_wiki_table", dict)
         monkeypatch.setattr(W, "_fetch_field", lambda disp, field, stats_fallback: None)
         monkeypatch.setattr(W, "_cdragon_scalars", lambda cid, ar: {
             "attack_cast_time": 0.3, "attack_total_time": 1.6, "missile_speed": None,
@@ -1015,7 +1015,7 @@ class TestEngineDefaultCast:
         monkeypatch.setattr(W, "_load_champion_ids", lambda p: ["Garen"])
         monkeypatch.setattr(W, "_load_display_names", lambda p: {"Garen": "Garen"})
         monkeypatch.setattr(W, "_load_attack_ranges", lambda p: {"Garen": 175.0})
-        monkeypatch.setattr(W, "_load_wiki_table", lambda: {})
+        monkeypatch.setattr(W, "_load_wiki_table", dict)
         monkeypatch.setattr(W, "_fetch_field", lambda disp, field, stats_fallback: None)
         # cdragon has no override for Garen (the real-world case): all-null parse
         monkeypatch.setattr(W, "_cdragon_scalars", lambda cid, ar: {

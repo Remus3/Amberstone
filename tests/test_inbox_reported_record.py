@@ -90,7 +90,7 @@ def _quiet_probes(monkeypatch, root: Path) -> None:
     """
     monkeypatch.setattr(rc_facts, "_HEALTH", root / "ops" / "runtime" / "health.json")
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
-    monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: [])
+    monkeypatch.setattr(rc_facts, "_legion_tasks", list)
     monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: False)
 

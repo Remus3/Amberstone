@@ -117,7 +117,7 @@ class TestTokenResolverFailsLoudly:
 
     def test_no_hardcoded_fallback(self, monkeypatch):
         import tools.liveclient_relay as relay
-        monkeypatch.setattr(relay, "_token_candidates", lambda: [])
+        monkeypatch.setattr(relay, "_token_candidates", list)
         monkeypatch.delenv("RC_VISION_TOKEN", raising=False)
         assert relay._resolve_auth_token() == "", (
             "resolver still invents a token when no config resolves - every "

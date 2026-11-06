@@ -130,7 +130,7 @@ def test_removed_listener_streak_is_forgotten(caplog):
 def _fetch_with(monkeypatch, body: str) -> lc.Snapshot:
     monkeypatch.setattr(lc, "urlopen",
                         lambda req, timeout=None: _Resp(body.encode()))
-    monkeypatch.setattr(lc, "_auth_headers", lambda: {})
+    monkeypatch.setattr(lc, "_auth_headers", dict)
     return lc._fetch_once()
 
 

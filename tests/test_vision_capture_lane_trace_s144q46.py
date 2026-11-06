@@ -230,7 +230,6 @@ def test_overrunning_worker_reports_timeout(monkeypatch):
 
     async def _stuck(cfg, timeout_s):
         release.wait(5.0)
-        return None
     monkeypatch.setattr(ofs, "_fetch_async", _stuck)
     seen, cb = _collect()
     try:
@@ -276,7 +275,7 @@ def test_obs_with_no_frame_reports_nothing(monkeypatch):
 
 def test_flag_off_and_a_served_frame_report_nothing(monkeypatch):
     seen, cb = _collect()
-    monkeypatch.setattr(ofs, "_get_obs_cfg", lambda: {})
+    monkeypatch.setattr(ofs, "_get_obs_cfg", dict)
     assert ofs.get_obs_frame(on_failure=cb) is None
     _cfg_on(monkeypatch)
     monkeypatch.setattr(ofs, "_fetch_once", lambda cfg, t: b"frame")
@@ -309,7 +308,6 @@ def test_fetch_failure_reaches_obs_lane(monkeypatch, reason):
 
     def _stub(*a, on_failure=None, **k):
         on_failure(reason)
-        return None
     monkeypatch.setattr(ofs, "get_obs_frame", _stub)
     assert _frame._maybe_obs_frame() is None
     lane = _obs_lane()
@@ -323,7 +321,6 @@ def test_unknown_fetch_reason_counts_as_error(monkeypatch):
         # Mirror the real facade: a raising hook is swallowed (ofs._notify),
         # so only the hook's own mapping can put this in "error".
         ofs._notify(on_failure, "mystery")
-        return None
     monkeypatch.setattr(ofs, "get_obs_frame", _stub)
     assert _frame._maybe_obs_frame() is None
     assert _obs_lane()["error"] == 1

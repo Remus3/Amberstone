@@ -180,7 +180,7 @@ class TheHalfOpenProbeSlotIsAlwaysReleased(unittest.TestCase):
             read=lambda amt=None: (
                 remaining.read() if amt is None else remaining.read(amt)
             ),
-            getheaders=lambda: [],
+            getheaders=list,
             status=200,
             url=self.url,
         )

@@ -70,7 +70,7 @@ def test_default_archetype_rebased_to_kit_axis(champ, expected, monkeypatch):
     # of these champs in champ-select (a user_cs pick sets source != "default"
     # and legitimately overrides the kit axis). The pick-wins path is covered by
     # test_operator_pick_overrides_axis_correction below.
-    monkeypatch.setattr(ap, "_load_picks", lambda: {})
+    monkeypatch.setattr(ap, "_load_picks", dict)
     info = ap.get_archetype_for(champ)
     assert info["source"] == "default", f"{champ} should have no operator pick"
     assert info["primary"] == expected, (
@@ -82,7 +82,7 @@ def test_default_archetype_rebased_to_kit_axis(champ, expected, monkeypatch):
 @pytest.mark.parametrize("champ,expected", sorted(EXPECTED_KEEPS.items()))
 def test_aligned_or_neutral_archetype_unchanged(champ, expected, monkeypatch):
     # Hermetic: same reason as above - guard the default, not the live pick file.
-    monkeypatch.setattr(ap, "_load_picks", lambda: {})
+    monkeypatch.setattr(ap, "_load_picks", dict)
     assert ap.get_archetype_for(champ)["primary"] == expected
 
 

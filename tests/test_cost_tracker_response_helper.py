@@ -45,7 +45,7 @@ class RecordAnthropicResponseTests(unittest.TestCase):
     def setUp(self):
         self._td = tempfile.mkdtemp()
         self.tracker = cost_tracker.CostTracker(
-            config_provider=lambda: {}, spend_dir=Path(self._td))
+            config_provider=dict, spend_dir=Path(self._td))
         # Pin the helper to this scoped tracker so we observe its ledger.
         self._patcher = mock.patch.object(
             cost_tracker, "get_tracker", return_value=self.tracker)
@@ -142,7 +142,7 @@ class TrackedAnthropicShimTests(unittest.TestCase):
     def setUp(self):
         self._td = tempfile.mkdtemp()
         self.tracker = cost_tracker.CostTracker(
-            config_provider=lambda: {}, spend_dir=Path(self._td))
+            config_provider=dict, spend_dir=Path(self._td))
         self._patcher = mock.patch.object(
             cost_tracker, "get_tracker", return_value=self.tracker)
         self._patcher.start()

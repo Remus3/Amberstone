@@ -28,7 +28,7 @@ AP_ASSASSINS = ["Akali", "Ekko", "Evelynn", "Fizz", "Katarina", "LeBlanc", "Dian
 
 @pytest.mark.parametrize("champ", AP_ASSASSINS)
 def test_ap_assassin_defaults_to_assassin(champ, monkeypatch):
-    monkeypatch.setattr(ap, "_load_picks", lambda: {})
+    monkeypatch.setattr(ap, "_load_picks", dict)
     primary, secondary = ap.default_for_champion(champ)
     assert primary == "assassin", f"{champ} should route to the burst scorer"
     assert secondary == "mage"
@@ -36,7 +36,7 @@ def test_ap_assassin_defaults_to_assassin(champ, monkeypatch):
 
 @pytest.mark.parametrize("champ", AP_ASSASSINS)
 def test_ap_assassin_get_archetype_for_primary(champ, monkeypatch):
-    monkeypatch.setattr(ap, "_load_picks", lambda: {})
+    monkeypatch.setattr(ap, "_load_picks", dict)
     info = ap.get_archetype_for(champ)
     assert info["primary"] == "assassin"
     assert info["source"] == "default"
@@ -54,7 +54,7 @@ def test_ap_assassin_get_archetype_for_primary(champ, monkeypatch):
     ("Kassadin", "mage"),      # EXCLUDED: scaling mana-assassin, default already Rabadon's-led
 ])
 def test_controls_unchanged(champ, expected, monkeypatch):
-    monkeypatch.setattr(ap, "_load_picks", lambda: {})
+    monkeypatch.setattr(ap, "_load_picks", dict)
     assert ap.default_for_champion(champ)[0] == expected
 
 

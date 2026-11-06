@@ -88,7 +88,7 @@ def _build_reader(monkeypatch, get_stub):
     # stubbed: the transport count below is the thing under test.
     r._try_lcu_game_id = lambda: ""
     r._read_enemy_runes = lambda enemies: {}
-    r._read_my_abilities = lambda: {}
+    r._read_my_abilities = dict
     r._get = get_stub
     return r
 

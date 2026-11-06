@@ -301,7 +301,7 @@ def test_stats_extract_refusal_is_not_swallowed_into_a_degraded_payload(net, mon
 def test_stats_extract_getter_refusal_is_not_swallowed(net, monkeypatch):
     """Raw table supplied (no fetch) but missing the cast time, so the live
     per-champ getter runs and is refused; the per-champ catch re-raises."""
-    monkeypatch.setattr(stats, "_load_wiki_table", lambda: {})
+    monkeypatch.setattr(stats, "_load_wiki_table", dict)
     with pytest.raises(wiki_consent.WikiFetchRefused):
         stats.extract(stats._resolve_patch(None), 0.0, 1, False, source="wiki")
     assert net == []
@@ -341,7 +341,7 @@ def test_refusal_is_not_a_transport_error():
 
 def test_stats_extract_on_supplied_text_needs_no_consent(net, monkeypatch):
     """Every wiki fetcher stubbed (operator text): no consent needed."""
-    monkeypatch.setattr(stats, "_load_wiki_table", lambda: {})
+    monkeypatch.setattr(stats, "_load_wiki_table", dict)
     monkeypatch.setattr(stats, "_expand", lambda c, f: "0.25")
     out = stats.extract(stats._resolve_patch(None), 0.0, 1, False, source="wiki")
     assert isinstance(out, dict)

@@ -48,7 +48,6 @@ def _throttled_then(value, throttles: int = 1, outcome: str = "429"):
 
 def _not_found(*_a, **_k):
     RA._record_outcome("not_found")
-    return None
 
 
 @pytest.fixture(autouse=True)
@@ -263,7 +262,6 @@ def test_fully_throttled_cohort_does_not_overwrite_a_good_one(tmp_path, monkeypa
 
     def _ids(endpoint, url, rate_limit_timeout_s=5.0):
         RA._record_outcome("429")
-        return None
     monkeypatch.setattr(RA, "_call", _ids)
     with redirect_stdout(io.StringIO()):
         code = brb.main(["--out", str(out), "--tiers", "MASTER"])

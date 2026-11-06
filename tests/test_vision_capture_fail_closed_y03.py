@@ -385,7 +385,7 @@ def test_agent_drops_black_frame(agent, monkeypatch):
 
 def test_agent_loop_skip_is_counted_and_not_a_failure(agent, monkeypatch):
     """A skip must not upload and must not feed the failure backoff."""
-    monkeypatch.setattr(agent, "_enum_monitor_rects", lambda: [])
+    monkeypatch.setattr(agent, "_enum_monitor_rects", list)
     reasons = iter(["not_foreground", "locked", "blank", "blank"])
 
     def _gated(*a, **k):

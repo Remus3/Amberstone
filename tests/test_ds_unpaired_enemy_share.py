@@ -90,7 +90,6 @@ class UnpairedShareBodyTests(unittest.TestCase):
 
         def _fake_post(path, body, timeout=None):  # noqa: ARG001
             seen.update(body)
-            return None
 
         original = dsc._post_json
         dsc._post_json = _fake_post

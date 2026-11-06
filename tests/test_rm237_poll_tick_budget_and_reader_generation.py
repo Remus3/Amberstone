@@ -94,7 +94,6 @@ class _OneTick:
         self.seen_during_read = (dict(self._enemy_last_seen),
                                  dict(self._enemy_death_time))
         self._stop_event.set()
-        return None
 
 
 def test_reset_is_applied_in_place_by_poll_thread():

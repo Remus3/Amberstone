@@ -129,7 +129,6 @@ def test_defect_a_bench_lock_is_not_held_across_the_live_fetch(monkeypatch):
     def _slow_fetch(tier, mode, **kw):
         started.set()
         release.wait(10.0)
-        return None
 
     monkeypatch.setattr(RTS, "fetch_rows", _slow_fetch)
     RTB._reset_cache()
@@ -172,7 +171,6 @@ def test_defect_a_stale_grid_is_served_without_waiting_for_the_sweep(monkeypatch
             first["seen"] = True
             started.set()
             gate.wait(2.0)
-        return None
 
     monkeypatch.setattr(RTS, "fetch_rows", _slow_fetch)
 
@@ -239,7 +237,6 @@ def test_defect_a_live_sweep_stops_at_the_wall_clock_budget(monkeypatch):
     def _slow_fetch(tier, mode, **kw):
         calls.append((tier, mode))
         clock[0] += (budget / 2.0) + 0.1
-        return None
 
     monkeypatch.setattr(RTS, "fetch_rows", _slow_fetch)
     RTB._reset_cache()

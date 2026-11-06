@@ -162,7 +162,7 @@ def _build_reader(monkeypatch, get_stub=_no_network):
     r._try_lcu_game_id = lambda: ""
     r._read_my_runes = lambda: ""
     r._read_enemy_runes = lambda enemies: {}
-    r._read_my_abilities = lambda: {}
+    r._read_my_abilities = dict
     # The sole transport never leaves the process: rune tests swap in
     # payload-returning stubs, everything else raises.
     r._get = get_stub

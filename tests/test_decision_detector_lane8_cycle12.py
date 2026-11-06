@@ -263,7 +263,7 @@ class TestHeartbeatSurfacesDetectorErrors:
 
     def _run_one_pass(self, loop, snapshot):
         loop._fetch_snapshot = lambda: (snapshot, 0.1)
-        loop._read_vision_state = lambda: {}
+        loop._read_vision_state = dict
         loop._poll_s = 0.01          # keep the guard fast; 1 Hz is prod
         t = threading.Thread(target=loop._loop, daemon=True)
         t.start()
@@ -492,7 +492,7 @@ class TestAdversarialFollowups:
         loop = DecisionLoop(store=DecisionStore(
             pending_path=tmp_path / "p.json", log_path=tmp_path / "l.jsonl"))
         loop._fetch_snapshot = lambda: (_postfight_snapshot([]), 0.1)
-        loop._read_vision_state = lambda: {}
+        loop._read_vision_state = dict
         loop._poll_s = 0.01
         t = threading.Thread(target=loop._loop, daemon=True)
         t.start()
@@ -516,7 +516,7 @@ class TestAdversarialFollowups:
         loop = DecisionLoop(store=DecisionStore(
             pending_path=tmp_path / "p.json", log_path=tmp_path / "l.jsonl"))
         loop._fetch_snapshot = lambda: (_postfight_snapshot([]), 0.1)
-        loop._read_vision_state = lambda: {}
+        loop._read_vision_state = dict
         loop._poll_s = 0.01
         with caplog.at_level("WARNING", logger="rc.decision_detector"):
             t = threading.Thread(target=loop._loop, daemon=True)

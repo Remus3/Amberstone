@@ -776,7 +776,7 @@ def test_main_emits_the_probe_failure_anomaly(monkeypatch, tmp_path):
     monkeypatch.setattr(rc_facts, "_HEALTH", health)
     monkeypatch.setattr(rc_facts, "_APP", tmp_path)
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: True)
-    monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
+    monkeypatch.setattr(rc_facts, "_health_all", dict)
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
     monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: None)
     monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)

@@ -155,7 +155,7 @@ class NoNetworkUnderCacheLockTests(LockBase):
             t = threading.Thread(target=_try, daemon=True)
             t.start()
             t.join(_JOIN_S)
-            return None  # force the static-seed fallback
+            # returns None: force the static-seed fallback
 
         S101._live_data_rows = _probing_live_rows
         S101._reset_cache()

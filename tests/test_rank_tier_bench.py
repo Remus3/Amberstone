@@ -161,7 +161,7 @@ def test_an_empty_rebuild_does_not_wipe_a_good_grid(monkeypatch):
     assert good, "precondition: the static seed must load"
 
     # The seed read now fails, exactly as a transient disk error would.
-    monkeypatch.setattr(RTB, "_load_static_grid", lambda: {})
+    monkeypatch.setattr(RTB, "_load_static_grid", dict)
     RTB._LOADED_AT = RTB._clock() - (RTB._TTL_S * 2)
     RTB._refresh_now()
 

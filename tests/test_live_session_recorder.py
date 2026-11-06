@@ -311,7 +311,6 @@ def test_record_never_blocks_and_drops_when_queue_full(tmp_path, monkeypatch):
     def stalled_vision():
         entered.set()
         gate.wait(10)   # wedge the writer thread on the first frame
-        return None
 
     rec = _recorder(tmp_path)
     rec._vision_provider = stalled_vision

@@ -459,7 +459,7 @@ def test_vod_guards_non_game_id_even_if_reader_is_lenient(monkeypatch):
     fake.ATTACH_SLACK_S = 0.0
     fake.MarksUnreadable = mm.MarksUnreadable
     fake.pins_for_match_strict = lambda mid: None
-    fake.read_marks_strict = lambda: []
+    fake.read_marks_strict = list
     monkeypatch.setitem(sys.modules, "core.moment_marks", fake)
     assert vr.moment_marks_count("unknown-1800000000", WIN) is None
     assert vr.moment_marks_count("7001", WIN) == 0

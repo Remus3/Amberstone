@@ -104,7 +104,6 @@ def test_fanout_capped_at_ten_players():
 
     def _track(puuid, region="na1"):
         seen.append(puuid)
-        return None
 
     many = [f"p{i}" for i in range(25)]
     with mock.patch.object(rs.riot_api, "get_summoner_rank",

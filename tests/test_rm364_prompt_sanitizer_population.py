@@ -227,7 +227,7 @@ def test_tft_augment_select_sanitized_on_the_moon_proxy_primary_path(
 
     def _capture(prompt, **kw):
         seen.append(prompt)
-        return None  # fall through to the SDK fallback as well
+        # returns None: fall through to the SDK fallback as well
 
     monkeypatch.setattr(mp.moon_proxy, "get_coaching", _capture)
     e = _tft_engine(tmp_path, monkeypatch,

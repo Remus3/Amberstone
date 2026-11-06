@@ -283,7 +283,6 @@ def test_worker_run_loop_calls_the_note(monkeypatch):
     class _Reader:
         def read(self):
             w.stop()
-            return None
 
         def shutdown(self):
             pass

@@ -279,7 +279,6 @@ def test_each_grab_reason_is_counted_by_its_own_name(monkeypatch, reason):
 
     def _stub(*a, on_failure=None, **k):
         ofs._notify(on_failure, reason)
-        return None
     monkeypatch.setattr(ofs, "get_obs_frame", _stub)
     assert _frame._maybe_obs_frame() is None
     lane = stats_mod.get_stats()["obs_lane"]

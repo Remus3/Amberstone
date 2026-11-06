@@ -382,7 +382,6 @@ def test_read_game_falls_back_to_standalone_on_relay_404(eog_file, monkeypatch):
 
     def relay_404():
         gr._relay_says_no_game = True
-        return None
     monkeypatch.setattr(gr, "_try_relay", relay_404, raising=False)
     raw = _synth()  # built BEFORE the patch (the patch replaces synth itself)
     monkeypatch.setattr(ts, "synth_allgamedata", lambda **kw: raw)
@@ -397,7 +396,6 @@ def test_read_game_still_none_without_standalone(monkeypatch):
 
     def relay_404():
         gr._relay_says_no_game = True
-        return None
     monkeypatch.setattr(gr, "_try_relay", relay_404, raising=False)
     monkeypatch.setattr(ts, "synth_allgamedata", lambda **kw: None)
     assert gr.read_game() is None

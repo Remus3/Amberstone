@@ -584,7 +584,7 @@ def test_rc_facts_main_reports_the_hold(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(rc_facts, "_HEALTH", health)
     monkeypatch.setattr(rc_facts, "_APP", tmp_path)
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: True)
-    monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
+    monkeypatch.setattr(rc_facts, "_health_all", dict)
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
     # A45d: the hold is reported only while RC-DSKeepalive is registered (a
     # measured list without it means the flag holds nothing).

@@ -233,7 +233,7 @@ def test_f5_participant_listed_twice_skips_the_match():
 
 def test_f6_empty_champion_catalog_is_not_ok(monkeypatch):
     conn = _corpus(3)
-    monkeypatch.setattr(aii, "champion_names_by_id", lambda: {})
+    monkeypatch.setattr(aii, "champion_names_by_id", dict)
     out = aii.compute_aram_item_interaction(conn, min_n=1)
     assert out["ok"] is False
     assert "champion catalog" in out["error"]

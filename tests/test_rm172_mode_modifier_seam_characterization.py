@@ -1000,7 +1000,6 @@ class TestClientTransportEmitsTheKey(unittest.TestCase):
         def _fake(path, body, timeout=0.0):
             captured["path"] = path
             captured["body"] = body
-            return None
 
         real = dsc._post_json
         dsc._post_json = _fake

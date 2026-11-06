@@ -849,5 +849,5 @@ class TestGameActivity:
         import dashboard._liveclient as lc
         monkeypatch.setattr(lc, "lcu_summary", lambda: {"phase": "InProgress"})
         assert hr._default_lcu_phase() == "InProgress"
-        monkeypatch.setattr(lc, "lcu_summary", lambda: {})
+        monkeypatch.setattr(lc, "lcu_summary", dict)
         assert hr._default_lcu_phase() is None

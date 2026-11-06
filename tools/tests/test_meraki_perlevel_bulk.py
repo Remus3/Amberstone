@@ -42,7 +42,7 @@ class TestBulkBackfill:
 
         def per_champ(cid):
             calls.append(cid)
-            return None  # simulates the 404
+            # returns None: simulates the 404
 
         overlay = E.fetch_meraki_perlevel_overlay(
             {"Yunara"},

@@ -195,7 +195,7 @@ def test_seam_on_overrides_kayle_to_carry():
 def test_seam_on_leaves_non_override_champ_unchanged(monkeypatch):
     # Hermetic: no operator picks; Caitlyn (carry kit, no Cluster-A override)
     # must be byte-identical ON vs OFF.
-    monkeypatch.setattr(ap, "_load_picks", lambda: {})
+    monkeypatch.setattr(ap, "_load_picks", dict)
     on = ap.get_archetype_for("Caitlyn", prefer_aram_win_axis=True)
     off = ap.get_archetype_for("Caitlyn")
     assert on == off

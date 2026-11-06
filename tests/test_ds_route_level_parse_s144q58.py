@@ -177,7 +177,6 @@ class _CapturePost:
 
     def __call__(self, path, body, timeout=None):
         self.bodies.append((path, body))
-        return None
 
 
 class ClientOptionalSeamTests(unittest.TestCase):

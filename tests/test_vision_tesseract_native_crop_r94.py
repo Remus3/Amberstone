@@ -85,7 +85,7 @@ def test_read_fast_fields_worklist_crops_native(monkeypatch):
 
     def _capture(name, crop):
         seen[name] = crop.size
-        return None   # skip the real parser -> no tesseract needed
+        # returns None: skip the real parser -> no tesseract needed
 
     monkeypatch.setattr(vt, "_parse_field", _capture)
     vt.read_fast_fields(_native_frame_b64(), fields=["gold"], parallel=False)

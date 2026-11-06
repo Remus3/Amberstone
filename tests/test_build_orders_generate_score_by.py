@@ -35,7 +35,7 @@ class _Recorder:
 
     def __call__(self, *args, **kwargs):
         self.calls.append(kwargs)
-        return None  # -> build_order_for_class returns [], which is fine here
+        # returns None -> build_order_for_class returns [], which is fine here
 
 
 class GeneratorScoreByTests(unittest.TestCase):
