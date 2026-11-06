@@ -17,6 +17,18 @@ function Ensure-Dir([string]$Path) {
     }
 }
 
+function Write-FileIfAbsent([string]$Path, [string]$Content, [string]$Encoding) {
+    # A bootstrap must never replace a file the checkout already carries:
+    # .gitignore, ruff.toml and tools\*.cmd are tracked, and a stub over them is
+    # then swept into the "checkpoint" commit below. Every payload is ASCII, so
+    # the encoding is never UTF8 (a BOM on Windows PowerShell 5.1).
+    if (Test-Path -LiteralPath $Path) {
+        Write-Host "    kept existing $Path"
+        return
+    }
+    $Content | Set-Content -LiteralPath $Path -Encoding $Encoding
+}
+
 function Install-WingetPackage([string]$Id) {
     Write-Step "Installing or upgrading $Id"
     winget install --id $Id -e --source winget --silent --accept-package-agreements --accept-source-agreements
@@ -113,7 +125,7 @@ foreach ($dir in $dirs) {
 }
 
 Write-Step "Writing requirements-dev.txt"
-@'
+Write-FileIfAbsent -Path (Join-Path $Root "requirements-dev.txt") -Encoding ASCII -Content @'
 anthropic
 httpx
 orjson
@@ -124,10 +136,10 @@ mss
 watchfiles
 pydantic-settings
 ruff
-'@ | Set-Content -LiteralPath (Join-Path $Root "requirements-dev.txt") -Encoding UTF8
+'@
 
 Write-Step "Writing ruff.toml"
-@'
+Write-FileIfAbsent -Path (Join-Path $Root "ruff.toml") -Encoding ASCII -Content @'
 target-version = "py39"
 line-length = 100
 
@@ -139,10 +151,10 @@ ignore = ["E501"]
 quote-style = "double"
 indent-style = "space"
 line-ending = "lf"
-'@ | Set-Content -LiteralPath (Join-Path $Root "ruff.toml") -Encoding UTF8
+'@
 
 Write-Step "Writing .gitignore"
-@'
+Write-FileIfAbsent -Path (Join-Path $Root ".gitignore") -Encoding ASCII -Content @'
 # Secrets
 API-Key-Claude.txt
 .env
@@ -177,10 +189,10 @@ data/match_history.db
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-'@ | Set-Content -LiteralPath (Join-Path $Root ".gitignore") -Encoding UTF8
+'@
 
 Write-Step "Writing tools\\preflight.cmd"
-@'
+Write-FileIfAbsent -Path (Join-Path $Root "tools\preflight.cmd") -Encoding ASCII -Content @'
 @echo off
 setlocal
 cd /d "%~dp0.."
@@ -189,25 +201,25 @@ if errorlevel 1 exit /b 1
 .\.venv\Scripts\python.exe -m compileall -q .
 if errorlevel 1 exit /b 1
 echo PRECHECK OK
-'@ | Set-Content -LiteralPath (Join-Path $Root "tools\preflight.cmd") -Encoding ASCII
+'@
 
 Write-Step "Writing tools\\snapshot.cmd"
-@'
+Write-FileIfAbsent -Path (Join-Path $Root "tools\snapshot.cmd") -Encoding ASCII -Content @'
 @echo off
 setlocal
 cd /d "%~dp0.."
 for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd_HH-mm-ss"') do set TS=%%I
 git add -A
 git commit --allow-empty -m "checkpoint %TS%"
-'@ | Set-Content -LiteralPath (Join-Path $Root "tools\snapshot.cmd") -Encoding ASCII
+'@
 
 Write-Step "Writing tools\\rollback_last.cmd"
-@'
+Write-FileIfAbsent -Path (Join-Path $Root "tools\rollback_last.cmd") -Encoding ASCII -Content @'
 @echo off
 setlocal
 cd /d "%~dp0.."
 git reset --hard HEAD~1
-'@ | Set-Content -LiteralPath (Join-Path $Root "tools\rollback_last.cmd") -Encoding ASCII
+'@
 
 Write-Step "Initializing git repository"
 $git = Find-Git
