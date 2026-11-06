@@ -1406,11 +1406,15 @@ _SINKFN = "sinkfn:"
 def _def_locals(fn):
     """RM-1563: the names def `fn` binds as its own locals - a plain-name
     store, a for / with / walrus / except / import / match target, or a
-    nested def or class name, at the def's own level - minus its parameters
-    and every name declared `global` or `nonlocal` anywhere inside it.
+    nested def or class name, at the def's own level - minus every name
+    declared `global` or `nonlocal` anywhere inside it.
     Nested defs, classes, lambdas and comprehensions are not entered, and a
     name declared in a nested scope is never counted local: both keep a
-    binding flowing out, the safe side. Kept per scan, like `_scope_names`."""
+    binding flowing out, the safe side. Kept per scan, like `_scope_names`.
+    RM-1788: a parameter is local too, unless the def may MUTATE the object
+    it names (`_mutated_names`): that taint reaches the caller's object, which
+    the scan follows by spelling (`self.q.append(url)` taints `self` for the
+    next method). A re-binding (`m = url`, `p = log.info`) stays inside."""
     hit = _LOCALS_CACHE.get(id(fn))
     if hit is not None and hit[0] is fn:
         return hit[1]
@@ -1437,9 +1441,33 @@ def _def_locals(fn):
     declared = {name for node in ast.walk(fn)
                 if isinstance(node, (ast.Global, ast.Nonlocal)) for name in node.names}
     params = {name for name, _ in _param_specs(fn)}
-    names = frozenset(found - declared - params)
+    names = frozenset((found | params) - declared - (params & _mutated_names(fn)))
     _LOCALS_CACHE[id(fn)] = (fn, names)
     return names
+
+
+def _mutated_names(fn):
+    """RM-1788: every name the scan may taint inside `fn` (nested scopes
+    included) WITHOUT re-binding it: any name in an attribute or element
+    store target (`m.x = v`, `q[m] = v`, the index included, as
+    `_bind_names` taints it), in the receiver of a `_MUTATORS` call
+    (`q[m].append(v)`), or the plain-name target of an augmented assignment,
+    which changes a list or set in place (`m += [v]`, `m |= {v}`)."""
+    found = set()
+    for node in ast.walk(fn):
+        if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+            found.add(node.target.id)
+            continue
+        if (isinstance(node, (ast.Attribute, ast.Subscript))
+                and isinstance(node.ctx, ast.Store)):
+            target = node
+        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr in _MUTATORS):
+            target = node.func.value
+        else:
+            continue
+        found.update(sub.id for sub in ast.walk(target) if isinstance(sub, ast.Name))
+    return found
 
 
 _LOCALS_CACHE = {}
@@ -2179,6 +2207,7 @@ class _Flow:
                 # it stays inside (`def g(): p = log.info` leaves the
                 # enclosing `p` alone). Only the body's additions are
                 # dropped: the enclosing state is kept whole by the union.
+                # RM-1788: so is a parameter it never mutates.
                 flowed = _drop_locals(flowed, _def_locals(stmt))
             state = state | flowed
             if hands_back and not isinstance(stmt, ast.ClassDef):
@@ -3551,6 +3580,61 @@ _CHECKER_SAMPLES = (
     ("parameter mutated, then re-bound, inside a nested def",
      "def f(url, q):\n    def g(q):\n        q.append(url)\n        q = []\n    g(q)\n"
      "    raise E(q[0])\n", True),
+    # RM-1788: a parameter is local to its def, so what the body binds to
+    # it by RE-BINDING the name does not reach the enclosing scope's name of
+    # the same spelling. Only a parameter the body may mutate (an attribute
+    # or element store, a `_MUTATORS` call or an augmented assignment,
+    # anywhere in the def) keeps
+    # its taint flowing out, as the object a caller passed in.
+    ("parameter re-bound to the value does not flow out",
+     "def g(m):\n    m = url\ndef f(m):\n    raise E(m)\n", False),
+    ("parameter re-bound to a logging function does not flow out",
+     "def g(p):\n    p = log.info\ndef f(url, p):\n    p(url)\n", False),
+    ("parameter re-bound to a logger object does not flow out",
+     "def g(p):\n    p = log\ndef f(url, p):\n    p.info(url)\n", False),
+    ("parameter re-bound to a wrapper does not flow out",
+     "def h(x):\n    log.info(x)\ndef g(p):\n    p = h\ndef f(url, p):\n    p(url)\n",
+     False),
+    ("method parameter re-bound does not reach a later method",
+     "class C:\n    def a(self, m, url):\n        m = url\n    def b(self, m):\n"
+     "        raise E(m)\n", False),
+    ("parameter re-bound by a for target does not flow out",
+     "def g(m):\n    for m in (url,):\n        pass\ndef f(m):\n    raise E(m)\n", False),
+    ("parameter re-bound by a with target does not flow out",
+     "def g(m):\n    with Opn(url) as m:\n        pass\ndef f(m):\n    raise E(m)\n", False),
+    ("parameter re-bound by a walrus does not flow out",
+     "def g(m):\n    (m := url)\ndef f(m):\n    raise E(m)\n", False),
+    ("parameter re-bound, then a non-mutator method call, does not flow out",
+     "def g(m):\n    m = url\n    m.strip()\ndef f(m):\n    raise E(m)\n", False),
+    # ... and every way the body may mutate the caller's object still flows.
+    ("parameter attribute stored at module level reaches a later def",
+     "def g(m):\n    m.x = url\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter element stored at module level reaches a later def",
+     "def g(m):\n    m[0] = url\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter filled by a mutator at module level reaches a later def",
+     "def g(m):\n    m.append(url)\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter mutated by a closure reaches a later def",
+     "def g(m):\n    def h():\n        m.append(url)\n    h()\ndef f(m):\n    raise E(m)\n",
+     True),
+    ("parameter used as the index of a filled element reaches a later def",
+     "def g(m, q):\n    q[m].append(url)\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter used as the index of an element store reaches a later def",
+     "def g(m, q):\n    q[m] = url\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter extended in place by += reaches a later def",
+     "def g(m):\n    m += [url]\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter updated in place by |= reaches a later def",
+     "def g(m):\n    m |= {url}\ndef f(m):\n    raise E(m)\n", True),
+    ("parameter extended in place by += inside a nested def",
+     "def f(url, q):\n    def g(q):\n        q += [url]\n    g(q)\n    raise E(q[0])\n",
+     True),
+    ("method parameter extended in place by += reaches a later method",
+     "class C:\n    def a(self, q, url):\n        q += [url]\n    def b(self, q):\n"
+     "        raise E(q)\n", True),
+    ("parameter re-bound and also mutated keeps flowing out",
+     "def g(m):\n    m = url\n    m.x = 1\ndef f(m):\n    raise E(m)\n", True),
+    ("method attribute store still taints self for a later method",
+     "class C:\n    def a(self, url):\n        self.q.append(url)\n    def b(self):\n"
+     "        log.info(self.q)\n", True),
     ("attribute alias stored beside a local of the same name",
      "class C:\n    def __init__(self):\n        p = 1\n        self.p = log.info\n"
      "    def m(self, url):\n        self.p(url)\n", True),
