@@ -73,6 +73,25 @@
   font-size: var(--fs-xs, 16px);
   color: var(--text-faint, #9ca3af);
 }
+/* RM-1778: a row is label | bar | value with fixed 104 + 128 px side
+ * columns, so from about 400 px down the bar shrank to a sliver (28 px at
+ * 400, its 2 px border at 360 and 320) and the value ran past the pane
+ * at 360 and 320. At 480 and under the label and
+ * value share the first line and the bar fills the second. The bar has
+ * no text, so the reading order (label, value) is unchanged. */
+@media (max-width: 480px) {
+  #bi-snowball-mount .se-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "label val" "track track";
+    column-gap: var(--space-2, 8px);
+    row-gap: var(--space-1, 4px);
+    align-items: center;
+  }
+  #bi-snowball-mount .se-label { grid-area: label; text-align: left; }
+  #bi-snowball-mount .se-val { grid-area: val; text-align: right; }
+  #bi-snowball-mount .se-track { grid-area: track; }
+}
 #bi-snowball-mount .se-caption {
   margin-top: var(--space-4, 16px);
   font-size: var(--fs-xs, 16px);

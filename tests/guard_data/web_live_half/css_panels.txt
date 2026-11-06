@@ -25,7 +25,7 @@ f17a75edbf48a36b44fc4754ef9f68c95c2a3e5e987efb48f0a35c2f0344e2e8  web/css/panels
 
 7d16b465b9bc89101c26a528382473e7686d3cfd1600ac9b338bd532ffb00228  web/css/panels/cc_conditional_pressure.css
 
-afa75643cedced5e98b9815ebf541deb1e4841d984120756cd825a3428ea5195  web/css/panels/champ_benchmarks.css
+492106802f20ee57498f44b8faa6c581e6dac17615be8e20e22ce21609e08c6b  web/css/panels/champ_benchmarks.css
 
 4b6656bf0b091637cb0b1d42f5cfa844ecafa3831a7f812bc50c645d919f70bf  web/css/panels/coach_choices.css
 
@@ -53,7 +53,7 @@ eba52bbd85e885940d71506b0d1495f46d1cf63a87bb976863e78944e8f36da0  web/css/panels
 
 c821d26812fc587f8f7552032be97a5bcbf8341fa412db19659ef80c5d8f07e2  web/css/panels/ds_sweep.css
 
-16fe566671bcf4479156bd69984b03d7d192132a3fb52999b1e0450b67adbf4d  web/css/panels/duration_winrate.css
+6691182fcf6b637548ff589113d7cadaef84c98f99eec2b17465ec786e91f497  web/css/panels/duration_winrate.css
 
 b8c3d0090365363a16ae6fd974293a2fbc7c7755055cb48d80a987d400a39922  web/css/panels/grid.css
 
@@ -75,7 +75,7 @@ ea7fba8356634592871a528a572a3e9cfa5197cc874c9d661bbd79f074174379  web/css/panels
 
 93d4512916f085a4f72fa9c4a71d39e37d3143eba8fd7d3585eaeb4b2937179d  web/css/panels/objective_gauges.css
 
-bcf7b317c9749a7165c169993839f36b60dd2dac05b87d598fb2323c4218add4  web/css/panels/op_score.css
+2065070bacd9225aff8ccee0d25932458cdaf3c6a01a5628591d34e5dd4a9f89  web/css/panels/op_score.css
 
 d76c3062504d3d09a25a845373a5cf86b102e4bbf85d9405719a171706008271  web/css/panels/ops_panels.css
 
@@ -85,7 +85,7 @@ a5fbec21630c7e2d4d422f8e24e77e59a08af3450b8a609734ca98a87c5f0c24  web/css/panels
 
 c75559a0d3af36d41849872deb4059c7b052631d0fb041cb4f0ce9960b6d9fc9  web/css/panels/patch_impact.css
 
-fd67aab6b396f029003e7375fe139de995089e1e85aa4b6f1238cc5ee27f15cd  web/css/panels/perf_curve.css
+52cfb92b32abb7e75a35057f72d343e87a18c968b7c26b9c3971f85ec9366179  web/css/panels/perf_curve.css
 
 cf050723dde73c50e405ab84c0148fa91a86854169b82d7471cb2f074bcea5ef  web/css/panels/personal_build.css
 
@@ -115,7 +115,7 @@ be0085f4552fabac1f772b510ddf636a3b1b974b2ed52b3ac6fc3c309d0e19ea  web/css/panels
 
 c94f37c307efd26cc43c9fd0afc643eb69bb164fb550886dae3b5a1d33099ca9  web/css/panels/session_hygiene.css
 
-48f9d07bcd347204e6ae868546ea2b1fbc9357fd86217fb6f80490f7a00fa14d  web/css/panels/snowball_elasticity.css
+c531f35f29a652c066890340cb1744798968c1e2c8bc5597c6e8f7d95c8febbc  web/css/panels/snowball_elasticity.css
 
 67df835d80f7021bb0fde8ee9d44c91bcb11b1023533eb09ac7d2999b392ece1  web/css/panels/spike_curve.css
 

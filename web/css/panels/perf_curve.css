@@ -11,9 +11,14 @@
   align-items: center;
   margin-bottom: var(--space-4, 16px);
 }
+/* RM-1778: the rows wrap, so at 360 and under ARENA drops to a second
+ * line instead of running past the pane (13 px at 360, 53 at 320) and
+ * scrolling the view.
+ * Guard: tests/snapshot_panels/test_build_insights_chart_tabs_narrow.py. */
 #bi-flow-mount .pf-modes,
 #bi-flow-mount .pf-metrics {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2, 8px);
 }
 /* RM-1083: the selected mode / metric button drew the same --surface-3 fill as its

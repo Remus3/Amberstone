@@ -3,8 +3,12 @@
  * v2.1; ASCII only; no hardcoded px below --fs-xs; palette tokens, no raw hex
  * where a token exists. */
 
+/* RM-1778: the row wraps, so at 360 and under ARENA drops to a second
+ * line instead of running past the pane and scrolling the view. Guard:
+ * tests/snapshot_panels/test_build_insights_chart_tabs_narrow.py. */
 #bi-bench-mount .cb-modes {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2, 8px);
   margin-bottom: var(--space-4, 16px);
 }

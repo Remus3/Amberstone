@@ -11,8 +11,12 @@
   gap: var(--space-2, 8px);
   margin-bottom: var(--space-4, 16px);
 }
+/* RM-1778: the row wraps, so at 360 and under ARENA drops to a second
+ * line instead of running past the pane and scrolling the view. Guard:
+ * tests/snapshot_panels/test_build_insights_chart_tabs_narrow.py. */
 #bi-duration-mount .dw-modes {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2, 8px);
 }
 /* RM-1083: the selected mode button drew the same --surface-3 fill as its
@@ -87,6 +91,25 @@
   font-size: var(--fs-xs, 16px);
   color: var(--text-faint, #9ca3af);
 }
+/* RM-1778: a row is label | bar | value with fixed 88 + 116 px side
+ * columns, so from about 400 px down the bar shrank to a sliver (56 px at
+ * 400, 16 at 360, its 2 px border at 320) and the value ran past the pane
+ * at 320. At 480 and under the
+ * label and value share the first line and the bar fills the second. The
+ * bar has no text, so the reading order (label, value) is unchanged. */
+@media (max-width: 480px) {
+  #bi-duration-mount .dw-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "label val" "track track";
+    column-gap: var(--space-2, 8px);
+    row-gap: var(--space-1, 4px);
+    align-items: center;
+  }
+  #bi-duration-mount .dw-label { grid-area: label; text-align: left; }
+  #bi-duration-mount .dw-val { grid-area: val; text-align: right; }
+  #bi-duration-mount .dw-track { grid-area: track; }
+}
 #bi-duration-mount .dw-caption {
   margin-top: var(--space-4, 16px);
   font-size: var(--fs-xs, 16px);
@@ -112,14 +135,22 @@
  * They now name --surface-3 and --text, the tokens this comment already
  * pointed at. Their fallbacks are deliberately KEPT - stripping them would
  * move this file off its ratchet pin, and the pin is an exact match. */
+/* RM-1778: the picker (a 13em input plus the ALL button, 300 px) ran
+ * past the pane at 400, 360 and 320. It may now shrink to its line, and the
+ * input gives way first; wherever its line has room (every width above
+ * 480 px) it keeps its 13em. */
 #bi-duration-mount .dw-champ {
   display: flex;
   align-items: center;
   gap: var(--space-2, 8px);
+  min-width: 0;
+  max-width: 100%;
 }
 #bi-duration-mount .dw-champ-input {
   min-height: var(--hit-min, 42px);
   width: 13em;
+  flex: 0 1 13em;
+  min-width: 0;
   padding: var(--space-2, 8px) var(--space-3, 12px);
   font-size: var(--fs-sm, 18px);
   color: var(--text);
