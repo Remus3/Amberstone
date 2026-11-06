@@ -100,9 +100,12 @@ class CircuitBreaker:
 
     def record_restart(self) -> bool:
         now = time.monotonic()
-        if self.tripped and self._trip_time is not None:
-            if now - self._trip_time >= self.cooldown_s:
-                self.reset()
+        if (
+            self.tripped
+            and self._trip_time is not None
+            and now - self._trip_time >= self.cooldown_s
+        ):
+            self.reset()
         if self.tripped:
             return False
         self._restart_times = [t for t in self._restart_times if now - t < self.window_s]
@@ -827,19 +830,17 @@ class SelfMonitor:
 
         # -- 8. Subsystem checks (app confirmed running, not booting) -----------------
 
-        if "last_state_provider_ok" in payload:
-            if not payload["last_state_provider_ok"]:
-                self._worker_dead_since = None
-                return "unhealthy", "last_state_provider_ok=False"
+        if "last_state_provider_ok" in payload and not payload["last_state_provider_ok"]:
+            self._worker_dead_since = None
+            return "unhealthy", "last_state_provider_ok=False"
 
-        if "ui_loop_alive" in payload:
-            if not payload["ui_loop_alive"]:
-                age_note = (
-                    " pulse_age=" + str(payload.get("ui_pulse_age_s")) + "s"
-                    if "ui_pulse_age_s" in payload else ""
-                )
-                self._worker_dead_since = None
-                return "unhealthy", "ui_loop_alive=False" + age_note
+        if "ui_loop_alive" in payload and not payload["ui_loop_alive"]:
+            age_note = (
+                " pulse_age=" + str(payload.get("ui_pulse_age_s")) + "s"
+                if "ui_pulse_age_s" in payload else ""
+            )
+            self._worker_dead_since = None
+            return "unhealthy", "ui_loop_alive=False" + age_note
 
         if "game_poll_worker_alive" in payload:
             worker_alive = bool(payload["game_poll_worker_alive"])

@@ -579,9 +579,11 @@ def endgame_boots_swap_target(champion, enemy_champs, owned_items):
     # 5. Default: replace boots with a defensive (Banshee's Veil for AP threats,
     #    Guardian Angel for general survivability).
     enemy_str = " ".join(enemy_champs or []).lower()
-    if any(c in enemy_str for c in ("syndra", "ahri", "veigar", "ekko", "zoe")):
-        if "banshee's veil" not in owned_set:
-            return ("Banshee's Veil", "AP burst threats, default defensive")
+    if (
+        any(c in enemy_str for c in ("syndra", "ahri", "veigar", "ekko", "zoe"))
+        and "banshee's veil" not in owned_set
+    ):
+        return ("Banshee's Veil", "AP burst threats, default defensive")
     if "guardian angel" not in owned_set:
         return ("Guardian Angel", "default endgame survivability")
     return (None, "no clear swap target")

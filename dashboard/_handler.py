@@ -209,9 +209,8 @@ def _cors_allowed_origin(origin: str) -> str | None:
     if host in _CORS_LOOPBACK_HOSTS:
         return origin
     allow = os.environ.get("RC_CORS_ALLOW_ORIGINS", "")
-    if allow:
-        if origin in {o.strip() for o in allow.split(",") if o.strip()}:
-            return origin
+    if allow and origin in {o.strip() for o in allow.split(",") if o.strip()}:
+        return origin
     return None
 
 

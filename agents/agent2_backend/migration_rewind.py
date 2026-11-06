@@ -171,15 +171,17 @@ def _insert_events(
         et = e["event_type"]
         # Relevance filter - keep events involving tracked player, plus team macro events.
         relevant = False
-        if tracked_participant_id is not None:
-            if e["participant_id"] == tracked_participant_id or (
+        if tracked_participant_id is not None and (
+            e["participant_id"] == tracked_participant_id
+            or (
                 et == "CHAMPION_KILL"
                 and (
                     e["killer_id"] == tracked_participant_id
                     or e["victim_id"] == tracked_participant_id
                 )
-            ):
-                relevant = True
+            )
+        ):
+            relevant = True
         if et in ("ELITE_MONSTER_KILL", "BUILDING_KILL"):
             relevant = True
         if not relevant:

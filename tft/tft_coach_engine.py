@@ -724,9 +724,8 @@ def _parse_response(text: str, *, gods: bool | None = None) -> dict:
 
     for _ek in ["econ", "rolldown", "upgrade"]:
         _ev = fields.get(_ek, "")
-        if isinstance(_ev, str):
-            if "level 9" in _ev.lower() and _stage < 5:
-                fields[_ek] = _ev.replace("level 9", "hold").replace("Level 9", "hold").replace("LEVEL 9", "hold")
+        if isinstance(_ev, str) and "level 9" in _ev.lower() and _stage < 5:
+            fields[_ek] = _ev.replace("level 9", "hold").replace("Level 9", "hold").replace("LEVEL 9", "hold")
 
     _action = fields.get("action", "").upper()
     if "LEVEL 9" in _action:

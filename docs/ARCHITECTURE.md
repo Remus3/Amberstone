@@ -356,15 +356,15 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 2.4 | 2026-05-09 | `tools/build_portable.py:75` | vision server entrypoint shim (real code in vision_server/) |
 | 7 | 2026-05-09 | `scripts/precommit_msg_check.py:4` | make Conventional Commits subject lines mechanical |
 | 7 | 2026-05-09 | `scripts/wakeup_prune.py:4` | automate /done section 6c WAKEUP_NOTES archival |
-| 0.13 | - | `ops/rc_self_monitor.py:198` | bounded bootstrap window. |
-| 0.3 | - | `ops/rc_self_monitor.py:237` | monotonic timestamp when worker first seen dead (fix 3) |
+| 0.13 | - | `ops/rc_self_monitor.py:201` | bounded bootstrap window. |
+| 0.3 | - | `ops/rc_self_monitor.py:240` | monotonic timestamp when worker first seen dead (fix 3) |
 | 0.7 | - | `core/metrics_cache.py:439` | supervisor_state added to status.json; tolerate absence in older files |
-| 0.9 | - | `ops/rc_self_monitor.py:339` | _check_health() returns a (state, detail) tuple |
-| 0.9 | - | `ops/rc_self_monitor.py:547` | _check_health() returns 3-value state string instead of plain bool |
+| 0.9 | - | `ops/rc_self_monitor.py:342` | _check_health() returns a (state, detail) tuple |
+| 0.9 | - | `ops/rc_self_monitor.py:550` | _check_health() returns 3-value state string instead of plain bool |
 | 1 step 3 | - | `game_reader/snapshot_normalizer.py:1515` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:288` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
-| 3 step 1.1 | - | `tft/tft_coach_engine.py:1048` | write TFT coaching timestamp only after payload write succeeds |
+| 3 step 1.1 | - | `tft/tft_coach_engine.py:1047` | write TFT coaching timestamp only after payload write succeeds |
 | 7 P2 | - | `tft/tft_live_analysis.py:432` | C - clear stale choices on augment-select force scan |
 
 <!-- phasejournal:end -->
