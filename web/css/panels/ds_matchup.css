@@ -208,7 +208,11 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
+/* RM-1768: the list is the query container for the narrow row below. It
+ * is always a stretched block in its card, so inline-size containment never
+ * collapses it (its width never came from its content). */
 .dsm-grid-list {
+  container: dsm-grid / inline-size;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -263,6 +267,29 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: rgba(255, 255, 255, 0.75);
+}
+
+/* RM-1768: the one-line row needs about 340 px (216 px of fixed tracks,
+ * three gaps, padding, the rule and a 10-character name, _shortName). Under
+ * that the champion track was squeezed to 0 px, so `overflow-wrap: anywhere`
+ * stacked the name one letter per line (a 200 px row) and the BUILD pane's
+ * overflow: hidden cut the verdict and the swing (measured at 768 / 640 /
+ * 480 px windows). A narrower list keeps the row whole on two lines: role +
+ * champion, then verdict + swing. The switch is width-driven only, so a row
+ * is the same height pending and landed. Floor: whole down to a 148 px list. */
+@container dsm-grid (width < 360px) {
+  .dsm-grid-cell {
+    grid-template-columns: 2.5em minmax(0, 1fr) 3.5em;
+    grid-template-areas:
+      "role champ champ"
+      "verdict verdict swing";
+    row-gap: var(--space-1);
+  }
+
+  .dsm-grid-role { grid-area: role; }
+  .dsm-grid-champ { grid-area: champ; }
+  .dsm-grid-verdict { grid-area: verdict; }
+  .dsm-grid-swing { grid-area: swing; }
 }
 
 /* The role-matched laner - the row the headline card above is describing.

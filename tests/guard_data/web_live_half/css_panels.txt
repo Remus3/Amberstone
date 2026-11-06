@@ -39,7 +39,7 @@ b392fbf15143a94c6cd8b9e3f2a9a5c6908db5c3c1d6107573882e76dd575118  web/css/panels
 
 e87930f12710ac236d301cb8b25c87d45dbb5597ac2a926fc1003a46d0de64e7  web/css/panels/ds_knobs.css
 
-76dd1e70b341df66a0642eabcaa292923936f4bc341384f899e887e687f1ef8a  web/css/panels/ds_matchup.css
+63d9b6595fc63292154ebd040886cc33a9555f8e4c836a67c693e59993fca214  web/css/panels/ds_matchup.css
 
 eeadcd295dbc4f939bfaf5d7ec512da71d46912eed7c236307829213b475ef79  web/css/panels/ds_profile.css
 
