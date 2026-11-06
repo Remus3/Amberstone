@@ -17,6 +17,7 @@ import pytest
 from tests import guard_data
 from tests.guard_data import GuardDataError, atomic_write, web_live_half
 from tests.test_atomic_write_guard_rm258_rm261 import (
+    _AUDIT_UNCLASSIFIED,
     _EXCLUDED_PREFIXES,
     _RUNTIME_TOOLS,
     _TOOLS_UNCLASSIFIED,
@@ -235,6 +236,7 @@ def test_atomic_guard_reads_the_real_rows():
     assert real.sanctioned == SANCTIONED
     assert real.runtime_tools == _RUNTIME_TOOLS
     assert real.tools_unclassified == _TOOLS_UNCLASSIFIED
+    assert real.audit_unclassified == _AUDIT_UNCLASSIFIED
     assert real.excluded_prefixes == _EXCLUDED_PREFIXES
     assert ("core/polled_json.py", "_replace_with_retry") in SANCTIONED
     assert ("ops/launcher/service_host.py", "HostLog.write") in SANCTIONED
@@ -292,6 +294,14 @@ def test_atomic_tools_unclassified_may_retire_with_its_area(tmp_path):
     (copy / "tools_unclassified.py").unlink()
     areas = {k: v for k, v in atomic_write.AREAS.items() if k != "tools_unclassified"}
     assert atomic_write.load(copy, areas=areas).tools_unclassified == frozenset()
+
+
+def test_atomic_audit_unclassified_may_retire_with_its_area(tmp_path):
+    """Like tools_unclassified it only shrinks: the emptied baseline is removed."""
+    copy = _copy(tmp_path, "atomic_write")
+    (copy / "audit_unclassified.py").unlink()
+    areas = {k: v for k, v in atomic_write.AREAS.items() if k != "audit_unclassified"}
+    assert atomic_write.load(copy, areas=areas).audit_unclassified == frozenset()
 
 
 # The CI impact selector must still run a guard when only its data changes.
