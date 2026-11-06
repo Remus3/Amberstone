@@ -37,6 +37,17 @@ without writing partial calibration entries.
 Empty champion string returns ``None`` too - no point dispatching for an
 unknown champion. The dispatcher would default to ``"carry"`` archetype +
 fail at the engine's champion lookup anyway.
+
+Input boundary (true-audit s144 cycle 168): every coach feeds this helper
+values read from the Live Client and from the DS HTTP body, so it sanitizes
+both sides instead of trusting them. A non-finite or junk enemy stat reads as
+the 0.0 "unknown" default; a one-damage-type comp keeps its 0.0 share (the
+old ``x or 0.5`` read turned an all-AD comp into a 1.0 / 0.5 pair the client
+scaled to 0.667 / 0.333); a junk caster HP is "no signal"; a junk
+cost_ceiling / timeout is dropped rather than sinking the dispatch; items
+and augments are materialized ONCE so the ordered-build planner sees the same
+list the flat ranking did; and a non-dict engine body, a non-list ``ranked``
+or a non-dict row never raises past the ``None`` contract.
 """
 from __future__ import annotations
 
@@ -102,6 +113,84 @@ class CoachDispatchResult:
     build_order: object = None
 
 
+def _finite(value: object) -> Optional[float]:
+    """``value`` as a finite float, else None (bools, NaN, inf and junk)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _stat(stats: object, name: str) -> float:
+    """One EnemyStats target field, 0.0 ("unknown") when absent or junk.
+
+    The old ``float(x or 0.0)`` read let a NaN through (NaN is truthy) to the
+    engine body and let a non-numeric value sink the whole dispatch.
+    """
+    val = _finite(getattr(stats, name, None))
+    return 0.0 if val is None else val
+
+
+def _shares(stats: object) -> tuple[float, float]:
+    """Enemy (ad_share, ap_share), keeping a real 0.0 side.
+
+    The old ``float(x or 0.5)`` read turned the 0.0 side of a one-damage-type
+    comp into 0.5, so an all-AD comp shipped (1.0, 0.5) and the client scaled
+    it to (0.667, 0.333). A side that is missing, junk or outside [0, 1] is
+    unknown: with one good side the pair is that side plus its complement
+    (the client's own one-side rule); with none, or a pair summing to 0, it
+    carries no split and reads as the neutral 0.5 / 0.5.
+    """
+    def _side(name: str) -> Optional[float]:
+        val = _finite(getattr(stats, name, None))
+        return val if val is not None and 0.0 <= val <= 1.0 else None
+
+    ad, ap = _side("ad_share"), _side("ap_share")
+    if ad is not None and ap is not None:
+        return (ad, ap) if ad + ap > 0.0 else (0.5, 0.5)
+    if ad is not None:
+        return ad, 1.0 - ad
+    if ap is not None:
+        return 1.0 - ap, ap
+    return 0.5, 0.5
+
+
+def _as_list(values: object) -> list:
+    """Materialize ``values`` once: None -> [], a bare str -> [str].
+
+    A generator used to be consumed by the flat ranking, so the ordered-build
+    planner saw no owned items; a bare str was iterated letter by letter.
+    """
+    if values is None:
+        return []
+    if isinstance(values, (str, bytes)):
+        return [values]
+    return list(values)  # type: ignore[call-overload]
+
+
+def _caster_missing_hp(caster_hp: object, caster_hp_max: object) -> float:
+    """R5 self-HP as a missing fraction in [0, 1]; 0.0 = no signal.
+
+    Absent, junk, negative or non-finite HP is no signal: a NaN HP used to
+    slip both clamps and read as 1.0 (near dead), an inf max HP read as 1.0,
+    and an absent current HP with a known max read as 0 HP.
+    """
+    hp = _finite(caster_hp)
+    hp_max = _finite(caster_hp_max)
+    if hp is None or hp_max is None or hp_max <= 0 or hp < 0:
+        return 0.0
+    return max(0.0, min(1.0, 1.0 - hp / hp_max))
+
+
+def _row_gold(row: dict) -> int:
+    """A row's gold as an int, 0 when absent or junk (NaN / inf / text)."""
+    val = _finite(row.get("gold", 0) or 0)
+    return 0 if val is None else int(val)
+
+
 def _row_delta(row: dict, scorer: str) -> float:
     """Extract the scorer's primary delta from a dispatcher row.
 
@@ -121,7 +210,9 @@ def _row_delta(row: dict, scorer: str) -> float:
             val = float(row.get("hybrid_delta_pct", 0.0)) * 100.0
         else:
             val = float(row.get("delta", row.get("delta_dps", 0.0)))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        # OverflowError: an over-long int delta (float(10**400)) used to
+        # raise past every caller instead of degrading this one row.
         return 0.0
     return val if math.isfinite(val) else 0.0
 
@@ -143,10 +234,15 @@ def _build_picks_str(rows: list[dict], scorer: str) -> str:
     unit = _UNIT_SUFFIX.get(scorer, "delta")
     pieces: list[str] = []
     for r in rows:
-        name = r.get("item_name", "?")
-        delta = _row_delta(r, scorer)
-        gold = r.get("gold", 0)
-        pieces.append(f"{name}(+{delta:.0f}{unit},{gold}g)")
+        raw_name = r.get("item_name")
+        # One line per prompt splice: an engine-supplied name never carries
+        # a newline (or any run of whitespace) into the LLM user prompt, and
+        # a non-str / blank name reads as the "?" placeholder.
+        name = " ".join(raw_name.split()) if isinstance(raw_name, str) else ""
+        # Signed once: the old "+{delta}" template rendered a negative row as
+        # "+-5dps"; a delta that rounds to zero reads "+0", never "-0".
+        delta = int(round(_row_delta(r, scorer)))
+        pieces.append(f"{name or '?'}({delta:+d}{unit},{_row_gold(r)}g)")
     return " > ".join(pieces)
 
 
@@ -176,12 +272,9 @@ def _build_display_rows(rows: list[dict], scorer: str) -> list[dict]:
     out: list[dict] = []
     for r in rows:
         delta = _row_delta(r, scorer)
-        try:
-            # Same JSON-boundary guard as _row_delta (audit cycle 10):
-            # int(NaN) raises ValueError, int(inf) raises OverflowError.
-            gold = int(r.get("gold", 0) or 0)
-        except (TypeError, ValueError, OverflowError):
-            gold = 0
+        # Same JSON-boundary guard as _row_delta (audit cycle 10): a NaN /
+        # inf / junk gold degrades this one row to 0, never the block.
+        gold = _row_gold(r)
         out.append({
             "id":        r.get("item_id", ""),
             "name":      r.get("item_name", ""),
@@ -254,7 +347,8 @@ def dispatch_for_coach(
 
     Returns ``None`` on:
       - empty/blank champion
-      - engine unreachable (dispatcher returned ``None``)
+      - engine unreachable (dispatcher returned ``None``) or a body that is
+        not a dict
       - unexpected import/runtime errors (logged at debug)
 
     Caller writes ``picks_str="unavailable"`` and skips calibration logging
@@ -265,6 +359,10 @@ def dispatch_for_coach(
     """
     if not champion or not str(champion).strip():
         return None
+    # The stripped name is the one the archetype lookup and the engine see:
+    # a padded " Ezreal " used to miss the per-champion pick and the engine's
+    # champion lookup alike.
+    champ = str(champion).strip()
 
     # Seam kwargs threaded into the ordered-build planner (see the
     # with_build_order branch below). Built alongside the flat ranking's
@@ -279,30 +377,46 @@ def dispatch_for_coach(
         from core.archetype_picks import get_archetype_for
         from core import daemon_slayer_client as _ds
 
-        pick = get_archetype_for(str(champion))
-        archetype = (pick.get("primary") or "carry").strip().lower() or "carry"
+        pick = get_archetype_for(champ)
+        # A non-dict pick or a non-str primary is a junk store row, not a
+        # reason to drop the whole recommendation: it reads as carry.
+        primary = pick.get("primary") if isinstance(pick, dict) else None
+        archetype = (primary.strip().lower()
+                     if isinstance(primary, str) else "") or "carry"
+
+        # Materialized ONCE: the flat ranking and the ordered-build planner
+        # below read the same lists (a generator used to reach the planner
+        # already consumed).
+        owned = _as_list(item_ids)
+        aug_list = _as_list(augments) or None
+        ad_share, ap_share = _shares(enemy_stats)
+        # A junk / non-positive timeout is dropped (the client default
+        # applies) rather than shipped to the client as NaN.
+        _timeout = _finite(timeout)
+        timeout_s = _timeout if _timeout is not None and _timeout > 0 else None
 
         kwargs: dict = {
-            "champion":              str(champion),
+            "champion":              champ,
             "archetype":             archetype,
             "level":                 int(level),
-            "item_ids":              list(item_ids),
+            "item_ids":              owned,
             "mode":                  str(mode_engine),
-            "target_armor":          float(getattr(enemy_stats, "armor", 0.0) or 0.0),
-            "target_mr":             float(getattr(enemy_stats, "mr", 0.0) or 0.0),
-            "target_max_hp":         float(getattr(enemy_stats, "max_hp", 0.0) or 0.0),
-            "target_bonus_hp":       float(getattr(enemy_stats, "bonus_hp", 0.0) or 0.0),
+            "target_armor":          _stat(enemy_stats, "armor"),
+            "target_mr":             _stat(enemy_stats, "mr"),
+            "target_max_hp":         _stat(enemy_stats, "max_hp"),
+            "target_bonus_hp":       _stat(enemy_stats, "bonus_hp"),
             # EHP-side: enemy damage-type split so the bruiser/tank scorer
             # values armor vs MR by the actual comp (carry/mage/assassin/
             # enchanter branches ignore these). Default 0.5/0.5 when the
-            # EnemyStats predates the field (getattr fallback).
-            "enemy_ad_share":        float(getattr(enemy_stats, "ad_share", 0.5) or 0.5),
-            "enemy_ap_share":        float(getattr(enemy_stats, "ap_share", 0.5) or 0.5),
+            # EnemyStats predates the field or carries junk; a real 0.0 side
+            # (a one-damage-type comp) survives.
+            "enemy_ad_share":        ad_share,
+            "enemy_ap_share":        ap_share,
             "top":                   int(top),
-            "augments":              list(augments) if augments else None,
+            "augments":              aug_list,
         }
-        if timeout is not None:
-            kwargs["timeout"] = float(timeout)
+        if timeout_s is not None:
+            kwargs["timeout"] = timeout_s
 
         # Seam flags: forward only non-default values so a flagless dispatch
         # stays byte-identical to pre-seam behavior (the rank_* helpers emit
@@ -315,7 +429,15 @@ def dispatch_for_coach(
         if prefer_kit_axis_by_win:
             seams["prefer_kit_axis_by_win"] = True
         if cost_ceiling is not None:
-            seams["cost_ceiling"] = int(cost_ceiling)
+            # A junk ceiling (NaN, inf, text, a bool, a negative) is dropped
+            # with a debug line: it used to raise inside this try and sink
+            # the whole dispatch to None ("unavailable").
+            _ceiling = _finite(cost_ceiling)
+            if _ceiling is not None and _ceiling >= 0:
+                seams["cost_ceiling"] = int(_ceiling)
+            else:
+                logger.debug("dispatch_for_coach(%s): junk cost_ceiling %r dropped",
+                             champ, cost_ceiling)
         if prefer_survivability_by_win:
             seams["prefer_survivability_by_win"] = True
         if assume_magic_burst:
@@ -336,17 +458,12 @@ def dispatch_for_coach(
         if apply_mode_modifiers:
             seams["apply_mode_modifiers"] = True
 
-        # R5 self-HP -> caster_missing_hp_pct. Shared guard: absent HP or
-        # hp_max <= 0 yields 0.0 ("no signal", OFF) and is NOT forwarded.
-        try:
-            _hp = float(caster_hp) if caster_hp is not None else 0.0
-            _hp_max = float(caster_hp_max) if caster_hp_max is not None else 0.0
-        except (TypeError, ValueError):
-            _hp, _hp_max = 0.0, 0.0
-        if _hp_max > 0:
-            _missing = max(0.0, min(1.0, 1.0 - _hp / _hp_max))
-            if _missing:
-                seams["caster_missing_hp_pct"] = _missing
+        # R5 self-HP -> caster_missing_hp_pct. Shared guard: absent / junk /
+        # non-finite HP or hp_max <= 0 yields 0.0 ("no signal", OFF) and is
+        # NOT forwarded.
+        _missing = _caster_missing_hp(caster_hp, caster_hp_max)
+        if _missing:
+            seams["caster_missing_hp_pct"] = _missing
 
         kwargs.update(seams)
 
@@ -375,11 +492,17 @@ def dispatch_for_coach(
         logger.debug("dispatch_for_coach(%s, %s) failed: %s", champion, mode_engine, exc)
         return None
 
-    if out is None:
+    # Engine-response boundary: a non-dict body is "engine unavailable"; a
+    # non-list ``ranked`` (a dict would list its keys, a str its letters) is
+    # an empty ranking; a non-dict row is dropped and the good rows kept.
+    # Each used to raise AttributeError past this helper's None contract.
+    if not isinstance(out, dict):
         return None
 
     scorer = str(out.get("scorer") or "dps")
-    rows = list(out.get("ranked") or [])
+    ranked = out.get("ranked")
+    rows = ([r for r in ranked if isinstance(r, dict)]
+            if isinstance(ranked, (list, tuple)) else [])
     result = CoachDispatchResult(
         out=out,
         archetype=archetype,
@@ -400,19 +523,21 @@ def dispatch_for_coach(
         try:
             from core.build_order import plan_build_order
 
+            # Same sanitized values the flat ranking sent, so RANK and PLAN
+            # can never disagree on an input.
             result.build_order = plan_build_order(
-                str(champion),
+                champ,
                 archetype,
-                level=int(level),
-                owned_item_ids=list(item_ids),
-                mode=str(mode_engine),
-                target_armor=float(getattr(enemy_stats, "armor", 0.0) or 0.0),
-                target_mr=float(getattr(enemy_stats, "mr", 0.0) or 0.0),
-                target_max_hp=float(getattr(enemy_stats, "max_hp", 0.0) or 0.0),
-                target_bonus_hp=float(getattr(enemy_stats, "bonus_hp", 0.0) or 0.0),
+                level=kwargs["level"],
+                owned_item_ids=list(owned),
+                mode=kwargs["mode"],
+                target_armor=kwargs["target_armor"],
+                target_mr=kwargs["target_mr"],
+                target_max_hp=kwargs["target_max_hp"],
+                target_bonus_hp=kwargs["target_bonus_hp"],
                 slots=int(build_order_slots),
-                augments=list(augments) if augments else None,
-                timeout=timeout,
+                augments=list(aug_list) if aug_list else None,
+                timeout=timeout_s,
                 # SLICE A defect 2: seams the flat ranking used, splatted
                 # into every planner ranker call. Empty dict -> None so the
                 # no-seam path is byte-identical to the pre-fix call.
