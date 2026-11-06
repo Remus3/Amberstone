@@ -27,9 +27,11 @@ names, every value and the
 name are whole (scrollWidth within clientWidth, the box inside the card) and
 the label of each row is still on screen beside or above its value; at
 1920x920 and 923x1280 the authored one-line layout is pinned by computed
-values.
+values, and on every host each tip row is a 96 px label beside a value track
+that takes the rest of the row, with no fixture tip cut (RM-1657).
 """
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -154,13 +156,16 @@ _AUTHORED_JS = """
   const v = document.getElementById('home-pick-good');
   const row = v.closest('.home-pick-tip-row');
   const champ = document.getElementById('home-coach-pick-champ');
+  const tracks = cs(row).gridTemplateColumns.split(' ').map((x) => parseFloat(x));
   return {
-    rowCols: cs(row).gridTemplateColumns.split(' ')
-      .map((x) => Math.round(parseFloat(x))).join(' '),
+    rowCols: tracks.map((x) => Math.round(x)).join(' '),
     valueWs: cs(v).whiteSpace, valueOverflow: cs(v).textOverflow,
     champWs: cs(champ).whiteSpace,
     cardH: Math.round(document.getElementById('home-coach-pick')
       .getBoundingClientRect().height),
+    tracks, rowW: row.clientWidth, gap: parseFloat(cs(row).columnGap),
+    cut: Array.from(document.querySelectorAll('.home-pick-tip-value'))
+      .filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent),
   };
 }
 """
@@ -174,6 +179,23 @@ _AUTHORED = {
                   "valueOverflow": "ellipsis", "champWs": "nowrap", "cardH": 212},
 }
 
+# RM-1657: at 1920x920 the pick body is `auto 1fr` (home.css
+# .home-coach-pick-body), so the intro column is as wide as its reason line and
+# the tips' value track is the card width minus that line. The line joins its
+# parts with U+00B7 dots, which the RM-1078 stub font (U+0020..U+007E only)
+# leaves to the host's fallback face, so the track is a host fact: CI run
+# 42136608451 read "96 1008" where Windows reads "96 1023". Off Windows that
+# track is not pinned there; the label track is, and on every host the value
+# track takes the rest of the row and no fixture tip is cut. At 923x1280 the
+# body is one column and the track (683) read the same on both.
+_TEXT_SIZED_TRACK = {(1920, 920)}
+
+
+def _pinned(vp, st):
+    if sys.platform == "win32" or vp not in _TEXT_SIZED_TRACK:
+        return st
+    return {**st, "rowCols": st["rowCols"].split(" ")[0]}
+
 
 @pytest.mark.parametrize("vp", list(_AUTHORED), ids=lambda v: f"{v[0]}x{v[1]}")
 def test_the_authored_pick_layout_is_unchanged(mock_server, pw_browser, vp):
@@ -181,7 +203,15 @@ def test_the_authored_pick_layout_is_unchanged(mock_server, pw_browser, vp):
     try:
         _open(page, mock_server, {})
         st = page.evaluate(_AUTHORED_JS)
-        assert st == _AUTHORED[vp], f"{vp}: the authored pick layout moved: {st}"
+        tracks = st["tracks"]
+        assert len(tracks) == 2 and tracks[0] == 96, (
+            f"{vp}: a tip row is not a 96 px label beside its value: {st}")
+        assert abs(tracks[0] + st["gap"] + tracks[1] - st["rowW"]) <= 1, (
+            f"{vp}: the value track does not take the rest of the row: {st}")
+        assert st["cut"] == [], f"{vp}: a fixture tip is cut: {st}"
+        got = {k: st[k] for k in _AUTHORED[vp]}
+        assert _pinned(vp, got) == _pinned(vp, _AUTHORED[vp]), (
+            f"{vp}: the authored pick layout moved: {got}")
     finally:
         page.close()
         ctx.close()

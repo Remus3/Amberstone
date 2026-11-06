@@ -160,6 +160,12 @@ class WikiConsentRedirectHandler(urllib.request.HTTPRedirectHandler):
     wiki. ``newurl`` is already absolute here (urllib joins it before calling
     ``redirect_request``). The refused hop's response is closed, then the
     refusal propagates out of ``open``.
+
+    A HEAD stays a HEAD on the next hop (RM-1657). CPython 3.14 keeps it, but
+    3.12, the CI's interpreter and the README's floor, builds the next hop's
+    Request with no method, so a HEAD status probe (``tools/ds_feed_watch.py``,
+    ``tools/ddragon_mirror_refresh.py``) became a GET that pulled the target's
+    body. Read back on 3.12.10 and 3.14.4.
     """
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -169,7 +175,10 @@ class WikiConsentRedirectHandler(urllib.request.HTTPRedirectHandler):
             if fp is not None:
                 fp.close()
             raise
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and req.get_method() == "HEAD":
+            new.method = "HEAD"
+        return new
 
 
 def open_consented(req: Any, timeout: float, context: Any = None):

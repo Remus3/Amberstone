@@ -211,10 +211,9 @@ def test_a_head_to_a_non_wiki_target_still_resolves(net, origin):
     res = ddr.http_head(f"{base}/to-local")
     assert (res.status, res.body) == (200, b"")
     assert res.headers.get("content-length") == str(len(PNG))
-    # RM-1657: urllib keeps HEAD across a redirect on 3.14.4 and re-sends GET on
-    # the CI's 3.12, so before 3.14 the second verb is the interpreter's.
-    verbs = ("HEAD",) if sys.version_info >= (3, 14) else ("HEAD", "GET")
-    assert hits in [["HEAD /to-local", f"{v} /ok.png"] for v in verbs]
+    # A HEAD stays a HEAD on the redirected hop on every interpreter: the
+    # consent handler keeps it, where CPython 3.12 alone re-sends GET (RM-1657).
+    assert hits == ["HEAD /to-local", "HEAD /ok.png"]
 
 
 # -- the callers ---------------------------------------------------------------------

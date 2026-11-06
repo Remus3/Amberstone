@@ -28,6 +28,7 @@ import json
 import socket
 import sys
 import threading
+import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -187,12 +188,39 @@ def test_a_redirect_to_a_non_wiki_target_still_lands(net, origin):
     assert fw.UrllibHttp().head(f"{base}/x/to-local.js") == 200
     assert fw.UrllibHttp().get(f"{base}/x/to-local.js") == (200, OK_BODY)
     assert net == []
-    # RM-1657: urllib keeps HEAD across a redirect on 3.14.4 and re-sends GET on
-    # the CI's 3.12, so before 3.14 the second verb is the interpreter's.
-    verbs = ("HEAD",) if sys.version_info >= (3, 14) else ("HEAD", "GET")
-    assert hits[0] == "HEAD /x/to-local.js"
-    assert hits[1] in [f"{v} /x/ok.js" for v in verbs]
-    assert hits[2:] == ["GET /x/to-local.js", "GET /x/ok.js"]
+    # A HEAD stays a HEAD on the redirected hop on every interpreter: the
+    # consent handler keeps it, where CPython 3.12 alone re-sends GET (RM-1657).
+    assert hits == ["HEAD /x/to-local.js", "HEAD /x/ok.js",
+                    "GET /x/to-local.js", "GET /x/ok.js"]
+
+
+class _Py312RedirectBase(urllib.request.HTTPRedirectHandler):
+    """The tail of CPython 3.12's ``HTTPRedirectHandler.redirect_request``
+    (read from 3.12.10's Lib/urllib/request.py): the next hop's Request is
+    built with no ``method``, so a HEAD comes back as GET. 3.14's keeps HEAD.
+    Standing in for the base class, it runs the consent handler's own code
+    against the 3.12 shape on whatever interpreter runs this file."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return urllib.request.Request(newurl, headers=dict(req.headers),
+                                      origin_req_host=req.origin_req_host,
+                                      unverifiable=True)
+
+
+class _ConsentOnPy312(wiki_consent.WikiConsentRedirectHandler, _Py312RedirectBase):
+    """MRO: the consent handler, then the 3.12-shaped base, then the stdlib's."""
+
+
+@pytest.mark.parametrize("handler", [wiki_consent.WikiConsentRedirectHandler,
+                                     _ConsentOnPy312], ids=["this-python", "py312-base"])
+@pytest.mark.parametrize("method", ["HEAD", "GET"])
+def test_the_consent_handler_keeps_the_verb_on_the_next_hop(handler, method):
+    """RM-1657: a redirected HEAD probe stayed HEAD on 3.14 and became a GET of
+    the target on 3.12 (the CI's, and the README's floor), pulling its body."""
+    assert _ConsentOnPy312.__mro__[2] is _Py312RedirectBase  # anchor: the shape is in play
+    req = urllib.request.Request("http://127.0.0.1:9/x/a.js", method=method)
+    new = handler().redirect_request(req, None, 302, "Found", {}, "http://127.0.0.1:9/x/b.js")
+    assert (new.full_url, new.get_method()) == ("http://127.0.0.1:9/x/b.js", method)
 
 
 def test_a_missing_chunk_is_still_a_status_not_a_raise(net, origin):

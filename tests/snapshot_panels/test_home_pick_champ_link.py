@@ -28,9 +28,12 @@ to #history and stash the champion for the History focus; the box is at
 least --hit-min tall and no wider than its text; a click beside the name
 does not navigate; after a 20 s tick that changes the pick, focus is still
 on the name and Enter stashes the NEW champion; the card and column heights
-at 1920x920, 923x1280, 640x307 and 320x256 are the pre-fix values.
+at 1920x920, 923x1280, 640x307 and 320x256 are the same with the hit box and
+with it taken off (every host), and are the pre-fix values (Windows, where
+they were measured; RM-1657).
 """
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -201,6 +204,33 @@ _LAYOUT = {
     (320, 256): {"cardH": 390, "metaH": 107, "reasonTop": 168.0},
 }
 
+# RM-1657: the reason line joins "<reason>", "<modes>" and "best <grade>" with a
+# U+00B7 middle dot (web/js/main.js _homeRenderCoach) and the RM-1078 stub font
+# maps only U+0020..U+007E, so those two dots are drawn by the host's own fallback
+# face (Segoe UI on Windows, read with CDP CSS.getPlatformFontsForNode; every
+# other glyph in the card is the stub's). That face's line height sets the
+# reason line: CI run 42136608451 read metaH 61 and reasonTop 87.5 where Windows
+# reads 63 and 86.5, and a card 2 px shorter at 640x307 and 320x256. So the
+# table above pins on Windows, where it was measured, and off Windows only the
+# cardH that CI read equal. The claim itself, that the hit box moves nothing,
+# is measured on every host against the same page with the hit box taken off.
+_HOST_FREE = {_DESKTOP: ("cardH",), _COMPANION: ("cardH",)}
+
+_NO_HIT_BOX = """
+() => {
+  const s = document.createElement('style');
+  s.textContent = '#home-coach-pick-champ'
+    + ' { min-height: 0 !important; margin-block: 0 !important; }';
+  document.head.appendChild(s);
+}
+"""
+
+
+def _pinned(vp, layout):
+    if sys.platform == "win32":
+        return layout
+    return {k: layout[k] for k in _HOST_FREE.get(vp, ())}
+
 
 @pytest.mark.parametrize("vp", list(_LAYOUT), ids=lambda v: f"{v[0]}x{v[1]}")
 def test_the_taller_hit_box_moves_nothing(mock_server, pw_browser, vp):
@@ -208,7 +238,16 @@ def test_the_taller_hit_box_moves_nothing(mock_server, pw_browser, vp):
     try:
         b = page.evaluate(_BOX)
         got = {k: b[k] for k in _LAYOUT[vp]}
-        assert got == _LAYOUT[vp], f"{vp}: the pick card layout moved: {got}"
         assert b["h"] >= b["hit"] - 0.5, b
+        page.evaluate(_NO_HIT_BOX)
+        bare = page.evaluate(_BOX)
+        # Anchor: without the floor the name is one line, shorter than --hit-min,
+        # so here the floor adds height and the negative margin must hand it back.
+        assert bare["h"] < bare["hit"] - 0.5, f"{vp}: the floor adds nothing here: {bare}"
+        without = {k: bare[k] for k in _LAYOUT[vp]}
+        assert got == without, (
+            f"{vp}: the hit box moved the pick card: with it {got}, without {without}")
+        assert _pinned(vp, got) == _pinned(vp, _LAYOUT[vp]), (
+            f"{vp}: the pick card layout moved: {got}")
     finally:
         _close(ctx, page, errors)
