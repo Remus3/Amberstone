@@ -17,10 +17,11 @@ Usage:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_cond_pai
 """
 import json
 import sys
+from pathlib import Path
 
-PATCH = open(r"data/daemon_slayer/current.txt").read().strip()
-D = json.load(open(rf"data/daemon_slayer/{PATCH}/champion_abilities.json"))["data"]
-REG = json.load(open(r"agents/daemon_slayer/champion_block_index.json"))["champions"]
+PATCH = Path(r"data/daemon_slayer/current.txt").read_text().strip()
+D = json.loads(Path(rf"data/daemon_slayer/{PATCH}/champion_abilities.json").read_text())["data"]
+REG = json.loads(Path(r"agents/daemon_slayer/champion_block_index.json").read_text())["champions"]
 
 SCALE_FIELDS = (
     "base", "total_ad_pct", "bonus_ad_pct", "ap_pct",

@@ -21,10 +21,11 @@ Meraki before any registry entry (the s229-s231 lesson).
 Usage:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_execute_prefilter.py
 """
 import json
+from pathlib import Path
 
-PATCH = open(r"data/daemon_slayer/current.txt").read().strip()
-D = json.load(open(rf"data/daemon_slayer/{PATCH}/champion_abilities.json"))["data"]
-REG = json.load(open(r"agents/daemon_slayer/champion_block_index.json"))["champions"]
+PATCH = Path(r"data/daemon_slayer/current.txt").read_text().strip()
+D = json.loads(Path(rf"data/daemon_slayer/{PATCH}/champion_abilities.json").read_text())["data"]
+REG = json.loads(Path(r"agents/daemon_slayer/champion_block_index.json").read_text())["champions"]
 
 HP_FIELDS = ("target_missing_hp_pct", "target_current_hp_pct",
              "target_max_hp_pct")

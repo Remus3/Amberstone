@@ -45,7 +45,8 @@ def main() -> int:
     ok = True
     for rel in PY_FILES:
         h = toks(head_src(rel))
-        w = toks(open(rel, encoding="utf-8").read().replace("\r\n", "\n"))
+        with open(rel, encoding="utf-8") as fh:
+            w = toks(fh.read().replace("\r\n", "\n"))
         if len(h) != len(w):
             print(f"FAIL {rel}: token count {len(h)} -> {len(w)}")
             ok = False

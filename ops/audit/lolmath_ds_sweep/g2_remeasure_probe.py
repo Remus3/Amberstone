@@ -17,16 +17,21 @@ from pathlib import Path
 # a baked-in machine checkout path.
 ROOT = Path(__file__).resolve().parents[3].as_posix()
 PATCH = sys.argv[1] if len(sys.argv) > 1 else "16.12.1"
+
+
+def _load_json(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
 HERE = f"{ROOT}/ops/audit/lolmath_ds_sweep"
 SWEEP = f"{HERE}/lolmath_sweep.json"
 ULT = f"{HERE}/ultimate_sweep.json"
 
-itemj = json.load(open(f"{ROOT}/data/meta_build/ddragon/{PATCH}/item.json", encoding="utf-8"))["data"]
-champj = json.load(open(f"{ROOT}/data/daemon_slayer/{PATCH}/champions.json", encoding="utf-8"))["data"]
-dsraw = json.load(open(f"{ROOT}/data/daemon_slayer/build_orders/{PATCH}/build_orders_sr.json", encoding="utf-8"))
+itemj = _load_json(f"{ROOT}/data/meta_build/ddragon/{PATCH}/item.json")["data"]
+champj = _load_json(f"{ROOT}/data/daemon_slayer/{PATCH}/champions.json")["data"]
+dsraw = _load_json(f"{ROOT}/data/daemon_slayer/build_orders/{PATCH}/build_orders_sr.json")
 ds_engine = dsraw.get("engine_version"); dsbo = dsraw["build_orders"]
-sweep = json.load(open(SWEEP, encoding="utf-8"))
-ult = json.load(open(ULT, encoding="utf-8"))
+sweep = _load_json(SWEEP)
+ult = _load_json(ULT)
 
 name2id = {v.get("name", "").lower(): k for k, v in itemj.items()}
 def iname(i): return itemj.get(str(i), {}).get("name", str(i))

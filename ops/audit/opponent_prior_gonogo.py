@@ -32,7 +32,8 @@ _MIN_ROWS = 30
 
 
 def _load_resist_index():
-    raw = json.loads(open(_ITEMS, encoding="utf-8").read())
+    with open(_ITEMS, encoding="utf-8") as fh:
+        raw = json.load(fh)
     data = raw.get("data", raw)
     out = {}
     for iid, entry in data.items():

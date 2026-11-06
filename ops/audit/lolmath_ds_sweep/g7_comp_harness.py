@@ -46,6 +46,11 @@ from core.polled_json import atomic_write_bytes  # noqa: E402
 ROOT = _REPO.as_posix()
 HERE = f"{ROOT}/ops/audit/lolmath_ds_sweep"
 
+
+def _load_json(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
 # lolmath's constant default enemy comp (gen_md.py methodology: 4 squishy + 1 tank).
 # Durability class per member is the BUILD-relevant durability, not the champ's
 # role label (Thresh is a support but carries low resists early -> squishy for the
@@ -141,12 +146,12 @@ def _norm(s: str) -> str:
 
 
 def main(patch: str = "16.12.1") -> None:
-    itemj = json.load(open(f"{ROOT}/data/meta_build/ddragon/{patch}/item.json", encoding="utf-8"))["data"]
-    dsraw = json.load(open(f"{ROOT}/data/daemon_slayer/build_orders/{patch}/build_orders_sr.json", encoding="utf-8"))
+    itemj = _load_json(f"{ROOT}/data/meta_build/ddragon/{patch}/item.json")["data"]
+    dsraw = _load_json(f"{ROOT}/data/daemon_slayer/build_orders/{patch}/build_orders_sr.json")
     ds_engine = dsraw.get("engine_version")
     dsbo = dsraw["build_orders"]
-    sweep = json.load(open(f"{HERE}/lolmath_sweep.json", encoding="utf-8"))
-    ult = json.load(open(f"{HERE}/ultimate_sweep.json", encoding="utf-8"))
+    sweep = _load_json(f"{HERE}/lolmath_sweep.json")
+    ult = _load_json(f"{HERE}/ultimate_sweep.json")
 
     def iname(i: str) -> str:
         return itemj.get(str(i), {}).get("name", str(i))

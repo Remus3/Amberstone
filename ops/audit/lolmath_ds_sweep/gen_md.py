@@ -13,12 +13,18 @@ SWEEP = str(_DESKTOP / "lolmath_ds_sweep" / "lolmath_sweep.json")
 ULT = str(_DESKTOP / "lolmath_ds_sweep" / "ultimate_sweep.json")
 OUT = str(_DESKTOP / "LOLMATH_VS_DS_SWEEP.md")
 
-itemj = json.load(open(f"{ROOT}/data/meta_build/ddragon/{PATCH}/item.json", encoding="utf-8"))["data"]
-champj = json.load(open(f"{ROOT}/data/daemon_slayer/{PATCH}/champions.json", encoding="utf-8"))["data"]
-dsraw = json.load(open(f"{ROOT}/data/daemon_slayer/build_orders/{PATCH}/build_orders_sr.json", encoding="utf-8"))
+
+def _load_json(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+itemj = _load_json(f"{ROOT}/data/meta_build/ddragon/{PATCH}/item.json")["data"]
+champj = _load_json(f"{ROOT}/data/daemon_slayer/{PATCH}/champions.json")["data"]
+dsraw = _load_json(f"{ROOT}/data/daemon_slayer/build_orders/{PATCH}/build_orders_sr.json")
 ds_engine = dsraw.get("engine_version"); dsbo = dsraw["build_orders"]
-sweep = json.load(open(SWEEP, encoding="utf-8"))
-ult = json.load(open(ULT, encoding="utf-8"))
+sweep = _load_json(SWEEP)
+ult = _load_json(ULT)
 
 name2id = {v.get("name", "").lower(): k for k, v in itemj.items()}
 def iname(i): return itemj.get(str(i), {}).get("name", str(i))
@@ -153,7 +159,8 @@ for cid, _kit, nb, ub, _dsm, _lmd, _dsd, _ov, _fl, gc in rows:
         normal_disp = nb if len(nb) >= 5 else cur
         L.append(f"| {cid} | {sh(normal_disp)} | {sh(ub)} |")
 
-open(OUT, "w", encoding="utf-8", newline="\n").write("\n".join(L) + "\n")
+with open(OUT, "w", encoding="utf-8", newline="\n") as fh:
+    fh.write("\n".join(L) + "\n")
 print("WROTE", OUT, "| rows", len(rows), "covered", covered)
 print("G1", len(mism), mism)
 print("ult!=normal", len(ult_diff), ult_diff[:20])

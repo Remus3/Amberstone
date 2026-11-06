@@ -10,7 +10,8 @@ for root, _, fs in os.walk("tests"):
         if f.endswith(".py"):
             p = os.path.join(root, f).replace(os.sep, "/")
             try:
-                loc = sum(1 for _ in open(p, encoding="utf-8", errors="replace"))
+                with open(p, encoding="utf-8", errors="replace") as fh:
+                    loc = sum(1 for _ in fh)
             except OSError:
                 loc = 0
             files.append((loc, p))
@@ -26,9 +27,6 @@ for loc, p in files:
 for i, b in enumerate(bins):
     print(f"SLICE {chr(65 + i)}: {len(b)} files / {load[i]} LOC")
 
-json.dump(
-    {chr(65 + i): bins[i] for i in range(6)},
-    open("ops/audit/p2w5_slices.json", "w", encoding="utf-8", newline="\n"),
-    indent=1,
-)
+with open("ops/audit/p2w5_slices.json", "w", encoding="utf-8", newline="\n") as fh:
+    json.dump({chr(65 + i): bins[i] for i in range(6)}, fh, indent=1)
 print("total", len(files), "files /", sum(load), "LOC -> ops/audit/p2w5_slices.json")

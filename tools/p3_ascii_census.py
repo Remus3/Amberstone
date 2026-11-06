@@ -64,7 +64,8 @@ def main():
         ext = os.path.splitext(rel)[1].lower()
         if ext not in AUTH_EXT or excluded(rel):
             continue
-        raw = open(os.path.join(ROOT, rel), 'rb').read()
+        with open(os.path.join(ROOT, rel), 'rb') as fh:
+            raw = fh.read()
         if raw[:3] == b'\xef\xbb\xbf':
             bom8.append(rel)
         elif raw[:2] in (b'\xff\xfe', b'\xfe\xff'):

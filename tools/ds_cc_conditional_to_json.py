@@ -81,7 +81,8 @@ def main() -> int:
     text = render(build_payload())
     if args.check:
         try:
-            on_disk = open(_OUT, encoding="utf-8").read()
+            with open(_OUT, encoding="utf-8") as fh:
+                on_disk = fh.read()
         except FileNotFoundError:
             print("MISSING", _OUT)
             return 1
