@@ -892,13 +892,15 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # as Python evaluates the value once: `p, q = q, p` swaps the aliases.
     aliases = ([b for t in targets for b in _alias_bindings(t, value, tainted)]
                if plain else [])
-    # RM-1563: `p = lambda m: log.info(m)` makes `p` a wrapper. Only a bare
-    # name target is tracked (residual: tuple targets, walrus, for).
+    # RM-1563: `p = lambda m: log.info(m)` makes `p` a wrapper.
     # RM-1786: so does a staticmethod / classmethod over a lambda.
     # RM-1563: and an alias of a wrapper (`h = g`), a conditional over
     # one, and a re-wrap by name (`g = staticmethod(g)`), judged before the
-    # binding drops the target's own wrapper.
+    # binding drops the target's own wrapper. A tuple target is split as a
+    # logging alias is (`_wrapper_bindings`: `h, k = g, fetch`, `h, k = k, h`).
     wrapper = _value_wrapper_specs(value, tainted, late) if plain else set()
+    wrappers = ([b for t in targets for b in _wrapper_bindings(t, value, tainted, late)]
+                if plain else [])
     # RM-1563: `self.p = log.info` stores the alias in an attribute, as a
     # class body's `p = log.info` does, so it makes the same mark. Add-only:
     # one store does not replace what another instance or the class holds.
@@ -922,9 +924,8 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
         _bind_names(target, found, tainted, clear=plain)
     for name, is_alias, is_obj in aliases:
         _bind_log_alias(name, is_alias, tainted, is_obj)
-    for target in targets:
-        if isinstance(target, ast.Name):
-            _bind_wrapper(target.id, wrapper, tainted)
+    for name, specs in wrappers:
+        _bind_wrapper(name, specs, tainted)
 
 
 _METHOD_WRAPPERS = ("staticmethod", "classmethod")
@@ -1073,9 +1074,13 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
         for sub, seen in sites:
             is_alias = _is_log_callable(sub.value, seen)
             is_obj = _is_logger_expr(sub.value, seen)
+            wrapper = _value_wrapper_specs(sub.value, seen, late)
             _bind_names(sub.target, _is_tainted(sub.value, seen, late),
                         tainted, clear=False)
             _bind_log_alias(sub.target, is_alias, tainted, is_obj)
+            # RM-1563: `(h := g)` makes `h` a wrapper, add-only like the
+            # rest of the walrus binding.
+            _bind_wrapper(sub.target.id, wrapper, tainted)
 
 
 # Context managers whose __enter__ hands back the object they were given.
@@ -1268,6 +1273,47 @@ def _iter_alias_bindings(target, iterable, tainted):
         else:
             items.append(elt)
     return [b for item in items for b in _alias_bindings(target, item, tainted)]
+
+
+def _wrapper_bindings(target, value, tainted, late=frozenset()):
+    """RM-1563: (name, `_SINKFN` specs) for every plain name `target`
+    binds from `value`, split as `_alias_bindings` splits a logging alias:
+    a bare name takes the whole value's specs (`_value_wrapper_specs`), a
+    tuple / list target is paired BY POSITION with a literal value of the
+    same length and no starred element (`h, k = g, fetch` makes only `h` a
+    wrapper), and any other split of a literal value gives EVERY name the
+    union of its leaves' specs: the safe side. A non-literal value
+    (`h, k = pair()`) is not tracked (residual)."""
+    if isinstance(target, ast.Name):
+        return [(target.id, _value_wrapper_specs(value, tainted, late))]
+    if (isinstance(target, (ast.Tuple, ast.List))
+            and isinstance(value, (ast.Tuple, ast.List))
+            and len(target.elts) == len(value.elts)
+            and not any(isinstance(e, ast.Starred)
+                        for e in target.elts + value.elts)):
+        return [b for t, v in zip(target.elts, value.elts)
+                for b in _wrapper_bindings(t, v, tainted, late)]
+    leaves = _literal_elts(value)
+    if not leaves:
+        return []
+    specs = set().union(*(_value_wrapper_specs(e, tainted, late) for e in leaves))
+    return [(n.id, specs) for n in _target_names(target)]
+
+
+def _iter_wrapper_bindings(target, iterable, tainted, late=frozenset()):
+    """RM-1563: what a `for` or comprehension target binds as a wrapper
+    from each item of a literal iterable (`for h in (g,)`), unioned over the
+    items as `_iter_alias_bindings` does. Non-literal: not tracked."""
+    if not isinstance(iterable, (ast.Tuple, ast.List, ast.Set)):
+        return []
+    items = []
+    for elt in iterable.elts:
+        if isinstance(elt, ast.Starred):
+            items.extend(_literal_elts(elt.value) or [])
+        else:
+            items.append(elt)
+    return [b for item in items
+            for b in _wrapper_bindings(target, item, tainted, late)]
 
 
 def _log_args(call, tainted=frozenset()):
@@ -1515,10 +1561,13 @@ def _comp_bind(gen, view, late):
     aliases a literal iterable gives (`for p in (log.info,)`)."""
     found = _is_tainted(gen.iter, view, late)
     aliases = _iter_alias_bindings(gen.target, gen.iter, view)
+    wrappers = _iter_wrapper_bindings(gen.target, gen.iter, view, late)
     inner = set(view)
     _bind_names(gen.target, found, inner, clear=False)
     for name, is_alias, is_obj in aliases:
         _bind_log_alias(name, is_alias, inner, is_obj)
+    for name, specs in wrappers:
+        _bind_wrapper(name, specs, inner)
     return inner
 
 
@@ -1736,7 +1785,9 @@ def _class_method_kinds(body):
     kinds, to a fixed point over alias chains; a name the body binds to no
     def, lambda or method wrapper of its own (a module function) is a plain
     function, so `inst`. A re-wrap by name (`g = staticmethod(g)`) adds its
-    kind to the def's own: both are read, the safe side. Residual: kinds
+    kind to the def's own: both are read, the safe side. A tuple target, a
+    `for` target over a literal iterable and a walrus bind as `h = g` does
+    (`_kind_bindings`: `h, j = g, fetch`, `for h in (g,)`). Residual: kinds
     ignore statement order, so an alias written BEFORE a same-name def
     (`h = g` naming a module `g`, then `@staticmethod def g`) takes only
     the later def's kind."""
@@ -1752,15 +1803,19 @@ def _class_method_kinds(body):
                 continue
             if isinstance(node, _OWN_SCOPES):
                 continue
+            pairs = []
             if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
-                own, sources = _value_kinds(node.value)
                 targets = (node.targets if isinstance(node, ast.Assign)
                            else [node.target])
-                for target in targets:
-                    if isinstance(target, ast.Name):
-                        if own:
-                            kinds.setdefault(target.id, set()).update(own)
-                        aliases.extend((target.id, s) for s in sources)
+                pairs = [b for t in targets for b in _kind_bindings(t, node.value)]
+            elif isinstance(node, (ast.For, ast.AsyncFor)):
+                pairs = _iter_kind_bindings(node.target, node.iter)
+            elif isinstance(node, ast.NamedExpr):
+                pairs = _kind_bindings(node.target, node.value)
+            for name, own, sources in pairs:
+                if own:
+                    kinds.setdefault(name, set()).update(own)
+                aliases.extend((name, s) for s in sources)
             stack.extend(ast.iter_child_nodes(node))
         alias_targets = {t for t, _ in aliases}
         changed = True
@@ -1784,6 +1839,48 @@ def _class_method_kinds(body):
 
 
 _CLASS_KINDS_CACHE = {}
+
+
+def _kind_bindings(target, value):
+    """RM-1563: (name, kinds, alias source names) for every plain name a
+    class body's `target` binds from `value` (`_value_kinds`), split as
+    `_wrapper_bindings` splits a wrapper: a bare name takes the whole value,
+    a tuple / list target is paired BY POSITION with a literal value of the
+    same length and no starred element, and any other split of a literal
+    value gives every name the union of its leaves: the safe side."""
+    if isinstance(target, ast.Name):
+        own, sources = _value_kinds(value)
+        return [(target.id, own, sources)]
+    if (isinstance(target, (ast.Tuple, ast.List))
+            and isinstance(value, (ast.Tuple, ast.List))
+            and len(target.elts) == len(value.elts)
+            and not any(isinstance(e, ast.Starred)
+                        for e in target.elts + value.elts)):
+        return [b for t, v in zip(target.elts, value.elts)
+                for b in _kind_bindings(t, v)]
+    leaves = _literal_elts(value)
+    if not leaves:
+        return []
+    own, sources = set(), set()
+    for leaf in leaves:
+        k, s = _value_kinds(leaf)
+        own |= k
+        sources |= s
+    return [(n.id, own, sources) for n in _target_names(target)]
+
+
+def _iter_kind_bindings(target, iterable):
+    """RM-1563: `_kind_bindings` for a class-level `for` target over each
+    item of a literal iterable (`for h in (g,)`), unioned over the items."""
+    if not isinstance(iterable, (ast.Tuple, ast.List, ast.Set)):
+        return []
+    items = []
+    for elt in iterable.elts:
+        if isinstance(elt, ast.Starred):
+            items.extend(_literal_elts(elt.value) or [])
+        else:
+            items.append(elt)
+    return [b for item in items for b in _kind_bindings(target, item)]
 
 
 def _class_attr_marks(body, out, cls_name=""):
@@ -2072,15 +2169,19 @@ class _Flow:
         state = self._expr_step([stmt.iter], stmt, state)
         found = _is_tainted(stmt.iter, state, self.ever)
         aliases = _iter_alias_bindings(stmt.target, stmt.iter, state)
+        wrappers = _iter_wrapper_bindings(stmt.target, stmt.iter, state, self.ever)
 
         def run_pass(entry):
             # The target is assigned once per item, so a sink in it
             # (`for d[log.info(m)] in xs`) sees what the last pass bound.
             body_in = self._expr_step([stmt.target], stmt, entry)
             _bind_names(stmt.target, found, body_in, clear=False)
-            # RM-1563: add-only, like the value binding above.
+            # RM-1563: add-only, like the value binding above; RM-1563:
+            # so is a wrapper (`for h in (g,)`).
             for name, is_alias, is_obj in aliases:
                 _bind_log_alias(name, is_alias, body_in, is_obj)
+            for name, specs in wrappers:
+                _bind_wrapper(name, specs, body_in)
             return entry, self.block(stmt.body, body_in)
 
         exhausted, breaks = self._loop(state, run_pass)
@@ -3171,6 +3272,77 @@ _CHECKER_SAMPLES = (
      "def f(url, xs):\n    [0 for y in [log.info(x) for x in 'a'] for x in [url]]\n", False),
     ("a generator's own target does not reach its own iterable",
      "def f(url):\n    [0 for x in (url, log.info(x))]\n", False),
+    # RM-1563 wrapper bindings past a bare `=`: a tuple target paired by
+    # position, a starred or mismatched split (every name, the safe side), a
+    # walrus, a `for` target and a comprehension target over a literal
+    # iterable all make the name a wrapper, as `h = g` does.
+    ("tuple target bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    h, k = g, fetch\n    h(url)\n", True),
+    ("module tuple target bound to a wrapper",
+     "def g(m):\n    log.info(m)\nh, k = g, fetch\ndef f(url):\n    h(url)\n", True),
+    ("tuple swap moves a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    h, k = fetch, g\n    h, k = k, h\n"
+     "    h(url)\n", True),
+    ("nested tuple target bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    (h, k), j = (fetch, g), fetch\n"
+     "    k(url)\n", True),
+    ("starred tuple target bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    h, *k = fetch, g, fetch\n    h(url)\n",
+     True),
+    ("tuple target bound to a wrapper lambda",
+     "def f(url):\n    h, k = lambda m: log.info(m), fetch\n    h(url)\n", True),
+    ("walrus bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    if (h := g):\n        h(url)\n", True),
+    ("walrus bound to a wrapper lambda",
+     "def f(url):\n    (h := lambda m: log.info(m))\n    h(url)\n", True),
+    ("walrus in a comprehension bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [(h := g) for _ in 'a']\n    h(url)\n",
+     True),
+    ("walrus bound to a comprehension target bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [(h := k) for k in (g,)]\n    h(url)\n",
+     True),
+    ("for target bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    for h in (g,):\n        h(url)\n", True),
+    ("for tuple target bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    for h, k in ((fetch, g),):\n"
+     "        k(url)\n", True),
+    ("comprehension target bound to a wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [h(url) for h in (g,)]\n", True),
+    # RM-1563 wrapper-binding keep-greens.
+    ("tuple target pairs a wrapper by position",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    h, k = g, fetch\n    k(url)\n", False),
+    ("tuple target bound to a wrapper called with a sanitized value",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    h, k = g, fetch\n    h(_safe_url(url))\n",
+     False),
+    ("tuple target re-bound before the call",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    h, k = g, fetch\n    h, k = fetch, fetch\n"
+     "    h(url)\n", False),
+    ("walrus bound to a non-wrapper",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    if (h := fetch):\n        h(url)\n", False),
+    ("for target over non-wrappers",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    for h in (fetch,):\n        h(url)\n", False),
+    ("comprehension tuple target pairs a wrapper by position",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [k(url) for h, k in ((g, fetch),)]\n",
+     False),
+    ("comprehension wrapper target does not flow out",
+     "def g(m):\n    log.info(m)\ndef f(url):\n    [0 for h in (g,)]\n    h(url)\n", False),
+    # RM-1563 same root in a class body: a tuple, `for` or walrus binding
+    # there makes a method, as `h = g` does (`_class_method_kinds`).
+    ("class-level tuple alias of a method wrapper",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    h, j = g, fetch\n"
+     "    def k(self, url):\n        self.h(url)\n", True),
+    ("class-level for alias of a method wrapper",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    for h in (g,):\n        pass\n"
+     "    def k(self, url):\n        self.h(url)\n", True),
+    ("class-level walrus alias of a method wrapper",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    (h := g)\n"
+     "    def k(self, url):\n        self.h(url)\n", True),
+    ("class-level tuple alias of a method wrapper pairs by position",
+     "class C:\n    def g(self, m):\n        log.info(m)\n    h, j = g, fetch\n"
+     "    def k(self, url):\n        self.j(url)\n", False),
+    ("class-level tuple alias of a method wrapper keeps the positional shift",
+     "class C:\n    def g(self, m, n):\n        log.info(m)\n    h, j = g, fetch\n"
+     "    def k(self, url):\n        self.h('x', url)\n", False),
 )
 
 
