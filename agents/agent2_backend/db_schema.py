@@ -11,6 +11,7 @@ Safe to call at every supervisor startup.
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import sqlite3
@@ -111,9 +112,15 @@ SCHEMA_STATEMENTS = [
 
 
 def db_path(mode: str) -> Path:
-    fname = MODE_DB_FILES.get(mode)
+    """Path of ``mode``'s database under ``DB_DIR`` (read at call time).
+
+    Any mode that is not one of ``MODE_DB_FILES``' str keys - a wrong case,
+    an empty string, or a non-str value such as a list (which used to escape
+    as an unhashable-key ``TypeError``) - raises ``ValueError``.
+    """
+    fname = MODE_DB_FILES.get(mode) if isinstance(mode, str) else None
     if fname is None:
-        raise ValueError(f"unknown mode: {mode}; valid: {list(MODE_DB_FILES)}")
+        raise ValueError(f"unknown mode: {mode!r}; valid: {list(MODE_DB_FILES)}")
     return DB_DIR / fname
 
 
@@ -134,23 +141,43 @@ def _enable_wal(conn: sqlite3.Connection, p: Path) -> str:
 
 
 def open_db(mode: str) -> sqlite3.Connection:
+    """Open ``mode``'s database with foreign keys on and WAL requested.
+
+    The CALLER owns the returned connection and must close it. If the setup
+    pragmas raise (a corrupt file answers ``DatabaseError: file is not a
+    database``), the half-open connection is closed before the error
+    propagates; it used to leak, and on Windows its handle kept the bad file
+    undeletable for as long as the exception lived.
+    """
     p = db_path(mode)
     p.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(p)
-    conn.execute("PRAGMA foreign_keys = ON")
-    _enable_wal(conn, p)
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        _enable_wal(conn, p)
+    except BaseException:
+        conn.close()
+        raise
     return conn
 
 
 def init_mode(mode: str) -> Path:
+    """Create ``mode``'s schema (idempotent) and return the database path.
+
+    The connection is CLOSED on every path. ``with conn:`` alone only commits
+    or rolls back - a sqlite3 Connection's context manager never closes - so
+    the old ``with sqlite3.connect(p) as conn`` left one open connection per
+    call (``ResourceWarning: unclosed database`` on 3.13+) and, on a raise,
+    an open Windows file handle held by the traceback.
+    """
     p = db_path(mode)
     p.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(p) as conn:
-        conn.execute("PRAGMA foreign_keys = ON")
-        _enable_wal(conn, p)
-        for stmt in SCHEMA_STATEMENTS:
-            conn.execute(stmt)
-        conn.commit()
+    with contextlib.closing(sqlite3.connect(p)) as conn:
+        with conn:
+            conn.execute("PRAGMA foreign_keys = ON")
+            _enable_wal(conn, p)
+            for stmt in SCHEMA_STATEMENTS:
+                conn.execute(stmt)
     logger.info("mode-db ready: %s (%s)", mode, p)
     return p
 
