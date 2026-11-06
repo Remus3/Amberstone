@@ -1,7 +1,7 @@
 """FU01 - HTTP ?bbox= override parsing tests (closes L-01 / M-01).
 
 Exercises `agents._minimap_bbox.parse_http_override()` which is called by
-`agents/supervisor.py:_handle_minimap_crop` to validate the ?bbox= query
+`agents/_supervisor_http.py` `_handle_minimap_crop` to validate the ?bbox= query
 parameter.  Keeps the test isolated from the full supervisor import graph.
 """
 from __future__ import annotations
