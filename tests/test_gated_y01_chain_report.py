@@ -46,7 +46,7 @@ class Lab:
 
     def log(self, ts: float, logger: str, msg: str, src: str = "x.py:1") -> None:
         lt = time.localtime(ts)
-        ms = int(round((ts % 1) * 1000)) % 1000
+        ms = round((ts % 1) * 1000) % 1000
         self.lines.append((ts, f"{time.strftime('%H:%M:%S', lt)}.{ms:03d} INFO     "
                                f"{logger:<20} [{src}] {msg}"))
 

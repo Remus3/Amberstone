@@ -445,7 +445,7 @@ class InProcessServerConcurrencyTests(unittest.TestCase):
                 # is unaffected, so re-issue the single dropped request.
                 last = exc
                 time.sleep(0.02 * (_attempt + 1))
-        raise last if last else RuntimeError("unreachable")
+        raise last or RuntimeError("unreachable")
 
     def test_mixed_route_concurrent_requests_match_serial(self) -> None:
         """Issue a mix of /stats /dps /ehp /rank requests (SR + ARAM,

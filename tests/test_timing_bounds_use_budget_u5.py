@@ -168,9 +168,8 @@ class _Scanner(ast.NodeVisitor):
                 continue
             items = [sub.left, *sub.comparators]
             for (a, b), op in zip(zip(items, items[1:]), sub.ops):
-                if isinstance(op, (ast.Lt, ast.LtE)) and self._upper(a, b):
-                    self._hit(stmt)
-                elif isinstance(op, (ast.Gt, ast.GtE)) and self._upper(b, a):
+                if ((isinstance(op, (ast.Lt, ast.LtE)) and self._upper(a, b))
+                        or (isinstance(op, (ast.Gt, ast.GtE)) and self._upper(b, a))):
                     self._hit(stmt)
 
     def visit_Assert(self, node):
@@ -365,13 +364,13 @@ def raw_wait_bounds(source: str) -> list[int]:
         if not isinstance(body, list):
             continue
         for i, stmt in enumerate(body):
-            if isinstance(stmt, ast.Assert) and _has_raw_wait(stmt.test):
-                hits.add(stmt.lineno)
-            elif _is_named_call(stmt, "assertTrue") and stmt.value.args \
-                    and _has_raw_wait(stmt.value.args[0]):
-                hits.add(stmt.lineno)
-            elif _is_named_call(stmt, "join") and _is_seconds(_timeout_of(stmt.value)) \
-                    and any(_reads_back_not_alive(s) for s in body[i + 1:i + 3]):
+            if (
+                (isinstance(stmt, ast.Assert) and _has_raw_wait(stmt.test))
+                or (_is_named_call(stmt, "assertTrue") and stmt.value.args
+                    and _has_raw_wait(stmt.value.args[0]))
+                or (_is_named_call(stmt, "join") and _is_seconds(_timeout_of(stmt.value))
+                    and any(_reads_back_not_alive(s) for s in body[i + 1:i + 3]))
+            ):
                 hits.add(stmt.lineno)
     return sorted(hits)
 

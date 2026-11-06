@@ -96,7 +96,7 @@ def _rgb(css_color):
     """`rgb(r, g, b)` / `rgba(r, g, b, a)` -> (r, g, b) ints."""
     nums = re.findall(r"[\d.]+", css_color or "")
     assert len(nums) >= 3, f"unparsable colour {css_color!r}"
-    return tuple(int(round(float(n))) for n in nums[:3])
+    return tuple(round(float(n)) for n in nums[:3])
 
 
 def _is_reddish(css_color):

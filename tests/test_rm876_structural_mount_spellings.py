@@ -80,7 +80,7 @@ def test_an_undeclared_project_on_a_mount_spelling_is_a_structural_finding(label
     # into the segment and trip the 3-word cap, as for the drive-letter form.
     found = _found("see " + path + "\n")
     assert [f.shape for f in found] == [sweep.SHAPE_STRUCTURAL], label
-    assert _UNKNOWN.split()[0] in found[0].literal, label
+    assert _UNKNOWN.split(maxsplit=1)[0] in found[0].literal, label
 
 
 def test_the_drive_letter_spelling_still_fires():

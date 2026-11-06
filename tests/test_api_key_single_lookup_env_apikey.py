@@ -634,10 +634,11 @@ def find_key_reads(source: str) -> list:
             f, args = n.func, n.args
             fname = f.attr if isinstance(f, ast.Attribute) else (
                 f.id if isinstance(f, ast.Name) else "")
-            if fname == "get" and isinstance(f, ast.Attribute) and \
-                    _is_environ(f.value) and args and _str_const(args[0], env_names):
-                hits.append((n.lineno, "env-read"))
-            elif fname == "getenv" and args and _str_const(args[0], env_names):
+            if (
+                (fname == "get" and isinstance(f, ast.Attribute) and _is_environ(f.value)
+                 and args and _str_const(args[0], env_names))
+                or (fname == "getenv" and args and _str_const(args[0], env_names))
+            ):
                 hits.append((n.lineno, "env-read"))
             elif fname in {"join", "Path", "open", "PurePath", "WindowsPath"} and \
                     any(_is_key_file(a, file_names) for a in args):

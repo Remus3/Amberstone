@@ -136,7 +136,7 @@ def test_strip_forms_agree():
     """The premise of the FURB188 fix: removeprefix/removesuffix equal the guarded slice."""
     for s in ("", "-", "--5", "5", "b/x", "x.", "..", "abc"):
         for p in ("", "-", "b/", "."):
-            old_pre = s[len(p):] if s.startswith(p) else s
+            old_pre = s[len(p):] if s.startswith(p) else s  # noqa: FURB188 - the pre-fix form is the premise
             old_suf = s[:-len(p)] if p and s.endswith(p) else s
             assert s.removeprefix(p) == old_pre
             assert s.removesuffix(p) == old_suf

@@ -278,10 +278,8 @@ def _skip_nodes(tree: ast.AST):
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
             name = _dotted(node.func)
-            if name == _GATE_CALL:
-                yield node
-            elif name in _DECOR_SKIPS or name in _BODY_SKIPS \
-                    or name.endswith(".skipTest"):
+            if (name == _GATE_CALL or name in _DECOR_SKIPS or name in _BODY_SKIPS
+                    or name.endswith(".skipTest")):
                 yield node
         elif isinstance(node, ast.Raise) and node.exc is not None:
             exc = node.exc

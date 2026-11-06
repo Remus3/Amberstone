@@ -386,7 +386,7 @@ def test_validator_missing_truth_is_not_a_pass():
 def test_match_tolerance_documented_formula():
     assert scl.match_tolerance(0) == scl.MATCH_ABS_TOL
     assert scl.match_tolerance(100) == max(
-        scl.MATCH_ABS_TOL, int(round(scl.MATCH_REL_TOL * 100)))
+        scl.MATCH_ABS_TOL, round(scl.MATCH_REL_TOL * 100))
 
 
 # -- flag + listener ---------------------------------------------------------

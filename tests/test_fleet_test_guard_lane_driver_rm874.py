@@ -221,8 +221,7 @@ def test_the_driver_ignores_stay_inside_lane_prompts_and_off_the_templates():
         tail = gl[len(LP) + 1:]
         # The one sanctioned subdirectory is the driver's own reports dir
         # (s<NNN>_reports/), and only its direct children.
-        if tail.startswith(REPORTS_GLOB_DIR):
-            tail = tail[len(REPORTS_GLOB_DIR):]
+        tail = tail.removeprefix(REPORTS_GLOB_DIR)
         assert "/" not in tail, f"{gl} reaches below lane_prompts/"
         for probe in ("s133-common.tmpl", "s133-gated.tmpl", "s133_lane_driver.py",
                       "s133_lane_progress.py", "queue-rm740e-s115.tmpl",

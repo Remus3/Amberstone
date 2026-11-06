@@ -83,7 +83,7 @@ _ROW_NAMES = ("scripts/kill.bat", "scripts/restart_clean.bat")
 
 def _tool_name(token: str) -> str:
     name = re.split(r"[\\/]", token.strip('"'))[-1].lower()
-    return name[:-4] if name.endswith(".exe") else name
+    return name.removesuffix(".exe")
 
 
 def _batch_files() -> dict[str, list[str]]:

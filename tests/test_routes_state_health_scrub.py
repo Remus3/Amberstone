@@ -144,7 +144,7 @@ class HealthAllScrubTests(unittest.TestCase):
     def _rollup_with_failing(self, target: str):
         """Serve /api/health/all with `target` raising LEAKY; return parsed body."""
         h = _FakeHandler()
-        with mock.patch.object(target.split("|")[0], target.split("|")[1],
+        with mock.patch.object(target.split("|", maxsplit=1)[0], target.split("|")[1],
                                side_effect=OSError(LEAKY)):
             routes_state._serve_health_all(h)
         self.assertIsNotNone(h.body, "handler sent no body")

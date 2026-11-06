@@ -82,7 +82,7 @@ def _post_raw(url: str, raw: bytes) -> tuple[int, dict]:
             # deterministic, so re-issue the single dropped request.
             last = exc
             time.sleep(0.02 * (_attempt + 1))
-    raise last if last else RuntimeError("unreachable")
+    raise last or RuntimeError("unreachable")
 
 
 def _post(url: str, body: dict) -> tuple[int, dict]:

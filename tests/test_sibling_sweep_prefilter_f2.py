@@ -278,7 +278,7 @@ def test_every_shape_is_a_prefix_plus_one_family_fragment(needles):
         frags = set(n.variants.values()) | {tight}
         for shape in n.patterns:
             pat = shape.regex.pattern
-            body = pat[: -len(sweep._RIGHT_EDGE)] if pat.endswith(sweep._RIGHT_EDGE) else pat
+            body = pat.removesuffix(sweep._RIGHT_EDGE)
             owners = [f for f in frags if f and body.endswith(f)]
             assert owners, (n.slot, shape.shape)
             prefix = body[: -len(max(owners, key=len))]

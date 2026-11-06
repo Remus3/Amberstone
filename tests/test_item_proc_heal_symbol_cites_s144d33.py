@@ -134,9 +134,7 @@ def test_ehp_has_no_executable_target_mr_reference():
             names.add(node.id)
         elif isinstance(node, ast.Attribute):
             names.add(node.attr)
-        elif isinstance(node, ast.arg):
-            names.add(node.arg)
-        elif isinstance(node, ast.keyword) and node.arg:
+        elif isinstance(node, ast.arg) or (isinstance(node, ast.keyword) and node.arg):
             names.add(node.arg)
     assert "target_mr" not in names
 

@@ -137,4 +137,4 @@ def test_probe_is_live():
 def test_rewrite_is_equivalent(value):
     """The premise of each fix: ``x or y`` returns the same object ``x if x else y`` does."""
     sentinel = object()
-    assert (value if value else sentinel) is (value or sentinel)
+    assert (value if value else sentinel) is (value or sentinel)  # noqa: FURB110 - the pre-fix form is the premise under test

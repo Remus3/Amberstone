@@ -150,13 +150,14 @@ def _cwd_relative_sites(src: str) -> list[str]:
         if not isinstance(node, ast.Call):
             continue
         f = node.func
-        if (isinstance(f, ast.Attribute) and f.attr in ("cwd", "getcwd")
-                and isinstance(f.value, ast.Name) and f.value.id in ("Path", "os")):
-            hits.append(f"{node.lineno}: {ast.unparse(node)}")
-        elif (isinstance(f, ast.Name) and f.id == "Path" and node.args
-              and isinstance(node.args[0], ast.Constant)
-              and isinstance(node.args[0].value, str)
-              and not _is_rooted(node.args[0].value)):
+        if (
+            (isinstance(f, ast.Attribute) and f.attr in ("cwd", "getcwd")
+             and isinstance(f.value, ast.Name) and f.value.id in ("Path", "os"))
+            or (isinstance(f, ast.Name) and f.id == "Path" and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+                and not _is_rooted(node.args[0].value))
+        ):
             hits.append(f"{node.lineno}: {ast.unparse(node)}")
     return hits
 

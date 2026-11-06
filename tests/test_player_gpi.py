@@ -33,7 +33,7 @@ class _Builder:
     """Build an in-memory rewind DB and insert operator games."""
 
     def __init__(self, path: str | None = None) -> None:
-        self.conn = sqlite3.connect(path if path else ":memory:")
+        self.conn = sqlite3.connect(path or ":memory:")
         self.conn.execute(f"CREATE TABLE matches ({_MATCH_COLS})")
         self.conn.execute(f"CREATE TABLE participants ({_PART_COLS})")
         self._mid = 0

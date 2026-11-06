@@ -154,7 +154,7 @@ def _parse_widths(css: str, html: str, widgets):
         # Class-selector override (w-stats ships its width on .ovx-statspanel).
         wid = None
         for cls in re.findall(r"\.([A-Za-z0-9_-]+)", sel):
-            if cls in ("ovx-widget",):
+            if cls == "ovx-widget":
                 continue
             eid = _id_for_class(html, cls)
             if not eid:

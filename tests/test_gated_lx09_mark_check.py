@@ -26,7 +26,7 @@ SINCE, UNTIL = BASE - 120.0, BASE + 1500.0
 
 
 def _stamp(t: float) -> str:
-    ms = int(round((t - int(t)) * 1000))
+    ms = round((t - int(t)) * 1000)
     return datetime.fromtimestamp(int(t)).strftime("%Y-%m-%d %H:%M:%S") + f",{ms:03d}"
 
 
@@ -242,7 +242,7 @@ def test_a_pin_file_missing_a_mark_is_partial_and_a_stray_pin_is_extra(tmp_path)
     assert _grade(marks, pins, log)["attach"]["verdict"] == "PARTIAL"
     doc["pins"].append({"clock_s": 9, "game_time_s": 9.0, "wall_ts": 1.0, "label": "you flagged"})
     target.write_text(json.dumps(doc), encoding="utf-8")
-    assert _grade(marks, pins, log)["attach"]["verdict"] in ("EXTRA",)
+    assert _grade(marks, pins, log)["attach"]["verdict"] == "EXTRA"
 
 
 def test_junk_pin_values_never_raise(tmp_path):

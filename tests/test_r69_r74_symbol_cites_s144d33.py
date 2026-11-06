@@ -85,11 +85,9 @@ def test_no_engine_module_reads_the_flag():
     readers = []
     for path in sorted(DS.glob("*.py")):
         for node in ast.walk(ast.parse(_source(path))):
-            if isinstance(node, ast.Attribute) and node.attr == _FLAG:
-                readers.append(f"{path.name}:{node.lineno}")
-            elif (
-                isinstance(node, ast.Constant)
-                and node.value == _FLAG
+            if (
+                (isinstance(node, ast.Attribute) and node.attr == _FLAG)
+                or (isinstance(node, ast.Constant) and node.value == _FLAG)
             ):
                 readers.append(f"{path.name}:{node.lineno}")
     assert not readers, "defensive_only gained a consumer:\n" + "\n".join(readers)

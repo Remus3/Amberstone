@@ -294,7 +294,7 @@ def test_full_pass_writes_the_measured_version_atomically_ascii_lf(tmp_path):
     assert f'PINNED_CLI = "{VERSION}"' in text and '"2.1.309"' not in text.split("# RE")[0]
     assert len(re.findall(r'^PINNED_CLI = ', text, re.MULTILINE)) == 1
     assert f"RE-MEASURED 2026-10-23 on {VERSION}" in text
-    assert text.startswith(PIN_SOURCE.split("PINNED_CLI")[0]), "nothing above the pin moved"
+    assert text.startswith(PIN_SOURCE.split("PINNED_CLI", maxsplit=1)[0]), "nothing above the pin moved"
     assert text.endswith('FLAG = "--append-subagent-system-prompt"\n')
     assert sorted(p.name for p in tmp_path.iterdir()) == ["ev", pin.name], "no tmp left"
 
