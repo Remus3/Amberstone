@@ -139,8 +139,17 @@ PROOF_MARK = "ARAM state-debounce: signature unchanged"
 # stamp is still taken after it, so the next same-band dispatch skips.
 EXCUSE_MARKS = ("ARAM coach error", "ARAM: no fields parsed", "safe_write aram_coaching_data.json")
 
-__all__ = ["make_sample", "parse_log", "log_date", "usable", "slow_calls", "coverage", "grade",
-           "render", "main"]
+__all__ = [
+    "coverage",
+    "grade",
+    "log_date",
+    "main",
+    "make_sample",
+    "parse_log",
+    "render",
+    "slow_calls",
+    "usable",
+]
 
 
 def _timed(s: Any) -> bool:

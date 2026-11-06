@@ -213,7 +213,7 @@ def _read_bounded(reader: Any, max_bytes: int | None) -> tuple[bytes, bool]:
 
 
 class Response:
-    __slots__ = ("status", "headers", "body", "url")
+    __slots__ = ("body", "headers", "status", "url")
 
     def __init__(self, status: int, headers: dict[str, str], body: bytes, url: str) -> None:
         self.status = status
@@ -233,7 +233,7 @@ class _HostState:
     # only the rate limiter, which sleeps while holding it - sharing one lock
     # meant a thread sleeping up to a second in the rate gate also blocked
     # another thread's breaker bookkeeping for that host.
-    __slots__ = ("lock", "rate_lock", "last_call", "failures", "opened_at", "probe_in_flight")
+    __slots__ = ("failures", "last_call", "lock", "opened_at", "probe_in_flight", "rate_lock")
 
     def __init__(self) -> None:
         self.lock = threading.Lock()

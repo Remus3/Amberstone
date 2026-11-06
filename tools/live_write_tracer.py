@@ -245,7 +245,7 @@ class _CountingHandle:
     untouched, so ordinary test I/O never meets this class.
     """
 
-    __slots__ = ("_rc_handle", "_rc_key", "_rc_tracer", "_rc_record")
+    __slots__ = ("_rc_handle", "_rc_key", "_rc_record", "_rc_tracer")
 
     def __init__(self, handle, key, tracer, record):
         self._rc_handle = handle

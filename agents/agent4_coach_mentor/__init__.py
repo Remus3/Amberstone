@@ -5,4 +5,4 @@ from agents.agent4_coach_mentor.analyzer import (
     analyze_all,
 )
 
-__all__ = ["Analyzer", "analyze_mode", "analyze_all"]
+__all__ = ["Analyzer", "analyze_all", "analyze_mode"]

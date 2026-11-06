@@ -450,7 +450,7 @@ _MAX_BASES = 8
 class _Scope:
     """One Python scope: the names it binds and its `name = value` bindings."""
 
-    __slots__ = ("kind", "parent", "stores", "declared", "assigns")
+    __slots__ = ("assigns", "declared", "kind", "parent", "stores")
 
     def __init__(self, kind, parent):
         # "module" | "function" | "class" | "comprehension" | "annotation"

@@ -8,7 +8,7 @@ from agents.agent2_backend.pipeline.orchestrator import (
 
 __all__ = [
     "PipelineOrchestrator",
+    "refresh_all",
     "refresh_ddragon",
     "refresh_mode",
-    "refresh_all",
 ]

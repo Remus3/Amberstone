@@ -37,8 +37,8 @@ from ._relay import (get_latest_liveclient, get_latest_lcu,
 from ._stats import get_stats
 
 __all__ = [
-    "Handler",
     "PORT",
+    "Handler",
     "get_latest_frame",
     "get_latest_lcu",
     "get_latest_liveclient",

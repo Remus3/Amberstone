@@ -75,18 +75,18 @@ class GameReader(_PollerMixin, _NormalizerMixin):
 
 
 __all__ = [
-    "GameReader",
-    "LIVE_API",
-    "RELAY_URL",
-    "RELAY_TOKEN",
-    "RELAY_MAX_AGE_S",
-    "LCU_RELAY_URL",
-    "LCU_RELAY_MAX_AGE",
-    "DRAGON_RESPAWN",
     "BARON_RESPAWN",
+    "DRAGON_RESPAWN",
+    "FIRST_ATAKHAN",
+    "FIRST_BARON",
     "FIRST_DRAGON",
     "FIRST_RIFT_HERALD",
-    "FIRST_BARON",
-    "FIRST_ATAKHAN",
+    "LCU_RELAY_MAX_AGE",
+    "LCU_RELAY_URL",
+    "LIVE_API",
+    "RELAY_MAX_AGE_S",
+    "RELAY_TOKEN",
+    "RELAY_URL",
+    "GameReader",
     "_normalize_name",
 ]

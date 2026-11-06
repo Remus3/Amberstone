@@ -13,10 +13,10 @@ from lib.http.client import (
 )
 
 __all__ = [
-    "HttpClient",
-    "HttpError",
     "Blocked",
     "CircuitOpen",
+    "HttpClient",
+    "HttpError",
     "ResponseTooLarge",
     "get_client",
 ]

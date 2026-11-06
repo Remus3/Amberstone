@@ -197,8 +197,16 @@ def contingency(rows: Sequence[Tuple[bool, bool]]) -> Dict[str, object]:
 class _Pair:
     """One scored lane pair, flattened so both analyses share one corpus walk."""
 
-    __slots__ = ("match_id", "lane", "champ_a", "champ_b", "gold_a", "gold_b",
-                 "solo_a", "solo_b")
+    __slots__ = (
+        "champ_a",
+        "champ_b",
+        "gold_a",
+        "gold_b",
+        "lane",
+        "match_id",
+        "solo_a",
+        "solo_b",
+    )
 
     def __init__(self, match_id, lane, champ_a, champ_b, gold_a, gold_b, solo_a, solo_b):
         self.match_id = match_id
