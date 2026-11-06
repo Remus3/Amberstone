@@ -6,8 +6,8 @@ _Living document. Update after topology or module changes. See `docs/_archive/` 
 
 ## Machines
 
-Canonical topology table (Legion 1-PC ADR-011 + Peer; tailnet names/IPs) lives in `CLAUDE.md`
-"Topology" - not restated here. Durable architecture facts: the dashboard is viewed locally on
+Legion is the only box (1-PC, ADR-011; `CLAUDE.md` "Topology"). Tailnet and LAN names are per-host
+config in gitignored `ops/local_hosts.json` (reader `core/local_hosts.py`), never restated in a tracked file. Durable architecture facts: the dashboard is viewed locally on
 Legion; the relocated relay agents (`lcu_agent` / `liveclient_relay`) run Legion-local (reading
 the local lockfile + Live Client `:2999`); every live reader finds the game host via
 `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The vision collapse has LANDED - both
