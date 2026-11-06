@@ -1243,25 +1243,40 @@ def _sink_specs(fn, state, late=frozenset()):
         return (entry in names or any(entry == m + n for m in marks for n in names)
                 or any(entry.startswith(_SINKFN + n + " ") for n in names))
 
-    base = {e for e in set(state) | set(late) if not shadowed(e)}
+    body = _fn_body(fn)
+    # RM-1656: only the entries the body can read decide the answer (see
+    # `_walk_scope`), so the key is projected onto them.
+    base = _readable(set(state) | set(late), _scope_names(body))
+    base = frozenset(e for e in base if not shadowed(e))
     # The answer depends only on `fn` and `base`, and a nested def is judged
     # again on every pass of every walk around it, so it is memoised for one
     # `_message_leak_sites` call (the tree, so every `id`, outlives it).
-    key = (id(fn), frozenset(base))
+    key = (id(fn), base)
     if key not in _SPEC_CACHE:
-        _SPEC_CACHE[key] = frozenset(_judge_params(fn, params, names, base))
+        _SPEC_CACHE[key] = frozenset(_judge_params(body, params, names, base))
     return _SPEC_CACHE[key]
 
 
 _SPEC_CACHE = {}
 
 
-def _judge_params(fn, params, names, base):
+def _fn_body(fn):
+    """The statements of def or lambda `fn`. A lambda's one expression is
+    wrapped once per scan and kept in `_BODY_CACHE`, so its list `id` - a
+    `_WALK_CACHE` key - is never reused by another list while the scan runs."""
+    if not isinstance(fn, ast.Lambda):
+        return fn.body
+    hit = _BODY_CACHE.get(id(fn))
+    if hit is None or hit[0] is not fn:
+        hit = _BODY_CACHE[id(fn)] = (fn, [ast.Expr(value=fn.body)])
+    return hit[1]
+
+
+_BODY_CACHE = {}
+
+
+def _judge_params(body, params, names, base):
     """The uncached body of `_sink_specs`."""
-    if isinstance(fn, ast.Lambda):
-        body = [ast.Expr(value=fn.body)]
-    else:
-        body = fn.body
 
     def sites(extra):
         got = set()
@@ -1362,7 +1377,91 @@ def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
             report(expr, scan.found)
 
 
+def _scope_names(body):
+    """RM-1656: every string held anywhere in `body` - every name it reads,
+    binds, defines, catches, captures or declares (`Name.id`, `arg.arg`, a
+    def's `name`, an `except ... as` name, a match capture, `global` names)
+    plus string literals. The literals only widen the set, the safe side.
+    Kept per scan with `body` itself, so its `id` cannot be reused."""
+    hit = _NAMES_CACHE.get(id(body))
+    if hit is None or hit[0] is not body:
+        names = set()
+        for stmt in body:
+            for node in ast.walk(stmt):
+                for _, value in ast.iter_fields(node):
+                    for item in value if isinstance(value, list) else [value]:
+                        if isinstance(item, str):
+                            names.add(item)
+        hit = _NAMES_CACHE[id(body)] = (body, frozenset(names))
+    return hit[1]
+
+
+_NAMES_CACHE = {}
+
+
+def _entry_name(entry):
+    """The name a taint-state entry is about: `url`, `obj:r`, `logfn:p`,
+    `logobj:lg` and `sinkfn:g pos:0` give url, r, p, lg and g."""
+    for mark in (_OBJ, _LOGFN, _LOGOBJ):
+        if entry.startswith(mark):
+            return entry[len(mark):]
+    if entry.startswith(_SINKFN):
+        return entry[len(_SINKFN):].split(" ", 1)[0]
+    return entry
+
+
+def _readable(entries, names):
+    """The entries a scope whose strings are `names` can read. An entry whose
+    name is not an identifier is an unknown shape and is always kept."""
+    out = set()
+    for entry in entries:
+        name = _entry_name(entry)
+        if name in names or not name.isidentifier():
+            out.add(entry)
+    return frozenset(out)
+
+
 def _walk_scope(body, entry, report, late=frozenset()):
+    """`_walk_scope_uncached`, memoised for one `_message_leak_sites` call.
+
+    RM-1656: an entry about a name `body` never mentions is never read,
+    bound or cleared by the walk (every read and every binding goes through
+    a name written in the body, its nested defs included), so it only rides
+    along: it is in every state the walk hands back, and no sink site, test
+    or fixed point depends on it. The walk is therefore run on the entries
+    the body can read (`_readable`), keyed on them, and the rest of `entry`
+    is put back into every state it returns. The sites it reported are
+    recorded and replayed into `report` on every call. Without this, each
+    enclosing pass re-walked a nested def with a state that differed only in
+    names the def never reads, and the scan grew about 4x per level of def
+    nesting (depth 9 took minutes)."""
+    names = _scope_names(body)
+    seen_entry = _readable(entry, names)
+    seen_late = _readable(late, names)
+    key = (id(body), seen_entry, seen_late)
+    hit = _WALK_CACHE.get(key)
+    if hit is None or hit[0] is not body:
+        sites = []
+        out, returns, inside, hands_back = _walk_scope_uncached(
+            body, set(seen_entry),
+            lambda expr, found: sites.append((expr, tuple(found))), seen_late)
+        hit = _WALK_CACHE[key] = (
+            body, None if out is None else frozenset(out),
+            [frozenset(s) for s in returns], [frozenset(s) for s in inside],
+            hands_back, sites)
+    _, out, returns, inside, hands_back, sites = hit
+    for expr, found in sites:
+        report(expr, found)
+    rest = set(entry) - seen_entry
+    return (None if out is None else set(out) | rest,
+            [set(s) | rest for s in returns],
+            [frozenset(s | rest) for s in inside], hands_back)
+
+
+_WALK_CACHE = {}
+
+
+def _walk_scope_uncached(body, entry, report, late=frozenset()):
     """RM-1560 (a): walk one scope's body to a fixed point of its may-taint
     set `ever` - every name tainted in ANY state anywhere in the scope, plus
     the enclosing scopes' `late`. `ever` is the late view a nested def,
@@ -1694,12 +1793,15 @@ def _message_leak_sites(path):
     def report(expr, found):
         leaks.add(f"{Path(path).name}:{expr.lineno}: {sorted(set(found))}")
 
-    _SPEC_CACHE.clear()
+    caches = (_SPEC_CACHE, _BODY_CACHE, _NAMES_CACHE, _WALK_CACHE)
+    for cache in caches:
+        cache.clear()
     try:
         for scope in scopes:
             _walk_scope(scope.body, set(), report)
     finally:
-        _SPEC_CACHE.clear()
+        for cache in caches:
+            cache.clear()
     return sorted(leaks)
 
 
@@ -2415,6 +2517,63 @@ def test_defect_f_leak_checker_is_not_vacuous(tmp_path, label, sample, expect_le
     p.write_text(sample, encoding="utf-8")
     found = _message_leak_sites(p)
     assert bool(found) is expect_leak, (label, found)
+
+
+def _nested_wrapper_sample(depth, leak=True):
+    """RM-1656: `depth` nested wrappers, each a two-parameter def holding a
+    `for` loop that logs one parameter, re-binds the other late in the pass
+    and calls the next wrapper with both. The url reaches the innermost log
+    call only through every wrapper (`leak`), or never (`leak=False`)."""
+    def level(d, ind):
+        body = ind + "        "
+        out = [f"{ind}def g{d}(a{d}, b{d}):", f"{ind}    for x in xs:",
+               f"{body}log.info(a{d})", f"{body}c = b{d}"]
+        if d < depth:
+            out += level(d + 1, body) + [f"{body}g{d + 1}(c, a{d})"]
+        return out + [f"{body}b{d} = a{d}"]
+    arg = "url" if leak else "'x'"
+    return "\n".join(["def f(url):"] + level(1, "    ") + [f"    g1('x', {arg})"]) + "\n"
+
+
+@pytest.mark.parametrize("leak", [True, False])
+def test_defect_f_leak_checker_cost_is_not_exponential_in_def_nesting(tmp_path, leak):
+    """RM-1656: every enclosing pass re-walks a nested def with a state
+    holding names its body never reads, so a cache keyed on the whole state
+    missed and the scan grew about 4x per level (depth 5 1.5 s, depth 9
+    minutes). The walk is keyed on the names the body can read; depth 9
+    must finish well inside 5 s and still find exactly the leak."""
+    p = tmp_path / "sample.py"
+    p.write_text(_nested_wrapper_sample(9, leak), encoding="utf-8")
+    t0 = time.perf_counter()
+    found = _message_leak_sites(p)
+    elapsed = time.perf_counter() - t0
+    assert elapsed < 5.0, elapsed
+    assert bool(found) is leak, found
+
+
+def test_defect_f_leak_checker_walks_grow_linearly_with_def_nesting(tmp_path, monkeypatch):
+    """RM-1656, the deterministic half of the timed test above: the number
+    of scope walks actually run (cache misses) grows linearly with nesting
+    depth. Measured 135 at depth 10 and 275 at depth 20; a cache keyed on
+    the whole state, not the entries the body reads, ran 816 and 3831, and
+    no walk cache at all is exponential."""
+    real = _walk_scope_uncached
+    runs = []
+
+    def counted(*args, **kwargs):
+        runs.append(1)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(sys.modules[__name__], "_walk_scope_uncached", counted)
+    p = tmp_path / "sample.py"
+    counts = {}
+    for depth in (10, 20):
+        p.write_text(_nested_wrapper_sample(depth), encoding="utf-8")
+        runs.clear()
+        assert _message_leak_sites(p), depth
+        counts[depth] = len(runs)
+    assert counts[10] > 0, counts
+    assert counts[20] <= 2.2 * counts[10], counts
 
 
 def test_defect_f_no_message_site_in_the_module_carries_the_raw_endpoint():
