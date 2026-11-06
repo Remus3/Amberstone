@@ -132,7 +132,7 @@ def test_option_b_compares_installed_versions_with_the_pins_offline():
 # (c) the real step-2 block under cmd.exe, against a fake pip.
 # ---------------------------------------------------------------------------
 
-_FAKE_PIP_MAIN = r'''
+_FAKE_PIP_MAIN = r"""
 import json, os, sys
 from pathlib import Path
 state_path = Path(os.environ["RC_FAKE_PIP_STATE"])
@@ -152,13 +152,13 @@ if state["install_fixes"]:
     state_path.write_text(json.dumps(state), encoding="utf-8")
     sys.exit(0)
 sys.exit(1)
-'''
+"""
 
-_FAKE_ANTHROPIC = r'''
+_FAKE_ANTHROPIC = r"""
 import json, os
 if not json.loads(open(os.environ["RC_FAKE_PIP_STATE"], encoding="utf-8").read())["importable"]:
     raise ImportError("fake anthropic: not importable in this scenario")
-'''
+"""
 
 
 def _fake_env(tmp_path: Path, state: dict) -> dict:

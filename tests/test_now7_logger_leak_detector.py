@@ -223,7 +223,7 @@ def test_this_run_is_classified_as_outer():
     assert llr._IS_OUTER is True
 
 
-_PLANTED = '''
+_PLANTED = """
 import logging
 
 def test_a_leaker():
@@ -233,9 +233,9 @@ def test_b_clean():
     lg = logging.getLogger("now7.e2e.clean")
     lg.propagate = False
     lg.propagate = True
-'''
+"""
 
-_GATE_MAIN = '''
+_GATE_MAIN = """
 import logging
 import unittest
 
@@ -288,9 +288,9 @@ class TestPyClassScoped:
 
     def test_y(self):
         pass
-'''
+"""
 
-_GATE_FIXTURE = '''
+_GATE_FIXTURE = """
 import logging
 
 import pytest
@@ -308,7 +308,7 @@ def test_uses_leaky(leaky):
 
 def test_after():
     pass
-'''
+"""
 
 
 def _child_env(report_dir, **extra):

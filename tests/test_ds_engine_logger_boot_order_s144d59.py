@@ -60,7 +60,7 @@ def _run(code: str, *args: str) -> dict:
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
-_IMPORT_PROBE = r'''
+_IMPORT_PROBE = r"""
 import importlib, json, logging, sys
 recs = []
 
@@ -82,7 +82,7 @@ during = list(recs)
 logging.getLogger("agents.daemon_slayer.effects").warning("control")
 print(json.dumps({"during": during, "fails": fails,
                   "control": recs[len(during):]}))
-'''
+"""
 
 
 def test_no_engine_module_logs_while_it_is_imported():
@@ -144,7 +144,7 @@ def test_the_scope_walker_is_not_vacuous():
                     "dashboard") == []
 
 
-_ORDER_PROBE = r'''
+_ORDER_PROBE = r"""
 import json, logging
 import agents.daemon_slayer.effects
 lg = logging.getLogger("agents.daemon_slayer.effects")
@@ -163,7 +163,7 @@ before = texts.pop()
 import dashboard  # the installer arrives AFTER the engine module
 lg.warning("%s", evil)
 print(json.dumps({"before": before, "after": texts.pop()}))
-'''
+"""
 
 
 def test_an_installer_imported_after_the_engine_still_scrubs():

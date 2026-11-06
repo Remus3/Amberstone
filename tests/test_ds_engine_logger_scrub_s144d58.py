@@ -114,7 +114,7 @@ def test_the_name_module_stays_core_free():
 
 # The probe runs in a FRESH interpreter per installer, because a filter
 # installed by one import is process-global and would mask the other.
-_PROBE = r'''
+_PROBE = r"""
 import importlib, json, logging, sys
 importlib.import_module(sys.argv[1])
 from core.log_scrub import ScrubFilter
@@ -153,7 +153,7 @@ for name in names:
         "texts": texts,
     }
 print(json.dumps(out))
-'''
+"""
 
 _CTRL = ({chr(c) for c in range(0x20)}
          | {chr(c) for c in range(0x7F, 0xA0)} | {chr(0x2028), chr(0x2029)})

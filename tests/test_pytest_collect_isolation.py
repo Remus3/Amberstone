@@ -62,11 +62,11 @@ UNTRUSTED_OR_GENERATED = (
 SENTINEL = "IMPORTED.flag"
 
 # Leaves a sentinel next to itself, then fails loudly, if it is ever imported.
-_PLANTED_SOURCE = '''from pathlib import Path
+_PLANTED_SOURCE = """from pathlib import Path
 
 Path(__file__).with_name("IMPORTED.flag").write_text("imported", encoding="ascii")
 raise RuntimeError("planted module was imported: " + __file__)
-'''
+"""
 
 _OK_TEST = "def test_ok():\n    pass\n"
 

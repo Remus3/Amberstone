@@ -35,7 +35,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "tools" / "logger_leak_census.py"
 
-_CONTROLS = '''
+_CONTROLS = """
 import logging
 
 
@@ -79,7 +79,7 @@ def test_neg_restores_everything():
 
 def test_neg_touches_nothing():
     assert 1 + 1 == 2
-'''
+"""
 
 _POSITIVES = {
     "test_pos_propagate",

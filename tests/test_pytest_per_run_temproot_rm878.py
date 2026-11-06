@@ -48,7 +48,7 @@ SCRUB = ("PYTEST_DEBUG_TEMPROOT", "PYTEST_ADDOPTS", "PYTEST_PLUGINS",
          "PYTEST_CURRENT_TEST", "PYTEST_XDIST_WORKER", "PYTEST_XDIST_WORKER_COUNT",
          "PYTEST_XDIST_TESTRUNUID")
 
-HOLD = '''
+HOLD = """
 import os
 import time
 from pathlib import Path
@@ -67,9 +67,9 @@ def test_hold(tmp_path, tmp_path_factory):
     assert bt.is_dir(), f"live basetemp {bt} was deleted mid-run"
     assert tmp_path.is_dir(), f"live tmp_path {tmp_path} was deleted mid-run"
     tmp_path_factory.mktemp("after")
-'''
+"""
 
-RECORD = '''
+RECORD = """
 import os
 from pathlib import Path
 
@@ -80,7 +80,7 @@ def _rec(tmp_path, name):
     env = os.environ.get("PYTEST_DEBUG_TEMPROOT", "")
     (out / (name + ".txt")).write_text(wid + "|" + str(tmp_path) + "|" + env,
                                        encoding="utf-8")
-'''
+"""
 
 PASS = "def test_ok(tmp_path):\n    (tmp_path / 'f').write_text('x')\n"
 FAIL = "def test_red(tmp_path):\n    (tmp_path / 'f').write_text('x')\n    assert False\n"

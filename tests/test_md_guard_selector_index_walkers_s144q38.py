@@ -37,7 +37,7 @@ needs_git = pytest.mark.skipif(_GIT is None, reason="git is not on PATH")
 
 # A guard that walks the whole index and fails on any non-ASCII tracked byte.
 # It names no `.md` anywhere, which is the whole point.
-_ASCII_WALKER = '''\
+_ASCII_WALKER = """\
 import subprocess
 from pathlib import Path
 
@@ -50,7 +50,7 @@ def test_every_tracked_file_is_ascii():
     bad = [rel for rel in out.split("\\0") if rel
            and any(b > 0x7F for b in (ROOT / rel).read_bytes())]
     assert bad == [], bad
-'''
+"""
 
 
 def _repo(tmp_path: Path, modules: dict) -> Path:

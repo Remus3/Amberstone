@@ -27,13 +27,13 @@ from pathlib import Path
 
 # The probe module. Parametrized over an EMPTY list, so the ini value decides
 # whether collecting it is an error or a skip. The body must never execute.
-_PROBE_SOURCE = '''import pytest
+_PROBE_SOURCE = """import pytest
 
 
 @pytest.mark.parametrize("value", [])
 def test_probe_body(value):
     raise AssertionError("the probe body must never execute")
-'''
+"""
 
 _PROBE_MODULE_NAME = "test_probe_empty.py"
 _PROBE_REPORT_NAME = "report.xml"

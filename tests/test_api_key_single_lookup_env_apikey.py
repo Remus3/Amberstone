@@ -393,7 +393,7 @@ def test_vision_server_no_longer_reads_home_or_desktop(tmp_path, key_root,
 # (b) child process with the variable DELETED from its environment.
 # ---------------------------------------------------------------------------
 
-_CHILD = r'''
+_CHILD = r"""
 import ast, json, os, sys
 from pathlib import Path
 
@@ -506,7 +506,7 @@ run("app._game_lifecycle (FROZEN)", _game_lifecycle)
 out["env_still_absent_before_main"] = "ANTHROPIC_API_KEY" not in os.environ
 run("main.py _load_api_key (FROZEN)", _main_py)
 print("RESULT " + json.dumps(out, sort_keys=True))
-'''
+"""
 
 CHILD_CONSUMERS = (
     "core.anthropic_key",
@@ -936,7 +936,7 @@ def test_install_bat_step3_never_takes_an_inherited_api_key(tmp_path, raw):
 # BOTH suite roots.
 # ---------------------------------------------------------------------------
 
-_SPY_PLUGIN = r'''
+_SPY_PLUGIN = r"""
 import os
 from pathlib import Path
 
@@ -962,7 +962,7 @@ _ak.key_file_path = _spy
 
 def pytest_collection_finish(session):
     _record("ROOT " + str(Path(_ak._KEY_ROOT).resolve()))
-'''
+"""
 
 # Module-level: what the shared root is while THIS module is being collected.
 from core import anthropic_key as _ak_at_collection  # noqa: E402

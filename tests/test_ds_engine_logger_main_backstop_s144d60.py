@@ -38,7 +38,7 @@ _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 # Block the dashboard installer the way a failed import would, then run the
 # D-58 probe with coach_integration as the only installer.
-_DEGRADED = r'''
+_DEGRADED = r"""
 import sys
 sys.modules["web_dashboard"] = None
 sys.modules["dashboard"] = None
@@ -49,7 +49,7 @@ except ImportError:
     pass
 else:
     raise SystemExit("web_dashboard import was not blocked")
-'''
+"""
 
 
 def _degraded_probe() -> dict:
@@ -99,7 +99,7 @@ def test_a_record_cannot_forge_a_line_without_the_dashboard():
         assert max(len(line) for line in lines) <= 4096 + 40, name
 
 
-_COUNT = r'''
+_COUNT = r"""
 import json, logging
 import dashboard, coach_integration  # noqa: F401
 from core.log_scrub import ScrubFilter
@@ -107,7 +107,7 @@ from agents.daemon_slayer._log_names import LOGGER_NAMES
 print(json.dumps({n: sum(isinstance(f, ScrubFilter)
                          for f in logging.getLogger(n).filters)
                   for n in LOGGER_NAMES}))
-'''
+"""
 
 
 def test_the_normal_boot_attaches_one_filter_per_logger():
