@@ -6,12 +6,11 @@ literal True or False; each now returns the condition itself. Every rewritten fu
 as a bool and every operand is already a bool-valued expression (comparisons, ``any``/``all``/``in``,
 ``startswith``), so the returned type does not change.
 
+RM-1699 fixed ``core/item_wpa.py`` and ``tools/daemon_slayer_abilities_extract.py`` once lane/ds no longer held them.
+
 The baseline is the findings that stay, each for a named reason:
 
-- ``core/item_wpa.py``: held by another lane branch (lane/ds) at the time of this slice.
 - ``ops/launcher/service_host.py``: the packaged-app tree is owned by the main session (lane exclusions).
-- ``tools/daemon_slayer_abilities_extract.py``: the module also carries a PERF403 site and is an extractor
-  another lane may hold; taken together in a later cycle.
 - ``tools/repair_mojibake.py`` / ``tools/strip_smart_quotes.py``: the operator-gated smart-quote tooling
   (the retro-sweep is gated); its two helpers are left for the cycle that is cleared to touch it.
 
@@ -50,20 +49,20 @@ _OUT_OF_SCOPE = (
 )
 # file -> finding count that stays (reasons in the module docstring). Only shrinks.
 _BASELINE = {
-    "core/item_wpa.py": 1,
     "ops/launcher/service_host.py": 1,
-    "tools/daemon_slayer_abilities_extract.py": 1,
     "tools/repair_mojibake.py": 2,
     "tools/strip_smart_quotes.py": 2,
 }
 _FIXED = (
     "agents/agent0_gatekeeper/evaluator.py",
     "agents/agent4_coach_mentor/ui_applier.py",
+    "core/item_wpa.py",
     "core/log_retention.py",
     "core/minimap_presence.py",
     "core/post_game_score.py",
     "tft/tft_standalone.py",
     "tools/arena_shadow_report.py",
+    "tools/daemon_slayer_abilities_extract.py",
     "tools/hz_shadow_report.py",
     "tools/p3_ascii_census.py",
     "tools/strip_em_dashes.py",

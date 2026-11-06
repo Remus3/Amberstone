@@ -183,7 +183,7 @@ def _meraki_content_patch(raw):
 # via the module-level _LAST_ERRORS map so a transient failure on one source
 # neither crashes the run nor false-alarms. Probes are monkeypatched in tests.
 
-_LAST_ERRORS: dict[str, str | None] = {k: None for k in FIELD_NAMES}
+_LAST_ERRORS: dict[str, str | None] = dict.fromkeys(FIELD_NAMES)
 
 
 def _set_error(field: str, exc: Exception) -> None:
@@ -395,7 +395,7 @@ def _now_iso() -> str:
 def _null_sentinel() -> dict:
     # Derived from FIELD_NAMES so adding a signal cannot leave the baseline and
     # the probe list out of step (they were two hand-kept lists before RM-131).
-    base: dict = {name: None for name in FIELD_NAMES}
+    base: dict = dict.fromkeys(FIELD_NAMES)
     base["updated_at"] = None
     base["last_drift_at"] = None
     return base

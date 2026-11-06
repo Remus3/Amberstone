@@ -9,9 +9,9 @@ order; it would be WRONG for a mutable value (every key would share one object),
 ruff only flags the constant form and why this ratchet does not widen to the unsafe fixes.
 
 The baseline is the findings that stay because someone else owns the file: the vendored fleet
-kit (byte-pinned to MAIN's MANIFEST), the frozen ``app/_game_lifecycle.py`` and two modules
-changed on another lane branch (``tools/daemon_slayer_wiki_stats_extract.py``,
-``tools/upstream_drift_check.py``; their entries leave when that lane lands). A baseline entry
+kit (byte-pinned to MAIN's MANIFEST) and the frozen ``app/_game_lifecycle.py``. The two modules
+once held for another lane branch (``tools/daemon_slayer_wiki_stats_extract.py``,
+``tools/upstream_drift_check.py``) were fixed in RM-1699 after that lane stopped touching them. A baseline entry
 that stops offending fails ``test_baseline_is_exact`` until it is dropped; a new finding
 anywhere else fails ``test_no_new_findings``.
 
@@ -49,8 +49,6 @@ _OUT_OF_SCOPE = (
 _BASELINE = {
     "app/_game_lifecycle.py": 1,
     "ops/fleet_kit/fleet_board.py": 2,
-    "tools/daemon_slayer_wiki_stats_extract.py": 1,
-    "tools/upstream_drift_check.py": 2,
 }
 _FIXED = (
     "agents/agent2_backend/db_migrate_kda.py",
@@ -69,10 +67,12 @@ _FIXED = (
     "tools/aram_raw_replay.py",
     "tools/champion_loadout_invariants.py",
     "tools/daemon_slayer_cdragon_ratio_extract.py",
+    "tools/daemon_slayer_wiki_stats_extract.py",
     "tools/gated_g246_killer_readers.py",
     "tools/gated_lx01_draft_check.py",
     "tools/gated_lx09_mark_check.py",
     "tools/slice_orchestrator.py",
+    "tools/upstream_drift_check.py",
     "vision_server/_stats.py",
 )
 

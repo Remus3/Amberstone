@@ -247,7 +247,7 @@ def extract_stamp(obj) -> tuple[str | None, str | None]:
     ok = {k: v for k, v in found.items() if len(v.split(".")) == 3}
     if not ok:
         return None, None
-    name = sorted(ok)[0]
+    name = min(ok)
     return name, ok[name]
 
 

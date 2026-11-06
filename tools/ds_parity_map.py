@@ -204,12 +204,12 @@ def build_map() -> dict[str, dict]:
                 got = _keys_in(arg)
                 forwarded_keys |= got
                 if i < len(params):
-                    carried[params[i]] = sorted(got)[0] if got else ""
+                    carried[params[i]] = min(got) if got else ""
             for kw in call.keywords:
                 got = _keys_in(kw.value)
                 forwarded_keys |= got
                 if kw.arg is not None:
-                    carried[kw.arg] = sorted(got)[0] if got else ""
+                    carried[kw.arg] = min(got) if got else ""
                 else:
                     # ``**splat`` - attribute by name, the only sound rule
                     # without evaluating the dict (see _route_rank_tank).

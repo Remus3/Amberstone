@@ -742,7 +742,7 @@ def _summarise(members: list, setdata: SetData) -> dict:
     carry_games = Counter(b.carry.api for b in members if b.carry is not None)
     carry = None
     if carry_games:
-        carry_api = sorted(carry_games, key=lambda a: (-carry_games[a], -cost_of(a), a))[0]
+        carry_api = min(carry_games, key=lambda a: (-carry_games[a], -cost_of(a), a))
         sets: Counter = Counter()
         freq: Counter = Counter()
         for b in members:

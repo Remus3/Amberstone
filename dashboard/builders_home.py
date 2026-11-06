@@ -315,7 +315,7 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
         ranked = sorted(champ_agg.items(), key=lambda kv: -kv[1]["games"])
         week_rows: list[dict] = []
         for champ, r in ranked:
-            best = sorted(r["grades"], key=lambda x: "SABCDF-".index(x) if x in "SABCDF-" else 99)[0]
+            best = min(r["grades"], key=lambda x: "SABCDF-".index(x) if x in "SABCDF-" else 99)
             mins = r["time_total_s"] / 60.0 if r["time_total_s"] else 0.0
             week_rows.append({
                 "champion": champ, "games": r["games"],

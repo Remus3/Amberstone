@@ -207,9 +207,8 @@ def _is_completed_legendary(item: object, map_id: int = 11) -> bool:
     if item.get("depth") is None and not item.get("from"):
         return False
     maps = item.get("maps")
-    if not isinstance(maps, dict) or not maps.get(str(map_id)):
-        return False  # legal on the requested map only
-    return True
+    # legal on the requested map only
+    return isinstance(maps, dict) and bool(maps.get(str(map_id)))
 
 
 def _load_frames(conn: sqlite3.Connection, match_id: str) -> list[tuple[int, list[tuple]]]:

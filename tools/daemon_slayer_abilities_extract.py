@@ -331,9 +331,7 @@ def _is_aoe(affects: str | None, targeting: str | None) -> bool:
     t = (targeting or "").lower()
     if "enemies" in a:
         return True
-    if any(kw in t for kw in ("direction", "location", "vector")):
-        return True
-    return False
+    return any(kw in t for kw in ("direction", "location", "vector"))
 
 
 def _values_tuple(raw: Any) -> list[float] | None:

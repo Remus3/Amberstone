@@ -918,7 +918,7 @@ def check_mode_presence(champions: dict[str, Any],
     ``overrides`` holds a non-blank reason for it, which prints a WARNING and
     adds ``overrides`` (only the reasons actually used).
     """
-    counts = {m: 0 for m in GATED_MODE_KEYS}
+    counts = dict.fromkeys(GATED_MODE_KEYS, 0)
     for rec in champions.values():
         modes = rec.get(_FIELD_MODE_MODIFIERS) if isinstance(rec, dict) else None
         if not isinstance(modes, dict):
