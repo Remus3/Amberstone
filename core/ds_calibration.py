@@ -122,7 +122,9 @@ def log_ds_run(
     if apply_mode_modifiers is not None:
         entry["apply_mode_modifiers"] = bool(apply_mode_modifiers)
     try:
-        with open(_LOG_PATH, "a", encoding="utf-8") as f:
+        # newline="\n": LF on Windows too, matching the prune's LF rewrite of
+        # this same file (RM-481 residual, RM-1697).
+        with open(_LOG_PATH, "a", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(entry) + "\n")
     except OSError:
         pass
