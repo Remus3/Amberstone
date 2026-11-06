@@ -166,7 +166,7 @@ def main(argv=None) -> int:
     if args.log_file:
         sink = Path(args.log_file)
         sink.parent.mkdir(parents=True, exist_ok=True)
-        stream = sink.open("a", encoding="utf-8", buffering=1)
+        stream = sink.open("a", encoding="utf-8", newline="\n", buffering=1)
         sys.stdout = stream
         sys.stderr = stream
 

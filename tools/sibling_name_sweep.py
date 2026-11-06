@@ -2131,7 +2131,7 @@ def _append_bypass_log(text: str) -> None:
     try:
         log_path = bypass_log_path()
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(log_path, "a", encoding="utf-8") as fh:
+        with open(log_path, "a", encoding="utf-8", newline="\n") as fh:
             fh.write(text + "\n")
     except OSError:
         _emit("[sibling-sweep] BYPASS log could not be written.")

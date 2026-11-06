@@ -62,7 +62,7 @@ def _write_log_line(target: Path, line: str) -> bool:
     """Append one line to ``target``. True on success, False on OSError."""
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("a", encoding="utf-8") as f:
+        with target.open("a", encoding="utf-8", newline="\n") as f:
             f.write(line)
         return True
     except OSError:
