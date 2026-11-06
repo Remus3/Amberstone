@@ -41,13 +41,14 @@ from __future__ import annotations
 import argparse
 import functools
 import json
-import os
 import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[3]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+from core.polled_json import atomic_write_bytes  # noqa: E402
 
 _OUT_DIR = _ROOT / "ops" / "audit" / "ds_perm_swarm" / "report"
 _CE_DIR = _ROOT / "ops" / "audit" / "ds_cross_eval" / "data"
@@ -171,10 +172,7 @@ def run(champs: list[str], *, top_k: int = _TOP_K, preset: str = "tank") -> list
 
 
 def _atomic_write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    os.replace(tmp, path)
+    atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def _render_md(rows: list[dict]) -> str:

@@ -27,10 +27,7 @@ qualname (`HostLog.write`) when the bare name is too generic to key a file on.
 There is no directory or package sanction on purpose - it would let every new
 writer in that tree start bare, the RM-258 failure itself.
 
-SCOPE: every tracked .py via tests/_repo_walk (ADR-015) EXCEPT the named
-`_AUDIT_UNCLASSIFIED` one-shot audit scripts under `ops/audit/` (a baseline
-that only shrinks; the `Share/` mirror was removed 2026-09-07 and its prefix
-dropped), plus
+SCOPE: every tracked .py via tests/_repo_walk (ADR-015) EXCEPT
 `tests/`, `docs/`, `oss/` (the extracted package IS
 an implementation and is drift-pinned to core/polled_json by
 tests/test_oss_win32_atomic_io_drift.py) and `ops/fleet_kit/` (vendored
@@ -42,7 +39,9 @@ generators, and they and the tools/ watchers converted since stay pinned in
 `_RUNTIME_TOOLS`. lib/ is wholly in scope: it is not a generator tree - the
 in-process app and the LCU post-game collector import
 lib/rewind_live_writer.py at runtime - and its s144 baseline of library
-writers shrank to empty and was removed.
+writers shrank to empty and was removed. So is ops/audit/: its s144 baseline
+of one-shot audit scripts shrank to empty and was removed (the `Share/` mirror
+was removed 2026-09-07 and its prefix dropped).
 """
 from __future__ import annotations
 
@@ -74,10 +73,11 @@ _RUNTIME_TOOLS = _DATA.runtime_tools
 # which only shrinks: tests/guard_data/atomic_write/tools_unclassified.py.
 _TOOLS_UNCLASSIFIED = _DATA.tools_unclassified
 
-# RM-258 residual (s144): ops/audit/ is IN scope by default too; only the named
-# one-shot audit scripts that still offend are out, a baseline that only
-# shrinks: tests/guard_data/atomic_write/audit_unclassified.py.
-_AUDIT_UNCLASSIFIED = _DATA.audit_unclassified
+# RM-258 residual (s144): ops/audit/ is IN scope too. It was exempted wholesale
+# as the row's "one-shot generator tree"; its 11 offending audit scripts were
+# each converted onto core.polled_json (RM-1713..RM-1716) and the emptied
+# baseline was removed rather than kept as a switch a new writer could be
+# parked behind; test_every_ops_audit_module_is_in_scope pins its absence.
 
 # RM-258 residual (s144): lib/ was exempted wholesale as a "one-shot generator
 # tree", but app/_game_lifecycle.py and lcu/lcu_postgame_collector.py import
@@ -115,8 +115,6 @@ def _in_scope(rel: str) -> bool:
     if rel.startswith("tools/"):
         return not (rel.startswith("tools/tests/") or _is_tools_extractor(rel)
                     or rel in _TOOLS_UNCLASSIFIED)
-    if rel.startswith("ops/audit/"):
-        return rel not in _AUDIT_UNCLASSIFIED
     return not rel.startswith(_EXCLUDED_PREFIXES)
 
 
@@ -777,30 +775,27 @@ def test_every_excluded_prefix_still_matches_a_tracked_file():
 
 
 def test_a_new_ops_audit_writer_starts_in_scope():
-    """ops/audit/ is no longer a directory-wide exemption: the row allowlists
-    one-shot generators, so only the named baseline is out of scope and a new
-    audit script that hand-rolls a rename starts guarded."""
+    """ops/audit/ is no longer a directory-wide exemption and has no baseline:
+    every audit script, the three ds_perm_swarm runners included, and any new
+    one is guarded."""
     assert _in_scope("ops/audit/a_new_audit_writer.py")
     assert _in_scope("ops/audit/ds_cross_eval/a_new_writer.py")
     assert _in_scope("ops/audit/ds_perm_swarm/a_new_swarm_writer.py")
-    for rel in _AUDIT_UNCLASSIFIED:
-        assert not _in_scope(rel), rel
+    assert _in_scope("ops/audit/ds_perm_swarm/run_harness.py")
     assert "ops/audit/" not in _EXCLUDED_PREFIXES
 
 
-def test_ops_audit_baseline_is_exact():
-    """Every ops/audit baseline entry is a tracked module that still offends,
-    so a conversion has to shrink the set and the set never hides a clean
-    file. Anchored: an empty baseline would pass vacuously."""
-    assert _AUDIT_UNCLASSIFIED, "baseline emptied: drop the area, not this test"
-    tracked = {relative_posix(p) for p in iter_repo_files(REPO_ROOT, ("*.py",))}
-    stale = []
-    for rel in sorted(_AUDIT_UNCLASSIFIED):
-        assert rel in tracked, f"baseline entry {rel} is not tracked"
-        renames, scratch = scan([(rel, REPO_ROOT / rel)])
-        if not renames and not scratch:
-            stale.append(rel)
-    assert stale == [], (
-        "these no longer hand-roll an atomic write - drop them from the "
-        "ops/audit baseline (tests/guard_data/atomic_write/"
-        "audit_unclassified.py):\n  " + "\n  ".join(stale))
+def test_every_ops_audit_module_is_in_scope():
+    """The ops/audit baseline emptied in s144 and was removed: every tracked
+    ops/audit module is scanned and none offends, so no audit writer can be
+    parked outside the guard. Anchored on the last converted runner so an
+    empty walk cannot pass."""
+    audit_files = [rel for rel in (relative_posix(p) for p in
+                   iter_repo_files(REPO_ROOT, ("*.py",)))
+                   if rel.startswith("ops/audit/")]
+    assert "ops/audit/ds_perm_swarm/run_harness.py" in audit_files
+    scanned = {rel for rel, _ in _runtime_files()}
+    assert sorted(set(audit_files) - scanned) == []
+    renames, scratch = scan([(rel, REPO_ROOT / rel) for rel in audit_files])
+    assert renames == [] and scratch == []
+    assert "_AUDIT_UNCLASSIFIED" not in globals()

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -19,6 +18,8 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[3]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+from core.polled_json import atomic_write_bytes  # noqa: E402
 
 from ops.audit.ds_perm_swarm.consolidate import consolidate  # noqa: E402
 from ops.audit.ds_perm_swarm.cross_eval_loader import load_cross_eval_dir  # noqa: E402
@@ -31,10 +32,7 @@ _DEFAULT_OUT = _ROOT / "ops" / "audit" / "ds_perm_swarm" / "report"
 
 
 def _atomic_write(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_bytes(text.encode("utf-8"))
-    os.replace(tmp, path)
+    atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def _render_md(report: dict) -> str:

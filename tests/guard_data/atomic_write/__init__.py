@@ -3,10 +3,11 @@
 Why path prefixes, not lane names: every row names a repo path, whichever lane
 added it, and the churn measured is tools/ conversions, so tools/ splits by kind.
 
-`tools_unclassified` and `audit_unclassified` only shrink. When a last row
-leaves, delete the file and its AREAS row (a declared area with no rows fails);
-that kind alone may then be empty, because `tests/test_atomic_write_guard_rm258_rm261.py` has its own
-exactness test. The other kinds must always have rows.
+`tools_unclassified` only shrinks. When a last row leaves, delete the file and
+its AREAS row (a declared area with no rows fails); that kind alone may then be
+empty, because `tests/test_atomic_write_guard_rm258_rm261.py` has its own
+exactness test. The other kinds must always have rows. `audit_unclassified`
+(ops/audit/) shrank to empty in s144 and was retired that way.
 """
 from __future__ import annotations
 
@@ -21,12 +22,10 @@ SUFFIX = ".py"
 SANCTIONED = "sanctioned"
 RUNTIME_TOOLS = "runtime_tools"
 TOOLS_UNCLASSIFIED = "tools_unclassified"
-AUDIT_UNCLASSIFIED = "audit_unclassified"
 EXCLUDED_PREFIXES = "excluded_prefixes"
 
 # Area file stem -> (kind, the path prefix every row must carry; "" = any).
 AREAS = {
-    "audit_unclassified": (AUDIT_UNCLASSIFIED, "ops/audit/"),
     "excluded_prefixes": (EXCLUDED_PREFIXES, ""),
     "runtime_tools": (RUNTIME_TOOLS, "tools/"),
     "sanctioned_core": (SANCTIONED, "core/"),
@@ -41,7 +40,6 @@ class AtomicWriteData(NamedTuple):
     sanctioned: dict
     runtime_tools: frozenset
     tools_unclassified: frozenset
-    audit_unclassified: frozenset
     excluded_prefixes: tuple
 
 
@@ -76,8 +74,7 @@ def load(directory: Path = HERE, areas=None) -> AtomicWriteData:
     table = AREAS if areas is None else areas
     check_area_files(directory, SUFFIX, table)
     merged: dict = {SANCTIONED: {}, RUNTIME_TOOLS: set(),
-                    TOOLS_UNCLASSIFIED: set(), AUDIT_UNCLASSIFIED: set(),
-                    EXCLUDED_PREFIXES: set()}
+                    TOOLS_UNCLASSIFIED: set(), EXCLUDED_PREFIXES: set()}
     for stem in sorted(table):
         kind, prefix = table[stem]
         path = directory / (stem + SUFFIX)
@@ -98,6 +95,5 @@ def load(directory: Path = HERE, areas=None) -> AtomicWriteData:
         sanctioned=merged[SANCTIONED],
         runtime_tools=frozenset(merged[RUNTIME_TOOLS]),
         tools_unclassified=frozenset(merged[TOOLS_UNCLASSIFIED]),
-        audit_unclassified=frozenset(merged[AUDIT_UNCLASSIFIED]),
         excluded_prefixes=tuple(sorted(merged[EXCLUDED_PREFIXES])),
     )
