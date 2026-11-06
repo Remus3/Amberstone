@@ -158,7 +158,10 @@ only); no count moved. G4-02 / G4-03 / G4-04 / G4-05 were tagged BLOCKED ON WIRI
 (s144 lane gated cycle 81: no RC producer sends any of the four DSP5-DSP8 live inputs at local
 main `ba0df749f`; the AGE CHECK sits in G4-02); no count moved. G2-13 / G2-14 were tagged BLOCKED
 ON WIRING on 2026-11-06 (s144 lane gated cycle 83: no live RC caller sends the `/burst` HP gate
-seams or the `runes` they need; the AGE CHECK sits in G2-13); no count moved.
+seams or the `runes` they need; the AGE CHECK sits in G2-13); no count moved. G2-04 / G2-10 were
+tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 84: no live caller arms the R5 heal
+amp, the registered champions never reach the enchanter scorer, and no EHP route or ranker carries
+the R45 `caster_current_hp_pct`; each row holds its own AGE CHECK); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -905,8 +908,40 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
 - **G2-03** (was B8) R7 `assume_passive_as_stacks` (Irelia/Jax/Ezreal/Volibear at full stacks; stacks
   buildable vs dummies/minions). **Irelia eyeball SANE 2026-07-02** (/dps 38.90 -> 47.96, +23%); the
   flip stays gated across the 4 tabled champs.
-- **G2-04** (was B9) R5 `assume_missing_hp_heal_amp` + live caster missing-HP feed (drop own HP vs
+- **G2-04** `[BLOCKED ON WIRING 2026-11-06]` (was B9) R5 `assume_missing_hp_heal_amp` + live caster missing-HP feed (drop own HP vs
   bots; coach-side hp/hp_max already emitted, item 639).
+  **AGE CHECK (lane 9 PREP s144 cycle 84, RM-1673; source read at local main `ba0df749f`, no game
+  up; NOT a tick). The FEED is live, the FLAG is not, and the registered champions never reach the
+  scorer that reads either.** Measured: the four coach callers of `dispatch_for_coach`
+  (`coach_integration/_coach.py`, `coaches/aram_coach.py`, `coaches/arena_coach.py`,
+  `coaches/brawl_coach.py`) all pass `caster_hp` / `caster_hp_max`, and the dispatcher turns them into
+  `caster_missing_hp_pct` (`coach_integration/archetype_dispatch.py` "R5 self-HP" block); none of
+  them, nor the one other caller (the read-only grader `tools/gated_g505_mode_mods.py`), passes
+  `assume_missing_hp_heal_amp`, whose dispatcher default is False. Outside `agents/daemon_slayer/` and
+  tests, the flag appears only in that dispatcher, in `core/daemon_slayer_client.py`
+  (`rank_enchanter_for` and its forward in `rank_for_primary_archetype`'s enchanter branch) and in
+  the `/api/ds-preview` pass-through list `_DS_PREVIEW_SEAM_BOOLS` (`dashboard/routes_state.py`),
+  which no `web/` file sends. The engine amp is inert while the flag is False
+  (`agents/daemon_slayer/ability_hps.py`: `if assume_missing_hp_heal_amp and heal_per_cast > 0.0`), and
+  the hps path calls `compute_ability_hps` with `resolve_target_relative=False`, so a forwarded
+  `caster_missing_hp_pct` alone changes nothing on `/rank-enchanter`. Second gap: the seam rides the
+  ENCHANTER branch only, and the amp registry `_MISSING_HP_HEAL_AMP` holds MasterYi W, Lissandra R,
+  Sylas W and Briar P, whose `core.archetype_picks.get_archetype_for` primaries read bruiser, mage,
+  mage and bruiser (DDragon defaults; the main checkout's gitignored `data/cs_archetype_picks.json`
+  read as an empty dict at 2026-11-06T03:12-06:00; none of the four is in
+  `core/aram_archetype_override.json`). So dropping own HP on any of the four in a practice game
+  changes nothing RC ranks today, flag or no flag. PRECONDITION for return to the drain list: a
+  producer arms `assume_missing_hp_heal_amp` live AND a registered champion's ranking reaches a scorer
+  that reads it (an operator archetype pick of `enchanter`, or the seam carried to the branch those
+  champions use; either is a code or operator change, not a game), and the outbound body is recorded
+  with `ts` and the Live Client `gameData.gameTime` it read. Predicate stated NOW, graded only after
+  that lands, in one practice-tool SR game on a registered champion: PASS iff a recorded
+  `/rank-enchanter` (or successor) body carries `assume_missing_hp_heal_amp: true` and a
+  `caster_missing_hp_pct` within 0.02 of `1 - currentHealth / maxHealth` from a `:2999`
+  `activePlayer.championStats` read within 10 s of game time of the body, AND at least one such body
+  has `caster_missing_hp_pct` >= 0.40. SUBSTITUTION CHECK: `live_flip_eyeball.py`, a hand-POSTed body,
+  a DS unit test or a fixture answers whether the engine COMPUTES the amp; only the producer's own
+  recorded body joined to a `:2999` read at the same game time answers whether RC SENT it.
 - **G2-05** (was B10) R12 `apply_target_vuln` (Vladimir/Evenshroud) + the R43 Imperial Mandate rider
   (4005/224005/324005). Broaden the consumer beyond AA DPS to ability_dps + burst.
 - **G2-06** (was B11) R14 `apply_cc_floor` floor-model sanity for close-range Maokai/Ashe/Hecarim R.
@@ -929,8 +964,27 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   assumes the trigger fires inside the burst window.
 - **G2-09** (was B14) R35 `apply_passive_mitigation` + snapshot (Galio/Garen/MasterYi percent-DR);
   confirm the rank-4 + 0.3-uptime assumptions read sane.
-- **G2-10** (was B15) R45 Poppy W low-HP doubled percent-of-resist tier - feed
+- **G2-10** `[BLOCKED ON WIRING 2026-11-06]` (was B15) R45 Poppy W low-HP doubled percent-of-resist tier - feed
   `caster_current_hp_pct` (drop own HP), sub-40%-HP EHP ranking sane.
+  **AGE CHECK (lane 9 PREP s144 cycle 84, RM-1673; local main `ba0df749f`, no game up; NOT a tick).
+  No EHP route, no EHP ranker and no RC caller carries `caster_current_hp_pct`.** Measured with
+  `inspect.signature`: `compute_ehp` and `compute_hybrid` take it, `rank_items_by_ehp` and
+  `rank_items_by_hybrid` do not; in `agents/daemon_slayer/server.py` the only parse site is
+  `_route_burst` (`_opt_float(body, "caster_current_hp_pct", 1.0)`), so `/ehp`, `/rank-tank` and
+  `/rank-bruiser` drop it; inside the engine the only forward INTO `compute_ehp` is from
+  `compute_hybrid` (`compute_ehp` hands it on to `resist_grants`; `burst.py` keeps its own R53 use).
+  Outside the engine and tests it is named only by `core/daemon_slayer_client.py` `burst_for` (the
+  G2-13 producer-orphan). Poppy's primary reads tank (`get_archetype_for`, DDragon default), whose
+  dispatch branch posts `/rank-tank`. So the doubled tier stays dormant at its 1.0 default in every
+  live ranking, whatever HP the operator drops to. PRECONDITION for return to the drain list: the EHP
+  ranker and its route thread `caster_current_hp_pct` (a Tier-2 engine change), a producer sends the
+  live own HP fraction for Poppy, and the body is recorded with `ts` and `gameData.gameTime`.
+  Predicate stated NOW, graded only after that lands, in one practice-tool SR game on Poppy: PASS iff
+  a recorded tank-ranking body carries `caster_current_hp_pct` within 0.02 of
+  `currentHealth / maxHealth` from a `:2999` read within 10 s of game time of the body, AND at least
+  one such body is below 0.40 (the tier threshold); the "EHP ranking sane" eyeball is written when the
+  producer names its surface. SUBSTITUTION CHECK: as G2-04 (an in-process `compute_ehp` call answers
+  COMPUTES, not SENT).
 - **G2-11** (was B16) R46 `assume_passive_health_stacks` (Sion W / Cho'Gath R / Swain P; stacks
   farmable on minions). Ideally replace the assumed-stack curve with a live stack feed later.
 - **G2-12** (was B17) R49 `assume_passive_reflect` (Rammus W) + R68 the ITEM Thorns lane on the SAME
