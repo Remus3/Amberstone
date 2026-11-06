@@ -3475,6 +3475,31 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: var(--fs-sm);         /* sub-label inside a row stays one  */
   color: var(--text-faint);        /* tier smaller than the row body    */
 }
+/* RM-1779: at 720px and under every Settings card fits the view and no
+ * value in it is cut. Measured before (ui_mock settings, Dev mode on, a
+ * Windows voice name in the Voice picker, headless): the one 1fr track
+ * above could not shrink below its widest card's min-content. The Voice
+ * picker row (label + a 360px select) held every card at 480px wide, past
+ * the view at 480 and under, and the PANEL VISIBILITY 7.5em checkbox
+ * column held them at 367px without a voice. Here the track may shrink; a
+ * select or slider row wraps its control under its label when the two do
+ * not fit one line (a checkbox row does not wrap: its text breaks between
+ * words beside the box), and a control alone on a line narrower than
+ * itself shrinks to it (a long voice name elides inside its select). A
+ * spend-gate row drops its cost under the text, still at the right edge.
+ * The PANEL VISIBILITY column rule is in panel_visibility.css. Pinned by
+ * tests/snapshot_panels/test_settings_narrow_reflow.py. */
+@media (max-width: 720px) {
+  .settings-body { grid-template-columns: minmax(0, 1fr); }
+  .settings-row:has(> select, > input[type="range"]) {
+    flex-wrap: wrap; row-gap: var(--space-1);
+  }
+  .settings-row select, .settings-row input[type="range"] {
+    flex: 1 1 auto; min-width: 0;
+  }
+  .spend-gate-row { flex-wrap: wrap; row-gap: var(--space-1); }
+  .spend-gate-cost { margin-left: auto; }
+}
 
 .mode-pill {
   padding: 5px 14px;

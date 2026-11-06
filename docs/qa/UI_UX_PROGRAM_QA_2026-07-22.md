@@ -981,3 +981,30 @@ At 720 px and under, the dashboard Active Match view stacks its panes in ONE ful
   - ASCII: 0 non-ASCII bytes and 0 CR in every touched file.
   - HIERARCHY: Game Length / Snowball / OP Score pane captures at 1920 / 480 / 320 (headless, `_scratch/`, not committed): the coloured value leads line one at the right, the bar reads as its own band below, the dim label stays first.
 - FUTURE: Benchmarks keeps its in-wrap sideways table scroll at 640 and under (by design, not re-measured for the classic Windows scrollbar); the stacked label floor is about 2 px wider than "Behind 2.5k+" at 320, so a longer bucket label or a wider font would wrap it to two lines (still inside the pane, the guard would flag the line split).
+
+## 2026-11-06 - lane 4 headless, s144 cycle 159 (RM-1779)
+
+### RULING
+- Target: the U-164 / U-165 FUTURE row "Settings at 360" (section scrollWidth 385 in 282 at 320).
+- Measured before (headless Chromium, `?ui_mock=1#settings`; Dev mode on with seven gate rows routed in from the `core/cost_tracker.py` GATE_META labels; one built-in Windows voice name, "Microsoft Zira - English (United States)", added to the Voice picker, since headless Chromium has no voices):
+  - Below 1200 px `.settings-body` is one `1fr` track, and a `1fr` track cannot shrink below its widest card's min-content.
+  - The PANEL VISIBILITY rows are `1fr 7.5em` (the checkbox column is 203 px), which held every card at 367 px with no voice: 45 px past the view at 360, 85 at 320.
+  - With a Windows voice name the Voice picker row (label + a select capped at 360 px, one nowrap line) held every card at 480 px: the section scrolled 498 in 442 at 480, 322 at 360, 282 at 320. So on the operator's box Settings already scrolled sideways at 480.
+  - Behind those floors (checked with the track forced to `minmax(0, 1fr)`): at 320 the Rank-Tier select and the Baseline Games slider row ran 17 / 39 px past their card, and a spend-gate row (checkbox, text, a 130 px cost column) cannot fit one line.
+- Ruling: Settings reflows at the shared 720 line (as Lobby did in U-165), and nothing is cut where the line can hold it:
+  - the track may shrink (`minmax(0, 1fr)`);
+  - a select or slider row wraps its control under its label only when the two do not fit one line (`:has(> select, > input[type="range"])`); a checkbox row never wraps, its text breaks between words beside the box;
+  - a control is sized from its own content (`flex: 1 1 auto`) and may shrink only when alone on a line narrower than itself (`min-width: 0`), so a long voice name elides inside its select at 320 while Rank-Tier keeps its min-content;
+  - a spend-gate row drops its cost under the text, still at the row's right edge;
+  - the PANEL VISIBILITY checkbox column is as wide as its SHOW head (`minmax(var(--hit-min), auto)`), so the panel names keep the room.
+- Fix (CSS only): `web/css/panels/header.css` one `@media (max-width: 720px)` block after the `.settings-row` rules; `web/css/panels/panel_visibility.css` one `@media (max-width: 720px)` `.pv-row` columns rule. Nothing changes above 720 (pinned at 722 and 1920).
+- Guard: `tests/snapshot_panels/test_settings_narrow_reflow.py`, 27 cases at 640 / 480 / 360 / 320 plus 722 / 1920 (at 320 it also pins that the Rank-Tier / Voice selects, the slider and each gate cost sit on their own line). At HEAD's CSS 7 failed (the view scroll and the card fit at 480 / 360 / 320, and the 320 line check).
+- Mutations (each restored, sha256-checked), every one red: no track shrink 5 failed; no select / slider row wrap 3; no control shrink 6; control `min-width: 0` with a 0 basis (never wraps) 3; no gate-row wrap 7; no cost right push 2; no PANEL VISIBILITY column rule 6; that column at 1em (under the hit floor) 4; every settings row wraps 4; the break at 800 instead of 720 1.
+- Verifier (independent, read-only): CONFIRM, no MUST-FIX. Its SHOULD-FIX (the desktop test looped over rows without a count) and NICE-TO-HAVE (nothing pinned that the controls and costs really take their own line at 320) were both acted on (the counts and the 320 line check above).
+- 5-phase audit (headless):
+  - STRUCTURE: no sideways scroll of the view or page and no element past its card at 640-320; desktop unchanged at 722 / 1920 (7.5em column, one-line non-wrapping rows).
+  - TYPOGRAPHY: no size changed.
+  - HIT-TARGETS: the PANEL VISIBILITY checkbox cell stays at least 42 px each way (pinned); selects keep their 42 px floor; checkbox rows keep their 42 px row.
+  - ASCII: 0 non-ASCII bytes and 0 CR in every touched file.
+  - HIERARCHY: card captures at 480 / 320 (headless, `_scratch/`, not committed): the card heads stay the gold announcers, a gate's bold label leads its text and the cost sits right under it, the PANEL VISIBILITY names lead and the checkboxes line up at the right edge.
+- FUTURE: the API SPEND GATES Dev mode checkbox draws smaller than the gate checkboxes below it (seen in the capture, pre-existing at every width, not measured); Voice picker names are elided inside the select at 320 (the open list shows them whole).

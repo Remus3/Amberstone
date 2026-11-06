@@ -89,6 +89,17 @@ body:not([data-shell="overlay"]) [data-pv-hidden="1"] {
   min-height: var(--hit-min);
 }
 
+/* RM-1779: at 720px and under the checkbox column is as wide as its
+ * SHOW head (still over --hit-min), not a fixed 7.5em, so the panel names
+ * keep the room. Measured before: the 7.5em column (203px) held every
+ * Settings card at 367px, 45px past the view at 360 and 85 at 320. Pinned
+ * by tests/snapshot_panels/test_settings_narrow_reflow.py. */
+@media (max-width: 720px) {
+  #panel-visibility-card .pv-row {
+    grid-template-columns: 1fr minmax(var(--hit-min), auto);
+  }
+}
+
 #panel-visibility-card .pv-row-head {
   min-height: 0;
   padding-bottom: var(--space-2);
