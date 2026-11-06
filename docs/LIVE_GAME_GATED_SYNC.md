@@ -3312,13 +3312,60 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 - **G4-20** (was H1) OBS request/response POC (O1) + frame-source swap (O2): GetSourceScreenshot
   round-trip via OBS-WS v5, then swap the occlusion-proof WGC capture into `vision_server/_frame.py`
   (config-gated GDI fallback). O1 ~1 session, O2 ~1-2 sessions. SOURCE: docs/OBS_CV_MINIMAP_PLAN.md:54-70.
+  **AGE CHECK (lane 9 PREP s144 cycle 79, RM-1668, source read at `e3a356f2e`, 2026-11-06; NOT a
+  tick, NOT struck; no game up: :8888 and :2999 curl status 000 at 2026-11-06T00:28-06:00): O1 is
+  BUILT; O2 shipped on the mechanism its own SOURCE later ruled out, so the row stays an open
+  BUILD.** O1 is `core/obs_frame_source.py` (`49dd1ab7a`, 2026-07-05: the OBS-WS
+  `GetSourceScreenshot` fetch behind `get_obs_frame`, fail-soft to None). The shipped O2 is the
+  OBS-first branch of the self-grab in `vision_server/_frame.py` (`obs_frame_source_enabled` then
+  `get_obs_frame`; None, an undecodable frame or a blank frame falls to GDI);
+  `core/minimap_blob_detect.py` reads the same lane. LEDGER 796 (2026-07-05, `b4254f2b`) live-validated
+  that round trip in practice SR and flipped `obs.frame_source` ON, and the 2026-07-20 drain header
+  records G2-42 (c), frame `source='obs'`. BUT the SOURCE this row cites was CORRECTED on 2026-07-28
+  (`f6ed5cdd6`, `docs/OBS_CV_MINIMAP_PLAN.md` O2 entry): OBS Game Capture injects
+  `graphics-hook64.dll`, the technique Vanguard bars, and ADR-011 (decision 4) already ruled OBS on
+  Display Capture (WGC), not Game Capture. The corrected O2 prefers taking Windows.Graphics.Capture
+  directly, which was never built (no `.py` in the index names WGC or `windows_capture`), and names a
+  BLOCKING PREREQUISITE: confirm the client's Window Mode first (`WindowMode=2` has been recorded as
+  three different modes, and WGC is not guaranteed under exclusive fullscreen). Both pieces of live
+  evidence above predate that correction, so they prove the OBS round trip, not the corrected swap.
+  Idle read (main checkout's gitignored config, 2026-11-06): `obs.frame_source` true,
+  `obs.frame_source_name` `Game Capture`, `obs.enabled` false; the gate reads `frame_source` alone
+  (`obs_frame_source_enabled`), so the fetch is tried on every self-grab and falls to GDI while OBS
+  is down. Whether that OBS source is a Game Capture or a Display Capture source is an OBS-side fact
+  the repo cannot read; the name alone does not settle it. Nothing here is drainable by a game: the
+  next act is the Window Mode confirmation, then the WGC build. FILING RM-1668 (main session, not
+  this row's verdict): the shipped flag ON and the configured source name sit against ADR-011
+  decision 4; a human confirms the OBS source type.
 - **G4-21** (was H2) CV #7-10 new deterministic OCR/template modules: stateful ability-cooldown sweep
   tracker (cast-signal proxy), recall-channel bar read, objective (drake/baron/elder) icon+timer CV,
   item-completion template-match. Multi-session; each needs live calibration.
+  **AGE CHECK (lane 9 PREP s144 cycle 79, RM-1668; NOT a tick): still a BUILD, not drainable.**
+  Only the shared substrate for #8 and #10 exists: `core/vision_template_match.py` (`6589690b4`,
+  2026-07-10), which its own docstring calls default-OFF and NOT wired into the live loop (importers:
+  the atlas precompute, `tools/vision_atlas_validate.py` and the tests). No module exists for #7
+  (cooldown sweep) or #9 (recall bar) (`docs/OBS_CV_MINIMAP_PLAN.md:104-107` rows). No game can
+  drain a module that is not built or not wired, so there is no probe to ready here.
 - **G4-22** (was H3) **THE UNSOLVED ZOI CORE.** Minimap champion IDENTITY via `cv2.matchTemplate`
   (Wave-2/3 over the blob centroids vs ~10 in-game champ templates): needs the opencv-python dep +
   live occlusion testing. Template-match hit only **1/13 on live ARAM = the clustering wall**. This is
   a multi-session BUILD, not an eyeball. Wave-2/3 depends on Zone-1 districts.
+  **AGE CHECK (lane 9 PREP s144 cycle 79, RM-1668; NOT a tick): the BUILD shipped, and the 1/13
+  is older than it.** `core/minimap_identity.py` (`968a7e667`, 2026-07-05) is the circle-masked
+  `cv2.matchTemplate` plus masked-Pearson identity pass, roster-scoped to the Live Client names;
+  `1fd338542` (2026-07-08) turned it default ON (`RC_ZOI_IDENTITY`, `core/minimap_blob_detect.py`
+  `_identity_enabled`), and it feeds `zoi.champion_dots` (`dashboard/_state_builder.py`). The
+  opencv dep is pinned (`requirements.txt`, `opencv-python==5.0.0.93`). The "1/13" line entered this
+  doc on 2026-07-06 (`8fb6dc3ac`), before the LEDGER 871 champion-size floor and per-team clamp
+  (`b4ddedd1`, 72->8 / 62->10 / 74->10 dots) and before the default-ON flip, so it measures a
+  pipeline that no longer runs. What is open is a live RE-MEASURE of identity hit rate on the
+  current pipeline, and it has no machine ground truth: the Live Client gives roles, not minimap
+  positions. PROPOSED PREDICATE (stated before any game; a human promotes it): over at least 3
+  timed overlay minimap frames from one game, the operator labels each visible champion icon, and
+  PASS iff at least 70 pct of the `zoi.champion_dots` entries carrying a `champion` tag at that
+  frame's `ts` name the icon under them. SUBSTITUTION CHECK: a `champion` tag on a dot, or a
+  matcher test on pasted icons, shows only that identity was COMPUTED; whether it is RIGHT needs
+  the labelled frame. A frame whose `ts` is not inside the game (load screen, alt-tab) is no result.
 - **G4-23** (was H5) L-01 vision-base-capture live re-validation: the alt-tab base-clobber fix
   (`eece8500`, grab base only when League is foreground + once per config) was code-fixed + TDD-tested
   but NEVER re-validated in a live game (base was restored from a still, not re-grabbed clean in-game).
@@ -3385,6 +3432,18 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   through the existing `zoi=` / `districts=` seam - `vision_tracker` fog needs coordinate positions the
   Live Client does not give (roles only). Regression fence in place
   (`test_dead_fog_feed_never_fires_on_live_sr_shape`). Do NOT flip roster-wiring until (b) lands.
+  **AGE CHECK (lane 9 PREP s144 cycle 79, RM-1668; NOT a tick, NOT struck): no live work of its
+  own; both halves are owned elsewhere.** (a) is G4-22 (its age check above). (b) is the same
+  question as G2-42 (a) and the MIA-ring half of G2-42 (d), whose READY block (s144 cycle 46)
+  measured it BLOCKED-BUILD: the SR fog feed is still dead (`core/vision_tracker.py`
+  `_compute_enemies` coerces the role-string `position` to `{}`, so no enemy is ever sighted), the
+  `kind="macro"` tree (`core/macro_decision_tree.py`, `e2bb486a3`, 2026-07-05) is already wired in
+  `dashboard/_deterministic_coaching.py` over `gs["fog_enemies"]` and so never fires on the live
+  shape, and live `callouts` are blanked by `LIVE_SUPPRESSED_ENVELOPE_FIELDS`. The fence named here
+  is still in `tests/test_macro_decision_tree.py`. No game can drain this row until a feed is built;
+  when one is, the G2-42 (a) / (d-MIA) predicates and `tools/gated_g242_zoi_check.py` are the probe.
+  RE-FILE PROPOSAL (a human moves it): fold G4-25 into G2-42 as a cross-reference, the way G3-15 adds
+  no new work, so one game is not asked to drain the same feed twice.
 
 ### `[BATCH POST-GAME]` - the 90s after a Match-V5-eligible game (GATE 4 ONLY)
 
