@@ -28,7 +28,12 @@ per-axis threshold needs calibrating here. Adding an axis = append a detector.
 
 No engine math change, no ENGINE_VERSION bump, no served-path edit: this module
 is inert until a caller wires it (the section-5 "default inert" contract). Every
-public path is deterministic and never raises.
+public path is deterministic and never raises (an Exception from one detector
+skips that axis and is logged at WARNING once per detector and class).
+
+Champion names may be Live Client display names ("Kog'Maw", "Jarvan IV"): they
+are bridged to DDragon ids through ``core.archetype_picks.canonical_champion_id``
+before scoring, because every DS registry keys on the id (RM-1855).
 """
 from __future__ import annotations
 
@@ -287,6 +292,85 @@ def _rank_gaps(gaps: list[dict]) -> list[dict]:
     return sorted(gaps, key=_key)
 
 
+# --- input normalization -----------------------------------------------------
+
+# Longest plausible champion name or id. A longer my_champion is not a champion
+# and is refused rather than echoed into the result and the shadow log line.
+_MAX_NAME_LEN: int = 64
+
+# (detector name, exception class name) pairs already reported at WARNING. A
+# detector that fails on every call (a DS scorer import error, a registry that
+# will not load) is visible once per process, then drops to DEBUG.
+_WARNED_DETECTOR_FAILURES: set[tuple[str, str]] = set()
+
+
+def _clean_champion(value: object) -> str:
+    """Return the stripped champion name, or "" when it cannot be one.
+
+    "" for a non-str, a blank, an over-long value or one carrying a control
+    character inside it (edge whitespace is stripped, never refused)."""
+    if not isinstance(value, str):
+        return ""
+    stripped = value.strip()
+    if not stripped or len(stripped) > _MAX_NAME_LEN or not stripped.isprintable():
+        return ""
+    return stripped
+
+
+def _clean_enemies(value: object) -> list[str]:
+    """Return the stripped non-blank str entries of a list or tuple.
+
+    Any other container (a bare str, bytes, a dict, a number) is treated as
+    empty rather than iterated; a non-str entry is skipped."""
+    if not isinstance(value, (list, tuple)):
+        if value is not None:
+            _log.debug(
+                "ds_capability_gap: enemy_champions is %s, not a list - treated as empty",
+                type(value).__name__,
+            )
+        return []
+    return [c.strip() for c in value if isinstance(c, str) and c.strip()]
+
+
+def _safe_mode(mode: object) -> str:
+    """Return the stripped mode string, "SR" for a non-str or blank mode."""
+    if isinstance(mode, str):
+        stripped = mode.strip()
+        if stripped:
+            return stripped
+    return "SR"
+
+
+def _score_id(name: str) -> str:
+    """Bridge a Live Client display name to the DS registries' DDragon id.
+
+    The live callers pass ``allPlayers[].championName`` ("Kog'Maw",
+    "Jarvan IV"), while every DS scorer keys on the DDragon id ("KogMaw",
+    "JarvanIV"); an unbridged display name scores 0.0 / False. An unknown name,
+    or a failed lookup, passes through unchanged."""
+    try:
+        from core.archetype_picks import canonical_champion_id
+
+        return canonical_champion_id(name) or name
+    except Exception as exc:  # noqa: BLE001 - the bridge never breaks the synthesis
+        _log.debug("ds_capability_gap: canonical_champion_id(%r) raised %s", name, type(exc).__name__)
+        return name
+
+
+def _report_detector_failure(detector: object, exc: Exception) -> None:
+    """WARNING the first time a (detector, exception class) pair fails, DEBUG after."""
+    name = getattr(detector, "__name__", "?")
+    key = (str(name), type(exc).__name__)
+    if key in _WARNED_DETECTOR_FAILURES:
+        _log.debug("ds_capability_gap: detector %s raised %s again", key[0], key[1])
+        return
+    _WARNED_DETECTOR_FAILURES.add(key)
+    _log.warning(
+        "ds_capability_gap: detector %s raised %s: %s - axis skipped",
+        key[0], key[1], exc,
+    )
+
+
 # --- public API --------------------------------------------------------------
 
 def build_capability_gap(
@@ -299,11 +383,16 @@ def build_capability_gap(
     Parameters
     ----------
     my_champion:
-        DDragon champion id for the local player. Blank/None -> applies=False.
+        Local player's champion, as a DDragon id ("KogMaw") or a Live Client
+        display name ("Kog'Maw"); both score the same. A non-str, blank,
+        over-long or control-character value -> applies=False with
+        my_champion "". Echoed stripped, in the caller's own form.
     enemy_champions:
-        DDragon champion ids for the enemies. None -> []. Blank entries skipped.
+        Enemy champions, ids or display names, as a list or tuple. None or any
+        other type -> []. Blank and non-str entries are skipped.
     mode:
-        Game mode string passed through to the scorers (default "SR").
+        Game mode string passed through to the scorers (default "SR"); a
+        non-str or blank mode becomes "SR", a str mode is stripped.
 
     Returns
     -------
@@ -316,21 +405,21 @@ def build_capability_gap(
         gaps (list[dict])   - all fired gaps, sorted by severity desc. Each:
                               {axis, demand_count, severity, detail}.
     """
-    safe_champion = (my_champion or "").strip()
-    safe_mode = mode or "SR"
+    safe_mode = _safe_mode(mode)
+    safe_champion = _clean_champion(my_champion)
     if not safe_champion:
         return _zero_result("", safe_mode)
 
-    if enemy_champions is None:
-        enemy_champions = []
-    safe_enemies = [(c or "").strip() for c in enemy_champions if (c or "").strip()]
+    # Detectors score DDragon ids; the result echoes the caller's own form.
+    score_champion = _score_id(safe_champion)
+    score_enemies = [_score_id(c) for c in _clean_enemies(enemy_champions)]
 
     gaps: list[dict] = []
     for detector in _DETECTORS:
         try:
-            gap = detector(safe_champion, safe_enemies, safe_mode)
-        except Exception:  # noqa: BLE001 - one bad axis never breaks the rest
-            _log.debug("ds_capability_gap: detector %s raised", getattr(detector, "__name__", "?"))
+            gap = detector(score_champion, score_enemies, safe_mode)
+        except Exception as exc:  # noqa: BLE001 - one bad axis never breaks the rest
+            _report_detector_failure(detector, exc)
             gap = None
         if gap is not None:
             gaps.append(gap)
