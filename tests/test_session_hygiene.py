@@ -155,7 +155,7 @@ def test_session_position_tail_bucket_caps(tmp_path):
     db = _make_db(tmp_path, rows)
     now = rows[-1][1] + _DAY_MS * 30
     out = sh.compute_session_hygiene(db_path=db, now_ms=now, tz=FIXED_TZ)
-    tail = [b for b in out["wr_by_session_position"] if b["position"] == sh.POSITION_CAP][0]
+    tail = next(b for b in out["wr_by_session_position"] if b["position"] == sh.POSITION_CAP)
     # positions 8,9,10 -> 3 games in the tail bucket.
     assert tail["games"] == 3
     assert tail["label"].endswith("+")
@@ -377,7 +377,7 @@ def test_planted_four_loss_session_flags_loss_streak_and_caps(tmp_path):
     r = out["readiness"]
     assert r["score"] is not None
     assert "loss_streak" in _flag_names(out)
-    ls = [f for f in r["flags"] if f["flag"] == "loss_streak"][0]
+    ls = next(f for f in r["flags"] if f["flag"] == "loss_streak")
     assert ls["kind"] == "override"
     # capped: a hard override never leaves the light green.
     assert r["state"] in ("yellow", "red")
@@ -497,7 +497,7 @@ def test_thin_bucket_does_not_read_extreme(tmp_path):
     db = _make_db(tmp_path, [g])
     now = g[1] + _DAY_MS * 30
     out = sh.compute_session_hygiene(db_path=db, now_ms=now, tz=FIXED_TZ)
-    pos1 = [b for b in out["wr_by_session_position"] if b["position"] == 1][0]
+    pos1 = next(b for b in out["wr_by_session_position"] if b["position"] == 1)
     assert pos1["games"] == 1
     # thin -> surfaced wr omitted (None), never 1.0/0.0.
     assert pos1["wr"] is None

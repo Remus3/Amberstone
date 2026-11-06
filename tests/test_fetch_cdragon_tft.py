@@ -107,7 +107,7 @@ def test_extract_keeps_raw_counts_and_drops_non_playables_from_the_roster():
     assert ex["_counts"]["units"] == 4
     assert ex["_counts"]["traits"] == 3
     assert "Golem" not in ex["champions"]
-    assert [u["apiName"] for u in ex["units"]][0] == "DA_18_Kobuko"
+    assert next(u["apiName"] for u in ex["units"]) == "DA_18_Kobuko"
     assert ex["units"][0] == {"apiName": "DA_18_Kobuko", "name": "Kobuko",
                               "cost": 1, "traits": ["Sprykin", "Brawler"],
                               "role": "APTank", "stats": {"hp": 600.0},
@@ -126,7 +126,7 @@ def test_extract_items_and_augments_come_from_the_base_mutator_row():
     ex = _extract()
     assert ex["_mutator"] == "TFTSet18"
     assert [i["apiName"] for i in ex["items"]] == ["DA_18_AllOnes", "DA_18_EmblemFae"]
-    emb = [i for i in ex["items"] if i["apiName"] == "DA_18_EmblemFae"][0]
+    emb = next(i for i in ex["items"] if i["apiName"] == "DA_18_EmblemFae")
     assert emb["composition"] == ["DA_Component_Spatula", "DA_Component_BFSword"]
     assert [a["apiName"] for a in ex["augments"]] == ["DA_18_BigGrabBag"]
     assert ex["augments"][0]["associatedTraits"] == ["DA_18_Fae"]

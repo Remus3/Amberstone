@@ -302,7 +302,7 @@ class CollapsePayloadTests(unittest.TestCase):
         # A collapsed, B left as-is (no stats).
         self.assertIn(COLLAPSED_KEY, new["champions"]["A"]["variants"])
         self.assertNotIn(COLLAPSED_KEY, new["champions"]["B"]["variants"])
-        a_stats = [s for cn, s in stats if cn == "A"][0]
+        a_stats = next(s for cn, s in stats if cn == "A")
         self.assertEqual(a_stats["after"], 1)
 
 

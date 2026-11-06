@@ -150,10 +150,10 @@ class MerakiPremiseTests(unittest.TestCase):
 
     def test_ravenous_coefficients_are_the_engine_values(self):
         passives = self.items["3074"]["passives"]
-        cleave = [p for p in passives if p["name"] == "Cleave"][0]
+        cleave = next(p for p in passives if p["name"] == "Cleave")
         self.assertIn("40% AD", cleave["effects"])
         actives = self.items["3074"]["active"]
-        crescent = [a for a in actives if a["name"] == "Ravenous Crescent"][0]
+        crescent = next(a for a in actives if a["name"] == "Ravenous Crescent")
         self.assertIn("80% AD", crescent["effects"])
 
     def test_sibling_hydras_carry_no_lifesteal_clause(self):

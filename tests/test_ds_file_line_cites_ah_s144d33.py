@@ -269,7 +269,7 @@ def test_plan_build_order_repins_filter_shared_uniques_after_the_splat():
 
 def test_plan_build_order_early_returns_none():
     func = _top("core/build_order.py", "plan_build_order")
-    first = [s for s in func.body if not isinstance(s, ast.Expr)][0]
+    first = next(s for s in func.body if not isinstance(s, ast.Expr))
     assert isinstance(first, ast.If)
     assert ast.unparse(first.test) == "not champion or not str(champion).strip()"
     assert ast.unparse(first.body[0]) == "return None"

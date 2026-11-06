@@ -229,7 +229,7 @@ def test_w5_same_name_on_opposite_teams_is_two_players():
     third = [_player("A", "ORDER", [_ward(2055, count=1)]),
              _player("A", "CHAOS", [])]
     assert _ticks(first, second, third) == [0, 0, 1]
-    assert list(ward_events._buffer)[0]["side"] == "ally"
+    assert next(iter(ward_events._buffer))["side"] == "ally"
 
 
 def test_w5_key_that_went_ambiguous_resumes_as_a_baseline():
@@ -254,13 +254,13 @@ def test_w6_unusable_ts_still_records(bad):
     assert ward_events.buffer_size() == 1
     # The clock, not 1.0 (a bool read as a time) - that ward would sit
     # outside every recent-wards window.
-    assert abs(list(ward_events._buffer)[0]["ts"] - time.time()) < 60.0
+    assert abs(next(iter(ward_events._buffer))["ts"] - time.time()) < 60.0
 
 
 def test_w6_real_ts_is_kept():
     _ticks([_player(items=[_ward(2055, count=2)])],
            [_player(items=[_ward(2055, count=1)])], start_ts=500.0)
-    assert list(ward_events._buffer)[0]["ts"] == 501.0
+    assert next(iter(ward_events._buffer))["ts"] == 501.0
 
 
 # Non-changes.

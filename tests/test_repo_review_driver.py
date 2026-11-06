@@ -238,7 +238,7 @@ def test_only_selection_judges_only_the_selected_batches(rr, tmp_path):
     assert runner.run(only={"B02"}) == 0
     assert spawn.calls == ["B02"]
     prog = _progress(tmp_path)
-    assert prog["status"] == "running" and [r["id"] for r in prog["checklist"]][0] == "B01"
+    assert prog["status"] == "running" and next(r["id"] for r in prog["checklist"]) == "B01"
 
 
 def test_done_batches_are_not_rerun(rr, tmp_path):

@@ -618,7 +618,7 @@ def test_chapters_only_when_supported(tmp_path, ws_version, fmt, mode, expect):
     run_coro(body_wrap(fake, body))
     assert ("CreateRecordChapter" in fake.types()) is expect
     if expect:
-        chap = [r for r in fake.requests if r[0] == "CreateRecordChapter"][0][1]
+        chap = next(r for r in fake.requests if r[0] == "CreateRecordChapter")[1]
         assert chap["chapterName"].startswith("ChampionKill")
 
 

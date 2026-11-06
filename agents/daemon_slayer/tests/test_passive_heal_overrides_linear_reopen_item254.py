@@ -136,7 +136,7 @@ class DefaultByteIdenticalTests(unittest.TestCase):
     def test_load_default_injects_no_heal_block(self) -> None:
         ab = load_default()
         for cid, key, fi in _REOPEN_SEEDS:
-            form = [f for f in ab.get_abilities(cid)[key] if f.form_index == fi][0]
+            form = next(f for f in ab.get_abilities(cid)[key] if f.form_index == fi)
             self.assertFalse(
                 any(b.attribute_kind == "heal" for b in form.damage_blocks),
                 (cid, key, fi),
@@ -145,7 +145,7 @@ class DefaultByteIdenticalTests(unittest.TestCase):
     def test_flag_on_injects_heal_block(self) -> None:
         ab = AbilitiesSnapshot.load(apply_passive_heal=True)
         for cid, key, fi in _REOPEN_SEEDS:
-            form = [f for f in ab.get_abilities(cid)[key] if f.form_index == fi][0]
+            form = next(f for f in ab.get_abilities(cid)[key] if f.form_index == fi)
             self.assertTrue(
                 any(b.attribute_kind == "heal" for b in form.damage_blocks),
                 (cid, key, fi),
@@ -161,7 +161,7 @@ class NoExistingHealBlockGateTests(unittest.TestCase):
     def test_reopen_forms_had_no_heal_block_before_injection(self) -> None:
         ab = load_default()
         for cid, key, fi in _REOPEN_SEEDS:
-            form = [f for f in ab.get_abilities(cid)[key] if f.form_index == fi][0]
+            form = next(f for f in ab.get_abilities(cid)[key] if f.form_index == fi)
             self.assertFalse(
                 any(b.attribute_kind == "heal" for b in form.damage_blocks),
                 (cid, key, fi),

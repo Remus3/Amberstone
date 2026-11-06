@@ -56,7 +56,7 @@ def test_sample_at_seeks_then_reads():
 
 def test_a_player_state_carries_items_level_and_scores():
     s = rs.sample_at(_FakeClient(), 600.0)
-    vi = [p for p in s.players if p.champion == "Vi"][0]
+    vi = next(p for p in s.players if p.champion == "Vi")
     assert vi.level == 11
     assert vi.item_ids == [6692, 3111]
     assert vi.cs == 112
@@ -66,7 +66,7 @@ def test_a_player_state_carries_items_level_and_scores():
 def test_the_role_string_is_kept_as_a_role_never_as_a_coordinate():
     # :2999 `position` is 'JUNGLE'/'MIDDLE'/... - a role, NOT map coords.
     s = rs.sample_at(_FakeClient(), 600.0)
-    vi = [p for p in s.players if p.champion == "Vi"][0]
+    vi = next(p for p in s.players if p.champion == "Vi")
     assert vi.role == "JUNGLE"
     assert not hasattr(vi, "x")
 

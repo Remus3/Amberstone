@@ -104,7 +104,7 @@ def test_every_anchor_is_covered_by_a_citation():
                 misses.append(f"{path}:{hit[0]} ({anchor}) not in {ranges}")
     for path, (anchor, follower) in _FOLLOWERS.items():
         lines = _lines(path)
-        n = [i for i, line in enumerate(lines, 1) if anchor in line][0] + 1
+        n = next(i for i, line in enumerate(lines, 1) if anchor in line) + 1
         assert follower in lines[n - 1], f"{path}:{n} is not {follower!r}"
         if not any(a <= n <= b for p, a, b in cites if p == path):
             misses.append(f"{path}:{n} ({follower}) not cited")
@@ -121,8 +121,8 @@ def test_no_citation_range_is_padded():
 def test_listed_rotating_modes_route_to_brawl():
     para = _paragraph()
     listed = re.findall(r"`([A-Z]+)`", para.split("returns `MODE_BRAWL` for", 1)[1].split(".", 1)[0])
-    branch = [n for n, line in enumerate(_lines("core/game_snapshot.py"), 1)
-              if "return MODE_BRAWL" in line][0]
+    branch = next(n for n, line in enumerate(_lines("core/game_snapshot.py"), 1)
+              if "return MODE_BRAWL" in line)
     source = "\n".join(_lines("core/game_snapshot.py")[branch - 5:branch])
     in_source = set(re.findall(r'"([A-Z]+)"', source))
     assert set(listed) == in_source, (listed, in_source)

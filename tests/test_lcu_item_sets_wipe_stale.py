@@ -203,7 +203,7 @@ class WipeScopeTests(unittest.TestCase):
         ]
         resp, calls = self._run_with_existing_sets(existing, "Jinx", "sr")
         self.assertTrue(resp["ok"])
-        put_body = [c for c in calls if c[0] == "PUT"][0][2]
+        put_body = next(c for c in calls if c[0] == "PUT")[2]
         kept_uids = {s.get("uid") for s in put_body["itemSets"]}
         # 4 current-scope RC- + 1 operator custom = 5 kept
         self.assertEqual(kept_uids, {
@@ -232,7 +232,7 @@ class WipeScopeTests(unittest.TestCase):
         ]
         resp, calls = self._run_with_existing_sets(existing, "Jinx", "sr")
         self.assertTrue(resp["ok"])
-        put_body = [c for c in calls if c[0] == "PUT"][0][2]
+        put_body = next(c for c in calls if c[0] == "PUT")[2]
         kept_uids = {s.get("uid") for s in put_body["itemSets"]}
         self.assertEqual(kept_uids, {"MyCustomBuild"})
         self.assertEqual(resp["wiped_count"], 2)
@@ -262,7 +262,7 @@ class WipeScopeTests(unittest.TestCase):
         ]
         resp, calls = self._run_with_existing_sets(existing, "Jinx", "sr")
         self.assertTrue(resp["ok"])
-        put_body = [c for c in calls if c[0] == "PUT"][0][2]
+        put_body = next(c for c in calls if c[0] == "PUT")[2]
         kept_uids = {s.get("uid") for s in put_body["itemSets"]}
         self.assertEqual(kept_uids, {"RC-Jinx-sr-carry"})
 
@@ -276,7 +276,7 @@ class WipeScopeTests(unittest.TestCase):
         ]
         resp, calls = self._run_with_existing_sets(existing, "Jinx", "sr")
         self.assertTrue(resp["ok"])
-        put_body = [c for c in calls if c[0] == "PUT"][0][2]
+        put_body = next(c for c in calls if c[0] == "PUT")[2]
         kept_uids = {s.get("uid") for s in put_body["itemSets"]}
         # RC-Jinx-sr-carry kept; RC-Jinx-srtest-carry wiped because the
         # required prefix is `RC-Jinx-sr-` (trailing hyphen anchors).

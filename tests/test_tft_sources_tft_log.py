@@ -391,7 +391,7 @@ def test_an_event_after_the_latest_rewrite_settles_before_it_is_placed(
     clock.now = T0 + 105
     assert li.poll() == 1
     assert store.flush()
-    r2 = [r for r in store.get_match(ing.match_id)["rounds"] if r["round_seq"] == 2][0]
+    r2 = next(r for r in store.get_match(ing.match_id)["rounds"] if r["round_seq"] == 2)
     assert [e["kind"] for e in r2["events"] if e["src"] == "tft_log"] == ["phase"]
 
 

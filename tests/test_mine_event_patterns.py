@@ -66,16 +66,16 @@ def test_player_rows_no_longer_carry_the_team_level_criterion():
 def test_death_counts_are_also_reported_per_minute():
     # A raw count confounds "died more" with "played longer".
     tl = _tl([_kill(60000, 7, 2), _kill(120000, 7, 2), _kill(180000, 7, 2)])
-    row = [r for r in mine.player_rows(_match(duration=1800), tl)
-           if r["participant_id"] == 2][0]
+    row = next(r for r in mine.player_rows(_match(duration=1800), tl)
+           if r["participant_id"] == 2)
     assert row["values"]["death_cost"] == 3.0
     assert round(row["values"]["deaths_per_min"], 4) == 0.1
 
 
 def test_a_zero_length_game_does_not_divide_by_zero():
     tl = _tl([_kill(1000, 7, 2)])
-    row = [r for r in mine.player_rows(_match(duration=0), tl)
-           if r["participant_id"] == 2][0]
+    row = next(r for r in mine.player_rows(_match(duration=0), tl)
+           if r["participant_id"] == 2)
     assert "deaths_per_min" not in row["values"]
 
 
@@ -88,15 +88,15 @@ def test_shutdowns_given_is_normalised_by_the_deaths_that_could_pay_one():
     # over your own deaths removes that exposure.
     tl = _tl([_kill(60000, 7, 2, shutdown=300), _kill(120000, 7, 2),
               _kill(180000, 7, 2), _kill(240000, 7, 2)])
-    row = [r for r in mine.player_rows(_match(), tl)
-           if r["participant_id"] == 2][0]
+    row = next(r for r in mine.player_rows(_match(), tl)
+           if r["participant_id"] == 2)
     assert row["values"]["shutdowns_given"] == 1.0
     assert row["values"]["shutdown_rate"] == 0.25
 
 
 def test_a_player_who_never_died_has_no_shutdown_rate_rather_than_zero():
-    row = [r for r in mine.player_rows(_match(), _tl([]))
-           if r["participant_id"] == 2][0]
+    row = next(r for r in mine.player_rows(_match(), _tl([]))
+           if r["participant_id"] == 2)
     assert "shutdown_rate" not in row["values"]
 
 

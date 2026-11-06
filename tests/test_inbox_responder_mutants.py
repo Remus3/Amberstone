@@ -1304,7 +1304,7 @@ def c_verb_held(w, result):
         "a held verb reached a process"
     row = w.one_row(result)
     assert row["m4"] is not None
-    entry = [a for a in row["m4"]["actions"] if a["kind"] == "measure"][0]
+    entry = next(a for a in row["m4"]["actions"] if a["kind"] == "measure")
     assert entry["executed_or_held"] == "held"
     assert entry["rule"] == "executor:verb-held-this-build"
 
@@ -1316,7 +1316,7 @@ def c_positional_held(w, result):
         "a hardening-held measure reached a process"
     row = w.one_row(result)
     assert row["m4"] is not None
-    entry = [a for a in row["m4"]["actions"] if a["kind"] == "measure"][0]
+    entry = next(a for a in row["m4"]["actions"] if a["kind"] == "measure")
     assert (entry["executed_or_held"], entry["rule"]) == ("held", "executor:positional")
 
 
@@ -1326,7 +1326,7 @@ def c_precheck_held(w, result):
                for c in w.recorder.calls), "a non-public measure reached a process"
     row = w.one_row(result)
     assert row["m4"] is not None
-    entry = [a for a in row["m4"]["actions"] if a["kind"] == "measure"][0]
+    entry = next(a for a in row["m4"]["actions"] if a["kind"] == "measure")
     assert (entry["executed_or_held"], entry["rule"]) == ("held", "executor:rev-required")
 
 
@@ -1345,7 +1345,7 @@ def c_measure_ran(w, result):
     assert w.recorder.verbs("log") == 1, "the allowed measure never reached the seam"
     row = w.one_row(result)
     assert row["m4"] is not None
-    entry = [a for a in row["m4"]["actions"] if a["kind"] == "measure"][0]
+    entry = next(a for a in row["m4"]["actions"] if a["kind"] == "measure")
     assert entry["executed_or_held"] == "executed"
     assert entry["exit_code"] == 0
 

@@ -53,7 +53,7 @@ class FixedPathsTests(unittest.TestCase):
         for (champ, vk, _old), (new_key, label, _items) in {**hf._AP, **hf._CORKI}.items():
             if "AP" not in label:
                 continue
-            bp = [p for p in _paths(self.champs, champ, vk) if p.get("key") == new_key][0]
+            bp = next(p for p in _paths(self.champs, champ, vk) if p.get("key") == new_key)
             n_ap = sum(1 for it in bp["items"] if it in _AP_ITEMS)
             self.assertGreaterEqual(n_ap, 3, f"{champ} {vk} {new_key} only {n_ap} AP items")
 

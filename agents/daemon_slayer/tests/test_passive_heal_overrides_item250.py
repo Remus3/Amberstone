@@ -285,8 +285,8 @@ class InjectionEndToEndTests(unittest.TestCase):
             self.snap, "Viego", 13, item_ids=["3089"], abilities=self.ab_on,
             resolve_target_relative=True, target_max_hp=2500.0,
         )
-        bp = [s for s in base.spells if s.key == "P"][0].heal_per_cast
-        ap_p = [s for s in ap.spells if s.key == "P"][0].heal_per_cast
+        bp = next(s for s in base.spells if s.key == "P").heal_per_cast
+        ap_p = next(s for s in ap.spells if s.key == "P").heal_per_cast
         self.assertGreater(ap_p, bp)
 
 

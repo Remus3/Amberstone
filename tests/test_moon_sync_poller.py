@@ -603,7 +603,7 @@ def test_status_md_carries_the_prompt_half_line_and_dead_when_blind(state: Path,
     text = P.write_status({}, 1.0, 300, rows=[]).read_text(encoding="utf-8")
     assert "- prompt half:" in text
     assert P.parse_status_header(text)["prompt_half_dead"] is True
-    assert [ln for ln in text.splitlines() if ln.startswith("- prompt half:")][0].endswith(" DEAD")
+    assert next(ln for ln in text.splitlines() if ln.startswith("- prompt half:")).endswith(" DEAD")
     assert any("prompt half DEAD" in ln for ln in P.status_report(self_root=str(root)))
 
     write_log([row("UserPromptSubmit", 10)])
@@ -994,7 +994,7 @@ def test_status_command_reports_prompt_half_dead_when_invocations_outrun_pings(s
     log.write_text(json.dumps(row("UserPromptSubmit", 2 * P.TICK_SECONDS)) + "\n", encoding="utf-8")
     out = P.status_report(now=now, self_root=str(root))
     assert any("prompt half DEAD" in ln for ln in out)
-    half = [ln for ln in out if ln.startswith("prompt half: ")][0]
+    half = next(ln for ln in out if ln.startswith("prompt half: "))
     assert f"last ping {int(now - (now - 10_000))}s" in half
 
     log.write_text(json.dumps(row("UserPromptSubmit", 10)) + "\n", encoding="utf-8")

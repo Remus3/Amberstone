@@ -213,7 +213,7 @@ class NoExistingHealBlockGateTests(unittest.TestCase):
     def test_seeded_forms_had_no_heal_block_before_injection(self) -> None:
         ab = load_default()
         for cid, key, fi in _LINEAR_SEEDS:
-            form = [f for f in ab.get_abilities(cid)[key] if f.form_index == fi][0]
+            form = next(f for f in ab.get_abilities(cid)[key] if f.form_index == fi)
             self.assertFalse(
                 any(b.attribute_kind == "heal" for b in form.damage_blocks),
                 (cid, key, fi),

@@ -117,7 +117,7 @@ class ComboWireTests(unittest.TestCase):
             "Caitlyn", 11, item_ids=[], sequence=["Q", "AA"],
             target_armor=80.0, target_mr=60.0, mode="SR", snapshot=snap,
         )
-        aa = [h for h in r.hits if h.action == "AA"][0]
+        aa = next(h for h in r.hits if h.action == "AA")
         return aa.cast_time
 
     def test_empty_overlay_uses_default_windup(self):

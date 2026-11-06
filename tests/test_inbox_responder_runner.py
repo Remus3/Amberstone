@@ -3089,7 +3089,7 @@ def test_hardening_holds_before_any_process(world, label, argv, rule_prefix):
     assert result.termination == "delivered"
     assert world.recorder.calls == [], "a held measure issued a process"
     row = world.one_row(result)
-    entry = [a for a in row["m4"]["actions"] if a["kind"] == "measure"][0]
+    entry = next(a for a in row["m4"]["actions"] if a["kind"] == "measure")
     assert entry["executed_or_held"] == "held"
     assert entry["rule"].startswith(rule_prefix)
     body = (world.rsc / row["m5"]["filename"]).read_text(encoding="ascii")
@@ -3131,7 +3131,7 @@ def test_precheck_holds_non_public_measures(world, label, argv, rule):
     result = world.drive()
     assert result.termination == "delivered"
     row = world.one_row(result)
-    entry = [a for a in row["m4"]["actions"] if a["kind"] == "measure"][0]
+    entry = next(a for a in row["m4"]["actions"] if a["kind"] == "measure")
     assert (entry["executed_or_held"], entry["rule"]) == ("held", rule)
     assert all(c["argv"][1] in {"merge-base", "ls-files"} for c in world.recorder.calls)
 
@@ -3144,7 +3144,7 @@ def test_precheck_holds_a_reflog_only_revision(world, git_repo):
         reply_action())))
     result = world.drive()
     row = world.one_row(result)
-    entry = [a for a in row["m4"]["actions"] if a["kind"] == "measure"][0]
+    entry = next(a for a in row["m4"]["actions"] if a["kind"] == "measure")
     assert entry["rule"] == "executor:rev-not-public"
     assert world.recorder.verbs("show") == 0
 
@@ -4043,8 +4043,8 @@ def test_a_bad_row_is_replaced_by_the_fallback_and_held(world, monkeypatch):
     assert row["agreement_state"] == "row_replaced"
     assert row["m1"]["status"] == "LOWER_BOUND" and isinstance(row["m1"]["hops"], int)
     assert (world.held(result.cycle_id) / "bad_row.json").exists()
-    end = [x for x in world.lines() if x["phase"] == "end"
-           and x["cycle_id"] == result.cycle_id][0]
+    end = next(x for x in world.lines() if x["phase"] == "end"
+           and x["cycle_id"] == result.cycle_id)
     assert "metrics-invalid" in end["termination_detail"]
 
 

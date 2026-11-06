@@ -235,7 +235,7 @@ def test_override_that_misses_the_wiki_is_not_resolved():
     M.annotate_override_resolution(
         report, lambda c, s, a, k: (61.0, 61.0) if c == "Thresh" and k == "ap_pct" else None
     )
-    ratio = [r for r in report["findings"] if r["field"] == "ratio:Magic Damage:ap_pct"][0]
+    ratio = next(r for r in report["findings"] if r["field"] == "ratio:Magic Damage:ap_pct")
     assert ratio["resolved_by_override"] is False
     assert report["_override_resolved"] == 0
 

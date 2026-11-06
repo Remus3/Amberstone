@@ -263,7 +263,7 @@ def test_restart_before_backfill_supersedes_the_old_game_end_rows(world):
     store = root / "data" / "tft_matches"
     end_row = [x for x in _rows(root) if x["mode"] == "TFT"][-2]["id"]
     assert pt.rate_tft_game(root, G2, store_dir=store)[0] == "S"
-    m1_end = [json.loads(x) for x in qa.read_text(encoding="utf-8").splitlines()][0]["end_iso"]
+    m1_end = next(json.loads(x) for x in qa.read_text(encoding="utf-8").splitlines())["end_iso"]
     end1 = rep._iso_local(m1_end)
     db = MatchDB(root / "data" / "match_history.db")
     for s in (5, 6):

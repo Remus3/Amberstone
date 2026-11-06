@@ -217,7 +217,7 @@ def test_f5_nearest_comps_ranks_a_non_numeric_top4_rate_as_zero(sd, built):
     other = cat["comps"][1]
     junk_cat = {"comps": [dict(comp_a, top4_rate="z"), dict(other, top4_rate=0.5)]}
     rows = recommend.nearest_comps({"board": [u("U_Bolt"), u("U_Cora")]}, junk_cat, sd, limit=5)
-    assert [r["comp_id"] for r in rows][0] == comp_a["comp_id"]
+    assert next(r["comp_id"] for r in rows) == comp_a["comp_id"]
     assert all(isinstance(r["score"], float) for r in rows)
 
 

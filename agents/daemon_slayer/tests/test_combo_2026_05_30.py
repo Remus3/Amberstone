@@ -131,7 +131,7 @@ class TimelineTests(unittest.TestCase):
         self.assertGreater(aa.raw, 0.0)
 
     def test_r_cast_time_and_damage(self):
-        r = [h for h in self.r.hits if h.action == "R"][0]
+        r = next(h for h in self.r.hits if h.action == "R")
         self.assertEqual(r.form_name, "Final Spark")
         self.assertAlmostEqual(r.cast_time, 1.0)     # Lux R cast_time = 1.0
         self.assertAlmostEqual(r.raw, 400.0)

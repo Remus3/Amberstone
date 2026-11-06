@@ -71,7 +71,7 @@ def test_the_two_route_modules_are_still_imported_not_forked():
     from mc import routes
 
     assert routes.POST_ROUTES[-1] in list(routes_loop_control.POST_ROUTES)
-    assert list(routes_loop_status.GET_ROUTES)[0] in routes.GET_ROUTES
+    assert next(iter(routes_loop_status.GET_ROUTES)) in routes.GET_ROUTES
 
 
 # ============================================== 2. bearer perimeter survives

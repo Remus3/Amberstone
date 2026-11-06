@@ -60,7 +60,7 @@ def test_normalize_pulls_frames_and_events_into_one_neutral_shape():
 
 def test_a_frame_sample_carries_position_and_economy():
     tl = _tl()
-    first = [f for f in tl.frames if f.t_ms == 60000][0]
+    first = next(f for f in tl.frames if f.t_ms == 60000)
     assert (first.x, first.y) == (4000, 11000)
     assert first.participant_id == 7
     assert first.total_gold == 1200

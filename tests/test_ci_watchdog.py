@@ -269,7 +269,7 @@ def test_execute_dispatch_dry_run_runs_nothing():
     res = cw.execute_dispatch(9, "h", arm=False, runner=boom)
     assert res["mode"] == "dry_run"
     assert res["branch"] == "ci-fix/9"
-    assert [s[0] for s in res["steps"]][0] == "fetch"
+    assert next(s[0] for s in res["steps"]) == "fetch"
     assert len(res["steps"]) == 18
 
 
