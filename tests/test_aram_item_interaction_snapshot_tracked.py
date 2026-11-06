@@ -253,7 +253,7 @@ def test_deterministic_item_build_reasons_are_non_empty_from_tracked_corpus(
             names_by_timing.setdefault(timing, []).append(name)
     assert names_by_timing
 
-    timing = sorted(names_by_timing)[0]
+    timing = min(names_by_timing)
     lo, hi = bands[timing]
     game_time_s = float(lo) + 1.0 if hi is None else (float(lo) + float(hi)) / 2.0
     build_order = sorted(set(names_by_timing[timing]))

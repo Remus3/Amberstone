@@ -244,7 +244,7 @@ class MeasurementHasTeethTests(unittest.TestCase):
 
     def test_emptying_an_order_is_detected(self):
         payload = json.loads(json.dumps(self.payload))
-        champ = sorted(payload["build_orders"])[0]
+        champ = min(payload["build_orders"])
         axis = cov.expected_axes(cov.FAMILY_COMP)[0]
         payload["build_orders"][champ][axis]["order"] = []
         got = self._measure_mutated(payload)
@@ -253,7 +253,7 @@ class MeasurementHasTeethTests(unittest.TestCase):
 
     def test_truncating_an_order_is_detected(self):
         payload = json.loads(json.dumps(self.payload))
-        champ = sorted(payload["build_orders"])[0]
+        champ = min(payload["build_orders"])
         axis = cov.expected_axes(cov.FAMILY_COMP)[0]
         payload["build_orders"][champ][axis]["order"] = ["3153", "3111"]
         got = self._measure_mutated(payload)

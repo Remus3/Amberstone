@@ -43,7 +43,7 @@ def data(request, tmp_path):
 
 
 def _an_area(mod) -> str:
-    return sorted(mod.AREAS)[0]
+    return min(mod.AREAS)
 
 
 def test_a_real_copy_loads_the_same_rows_as_the_tree(data):

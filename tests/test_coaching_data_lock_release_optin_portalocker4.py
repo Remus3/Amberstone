@@ -71,7 +71,7 @@ def _lock_3x(record: list):
             if self._file_open_kwargs:
                 raise TypeError(
                     "open() got an unexpected keyword argument "
-                    f"{sorted(self._file_open_kwargs)[0]!r}")
+                    f"{min(self._file_open_kwargs)!r}")
             self.fh = _FakeHandle()
             return self.fh
 

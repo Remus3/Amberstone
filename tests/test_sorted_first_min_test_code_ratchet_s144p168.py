@@ -1,0 +1,98 @@
+"""RM-1685 - ruff FURB192 (``sorted(xs)[0]`` read only for its minimum) is held at zero in the test code.
+
+FURB192 is not selected by ruff.toml. Measured 2026-11-05 with ``ruff check --isolated --line-length 120``
+(target py39): 9 findings in 7 modules under ``tests/``, ``agents/daemon_slayer/tests/`` and
+``tools/tests/``, none in a main-session-owned module and none in a file another lane branch changed, so the
+baseline is empty. Each was rewritten by ruff's own (unsafe-marked) fix: ``sorted(xs)[0]`` becomes ``min(xs)``.
+
+Equivalence: both spellings return the smallest element under the same ordering, so every swapped line reads
+the same value (every operand here is a key set or a string/path list, never a sequence with unorderable
+members). The only difference is the failure type on an EMPTY source (``ValueError`` instead of
+``IndexError``), which fails the same test either way; no swapped line sits under ``pytest.raises(IndexError)``
+(measured by running every touched module). The run uses NO config (``--isolated``) so a per-file-ignore
+cannot hide a finding.
+"""
+from __future__ import annotations
+
+import collections
+import importlib.util
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
+
+pytestmark = pytest.mark.skipif(
+    importlib.util.find_spec("ruff") is None,
+    reason="ruff is not importable by this interpreter",
+)
+
+_RULES = ("FURB192",)
+_TEST_DIRS = ("tests/", "agents/daemon_slayer/tests/", "tools/tests/")
+# The baseline only shrinks: a new finding fails, and an entry that stops offending fails test_baseline_is_exact.
+_BASELINE: set[str] = set()
+
+
+def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
+    proc = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", "--isolated", "--target-version", "py39",
+         "--line-length", "120", "--no-fix", "--no-cache", "--output-format", "json",
+         "--select", ",".join(_RULES), *args],
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, **kwargs,
+    )
+    # ruff exits 1 when it reports anything; 2 is a real failure.
+    assert proc.returncode in (0, 1), proc.stderr[-400:]
+    return json.loads(proc.stdout)
+
+
+@pytest.fixture(scope="module")
+def tree_counts() -> dict[str, int]:
+    tracked = {relative_posix(p) for p in repo_files(REPO_ROOT, ("*.py",))}
+    assert len(tracked) > 100, "the tracked-file walk returned almost nothing"
+    assert any(rel.startswith(_TEST_DIRS) for rel in tracked), "no tracked test module was seen"
+    counts: collections.Counter = collections.Counter()
+    for d in _ruff(["."]):
+        rel = relative_posix(Path(d["filename"]).resolve())
+        if rel in tracked and rel.startswith(_TEST_DIRS):
+            counts[rel] += 1
+    return dict(counts)
+
+
+def test_no_new_furb192_finding_in_the_test_code(tree_counts):
+    new = {rel: n for rel, n in tree_counts.items() if rel not in _BASELINE}
+    assert not new, f"ruff {_RULES} findings in the test code, file: count: {new}"
+
+
+def test_baseline_is_exact(tree_counts):
+    """Every baseline entry still offends; one that no longer does must be dropped (the set only shrinks)."""
+    assert not _BASELINE - set(tree_counts), sorted(_BASELINE - set(tree_counts))
+
+
+def test_min_and_sorted_first_agree():
+    """The rewrite reads the same element; only the empty-source exception type differs."""
+    mapping = {"zeta": 1, "alpha": 2, "mid": 3}
+    ordered = sorted(mapping)  # bound first so the demo is not itself a FURB192 hit
+    assert ordered[0] == min(mapping) == "alpha"
+    paths = ["b/x.json", "a/y.json", "c/z.json"]
+    ordered_paths = sorted(p for p in paths)
+    assert ordered_paths[0] == min(p for p in paths) == "a/y.json"
+    empty = sorted([])
+    with pytest.raises(IndexError):
+        empty[0]  # noqa: B018
+    with pytest.raises(ValueError):
+        min([])
+
+
+def test_probe_is_live():
+    """The rule reports its pattern and stays quiet on the sound spelling, so an empty result is a real scan."""
+    bad = "xs = {'b': 1, 'a': 2}\nfirst = sorted(xs)[0]\n"
+    good = "xs = {'b': 1, 'a': 2}\nfirst = min(xs)\n"
+    found = _ruff(["--stdin-filename", "probe_mod.py", "-"], stdin=bad)
+    assert {d["code"] for d in found} == set(_RULES), found
+    assert _ruff(["--stdin-filename", "probe_mod.py", "-"], stdin=good) == []

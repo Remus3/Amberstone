@@ -173,8 +173,8 @@ def test_guard_fires_on_a_planted_starter(mode_key: str) -> None:
     payload = copy.deepcopy(_load_table("precompute", mode_key, patch))
     assert not _starter_slots(payload, items), "fixture payload is already dirty"
 
-    champ = sorted(payload[_CONTENT_KEY])[0]
-    axis = sorted(payload[_CONTENT_KEY][champ])[0]
+    champ = min(payload[_CONTENT_KEY])
+    axis = min(payload[_CONTENT_KEY][champ])
     cell = payload[_CONTENT_KEY][champ][axis]
     planted = "1120"  # Doran's Helm - terminal, purchasable, map-legal, 450g
     cell["order"] = list(cell["order"])[:-1] + [planted]

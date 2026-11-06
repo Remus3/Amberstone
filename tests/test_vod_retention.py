@@ -615,7 +615,7 @@ def test_apply_real_recycles_only_candidates_and_sidecar_survives(tmp_path):
 def test_apply_halts_after_a_detected_nuke(tmp_path):
     vids, side = _layout(tmp_path)
     res = _plan(side)
-    first = sorted(d.row.path for d in res.candidates)[0]
+    first = min(d.row.path for d in res.candidates)
     fake = FakeRecycler(nuke_on=Path(first).name)
     out = vr.apply(res, dry_run=False, confirm=vr.CONFIRM_TOKEN,
                    recycler=fake)

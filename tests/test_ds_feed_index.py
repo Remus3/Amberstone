@@ -816,7 +816,7 @@ def test_an_unchanged_body_requires_a_moved_vintage():
     """
     prev, live = _two_most_recent()
 
-    probe = sorted(_INDEX["dirs"][live])[0]
+    probe = min(_INDEX["dirs"][live])
     doc = json.loads((_DATA / live / probe).read_text(encoding="utf-8"))
     assert artifact_refresh_verdict(
         doc, prior_body=None, prior_vintage=None
