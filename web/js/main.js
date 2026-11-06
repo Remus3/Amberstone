@@ -7384,12 +7384,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     return Array.from(document.querySelectorAll('[role="menu"]'))
       .some((m) => m.getClientRects().length > 0);
   }
+  // RM-1765: the owner is decided by input TYPE, not by tag. A checkbox, a
+  // radio, a range or a button-type input reads no letter key, so it keeps
+  // the shortcuts; the tag test killed every one of them while a Settings
+  // toggle or slider had focus. Same test as the Replay player's
+  // (review_player_model.js isTypingTarget), so the two handlers agree.
   function _letterShortcutsYield(tgt) {
-    if (tgt) {
-      const tag = tgt.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-      if (tgt.isContentEditable) return true;
-    }
+    if (tgt && tgt.nodeType === 1 && isTypingTarget({
+      tag: tgt.tagName, type: tgt.getAttribute("type"),
+      editable: !!tgt.isContentEditable,
+    })) return true;
     return _menuRendered() || modalLayerRendered();
   }
   function _promptRendered() {
