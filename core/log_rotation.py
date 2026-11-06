@@ -300,8 +300,32 @@ def rotate_if_oversize(
     return rotate(path, backup_count)
 
 
-class SafeRotatingFileHandler(RotatingFileHandler):
-    """RotatingFileHandler whose failed rollover degrades to appending.
+class LFFileHandler(logging.FileHandler):
+    """FileHandler that writes LF rows on every OS.
+
+    The stdlib ``FileHandler._open`` passes no ``newline=``, so on Windows the
+    text layer turns each record's trailing LF into CRLF (RM-481). Rows land
+    LF here, matching the repo's binary-append and ``newline="\\n"`` writers,
+    so a byte-exact reader sees one convention.
+    """
+
+    def _open(self):
+        return self._builtin_open(
+            self.baseFilename, self.mode,
+            encoding=self.encoding, errors=self.errors, newline="\n")
+
+
+class LFRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler that writes LF rows on every OS (see LFFileHandler)."""
+
+    def _open(self):
+        return self._builtin_open(
+            self.baseFilename, self.mode,
+            encoding=self.encoding, errors=self.errors, newline="\n")
+
+
+class SafeRotatingFileHandler(LFRotatingFileHandler):
+    """LF-writing RotatingFileHandler whose failed rollover degrades to appending.
 
     The stdlib doRollover closes the stream, then renames. When the rename
     raises (Windows: another process holds the file), the exception surfaces in

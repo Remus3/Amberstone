@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import logging
-import logging.handlers
 import os
 import re
 import socket
@@ -22,6 +21,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.log_rotation import LFRotatingFileHandler
 from core.polled_json import atomic_write_text
 
 
@@ -245,7 +245,7 @@ def _build_logger() -> logging.Logger:
         return lg
     lg.setLevel(logging.INFO)
     LOG_ROOT.mkdir(parents=True, exist_ok=True)
-    h = logging.handlers.RotatingFileHandler(
+    h = LFRotatingFileHandler(
         LOG_ROOT / "supervisor.log", maxBytes=3 * 1024 * 1024, backupCount=3, encoding="utf-8",
     )
     h.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))

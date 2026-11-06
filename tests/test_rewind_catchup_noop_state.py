@@ -290,7 +290,7 @@ def test_run_writes_a_log_file(env, monkeypatch):
 def test_logging_failure_does_not_abort_the_run(env, monkeypatch):
     def _boom(*a, **kw):
         raise OSError("logs/ is read-only")
-    monkeypatch.setattr(rc, "RotatingFileHandler", _boom)
+    monkeypatch.setattr(rc, "LFRotatingFileHandler", _boom)
     monkeypatch.setattr(riot_api, "get_recent_matches", _ids_returning([]))
 
     assert rc.main([]) == 0

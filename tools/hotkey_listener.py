@@ -63,13 +63,13 @@ import time
 import urllib.error
 import urllib.request
 from ctypes import wintypes
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # Launched as ``pythonw tools/hotkey_listener.py`` (RC-HotkeyListener ONLOGON
 # task), so sys.path[0] is tools/ and the repo's own packages are invisible.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from core.log_rotation import LFRotatingFileHandler  # noqa: E402
 from core.polled_json import atomic_write_text  # noqa: E402
 
 # -- Config --------------------------------------------------------------------
@@ -117,7 +117,7 @@ def _setup_logging() -> logging.Logger:
     log_path = Path(__file__).resolve().parent.parent / "logs" / "hotkey_listener.log"
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        fh = RotatingFileHandler(
+        fh = LFRotatingFileHandler(
             log_path, maxBytes=512_000, backupCount=2, encoding="utf-8",
         )
         fh.setFormatter(fmt)

@@ -41,7 +41,6 @@ import logging
 import sqlite3
 import sys
 import time
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # Make `core` importable when run as a script.
@@ -49,6 +48,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from core import riot_api  # noqa: E402
+from core.log_rotation import LFRotatingFileHandler  # noqa: E402
 from core.polled_json import atomic_write_text  # noqa: E402
 from scripts.rewind_scraper import (  # noqa: E402
     insert_rows,
@@ -155,7 +155,7 @@ def setup_file_logging() -> None:
         for existing in _log.handlers:
             if getattr(existing, "baseFilename", None) == str(path.resolve()):
                 return
-        handler = RotatingFileHandler(
+        handler = LFRotatingFileHandler(
             str(path), maxBytes=LOG_MAX_BYTES,
             backupCount=LOG_BACKUP_COUNT, encoding="utf-8")
         handler.setFormatter(logging.Formatter(

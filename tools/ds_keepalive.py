@@ -37,7 +37,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import logging.handlers
 import os
 import sys
 import threading
@@ -49,6 +48,7 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 import core.daemon_slayer_client as dsc  # noqa: E402
+from core.log_rotation import LFRotatingFileHandler  # noqa: E402
 
 logger = logging.getLogger("rc.tools.ds_keepalive")
 
@@ -128,7 +128,7 @@ def _attach_log() -> None:
     for target in (_LOG_FILE, _FALLBACK_LOG_FILE):
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
-            handler = logging.handlers.RotatingFileHandler(
+            handler = LFRotatingFileHandler(
                 target, maxBytes=1_000_000, backupCount=2, encoding="utf-8")
         except OSError:
             continue
