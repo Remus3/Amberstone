@@ -154,7 +154,9 @@ that adds no new work. G3-03 was BLOCKED ON WIRING on 2026-10-24 until RM-850 sh
 (`14f804fc2`, LEDGER 1816); it is drainable again. G3-13 was BLOCKED ON WIRING on 2026-10-24
 until RM-860 shipped the next day (`9b51bc90f` + `32f625d4c`, LEDGER 1832); it is drainable again
 (re-tagged 2026-10-27, s144 lane gated cycle 8). G1-03 was re-tagged the same day (draft lobby
-only); no count moved.
+only); no count moved. G4-02 / G4-03 / G4-04 / G4-05 were tagged BLOCKED ON WIRING on 2026-11-06
+(s144 lane gated cycle 81: no RC producer sends any of the four DSP5-DSP8 live inputs at local
+main `ba0df749f`; the AGE CHECK sits in G4-02); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -2791,19 +2793,53 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
 
 ### `[BATCH DS-SEAM]` - real-enemy / real-ally seams (same restart discipline as GATE 2)
 
-- **G4-02** (was B31) DSP5 summoner-spell plumb + eyeball: player's + ENEMY's live summoner sets into
+- **G4-02** `[BLOCKED ON WIRING 2026-11-06]` (was B31) DSP5 summoner-spell plumb + eyeball: player's + ENEMY's live summoner sets into
   `dsp_live_consumers.summoner_fight_adjustments`; re-anchor wiki magnitudes at flip. Route WIRED
   (OQ18, POST `/summoner-fight-adj`) but **producer-orphan** - no caller POSTs a live summoner set, so
   this is a code+eyeball slice, not a pure flip.
-- **G4-03** (was B32) DSP6 enemy-rune threat plumb: ENEMY's live rune set into
+  **AGE CHECK (lane 9 PREP s144 cycle 81, RM-1670; source read at local main `ba0df749f`, no game
+  up; NOT a tick). Still producer-orphan, for all four rows G4-02 / G4-03 / G4-04 / G4-05, so no
+  game drains any of them today: a real draft only shows that the inputs EXIST.** Measured: outside
+  `agents/daemon_slayer/`, no tracked `.py` / `.js` / `.mjs` file (tests aside) names
+  `/summoner-fight-adj`, `/enemy-rune-threat`, `/ally-protected-ehp`, `summoner_fight_adjustments`,
+  `enemy_rune_threat` or `ally_protected_ehp`; inside it the three consumers
+  (`dsp_live_consumers.py`) are called only by their own routes (`server.py`
+  `_route_summoner_fight_adj`, `_route_enemy_rune_threat`, `_route_ally_protected_ehp`). DSP8:
+  `core/daemon_slayer_client.py` `rank_assassin_for` accepts `target_preset` and puts it on the
+  `/rank-assassin` body, but its one caller (`rank_for_primary_archetype`, the `arch == "assassin"`
+  branch) never passes it, so no live body carries the key; the only other users are the offline
+  `ops/audit/ds_perm_swarm/live_flip_eyeball.py` harness and `tools/live_flip_watcher.py`, which
+  pick a preset by hand. The game-side inputs are not the blocker: the Live Client's `allPlayers[]`
+  carries each player's `team` and `summonerSpells` (`summonerSpells` measured live, LEDGER 648) and, per the Riot
+  Live Client schema (not re-measured this cycle), a keystone under `runes`. The missing piece is
+  RC code. PRECONDITION for return to the drain list: a producer lands that sends the live set
+  AND records its outbound body (a log line or shadow row carrying `ts` and the Live Client
+  `gameData.gameTime` it read). Predicates stated NOW, graded only after that lands, each in one
+  real draft SR game (q400 / q420): G4-02 PASS iff a recorded body's self ids equal
+  `activePlayer`'s own `allPlayers[]` row `summonerSpells` and its enemy ids equal the other team's,
+  from a `:2999` read within 10 s of game time of the body; G4-03 PASS iff the enemy keystones in a
+  recorded body equal the other team's `runes.keystone` ids from such a read, and a lobby with no
+  PtA / Conqueror / Grasp enemy yields the no-threat response; G4-04 PASS iff the ally set in a
+  recorded body equals the own team minus self from such a read; G4-05 PASS iff a recorded
+  `/rank-assassin` body carries a `target_preset` equal to the producer's own derivation rule
+  applied to that read's enemy team. The on-screen eyeball halves are written when the producer
+  names its surface. SUBSTITUTION CHECK: a hand-POSTed DS body, a fixture, the `live_flip_eyeball`
+  harness or a DS unit test answers whether the engine COMPUTES on a set; only the producer's own
+  recorded outbound body, joined to a `:2999` read at the same game time, answers whether RC SENT
+  the live set.
+- **G4-03** `[BLOCKED ON WIRING 2026-11-06]` (was B32) DSP6 enemy-rune threat plumb: ENEMY's live rune set into
   `dsp_live_consumers.enemy_rune_threat` (PtA/Conqueror/Grasp shifts; no-threat lobby unchanged).
-  **Practice tool has NO enemy rune sets.** Route WIRED (OQ18), producer-orphan.
-- **G4-04** (was B33) DSP7 ally aura/enchanter plumb: live ally team into
+  **Practice tool has NO enemy rune sets.** Route WIRED (OQ18), producer-orphan. Re-measured
+  2026-11-06: still no RC producer; AGE CHECK, precondition and predicate in G4-02.
+- **G4-04** `[BLOCKED ON WIRING 2026-11-06]` (was B33) DSP7 ally aura/enchanter plumb: live ally team into
   `dsp_live_consumers.ally_protected_ehp` (ally beside Janna/Lulu/Soraka shows higher EHP; solo ally
-  unchanged). **Practice tool is solo.** Route WIRED (OQ18), producer-orphan.
-- **G4-05** (was B34) DSP8 `target_preset` derived from the LIVE enemy comp into burst /
+  unchanged). **Practice tool is solo.** Route WIRED (OQ18), producer-orphan. Re-measured
+  2026-11-06: still no RC producer; AGE CHECK, precondition and predicate in G4-02.
+- **G4-05** `[BLOCKED ON WIRING 2026-11-06]` (was B34) DSP8 `target_preset` derived from the LIVE enemy comp into burst /
   `/rank-assassin` (lethality vs tank comp, magic pen vs high-CC comp). Route WIRED (OQ17); the live
-  enemy-comp derivation into the body + the flip stay pending. DS restart.
+  enemy-comp derivation into the body + the flip stay pending. DS restart. Re-measured 2026-11-06:
+  `rank_for_primary_archetype` never passes `target_preset`; AGE CHECK, precondition and predicate
+  in G4-02.
 - **G4-06** (was B35) R9 `assume_passive_flat_mitigation` - **PARTIAL 2026-07-18; the calibration data
   is ALREADY RECORDED, so this row now carries an ACTION ITEM, not a gate.** SETTLED HEADLESS from
   `timeline_events.victim_damage_json` (a promoted column carrying a per-instance fight clock - real
