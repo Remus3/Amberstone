@@ -164,13 +164,8 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
     overflow-x: clip;
     overflow-y: visible;
   }
-  /* The head's h2 does not shrink (header.css), so at 360 and 320 the sub
-   * line ran 37 px past the view and the section scrolled sideways; it
-   * wraps under the title instead. */
-  body:not([data-shell="overlay"]) #view-active-match > .view-section-head {
-    flex-wrap: wrap;
-    row-gap: 0;
-  }
+  /* The head wraps through the shared narrow-head rule in header.css
+   * (RM-1774; at 360 and 320 the sub line ran 37 px past the view). */
   /* The combo action input sat beside a 176 px keystone select and kept
    * 84 px at 360 and 44 px at 320; the select drops under it once the
    * pair no longer fits the input's own width, and the gap replaces its

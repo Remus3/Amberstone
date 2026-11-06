@@ -850,3 +850,35 @@ At 720 px and under, the dashboard Active Match view stacks its panes in ONE ful
   - `transition: color 0.3s` added to `.bi-sort-btn`: the BI pin goes 6 red.
 - 5-phase audit: no page, CSS or JS change, so STRUCTURE / TYPOGRAPHY / HIT-TARGETS / HIERARCHY are unchanged. ASCII: 0 non-ASCII bytes and 0 CR in the diff.
 - FUTURE: the inventory regex only catches modules that change the theme. A hover-then-read module booted on the default theme (no `?theme=`) would not be listed, and nothing would check its settle.
+
+## 2026-11-06 - lane 4 headless, s144 cycle 154 (RM-1774)
+
+### RULING
+- Target: the U-162 FUTURE row "the other views' `.view-section-head` has the same non-shrinking h2, so a long sub line can push past a narrow view".
+- Probe (headless, ui_mock, all 11 views at 720, 640, 480, 360 and 320 px wide; every displayed head descendant against the view's padding edge):
+  - 8 of 11 heads reached past the view at 360 and 320, so the section scrolled sideways.
+  - History: the four scope tabs held one row beside the title. From 480 down they ran 95 px past (215 px at 360 / 320). At 720 / 640 the tab labels broke onto two lines inside 56 px buttons.
+  - User Builds: the sub-line holds one unbreakable data-file path, so it could not shrink below it. It ran 155 px past at 480 and 275 px at 320.
+  - Archive Post Game Review: the Back button was 25 px past from 640 down, and the title with its ARCHIVE tag was 112 px past at 360.
+  - Champ Select, Build Insights, Replay and Post Game Review: the sub-line or title was past at 360 / 320. Pre-Game Lobby's title was past at 320.
+- Ruling: one shared narrow-head rule in `web/css/panels/header.css`, `@media (max-width: 720px)`, scoped to `body:not([data-shell="overlay"])` (the U-162 line and scope):
+  - The head wraps (`row-gap: 0`).
+  - The title may shrink, but no further than its widest word, so it breaks only between words and only once it is alone on a line narrower than itself. RM-975's `flex-shrink: 0` stays the rule above 720.
+  - The sub-line has `flex: 1 1 12em; min-width: 0; overflow-wrap: anywhere`. It stays beside the title while 12em fits (User Builds at 640), and drops under it after. A token wider than the line breaks inside itself.
+  - History's scope tabs wrap onto a second row (`row-gap: var(--space-1)`).
+  - Active Match's own head-wrap rule from RM-1772 was removed from `active_match.css`; the shared rule covers it.
+- After: no head descendant past its head at any of the four narrow widths. History's labels are one line at 42 px at every width, including 720 / 640, where the tabs now take their own row (head 61 -> 82 px). Head geometry above 720 is unchanged (the media line).
+- Guard: `tests/snapshot_panels/test_view_head_narrow_wrap.py`, 107 cases. At HEAD's CSS, 47 failed.
+- Mutations (each restored, sha256-checked), every one red:
+  - No tabs wrap: 5 failed.
+  - No sub rule: 3 failed.
+  - No title shrink: 7 failed.
+  - Title `flex: 1 1 0` (squeezed beside the sub): 25 failed.
+  - Overlay scope dropped: 1 failed.
+- 5-phase audit (headless):
+  - STRUCTURE: no head overflow at 320-640; nothing changes above 720.
+  - TYPOGRAPHY: no size changed.
+  - HIT-TARGETS: the scope tabs and Back stay 42 px tall.
+  - ASCII: 0 non-ASCII bytes in the diff.
+  - HIERARCHY: the title is still the first and brightest line of every head.
+- FUTURE: the view BODIES still scroll sideways under 720 on several views. Measured section scrollWidth in clientWidth at 320: Lobby 752 in 282, Champ Select 658, Build Insights 728, Settings 385, Replay 426, Post Game Review 462, archive Post Game Review 417. Lobby and Build Insights also overflow at 720. Each needs its own reflow ruling, as Active Match got in U-162.

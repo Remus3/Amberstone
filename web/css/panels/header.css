@@ -705,6 +705,41 @@ footer .prefs-chip:hover { color: var(--text); }
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+/* RM-1774: at 720 px and under (300% zoom of the 1920x920 baseline is
+ * 640 wide, WCAG 1.4.10 reflows at 320) every view head wraps instead of
+ * running past its view. Measured before, ui_mock headless: at 360 / 320
+ * 8 of the 11 heads reached past the view and the section scrolled
+ * sideways - History's scope tabs by 215 px, the User Builds sub-line by
+ * 275 px (one unbreakable data-file path), the archive Post Game Review
+ * title by 112 px, the Back button from 640 down. The rules:
+ * - the head wraps (RM-1772 did it for Active Match alone);
+ * - the title may break between its words only once it is alone on a
+ *   line narrower than itself (RM-975's flex-shrink: 0 is the wider
+ *   companion rule);
+ * - the sub-line keeps a 12em basis, so it stays beside the title while
+ *   12em fits and drops under it after, and a token wider than the line
+ *   breaks inside itself;
+ * - History's scope tabs wrap onto a second row.
+ * The overlay shell keeps its own heads. Guard:
+ * tests/snapshot_panels/test_view_head_narrow_wrap.py. */
+@media (max-width: 720px) {
+  body:not([data-shell="overlay"]) .view-section-head {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  body:not([data-shell="overlay"]) .view-section-head h2 {
+    flex-shrink: 1;
+  }
+  body:not([data-shell="overlay"]) .view-section-head .view-section-sub {
+    flex: 1 1 12em;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  body:not([data-shell="overlay"]) .view-section-tabs {
+    flex-wrap: wrap;
+    row-gap: var(--space-1);
+  }
+}
 
 /* When a non-default view is active, hide the 5 main panels + the
  * inline overlays that are mode-specific. Lobby/Home overlays show
