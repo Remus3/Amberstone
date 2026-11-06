@@ -38,15 +38,30 @@ alongside any mined rate rather than implying the corpus is clean.
 from __future__ import annotations
 
 import json
+import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 # A game shorter than this is a remake, not a match.
 REMAKE_MAX_SECONDS = 300
 
+# A gameDuration above this cannot be seconds (16.7 hours): pre-11.20
+# Match-V5 blobs carry MILLISECONDS, so such a value is divided by 1000.
+# Same threshold as tools/mine_event_patterns.py _minutes (RM-1927).
+MILLISECONDS_ABOVE = 60000
+
 # Measured share of games carrying an AFK that Match-V5 cannot see. Report it
 # with any mined rate so the reader can size the noise floor.
 UNDETECTABLE_AFK_RATE = 0.015
+
+# Only these spellings CLEAR the early-surrender flag. Any other set value
+# (including junk) excludes the match, because the source set it. Same set
+# and rule as core.resolved_wr (RM-1920 there, RM-1929 here).
+_FLAG_FALSE_STRINGS = frozenset({"", "0", "false", "no", "n", "off"})
+
+_AFK_KEYS = ("WAS_AFK", "WAS_LEAVER")
 
 
 @dataclass(frozen=True)
@@ -55,41 +70,146 @@ class Verdict:
     reason: str = ""
 
 
+def _finite_number(value: Any) -> float | None:
+    """*value* as a finite float, or None. Bools are not numbers here."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            number = float(value)
+        except OverflowError:
+            return None
+    elif isinstance(value, str):
+        try:
+            number = float(value.strip())
+        except ValueError:
+            return None
+    else:
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _duration_seconds(value: Any) -> int | None:
+    """gameDuration as whole seconds, or None when it is UNKNOWN.
+
+    Unknown = missing, bool, non-numeric, non-finite, negative or under one
+    second (RM-1925 / RM-1926): an unknown duration is never read as a
+    remake. A value above MILLISECONDS_ABOVE is milliseconds (RM-1927).
+    """
+    number = _finite_number(value)
+    if number is None:
+        return None
+    if number > MILLISECONDS_ABOVE:
+        number /= 1000.0
+    if number < 1:
+        return None
+    return int(number)
+
+
+def _flag_set(value: Any) -> bool:
+    """True unless *value* is missing or an explicit false (RM-1929)."""
+    if value is None or value is False:
+        return False
+    if isinstance(value, str) and value.strip().lower() in _FLAG_FALSE_STRINGS:
+        return False
+    number = _finite_number(value)
+    if number is not None:
+        return number != 0
+    # True, NaN, inf or any other type: not an explicit false.
+    return True
+
+
+def _sidecar_flag(value: Any) -> bool:
+    """A sidecar WAS_AFK / WAS_LEAVER value read as a measured yes.
+
+    Values arrive as STRINGS, so they are compared numerically, never
+    truthily (the string '0' is truthy). A non-finite value is junk, not a
+    count (RM-1932); a JSON true is an explicit yes.
+    """
+    if value is True:
+        return True
+    number = _finite_number(value)
+    return number is not None and number > 0
+
+
 def sidecar_has_afk(sidecar_path) -> bool:
     """Ground truth from a .rofl stats sidecar, where one exists.
 
     WAS_AFK arrives as a STRING like every sidecar value, so it is compared
     numerically rather than truthily - the string '0' is truthy in Python and
     would mark every player AFK.
+
+    Never raises. A missing, unreadable, undecodable or malformed sidecar
+    supplies no ground truth and returns False (RM-1930 / RM-1933).
     """
     try:
-        blob = json.loads(Path(sidecar_path).read_text(encoding="utf-8"))
-    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        # utf-8-sig: a BOM-prefixed sidecar keeps its ground truth
+        # (RM-1931); a plain UTF-8 file reads the same.
+        blob = json.loads(Path(sidecar_path).read_text(encoding="utf-8-sig"))
+    # RM-291A: UnicodeDecodeError is a ValueError, not an OSError. ValueError
+    # also covers JSONDecodeError and a NUL in the path, TypeError a non-path
+    # argument, RecursionError a pathologically nested file (RM-1933).
+    except (OSError, ValueError, TypeError, RecursionError):
         return False
-    for player in blob.get("players") or []:
-        for key in ("WAS_AFK", "WAS_LEAVER"):
-            try:
-                if float(player.get(key) or 0) > 0:
-                    return True
-            except (TypeError, ValueError):
-                continue
+    if not isinstance(blob, Mapping):
+        return False
+    players = blob.get("players")
+    if not isinstance(players, (list, tuple)):
+        return False
+    for player in players:
+        if not isinstance(player, Mapping):
+            continue
+        if any(_sidecar_flag(player.get(key)) for key in _AFK_KEYS):
+            return True
     return False
 
 
-def judge(match: dict, sidecar_path=None) -> Verdict:
+def _shape_problem(match: Any) -> str:
+    """Why *match* is not a Match-V5-shaped blob, or "" when it is.
+
+    A missing ``info`` or ``participants`` is ABSENT data and passes; a
+    present one of the wrong type is malformed (RM-1928), and the miners
+    that iterate ``match["info"]["participants"]`` would crash on it.
+    """
+    if not isinstance(match, Mapping):
+        return "malformed match"
+    info = match.get("info")
+    if info is None:
+        return ""
+    if not isinstance(info, Mapping):
+        return "malformed match info"
+    participants = info.get("participants")
+    if participants is None:
+        return ""
+    if not isinstance(participants, (list, tuple)) or not all(
+            isinstance(p, Mapping) for p in participants):
+        return "malformed participants"
+    return ""
+
+
+def judge(match: Any, sidecar_path=None) -> Verdict:
     """Should this match be mined?
 
     *sidecar_path* is optional; when present it supplies AFK ground truth that
     the match blob cannot.
+
+    Never raises. An unknown duration is not a remake and absent data never
+    excludes; a malformed blob is never mined (reason starts "malformed").
     """
-    info = (match or {}).get("info") or {}
-    duration = int(info.get("gameDuration") or 0)
-    if duration and duration < REMAKE_MAX_SECONDS:
+    problem = _shape_problem(match)
+    if problem:
+        return Verdict(False, problem)
+    info = match.get("info") or {}
+
+    duration = _duration_seconds(info.get("gameDuration"))
+    if duration is not None and duration < REMAKE_MAX_SECONDS:
         return Verdict(False, f"remake ({duration}s)")
 
-    participants = info.get("participants") or []
-    if participants and participants[0].get("gameEndedInEarlySurrender"):
+    # Every seat carries the flag in Match-V5; read all of them so a seat 1
+    # missing it does not hide the others (RM-1929).
+    participants = info.get("participants") or ()
+    if any(_flag_set(p.get("gameEndedInEarlySurrender"))
+           for p in participants):
         return Verdict(False, "early surrender")
 
     if sidecar_path and sidecar_has_afk(sidecar_path):
