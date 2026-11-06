@@ -50,12 +50,24 @@ return 0.0. The rubric correctly scores that as zero contribution to a
 zero-base game; we do NOT pretend the operator got "100% of nothing".
 
 Fail-soft contract: missing match_id, blank puuid, malformed schema,
-malformed challenges_json (non-JSON / missing key / non-numeric), or
-any sqlite error returns 0.0. Never raises.
+malformed challenges_json (non-JSON / missing key / non-numeric /
+nested past the parser's recursion limit), an identifier sqlite cannot
+bind (a lone surrogate), or any sqlite error returns 0.0. Never raises
+for a sqlite3 connection.
+
+Every single count is validated on its own before it is summed
+(``_coerce_float``): a value that is non-finite (NaN / Infinity, which
+``json.loads`` accepts, or an inf REAL in an SQL column), negative, a
+boolean, or above ``_MAX_COUNT`` is corrupt data and counts as 0.0.
+Summing first would let one bad column cancel a real one, a negative
+teammate count shrink the team total and inflate the operator's share,
+or a NaN return NaN (s144 true-audit, RM-1861..RM-1867). The result is
+always a finite float in [0.0, 1.0].
 """
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
 
 # Columns summed to form numerator + denominator. Order is load-bearing
@@ -71,8 +83,23 @@ _OBJ_COLUMNS = (
 
 # SQL fragment that sums all _OBJ_COLUMNS for a single row. Coalesces
 # NULL columns to 0 so partially-populated rows (event modes, older
-# schema) still produce a sane numeric.
+# schema) still produce a sane numeric. It documents the column model
+# (core.precomputed_replay_narrative cites it); the query itself selects
+# the columns ONE BY ONE (_ROW_COLS_SQL) so Python validates each count
+# before summing - an in-SQL sum lets a corrupt -5 cancel a real 5.
 _ROW_SUM_SQL = " + ".join(f"COALESCE({c}, 0)" for c in _OBJ_COLUMNS)
+_ROW_COLS_SQL = ", ".join(f"COALESCE({c}, 0)" for c in _OBJ_COLUMNS)
+
+# Index of the first_tower_kill / first_tower_assist sentinels inside
+# _OBJ_COLUMNS (the turret-overlap clamp needs them separately).
+_FTK_IDX = _OBJ_COLUMNS.index("first_tower_kill")
+_FTA_IDX = _OBJ_COLUMNS.index("first_tower_assist")
+
+# No per-participant objective count is anywhere near this (11 turrets,
+# a handful of dragons / grubs / barons). A value above it is a corrupt
+# row, and summing it would overflow the team total to inf and erase
+# every real share.
+_MAX_COUNT = 1_000_000.0
 
 # The 7th + 8th + 9th objective contributions live inside the
 # participants ``challenges_json`` blob (Match-V5 challenges). Older
@@ -84,13 +111,21 @@ _TURRET_KEY = "turretTakedowns"
 
 
 def _coerce_float(value) -> float:
-    """Best-effort float coercion. Returns 0.0 on any failure."""
-    if value is None:
+    """Coerce one objective COUNT to a float. Returns 0.0 on any failure.
+
+    None, a bool (a JSON ``true`` is not one objective), an unparseable
+    value, a non-finite value (NaN / +-inf), a negative value and a value
+    above ``_MAX_COUNT`` are all corrupt counts and give 0.0.
+    """
+    if value is None or isinstance(value, bool):
         return 0.0
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        out = float(value)
+    except (TypeError, ValueError, OverflowError):
         return 0.0
+    if not math.isfinite(out) or out < 0.0 or out > _MAX_COUNT:
+        return 0.0
+    return out
 
 
 def _challenges_objectives(blob) -> tuple[float, float, float]:
@@ -100,17 +135,16 @@ def _challenges_objectives(blob) -> tuple[float, float, float]:
     Returning a tuple from one parse avoids triple-parsing the blob
     (sibling per-key helpers would re-call json.loads per row).
     Fail-soft on every degenerate shape: None, empty string, non-string,
-    malformed JSON, non-dict parse result, missing key, non-numeric
-    value. Each missing/bad value contributes 0.0 to its slot
+    malformed JSON, nesting past the parser's recursion limit, non-dict
+    parse result, missing key, non-numeric / non-finite / negative /
+    boolean value. Each missing/bad value contributes 0.0 to its slot
     independently.
     """
-    if not blob:
-        return (0.0, 0.0, 0.0)
-    if not isinstance(blob, (str, bytes, bytearray)):
+    if not isinstance(blob, (str, bytes, bytearray)) or not blob:
         return (0.0, 0.0, 0.0)
     try:
         parsed = json.loads(blob)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RecursionError):
         return (0.0, 0.0, 0.0)
     if not isinstance(parsed, dict):
         return (0.0, 0.0, 0.0)
@@ -176,17 +210,23 @@ def compute_obj_participation(
         puuid: operator's PUUID for the participant row.
 
     Returns:
-        A float in ``[0.0, 1.0]``. Returns 0.0 on any of:
-          - blank match_id or puuid
+        A finite float in ``[0.0, 1.0]``. Returns 0.0 on any of:
+          - non-str or blank match_id or puuid, or one sqlite cannot
+            bind (a lone surrogate)
           - no matching participants row
           - team total is 0 (rubric correctly under-scores a no-objectives game)
           - any sqlite error or unexpected schema shape
           - malformed challenges_json (handled per-row; the SQL trip
             still succeeds and other rows contribute normally)
+        A single corrupt count (non-finite, negative, boolean, above
+        ``_MAX_COUNT``) contributes 0.0 and the rest of the row and
+        team still count.
     """
-    if not match_id or not puuid:
-        return 0.0
+    # isinstance BEFORE truthiness: a non-str whose __bool__ raises (an
+    # array-like) must fall soft too, not escape.
     if not isinstance(match_id, str) or not isinstance(puuid, str):
+        return 0.0
+    if not match_id or not puuid:
         return 0.0
 
     try:
@@ -205,19 +245,16 @@ def compute_obj_participation(
         if team_id is None:
             return 0.0
 
-        # Pull every team row's 6-col sum + the two first_tower binary
-        # sentinels separately (needed for the turret-overlap clamp) +
-        # the puuid + challenges_json so we can tally herald + voidgrubs
-        # + non-overlapping turrets in Python and identify the operator
-        # row without a second query. Try the widened SELECT first
-        # (modern schema). On OperationalError (legacy schema without
-        # challenges_json), fall back to the 6-column SELECT.
+        # Pull every team row's 6 SQL columns ONE BY ONE (so each count is
+        # validated before it is summed) + the puuid + challenges_json so
+        # we can tally herald + voidgrubs + non-overlapping turrets in
+        # Python and identify the operator row without a second query.
+        # Try the widened SELECT first (modern schema). On
+        # OperationalError (legacy schema without challenges_json), fall
+        # back to the 6-column SELECT.
         try:
             team_sql = (
-                f"SELECT puuid, ({_ROW_SUM_SQL}) AS row_sum, "
-                "COALESCE(first_tower_kill, 0), "
-                "COALESCE(first_tower_assist, 0), "
-                "challenges_json "
+                f"SELECT puuid, {_ROW_COLS_SQL}, challenges_json "
                 "FROM participants "
                 "WHERE match_id = ? AND team_id = ?"
             )
@@ -230,7 +267,7 @@ def compute_obj_participation(
             # FailSoftWithMissingObjColumnsTests::test_legacy_schema_without_obj_cols_falls_back_to_zero
             # pins this contract through to the route layer.
             team_sql = (
-                f"SELECT puuid, ({_ROW_SUM_SQL}) AS row_sum "
+                f"SELECT puuid, {_ROW_COLS_SQL} "
                 "FROM participants "
                 "WHERE match_id = ? AND team_id = ?"
             )
@@ -239,21 +276,27 @@ def compute_obj_participation(
             has_challenges = False
     except sqlite3.Error:
         return 0.0
+    except UnicodeEncodeError:
+        # A str identifier holding a lone surrogate cannot be bound as
+        # UTF-8; no row can match it.
+        return 0.0
 
+    ncols = len(_OBJ_COLUMNS)
     numerator = 0.0
     denominator = 0.0
     for row in rows:
         row_puuid = row[0]
-        row_sum6 = _coerce_float(row[1])
+        counts = [_coerce_float(v) for v in row[1:1 + ncols]]
+        row_sum6 = sum(counts)
         # Parse challenges_json ONCE per row and extract herald +
         # voidgrubs + raw turret count in one trip. The non-overlapping
         # turret contribution is the raw count MINUS the binary
         # first-tower sentinels (clamped at 0 so a 0-turret row with a
         # first-tower assist does NOT go negative).
         if has_challenges:
-            ftk = _coerce_float(row[2])
-            fta = _coerce_float(row[3])
-            herald, void, turret_raw = _challenges_objectives(row[4])
+            ftk = counts[_FTK_IDX]
+            fta = counts[_FTA_IDX]
+            herald, void, turret_raw = _challenges_objectives(row[1 + ncols])
             turret_extra = max(turret_raw - ftk - fta, 0.0)
         else:
             herald, void, turret_extra = (0.0, 0.0, 0.0)
