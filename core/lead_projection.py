@@ -48,7 +48,8 @@ Arena directive table.
 
 from __future__ import annotations
 
-from typing import Dict
+import math
+from typing import Dict, Optional
 
 # --- operator-tunable benchmark constants (heuristic; bases cited in module
 #     docstring). All are "expected value at minute M" per-minute rates. ---
@@ -325,6 +326,52 @@ _GENERIC_LINE = "Play to your strengths, farm and scale."
 _SOURCE_TAG = "lead-proj"
 
 
+def _registry_key(mode: object) -> Optional[str]:
+    """A caller's ``mode`` as a registry key (stripped, upper-case), or None.
+
+    ``None`` and ``""`` are the explicit SR default (what ``mode or "SR"``
+    always meant). A non-str mode or a whitespace-only string has NO key: the
+    ``*_is_registered`` gates answer False for it, so an offline artifact
+    generator handed junk refuses instead of writing SR numbers under it."""
+    if mode is None or mode == "":
+        return _DEFAULT_MODE
+    if isinstance(mode, str):
+        return mode.strip().upper() or None
+    return None
+
+
+def _mode_key(mode: object) -> str:
+    """Normalize a caller's ``mode`` for a LIVE read: its key, else SR.
+
+    WHY: every per-mode accessor used ``(mode or _DEFAULT_MODE).upper()``, so a
+    truthy non-str mode (an int, a list, bytes) raised AttributeError out of
+    the "never raises" project_lead, and a padded ``" aram "`` silently read as
+    an unregistered mode and got the SR tables. A read with no usable key gets
+    the SR default, the same posture an unknown mode always had."""
+    return _registry_key(mode) or _DEFAULT_MODE
+
+
+def _game_number(val: object) -> Optional[float]:
+    """A live numeric game field as a finite, non-negative float, else None.
+
+    WHY each rejection: ``bool`` is an int subclass, not a count. NaN and
+    +/-inf (``json.loads`` accepts the ``NaN`` / ``Infinity`` literals) turn
+    the composite into NaN, which fails every band comparison and ships a
+    confident "even / large" directive. An int too large for a float (a valid
+    JSON integer literal) raises OverflowError from ``float()``. A negative
+    game time, CS, gold or level is not a game state. Every rejected value
+    reads exactly as an ABSENT field (see project_lead's docstring)."""
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
+        return None
+    try:
+        out = float(val)
+    except OverflowError:
+        return None
+    if not math.isfinite(out) or out < 0.0:
+        return None
+    return out
+
+
 def _phase(game_time_s: float) -> str:
     """Map elapsed seconds to a coarse game phase string. WHY: directives
     differ by stage; see _LINES."""
@@ -340,13 +387,15 @@ def phase_for(game_time_s: object) -> str:
 
     Thin public wrapper over the internal ``_phase`` so other modules (the RC2
     P5.5 objective playbook) share the SAME phase boundaries instead of
-    re-deriving them. Fail-soft: a non-numeric / negative input -> 'early'."""
+    re-deriving them. Fail-soft: a non-numeric / non-finite / negative input
+    -> 'early'. (NaN used to fail every ``<`` test in ``_phase`` and read as
+    'late'; an int too large for a float raised OverflowError.)"""
     try:
         gt = float(game_time_s)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return "early"
-    if gt < 0:
-        gt = 0.0
+    if not math.isfinite(gt):
+        return "early"
     return _phase(gt)
 
 
@@ -355,8 +404,11 @@ def _kda_ratio(kda: object) -> float:
     in roughly [-1, +1]. WHY: RC has no reliable team-kill diff at request
     time, so a solo player's own (kills + assists) vs deaths is the only kill
     signal available. We return a ratio-style number, not a raw KDA, so it
-    composes with the per-minute deltas. Fail-soft: anything unparseable -> 0.0
-    (neutral, never raises)."""
+    composes with the per-minute deltas. Fail-soft: anything unparseable, or a
+    NEGATIVE count, -> 0.0 (neutral, never raises). A negative count is not a
+    game state, and it used to make the denominator zero ("0/-1/0",
+    "-1/0/0" raised ZeroDivisionError) or read a negative tally as clearly
+    ahead ("-5/0/0" -> +1.0)."""
     if not isinstance(kda, str):
         return 0.0
     parts = kda.split("/")
@@ -368,12 +420,16 @@ def _kda_ratio(kda: object) -> float:
         a = int(parts[2].strip())
     except (ValueError, AttributeError):
         return 0.0
+    if k < 0 or d < 0 or a < 0:
+        return 0.0
     takedowns = k + a
     # Even baseline: takedowns ~= deaths. Map the gap to a bounded ratio. With
     # no deaths, a few takedowns reads clearly ahead; with deaths and no
     # takedowns, clearly behind. The +1 floors avoid div-by-zero and damp the
-    # very-early-game (0/0/0) case toward neutral.
-    score = (takedowns - d) / (takedowns + d + 1.0)
+    # very-early-game (0/0/0) case toward neutral. The +1 stays an INT: int /
+    # int true division is exactly rounded at any magnitude, while adding 1.0
+    # forced an int-to-float conversion that overflowed on a 400-digit count.
+    score = (takedowns - d) / (takedowns + d + 1)
     # Clamp to [-1, 1] defensively.
     if score > 1.0:
         return 1.0
@@ -405,8 +461,21 @@ def project_lead(game_state: dict, *, mode: str = "SR") -> dict:
       line        : short (<= 10 words) ASCII macro directive
       source_tag  : always "lead-proj"
 
-    Pure + fail-soft: missing/garbage fields default to a neutral "even" verdict
-    with a generic line; never raises.
+    Pure + fail-soft; never raises. A numeric field that is missing, of the
+    wrong type, a bool, non-finite, negative or too large for a float is
+    treated as ABSENT and takes its per-axis default: cs / gold 0, level the
+    mode's spawn level, game time 0 (``game_time_s`` falls through to
+    ``game_seconds``). An unparseable or negative K/D/A is a neutral 0.0. A
+    non-str or blank ``mode`` is SR. An absent game time is minute 0: the cs
+    and gold benchmarks are 0 there, so those two axes score 0.0, and level and
+    K/D/A alone decide the read (level 6 at minute 0 reads ahead). Only an
+    input with every field absent is guaranteed the neutral "even". NOTE,
+    measured: with a real game time, an absent gold (every mode) or an absent
+    cs (SR only - the no-lane modes have a 0 cs benchmark) is NOT neutral -
+    that axis reads as far behind its benchmark
+    (tests/test_lead_projection_level_curve.py pins the level default and
+    documents the cs swamp). Filed for redesign by the s144 true-audit lane,
+    not changed here.
     """
     # Fail-soft front door: a non-dict input yields the neutral verdict.
     if not isinstance(game_state, dict):
@@ -417,22 +486,18 @@ def project_lead(game_state: dict, *, mode: str = "SR") -> dict:
             "source_tag": _SOURCE_TAG,
         }
 
-    mode_key = (mode or _DEFAULT_MODE).upper()
+    mode_key = _mode_key(mode)
     weights = _WEIGHTS.get(mode_key, _WEIGHTS[_DEFAULT_MODE])
 
     # --- pull signals defensively. game_time_s falls back to game_seconds. ---
     def _num(*keys: str, default: float = 0.0) -> float:
         for key in keys:
-            val = game_state.get(key)
-            if isinstance(val, bool):  # bool is an int subclass; reject it
-                continue
-            if isinstance(val, (int, float)):
-                return float(val)
+            val = _game_number(game_state.get(key))
+            if val is not None:
+                return val
         return default
 
     game_time_s = _num("game_time_s", "game_seconds", default=0.0)
-    if game_time_s < 0:
-        game_time_s = 0.0
     minutes = game_time_s / 60.0
 
     cs = _num("cs", default=0.0)
@@ -559,7 +624,7 @@ def level_curve(mode: str = "SR") -> tuple:
     """``(base_level, levels_per_min)`` for ``mode`` (an unknown mode falls back
     to the SR curve, matching ``gold_income_per_min``'s live-read posture)."""
     return _LEVEL_CURVE.get(
-        (mode or _DEFAULT_MODE).upper(), _DEFAULT_LEVEL_CURVE
+        _mode_key(mode), _DEFAULT_LEVEL_CURVE
     )
 
 
@@ -573,7 +638,8 @@ def level_curve_is_registered(mode: str = "SR") -> bool:
     its own produces the SR minutes, the SR gold, the SR spike labels, and an
     artifact that looks legitimate under its own header. A generator gates on
     this to REFUSE writing a table it cannot actually differentiate."""
-    return (mode or _DEFAULT_MODE).upper() in _LEVEL_CURVE
+    key = _registry_key(mode)
+    return key is not None and key in _LEVEL_CURVE
 
 
 def level_curve_modes() -> tuple:
@@ -622,7 +688,7 @@ def gold_income_per_min(mode: str = "SR") -> float:
     """Benchmark GROSS gold earned per minute for ``mode`` (SR default; an
     unknown mode falls back to the SR rate)."""
     return _GOLD_EARNED_PER_MIN.get(
-        (mode or _DEFAULT_MODE).upper(), _DEFAULT_GOLD_EARNED_PER_MIN
+        _mode_key(mode), _DEFAULT_GOLD_EARNED_PER_MIN
     )
 
 
@@ -634,7 +700,8 @@ def gold_income_is_registered(mode: str = "SR") -> bool:
     artifact generator - a mode with no row of its own produces the SR numbers
     and the artifact looks legitimate. A generator can gate on this to refuse
     writing a per-mode table it cannot actually differentiate."""
-    return (mode or _DEFAULT_MODE).upper() in _GOLD_EARNED_PER_MIN
+    key = _registry_key(mode)
+    return key is not None and key in _GOLD_EARNED_PER_MIN
 
 
 def expected_gold_earned(minutes: float, mode: str = "SR") -> float:
