@@ -260,7 +260,7 @@ def rate_limited(now_ts: float, path: Path = PR_LOG) -> bool:
 def record_pr_creation(now_ts: float, run_id: int, pr: str = "", path: Path = PR_LOG) -> None:
     """Append a PR-creation marker for the 24h rate-limit window."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
+    with path.open("a", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps({"ts": now_ts, "run_id": run_id, "pr": pr}) + "\n")
 
 
@@ -390,7 +390,7 @@ def audit_line(record: dict, path: Path = AUDIT) -> None:
     """Append one JSON line per inspected run; never raises."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8") as f:
+        with path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(record, ensure_ascii=True) + "\n")
     except OSError:
         pass

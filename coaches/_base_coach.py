@@ -648,7 +648,7 @@ class BaseCoach(abc.ABC):
             }
             path = _APP_DIR / "data" / "coach_tick_trace.jsonl"
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "a", encoding="utf-8") as f:
+            with open(path, "a", encoding="utf-8", newline="\n") as f:
                 f.write(json.dumps(rec) + "\n")
         # Complete raise set: OSError (mkdir / open / write), TypeError or
         # ValueError (float(dur_ms), json.dumps of a non-serializable

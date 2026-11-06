@@ -425,7 +425,7 @@ def record_pull_observation(archive_dir, account, match_ids, now=None) -> None:
     }
     try:
         archive_dir.mkdir(parents=True, exist_ok=True)
-        with (archive_dir / _PULL_LOG).open("a", encoding="utf-8") as fh:
+        with (archive_dir / _PULL_LOG).open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(json.dumps(row, sort_keys=True) + "\n")
     except OSError as exc:
         logger.warning("could not record pull observation for %s: %s", account, exc)
