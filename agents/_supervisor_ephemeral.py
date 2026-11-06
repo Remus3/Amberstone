@@ -330,7 +330,7 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     writes_code = "opus" in model.lower()
 
     stamp = _iso_now()
-    with log_path.open("a", encoding="utf-8") as f:
+    with log_path.open("a", encoding="utf-8", newline="\n") as f:
         f.write(
             f"{stamp} SPAWN agent={agent} task={task_id} op={op} "
             f"model={model} budget_usd={budget:.2f} timeout_sec={timeout} "
@@ -357,13 +357,13 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
             timeout=timeout,
         )
     except fleet_route.RouteRefused as e:
-        with log_path.open("a", encoding="utf-8") as f:
+        with log_path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(f"{_iso_now()} REFUSED agent={agent} task={task_id} reason={e.reason}\n")
         raise EphemeralSpawnFailed(
             f"headless route refused for task {task_id}: {e.reason}"
         ) from e
     except subprocess.TimeoutExpired as e:
-        with log_path.open("a", encoding="utf-8") as f:
+        with log_path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(f"{_iso_now()} TIMEOUT agent={agent} task={task_id} after={timeout}s\n")
         raise EphemeralSpawnFailed(
             f"claude subprocess timed out after {timeout}s for task {task_id}"
@@ -408,7 +408,7 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
         log.warning("per-task log write failed: %s", e)
 
     if proc.returncode != 0:
-        with log_path.open("a", encoding="utf-8") as f:
+        with log_path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(
                 f"{_iso_now()} FAIL agent={agent} task={task_id} exit={proc.returncode} "
                 f"stderr={_redact_secrets(proc.stderr[:200])!r}\n"
@@ -448,7 +448,7 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     except json.JSONDecodeError:
         result = {"raw_stdout": proc.stdout.strip()}
 
-    with log_path.open("a", encoding="utf-8") as f:
+    with log_path.open("a", encoding="utf-8", newline="\n") as f:
         f.write(
             f"{_iso_now()} OK agent={agent} task={task_id} elapsed={elapsed:.1f}s "
             f"stdout_bytes={len(proc.stdout)}\n"

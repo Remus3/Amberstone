@@ -621,7 +621,7 @@ class Supervisor:
         while new deterministic ops can register handlers here.
         """
         log_path = LOG_ROOT / f"agent{task.owner_agent}.log"
-        with log_path.open("a", encoding="utf-8") as f:
+        with log_path.open("a", encoding="utf-8", newline="\n") as f:
             f.write(
                 f"{_iso_now()} DETERMINISTIC agent={task.owner_agent} "
                 f"task={task.id} op={task.op} "

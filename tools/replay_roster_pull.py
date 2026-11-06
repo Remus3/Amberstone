@@ -220,7 +220,7 @@ def _open_log_sink(sink: Path):
     except OSError:
         oversize = False
     err = log_rotation.try_rotate(sink, _LOG_SINK_BACKUPS) if oversize else None
-    stream = sink.open("a", encoding="utf-8", buffering=1)
+    stream = sink.open("a", encoding="utf-8", newline="\n", buffering=1)
     if err is not None:
         stream.write(log_rotation.refusal_note(sink, err))
     return stream

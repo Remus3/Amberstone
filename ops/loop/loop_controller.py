@@ -187,7 +187,7 @@ _ADJ_STATE = {"active": "", "usd": {}}
 def log(m):
     line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {m}"
     print(line, flush=True)
-    with open(CTL / "controller.log", "a", encoding="utf-8") as f:
+    with open(CTL / "controller.log", "a", encoding="utf-8", newline="\n") as f:
         f.write(line + "\n")
 
 def awrite(path, text):
@@ -670,7 +670,7 @@ def record_directive_outcome(cycle, body, sha_before, sha_after, done, verdict, 
            "tests": d.get("tests_pass"), "regress": bool(d.get("regressions")),
            "verdict": ((verdict or "").strip().splitlines() or [""])[0]}
     try:
-        with open(base / "directive_history.jsonl", "a", encoding="utf-8") as f:
+        with open(base / "directive_history.jsonl", "a", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(rec) + "\n")
     except OSError as e:
         log(f"directive_history append failed: {e}")
