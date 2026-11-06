@@ -4297,6 +4297,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     prefPrimary:   "UNSELECTED",
     prefSecondary: "UNSELECTED",
     needsPick:     false,    // true when primary just changed FROM fill -> role; secondary needs re-pick
+    laneConflict:  false,    // RM-1759: self primary == a party member's primary (_renderPartyMembers)
     partyOpen:     true,     // operator default per s162 spec
     partyToggleInflight: false,  // s209: gate refresh from clobbering optimistic click
     lastLcuPartyType: null,      // s209: track external LCU changes vs operator clicks
@@ -5025,12 +5026,25 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     });
     return parts.join("|");
   }
+  // RM-1759: the self lane conflict on #lv-lane-primary - class, flag
+  // and name together. The name is re-stamped here because each lobby
+  // tick runs _renderLanePref BEFORE _renderPartyMembers.
+  function _lvSetLaneConflict(on) {
+    _LV.laneConflict = !!on;
+    const primaryBtn = document.getElementById("lv-lane-primary");
+    if (!primaryBtn) return;
+    primaryBtn.classList.toggle("is-conflict", _LV.laneConflict);
+    primaryBtn.setAttribute("aria-label",
+      _laneTriggerName("primary", _LV.prefPrimary, false, false));
+  }
   function _renderPartyMembers(lobby) {
     const ul  = document.getElementById("lv-members-list");
     const members = (lobby && lobby.members) || [];
     const iAmLeader = !!(lobby && lobby.is_leader);
     if (!ul) return;
     if (!members.length) {
+      // RM-1759: no party, no conflict (it was left stale here).
+      _lvSetLaneConflict(false);
       // RM-326: the empty state is static, so re-writing it every 2s is
       // pure churn. Stamp it with a sentinel signature and skip.
       if (ul.dataset.lvPartySig !== "empty") {
@@ -5085,10 +5099,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     // Surface the self-conflict state on the QUEUE Primary button so
     // the operator sees both ends of the conflict in one glance.
-    const primaryBtn = document.getElementById("lv-lane-primary");
-    if (primaryBtn) {
-      primaryBtn.classList.toggle("is-conflict", selfHasConflict);
-    }
+    _lvSetLaneConflict(selfHasConflict);
     // RM-326: idempotent render gate. Everything above this line is
     // cheap bookkeeping with side effects OUTSIDE the list (the
     // #lv-lane-primary conflict class), so it keeps running every tick;
@@ -5416,11 +5427,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     TOP: "Top", JUNGLE: "Jungle", MIDDLE: "Middle",
     BOTTOM: "Bottom", UTILITY: "Support", FILL: "Fill",
   };
+  // RM-1759: a party lane conflict (#lv-lane-primary.is-conflict) is
+  // named on the primary, not only drawn.
   function _laneTriggerName(slot, pref, isFillLocked, needsPick) {
     const head = (slot === "primary" ? "Primary" : "Secondary") + " lane: ";
     if (isFillLocked) return head + "Fill, follows the primary lane";
     if (needsPick) return head + "not set, pick one";
-    return head + (LANE_NAMES[pref] || "not set");
+    const conflict = (slot === "primary" && _LV.laneConflict)
+      ? ", conflicts with a party member" : "";
+    return head + (LANE_NAMES[pref] || "not set") + conflict;
   }
   function _renderLanePref(slot, pref, noLcuData) {
     const btn = document.getElementById(slot === "primary" ? "lv-lane-primary" : "lv-lane-secondary");
@@ -5435,6 +5450,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const needsPick = (slot === "secondary" && _LV.needsPick && _LV.prefPrimary !== "FILL"
                        && (!pref || pref === "UNSELECTED"));
     btn.setAttribute("aria-label", _laneTriggerName(slot, pref, isFillLocked, needsPick));
+    // RM-1759: the Fill-locked secondary opens nothing (its click
+    // handler returns), so it is announced unavailable. aria-disabled,
+    // not native disabled, so it keeps keyboard focus.
+    if (isFillLocked) btn.setAttribute("aria-disabled", "true");
+    else btn.removeAttribute("aria-disabled");
     if (noLcuData) {
       btn.classList.add("is-disabled");
       btn.disabled = true;

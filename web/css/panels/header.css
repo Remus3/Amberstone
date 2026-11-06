@@ -939,9 +939,17 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lq-lane-pref {
   /* Inherits .lq-btn sizing; line2 is the icon swap. */
 }
-.lq-lane-pref:hover:not(:disabled) { border-color: var(--info); }
+/* RM-1759: no --info "clickable" border on the Fill-locked secondary,
+ * whose press opens nothing (it carries aria-disabled="true"). */
+.lq-lane-pref:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--info); }
 .lq-lane-pref.is-fill-locked {
   cursor: default; border-color: var(--border-soft);
+}
+/* RM-1759: keep the Fill-locked s162 look instead of the 0.55 hold dim
+ * of .lq-btn[aria-disabled="true"] above. A no-LCU disabled one still
+ * dims. */
+.lq-lane-pref.is-fill-locked[aria-disabled="true"]:not(:disabled):not(.is-disabled) {
+  opacity: 1;
 }
 .lq-lane-pref.needs-pick {
   border-color: var(--bad); border-style: dashed;
