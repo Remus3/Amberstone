@@ -1345,6 +1345,8 @@ function _amSectionHead(text) {
   const h = document.createElement("div");
   h.className = "am-tft-sec";
   h.textContent = text;
+  // RM-1767: the eyebrow is one ellipsised line; the title keeps it whole.
+  h.title = text;
   return h;
 }
 
