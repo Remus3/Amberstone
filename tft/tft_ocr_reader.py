@@ -231,9 +231,7 @@ def _ocr_stage_round(img, tess) -> Optional[str]:
 
 
 def _ocr_level(img, tess) -> Optional[int]:
-    """
-    OCR the level display. TFT shows 'Lvl. 8' above the shop, left.
-    """
+    """OCR the level display. TFT shows 'Lvl. 8' above the shop, left."""
     processed = _preprocess(img)
     cfg = "--oem 3 --psm 7 -c tessedit_char_whitelist=Lvl.0123456789"
     try:

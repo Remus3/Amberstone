@@ -470,7 +470,7 @@ def _build_prompt(state: dict) -> str:
             _legend += "; untagged = 1-star"
         lines.append(f"Units on board: {_board_n} (one slot each; {_legend})")
 
-    #  -  -  Augment context  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  Augment context  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
     # Build augment string from live data or items_str
     _aug_str = ""
     if _live_augments:
@@ -546,7 +546,7 @@ def _build_prompt(state: dict) -> str:
         f"Your items/augments: {_items_line}",
     ]
 
-    #  -  -  Selected comp context (from overlay comp selector)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  Selected comp context (from overlay comp selector)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
     try:
         # Phase 7 P1-A PBE-aware meta path; RM-840: the set comes from
         # tft/tft_set.py, never a hard-wired tft_set17_*.json.

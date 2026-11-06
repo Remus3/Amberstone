@@ -625,9 +625,7 @@ def _component_cost_remaining(item_name, owned_items):
 def get_purchase_advice(champion, current_items, gold, enemy_champs,
                         ally_champs=None, enemy_items_flat=None, game_mode="CLASSIC",
                         is_dead=False, death_timer=0, gold_per_sec=0):
-    """
-    Main entry point. Returns dict with build_path, next_item, buy_now, display.
-    """
+    """Main entry point. Returns dict with build_path, next_item, buy_now, display."""
     # Decide "unknown" on the table, not on the resolved list: resolve_build
     # also returns [] for a KNOWN champion whose every curated item is owned
     # or exclusion-redundant, and that case is BUILD COMPLETE (below), not

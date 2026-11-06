@@ -218,7 +218,7 @@ class SelfMonitor:
                   self._ctrl_cmd_dir, self._ctrl_res_dir]:
             d.mkdir(parents=True, exist_ok=True)
 
-        #  -  -  Runtime state (persisted each tick)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+        #  -  -  Runtime state (persisted each tick)  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
         self._ladder_idx        = 0
         self._consecutive_fails = 0
         self._last_success_ts   = ""
@@ -249,7 +249,7 @@ class SelfMonitor:
 
         self._restore_state()
 
-    #  -  -  Public  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  Public  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
     def start(self) -> None:
         if self._threads:
@@ -284,7 +284,7 @@ class SelfMonitor:
         self._armed = armed
         self._write_state()
 
-    #  -  -  Monitor loop  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  Monitor loop  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
     def _monitor_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -369,7 +369,7 @@ class SelfMonitor:
 
         # health_state == "unhealthy" -- fall through to escalation
 
-        #  -  -  Health failure  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+        #  -  -  Health failure  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
         self._consecutive_fails += 1
         self._last_failure_ts   = _utc()
         self.incident_log.record(
@@ -386,7 +386,7 @@ class SelfMonitor:
             self._write_state(profile)
             return
 
-        #  -  -  Execute current ladder step  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+        #  -  -  Execute current ladder step  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
         ladder = profile.get("remediation_ladder", _LADDER)
         idx    = min(self._ladder_idx, len(ladder) - 1)
         step   = ladder[idx]
@@ -407,7 +407,7 @@ class SelfMonitor:
             duration_ms=duration_ms,
         )
 
-        #  -  -  Advance ladder unconditionally after each unhealthy tick  -  -  -  -  -  - 
+        #  -  -  Advance ladder unconditionally after each unhealthy tick  -  -  -  -  -  -
         # health_check is the only "wait and observe" step  -  it does not
         # advance the ladder on the FIRST failure (we need consecutive_fails>=2
         # before escalating past it).  All subsequent steps advance regardless
@@ -423,7 +423,7 @@ class SelfMonitor:
 
         self._write_state(profile)
 
-    #  -  -  Remediation steps  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  Remediation steps  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
     def _execute_step(self, step: str, profile: Dict[str, Any]) -> bool:
         """Issue one remediation action. Returns True if command was dispatched."""
@@ -495,7 +495,7 @@ class SelfMonitor:
 
         return False
 
-    #  -  -  Health check  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  Health check  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
     # Grace period: how long a dead poll worker is tolerated in client mode.
     _WORKER_DEAD_CLIENT_GRACE_S: float = 30.0
@@ -868,7 +868,7 @@ class SelfMonitor:
         detail = "last_command_ok=False" if not payload.get("last_command_ok", True) else ""
         return "healthy", detail
 
-    #  -  -  Command loop  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  Command loop  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
     def _command_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -963,7 +963,7 @@ class SelfMonitor:
         path.unlink(missing_ok=True)
         self._write_state(profile)
 
-    #  -  -  DevRuntime helpers  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  DevRuntime helpers  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
     def _send_devruntime_command(self, payload: Dict[str, Any]) -> str:
         import uuid
@@ -987,7 +987,7 @@ class SelfMonitor:
             time.sleep(0.2)
         return False
 
-    #  -  -  State persistence  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - 
+    #  -  -  State persistence  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
     def _write_state(self, profile: Optional[Dict[str, Any]] = None) -> None:
         if profile is None:

@@ -184,7 +184,6 @@ def parse_choices(coach: dict | None) -> list[CoachChoice]:
     A / B / C (a missing, foreign or repeated key takes the first free letter),
     confidence falls back to ``mid`` when out-of-range.
     """
-
     if not isinstance(coach, dict):
         return []
     raw = coach.get("choices")
@@ -244,7 +243,6 @@ _NEGATED_RE = re.compile(
 def _action_choice(action: str) -> tuple[str, str] | None:
     """Return (a_label, b_label) if the action prose contains a recognizable
     binary verb pair. Returns None when no A/B can be derived."""
-
     a = action.lower()
     for triggers, a_lbl, b_lbl in _PAIR_RES:
         for rx in triggers:
@@ -262,7 +260,6 @@ def synthesize_simple_choices(coach: dict | None) -> list[CoachChoice]:
     synthesized output carries source_tag=``synth`` so the frontend can
     visually distinguish.
     """
-
     if not isinstance(coach, dict):
         return []
     action = _coerce_str(coach.get("action"), 200)
@@ -286,5 +283,4 @@ def synthesize_simple_choices(coach: dict | None) -> list[CoachChoice]:
 
 def to_jsonable(choices: Iterable[CoachChoice]) -> list[dict]:
     """Serialize a sequence of CoachChoice to plain dicts for JSON."""
-
     return [c.to_dict() for c in choices]

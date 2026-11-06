@@ -6,7 +6,7 @@ from core.polled_json import atomic_write_text
 
 def safe_coach_output(mode_name: str, write_status_fn_name: str = "_write_status_field"):
     """
-    Decorator for coach `_run` or `_run_coach` methods to guarantee friendly 
+    Decorator for coach `_run` or `_run_coach` methods to guarantee friendly
     degradation on API errors, preventing raw string leaks (D14).
     """
     def decorator(func):
@@ -30,10 +30,10 @@ def safe_coach_output(mode_name: str, write_status_fn_name: str = "_write_status
                     _status = f"({mode_name} coach paused - API unreachable)"
                 else:
                     _status = f"({mode_name} coach paused - internal error)"
-                
+
                 logger = logging.getLogger("coach")
                 logger.error("%s coach error: %s", mode_name, e)
-                
+
                 # Write safe status
                 write_fn = getattr(self, write_status_fn_name, None)
                 if write_fn:
