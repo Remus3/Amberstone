@@ -393,7 +393,7 @@ class ResponseTooLarge(OSError):
 
 
 class _HttpResp:
-    __slots__ = ("status", "body", "headers")
+    __slots__ = ("body", "headers", "status")
 
     def __init__(self, status: int, body: bytes, headers: dict) -> None:
         self.status = status
@@ -1317,12 +1317,10 @@ __all__ = [
     "RATE_LIMIT_OUTCOMES",
     "DualBucket",
     "OutcomeScope",
-    "track_outcomes",
     "bucket_snapshot",
     "format_rank_entry",
     "get_account_by_riot_id",
     "get_champion_mastery",
-    "get_top_champion_masteries",
     "get_match",
     "get_match_timeline",
     "get_recent_matches",
@@ -1330,9 +1328,11 @@ __all__ = [
     "get_tft_league_entries",
     "get_tft_match",
     "get_tft_match_ids",
+    "get_top_champion_masteries",
     "is_configured",
     "pick_solo_rank",
     "reload_api_key",
     "summarize_recent",
     "tft_key_scope",
+    "track_outcomes",
 ]

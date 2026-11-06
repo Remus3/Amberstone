@@ -747,10 +747,10 @@ def reset_for_tests() -> None:
 
 __all__ = [
     "KILL_SWITCH_ENV",
-    "LiveRoster",
     "MIN_COMPUTE_INTERVAL_S",
     "TRANSIENT_STATUSES",
     "WORKER_THREAD_NAME",
+    "LiveRoster",
     "board_for_lc",
     "enabled",
     "prefetch",

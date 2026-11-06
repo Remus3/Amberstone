@@ -361,9 +361,9 @@ def balance_grid_map() -> Dict[str, Dict[str, float]]:
 
 
 __all__ = [
-    "aram_balance_line",
-    "get_balance_mults",
     "_BALANCE_MAP",
+    "aram_balance_line",
     "balance_grid_for",
     "balance_grid_map",
+    "get_balance_mults",
 ]

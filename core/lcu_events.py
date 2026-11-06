@@ -96,7 +96,7 @@ def bus_enabled() -> bool:
 
 
 class _Entry:
-    __slots__ = ("callback", "prefix", "generation")
+    __slots__ = ("callback", "generation", "prefix")
 
     def __init__(self, callback: Callable[[Any], None], prefix: bool, generation: int):
         self.callback = callback

@@ -103,4 +103,4 @@ def compute_ward_cue(items: Any) -> dict[str, Any]:
     return out
 
 
-__all__ = ["compute_ward_cue", "WARD_TRINKET_IDS", "CONTROL_WARD_ID"]
+__all__ = ["CONTROL_WARD_ID", "WARD_TRINKET_IDS", "compute_ward_cue"]

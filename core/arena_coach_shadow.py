@@ -325,4 +325,4 @@ def log_arena_coach(
         return None
 
 
-__all__ = ["log_arena_coach", "SHADOW_PATH"]
+__all__ = ["SHADOW_PATH", "log_arena_coach"]

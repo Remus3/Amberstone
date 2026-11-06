@@ -228,8 +228,14 @@ def _purchase_times(conn: sqlite3.Connection, match_id: str,
 # --------------------------------------------------------------------------
 
 class _Cell:
-    __slots__ = ("n", "followed", "wins_followed", "n_followed",
-                 "wins_unfollowed", "n_unfollowed")
+    __slots__ = (
+        "followed",
+        "n",
+        "n_followed",
+        "n_unfollowed",
+        "wins_followed",
+        "wins_unfollowed",
+    )
 
     def __init__(self) -> None:
         self.n = 0

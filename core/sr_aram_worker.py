@@ -59,12 +59,12 @@ _GAME_TARGET: str = "live_game"
 
 class WorkerResult:
     __slots__ = (
-        "state",
-        "is_first",
         "canon_mode",
         "end_signal",
-        "pulse_ts",
+        "is_first",
         "last_success",
+        "pulse_ts",
+        "state",
     )
 
     def __init__(

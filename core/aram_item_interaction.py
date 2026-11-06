@@ -334,7 +334,7 @@ def _expected_win_for_team(frame_rows: Sequence[tuple], game_time_s: float,
 class _Cell:
     """Accumulator for one (shape, item, timing) cell."""
 
-    __slots__ = ("n", "wins", "sum_expected", "sum_swing", "n_swing", "sum_ts")
+    __slots__ = ("n", "n_swing", "sum_expected", "sum_swing", "sum_ts", "wins")
 
     def __init__(self) -> None:
         self.n = 0

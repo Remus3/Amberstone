@@ -259,4 +259,4 @@ def play_line(owned_augments: object = None, *, max_augments: int = _MAX_AUGMENT
         return ""
 
 
-__all__ = ["play_line", "reset_cache", "SEPARATOR"]
+__all__ = ["SEPARATOR", "play_line", "reset_cache"]

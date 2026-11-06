@@ -196,4 +196,4 @@ def build_choices(
         return []
 
 
-__all__ = ["SOURCE_TAG", "comp_lean", "build_choices"]
+__all__ = ["SOURCE_TAG", "build_choices", "comp_lean"]

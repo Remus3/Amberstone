@@ -194,4 +194,4 @@ def apply_shaper(weights: Dict[str, float], shaper: ShaperState) -> Dict[str, fl
     return {k: v / total for k, v in clamped.items()}
 
 
-__all__ = ["ShaperState", "apply_shaper", "NUDGE_STEP", "WEIGHT_MIN", "WEIGHT_MAX"]
+__all__ = ["NUDGE_STEP", "WEIGHT_MAX", "WEIGHT_MIN", "ShaperState", "apply_shaper"]

@@ -158,8 +158,13 @@ class _PolicyCache:
     """
 
     __slots__ = (
-        "_path", "_matrix", "_lkg_matrix",
-        "_mtime", "_status", "_reload_ts", "_last_warning",
+        "_last_warning",
+        "_lkg_matrix",
+        "_matrix",
+        "_mtime",
+        "_path",
+        "_reload_ts",
+        "_status",
     )
 
     def __init__(self, path: Path) -> None:

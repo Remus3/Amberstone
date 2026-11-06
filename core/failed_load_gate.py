@@ -96,7 +96,7 @@ def _validated_window(value: object) -> float:
 class FailedLoadGate:
     """Per-loader failure streak: backoff window + first-failure flag."""
 
-    __slots__ = ("_retry_after_s", "_lock", "_failed_at", "_in_streak")
+    __slots__ = ("_failed_at", "_in_streak", "_lock", "_retry_after_s")
 
     def __init__(self, retry_after_s: float = DEFAULT_RETRY_AFTER_S) -> None:
         self._retry_after_s = _validated_window(retry_after_s)

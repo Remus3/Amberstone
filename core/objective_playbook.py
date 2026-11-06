@@ -224,4 +224,4 @@ def playbook_callout(
         return None
 
 
-__all__ = ["OBJECTIVE_PLAYBOOK", "LATE_OBJECTIVE_PLAYBOOK", "playbook_callout"]
+__all__ = ["LATE_OBJECTIVE_PLAYBOOK", "OBJECTIVE_PLAYBOOK", "playbook_callout"]

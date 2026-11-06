@@ -257,12 +257,12 @@ def apply_cv_to_choices(
 
 
 __all__ = [
-    "MISS_THRESHOLD_S",
     "LOW_HP_FRACTION",
-    "load_vision_state",
-    "enemy_cv_status",
-    "cv_override",
-    "resolve_cv_override",
-    "cv_choice_pair",
+    "MISS_THRESHOLD_S",
     "apply_cv_to_choices",
+    "cv_choice_pair",
+    "cv_override",
+    "enemy_cv_status",
+    "load_vision_state",
+    "resolve_cv_override",
 ]
