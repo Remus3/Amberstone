@@ -195,6 +195,11 @@ _TEMPFILE_MODE_INDEX = {
 }
 
 
+# Compression modules whose open() takes (filename, mode) and, for a "t" mode,
+# wraps the stream in a TextIOWrapper that translates LF on Windows.
+_COMPRESSED_OPENERS = frozenset({"gzip", "bz2", "lzma"})
+
+
 def _computed_mode(call: ast.Call, fn: ast.expr, name: str) -> bool:
     """True for the builtin ``open`` / ``io.open`` / ``os.fdopen`` called with a
     mode that is not a string literal (a name, a conditional, a call).
@@ -238,6 +243,16 @@ def _violations(source: str) -> list[str]:
             if (mode and "b" not in mode and not any(
                     kw.arg == "newline" for kw in node.keywords)):
                 out.append(f"line {node.lineno}: {name}({mode!r}) without newline=")
+            continue
+        if (name == "open" and isinstance(fn, ast.Attribute)
+                and getattr(fn.value, "id", None) in _COMPRESSED_OPENERS):
+            # RM-481 residual: gzip / bz2 / lzma text modes ("wt", "xt") wrap
+            # a TextIOWrapper; the file name, not the mode, is arg 0.
+            mode = _write_mode(node, 1)
+            if (mode and "t" in mode and ("w" in mode or "x" in mode)
+                    and not any(kw.arg == "newline" for kw in node.keywords)):
+                out.append(f"line {node.lineno}: {fn.value.id}.open({mode!r}) "
+                           "without newline=")
             continue
         if name not in ("open", "fdopen"):
             continue
@@ -311,6 +326,32 @@ def test_guard_detects_a_non_literal_mode_and_tempfile_text_modes():
         "Image.open(src)\n"
         "RoundStore.open(path, readonly=True)\n"
         "os.open(p, os.O_WRONLY | os.O_CREAT, 420)\n"
+    )
+    assert _violations(good) == []
+
+
+def test_guard_detects_a_compressed_text_mode_open():
+    """RM-481 residual (RM-1717): gzip / bz2 / lzma ``open(path, "wt")``
+    wrap the stream in a TextIOWrapper with no newline=, so each LF becomes
+    CRLF on Windows. The detector read arg 0 (the file name) as the mode, so a
+    positional "wt" slipped past and a file name containing "w" or "x" was a
+    false hit."""
+    bad = (
+        "import gzip, bz2, lzma\n"
+        "gzip.open('x.gz', 'wt')\n"
+        "bz2.open('x.bz2', 'xt', encoding='utf-8')\n"
+        "lzma.open('x.xz', mode='wt')\n"
+        "gzip.open('x.gz', 'w+t')\n"
+    )
+    assert len(_violations(bad)) == 4
+    good = (
+        "import gzip, bz2, lzma\n"
+        "gzip.open('x.gz', 'wt', newline='\\n')\n"
+        "gzip.open('x.gz', 'wb')\n"
+        "gzip.open('x.gz')\n"
+        "gzip.open('x.gz', 'rt')\n"
+        "bz2.open('w.bz2', 'rb')\n"
+        "lzma.open('x.xz', 'at')\n"
     )
     assert _violations(good) == []
 
