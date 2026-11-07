@@ -24,8 +24,12 @@
 /* 2-row layout is permanent: row 1 = identity + instantaneous state, row 2
  * = bars + session-level info. Explicit rows (flex-column with row flex
  * containers) instead of flex-wrap overflow, so layout is deterministic
- * regardless of content width. */
-header {
+ * regardless of content width.
+ * S144-U-176: `body > header`, not a bare `header`: the bare type selector
+ * also matched the in-view heads (header.ub-form-head, the Replay
+ * header.replay-events-head pair), turning them into columns with the bar's
+ * padding and fill. Guard: tests/snapshot_panels/test_in_view_header_scope.py. */
+body > header {
   padding: 5px 18px;
   display: flex;
   flex-direction: column;

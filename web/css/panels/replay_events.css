@@ -35,6 +35,12 @@
 
 .replay-events-head {
   display: flex; align-items: center; justify-content: space-between;
+  /* S144-U-176: one row (title left, filters / keys right) wherever both
+   * fit; where they do not, the filters or keys wrap under the title. The
+   * head used to be a column only because the top bar's bare `header`
+   * rule leaked onto it (now `body > header`, header.css). Guards:
+   * test_in_view_header_scope.py, test_replay_narrow_reflow.py. */
+  flex-wrap: wrap;
   gap: var(--panel-gap);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border-soft);
@@ -181,8 +187,8 @@
  * line, actor and victim share the second as equal halves (each still
  * ellipsizes; a grid with the clock track above them left the victim
  * 11 px at 320). Under 20rem a half is too narrow for a portrait and a
- * name, so each takes its own line. The filters wrap (the head itself is
- * already a column: the global `header` rule, header.css). At the
+ * name, so each takes its own line. The filters wrap (and the head wraps
+ * them under the title, S144-U-176). At the
  * 1920x920 baseline the section is far wider and keeps the four tracks.
  * Guard: tests/snapshot_panels/test_replay_narrow_reflow.py. */
 @container replay-events (width < 34rem) {
