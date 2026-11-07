@@ -4781,6 +4781,29 @@ waits on the RM-875 wiring.)
   LIVE RESIDUAL (glance): take "Draw Your Sword" in a real Arena, then confirm on screen that Runaan's
   Hurricane 223085 has DROPPED out of the build panel. If it has not, suspect the augment HUD read
   first - one unrelated OCR miss is the likelier cause than the gate.
+  **RE-CHECK (lane 9 PREP s144 cycle 96, 2026-11-07, source read at `988483ed2`; NOT a tick).**
+  Cites that MOVED (the text above and the drain card's PRECHECK are kept as their cycles' record).
+  This row (written at `2a7010203`): `arena_coach.py:448` (`state["augments"] = ...`) is now `:474`;
+  `:682` (the `augments=` kwarg into the DS dispatch) is now `:715`; the all-or-nothing block
+  `:989-995` is now `:1052-1058` (`return  # all-or-nothing guard` at `:1058`). The GATE 5 drain
+  card's G5-09 PRECHECK (written at `b20542413`): `_handle_augment_select`'s `augments_picked` write
+  `:968` is now `:988` (method at `:936`); `_reconcile_augment_hud` `:1015-1062` is now `:1037-1084`;
+  the all-or-nothing return `:1033-1036` is now `:1055-1058`; the `item_build` join `:886` is now
+  `:907`. Whole-file drift, no logic change in the cited lines. The chain HOLDS:
+  `coach_integration/archetype_dispatch.py` takes `augments` (`:296`), materialises it once (`:391`)
+  and forwards it (`:416`, `:539`); `agents/daemon_slayer/rank.py:408` `_champion_is_melee` checks
+  `_augment_forces_melee` first (ids `{134}` at `:364`, api names at `:361`). MEASURED in-process,
+  read-only, on a ranged record `{"stats": {"attackrange": 550}}`: `[134]`, `["134"]`,
+  `["DrawYourSword"]` and `[{"id": 134}]` read melee True; `["Draw Your Sword"]`,
+  `["drawyoursword"]`, `None` and `[]` read False, so the display-form risk above STANDS.
+  `_resolve_augment_apiname("Draw Your Sword")` still returns `"DrawYourSword"`; the map now holds 280
+  keys (225 api names) from the newest `data/daemon_slayer/<patch>/arena_augments.json` (the 281 above
+  was 2026-07-18's snapshot; a data fact, not a guard). CORRECTION to "No headless test covers OCR ->
+  resolve -> all-or-nothing": the all-or-nothing half IS pinned, as intended behaviour, by
+  `tests/phase2_smoke/test_arena_augment_hud.py` `test_partial_resolve_preserves_haiku` (real
+  `Coach._reconcile_augment_hud`, stubbed resolver, `b64599235` 2026-05-04, before this row; the
+  method's docstring and the test module's both argue for the guard). What no test covers is the real map plus a vision OCR string, so
+  the live glance stays the only check. Predicates unchanged; nothing ticked; no count moved.
 - **G5-10** `[HOLD 2026-06-20]` (was D8) Arena S2 augment level-up + crafting - trigger on the 26.09
   PBE (separate PBE install). ADR-010. NOT part of the current Arena sitting.
 - **G5-11** Focus-board Arena team layout - the GATE 5 verification RM-844 / RM-854 left owed ("shadow-only
