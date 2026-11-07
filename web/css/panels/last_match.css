@@ -1709,6 +1709,33 @@
 @container lm-tc-group (width < 212px) {
   .lm-tc-name { flex-basis: calc(100% - 45px); }
 }
+/* S144-U-191: at 720 px and under the Post Game Review drops its doubled
+ * side padding. From the window edge to a roster row's content there were
+ * 90 px a side: the view's 18 px margin + 1 px border + 18 px padding,
+ * then #lm-body's own 18 px (a second copy of the view padding), the
+ * section card's 1 + 16, the ALLY / ENEMY group's 1 + 10 and the row's
+ * 1 + 6, so a 320 window left a row 140 px of content and a wrapped row
+ * ran 8 lines (9 in Arena). Here the view's padding is the one gutter
+ * (#lm-body, #hpgr-body and the TFT card #lm-tft go to 0 a side), the
+ * section cards take 10 and the groups 6: 196 px of row content at 320.
+ * Top and bottom padding stay; above 720 nothing moves. This block sits
+ * after the .lm-section and .lm-tc-group rules so it wins at equal
+ * specificity. Guard: tests/snapshot_panels/test_pgr_narrow_padding.py. */
+@media (max-width: 720px) {
+  .lm-body,
+  .lm-tft {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .lm-section {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .lm-tc-group {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
 
 .lm-tc-empty {
   font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; empty state) */
