@@ -355,9 +355,18 @@ function _eventRowHtml(e) {
     // drives the scrubber to this event's timestamp via the delegated
     // listener in wireReplayEventsOnce. data-clock carries the raw seconds.
     // RM-1066: the li stays a listitem and the control is a real button.
+    // S144-U-195: data-ms carries the event's own ms (the route's
+    // timestamp_ms) so a seek puts the minimap on that moment: the map
+    // opens a kill's death window at its exact ms, and clockS * 1000 is up
+    // to 999 ms early (the victim still alive). Only an ms that agrees
+    // with the shown clock is carried; without one the row seeks its clock.
+    const ms = e.timestamp_ms;
+    const msAttr = (typeof ms === "number" && Number.isFinite(ms) && ms >= 0
+                    && Math.floor(ms / 1000) === clockS)
+      ? ` data-ms="${Math.floor(ms)}"` : "";
     return `<li class="replay-events-item"><button type="button"
       class="replay-events-row" data-kind="${kind}" data-team="${team}"
-      data-clock="${clockS}"
+      data-clock="${clockS}"${msAttr}
       title="Jump the scrubber to ${_escHtml(clock)}">
       <span class="replay-events-clock">${_escHtml(clock)}</span>
       <span class="replay-events-label">${_escHtml(label)}${sub}${lane}</span>
@@ -477,9 +486,13 @@ function _seekFromRow(target) {
   const row = target && target.closest ? target.closest(".replay-events-row") : null;
   if (!row || !_seekHandler) return;
   const c = Number(row.getAttribute("data-clock"));
+  // S144-U-195: the event's own ms when the row carries one, else null
+  // (the scrubber then seeks the whole-second clock).
+  const msAttr = row.getAttribute("data-ms");
+  const ms = msAttr === null || msAttr === "" ? NaN : Number(msAttr);
   // S144-U-187: the row's match rides along, so the scrubber can refuse a
   // row of a match it does not hold yet.
-  if (!isNaN(c)) _seekHandler(c, _RE.matchId);
+  if (!isNaN(c)) _seekHandler(c, _RE.matchId, Number.isFinite(ms) ? ms : null);
 }
 
 /**

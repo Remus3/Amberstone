@@ -1,6 +1,6 @@
 {
   "mock": true,
-  "note": "Mock fixture for the Replay view (state-coverage check 5/7 per docs/UI_SCALE_SPEC_V2.md). Activated by ?ui_mock=1 URL flag or the Settings > Display > Dev UI mock data toggle. Each match is self-contained: list-shape metadata at the top level + participants + snapshots + events inline. Shape follows core/replay_history.py match_detail: each snapshot carries the frame's own timestamp_ms (minute = round(timestamp_ms / 60000, 1)); the SR win carries a pos on every frame entry and a kills list (one row per CHAMPION_KILL event) so the minimap draws. Frame times, frame positions, kill positions and assists are copied from one stored normal-draft match (seat by seat; a kill takes the same killer and victim pair, else the same killer nearest in time); ids, names and stat lines stay synthetic. The ranked row keeps no pos (the no-positions map state).",
+  "note": "Mock fixture for the Replay view (state-coverage check 5/7 per docs/UI_SCALE_SPEC_V2.md). Activated by ?ui_mock=1 URL flag or the Settings > Display > Dev UI mock data toggle. Each match is self-contained: list-shape metadata at the top level + participants + snapshots + events inline. Shape follows core/replay_history.py match_detail: each snapshot carries the frame's own timestamp_ms (minute = round(timestamp_ms / 60000, 1)); the SR win carries a pos on every frame entry and a kills list (one row per CHAMPION_KILL event) so the minimap draws. Frame times, frame positions, kill positions and assists are copied from one stored normal-draft match (seat by seat; a kill takes the same killer and victim pair, else the same killer nearest in time); ids, names and stat lines stay synthetic. The ranked row keeps no pos (the no-positions map state). Each SR CHAMPION_KILL ribbon event carries its kill row's timestamp_ms, as /api/replay/events serves every event (S144-U-195); the other ribbon events keep clock_s only, so the no-ms seek stays covered.",
   "matches": [
     {
       "match_id": "MOCK_NORMAL_DRAFT_WIN",
@@ -99,18 +99,18 @@
         {"timestamp_ms": 1488912, "minute": 24.8, "killer_id": 4, "victim_id": 6,  "assists": [3, 5], "pos": [9557, 6064]}
       ],
       "events": [
-        {"clock_s": 230, "type": "CHAMPION_KILL",          "team": 100, "actor": 1,  "actor_champion": "Jax",    "actor_name": "TopGapper", "victim": 6,  "victim_champion": "Teemo",     "victim_name": "BlindPick99", "lane": "TOP_LANE"},
+        {"clock_s": 230, "timestamp_ms": 230254, "type": "CHAMPION_KILL", "team": 100, "actor": 1,  "actor_champion": "Jax",    "actor_name": "TopGapper", "victim": 6,  "victim_champion": "Teemo",     "victim_name": "BlindPick99", "lane": "TOP_LANE"},
         {"clock_s": 290, "type": "TURRET_PLATE_DESTROYED", "team": 100, "actor": 4,  "actor_champion": "Jinx",   "actor_name": "SamplePlayer", "lane": "BOT_LANE"},
-        {"clock_s": 385, "type": "CHAMPION_KILL",          "team": 200, "actor": 7,  "actor_champion": "Elise",  "actor_name": "SpiderMain", "victim": 2, "victim_champion": "LeeSin",   "victim_name": "JgUnit"},
+        {"clock_s": 385, "timestamp_ms": 385841, "type": "CHAMPION_KILL",          "team": 200, "actor": 7,  "actor_champion": "Elise",  "actor_name": "SpiderMain", "victim": 2, "victim_champion": "LeeSin",   "victim_name": "JgUnit"},
         {"clock_s": 522, "type": "ELITE_MONSTER_KILL",     "subtype": "HORDE", "team": 100, "actor": 2, "actor_champion": "LeeSin", "actor_name": "JgUnit"},
         {"clock_s": 580, "type": "TURRET_PLATE_DESTROYED", "team": 100, "actor": 3,  "actor_champion": "Syndra", "actor_name": "MidCarry", "lane": "MID_LANE"},
         {"clock_s": 612, "type": "ELITE_MONSTER_KILL",     "subtype": "DRAGON_OCEAN", "team": 200, "actor": 7, "actor_champion": "Elise", "actor_name": "SpiderMain"},
-        {"clock_s": 768, "type": "CHAMPION_KILL",          "team": 100, "actor": 4,  "actor_champion": "Jinx",       "actor_name": "SamplePlayer",   "victim": 9, "victim_champion": "Kaisa",      "victim_name": "BotDC"},
-        {"clock_s": 815, "type": "CHAMPION_KILL",          "team": 100, "actor": 5,  "actor_champion": "Thresh",     "actor_name": "HookKing",    "victim": 10, "victim_champion": "Blitzcrank", "victim_name": "GrabBag"},
+        {"clock_s": 768, "timestamp_ms": 768301, "type": "CHAMPION_KILL",          "team": 100, "actor": 4,  "actor_champion": "Jinx",       "actor_name": "SamplePlayer",   "victim": 9, "victim_champion": "Kaisa",      "victim_name": "BotDC"},
+        {"clock_s": 815, "timestamp_ms": 815701, "type": "CHAMPION_KILL",          "team": 100, "actor": 5,  "actor_champion": "Thresh",     "actor_name": "HookKing",    "victim": 10, "victim_champion": "Blitzcrank", "victim_name": "GrabBag"},
         {"clock_s": 940, "type": "BUILDING_KILL",          "subtype": "OUTER_TURRET", "team": 100, "actor": 4, "actor_champion": "Jinx", "actor_name": "SamplePlayer", "lane": "BOT_LANE"},
         {"clock_s": 1124, "type": "ELITE_MONSTER_KILL",    "subtype": "HERALD", "team": 100, "actor": 1, "actor_champion": "Jax",   "actor_name": "TopGapper"},
         {"clock_s": 1305, "type": "BUILDING_KILL",         "subtype": "INNER_TURRET", "team": 100, "actor": 1, "actor_champion": "Jax",  "actor_name": "TopGapper", "lane": "TOP_LANE"},
-        {"clock_s": 1488, "type": "CHAMPION_KILL",         "team": 100, "actor": 4, "actor_champion": "Jinx",   "actor_name": "SamplePlayer", "victim": 6, "victim_champion": "Teemo",     "victim_name": "BlindPick99"},
+        {"clock_s": 1488, "timestamp_ms": 1488912, "type": "CHAMPION_KILL",         "team": 100, "actor": 4, "actor_champion": "Jinx",   "actor_name": "SamplePlayer", "victim": 6, "victim_champion": "Teemo",     "victim_name": "BlindPick99"},
         {"clock_s": 1665, "type": "ELITE_MONSTER_KILL",    "subtype": "BARON_NASHOR", "team": 100, "actor": 3, "actor_champion": "Syndra", "actor_name": "MidCarry"},
         {"clock_s": 1820, "type": "BUILDING_KILL",         "subtype": "INHIBITOR",    "team": 100, "actor": 4, "actor_champion": "Jinx", "actor_name": "SamplePlayer", "lane": "BOT_LANE"},
         {"clock_s": 2110, "type": "BUILDING_KILL",         "subtype": "NEXUS",        "team": 100, "actor": 4, "actor_champion": "Jinx", "actor_name": "SamplePlayer"}

@@ -27,7 +27,7 @@ f41861da536c4bf13ffca118dab04e833a61636c7d983029d41cbf1a019fc297  web/js/panels/
 
 1cdfc27f8e351e702d0b0b6188a5072bf7a1334325b00a66ab77e760defb3b4b  web/js/panels/coach_decisions.js
 
-e3e68780a2325579fcfef0065bd60672886f6eee78761798ffdc48c242efa7ee  web/js/panels/dev.js
+387f7841d564d013d57f004cf0c5af972f69f4b6a7e86ee6ee778370e045a55f  web/js/panels/dev.js
 
 7dd55b0dcf03acc31d15f108c2739067467d6626507e5d61e5f30909badb4f44  web/js/panels/draft_elo.js
 
@@ -107,7 +107,7 @@ cbf54d38530c10d1022b898ac3b059c0ee150b0a3432cf9eb41d33bec2d71a75  web/js/panels/
 
 228ee686c3f9f705c8342cec7ab351b11d31edb7beba00fe46f96a1dfb52cb38  web/js/panels/post_game_phases.js
 
-5e222db9d0095bcb1cd44adf75600e5eef14bcca36c7ca72de750559f4cb9408  web/js/panels/replay_events.js
+cb3c5d0bf79dec79bff834e7f27b51ccd5b45edff58350360d4ae0b7ee28b4a6  web/js/panels/replay_events.js
 
 4376b53463ac26cafc489fb8fbffe350cbe015e985be0f1d9bddc9d0d51c57e4  web/js/panels/replay_minimap.js
 

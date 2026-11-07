@@ -682,11 +682,18 @@ function _replayRenderSnapshot(idx, mapTms) {
 // S144-U-187: matchId is the ribbon's match; a row whose match is not the
 // one in the scrubber (its events landed before its match reply) does not
 // seek. Guard: tests/snapshot_panels/test_replay_pending_pick_ribbon.py.
-function _replaySeekToClock(clockS, matchId) {
+// S144-U-195: tMs is the event's own ms when its row carries one; the map
+// goes to that moment (a kill's death window opens at its exact ms, so the
+// whole second, up to 999 ms early, showed the victim alive). Without it
+// the seek uses clockS * 1000 as before.
+// Guard: tests/snapshot_panels/test_replay_kill_seek_exact_ms.py.
+function _replaySeekToClock(clockS, matchId, tMs) {
   const d = _REPLAY.match;
   if (!d || !Array.isArray(d.snapshots) || !d.snapshots.length) return;
   if (matchId != null && d.match_id !== matchId) return;
-  const targetMin = (Number(clockS) || 0) / 60;
+  const exact = (tMs != null && Number.isFinite(Number(tMs)))
+    ? Number(tMs) : (Number(clockS) || 0) * 1000;
+  const targetMin = exact / 60000;
   let bestIdx = 0, bestDelta = Infinity;
   for (let i = 0; i < d.snapshots.length; i++) {
     const mn = Number(d.snapshots[i].minute) || 0;
@@ -696,7 +703,7 @@ function _replaySeekToClock(clockS, matchId) {
   _REPLAY.snapshotIdx = bestIdx;
   const slider = document.getElementById("replay-slider");
   if (slider && !slider.disabled) slider.value = String(bestIdx);
-  _replayRenderSnapshot(bestIdx, (Number(clockS) || 0) * 1000);
+  _replayRenderSnapshot(bestIdx, exact);
 }
 
 // -- RM-612 (X-12, external reference I): past-match minimap -------------
@@ -765,6 +772,10 @@ function _replayMapIcon(name) {
 }
 function _replayMapSetTime(tMs) {
   _REPLAY_MAP.t = Math.max(0, Number(tMs) || 0);
+  // S144-U-195: the canvas names the moment it shows, in game ms (its
+  // caption clock reads whole seconds only).
+  const canvas = document.getElementById("replay-map-canvas");
+  if (canvas) canvas.dataset.tMs = String(_REPLAY_MAP.t);
   _replayMapSchedule();
 }
 function _replayMapSchedule() {
