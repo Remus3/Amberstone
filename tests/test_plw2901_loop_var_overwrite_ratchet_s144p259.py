@@ -36,6 +36,12 @@ Slice 7 (S144-P-265) renamed the same shape in eight more modules (``coaches/ada
 ``scripts/rewind_catchup``, ``tools/replay_matchup_validate`` x2 and ``tools/replay_pickban_validate`` x2 int-coercion):
 14 findings gone, 30 remain in held scope.
 
+Slice 8 (S144-P-266) renamed the same shape (plus dict-unwrap neighbours) in ten more modules
+(``core/build_order_precompute``, ``dashboard/_deterministic_coaching``, ``dashboard/routes_playstyle_labels``,
+``lcu/lcu_postgame_collector``, ``ops/loop/repo_review`` x2, ``tft/rounds/ground_truth``, ``tft/tft_placement``,
+``tft/tft_prompt`` x2, ``tools/arena_shadow_report``, ``tools/gated_tft15_planner``): 12 findings gone,
+18 remain in held scope.
+
 The count per file can only fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -66,13 +72,8 @@ _NOT_THIS_SCOPE = {
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE = {
-    "core/build_order_precompute.py": 1,
-    "dashboard/_deterministic_coaching.py": 1,
-    "dashboard/routes_playstyle_labels.py": 1,
     "docs/_rsc_score/calibrate.py": 1,
     "docs/_rsc_score/calibrate_rep.py": 1,
-    "lcu/lcu_postgame_collector.py": 1,
-    "ops/loop/repo_review.py": 2,
     "ops/rc_transactional_deploy.py": 1,
     "tests/test_gated_lx05_tape_check.py": 1,
     "tests/test_pytest_per_run_temproot_rm878.py": 1,
@@ -85,13 +86,8 @@ _BASELINE = {
     "tests/test_tft_coach_lane8_cycle34.py": 1,
     "tests/test_vision_merge_augment_rehome_b01b.py": 1,
     "tests/test_web_js_unimported_calls_s144q43.py": 1,
-    "tft/rounds/ground_truth.py": 1,
     "tft/tft_coach_engine.py": 3,
-    "tft/tft_placement.py": 1,
-    "tft/tft_prompt.py": 2,
-    "tools/arena_shadow_report.py": 1,
     "tools/ds_wiki_staleness_check.py": 1,
-    "tools/gated_tft15_planner.py": 1,
 }
 _FIXED = (
     "core/branch_review.py",
@@ -149,6 +145,17 @@ _FIXED = (
     "scripts/rewind_catchup.py",
     "tools/replay_matchup_validate.py",
     "tools/replay_pickban_validate.py",
+    # slice 8 (S144-P-266): the same shape (plus dict-unwrap neighbours) in ten more modules.
+    "core/build_order_precompute.py",
+    "dashboard/_deterministic_coaching.py",
+    "dashboard/routes_playstyle_labels.py",
+    "lcu/lcu_postgame_collector.py",
+    "ops/loop/repo_review.py",
+    "tft/rounds/ground_truth.py",
+    "tft/tft_placement.py",
+    "tft/tft_prompt.py",
+    "tools/arena_shadow_report.py",
+    "tools/gated_tft15_planner.py",
 )
 
 

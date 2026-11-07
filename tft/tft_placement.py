@@ -162,11 +162,12 @@ def scrub_raw(doc):
     local database never holds a riot id or puuid either."""
     if isinstance(doc, dict):
         out = {}
-        for k, v in doc.items():
+        for k, raw_v in doc.items():
             if k in IDENTITY_KEYS:
                 continue
-            if k == "metadata" and isinstance(v, dict):
-                v = {mk: mv for mk, mv in v.items() if mk != "participants"}
+            v = raw_v
+            if k == "metadata" and isinstance(raw_v, dict):
+                v = {mk: mv for mk, mv in raw_v.items() if mk != "participants"}
             out[k] = scrub_raw(v)
         return out
     if isinstance(doc, list):

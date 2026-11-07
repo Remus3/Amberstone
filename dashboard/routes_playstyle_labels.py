@@ -144,10 +144,11 @@ def _clean_payload(payload: dict) -> dict:
     champions = out.get("champions")
     if isinstance(champions, list):
         kept = []
-        for champ in champions:
-            labels = champ.get("labels") if isinstance(champ, dict) else None
+        for raw_champ in champions:
+            champ = raw_champ
+            labels = raw_champ.get("labels") if isinstance(raw_champ, dict) else None
             if isinstance(labels, list):
-                champ = dict(champ)
+                champ = dict(raw_champ)
                 champ["labels"] = [
                     lb for lb in labels
                     if not isinstance(lb, dict)

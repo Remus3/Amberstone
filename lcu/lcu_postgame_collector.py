@@ -293,8 +293,8 @@ def _ensure_schema() -> None:
         conn = _get_conn()
         try:
             for sql in _MODES_SQL.values():
-                for stmt in sql.split(";"):
-                    stmt = stmt.strip()
+                for raw_stmt in sql.split(";"):
+                    stmt = raw_stmt.strip()
                     if stmt:
                         conn.execute(stmt)
             _raw_docs.ensure_schema(conn)

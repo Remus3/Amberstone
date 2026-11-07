@@ -197,9 +197,10 @@ def _team_rows(dirty: Any) -> tuple[dict[str, list[dict]], str]:
     """Normalise ``/v1/sets/dirty`` to {set: [team dict]}; the shape is unmeasured."""
     if isinstance(dirty, dict):
         out: dict[str, list[dict]] = {}
-        for sid, val in dirty.items():
-            if isinstance(val, dict) and isinstance(val.get("teams"), list):
-                val = val["teams"]
+        for sid, raw_val in dirty.items():
+            val = raw_val
+            if isinstance(raw_val, dict) and isinstance(raw_val.get("teams"), list):
+                val = raw_val["teams"]
             if isinstance(val, list):
                 out[str(sid)] = [t for t in val if isinstance(t, dict)]
         return out, "by_set" if out else "unrecognised"

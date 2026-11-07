@@ -225,8 +225,8 @@ def _traits(cd: dict, meta: dict) -> tuple:
             # breakpoints.
             raw = row.get("breakpoints")
             bps: list = []
-            for b in raw if isinstance(raw, (list, tuple)) else []:
-                b = _int(b)
+            for raw_bp in raw if isinstance(raw, (list, tuple)) else []:
+                b = _int(raw_bp)
                 if b is not None and b not in bps:
                     bps.append(b)
             out[name] = "/".join(str(b) for b in bps)
@@ -244,8 +244,8 @@ def _units_by_cost(cd: dict, meta: dict) -> tuple:
     if not costs:
         costs = meta.get("unit_costs") if isinstance(meta.get("unit_costs"), dict) else {}
     groups: dict = {}
-    for raw, cost in costs.items():
-        cost = _int(cost)
+    for raw, raw_cost in costs.items():
+        cost = _int(raw_cost)
         name = _clean_name(_VARIANT.sub("", raw)) if isinstance(raw, str) else ""
         if cost is None or not name:
             continue

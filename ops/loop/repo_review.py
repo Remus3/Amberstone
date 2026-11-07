@@ -340,8 +340,8 @@ def last_commit_dates(root: Path = ROOT) -> dict[str, str]:
     dates: dict[str, str] = {}
     current = ""
     for chunk in raw.decode("utf-8", "replace").split("\0"):
-        for piece in chunk.split("\n"):
-            piece = piece.strip()
+        for raw_piece in chunk.split("\n"):
+            piece = raw_piece.strip()
             if not piece:
                 continue
             if piece.startswith("\x01"):
@@ -748,11 +748,11 @@ def parse_answer(text: str | None, batch: dict) -> tuple[dict | None, str | None
     if not isinstance(findings, list):
         return None, "findings is not a list"
     clean = []
-    for f in findings:
-        if not isinstance(f, dict):
+    for raw_f in findings:
+        if not isinstance(raw_f, dict):
             continue
-        f = {k: f.get(k) for k in ("sev", "topic", "paths", "finding", "action", "verify",
-                                   "proposed", "gated", "acceptance")}
+        f = {k: raw_f.get(k) for k in ("sev", "topic", "paths", "finding", "action", "verify",
+                                       "proposed", "gated", "acceptance")}
         if f["sev"] not in SEVERITIES:
             f["sev"] = "info"
         if not isinstance(f["paths"], list):
