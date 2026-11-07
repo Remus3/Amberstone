@@ -79,11 +79,11 @@ updates:
       # held until RM-681 (live call per path + truststore) closes.
       - dependency-name: "anthropic"
         versions: [">1.11.0,<=2.3.0"]
-      # PR #11: wait for a change that also upgrades the RC runtime.
+      # PR #11: wait for a change that also upgrades the RC runtime. (Its
+      # pydantic ">2.13.5,<=2.14.1" entry was dropped when PR #29 moved the
+      # pin to 2.14.2, a security release; the range sat below the pin.)
       - dependency-name: "json5"
         versions: [">0.15.0,<=0.17.3"]
-      - dependency-name: "pydantic"
-        versions: [">2.13.5,<=2.14.1"]
 
   # npm: every tracked package.json that declares dependencies.
   # package-lock.json is gitignored repo-wide EXCEPT rc-shell/package-lock.json,
