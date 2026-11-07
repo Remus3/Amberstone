@@ -2311,6 +2311,43 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   }
   .lv-mainchamps-list[data-tab="you"] .lv-mc-champ { flex-direction: column; }
 }
+/* S144-U-180: the PARTY MAINS tab reflows at 720px and under too. It kept
+ * its four desktop tracks (76px 1.4fr 1.2fr 1.0fr) at every width, so at
+ * 400 the word "Mastery" (66.6px, --fs-sm bold) overran its 59px cell and
+ * a "12/4/8" KDA its 49px cell, and at 360 and 320 the header row grew to
+ * its labels and ran 71px past the card (the card scrolled sideways),
+ * the names "BRAWLER" and "ALPHA" were cut to an ellipsis and the
+ * placeholder "- points" overran a 33px cell. Here a PARTY row is two
+ * lines, as a YOUR MAINS row is: MASTERY and RECENT on the first, under
+ * their headers, and the PLAYER cell (name over champion, it names
+ * itself, so its header is dropped) across both on the second; the icon
+ * spans both lines. MASTERY takes 1.15 of RECENT's share: at 320 the 130px
+ * the two get must hold "Mastery" (67px) and the RECENT header (57px).
+ * At 400px and under the copy button sits under the icon (50px column),
+ * as on YOUR MAINS. Pinned by
+ * tests/snapshot_panels/test_lobby_party_mains_narrow_reflow.py. */
+@media (max-width: 720px) {
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-row,
+  .lv-mainchamps-categories[data-tab="party"] .lv-mc-cats-party {
+    grid-template-columns: 76px minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-champ {
+    grid-column: 1; grid-row: 1 / span 2;
+  }
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-party-id {
+    grid-column: 2 / -1; grid-row: 2;
+  }
+  .lv-mainchamps-categories[data-tab="party"] .lv-mc-cat:nth-child(2) {
+    display: none;
+  }
+}
+@media (max-width: 400px) {
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-row,
+  .lv-mainchamps-categories[data-tab="party"] .lv-mc-cats-party {
+    grid-template-columns: 50px minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-champ { flex-direction: column; }
+}
 
 /* Session view layout - v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #5,
  * 2026-05-23). 2x2 card grid (OVERVIEW + PERFORMANCE narrow / CHAMPIONS +

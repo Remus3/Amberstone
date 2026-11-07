@@ -12,7 +12,8 @@ its siblings), sized for icon + gap + button. The champ cell
 fix (headless Chromium, YOUR MAINS and PARTY MAINS, 1920x920 down to
 480x800, and PARTY MAINS at 400 and 320 too): 20 x 22. At 400 and under
 YOUR MAINS stacks the button under the icon (50px column), where it kept
-its 22px box already; PARTY MAINS keeps it beside the icon there.
+its 22px box already; PARTY MAINS does the same since S144-U-180
+(test_lobby_party_mains_narrow_reflow.py).
 
 Contract pinned at 1920x920, 1280x800, 722x900, 640x900, 480x800, 400x740
 and 320x640, on YOUR MAINS (four synthetic mains, the
@@ -142,7 +143,8 @@ def test_icon_keeps_its_box_and_the_button_clears_it(measured, size, tab):
         beside = c["l"] >= i["r"] - 0.5
         below = c["t"] >= i["b"] - 0.5
         assert beside or below, (size, tab, i, c)
-        # Only YOUR MAINS stacks the button under the icon at 400 and
-        # under (header.css, the max-width 400px block).
-        assert beside == (size[0] > 400 or tab == "party"), \
+        # Both tabs stack the button under the icon at 400 and under
+        # (header.css, the max-width 400px blocks; PARTY MAINS since
+        # S144-U-180).
+        assert beside == (size[0] > 400), \
             (size, tab, i, c)
