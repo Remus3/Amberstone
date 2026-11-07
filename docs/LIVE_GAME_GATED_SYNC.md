@@ -4625,6 +4625,27 @@ waits on the RM-875 wiring.)
   game clock, which only the sampled pair answers. A grade run over samples taken with the flag OFF
   is caught by the zero-proof-line rule (INCONCLUSIVE). Idle smoke at 22:01 local: `sample` read
   `mode_key` client with both game times null, and `grade` returned NO_RESULT, exit 1.
+  **RE-CHECK 2026-11-07 (lane 9 s144 cycle 94, S144-G-85, source read at `5f3af5aad`; NOT a tick; no
+  game up: :8888 `/api/state` and :2999 both gave curl 000).** (1) CITE DRIFT, line numbers only,
+  behaviour unchanged. In the top part of `coaches/arena_coach.py` every cite in this row is now one
+  line lower, because `f7e88a157` (RM-1719) added `from typing import ClassVar` at `:21`. The flag
+  read is `:69` (was `:68`), the 45 s ceiling `:75` (was `:74`), `_coach_state_signature` `:88` (was
+  `:87`) and `_STABLE_DEBOUNCE_S = 22.0` `:443` (was `:442`). `_run_vision` is `:610`, with its
+  `live_coaching` gate at `:615`. `_run_coach` is `:639`, under `@safe_coach_output("Arena")` at
+  `:638`, with its gate at `:642`. The cycle 13-14 cites further down still hold at HEAD: the
+  debounce log `:815-819`, the Haiku `timeout=20` `:831`, `Arena: no fields parsed` `:842`, the
+  `game_time_s` write `:875`, the `safe_write` `:914` and the ceiling stamp `:923`. The
+  `coaches/_base_coach.py` cites hold too: kill switch `:535`, budget `:547`, dispatch debounce
+  `:566`, `_last_coach` `:579`, the coach trace call `:669` and `_vision_loop` `:476`. So do
+  `core/log_setup.py:161` and `core/safe_coach_output.py:35`. (2) THE PRECONDITION IS UNCHANGED. The
+  default is still `"0"`. `RC_ARENA_STATE_DEBOUNCE` is absent from both the user and the machine
+  environment keys (`reg query`, both "unable to find"). In tracked code, only
+  `coaches/arena_coach.py`, `tests/test_arena_state_debounce.py` and this row's tool name it. So no
+  launcher sets it, the post-cutover `ops/launcher/` included. (3) THE REPLAY INPUT IS STILL ABSENT.
+  The 15 retained day logs (now `2026-10-17` to `2026-10-31`) hold no Arena coach line, and
+  `data/arena_coach_shadow.jsonl` still has 617 rows. (4) THE TOOL IS STILL GREEN.
+  `tests/test_gated_g506_debounce_lag.py` gave 29 passed at `5f3af5aad`, so its string pins still
+  match the source. The CHECK, the tool steps and the evidence contract do not change.
 - **G5-07** Arena deterministic A/B choices lever (`dc6b3d80`) - shipped SHADOW-only; served coach
   output unchanged. The live serve flip is gated on shadow accrual (G7-17).
   **AGE CHECK: THE IN-GAME SERVE FLIP IS MOOT WHILE B4 STANDS (lane 9 PREP s144 cycle 92, S144-G-83,
@@ -4709,6 +4730,13 @@ waits on the RM-875 wiring.)
   3 seconds. Anything else is recorded as read and decides nothing. An untimed or stale frame is no
   result. This check reads the client's STATED magnitude only, which is the same string DDragon
   renders, so it is not independent of DDragon. The uptime residual stays with G2-24.
+  **RE-CHECK 2026-11-07 (lane 9 s144 cycle 94, S144-G-85, read at `5f3af5aad`; NOT a tick).** DS is
+  still at 16.21.1 (`data/daemon_slayer/current.txt`), so the feed reading in (2) stands, and RM-871
+  is still open in ROADMAP NOW. One cite moved, line number only: `_GENERAL_DR_UNSOURCED_MIRRORS` is
+  now `agents/daemon_slayer/_item_general_dr.py:140` (was `:139`), and it still lists 444644, at
+  `:141`. `agents/daemon_slayer/tests/test_r144_mirror_slice_b.py:255`
+  (`test_ddragon_and_meraki_still_disagree_on_444644`) and
+  `agents/daemon_slayer/_effects_data.py:3292-3297` hold.
 - **G5-09** DS ranged-only Runaan's melee-gate made augment-aware for "Draw Your Sword" (augment id
   134, ranged->melee; `38b5e1eb`, LEDGER 856) - **PARTIAL 2026-07-18.** SETTLED HEADLESS: the gate is
   exact and does not over-filter. On **all 8** corpus champions that actually took augment 134
