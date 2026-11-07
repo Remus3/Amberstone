@@ -232,6 +232,7 @@ function _mkState() {
     sortDir: 'desc',
     loaded: false,
     inFlight: false,
+    failed: false,
   };
 }
 
@@ -241,6 +242,7 @@ const _ITEMS_TAB = {
   endpoint: '/api/item-wpa',
   mockUrl: '/data/ui_mock/build_insights.json',
   emptyMsg: 'No item data yet - play a few games',
+  failMsg: 'Item stats unavailable.',
   emptyUnit: 'buys per item',
   headLabel: 'Item',
   nLabel: 'Buys',
@@ -265,6 +267,7 @@ const _SKILLS_TAB = {
   endpoint: '/api/skill-wpa',
   mockUrl: '/data/ui_mock/build_insights_skill.json',
   emptyMsg: 'No skill data yet - play a few games',
+  failMsg: 'Skill stats unavailable.',
   emptyUnit: 'games per champion skill-max',
   headLabel: 'Champion',
   extraHead: 'Skill',
@@ -300,6 +303,7 @@ const _RUNES_TAB = {
   endpoint: '/api/rune-wpa',
   mockUrl: '/data/ui_mock/rune_wpa.json',
   emptyMsg: 'No rune data yet - play a few games',
+  failMsg: 'Rune stats unavailable.',
   emptyUnit: 'picks per rune',
   headLabel: 'Rune',
   extraHead: 'Slot',
@@ -332,6 +336,7 @@ const _SPELLS_TAB = {
   endpoint: '/api/summspell-wpa',
   mockUrl: '/data/ui_mock/summspell_wpa.json',
   emptyMsg: 'No spell data yet - play a few games',
+  failMsg: 'Spell stats unavailable.',
   emptyUnit: 'picks per spell',
   headLabel: 'Spell',
   nLabel: 'Picks',
@@ -508,6 +513,13 @@ function _render(tab) {
     mount.innerHTML = '<div class="bi-empty">loading...</div>';
     return;
   }
+  // S144-U-209: a failed fetch is not an empty corpus. It used to fall
+  // through to the "play a few games" line below, a false instruction; it
+  // now says unavailable, the five chart tabs' wording.
+  if (st.failed) {
+    mount.innerHTML = '<div class="bi-empty">' + tab.failMsg + '</div>';
+    return;
+  }
   if (!st.items || st.items.length === 0) {
     mount.innerHTML =
       '<div class="bi-empty">' + tab.emptyMsg + ' (need at least ' +
@@ -590,9 +602,14 @@ function _fetch(tab) {
   // the descriptive hover titles are ready (or re-stamped) as soon as possible.
   if (tab.key === 'runes') _loadRuneDescs();
   _render(tab);
+  // `data` is null on an HTTP error, a network error or an `ok: false`
+  // reply. S144-U-209: a failure is not cached (loaded stays false and the
+  // ui_mock promise is dropped), so the next visit to the tab fetches again.
   const finish = (data) => {
     st.inFlight = false;
-    st.loaded = true;
+    st.failed = !data;
+    st.loaded = !!data;
+    if (!data && _isMock()) _MOCK[tab.key] = null;
     st.items = (data && Array.isArray(data.items)) ? data.items.slice() : [];
     _render(tab);
   };
