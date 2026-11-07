@@ -418,8 +418,10 @@ def acquire_lock() -> bool:
     # Try exclusive-create first.
     try:
         fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.write(fd, str(os.getpid()).encode("ascii"))
-        os.close(fd)
+        try:
+            os.write(fd, str(os.getpid()).encode("ascii"))
+        finally:
+            os.close(fd)
         _LOCK_OWNER_PID, _LOCK_OWNER_SENTINEL = os.getpid(), sentinel
         _write_lock_metadata()
         return True
@@ -444,8 +446,10 @@ def acquire_lock() -> bool:
         pass
     try:
         fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.write(fd, str(os.getpid()).encode("ascii"))
-        os.close(fd)
+        try:
+            os.write(fd, str(os.getpid()).encode("ascii"))
+        finally:
+            os.close(fd)
     except FileExistsError:
         log.error("lost race to another reclaiming starter")
         return False
