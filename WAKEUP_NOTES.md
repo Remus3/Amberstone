@@ -6,6 +6,20 @@
 
 ---
 
+# 2026-11-06 - session 150: all driver lanes headless; L9 + the s150 landings pushed to 52266153f (gated rc 0); ci RED on 6 Linux-only pins, the fixes local only; the landing suite held by the 24800 MB launch line; NOT PUSHED at /done
+
+- **Operator (chat):** "continue headlessly - all driver lanes - operator away ; full access approved"; "run the landing suite" (twice); "No, keep lanes running" (to pausing the lanes for the suite); "1 and 2. do it free them" (close Chrome, free the leftovers); "finish this up so done can process for clear".
+- **Landed + pushed:** L9 `43f6d2e9d` (LEDGER 2014-2022); the s150 landings to `52266153f`, gated whole suite rc 0 there (LEDGER 2025-2053); RM-1506 shipped.
+- **CI on `52266153f`:** codeql + docs-guards green; ci RED on 6 Linux-only tests (5 Home pick layout pins, 1 redirect [head] pin): push 42136608451, schedule 42245599424 (read back at /done).
+- **Local only (8 commits ahead of origin, HEAD `d917bcf6e`):** RM-1657 fold 2 `df5c1fdab` (the 6 fixes) + RM-1427 split `2661168d9` (LEDGER 2055); no whole suite has run on them.
+- **Landing suite NOT launched:** LEDGER 2056 (lanes up, 22043-22493 MB against the 24800 MB line); LEDGER 2057 ruled C (the line stands; read-only watch to 19:45).
+- **Free-RAM act (operator order; main-session reads):** Chrome already closed; windows-mcp 23520 + 28160 and pythonw `-m server.ew` 15156 ended with taskkill; `wsl --shutdown` (no distro running), vmmem 15900 (~531 MB) persists; PhysicalAvailable 23752 -> 24030 MB with the lanes in their budget pause, ~770 MB short (LEDGER 2058).
+- **/done:** no push (no green gated suite on any local sha); reap removed agent-a91fe9b86f8a72ca1 (unlocked: clean, every commit on main) + s150-land3; cron a5bf84b1 deleted, no ticks remain.
+- **Do NOT redo:** the 2057 ruling, the free-RAM kills, the reap.
+- **Next:** C10 - the batched operator ask (free vmmem, keep Chrome closed, all in a rotator budget pause), then the gated suite on local HEAD, a verifier, push the exact sha, read ci; RM-1657 done only on green ci.
+
+---
+
 # 2026-11-01b - session 149: inbox only; MAIN ORDER 1547 reboot hold read back, L9 NOT run, C1 verified 9 of 9; PUSHED
 
 - **Operator (chat):** "just the inbox- not roadmap work at this time."; typed /done. No lane landed, no roadmap item started, no channel note sent.
@@ -26,17 +40,3 @@
 - **Caught late, by luck of which job ran what:** a green `ci` slice sat beside a red docs-guards from kit v26; the item 6 first cut was red in the impact selection and wrong under a refutation pass.
 - **Do NOT redo:** the 3 worktree removals, v26 + v27 inbox rows closed, FLEET-5a answered 700 USD.
 - **Next:** the gated whole suite once commit allows; read ci + docs-guards on the /done push; RM-1267 first cycles; L9 landing; ORDER 2215 residue RM-1270..RM-1272.
-
----
-
-# 2026-10-31d - session 147: lanes relaunched headless after the reboot, cutover stage 2 read back, L8 landed 30 lane commits (RM-1234..RM-1262), rc_facts 0x800710E0 fix, alert 144 declined; the s146 push CI read back RED; PUSHED
-
-- **Operator (chat):** "Continue"; "headlessly - all lanes ; headless driver"; "operator is away - computer was restarted" (box rebooted 19:03:56; operator items batched in the hand-off).
-- **L1 / NA1 / NA4 (LEDGER 2008):** rotator pid 17100 (`--spawn-detached`, 7 lanes, no push); stale S144_LANES_STOP from a shutdown-time leak scan Recycle-Binned after a clean re-scan; cutover dry run exit 0, rc-shell relaunched via WMI (Start-Process died with the agent shell), health green.
-- **NA7 (LEDGER 2008, `489d6e71f`):** alert 144 declined (minimatch dev-only, no fitting fix); npm audit 15 moderate unchanged.
-- **NA3 / L8 (LEDGER 2000-2006):** main ff to `6cd6779fa` (30 lane + 4 merger commits), gated Tier-2 run 2 green (56861 passed), verifier FF-SAFE, restarts read back; RM-1150 / RM-1227 / RM-1233 shipped; markers `S144_LANDED_<LANE>` name the twins.
-- **D1 / F1 (LEDGER 2007, `f2f94581f` + `813d728a0`):** 0x800710E0 after the reboot was event 153 (missed run), not a kill; rc_facts now grades it from the attempt's events; V2 CONFIRM after 3 added tests.
-- **s146-a / F2 / F1b:** 4 s146 slice branches deleted after a squash check (bundle first); ADJ-F `aad42dcb1fbdf23a3` kept (not contained).
-- **CI:** the s146 push run ci 41253461425 FAILED 1 test (radial 7-pick row got 5 on Linux; passes locally) - FIRST next action.
-- **Do NOT redo:** L8 (markers), F1, the alert 144 decline, the slice deletions, the cutover stage 2 read-back.
-- **Next:** fix the radial CI red forward; read back this /done's CI; L9 landing of the rotator's new commits (counted against the twins).

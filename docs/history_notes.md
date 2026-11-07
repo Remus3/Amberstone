@@ -41,6 +41,20 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-10-31d - session 147: lanes relaunched headless after the reboot, cutover stage 2 read back, L8 landed 30 lane commits (RM-1234..RM-1262), rc_facts 0x800710E0 fix, alert 144 declined; the s146 push CI read back RED; PUSHED
+
+- **Operator (chat):** "Continue"; "headlessly - all lanes ; headless driver"; "operator is away - computer was restarted" (box rebooted 19:03:56; operator items batched in the hand-off).
+- **L1 / NA1 / NA4 (LEDGER 2008):** rotator pid 17100 (`--spawn-detached`, 7 lanes, no push); stale S144_LANES_STOP from a shutdown-time leak scan Recycle-Binned after a clean re-scan; cutover dry run exit 0, rc-shell relaunched via WMI (Start-Process died with the agent shell), health green.
+- **NA7 (LEDGER 2008, `489d6e71f`):** alert 144 declined (minimatch dev-only, no fitting fix); npm audit 15 moderate unchanged.
+- **NA3 / L8 (LEDGER 2000-2006):** main ff to `6cd6779fa` (30 lane + 4 merger commits), gated Tier-2 run 2 green (56861 passed), verifier FF-SAFE, restarts read back; RM-1150 / RM-1227 / RM-1233 shipped; markers `S144_LANDED_<LANE>` name the twins.
+- **D1 / F1 (LEDGER 2007, `f2f94581f` + `813d728a0`):** 0x800710E0 after the reboot was event 153 (missed run), not a kill; rc_facts now grades it from the attempt's events; V2 CONFIRM after 3 added tests.
+- **s146-a / F2 / F1b:** 4 s146 slice branches deleted after a squash check (bundle first); ADJ-F `aad42dcb1fbdf23a3` kept (not contained).
+- **CI:** the s146 push run ci 41253461425 FAILED 1 test (radial 7-pick row got 5 on Linux; passes locally) - FIRST next action.
+- **Do NOT redo:** L8 (markers), F1, the alert 144 decline, the slice deletions, the cutover stage 2 read-back.
+- **Next:** fix the radial CI red forward; read back this /done's CI; L9 landing of the rotator's new commits (counted against the twins).
+
+---
+
 # 2026-10-31c - session 146: push CI reds fixed forward, CI step limits raised, CLI re-pinned 2.1.316, rulings 40-44 / 48 / 51 self-adjudicated, ASKS 50 / 52 done, launcher cutover APPLIED (Windows restart owed); PUSHED
 
 - **Operator (chat):** "self-adjudicate" (rulings), "yes if not needed" (ASKS 50), approved the RM-1223 frozen comment (ASKS 52), ordered the headless budget reset, re-logged the proxy's pinned account at 17:24; typed /done.

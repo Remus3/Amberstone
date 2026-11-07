@@ -1,0 +1,64 @@
+# archived from RC-NEXT-SESSION.txt on 2026-11-06 (s150 /done; the 30720 B cap)
+# Every item below is still OPEN and is carried in the hand-off as a tight index line pointing here (A1106).
+====================
+BLOCK 1 - SESSION 144 ITEMS, VERBATIM as at the s150 /done
+====================
+SESSION 144 ITEMS (LEDGER 1938-1974; WAKEUP_NOTES 2026-10-31)
+====================
+- PKG-6c residue (LEDGER 1945; ROADMAP row PKG-6c; PACKAGING_PLAN WA20; full text VERBATIM in A31 block
+  3): M2 LOW (finish() clears pending before recover_due is written; an OSError between loses the
+  rollback), LOW 1 (stitched unreadable stretches), LOW 2 (a slow crash loop counts as up). Also owed:
+  WA14, WA17, the [H] shell-build smoke.
+- RM-1047 (Linux CI font-swap coverage loss: the two face-swap tests skip on Linux, the 9ec144fd2
+  trade-off) and RM-1048 (docstring pragma), both low (e14071faa).
+- Lane follow-ups owed (L3-L6 merger notes; VERBATIM A1101 block 13): RM-925 decision; the rc-shell/src/rc_root.js:16 +
+  docs/PACKAGING_PLAN.md:180 re-words + `_KEPT`; RM-721 (c) + RM-730 (a) marks; CLAUDE.md `--max-worker-restart=0`?;
+  the coaches/aram_coach.py:332 line cites; RM-1053 residue; RM-1115 non-DS half; the RM-258 lib/ header re-flip;
+  S144-U-64; the ds lane specs RM-848 / -847 / -871 / -843 in gitignored lane reports.
+- RM-962 RULED s146 (ruling 51): no automated wiki access; the wiki ability re-extract (RM-787 + RM-954 backfill) and
+  the RM-955 --full re-run stay BLOCKED-consent; guard RM-1227 SHIPPED s147. VERBATIM in A1101 block 13.
+- BACKLOG rows the landings left OPEN: RM-1005, -1015, -1031 (L4); -1054, -1056..-1059, -1110 (L5);
+  -1114, -1118, -1119, -1120, -1148, -1149, -1151 (L6); PARTIAL -1053, -1115, -1145 (RM-1150 SHIPPED s147,
+  LEDGER 2005). Crosswalks: the BACKLOG "Session 144 ... landing filings" sections.
+- CI watch: test_gated_tls_2999_probe's real-handshake test was measured on Windows OpenSSL only;
+  test_gated_y01_chain_report uses local-time fixtures.
+- Driver leftovers (all LOW; gitignored driver): A1101 block 13.
+- Stashes kept (verify `git stash list`): s144-leftover-s144q080-497994 (s146 rotator, Next action 2),
+  s144-preland-queue, s144-preland-true-audit, s144-preL5-queue, s144-preL5-uiux, s144-preL5-ds,
+  s144-preL5-repo, s144-preL6-ds (340495072), s144-preL6-gated (0e0fefcb0); the lane reports call
+  preL5-repo / -uiux / -queue superseded (drop only after a check).
+====================
+BLOCK 2 - CARRIED FROM s133-s143, VERBATIM as at the s150 /done
+====================
+CARRIED FROM s133-s143 (detail VERBATIM in A31 block 2 unless another archive is named)
+====================
+- s143: every anthropic 2.x bump is declined until ROADMAP ANTHROPIC-2X (gated on RM-681) runs; ignore
+  ">1.11.0,<=2.3.0". PKG-7 worktree-agent-ae4b613943b5ff34a (fc6a44b39, worktree removed s148, 1 unique commit
+  of older PACKAGING_PLAN prose; PKG-7 is on main as acba657f3 + 21da946ed) RETIRED, kept under ASKS 50.
+- s142: PKG residuals WA9-WA12 (PACKAGING_PLAN section 4; WA9: an installer upgrade may wipe per-install
+  state in the install folder, unmeasured - decide before the first Release, ruling 42: no Release yet,
+  checklist in PACKAGING_PLAN); CSP S15 blocked by web/index.html inline scripts; a checkout launch needs
+  --profile dev. PKG-7: an unregister failure continues and returns 1; -IncludeLiveFlipWatcher removes
+  RC-LiveFlipWatcher with NO replacement (not used s146; RC-LiveFlipWatcher still Running).
+- s141: K branch worktree-agent-a35c8a72b0640e054 (32381e158; NOT superseded byte-for-byte, comments
+  only): decide keep vs delete (bundle first).
+- s138-139: RM-907 OPEN: the 7 d read-back of hold p90 + peak_commit_mb vs 24.5 GB / p90 483 s
+  (~2026-11-02), then MAIN the before/after.
+- s136-137 (VERBATIM A1101 block 13): RM-905 residual (ASKS 32); RM-703 (restore from s137-lift-worktrees.bundle if a
+  lift feature is found unshipped); T13 PARKED on worktree-agent-a2969c932e74f20d7; TFT-HUD-00..12 (HUD-01 first); T8
+  LT-02r; lcu/snapshot_shape.py:619 stale id cache; T9 / T10 siblings; match row 8685; the coach prompt only under
+  _debug; the "LEVEL TO 10" slip; the RM-899 7 s blank stub.
+- s135: RM-906 = ASKS 36 (body BACKLOG "Session 135 landing filings"). TFT-04 follow-ups (A26); TFT-02
+  match A -> B -> A reload; TFT-07 wires tft/sources with local_player_id; N9 lobby "-" chips via :2999;
+  P0-F eliminated HP 0 rendered "-"; RM-888 (c) close on review.
+- s134: ASKS 21 / 32; TFT-15, RM-292 (c), LT-02r in BLOCKED-LIVE-GAME; TFT-NEXT slices TFT-05, 07, 10,
+  11, 12, 14, 16-20 (docs/TFT_PROGRAM.md); S18-META empty UNVERIFIED skeleton (licence gate first; default
+  source = operator-measured play); watch test_http_auth_wrong_token WinError 10053 (LEDGER 1882).
+  STANDING NOTES: A26 block 4 - read at session start.
+- s133: RM-819 d measure (test_rm740_cg / test_body_read_timeout_rm152 on a quiet box); build RM-821
+  (live re-pin controls); RM-826 (g) only; RM-834 (d) recorded, not measured; RM-842 / RM-843 / RM-847 /
+  RM-848 (DS), RM-871, RM-881 (rest) open; the research lane's `queue-ready` index; re-check RM-823 (open
+  until MAIN ships a fix); watch RM-833; S6 at the next League game (vision under Pillow 13, cef8bfd22);
+  decisions RM-883 / RM-884; MAIN ruling pending on the s133 window-flash FIX note's kit guard; live
+  checks G7-17 (arena_shadow_report), RM-860, RM-869, GATE 5, G5-05 (RC_ARENA_MODE_MODIFIERS default
+  OFF).
