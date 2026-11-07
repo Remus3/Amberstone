@@ -120,9 +120,17 @@ class _FakeChild:
             return self._rc
         return None
 
-    def kill_tree(self):
+    def stop(self, reap_s=None):
         self.killed += 1
-        return 0
+        return {
+            "pid": self.pid,
+            "taskkill_rc": 0,
+            "taskkill_error": None,
+            "fallback": None,
+            "child_rc": 1,
+            "child_exited": True,
+            "tree_confirmed": True,
+        }
 
 
 def _seq(values):
@@ -221,33 +229,194 @@ def test_run_game_process_before_launch_refuses_and_launches_nothing(tmp_path):
 
 
 class _FakeProc:
-    def __init__(self, polled):
+    """A Popen stand-in: alive until kill() (the handle fallback) or a
+    taskkill fake marks it dead. die_on_kill=False = a kill that fails."""
+
+    def __init__(self, alive=True, die_on_kill=True):
         self.pid = 4242
-        self._polled = polled
+        self.alive = alive
+        self.die_on_kill = die_on_kill
+        self.kills = 0
 
     def poll(self):
-        return self._polled
+        return None if self.alive else 1
+
+    def wait(self, timeout=None):
+        if self.alive:
+            raise subprocess.TimeoutExpired("child", timeout)
+        return 1
+
+    def kill(self):
+        self.kills += 1
+        if self.die_on_kill:
+            self.alive = False
 
 
-def test_kill_tree_is_taskkill_f_t_on_the_launched_pid_only():
+def _taskkill(proc, mode):
+    """A subprocess.run stand-in for one taskkill outcome."""
     calls = []
 
     def run(argv, **kw):
         calls.append((argv, kw))
-        return subprocess.CompletedProcess(argv, 0, "", "")
+        if mode == "timeout":
+            raise subprocess.TimeoutExpired(argv, kw.get("timeout"))
+        if mode == "missing":
+            raise FileNotFoundError(2, "The system cannot find the file specified", "taskkill")
+        if mode == "nonzero":
+            return subprocess.CompletedProcess(argv, 128, "", "ERROR: access denied")
+        if mode == "ok":
+            proc.alive = False
+            return subprocess.CompletedProcess(argv, 0, "SUCCESS", "")
+        if mode == "ok_but_alive":
+            return subprocess.CompletedProcess(argv, 0, "SUCCESS", "")
+        raise AssertionError(mode)
 
-    assert ls.PopenChild(_FakeProc(None), run=run).kill_tree() == 0
+    return run, calls
+
+
+def test_stop_is_taskkill_f_t_on_the_launched_pid_only():
+    proc = _FakeProc()
+    run, calls = _taskkill(proc, "ok")
+    out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
     assert len(calls) == 1
     argv, kw = calls[0]
     assert argv == ["taskkill", "/F", "/T", "/PID", "4242"]
     if sys.platform == "win32":
         assert kw["creationflags"] == 0x08000000
+    assert out["taskkill_rc"] == 0
+    assert out["fallback"] is None
+    assert proc.kills == 0
+    assert out["child_exited"] is True
+    assert out["tree_confirmed"] is True
 
 
-def test_kill_tree_on_an_exited_child_runs_nothing():
-    calls = []
-    assert ls.PopenChild(_FakeProc(0), run=lambda *a, **k: calls.append(a)).kill_tree() is None
+def test_stop_on_an_exited_child_runs_nothing():
+    proc = _FakeProc(alive=False)
+    run, calls = _taskkill(proc, "ok")
+    out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
     assert calls == []
+    assert proc.kills == 0
+    assert out["child_exited"] is True
+
+
+def test_stop_falls_back_to_the_held_handle_on_every_taskkill_failure():
+    for mode, err in (
+        ("timeout", "TimeoutExpired"),
+        ("missing", "FileNotFoundError"),
+        ("nonzero", None),
+        ("ok_but_alive", None),
+    ):
+        proc = _FakeProc()
+        run, calls = _taskkill(proc, mode)
+        out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
+        assert len(calls) == 1, mode
+        assert proc.kills == 1, mode
+        assert out["fallback"] == "Popen.kill", mode
+        assert out["child_exited"] is True, mode
+        assert out["tree_confirmed"] is False, mode
+        if err:
+            assert out["taskkill_error"].startswith(err), mode
+        else:
+            assert out["taskkill_error"] is None, mode
+
+
+def test_stop_reports_a_child_the_fallback_could_not_kill():
+    proc = _FakeProc(die_on_kill=False)
+    run, _ = _taskkill(proc, "missing")
+    out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
+    assert proc.kills == 1
+    assert out["child_exited"] is False
+    assert out["child_rc"] is None
+    assert out["tree_confirmed"] is False
+
+
+def _run_real_child(tmp_path, proc, mode):
+    run, _ = _taskkill(proc, mode)
+    child = ls.PopenChild(proc, run=run)
+    rc, launched = _run(tmp_path, child, _seq([25000.0, 900.0, 900.0]), list, reap_s=0.0)
+    assert launched
+    void = json.loads((tmp_path / "sampler" / "VOID.json").read_text(encoding="ascii"))
+    return rc, void
+
+
+def test_run_taskkill_timeout_still_voids_with_the_handle_fallback(tmp_path):
+    proc = _FakeProc()
+    rc, void = _run_real_child(tmp_path, proc, "timeout")
+    assert rc == ls.EXIT_VOID_UNCONFIRMED
+    assert void["taskkill_error"].startswith("TimeoutExpired")
+    assert void["fallback"] == "Popen.kill"
+    assert void["child_exited"] is True
+    assert proc.kills == 1
+
+
+def test_run_missing_taskkill_voids_and_is_not_a_launch_failure(tmp_path):
+    proc = _FakeProc()
+    rc, void = _run_real_child(tmp_path, proc, "missing")
+    assert rc == ls.EXIT_VOID_UNCONFIRMED
+    assert void["taskkill_error"].startswith("FileNotFoundError")
+    assert void["fallback"] == "Popen.kill"
+    assert void["child_exited"] is True
+
+
+def test_run_nonzero_taskkill_falls_back_and_voids(tmp_path):
+    proc = _FakeProc()
+    rc, void = _run_real_child(tmp_path, proc, "nonzero")
+    assert rc == ls.EXIT_VOID_UNCONFIRMED
+    assert void["taskkill_rc"] == 128
+    assert void["fallback"] == "Popen.kill"
+    assert void["child_exited"] is True
+
+
+def test_run_child_not_confirmed_dead_returns_92(tmp_path, capsys):
+    proc = _FakeProc(die_on_kill=False)
+    rc, void = _run_real_child(tmp_path, proc, "nonzero")
+    assert rc == ls.EXIT_VOID_UNCONFIRMED == 92
+    assert void["child_exited"] is False
+    assert "NOT confirmed" in capsys.readouterr().err
+
+
+def test_run_clean_taskkill_voids_with_90(tmp_path):
+    proc = _FakeProc()
+    rc, void = _run_real_child(tmp_path, proc, "ok")
+    assert rc == ls.EXIT_VOID == 90
+    assert void["tree_confirmed"] is True
+    assert void["fallback"] is None
+
+
+def test_run_a_stop_that_raises_still_writes_void(tmp_path):
+    class _Raises(_FakeChild):
+        def stop(self, reap_s=None):
+            raise RuntimeError("boom")
+
+    rc, _ = _run(tmp_path, _Raises(), _seq([25000.0, 900.0, 900.0]), list)
+    void = json.loads((tmp_path / "sampler" / "VOID.json").read_text(encoding="ascii"))
+    assert rc == ls.EXIT_VOID_UNCONFIRMED
+    assert void["stop_error"].startswith("RuntimeError")
+    assert void["child_exited"] is False
+
+
+def test_run_a_launch_failure_is_reported_as_one_and_writes_no_void(tmp_path):
+    def launch(cmd):
+        raise FileNotFoundError(2, "no such file", cmd[0])
+
+    rc = ls.run_sampler(
+        ["nope.exe"],
+        tmp_path / "sampler",
+        launch=launch,
+        physical=lambda: 25000.0,
+        commit=None,
+        names=list,
+        interval=0.0,
+        clock=lambda: "T",
+    )
+    assert rc == ls.EXIT_LAUNCH_FAILED == 93
+    assert not (tmp_path / "sampler" / "VOID.json").exists()
+    assert _samples(tmp_path)[-1]["phase"] == "launch_failed"
+
+
+def test_docstring_names_the_tree_kill_pid_reuse_residual():
+    assert "pid reuse" in ls.__doc__
+    assert "/T" in ls.__doc__
 
 
 def test_source_never_uses_stop_process_or_detached_process():

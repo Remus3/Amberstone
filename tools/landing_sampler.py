@@ -16,18 +16,39 @@ It also RECORDS (no stop) free commit and, with --repo, that checkout's HEAD.
 The other ruling stops (free commit on 3 reads, a HEAD / porcelain straddle,
 harness reaps, WinError 1455) stay with the landing agent.
 
-"Stop the run" means exactly one act: `taskkill /F /T /PID <pid>` of the ONE
-child this sampler launched itself (the gate process and its descendants:
-pytest and its xdist workers). It never targets any other pid and never kills
-a game process: a game is a reason to stop the suite, not a target. The child
-is held as a Popen handle, so its pid cannot be reused while the sampler
-lives; a child that already exited is never signalled.
+"Stop the run" targets ONLY the ONE child this sampler launched itself (the
+gate process; its descendants are pytest and the xdist workers). It never
+targets any other pid and never kills a game process: a game is a reason to
+stop the suite, not a target. The child is held as a Popen handle, so its own
+pid cannot be reused while the sampler lives; a child that already exited is
+never signalled. PopenChild.stop():
+1. `taskkill /F /T /PID <child pid>` (the whole tree), then a REAP_TIMEOUT_S
+   wait for the child;
+2. on ANY taskkill failure - TimeoutExpired, a missing taskkill
+   (FileNotFoundError), a non-zero rc, or rc 0 with the child still alive -
+   the fallback Popen.kill() (TerminateProcess on the held handle: the child
+   pid only, NOT its descendants), then another REAP_TIMEOUT_S wait.
+VOID.json records taskkill_rc / taskkill_error, fallback, child_rc,
+child_exited and tree_confirmed (taskkill rc 0 AND the child exited).
+
+Residual (documented, not fixed): `/T` walks descendants by their recorded
+parent pid at kill time. Windows does not invalidate a parent pid when the
+parent exits, so pid reuse can, rarely, put an unrelated process whose dead
+parent had the same pid as a member of this tree under the /T walk. The held
+handle protects only the child's own pid.
 
 Sequence: one "pre" read; a stop already holding there REFUSES (exit 91,
 REFUSED.json, nothing launched). Then the command is launched (child stdout
-and stderr to --child-log, CREATE_NO_WINDOW on Windows) and read every
---interval seconds until it exits (its exit code is returned) or a stop holds
-(VOID.json written, exit 90 - never graded).
+and stderr to --child-log, CREATE_NO_WINDOW on Windows); a launch that raises
+OSError is exit 93 (a "launch_failed" row, no VOID.json). Then a read every
+--interval seconds until the child exits (its exit code is returned) or a
+stop holds. EVERY stop writes VOID.json (never graded) and returns:
+- 90 EXIT_VOID: taskkill /F /T succeeded and the child is confirmed exited;
+- 92 EXIT_VOID_UNCONFIRMED: anything else - the fallback was needed (the
+  gate is dead but pytest and its workers are NOT confirmed dead, since the
+  gate holds no job object), the child is not confirmed exited, or stop()
+  itself raised. The sampler prints a loud stderr line; the landing agent
+  must then find and end the remaining suite tree by hand.
 
 Readers reuse the vendored kit and the launcher (no subprocess per read):
 physical = ops/fleet_kit/fleet_lanes.py free_ram_mb (GlobalMemoryStatusEx
@@ -63,9 +84,11 @@ PHYS_STOP_MB = 1024
 PHYS_STOP_READS = 2
 INTERVAL_S = 10.0
 KILL_TIMEOUT_S = 30
-REAP_TIMEOUT_S = 30.0
+REAP_TIMEOUT_S = 10.0
+EXIT_LAUNCH_FAILED = 93
 EXIT_VOID = 90
 EXIT_REFUSED = 91
+EXIT_VOID_UNCONFIRMED = 92
 
 # Lower-case image names. The s152 ruling's list: LeagueClient*, League of
 # Legends, RiotClient*, vgc, vgtray; plus "Riot Client.exe" and the TFT game
@@ -154,8 +177,12 @@ def read_head(repo: Path) -> Optional[str]:
 # ---------------------------------------------------------------- the child
 
 
+def _err(exc: BaseException) -> str:
+    return f"{type(exc).__name__}: {exc}"[:200]
+
+
 class PopenChild:
-    """The one launched child. kill_tree() is the sampler's ONLY kill."""
+    """The one launched child. stop() is the sampler's ONLY kill."""
 
     def __init__(self, proc, run: Callable = subprocess.run) -> None:
         self.proc = proc
@@ -168,19 +195,47 @@ class PopenChild:
         except subprocess.TimeoutExpired:
             return None
 
-    def kill_tree(self) -> Optional[int]:
-        """taskkill /F /T on this child's pid; None if it already exited."""
-        if self.proc.poll() is not None:
-            return None
-        res = self._run(
-            kill_tree_argv(self.pid),
-            capture_output=True,
-            text=True,
-            timeout=KILL_TIMEOUT_S,
-            creationflags=_flags(),
-            check=False,
-        )
-        return res.returncode
+    def stop(self, reap_s: float = REAP_TIMEOUT_S) -> dict:
+        """taskkill /F /T on the child's pid; on any failure, Popen.kill on
+        the held handle (child pid only). Never raises from taskkill."""
+        out = {
+            "pid": self.pid,
+            "taskkill_rc": None,
+            "taskkill_error": None,
+            "fallback": None,
+            "child_rc": None,
+            "child_exited": False,
+            "tree_confirmed": False,
+        }
+        rc = self.proc.poll()
+        if rc is not None:
+            out.update(child_rc=rc, child_exited=True, tree_confirmed=True)
+            return out
+        try:
+            res = self._run(
+                kill_tree_argv(self.pid),
+                capture_output=True,
+                text=True,
+                timeout=KILL_TIMEOUT_S,
+                creationflags=_flags(),
+                check=False,
+            )
+            out["taskkill_rc"] = res.returncode
+        except Exception as exc:  # noqa: BLE001 - timeout, missing exe, anything: fall back
+            out["taskkill_error"] = _err(exc)
+        if out["taskkill_rc"] == 0:
+            rc = self.wait(reap_s)
+        if rc is None:
+            try:
+                self.proc.kill()
+                out["fallback"] = "Popen.kill"
+            except Exception as exc:  # noqa: BLE001 - recorded; the child is then unconfirmed
+                out["fallback"] = "Popen.kill failed: " + _err(exc)
+            rc = self.wait(reap_s)
+        out["child_rc"] = rc
+        out["child_exited"] = rc is not None
+        out["tree_confirmed"] = out["taskkill_rc"] == 0 and out["fallback"] is None and rc is not None
+        return out
 
 
 def kill_tree_argv(pid: int) -> list:
@@ -236,8 +291,10 @@ def run_sampler(
     head: Optional[Callable] = None,
     interval: float = INTERVAL_S,
     clock: Callable[[], str] = _now,
+    reap_s: float = REAP_TIMEOUT_S,
 ) -> int:
-    """Read, launch, read every `interval` s; the child's rc, EXIT_VOID or EXIT_REFUSED."""
+    """Read, launch, read every `interval` s. Returns the child's rc, or
+    EXIT_REFUSED / EXIT_LAUNCH_FAILED / EXIT_VOID / EXIT_VOID_UNCONFIRMED."""
     out_dir.mkdir(parents=True, exist_ok=True)
     log = out_dir / "samples.jsonl"
     tracker = StopTracker()
@@ -270,7 +327,11 @@ def run_sampler(
         _append(log, row)
         _marker(out_dir / "REFUSED.json", row)
         return EXIT_REFUSED
-    child = launch(cmd)
+    try:
+        child = launch(cmd)
+    except OSError as exc:
+        _append(log, {"phase": "launch_failed", "t": clock(), "error": _err(exc), "cmd": list(cmd)})
+        return EXIT_LAUNCH_FAILED
     while True:
         rc = child.wait(interval)
         if rc is not None:
@@ -278,18 +339,27 @@ def run_sampler(
             return rc
         reason = sample("run")
         if reason:
-            taskkill_rc = child.kill_tree()
-            row = {
-                "phase": "void",
-                "t": clock(),
-                "reason": reason,
-                "pid": child.pid,
-                "taskkill_rc": taskkill_rc,
-                "child_rc": child.wait(REAP_TIMEOUT_S),
-            }
-            _append(log, row)
-            _marker(out_dir / "VOID.json", row)
-            return EXIT_VOID
+            return _void(child, reason, out_dir, log, clock, reap_s)
+
+
+def _void(child, reason: str, out_dir: Path, log: Path, clock: Callable[[], str], reap_s: float) -> int:
+    """Stop the child, ALWAYS write VOID.json, return 90 or 92."""
+    row = {"phase": "void", "t": clock(), "reason": reason, "pid": child.pid}
+    try:
+        row.update(child.stop(reap_s=reap_s))
+    except Exception as exc:  # noqa: BLE001 - VOID.json is written whatever stop() does
+        row.update(stop_error=_err(exc), child_exited=False, tree_confirmed=False)
+    _append(log, row)
+    _marker(out_dir / "VOID.json", row)
+    if row.get("tree_confirmed") is True:
+        return EXIT_VOID
+    what = "child NOT confirmed exited" if not row.get("child_exited") else "suite tree NOT confirmed dead"
+    print(
+        f"landing_sampler: VOID {what} (pid {child.pid}; taskkill_rc {row.get('taskkill_rc')}, "
+        f"fallback {row.get('fallback')}) - end the remaining suite tree by hand; see VOID.json",
+        file=sys.stderr,
+    )
+    return EXIT_VOID_UNCONFIRMED
 
 
 def main(argv: Optional[list] = None) -> int:
@@ -306,12 +376,13 @@ def main(argv: Optional[list] = None) -> int:
     if a.interval <= 0:
         p.error("--interval must be > 0")
     head = (lambda: read_head(a.repo)) if a.repo is not None else None
-    try:
-        rc = run_sampler(cmd, a.dir, launch=lambda c: launch_child(c, a.child_log), head=head, interval=a.interval)
-    except OSError as exc:
-        print(f"landing_sampler: launch failed: {type(exc).__name__}: {exc}"[:300])
-        return 2
-    verdict = {EXIT_VOID: "VOID (see VOID.json)", EXIT_REFUSED: "REFUSED (see REFUSED.json)"}
+    rc = run_sampler(cmd, a.dir, launch=lambda c: launch_child(c, a.child_log), head=head, interval=a.interval)
+    verdict = {
+        EXIT_LAUNCH_FAILED: "launch failed (see samples.jsonl)",
+        EXIT_VOID: "VOID (see VOID.json)",
+        EXIT_REFUSED: "REFUSED (see REFUSED.json)",
+        EXIT_VOID_UNCONFIRMED: "VOID, suite tree NOT confirmed dead (see VOID.json)",
+    }
     print(f"landing_sampler: exit {rc} {verdict.get(rc, 'child exit code')}")
     return rc
 
