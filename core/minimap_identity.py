@@ -11,9 +11,19 @@ Contract (identify_dots):
     dots pass through unchanged; the SAME list object is returned.
   - roster-scoped: only the champions passed in (live: the 10 championName
     display strings from Live Client allPlayers, as ``VisionTracker._compute_enemies`` in core/vision_tracker.py reads them)
-    are ever considered - NEVER the full 173-icon catalog.
+    are ever considered - NEVER the full 173-icon catalog. A roster longer
+    than _MAX_ROSTER (16, the Arena lobby) is refused whole: the dots come
+    back unchanged.
+  - one champion, one dot: a champion names at most as many dots per frame
+    as it holds roster seats (once in SR / ARAM, several in One For All);
+    spellings of one champion ("Wukong" / "MonkeyKing") share its seats. A
+    dot whose best match is a champion already claimed by a better-scoring
+    dot gets NO tag, never its second-best guess.
+  - per-frame budget: only the first _MAX_DOTS entries are examined; the
+    rest pass through untouched.
   - fail-soft, NEVER raises: cv2/numpy absent, corrupt icon, malformed dots,
-    bad numerics -> the input dots come back unchanged.
+    bad numerics -> the input dots come back unchanged. Tags are written only
+    after every dot is scored, so a failure mid-pass leaves no dot tagged.
   - lazy cv2 import inside functions (opencv is an optional dependency).
 
 Matching design (two-stage, per dot x roster - budget stays tiny):
@@ -41,6 +51,8 @@ from __future__ import annotations
 import json
 import logging
 import math
+import numbers
+import re
 from pathlib import Path
 
 from core.failed_load_gate import FailedLoadGate
@@ -72,6 +84,19 @@ _MAX_TPL = 48
 _SEARCH_PAD = 6         # px searched around the dot centroid (blob-centroid
                         # vs icon-center jitter); keeps the window tiny.
 
+# Budget caps (S144-T-587). The live roster is <= 10 names (Arena seats 16);
+# the live detector emits <= 2 * _MAX_PER_TEAM = 10 dots. A longer roster is a
+# caller bug that would turn the per-frame pass into a catalog scan, so it is
+# refused whole rather than silently truncated; dots past the budget are
+# passed through unexamined.
+_MAX_ROSTER = 16
+_MAX_DOTS = 64
+
+# A DDragon champion id is one plain token ("MonkeyKing", "KSante"); measured
+# 173/173 ids in data/meta/ddragon_champions.json match. Anything else (a
+# separator, "..", a drive) would join onto _ICON_DIR as a path OUTSIDE it.
+_DDRAGON_ID_RE = re.compile(r"[A-Za-z0-9_]{1,64}")
+
 # Lazy caches. _ICON_INDEX: normalized champion key -> icon Path (None ==
 # not built yet). _TPL_CACHE: (icon stem, size) -> (tpl_rgb, mask) uint8.
 _ICON_INDEX: dict | None = None
@@ -101,15 +126,26 @@ def _reset_caches() -> None:
 
 
 def _num(v):
-    """Coerce to a finite float, or None (same guard as core/zoi_influence.py)."""
-    if isinstance(v, bool):
+    """Coerce to a finite float, or None (same guard as core/zoi_influence.py).
+    Any real number is accepted (numpy float32 included); bool, numpy bool,
+    non-numbers, NaN / inf and an int too large for a float are None."""
+    if isinstance(v, bool) or not isinstance(v, numbers.Real):
         return None
-    if not isinstance(v, (int, float)):
+    try:
+        f = float(v)
+    except (OverflowError, TypeError, ValueError):
         return None
-    f = float(v)
     if not math.isfinite(f):  # NaN / inf
         return None
     return f
+
+
+def _ddragon_id(*candidates):
+    """The first candidate that is a plain DDragon id token, or None."""
+    for c in candidates:
+        if isinstance(c, str) and _DDRAGON_ID_RE.fullmatch(c):
+            return c
+    return None
 
 
 def _name_keys(raw: str):
@@ -154,10 +190,10 @@ def _icon_index() -> dict:
             for key, entry in data.items():
                 if not isinstance(entry, dict):
                     continue
-                ddid = entry.get("id")
-                if not isinstance(ddid, str) or not ddid:
-                    ddid = key if isinstance(key, str) else None
-                if not ddid:
+                # Contained: only a plain id token is joined onto _ICON_DIR
+                # (an absolute or ".." id used to index any .png on disk).
+                ddid = _ddragon_id(entry.get("id"), key)
+                if ddid is None:
                     continue
                 p = _ICON_DIR / (ddid + ".png")
                 if not p.is_file():
@@ -199,12 +235,15 @@ def _template_size(crop_w) -> int:
     """Icon template edge length (px) for a crop of width `crop_w`, clamped
     to [_MIN_TPL, _MAX_TPL]. Returns the FIXED _ICON_PX (2026-07-08: champion
     minimap icons are constant size, not proportional to the crop). Bad input
-    -> _MIN_TPL."""
+    (bool, non-number, NaN / inf, <= 0, an int too large for a float) ->
+    _MIN_TPL."""
+    if isinstance(crop_w, bool):
+        return _MIN_TPL
     try:
         w = float(crop_w)
-    except (TypeError, ValueError):
+    except (OverflowError, TypeError, ValueError):
         return _MIN_TPL
-    if math.isnan(w) or w <= 0:
+    if not math.isfinite(w) or w <= 0:
         return _MIN_TPL
     return max(_MIN_TPL, min(_MAX_TPL, _ICON_PX))
 
@@ -300,11 +339,17 @@ def identify_dots(crop_rgb, dots, roster):
 
     Where a CONSERVATIVE match succeeds a dot gains ADDITIVE keys
     {"champion": <roster name>, "identity_confidence": <0..1>}; every other
-    dot passes through unchanged. The same list object is returned, order
-    preserved. Never raises - any failure returns `dots` unchanged."""
+    dot passes through unchanged. A champion tags at most as many dots as it
+    holds roster seats (the best-scoring dots win; ties go to the earlier
+    dot). The same list object is returned, order preserved. Never raises -
+    any failure returns `dots` unchanged, with no dot tagged."""
     if not isinstance(dots, list) or not dots:
         return dots
-    if not isinstance(roster, (list, tuple, set)) or not roster:
+    if not isinstance(roster, (list, tuple, set, frozenset)) or not roster:
+        return dots
+    if len(roster) > _MAX_ROSTER:
+        _log.debug("minimap_identity: roster of %d exceeds %d, identity skipped",
+                   len(roster), _MAX_ROSTER)
         return dots
     try:
         import cv2
@@ -315,24 +360,42 @@ def identify_dots(crop_rgb, dots, roster):
         crop = np.asarray(crop_rgb)
         if crop.ndim != 3 or crop.shape[2] < 3:
             return dots
+        crop = crop[:, :, :3]
         if crop.dtype != np.uint8:
+            if crop.dtype.kind not in "biuf":
+                return dots
+            # NaN / inf have no uint8 value (the bare cast is undefined and
+            # warns): map them to black / white before the clip.
+            crop = np.nan_to_num(crop.astype(np.float64), nan=0.0,
+                                 posinf=255.0, neginf=0.0)
             crop = np.clip(crop, 0, 255).astype(np.uint8)
-        crop = np.ascontiguousarray(crop[:, :, :3])
+        crop = np.ascontiguousarray(crop)
         H, W = int(crop.shape[0]), int(crop.shape[1])
         size = _template_size(W)
         if size > H or size > W:
             return dots
-        templates = []
+        # One entry per CHAMPION (icon stem), whatever spelling the roster
+        # used; its seat count is the per-frame tag quota.
+        templates: dict = {}
         for champ in roster:
             if not isinstance(champ, str) or not champ.strip():
                 continue
-            tm = _masked_template(champ.strip(), size)
+            name = champ.strip()
+            path = _icon_path(name)
+            if path is None:
+                continue
+            entry = templates.get(path.stem)
+            if entry is not None:
+                entry[3] += 1
+                continue
+            tm = _masked_template(name, size)
             if tm is not None:
-                templates.append((champ.strip(), tm[0], tm[1]))
+                templates[path.stem] = [name, tm[0], tm[1], 1]
         if not templates:
             return dots
         half = size // 2 + _SEARCH_PAD
-        for d in dots:
+        candidates = []  # (score, dot index, stem)
+        for i, d in enumerate(dots[:_MAX_DOTS]):
             if not isinstance(d, dict):
                 continue
             x = _num(d.get("x_frac"))
@@ -348,16 +411,29 @@ def identify_dots(crop_rgb, dots, roster):
             win = crop[top:bot, left:right]
             if win.shape[0] < size or win.shape[1] < size:
                 continue
-            best_name = None
+            best_stem = None
             best_score = 0.0
-            for name, tpl, mask in templates:
+            for stem, (_name, tpl, mask, _seats) in templates.items():
                 score = _match_score(cv2, np, win, tpl, mask)
                 if score > best_score:
                     best_score = score
-                    best_name = name
-            if best_name is not None and best_score >= _MATCH_THRESHOLD:
-                d["champion"] = best_name
-                d["identity_confidence"] = round(best_score, 3)
+                    best_stem = stem
+            if best_stem is not None and best_score >= _MATCH_THRESHOLD:
+                candidates.append((best_score, i, best_stem))
+        # Best-scoring dots claim their champion first; a dot whose best
+        # champion has no seat left stays untagged (never its second guess).
+        candidates.sort(key=lambda c: (-c[0], c[1]))
+        claimed: dict = {}
+        tags = []
+        for score, i, stem in candidates:
+            used = claimed.get(stem, 0)
+            if used >= templates[stem][3]:
+                continue
+            claimed[stem] = used + 1
+            tags.append((i, templates[stem][0], round(score, 3)))
+        for i, name, conf in tags:
+            dots[i]["champion"] = name
+            dots[i]["identity_confidence"] = conf
         return dots
     except Exception as exc:  # noqa: BLE001 - identity NEVER breaks presence
         _log.debug("minimap_identity: identify_dots failed soft: %s", exc)
