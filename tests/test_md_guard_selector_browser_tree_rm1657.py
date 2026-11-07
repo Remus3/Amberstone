@@ -62,6 +62,20 @@ def _outcomes(stdout: str) -> dict[str, int]:
     return counts
 
 
+def _doc_ran_browser_skipped(stdout: str) -> bool:
+    """The docs-guards job's verdict: exactly one doc test passed and one browser test
+    skipped (RM-2034). Counts parsed from the last summary line, never a substring."""
+    return _outcomes(stdout) == {"passed": 1, "skipped": 1}
+
+
+def test_the_skip_verdict_reads_counts_not_a_substring():
+    """RM-2034: "11 passed, 1 skipped" holds the substring "1 passed, 1 skipped"."""
+    assert _doc_ran_browser_skipped("1 passed, 1 skipped in 2.10s")
+    assert _doc_ran_browser_skipped("1 passed, 1 skipped, 3 warnings in 2.10s")
+    assert not _doc_ran_browser_skipped("11 passed, 1 skipped in 2.10s")
+    assert not _doc_ran_browser_skipped("1 passed, 1 skipped, 1 error in 2.10s")
+
+
 def test_every_selected_browser_module_collects_without_playwright():
     browser = [p for p in select_md_guard_modules() if p.startswith("tests/snapshot_panels/")]
     assert browser, "no selected browser module: this guard has nothing left to read"
@@ -75,7 +89,7 @@ def test_in_the_docs_guards_job_a_browser_test_skips_and_a_doc_test_still_runs()
                               job="md-guards")
     out = proc.stdout + proc.stderr
     assert proc.returncode == 0, out[-1500:]
-    assert "1 passed, 1 skipped" in out, out[-1500:]
+    assert _doc_ran_browser_skipped(proc.stdout), out[-1500:]
 
 
 def test_anywhere_else_a_missing_playwright_is_an_error_not_a_green_skip():
