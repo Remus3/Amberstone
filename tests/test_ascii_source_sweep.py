@@ -38,11 +38,12 @@ is not recorded is also a failure.
 
 NOT a licence to keep adding. The baseline is debt with a number on it. Two
 entries in it are latent bugs rather than styling, and are worth a look by
-whoever next touches those files: `ops/phase3_install.ps1` and
-`ops/phase3_install_periodic_audit.ps1` carry U+FEFF, a BOM, in a `.ps1` - which
-is the exact PowerShell 5.1 hazard the CLAUDE.md dash rule exists for - and
-`web/legacy_index.html` carries U+0081, a C1 control character that is almost
-certainly mojibake rather than an intended glyph.
+whoever next touches those files: `ops/phase3_install.ps1` carries U+FEFF, a
+BOM, in a `.ps1` (its RM-1232 retirement row owns it; the same file's section
+sign is the other entry) and `web/legacy_index.html` carries U+0081, a C1
+control character that is almost certainly mojibake rather than an intended
+glyph. `ops/phase3_install_periodic_audit.ps1` was the third: its BOM guarded no
+non-ASCII byte, so the s144 repo lane dropped it and its baseline row.
 """
 from __future__ import annotations
 
@@ -71,7 +72,6 @@ _BASELINE: dict[str, tuple[str, ...]] = {
     "agents/agent0_gatekeeper/target_allowlist.json": ("U+00A7",),
     "lib/http/blocklist.json": ("U+00A7",),
     "ops/phase3_install.ps1": ("U+00A7", "U+FEFF"),
-    "ops/phase3_install_periodic_audit.ps1": ("U+FEFF",),
     "tests/snapshot_panels/fixtures/sr.json": ("U+00B7", "U+2192"),
     "tests/snapshot_panels/fixtures/tft.json": ("U+00B7", "U+2605"),
     "tools/preflight.cmd": ("U+2500",),

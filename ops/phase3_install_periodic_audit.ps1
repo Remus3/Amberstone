@@ -1,4 +1,4 @@
-﻿# Schedule a weekly Agent 6 self-audit.
+# Schedule a weekly Agent 6 self-audit.
 # Idempotent: unregisters then re-registers.
 # Default: every Sunday 03:00 local. Change the $trigger line to taste.
 #
