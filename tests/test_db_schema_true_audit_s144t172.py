@@ -28,6 +28,7 @@ from __future__ import annotations
 import gc
 import os
 import sqlite3
+import sys
 import warnings
 from pathlib import Path
 
@@ -87,13 +88,54 @@ def test_init_mode_closes_its_connection(db_dir, opened):
     assert all(_is_closed(c) for c in opened)
 
 
-def test_init_mode_emits_no_unclosed_database_warning(db_dir):
+def _resource_warnings_from(action) -> list[str]:
+    """The ResourceWarnings `action` itself causes, collected strictly.
+
+    Garbage that already exists (connections an EARLIER test on the same
+    xdist worker leaked) is collected first and its warnings discarded, so
+    the recording window holds only what `action` leaves behind."""
+    with warnings.catch_warnings(record=True):
+        warnings.simplefilter("always")
+        gc.collect()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        dbs.init_mode("arena")
+        action()
         gc.collect()
-    leaked = [w for w in caught if issubclass(w.category, ResourceWarning)]
-    assert leaked == [], [str(w.message) for w in leaked]
+    return [str(w.message) for w in caught if issubclass(w.category, ResourceWarning)]
+
+
+def test_init_mode_emits_no_unclosed_database_warning(db_dir):
+    leaked = _resource_warnings_from(lambda: dbs.init_mode("arena"))
+    assert leaked == [], leaked
+
+
+def _leak_an_unclosed_connection(path: Path) -> None:
+    """Open a real connection and drop it inside a reference cycle, so only a
+    garbage collection finalizes it - the shape of a connection an EARLIER
+    test on the same xdist worker leaked."""
+    conn = sqlite3.connect(path)
+    cycle: list = [conn]
+    cycle.append(cycle)
+
+
+def test_the_warning_check_ignores_connections_leaked_before_it(tmp_path):
+    """s153 gated run 2 (LEDGER 2073): the check above read 23 "unclosed
+    database" warnings, none from init_mode - they were connections earlier
+    tests on its xdist worker leaked, finalized by its own gc.collect().
+    Garbage that exists before the check starts is not the check's subject;
+    a leak made inside the checked action still is (strictness kept)."""
+    was_enabled = gc.isenabled()
+    gc.disable()
+    try:
+        _leak_an_unclosed_connection(tmp_path / "earlier_test.db")
+        assert _resource_warnings_from(lambda: None) == []
+        own = _resource_warnings_from(
+            lambda: _leak_an_unclosed_connection(tmp_path / "inside_the_check.db"))
+    finally:
+        if was_enabled:
+            gc.enable()
+    if sys.version_info >= (3, 13):  # sqlite3 warns on an unclosed connection from 3.13
+        assert any("unclosed database" in m for m in own), own
 
 
 def test_init_mode_closes_its_connection_when_schema_fails(db_dir, opened):
