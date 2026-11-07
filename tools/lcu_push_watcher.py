@@ -324,7 +324,11 @@ def _win_open_shared_delete(path: Path):
                None, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, None)
     if not h or h == invalid:
         raise OSError(ctypes.get_last_error(), f"CreateFileW failed: {path}")
-    fd = msvcrt.open_osfhandle(h, os.O_RDONLY)  # the fd owns the handle now
+    try:
+        fd = msvcrt.open_osfhandle(h, os.O_RDONLY)  # the fd owns the handle now
+    except OSError:
+        kernel32.CloseHandle(wintypes.HANDLE(h))    # no fd exists to own it
+        raise
     return os.fdopen(fd, "r", encoding="utf-8", errors="replace")
 
 
