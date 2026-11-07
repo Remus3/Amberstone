@@ -497,8 +497,8 @@ def _write_report(report: Dict[str, object], out_path: Path) -> None:
 
 def _parse_levels(raw: str) -> List[int]:
     out: List[int] = []
-    for chunk in str(raw).split(","):
-        chunk = chunk.strip()
+    for raw_chunk in str(raw).split(","):
+        chunk = raw_chunk.strip()
         if not chunk:
             continue
         try:

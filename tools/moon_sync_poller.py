@@ -491,8 +491,8 @@ def _newest_prompt_invocation(self_root: str) -> float | None:
     except OSError:
         return None
     best: float | None = None
-    for line in text.splitlines():
-        line = line.strip()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:

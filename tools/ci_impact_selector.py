@@ -238,8 +238,8 @@ def index_walker_reason(source: str) -> Optional[str]:
 
 
 def _names_tree(literals: Iterable[str], tree: str) -> bool:
-    for lit in literals:
-        lit = _norm(lit)
+    for raw_lit in literals:
+        lit = _norm(raw_lit)
         if lit == tree or lit.startswith(tree + "/"):
             return True
     return False

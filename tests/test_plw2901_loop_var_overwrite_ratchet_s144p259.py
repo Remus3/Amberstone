@@ -1,7 +1,7 @@
 """S144-P-259 - ruff PLW2901 (a ``for`` loop variable overwritten inside its own loop) held at a shrink-only baseline.
 
 Measured 2026-11-06 with ``ruff check --isolated`` (target py39): 117 findings, 9 of them in the vendored kit
-and the DS tree (fenced below); 97 remain in held scope after this slice. The first slice renamed the loop target to ``raw_line`` and kept the stripped value
+and the DS tree (fenced below); 97 remained in held scope after the first slice. The first slice renamed the loop target to ``raw_line`` and kept the stripped value
 under the old name in 11 sites across 10 modules (``core/branch_review.py``, ``core/coach_trace.py``,
 ``core/death_recap.py`` _read_jsonl, ``core/moment_marks.py`` x2, ``core/ds_calibration_agreement.py``,
 ``core/metrics_cache.py``, ``lib/ingest_receipt.py``, ``scripts/repair_tft_match_rows.py``, ``ops/loop/steer.py``,
@@ -11,6 +11,10 @@ the stripped value, and ``line`` is still bound to it after the loop, so behavio
 Slice 2 (S144-P-260) renamed the same shape in 10 more modules (the eight ``tools/*_shadow_report.py`` /
 ``live_benchmark_band_report.py`` JSONL readers and ``tools/ds_parity_run.py`` ``load_fixtures``): 10 findings gone,
 87 remain in held scope (``tools/arena_shadow_report.py`` keeps its ``clause`` site, a different shape).
+
+Slice 3 (S144-P-261) renamed the same shape in nine more tools (``atlas_fonts``, ``ci_impact_selector``, ``ci_watchdog``,
+``credential_history_scan``, ``laning_verdict_information_probe``, ``moon_sync_poller``, ``rc_facts``,
+``repin_subagent_cli``, ``repo_insights``): 9 findings gone, 78 remain in held scope.
 
 The count per file can only fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
@@ -83,11 +87,7 @@ _BASELINE = {
     "tft/tft_placement.py": 1,
     "tft/tft_prompt.py": 2,
     "tools/arena_shadow_report.py": 1,
-    "tools/atlas_fonts.py": 1,
     "tools/build_third_party_notices.py": 4,
-    "tools/ci_impact_selector.py": 1,
-    "tools/ci_watchdog.py": 1,
-    "tools/credential_history_scan.py": 1,
     "tools/ds_wiki_staleness_check.py": 1,
     "tools/gated_ds_flag_eyeball.py": 1,
     "tools/gated_g237_lband_shadow.py": 1,
@@ -98,14 +98,9 @@ _BASELINE = {
     "tools/gated_tft15_planner.py": 1,
     "tools/gated_tft_qa_summary.py": 1,
     "tools/inbox_responder_runner.py": 2,
-    "tools/laning_verdict_information_probe.py": 1,
-    "tools/moon_sync_poller.py": 1,
-    "tools/rc_facts.py": 1,
-    "tools/repin_subagent_cli.py": 1,
     "tools/replay_laning_verdict_validate.py": 2,
     "tools/replay_matchup_validate.py": 3,
     "tools/replay_pickban_validate.py": 2,
-    "tools/repo_insights.py": 1,
     "tools/stop_claim_gate.py": 2,
 }
 _FIXED = (
@@ -128,6 +123,16 @@ _FIXED = (
     "tools/macro_response_shadow_report.py",
     "tools/objective_playbook_shadow_report.py",
     "tools/ocr_shadow_report.py",
+    # slice 3 (S144-P-261): the same shape in nine more tools.
+    "tools/atlas_fonts.py",
+    "tools/ci_impact_selector.py",
+    "tools/ci_watchdog.py",
+    "tools/credential_history_scan.py",
+    "tools/laning_verdict_information_probe.py",
+    "tools/moon_sync_poller.py",
+    "tools/rc_facts.py",
+    "tools/repin_subagent_cli.py",
+    "tools/repo_insights.py",
 )
 
 

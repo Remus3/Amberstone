@@ -338,8 +338,8 @@ def local_leak_values(root: Path = ROOT, env: Mapping[str, str] | None = None,
     raw.append(hostname or "")
     out: list[str] = []
     seen: set[str] = set()
-    for value in raw:
-        value = value.strip()
+    for raw_value in raw:
+        value = raw_value.strip()
         if cp.usable_leak_value(value) and value.lower() not in seen:
             seen.add(value.lower())
             out.append(value)

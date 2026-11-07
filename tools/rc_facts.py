@@ -943,8 +943,8 @@ def _artifact_timestamp(signal: ArtifactSignal, root: Path) -> tuple[float | Non
         newest = None
         try:
             with target.open("r", encoding="utf-8", errors="replace") as fh:
-                for line in fh:
-                    line = line.strip()
+                for raw_line in fh:
+                    line = raw_line.strip()
                     if not line:
                         continue
                     try:
