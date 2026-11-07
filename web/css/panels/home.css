@@ -583,8 +583,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-coach-pick-meta {
   display: flex; flex-direction: column; min-width: 0; gap: var(--space-1);
 }
+/* S144-U-204: the name takes the RM-1550 lift (--accent-2 mixed 30 percent
+ * toward --text in oklab), not bare --accent-2: bare it was 3.00:1 on
+ * bloodmoon, 3.05 ember, 3.28 arcane on the card's --surface-2, on the
+ * large-text floor and under the --text-dim reason line it explains.
+ * After: 5.05 or more in every theme, hue kept. Hover stays --good.
+ * Guard: tests/snapshot_panels/test_home_pick_name_contrast.py. */
 .home-coach-pick-champ {
-  font-size: var(--fs-lg); font-weight: 800; color: var(--accent-2);
+  font-size: var(--fs-lg); font-weight: 800;
+  color: color-mix(in oklab, var(--accent-2) 70%, var(--text));
   letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   /* s218 v7: clickable - routes to History filtered by this champion. */
