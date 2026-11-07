@@ -249,7 +249,9 @@ def _staged_added(root: str) -> dict[str, dict]:
     files: dict[str, dict] = {}
     cur: str | None = None
     lineno = 0
-    for ln in diff.splitlines():
+    # Git's line count (LF only): splitlines() consumed a U+2028 as a
+    # break, so the glyph never reached the ASCII arm (S144-T-583).
+    for ln in _ascii_rule().split_lines(diff):
         if ln.startswith("+++ "):
             p = ln[4:].strip()
             cur = None if p == "/dev/null" else p.removeprefix("b/")
@@ -441,7 +443,8 @@ def _check_message_file(path: str) -> int:
     # Drop git's own template comments - they are stripped before the commit is
     # created, so a glyph inside one is not a glyph in the message.
     body = "\n".join(
-        ln for ln in text.splitlines() if not ln.lstrip().startswith("#")
+        ln for ln in _ascii_rule().split_lines(text)
+        if not ln.lstrip().startswith("#")
     )
     hits = _glyph_hits(body)
     if not hits:
@@ -483,7 +486,7 @@ def _check_scan_files(paths: list[str]) -> int:
             print(f"{rel}: unreadable ({exc.__class__.__name__})", file=sys.stderr)
             failures += 1
             continue
-        for lineno, line in enumerate(text.splitlines(), start=1):
+        for lineno, line in enumerate(_ascii_rule().split_lines(text), start=1):
             hits = _glyph_hits(line, rel)
             if hits:
                 failures += 1
