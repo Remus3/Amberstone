@@ -223,7 +223,10 @@ def test_the_renderer_writes_an_importable_utf16_task(rel: str,
             assert Path(target).is_file(), target
             assert Path(target).resolve().is_relative_to(ROOT), target
     for author in root.iterfind(".//t:RegistrationInfo/t:Author", NS):
-        assert author.text == os.environ.get("USERNAME", author.text)
+        # Read the one value first: an environ read inside the assert would
+        # render the whole environment into a failure (test_no_environ_in_assert_operands).
+        expected = os.environ.get("USERNAME", author.text)
+        assert author.text == expected
 
 
 @needs_ps51
