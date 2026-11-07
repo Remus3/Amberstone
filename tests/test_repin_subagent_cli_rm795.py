@@ -98,7 +98,7 @@ class FakeCli:
         extra = list(extra)
         if "--definitely-not-a-flag" in extra:
             rc = 0 if "unknown_accepted" in self.broken else 1
-            open(log_path, "w").close()
+            open(log_path, "w", encoding="utf-8").close()
             err = "" if rc == 0 else "error: unknown option '--definitely-not-a-flag'\n"
             return ({"rc": rc, "result": None, "error": None},
                     CompletedProcess(args=[], returncode=rc, stdout=None, stderr=err))

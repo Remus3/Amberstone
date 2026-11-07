@@ -125,7 +125,7 @@ def test_an_undecodable_byte_is_a_glyph_not_a_fault(monkeypatch, tmp_path, capsy
 
 
 def test_the_git_pre_commit_pipe_still_gates(monkeypatch, tmp_path, capsys):
-    monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(b"git commit\n")))
+    monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(b"git commit\n"), encoding="utf-8"))
     _no_git(monkeypatch, tmp_path)
     monkeypatch.setattr(G, "_staged_added", lambda root: {
         "n.md": {"ranges": [(1, 1)], "lines": [(1, "a " + chr(0x2014) + " b")]}})

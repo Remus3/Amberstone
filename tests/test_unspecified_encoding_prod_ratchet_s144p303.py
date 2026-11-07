@@ -1,4 +1,4 @@
-"""S144-P-303 - PLW1514 (a text-mode ``open`` / ``Path.read_text`` / ``write_text`` with no ``encoding=``) held at zero in production code.
+"""S144-P-303 / S144-P-305 - PLW1514 (a text-mode ``open`` / ``Path.read_text`` / ``write_text`` with no ``encoding=``) held at zero in production code and, since S144-P-305, in ``tests/``.
 
 Without ``encoding=`` Python decodes with the locale code page: cp1252 on a stock Windows box, so a UTF-8 file with
 one non-ASCII byte (a champion name, a localized ability string) either raises or is silently mojibaked, and the same
@@ -9,7 +9,12 @@ Twelve production sites in six files (``scripts/discover_champion_codes.py``, ``
 ``tools/ds_cond_inspect.py``, ``tools/ds_cond_pair_prefilter.py``, ``tools/ds_execute_prefilter.py``,
 ``tools/rofl_archiver.py``) now pass ``encoding="utf-8"`` (JSON the DS pipeline wrote as UTF-8, and the ASCII LCU
 lockfile). The rest is out of scope here and is filed, not hidden: ``ops/fleet_kit`` is vendored byte-for-byte,
-``tests/`` and ``*/tests/`` code is a separate pass, ``agents/daemon_slayer`` belongs to the DS lane.
+``agents/daemon_slayer`` (its tests included) belongs to the DS lane.
+
+S144-P-305 (2026-11-06): the three remaining ``tests/`` sites (``test_precommit_gate_stdin_fault_rm783.py``,
+``test_repin_designed_negative_rc5.py``, ``test_repin_subagent_cli_rm795.py``) now say ``encoding="utf-8"`` and
+``tests/`` plus ``*/tests/`` leave the out-of-scope list. The one test-code finding left is in
+``agents/daemon_slayer/tests/test_effects_expansion.py`` (DS lane, filed).
 
 The baseline is empty on purpose: a new finding anywhere in scope fails ``test_no_new_findings``. The run uses NO config
 (``--isolated``) so a per-file-ignore cannot hide a finding.
@@ -33,7 +38,6 @@ pytestmark = pytest.mark.skipif(
 
 _RULE = "PLW1514"
 _OUT_OF_SCOPE = (
-    "tests/",
     "agents/daemon_slayer/",
     "agents/agent3_testing/suite/",
     "ops/fleet_kit/",
@@ -63,7 +67,7 @@ def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
 
 
 def _in_scope(rel: str) -> bool:
-    return not rel.startswith(_OUT_OF_SCOPE) and "/tests/" not in rel
+    return not rel.startswith(_OUT_OF_SCOPE)
 
 
 @pytest.fixture(scope="module")
