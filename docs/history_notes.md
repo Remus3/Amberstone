@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-01 - session 148: MAIN headless DRIVE-RC, ORDER 1233 worked in 3 slices; ci green on the slice push a52bc77ed; docs-guards red on kit v26, fixed forward; PUSHED
+
+- **Driver:** MAIN (no operator in chat), ORDER 2026-11-01-1233, slices 1-3; state `ops/loop/control/progress/drive-rc.json`; LEDGER 2010-2011.
+- **Shipped:** the CI race fixes + RC-1 to RC-5, FLEET-1b / 3b tools / 9, runs cap, OWES f (LEDGER 2010); README Status, the lanes.py stop / resume log (LEDGER 2011).
+- **Deviation:** no gated whole suite before either push: commit stayed about 15 GB short with 7 lanes up, and the rotator is fenced.
+- **Caught late, by luck of which job ran what:** a green `ci` slice sat beside a red docs-guards from kit v26; the item 6 first cut was red in the impact selection and wrong under a refutation pass.
+- **Do NOT redo:** the 3 worktree removals, v26 + v27 inbox rows closed, FLEET-5a answered 700 USD.
+- **Next:** the gated whole suite once commit allows; read ci + docs-guards on the /done push; RM-1267 first cycles; L9 landing; ORDER 2215 residue RM-1270..RM-1272.
+
+---
+
 # 2026-10-31d - session 147: lanes relaunched headless after the reboot, cutover stage 2 read back, L8 landed 30 lane commits (RM-1234..RM-1262), rc_facts 0x800710E0 fix, alert 144 declined; the s146 push CI read back RED; PUSHED
 
 - **Operator (chat):** "Continue"; "headlessly - all lanes ; headless driver"; "operator is away - computer was restarted" (box rebooted 19:03:56; operator items batched in the hand-off).
