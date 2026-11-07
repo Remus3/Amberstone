@@ -4625,6 +4625,62 @@ waits on the RM-875 wiring.)
   `mode_key` client with both game times null, and `grade` returned NO_RESULT, exit 1.
 - **G5-07** Arena deterministic A/B choices lever (`dc6b3d80`) - shipped SHADOW-only; served coach
   output unchanged. The live serve flip is gated on shadow accrual (G7-17).
+  **AGE CHECK: THE IN-GAME SERVE FLIP IS MOOT WHILE B4 STANDS (lane 9 PREP s144 cycle 92, S144-G-83,
+  source read at `d10c2035c`, 2026-11-06; NOT a tick, NOT struck; no game up: :8888 /api/state gave
+  no body, the driver's :2999 probe read URLError).** Four measured facts. (1) THE PREMISE PREDATES
+  B4. The lever is `dc6b3d80f` (2026-07-06). Operator decision `docs/OVERLAY_COMPLIANCE_PLAN.md`
+  section 6c (2026-08-11) moved live coaching to pre-game and post-game. B4-a `25540abab`
+  (2026-08-12, RM-189) put `"choices"` in `LIVE_SUPPRESSED_FIELDS` (`dashboard/_state_builder.py:422`).
+  `suppress_live_directives` (`:464`, applied at `:1052`) blanks it to `[]` whenever `is_live_game`
+  holds, and `arena_mode` is one of `LIVE_GAME_FLAGS` (`core/live_game_gate.py:31`). The client gate
+  `directivesAllowed` (B4-b `f2b7c4bae`, same day) hides `#rn-choices` too
+  (`web/js/panels/coach_choices.js:211`). So Arena A/B
+  chips flipped into the served field would still be blank on screen in every Arena game. A served
+  flip could only show outside the game, and that is a pre-game / post-game design question, not a
+  GATE 5 sitting. (2) THE ARENA BLOCK'S CHOICES NEVER REACH THE SERVED FIELD TODAY. The lever's
+  `choices` (`core/arena_deterministic_coach.py:78` `_ARENA_CHOICE_LABELS`, `_safe_choices` `:232`,
+  set in `build_block` at `:374`) is built only inside `shadow_log_arena_coach`
+  (`dashboard/_deterministic_coaching.py:1493`). That function hands it to `log_arena_coach` (`:1639`)
+  and returns nothing. The served `coach["choices"] = resolve_choices(coach, det)`
+  (`dashboard/_state_builder.py:1028`, def `dashboard/_deterministic_coaching.py:1067`) reads
+  `compute_deterministic`'s choices, then the native Haiku list, then the synthesizer. It never reads
+  the Arena block. (3) G7-17 NEVER MEASURES CHOICES. `tools/arena_shadow_report.py` and
+  `tools/gated_g717_arena_readback.py` contain the word `choices` zero times. They gate on ACTION
+  class agreement only. The det choices column is a pure function of the det action plus the det
+  `fight_rule`: labels and tags come from the action alone, and B's `expected_outcome` is the
+  `fight_rule` when one is set (`_safe_choices`). Read-only count
+  over the main checkout's `data/arena_coach_shadow.jsonl` (617 rows, `ts` 2026-07-05..2026-07-21,
+  all pre-RM-868): 614 rows carry a 2-entry `deterministic.choices`, all tagged `arena_rule`, and all
+  614 labels equal `_ARENA_CHOICE_LABELS[action]`. The other 3 rows (all stamped 2026-07-05T00:11Z)
+  predate the lever and have no key. So "accrual" of this column adds nothing beyond the `action`
+  and `fight_rule` columns the same rows already log, and G7-17 already grades the action. (4) THE HAIKU SIDE HAS NO CHOICES TO COMPARE AGAINST.
+  No row has a non-empty `live_haiku.choices`: it is `[]` on 614 rows and absent on the 3 pre-lever
+  rows. The writer path exists:
+  `coaches/arena_coach.py:867` stores `CoachOutput.from_fields(fields).choices`. But the prompt allows
+  `[]` ("an empty array is better than padded choices", `:190`). Telling a Haiku `[]` apart from a
+  swallowed malformed array needs the raw response, which no shadow row keeps. So a choices-level
+  agreement metric cannot be built from the existing record. That is a MERGER FOLLOW-UP, not a
+  gated question.
+  WHAT THE LEVER IS NOW: the section-6c "silent capture of decision branch points", in the shadow
+  record for a post-game replay. The live residual collapses into two rows that already carry
+  predicates. G7-17 (accrual: the READY readback's `cohort` / `report` checks over post-fix rows) and
+  G2-28 (the B4 INVERSE check: `coach.choices` is `[]` in one LIVE window, `#rn-choices` hidden).
+  READY add-on for the G7-17 sitting (one read-only line, predicate stated before any game). PASS iff
+  every post-cutoff row whose `deterministic.action` is one of the five `_ARENA_CHOICE_LABELS` keys
+  has exactly 2 `deterministic.choices` entries tagged `arena_rule`. FAIL if any such row lacks them.
+  Rows with another action are not counted, and zero counted rows is NO RESULT. Idle smoke this
+  cycle: cutoff `2026-07-01T00:00:00+00:00` printed `617 3` (the 3 pre-lever rows), cutoff
+  `2026-10-25T06:28:48+00:00` printed `0 0` (no post-fix row yet, so NO RESULT). From the main
+  checkout root, with the same UTC cutoff G7-17 uses:
+  `python -c "import json,sys;from core.arena_deterministic_coach import _ARENA_CHOICE_LABELS as L;c=sys.argv[1];rs=[json.loads(l) for l in open('data/arena_coach_shadow.jsonl',encoding='utf-8') if l.strip()];rs=[r for r in rs if r['ts']>=c and r['deterministic'].get('action','').upper() in L];bad=[r['ts'] for r in rs if [x.get('source_tag') for x in r['deterministic'].get('choices') or []]!=['arena_rule']*2];print(len(rs),len(bad),bad[:3])" <UTC cutoff>`
+  (the cutoff must be UTC `+00:00`, the G7-17 string-compare trap). Evidence contract: value = the
+  two counts; source = those rows' `ts` and `round`; timestamp = the cutoff, with mode Arena q1750;
+  predicate = this paragraph. SUBSTITUTION CHECK: this answers only that the det branch set was
+  COMPUTED and LOGGED in a real Arena game. That is all the section-6c capture claims. It never
+  answers whether a chip RENDERED, and under B4 no chip should render in game. A non-empty served
+  `coach.choices` in a live Arena window is a G2-28 compliance FAIL, not a G5-07 pass. RE-FILE
+  PROPOSAL (a human edits; the lane does not): fold G5-07 into G7-17 as a dependency line, and drop
+  "live serve flip" from its text while B4 stands.
 - **G5-08** (was the B47b Arena tail) Celestial Opposition Arena mirror **444644 magnitude confirm**
   (Meraki 50% vs DDragon 90%) - the id is EXCLUDED from the R108 credit pending this live-Arena read.
   **PREP 2026-10-25 (lane 9 s133 cycle 6, data read at DS 16.21.1; NOT a tick).**
