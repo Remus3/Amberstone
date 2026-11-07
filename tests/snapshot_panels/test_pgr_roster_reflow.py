@@ -272,19 +272,24 @@ def test_narrowest_row_wraps(roster):
         f"{tag}: a 320 row is still the fixed grid")
 
 
+# Augment mode is the live Arena roster, the lane matchup card is pinned on
+# the live SR view: each test takes only its own case (indirect), so no case
+# skips (tests/test_skip_condition_hygiene.py).
+@pytest.mark.parametrize("roster", [("live", "arena")], indirect=True,
+                         ids=["live-arena"])
 def test_live_arena_rows_carry_augments(roster):
     tag, out, _errors = roster
-    if tag != "live-arena":
-        pytest.skip("augment mode is the live Arena roster")
+    assert tag == "live-arena", tag
     for w in (1920, 320):
         d = out[w]
         assert d["aug"], f"{tag} {w}: roster not in augment mode"
         assert d["augs"] >= 8, f"{tag} {w}: {d['augs']} augment icons drawn"
 
 
+@pytest.mark.parametrize("roster", [("live", "sr")], indirect=True,
+                         ids=["live-sr"])
 def test_live_lane_matchup_card_is_measured(roster):
     tag, out, _errors = roster
-    if tag != "live-sr":
-        pytest.skip("the lane matchup card is pinned on the live SR view")
+    assert tag == "live-sr", tag
     assert all(out[w]["plc"] is not None for w in (1920, 480, 320)), (
         f"{tag}: lane matchup card not shown")

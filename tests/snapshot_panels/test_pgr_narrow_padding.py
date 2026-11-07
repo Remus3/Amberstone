@@ -155,10 +155,14 @@ def test_pgr_fits_the_view(pgr, w):
         f" (view {d['vbox']})")
 
 
+# The TFT card has no roster, so this takes the other cases only (indirect),
+# never a skip (tests/test_skip_condition_hygiene.py).
+@pytest.mark.parametrize("pgr", [c for c in _CASES if c[1] != "tft"],
+                         indirect=True,
+                         ids=[f"{v}-{m}" for (v, m) in _CASES if m != "tft"])
 def test_roster_row_gets_its_width_back_at_320(pgr):
     tag, mode, out, _errors = pgr
-    if mode == "tft":
-        pytest.skip("the TFT card has no roster")
+    assert mode != "tft", tag
     content = out[320]["content"]
     assert content is not None, f"{tag}: no roster row at 320"
     assert content >= _ROW_CONTENT_320 - 0.5, (
