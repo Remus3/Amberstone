@@ -5,7 +5,9 @@ import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
 import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } from '../lib/theme.js';
 // s220 PGR S5: Match-V5 timeline event ribbon for the Replay view.
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
-import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
+import {
+  loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler, clearReplayEventsFailed,
+} from './replay_events.js';
 // RM-612 (X-12): pure minimap logic (death windows, last-known + age halo).
 import { buildModel, stateAt, worldToCanvas, mapArtUrls, monogram, MAP_WORLD } from './replay_minimap.js';
 import { loadReviewPlayer } from './review_player.js';
@@ -467,6 +469,9 @@ function _replayLoadMatch(matchId, rowEl, opts) {
     const m = document.getElementById("replay-meta");
     if (m) m.textContent = "could not load " + matchId + " - pick it again to retry";
     _replayShowNoFrames("match did not load");
+    // S144-U-186: no ribbon rows for a match that did not load (the events
+    // route can still answer for it; its rows had nothing to seek).
+    try { clearReplayEventsFailed(); } catch (_) {}
     if (reveal && (!rowEl || rowEl.classList.contains("active"))) _replayRevealMain();
   };
   matchPromise

@@ -51,9 +51,14 @@ const _RE = {
   // (route field you_flagged; core/moment_marks.py). Rendered as rows in
   // the same ribbon, interleaved by clock, so a click seeks like any event.
   flags:   [],
+  // S144-U-186: the ribbon note while a pick that did not load is showing
+  // (null = the markup's own "No timeline events for this match.").
+  note:    null,
 };
 
 const FLAG_LABEL = "you flagged";
+const NOTE_PLAIN  = "No timeline events for this match.";
+const NOTE_FAILED = "No timeline events - the match did not load.";
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the events fetch
@@ -242,6 +247,7 @@ function _renderEvents() {
   const events = _RE.events || [];
   const flags  = _RE.flags || [];
   count.textContent = String(events.length);
+  empty.textContent = _RE.note || NOTE_PLAIN;
   if (!events.length && !flags.length) {
     list.innerHTML = "";
     empty.hidden = false;
@@ -291,6 +297,7 @@ export function loadReplayEvents(matchId) {
   if (!section) return;
   const seq = ++_RE.seq;
   const fresh = () => seq === _RE.seq;
+  _RE.note = null;
   if (!matchId) {
     section.hidden = true;
     _RE.matchId = null;
@@ -337,6 +344,25 @@ export function loadReplayEvents(matchId) {
       _RE.flags = [];
       _renderEvents();
     });
+}
+
+/**
+ * S144-U-186: the pick whose match reply failed (dev.js _replayLoadMatch).
+ * The events route can still answer for it, so the ribbon used to list its
+ * events - each a "jump the scrubber" button with no match to seek - under
+ * the "could not load" meta line. Drops the rows, says why, ignores a late
+ * events reply for that pick (seq bump) and leaves a filter toggle nothing
+ * to re-fetch. The section stays where it is. The next pick's
+ * loadReplayEvents restores the plain note.
+ * Guard: tests/snapshot_panels/test_replay_failed_load_ribbon.py.
+ */
+export function clearReplayEventsFailed() {
+  ++_RE.seq;
+  _RE.matchId = null;
+  _RE.events = [];
+  _RE.flags = [];
+  _RE.note = NOTE_FAILED;
+  _renderEvents();
 }
 
 let _wired = false;
