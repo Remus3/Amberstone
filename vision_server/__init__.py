@@ -107,10 +107,9 @@ def main() -> int:
         return 1
 
     # Guard: exit cleanly if another instance is already on this port.
-    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    probe.settimeout(1)
-    already = probe.connect_ex(("127.0.0.1", PORT)) == 0
-    probe.close()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(1)
+        already = probe.connect_ex(("127.0.0.1", PORT)) == 0
     if already:
         # Session 129 (sibling of the RC-DS-MatchDB-MCP restart race): an
         # answering connect is not yet "another instance is running". The
