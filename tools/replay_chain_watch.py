@@ -19,6 +19,7 @@ the corpus has grown since the last mine.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -79,7 +80,7 @@ def needs_mine() -> bool:
     if not RATES.exists():
         return timelines_count() > 0
     try:
-        prev = int(__import__("json").loads(
+        prev = int(json.loads(
             RATES.read_text(encoding="utf-8")).get("matches") or 0)
     except Exception:  # noqa: BLE001
         return True

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -202,7 +203,7 @@ class InputParser:
             trigger = _PROJECT_ROOT / "restart_trigger.txt"
             atomic_write_text(
                 trigger,
-                f"user-request-{__import__('time').strftime('%Y%m%dT%H%M%SZ', __import__('time').gmtime())}",
+                f"user-request-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}",
             )
             return ParseResult(
                 reply="RC restart trigger written. The existing RC supervisor will pick it up within ~1s.",
