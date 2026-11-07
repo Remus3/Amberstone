@@ -962,13 +962,19 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lq-auto-accept.is-on  { border-color: var(--good); }
 .lq-auto-accept.is-on  .lq-btn-line2 { color: var(--good); }
 .lq-auto-accept.is-off { border-color: var(--bad); }
-.lq-auto-accept.is-off .lq-btn-line2 { color: var(--bad); }
+/* S144-U-202: the Off / Closed word takes the RM-1550 red-text lift
+ * (--bad mixed 70% toward --text in oklab, as .lv-mc-result-loss): plain
+ * --bad on the button's --surface-alt measured 3.28:1 arcane, 3.31
+ * moonlit, 3.66 hextech, 3.79 ember and bloodmoon, under AA 4.5 for this
+ * 16 px / 700 line. The border keeps plain --bad. Pinned by
+ * tests/snapshot_panels/test_lobby_text_contrast.py. */
+.lq-auto-accept.is-off .lq-btn-line2 { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 
 /* ---- Party Open/Closed toggle ---- */
 .lq-party-toggle.is-open    { border-color: var(--good); }
 .lq-party-toggle.is-open    .lq-btn-line2 { color: var(--good); }
 .lq-party-toggle.is-closed  { border-color: var(--bad); }
-.lq-party-toggle.is-closed  .lq-btn-line2 { color: var(--bad); }
+.lq-party-toggle.is-closed  .lq-btn-line2 { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 
 /* ---- Primary / Secondary lane pair ---- */
 .lq-lane-pair {
@@ -1824,8 +1830,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   min-width: 0;
   justify-content: center;
 }
+/* S144-U-202: --text-dim, not --text-faint: the "-" and "LVL n :
+ * Unranked" marks (16 px / 400) measured 3.64:1 arcane to 3.94 hextech
+ * on the party row, under AA 4.5 in five of six themes. They stay
+ * dimmer than the --text member name beside them. */
 .lv-party-empty {
-  color: var(--text-faint);
+  color: var(--text-dim);
   /* UI scale v2.1: 12 -> --fs-xs (16). */
   font-size: var(--fs-xs);
 }
