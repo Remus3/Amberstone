@@ -762,7 +762,13 @@ class Supervisor:
                 self._file_post_game_summary(prev_norm, new_norm)
             except Exception as e:  # noqa: BLE001 - must not block auto-analyze
                 log.warning("post-game summary failed: %s", e, exc_info=True)
-            loop = asyncio.get_running_loop() if asyncio.get_event_loop().is_running() else None
+            # get_running_loop() is the only loop probe that does not raise for
+            # the wrong reason: get_event_loop() raises RuntimeError on 3.14
+            # when no loop is set, which made the skip branch below unreachable.
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
             if loop is None:
                 log.debug("no running loop - skipping auto-analyze schedule")
                 return
