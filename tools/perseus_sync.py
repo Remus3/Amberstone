@@ -123,7 +123,8 @@ class Vault:
         )
         self.proc.stdin.flush()
         # RM-375: bounded - see tools/_perseus_rpc.py.
-        return read_json_reply(self.proc.stdout.readline)
+        # S144-T-605: only the reply to THIS request id is returned.
+        return read_json_reply(self.proc.stdout.readline, expect_id=self._id)
 
     def call(self, tool: str, args: dict):
         return self.rpc("tools/call", {"name": tool, "arguments": args})

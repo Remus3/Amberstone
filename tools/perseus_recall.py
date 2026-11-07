@@ -128,7 +128,8 @@ def recall(
         }) + "\n")
         proc.stdin.flush()
         # RM-375: bounded - non-JSON chatter can no longer wedge the gate.
-        return read_json_reply(proc.stdout.readline)
+        # S144-T-605: only the reply to THIS request id is returned.
+        return read_json_reply(proc.stdout.readline, expect_id=counter[0])
 
     try:
         rpc("initialize", {
