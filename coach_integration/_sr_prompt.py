@@ -3,6 +3,8 @@
 
 import json
 import math
+import numbers
+import threading
 import time
 import logging
 from collections import deque
@@ -25,26 +27,83 @@ _CI_APP_DIR = Path(__file__).parent.parent
 # Module-level so tests can monkeypatch it (audit cycle 10).
 _VISION_STATE_PATH = _CI_APP_DIR / "data" / "vision_state.json"
 
+# WaveTracker override clock; module-level so tests can drive it.
+_clock = time.monotonic
+
+
+# -- Input shaping (S144-T-591) -------------------------------------------------
+# The game_reader state dict, the vision tracker file and the three meta_build
+# JSON files are all read here without a schema. These helpers are the trust
+# boundary: a value of the wrong type reads as ABSENT (the caller's default),
+# never as a raise that loses the whole coach tick and never as raw text.
+
+
+def _finite(value: object, default=None):
+    """``value`` if it is a finite real number, else ``default``.
+
+    bool is refused (``True`` is not a level), as is an int too large for a
+    float. The original object is returned, so an int still renders "62" and
+    a float "8.1" - the prompt text for valid input is unchanged.
+    """
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        return default
+    try:
+        ok = math.isfinite(value)
+    except (OverflowError, TypeError, ValueError):
+        return default
+    return value if ok else default
+
+
+def _text(value: object) -> str:
+    """``value`` if it is a str, else "" (a dict or None never renders)."""
+    return value if isinstance(value, str) else ""
+
+
+def _str_seq(value: object) -> list:
+    """A list / tuple as a list, a bare str as ONE entry, anything else []."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return []
+
+
+def _load_meta(name: str) -> dict:
+    """Parse ``data/meta_build/<name>``; {} when absent, unreadable or not a mapping."""
+    p = _CI_APP_DIR / "data" / "meta_build" / name
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError, RecursionError) as exc:
+        # Was a silent swallow: a corrupt file read exactly like a missing
+        # champion. Log the exception TYPE only (no payload bytes).
+        logger.debug("sr meta_build %s unreadable: %s", name, type(exc).__name__)
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _meta_entry(name: str, champion: object) -> dict:
+    """The mapping stored under ``champion`` in ``name``, else {}."""
+    if not isinstance(champion, str) or not champion:
+        return {}
+    entry = _load_meta(name).get(champion)
+    return entry if isinstance(entry, dict) else {}
+
+
 def _load_sr_rune_rec(champion: str) -> str:
     """Load SR rune recommendation string for a champion."""
-    try:
-        p = _CI_APP_DIR / "data" / "meta_build" / "rune_recommendations_sr.json"
-        if not p.exists():
-            return ""
-        data = json.loads(p.read_text(encoding="utf-8"))
-        rec = data.get(champion)
-        if not rec or not isinstance(rec, dict):
-            return ""
-        ks   = rec.get("keystone", "")
-        pri  = rec.get("primary_tree", "")
-        sec  = rec.get("secondary_tree", "")
-        note = rec.get("coaching_note", "")
-        result = f"{ks} | {pri} / {sec}"
-        if note:
-            result += f" - {note}"
-        return result
-    except Exception:  # noqa: BLE001
+    rec = _meta_entry("rune_recommendations_sr.json", champion)
+    if not rec:
         return ""
+    ks   = _text(rec.get("keystone"))
+    pri  = _text(rec.get("primary_tree"))
+    sec  = _text(rec.get("secondary_tree"))
+    note = _text(rec.get("coaching_note"))
+    result = f"{ks} | {pri} / {sec}"
+    if note:
+        result += f" - {note}"
+    return result
 
 
 # -- Summoner's Rift system prompt ---------------------------------------------
@@ -194,55 +253,46 @@ Risk: <specific kill threat using [E] tag + ability to respect>
 
 def _load_sr_build_note(champion: str) -> str:
     """Load SR-specific build note and item path for a champion."""
-    try:
-        p = _CI_APP_DIR / "data" / "meta_build" / "sr_champion_builds.json"
-        if not p.exists():
-            return ""
-        data = json.loads(p.read_text(encoding="utf-8"))
-        entry = data.get(champion)
-        if not entry or isinstance(entry, str):
-            return ""
-        start  = entry.get("start", "")
-        fb     = entry.get("full_build", [])
-        note   = entry.get("build_note", "")
-        recall = entry.get("recall_timing", "")
-        vt     = entry.get("vs_tanks", "")
-        vh     = entry.get("vs_healing", "")
-        build_str = " -> ".join(fb) if fb else ""
-        result = ""
-        if start:    result += f"Start: {start}. "
-        if build_str: result += f"Build: {build_str}. "
-        if note:     result += note
-        if recall:   result += f" | {recall}"
-        if vt:       result += f" | vs tanks: {vt}"
-        if vh:       result += f" | vs healing: {vh}"
-        return result[:400]
-    except Exception:  # noqa: BLE001
+    entry = _meta_entry("sr_champion_builds.json", champion)
+    if not entry:
         return ""
-
+    start  = _text(entry.get("start"))
+    # A bare-string full_build used to be joined per CHARACTER; only a list
+    # of item names is a build path, and a non-str element is skipped.
+    fb_raw = entry.get("full_build")
+    fb     = [x for x in fb_raw if isinstance(x, str) and x] if isinstance(fb_raw, list) else []
+    note   = _text(entry.get("build_note"))
+    recall = _text(entry.get("recall_timing"))
+    vt     = _text(entry.get("vs_tanks"))
+    vh     = _text(entry.get("vs_healing"))
+    build_str = " -> ".join(fb)
+    result = ""
+    if start:    result += f"Start: {start}. "
+    if build_str: result += f"Build: {build_str}. "
+    if note:     result += note
+    if recall:   result += f" | {recall}"
+    if vt:       result += f" | vs tanks: {vt}"
+    if vh:       result += f" | vs healing: {vh}"
+    return result[:400]
 
 
 def _load_lane_matchup_note(enemy_adc: str) -> str:
     """Load ADC lane matchup note for the enemy ADC/marksman from matchup_weights."""
-    try:
-        p = _CI_APP_DIR / "data" / "meta_build" / "matchup_weights.json"
-        if not p.exists():
-            return ""
-        data = json.loads(p.read_text(encoding="utf-8"))
-        mm = data.get("adc_lane_matchups", {})
-        entry = mm.get(enemy_adc)
-        if not entry:
-            return ""
-        diff     = entry.get("difficulty", 0)
-        style    = entry.get("lane_style", "")
-        note     = entry.get("priority_note", "")[:120]
-        mechanic = entry.get("key_mechanic", "")[:100]
-        result   = f"{enemy_adc} [diff {diff}/5, {style}]: {note}"
-        if mechanic:
-            result += f" | Key: {mechanic}"
-        return result[:280]
-    except Exception:  # noqa: BLE001
+    if not isinstance(enemy_adc, str) or not enemy_adc:
         return ""
+    mm = _load_meta("matchup_weights.json").get("adc_lane_matchups")
+    entry = mm.get(enemy_adc) if isinstance(mm, dict) else None
+    if not entry or not isinstance(entry, dict):
+        return ""
+    # One wrong-typed field used to raise and lose the whole note.
+    diff     = _finite(entry.get("difficulty"), 0)
+    style    = _text(entry.get("lane_style"))
+    note     = _text(entry.get("priority_note"))[:120]
+    mechanic = _text(entry.get("key_mechanic"))[:100]
+    result   = f"{enemy_adc} [diff {diff}/5, {style}]: {note}"
+    if mechanic:
+        result += f" | Key: {mechanic}"
+    return result[:280]
 
 
 def _vision_tracker_locs() -> str:
@@ -266,25 +316,31 @@ def _vision_tracker_locs() -> str:
         d = json.loads(p.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return ""
-    enemies = d.get("enemies") or {}
-    if not enemies:
+    # S144-T-591: the shape checks used to sit OUTSIDE the try, so a list
+    # root, a list "enemies" or one non-dict entry raised AttributeError
+    # and killed the whole SR prompt build for the tick.
+    enemies = d.get("enemies") if isinstance(d, dict) else None
+    if not isinstance(enemies, dict) or not enemies:
         return ""
     visible, mia, dead = [], [], []
     for name, e in enemies.items():
+        if not isinstance(e, dict):
+            continue
         zone = e.get("last_seen_zone") or "?"
         if e.get("is_dead"):
-            r = e.get("respawn_in_s")
             # Audit cycle 10: math.isfinite guard - json.loads accepts
             # NaN/Infinity literals and int(NaN) raised ValueError here,
-            # killing the whole SR prompt build for the tick.
-            _r_ok = isinstance(r, (int, float)) and math.isfinite(r)
-            dead.append(f"{name} ({int(r)}s)" if _r_ok else name)
+            # killing the whole SR prompt build for the tick. S144-T-591:
+            # a bool (True read "1s") or a negative timer is not a timer.
+            r = _finite(e.get("respawn_in_s"))
+            dead.append(f"{name} ({int(r)}s)" if r is not None and r >= 0 else name)
             continue
         if e.get("visible"):
             visible.append(f"{name} [{zone}]")
         else:
-            ago = e.get("missing_for_s")
-            if isinstance(ago, (int, float)):
+            # bool and NaN are "untracked", not "seen 1 s ago" / "long gone".
+            ago = _finite(e.get("missing_for_s"))
+            if ago is not None:
                 if ago < 8:
                     visible.append(f"{name} [{zone}]")
                 elif ago < 45:
@@ -306,27 +362,35 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     # cleaner is a hedge against a future MITM / mirror swap that could
     # smuggle injection text through champion/item/summoner names.
     from core.prompt_sanitize import clean as _ps_clean, clean_iter as _ps_iter
+    # S144-T-591: a non-dict state reads as an empty one, and every numeric
+    # slot goes through _finite - a None / str / NaN / bool value used to
+    # raise out of the comparisons below (losing the tick) or be
+    # interpolated RAW, which let a string carry a newline and a role marker
+    # past the sanitizer on ten fields. Junk reads exactly like a missing key.
+    if not isinstance(gs, dict):
+        gs = {}
     game_time  = _ps_clean(gs.get("game_time", "0:00"), max_len=12)
-    game_s     = gs.get("game_seconds", 0)
+    game_s     = _finite(gs.get("game_seconds"), 0)
     phase      = "early" if game_s < 600 else "mid" if game_s < 1500 else "late"
-    hp_pct     = gs.get("hp_pct", 100)
-    mp_pct     = gs.get("mana_pct", 100)
-    hp_abs     = gs.get("hp_abs", 0)
-    hp_max     = gs.get("hp_max", 1000)
-    gold       = gs.get("gold", 0)
-    cs         = gs.get("cs", 0)
-    cs_pm      = gs.get("cs_per_min", 0)
-    level      = gs.get("level", 1)
+    hp_pct     = _finite(gs.get("hp_pct"), 100)
+    mp_pct     = _finite(gs.get("mana_pct"), 100)
+    hp_abs     = _finite(gs.get("hp_abs"), 0)
+    hp_max     = _finite(gs.get("hp_max"), 1000)
+    gold       = _finite(gs.get("gold"), 0)
+    cs         = _finite(gs.get("cs"), 0)
+    cs_pm      = _finite(gs.get("cs_per_min"), 0)
+    level      = _finite(gs.get("level"), 1)
     kda        = _ps_clean(gs.get("kda", "0/0/0"), max_len=24)
-    items      = ", ".join(_ps_iter(gs.get("items", []))) or "none"
+    items      = ", ".join(_ps_iter(_str_seq(gs.get("items")))) or "none"
     summ_d     = _ps_clean(gs.get("summoner_d", "?"), max_len=24)
     summ_f     = _ps_clean(gs.get("summoner_f", "?"), max_len=24)
     # RM-361: sanitise the wire comps ONCE and reuse the cleaned lists on
     # every branch below. Both keys used to be cleaned here and then re-read
     # RAW further down, so a single wire field had two renderings - one
     # sanitised and one not - and only the sanitised one was obvious.
-    ally_list  = _ps_iter(gs.get("ally_comp", []))
-    enemy_list = _ps_iter(gs.get("enemy_comp", []))
+    # S144-T-591: None raised and a bare str was split per character.
+    ally_list  = _ps_iter(_str_seq(gs.get("ally_comp")))
+    enemy_list = _ps_iter(_str_seq(gs.get("enemy_comp")))
     allies     = ", ".join(ally_list) or "unknown"
     enemies    = ", ".join(enemy_list) or "unknown"
     # Prefer vision_tracker output (position-freeze detection - more
@@ -334,14 +398,14 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     # Falls through to game_reader's enemy_locs when tracker is cold/stale.
     enemy_locs = _ps_clean(_vision_tracker_locs() or gs.get("enemy_locs", "unknown"))
     objectives = _ps_clean(gs.get("objectives", "none"))
-    walk_drake = gs.get("walk_time_drake")
-    walk_baron = gs.get("walk_time_baron")
+    walk_drake = _finite(gs.get("walk_time_drake"))
+    walk_baron = _finite(gs.get("walk_time_baron"))
     camp_hint  = _ps_clean(gs.get("camp_hint", ""))
     ally_status = _ps_clean(gs.get("ally_status_str", allies))
     dead_info  = _ps_clean(gs.get("dead_respawn_str", ""))
     next_spike = _ps_clean(gs.get("next_item_str", ""))
-    ally_kills = gs.get("ally_kills_total", 0)
-    enemy_kills = gs.get("enemy_kills_total", 0)
+    ally_kills = _finite(gs.get("ally_kills_total"), 0)
+    enemy_kills = _finite(gs.get("enemy_kills_total"), 0)
     kill_diff   = ally_kills - enemy_kills
     kill_str    = (f"+{kill_diff}" if kill_diff > 0 else str(kill_diff)) + f" ({ally_kills}v{enemy_kills})"
 
@@ -372,8 +436,8 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     quest_boots = gs.get("quest_boots_owned", False)
     if quest_boots:
         lines.append("Note: Lane quest boots owned (invisible slot - skip boots in item path)")
-    elif gs.get("level", 1) >= 5 and not quest_boots:
-        lines.append(f"Note: Lane quest boots NOT yet completed (level {gs.get('level',1)})")
+    elif level >= 5:
+        lines.append(f"Note: Lane quest boots NOT yet completed (level {level})")
 
     # RM-361: ally_list / enemy_list are the sanitised lists built above -
     # do NOT re-read gs here.
@@ -414,7 +478,9 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
         lines.append(f"Enemy bot lane (your lane opponents): {enemy_lane}")
     elif enemy_list:
         lines.append(f"Note: enemies are {', '.join(enemy_list)} - do NOT use their names as allies")
-    lane_matchup_note = gs.get("_lane_matchup_note", "")
+    # S144-T-591: was interpolated RAW (RM-361 residual). The note embeds
+    # the enemy champion name the caller took off the wire.
+    lane_matchup_note = _ps_clean(_text(gs.get("_lane_matchup_note")), max_len=300)
     if lane_matchup_note:
         lines.append(f"Lane matchup vs {lane_matchup_note}")
 
@@ -426,7 +492,7 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
         ]
     else:
         lines += [
-            f"Wave: {wave_state}",
+            f"Wave: {_ps_clean(_text(wave_state), max_len=32) or 'unknown'}",
             f"Objectives: {objectives}{walk_str}",
         ]
         if camp_hint:
@@ -442,7 +508,12 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
         if ward_hint and has_capability(game_mode, "has_wards"):
             lines.append(f"Ward priority: {ward_hint}")
 
-    comp_ctx = gs.get("comp_context", "")
+    # S144-T-591: a non-str comp_context raised AttributeError on
+    # .splitlines(); a list / tuple is read as its lines, anything else skipped.
+    comp_raw = gs.get("comp_context")
+    comp_lines = comp_raw.splitlines() if isinstance(comp_raw, str) else (
+        [x for x in comp_raw if isinstance(x, str)] if isinstance(comp_raw, (list, tuple)) else [])
+    comp_ctx = _ps_iter(comp_lines)
     if comp_ctx:
         lines.append("")
         lines.append("COMPOSITION ANALYSIS:")
@@ -451,9 +522,9 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
         # joins up to eight lines), so a whole-string clean would flatten
         # the block onto one line and truncate it at DEFAULT_MAX_LEN. Per
         # line keeps the layout and still neutralises role markers. Note
-        # the splitlines() here is why the whole-string newline token never
+        # the splitlines() above is why the whole-string newline token never
         # applied to this field - see the residual noted in the RM-361 test.
-        for cl in _ps_iter(comp_ctx.splitlines()):
+        for cl in comp_ctx:
             lines.append(f"  {cl}")
 
     return "\n".join(lines)
@@ -463,18 +534,59 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
 
 
 class WaveTracker:
+    """Infer the wave state from the CS rate over the last ~15 game seconds.
+
+    S144-T-591: a None / NaN / bool / str sample used to be STORED, so the
+    next tick raised TypeError (or read a NaN rate as "neutral"); it is now
+    refused and reads "unknown". A game clock that goes BACKWARDS (replay
+    rewind, a reconnect re-basing game time) left samples from the future
+    in the window, so every tick read "unknown" until 20 fresh samples had
+    pushed them out; the window is now reset when the clock goes back by
+    more than ``_REWIND_S``. A smaller step back is kept as before: the two
+    production callers (the coach thread, coach_integration/_coach.py
+    ``_convert``, and the app loop, app/_game_lifecycle.py) share one
+    tracker and can read one game second out of order. Those two threads
+    also used to iterate the deque while the other appended to it
+    ("deque mutated during iteration"); ``_lock`` now serialises them. The
+    override clock is monotonic (a wall-clock step no longer stretches or
+    cancels it) and a non-finite duration or a non-text state is refused -
+    an infinite duration used to pin the override forever.
+    """
+
+    # Upper bound on one override; the only caller asks for 30 s.
+    _MAX_OVERRIDE_S = 600.0
+    # A step back in game time larger than this is a rewind, not jitter.
+    _REWIND_S = 5.0
+
     def __init__(self):
         self._samples = deque(maxlen=20)
         self._override = None
         self._override_until = 0.0
+        self._lock = threading.Lock()
 
     def set_override(self, state: str, duration_s: float = 30.0) -> None:
-        self._override = state
-        self._override_until = time.time() + duration_s
+        dur = _finite(duration_s)
+        # A negative duration needs no branch: it lands in the past and never holds.
+        if not isinstance(state, str) or not state or dur is None:
+            return
+        with self._lock:
+            self._override = state
+            self._override_until = _clock() + min(float(dur), self._MAX_OVERRIDE_S)
 
     def update(self, cs: int, game_seconds: float) -> str:
-        if time.time() < self._override_until and self._override:
+        with self._lock:
+            return self._update_locked(cs, game_seconds)
+
+    def _update_locked(self, cs, game_seconds) -> str:
+        if self._override and _clock() < self._override_until:
             return self._override
+
+        cs = _finite(cs)
+        game_seconds = _finite(game_seconds)
+        if cs is None or game_seconds is None:
+            return "unknown"
+        if self._samples and game_seconds < self._samples[-1]["t"] - self._REWIND_S:
+            self._samples.clear()
 
         self._samples.append({"cs": cs, "t": game_seconds})
 
