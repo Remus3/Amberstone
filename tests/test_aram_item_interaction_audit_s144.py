@@ -95,12 +95,9 @@ class _Proxy:
 
 @pytest.fixture
 def fresh_names(monkeypatch):
-    """Isolate the champion-name memo (pre- and post-fix attribute names)."""
-    monkeypatch.setattr(aii, "_champ_names_loaded", False, raising=False)
-    monkeypatch.setattr(aii, "_champ_names_by_id", {}, raising=False)
-    monkeypatch.setattr(aii, "_CHAMP_NAMES", None, raising=False)
-    monkeypatch.setattr(aii, "_CHAMP_NAMES_GATE", FailedLoadGate(),
-                        raising=False)
+    """Isolate the champion-name memo and its failed-load gate."""
+    monkeypatch.setattr(aii, "_CHAMP_NAMES", None)
+    monkeypatch.setattr(aii, "_CHAMP_NAMES_GATE", FailedLoadGate())
 
 
 def _plant_catalog(ds_dir, patch="9.99.1", data=None):
