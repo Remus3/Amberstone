@@ -55,12 +55,20 @@ const _RE = {
   // (null = the markup's own "No timeline events for this match.").
   // S144-U-187: NOTE_LOADING while a new pick's events are pending.
   note:    null,
+  // S144-U-188: the match the scrubber holds and its frame count, as
+  // dev.js reports them (setReplayEventsScrubber). A row seeks only when
+  // that match is the ribbon's and it has frames to seek.
+  scrubMatchId: null,
+  scrubFrames:  0,
 };
 
 const FLAG_LABEL = "you flagged";
 const NOTE_PLAIN  = "No timeline events for this match.";
 const NOTE_FAILED = "No timeline events - the match did not load.";
 const NOTE_LOADING = "Loading timeline events...";
+// S144-U-188: shown over rows that cannot seek (their buttons disabled).
+const HINT_PENDING  = "These rows jump the scrubber once the match loads.";
+const HINT_NOFRAMES = "No timeline frames are stored for this match, so these rows cannot jump the scrubber.";
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the events fetch
@@ -262,12 +270,53 @@ function _renderEvents() {
   if (!events.length && !flags.length) {
     list.innerHTML = "";
     empty.hidden = false;
-    return;
+  } else {
+    empty.hidden = true;
+    // Rebuilt only on a fetch resolve (never on a timer), matching the
+    // pre-RM-638 render; the delegated seek listeners survive the rebuild.
+    list.innerHTML = _rowsHtml(events, flags);
   }
-  empty.hidden = true;
-  // Rebuilt only on a fetch resolve (never on a timer), matching the
-  // pre-RM-638 render; the delegated seek listeners survive the rebuild.
-  list.innerHTML = _rowsHtml(events, flags);
+  // S144-U-188: on both branches, so an emptied ribbon drops the hint too.
+  _applySeekable();
+}
+
+// S144-U-188: why the listed rows cannot seek, or null when they can. The
+// ribbon's rows can land before their match does (two routes), and a match
+// can hold no timeline frames; either way a row click did nothing and
+// nothing said so.
+function _seekBlockedHint() {
+  if (_RE.scrubMatchId !== _RE.matchId) return HINT_PENDING;
+  if (!(_RE.scrubFrames > 0)) return HINT_NOFRAMES;
+  return null;
+}
+
+// Disables the listed rows (out of the tab order, no click, no hover)
+// and shows the hint while they cannot seek; re-enables them in place,
+// with no rebuild, once they can. Guard:
+// tests/snapshot_panels/test_replay_ribbon_seek_ready.py.
+function _applySeekable() {
+  const list = document.getElementById("replay-events-list");
+  const hint = document.getElementById("replay-events-hint");
+  if (!list) return;
+  const rows = list.querySelectorAll(".replay-events-row");
+  const why = rows.length ? _seekBlockedHint() : null;
+  rows.forEach((b) => { b.disabled = !!why; });
+  if (hint) {
+    hint.textContent = why || "";
+    hint.hidden = !why;
+  }
+}
+
+/**
+ * S144-U-188: dev.js reports the match its scrubber holds (null when none)
+ * and that match's frame count, on every load and every failed load. The
+ * ribbon's rows are enabled only when they are that match's and it has
+ * frames.
+ */
+export function setReplayEventsScrubber(matchId, frames) {
+  _RE.scrubMatchId = matchId || null;
+  _RE.scrubFrames = Math.max(0, Number(frames) || 0);
+  _applySeekable();
 }
 
 // One timeline-event row (the pre-RM-638 map body; li > button since RM-1066).

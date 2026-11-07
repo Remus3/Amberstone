@@ -161,10 +161,13 @@ def _load_a(page, by_id):
     return state
 
 
-def _click_ribbon_row(page, clock_s):
+def _click_ribbon_row(page, clock_s, force=False):
+    # force: since S144-U-188 a row that cannot seek is a disabled button,
+    # which Playwright's actionability wait would never click; a forced
+    # click still lands the real pointer events on it.
     page.locator(
         f'#replay-events-list .replay-events-row[data-clock="{clock_s}"]'
-    ).click()
+    ).click(force=force)
     page.evaluate(_SETTLE)
 
 
@@ -221,7 +224,7 @@ def test_a_row_of_a_pending_pick_never_seeks_the_previous_match(
         page.wait_for_function(_COUNT, arg=len(by_id[_B]["events"]),
                                timeout=10_000)
         page.evaluate(_SETTLE)
-        _click_ribbon_row(page, _B_LAST_CLOCK)
+        _click_ribbon_row(page, _B_LAST_CLOCK, force=True)
         before_load = page.evaluate(_READ)
         held["match:" + _B]()
         page.wait_for_function(_LOADED, arg=_B, timeout=10_000)

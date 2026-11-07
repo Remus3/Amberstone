@@ -7,6 +7,7 @@ import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } fro
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
 import {
   loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler, clearReplayEventsFailed,
+  setReplayEventsScrubber,
 } from './replay_events.js';
 // RM-612 (X-12): pure minimap logic (death windows, last-known + age halo).
 import { buildModel, stateAt, worldToCanvas, mapArtUrls, monogram, MAP_WORLD } from './replay_minimap.js';
@@ -472,6 +473,7 @@ function _replayLoadMatch(matchId, rowEl, opts) {
     // S144-U-186: no ribbon rows for a match that did not load (the events
     // route can still answer for it; its rows had nothing to seek).
     try { clearReplayEventsFailed(); } catch (_) {}
+    try { setReplayEventsScrubber(null, 0); } catch (_) {}
     if (reveal && (!rowEl || rowEl.classList.contains("active"))) _replayRevealMain();
   };
   matchPromise
@@ -480,6 +482,9 @@ function _replayLoadMatch(matchId, rowEl, opts) {
       if (!d) { failed(); return; }
       _REPLAY.match = d;
       _REPLAY.snapshotIdx = 0;
+      // S144-U-188: the ribbon enables its rows only for the match the
+      // scrubber holds, and only when it has frames to seek.
+      try { setReplayEventsScrubber(d.match_id, (d.snapshots || []).length); } catch (_) {}
       _replayMapAttach(d);
       const slider = document.getElementById("replay-slider");
       if (slider) {

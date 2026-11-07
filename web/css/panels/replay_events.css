@@ -126,10 +126,22 @@
 }
 .replay-events-row[data-team="100"] { border-left-color: var(--good); }
 .replay-events-row[data-team="200"] { border-left-color: var(--bad); }
-.replay-events-row:hover {
+.replay-events-row:not(:disabled):hover {
   background: var(--surface-alt);
   border-color: var(--accent);
 }
+/* S144-U-188: a row that cannot seek yet (its match has not loaded) or at
+ * all (the match has no timeline frames) is a disabled button: no pointer
+ * and no hover; its text keeps its colour (the author `color: inherit`
+ * above beats the UA disabled grey), and the hint above the list says why.
+ * Guard: tests/snapshot_panels/test_replay_ribbon_seek_ready.py. */
+.replay-events-row:disabled { cursor: default; }
+.replay-events-hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.replay-events-hint[hidden] { display: none; }
 /* RM-1017: --focus-ring is a box-shadow value, so it was an invalid
  * outline that painted nothing; drawn inset, inside the row, as the old
  * outline-offset -2px asked. */
