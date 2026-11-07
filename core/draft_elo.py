@@ -82,7 +82,7 @@ def _real(value: object) -> float | None:
             return None
     except Exception:  # noqa: BLE001 - a hostile __float__ is no number
         return None
-    if out != out:  # NaN
+    if math.isnan(out):
         return None
     return out
 
