@@ -25,7 +25,9 @@ ui_mock replay fixture; A = MOCK_NORMAL_DRAFT_WIN, 15 events, frames at
     the note filling that held box (centred, not at its top);
   - B's events land, B's match still pending: B's 3 rows are listed, the
     plain note is hidden, aria-busy is gone; a click on B's 7:52 row leaves
-    A's scrubber, clock and grid where they were;
+    the scrubber, clock and grid where they were (since S144-U-192 that is
+    the pending state, no longer A's frame: A's scrubber is disabled at 0
+    and the grid says the pick is loading, test_replay_pending_pick_main_pane);
   - B's match lands: the same row now seeks B (frame index 2, 10 min);
   - control: an items filter toggle on A (same match, re-fetch pending)
     keeps A's rows and never shows the loading note.
@@ -224,6 +226,7 @@ def test_a_row_of_a_pending_pick_never_seeks_the_previous_match(
         page.wait_for_function(_COUNT, arg=len(by_id[_B]["events"]),
                                timeout=10_000)
         page.evaluate(_SETTLE)
+        pending = page.evaluate(_READ)
         _click_ribbon_row(page, _B_LAST_CLOCK, force=True)
         before_load = page.evaluate(_READ)
         held["match:" + _B]()
@@ -236,13 +239,17 @@ def test_a_row_of_a_pending_pick_never_seeks_the_previous_match(
     assert not errors, f"page errors: {errors[:3]}"
     assert before_load["meta"] == "loading " + _B + "...", before_load
     assert str(_B_LAST_CLOCK) in before_load["clocks"], before_load
-    assert before_load["slider"] == a["slider"], (
-        f"B's row moved A's scrubber: {a['slider']} -> "
+    assert pending["clock"] != a["clock"], (
+        f"A's clock is still shown while B loads: {pending}")
+    assert before_load["slider"] == pending["slider"], (
+        f"B's row moved the pending scrubber: {pending['slider']} -> "
         f"{before_load['slider']}")
-    assert before_load["clock"] == a["clock"], (
-        f"B's row moved A's clock: {a['clock']!r} -> "
+    assert before_load["clock"] == pending["clock"], (
+        f"B's row moved the pending clock: {pending['clock']!r} -> "
         f"{before_load['clock']!r}")
-    assert before_load["grid"] == a["grid"], "B's row repainted A's grid"
+    assert before_load["grid"] == pending["grid"], (
+        "B's row repainted the pending grid")
+    assert before_load["grid"] != a["grid"], "B's row repainted A's grid"
     assert after_load["slider"] == "2", (
         f"B's row does not seek B once B is loaded: {after_load}")
 

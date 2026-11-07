@@ -446,6 +446,9 @@ function _replayLoadMatch(matchId, rowEl, opts) {
   // parallel with the per-frame snapshot fetch below. Both target
   // the same matchId so the ribbon + scrubber are coherent.
   try { loadReplayEvents(matchId); } catch (_) {}
+  // S144-U-192: after the ribbon has measured the height it holds while
+  // loading (the pending state tells it no match is in the scrubber).
+  _replayShowPending();
   // RM-641: local recording lane (hidden unless an RM-637 sidecar names a
   // servable video). The team arrives with the match payload below.
   try { loadReviewPlayer(matchId, null); } catch (_) {}
@@ -463,6 +466,7 @@ function _replayLoadMatch(matchId, rowEl, opts) {
   // retries. Guard: tests/snapshot_panels/test_replay_failed_load.py.
   const failed = () => {
     if (seq !== _REPLAY.loadSeq) return;
+    _replaySetGridBusy(false);
     _REPLAY.match = null;
     _REPLAY.snapshotIdx = 0;
     const slider = document.getElementById("replay-slider");
@@ -480,6 +484,7 @@ function _replayLoadMatch(matchId, rowEl, opts) {
     .then(d => {
       if (seq !== _REPLAY.loadSeq) return;
       if (!d) { failed(); return; }
+      _replaySetGridBusy(false);
       _REPLAY.match = d;
       _REPLAY.snapshotIdx = 0;
       // S144-U-188: the ribbon enables its rows only for the match the
@@ -523,6 +528,43 @@ function _replayLoadMatch(matchId, rowEl, opts) {
       console.warn("replay match:", e);
       failed();
     });
+}
+// S144-U-192: the state of the scrubber, clock, minimap and grid while a
+// pick is loading. A pick only rewrote the meta line, so until its match
+// reply landed the previous match stayed under "loading <id>...": its
+// scrubber still live (a drag moved its clock and grid), its clock, its
+// drawn map and its grid rows. Now the scrubber is disabled at 0, the clock
+// reads "-", the grid holds one "loading this match..." row and is
+// aria-busy, and the ribbon is told no match is in the scrubber. A shown
+// map figure stays shown at its own height with a blank canvas, so the map
+// row and the grid under it do not collapse while the pick loads; the
+// reply then shows or hides it as before.
+// Guard: tests/snapshot_panels/test_replay_pending_pick_main_pane.py.
+function _replayShowPending() {
+  _REPLAY.match = null;
+  _REPLAY.snapshotIdx = 0;
+  const slider = document.getElementById("replay-slider");
+  if (slider) { slider.max = "0"; slider.value = "0"; slider.disabled = true; }
+  const clock = document.getElementById("replay-clock");
+  if (clock) clock.textContent = "-";
+  _REPLAY_MAP.model = null;
+  const canvas = document.getElementById("replay-map-canvas");
+  const ctx = canvas && canvas.getContext ? canvas.getContext("2d") : null;
+  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const mapClock = document.getElementById("replay-map-clock");
+  if (mapClock) mapClock.textContent = "-";
+  const flags = document.getElementById("replay-map-flags");
+  if (flags) flags.textContent = "";
+  _replayGridNote("loading this match...");
+  _replaySetGridBusy(true);
+  try { setReplayEventsScrubber(null, 0); } catch (_) {}
+}
+function _replaySetGridBusy(on) {
+  const body = document.getElementById("replay-grid-body");
+  const table = body && body.closest("table");
+  if (!table) return;
+  if (on) table.setAttribute("aria-busy", "true");
+  else table.removeAttribute("aria-busy");
 }
 // S144-U-184: the frame-less state of the clock, minimap and grid, with one
 // note row in the grid (the same home-empty row the page opens with).
