@@ -28,4 +28,3 @@ def lfs_required() -> bool:
 
 def is_pointer_bytes(head: bytes) -> bool:
     return head.lstrip().startswith(LFS_POINTER_MAGIC)
-

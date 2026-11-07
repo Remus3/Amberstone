@@ -100,4 +100,3 @@ def test_each_probe_is_live(code, expected):
     tree, not a dead probe."""
     found = _ruff(["--select", _RULES, "--stdin-filename", "probe_mod.py", "-"], stdin=code)
     assert expected in {d["code"] for d in found}, found
-

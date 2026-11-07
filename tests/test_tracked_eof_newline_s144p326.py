@@ -13,7 +13,9 @@ and ``.xml`` / ``.svg`` are generated or exported artifacts (4 files lack one), 
 Measured 2026-11-07 over 5235 tracked files in scope:
 
 - 0 non-empty files with no final newline (held at zero here; resolve the file, never widen the test);
-- 29 files that end in a blank line, named in ``_BLANK_EOF_BASELINE``. The set only shrinks: a file that stops offending
+- 29 files that end in a blank line, named in ``_BLANK_EOF_BASELINE``; 11 of them (the tests, ``ops/rc_self_monitor.py``,
+  ``core/prom_metrics.py``, ``dashboard/_state_builder.py`` and the three ``coach_integration`` modules) were stripped
+  the same cycle, leaving 18. The set only shrinks: a file that stops offending
   fails ``test_blank_eof_baseline_is_exact`` until it is dropped from the set, and a new offender fails the guard. The
   frozen ``ops/rc_supervisor.py`` and ``web_dashboard.py`` entries and the dated ``docs/_archive`` record stay named
   rather than fixed.
@@ -35,24 +37,13 @@ _SCOPE_SUFFIXES = (
 
 _BLANK_EOF_BASELINE = frozenset({
     "agents/daemon_slayer/ability_dps.py",
-    "coach_integration/_coach.py",
-    "coach_integration/_profiles.py",
-    "coach_integration/_sr_prompt.py",
-    "core/prom_metrics.py",
-    "dashboard/_state_builder.py",
     "docs/_archive/2026-07-18-agent6-auditor-reports/20260714-140459-weekly-rc-health.md",
     "docs/_overlap/sample_60_blinded.md",
     "docs/_rescore/ROWS_PINNED.md",
     "docs/_rsc_score/rc198_blinded.md",
     "ops/audit/HZ_MISMATCH_DIAGNOSE.md",
     "ops/audit/ds_cross_eval/REPORT.md",
-    "ops/rc_self_monitor.py",
     "ops/rc_supervisor.py",
-    "tests/_lfs_policy.py",
-    "tests/test_log_setup_prune_cap_rm162.py",
-    "tests/test_redundant_collection_call_ratchet_s144p115.py",
-    "tests/test_small_idiom_ratchet_s144p122.py",
-    "tests/test_store_states_json_p25.py",
     "web/css/panels/base.css",
     "web/css/panels/grid.css",
     "web/css/panels/header.css",

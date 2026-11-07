@@ -144,4 +144,3 @@ def test_live_flip_short_keeps_the_first_field(seam, want):
     from tools import live_flip_watcher
 
     assert live_flip_watcher._short(seam) == want
-

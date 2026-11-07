@@ -1094,5 +1094,3 @@ def build_state() -> dict:
         "minimap_dots": minimap_dots,
         "zoi": zoi,
     }
-
-

@@ -741,4 +741,3 @@ class CoachIntegration:
             "wave": "", "objective": "", "reset_item": "",
             "risk": "", "map": "", "log": [], "pregame": "",
         }
-

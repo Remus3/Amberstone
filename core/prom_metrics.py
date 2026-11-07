@@ -226,4 +226,3 @@ def render_all() -> str:
         lines.extend(m.render())
     lines.append("")
     return "\n".join(lines)
-
