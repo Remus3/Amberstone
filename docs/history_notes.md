@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-01b - session 149: inbox only; MAIN ORDER 1547 reboot hold read back, L9 NOT run, C1 verified 9 of 9; PUSHED
+
+- **Operator (chat):** "just the inbox- not roadmap work at this time."; typed /done. No lane landed, no roadmap item started, no channel note sent.
+- **ORDER 1547 (LEDGER 2013, `55f9cb8c7`):** S144_LANES_STOP in place (usage row `drive rc lanes hold`, 16:17:15), rotator exit 0 at 17:13:00, 33 cycles. Row 1547 stays open: items 3 (L9) + 4 (the clear) and the v28 answer are owed.
+- **Gated suite (LEDGER 2012, `3ee5d9c8b`, MAIN's task):** ran once on 54cc8b78e, exit 1, 2 failed, 57033 passed; both `Page.goto` timeouts, named load flakes, cause inferred. A run with 0 reds is still owed.
+- **Verifier:** an independent read-only pass confirmed the inbox agent's 9 claims and found the gap the hand-off lacked: MAIN's quiesce ruling, Decision 6, puts L9 BEFORE the reboot, by MAIN-launched kit chains `L9 chain A` / `B`. Recorded, not run.
+- **/done:** pushed `9bfec373f..55f9cb8c7`; ci push run 41365235200 success (a slice), docs-guards 41365235161 success; one full dispatch 41365246123, in progress at the write.
+- **Do NOT redo:** the stop-file write, the C1 read-backs. Do NOT clear the stop or relaunch the rotator before the reboot.
+- **Next:** the operator's scope line first; rows 1547 + 2215; read the dispatch; L9 only when in scope.
+
+---
+
 # 2026-11-01 - session 148: MAIN headless DRIVE-RC, ORDER 1233 worked in 3 slices; ci green on the slice push a52bc77ed; docs-guards red on kit v26, fixed forward; PUSHED
 
 - **Driver:** MAIN (no operator in chat), ORDER 2026-11-01-1233, slices 1-3; state `ops/loop/control/progress/drive-rc.json`; LEDGER 2010-2011.

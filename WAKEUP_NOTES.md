@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-11-07 - session 152: RM-1974 reds fixed, the gated dual suite GREEN on e37f0d1b4, that sha PUSHED on the operator's word; ci RED by its 110-min step timeout (RM-2036 / RM-2037)
+
+- **RM-1974 SHIPPED:** a `36ba25a07` (MEASURED_RUFF (0, 17)), docstring `d6144375b`, b `39c6ab4f0`, c `b36e3c095` (Playwright loop marker, the xdist hang), d `346ff0d79`, e `cc53df7ae`; RM-1270 residue `765ab2d77`.
+- **Gated suite:** round 1 on `d6144375b` RED, 9 failed; folds F1 `dd9a95f83` + `6e697c7ab`, F2 `c222b5dbf` + `d8125d524` (CLI re-pin 2.1.319), F3 `136b9a5b7`, F4 `d44ee672a`; round 2 on `e37f0d1b4` GREEN: 69292 passed, 207 skipped, 3 xfailed, 0 failed, 759.48 s.
+- **Pushed (operator "PUSH", that sha only):** `52266153f..e37f0d1b4` (212 commits); bot_merge_check clean; contributors operator only; codeql + docs-guards green; ci push 42383196203 RED: the full suite step killed at 110 min, about 72 `F`, no names.
+- **Filed:** NA4 `4c516ebae` (RM-1975..RM-2035, RM-734 to ROADMAP_HISTORY); NA6 `ab963e3de` local (RM-2036 step ceiling, RM-2037 the 72 CI-only reds). Nightly 42382896730 on `52266153f` read 6 failed = the 6 RM-1657 nodeids.
+- **/done:** NOT pushed (halt boundary: the operator's yes covered `e37f0d1b4` only); `ab963e3de` + the /done docs commit stay local.
+- **Do NOT redo:** RM-1974 a-e, RM-1270 residue, F1-F4, the CLI re-pin, the NA4 filings, the `e37f0d1b4` push.
+- **Next:** ci red first: RM-2036 (raise or shard the step, end pytest before the ceiling), RM-2037 (name every nodeid), the 6 RM-1657 nodeids; a fix push needs a new gated suite and the operator's yes. Then PR #29.
+
+---
+
 # 2026-11-06b - session 151: all open lane work merged onto local main (178 commits, id-mapped, verifier CONFIRMED); RM-1974 reds left; the gated suite not launched (24800 MB line not met); NOT PUSHED at /done; hand-off is open items only
 
 - **Operator (chat):** "merge all open tree work and process /done for clear; so that next session is just open items".
@@ -29,15 +41,3 @@
 - **/done:** no push (no green gated suite on any local sha); reap removed agent-a91fe9b86f8a72ca1 (unlocked: clean, every commit on main) + s150-land3; cron a5bf84b1 deleted, no ticks remain.
 - **Do NOT redo:** the 2057 ruling, the free-RAM kills, the reap.
 - **Next:** C10 - the batched operator ask (free vmmem, keep Chrome closed, all in a rotator budget pause), then the gated suite on local HEAD, a verifier, push the exact sha, read ci; RM-1657 done only on green ci.
-
----
-
-# 2026-11-01b - session 149: inbox only; MAIN ORDER 1547 reboot hold read back, L9 NOT run, C1 verified 9 of 9; PUSHED
-
-- **Operator (chat):** "just the inbox- not roadmap work at this time."; typed /done. No lane landed, no roadmap item started, no channel note sent.
-- **ORDER 1547 (LEDGER 2013, `55f9cb8c7`):** S144_LANES_STOP in place (usage row `drive rc lanes hold`, 16:17:15), rotator exit 0 at 17:13:00, 33 cycles. Row 1547 stays open: items 3 (L9) + 4 (the clear) and the v28 answer are owed.
-- **Gated suite (LEDGER 2012, `3ee5d9c8b`, MAIN's task):** ran once on 54cc8b78e, exit 1, 2 failed, 57033 passed; both `Page.goto` timeouts, named load flakes, cause inferred. A run with 0 reds is still owed.
-- **Verifier:** an independent read-only pass confirmed the inbox agent's 9 claims and found the gap the hand-off lacked: MAIN's quiesce ruling, Decision 6, puts L9 BEFORE the reboot, by MAIN-launched kit chains `L9 chain A` / `B`. Recorded, not run.
-- **/done:** pushed `9bfec373f..55f9cb8c7`; ci push run 41365235200 success (a slice), docs-guards 41365235161 success; one full dispatch 41365246123, in progress at the write.
-- **Do NOT redo:** the stop-file write, the C1 read-backs. Do NOT clear the stop or relaunch the rotator before the reboot.
-- **Next:** the operator's scope line first; rows 1547 + 2215; read the dispatch; L9 only when in scope.
