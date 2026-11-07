@@ -31,7 +31,7 @@ from pathlib import Path
 
 import pytest
 
-import agents.agent4_coach_mentor.ui_applier as ui_applier
+from agents.agent4_coach_mentor import ui_applier
 from agents.agent4_coach_mentor.ui_applier import (
     UIApplyError,
     _is_path_allowed,

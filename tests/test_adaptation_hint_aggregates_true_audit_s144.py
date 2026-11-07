@@ -62,7 +62,7 @@ HOT_AJ = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def db(tmp_path: Path, monkeypatch) -> Path:
     import agents.agent2_backend.db_schema as dbs
     from coaches import adaptation_hint

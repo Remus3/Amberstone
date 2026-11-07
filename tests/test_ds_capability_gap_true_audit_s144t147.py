@@ -163,7 +163,6 @@ def test_bare_string_enemies_is_not_iterated_by_character(monkeypatch):
 
     def _spy(me, enemies, mode):
         seen.append(list(enemies))
-        return None
 
     monkeypatch.setattr(capgap, "_DETECTORS", (_spy,))
     build_capability_gap("Lux", "Malphite")
@@ -190,7 +189,6 @@ def test_mode_is_stripped_and_passed_to_detectors(monkeypatch):
 
     def _spy(me, enemies, mode):
         seen.append(mode)
-        return None
 
     monkeypatch.setattr(capgap, "_DETECTORS", (_spy,))
     res = build_capability_gap("Lux", ["Malphite"], "  ARAM ")

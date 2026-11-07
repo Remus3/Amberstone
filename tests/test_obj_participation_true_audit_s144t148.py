@@ -46,7 +46,7 @@ _COLS = (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def conn():
     c = sqlite3.connect(":memory:")
     c.execute(

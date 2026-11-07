@@ -172,12 +172,13 @@ def init_mode(mode: str) -> Path:
     """
     p = db_path(mode)
     p.parent.mkdir(parents=True, exist_ok=True)
-    with contextlib.closing(sqlite3.connect(p)) as conn:
-        with conn:
-            conn.execute("PRAGMA foreign_keys = ON")
-            _enable_wal(conn, p)
-            for stmt in SCHEMA_STATEMENTS:
-                conn.execute(stmt)
+    # closing() is entered first and exited last, so the transaction commits
+    # or rolls back before the connection closes (the nested form, one with).
+    with contextlib.closing(sqlite3.connect(p)) as conn, conn:
+        conn.execute("PRAGMA foreign_keys = ON")
+        _enable_wal(conn, p)
+        for stmt in SCHEMA_STATEMENTS:
+            conn.execute(stmt)
     logger.info("mode-db ready: %s (%s)", mode, p)
     return p
 

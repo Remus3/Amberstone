@@ -13,7 +13,8 @@ SIM110, RM-1527 PERF402) keep ``tests/``, ``*/tests/`` and ``agents/agent3_testi
   it is ``out.update({...})`` now (same keys, same values, same order).
 - PERF402: ``tests/test_collection_idiom_ratchet_s144p141.py`` keeps ONE append loop on purpose: it is the
   "before" half of an equivalence assertion (``looped`` vs ``ext.extend``), so rewriting it would erase the thing
-  the assertion compares. That row is the baseline and it only shrinks.
+  the assertion compares. That row was the baseline until RM-1746 gave the line a reasoned ``noqa``; the
+  baseline is empty now and only shrinks.
 
 Out of scope for the test-code rules: ``agents/daemon_slayer/`` (the ds lane's package; one PERF403 in
 ``agents/daemon_slayer/tests/test_stranded_hsp_seam_r197.py`` is a filing). The run uses NO config
@@ -42,9 +43,7 @@ _TEST_RULES = ("SIM110", "PERF402", "PERF403")
 _KIT = "ops/fleet_kit/"
 _DS = "agents/daemon_slayer/"
 # file -> finding count that stays (reason in the module docstring). Only shrinks.
-_BASELINE = {
-    "tests/test_collection_idiom_ratchet_s144p141.py": 1,
-}
+_BASELINE: dict[str, int] = {}
 _FIXED = (
     "tests/test_aram_vision_cadence_fastpoll.py",
     "tests/test_no_process_wide_stdlib_fakes_rm801.py",

@@ -175,7 +175,7 @@ def test_every_element_inside_the_pane(tab_at):
 def test_mode_buttons_keep_the_hit_floor(tab_at):
     d, w, t = tab_at["d"], tab_at["w"], tab_at["tab"]
     if _MODEBTN[t] is None:
-        pytest.skip("the Snowball tab has no mode row")
+        return  # not this case: the Snowball tab has no mode row
     assert len(d["btnH"]) >= 3, f"{w} {t}: {len(d['btnH'])} mode buttons"
     assert min(d["btnH"]) >= 42 - 0.5, (
         f"{w} {t}: a mode button is {min(d['btnH']):.1f} px tall")
@@ -184,7 +184,7 @@ def test_mode_buttons_keep_the_hit_floor(tab_at):
 def test_mode_row_is_one_line_above_the_narrow_range(tab_at):
     d, w, t = tab_at["d"], tab_at["w"], tab_at["tab"]
     if _MODEBTN[t] is None or w <= 400:
-        pytest.skip("mode row may wrap at 400 and under")
+        return  # not this case: mode row may wrap at 400 and under
     assert len(set(d["btnTops"])) == 1, (
         f"{w} {t}: the mode row wrapped (tops {d['btnTops']})")
 
@@ -192,7 +192,7 @@ def test_mode_row_is_one_line_above_the_narrow_range(tab_at):
 def test_bar_track_keeps_a_readable_width(tab_at):
     d, w, t = tab_at["d"], tab_at["w"], tab_at["tab"]
     if t not in _ROW:
-        pytest.skip("no bar rows on this tab")
+        return  # not this case: no bar rows on this tab
     assert len(d["rows"]) >= 4, f"{w} {t}: {len(d['rows'])} bar rows"
     for i, r in enumerate(d["rows"]):
         tw = r["trk"][1] - r["trk"][0]
@@ -202,7 +202,7 @@ def test_bar_track_keeps_a_readable_width(tab_at):
 def test_bar_row_layout(tab_at):
     d, w, t = tab_at["d"], tab_at["w"], tab_at["tab"]
     if t not in _ROW:
-        pytest.skip("no bar rows on this tab")
+        return  # not this case: no bar rows on this tab
     for i, r in enumerate(d["rows"]):
         lab, trk, val, row = r["lab"], r["trk"], r["val"], r["row"]
         if w <= _STACK_MAX:
@@ -227,7 +227,7 @@ def test_bar_row_layout(tab_at):
 def test_champion_filter_fits(tab_at):
     d, w, t = tab_at["d"], tab_at["w"], tab_at["tab"]
     if t != "duration":
-        pytest.skip("the champion filter is on Game Length only")
+        return  # not this case: the champion filter is on Game Length only
     assert d["inp"] is not None and d["clr"] is not None
     assert d["inp"] >= 120, f"{w}: the filter input is {d['inp']:.0f} px"
     assert d["clr"][0] >= d["box"][0] - 1 and \

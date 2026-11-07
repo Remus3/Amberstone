@@ -168,7 +168,7 @@ def test_wrapped_review_ends_at_the_nav_right_edge(tabs_at):
 def test_unchanged_at_640_and_wider(tabs_at):
     w, mode, d, _e = tabs_at
     if w < _ONE_LINE_MIN:
-        pytest.skip("narrow: the strip may wrap")
+        return  # not this case: narrow: the strip may wrap
     tabs = d["tabs"]
     left = d["box"][0]
     assert len({round(t["t"]) for t in tabs}) == 1, f"{mode} {w}: wrapped"
@@ -182,6 +182,6 @@ def test_unchanged_at_640_and_wider(tabs_at):
 def test_narrow_widths_wrap_rather_than_overflow(tabs_at):
     w, mode, d, _e = tabs_at
     if w > 480:
-        pytest.skip("only 480 and under must wrap")
+        return  # not this case: only 480 and under must wrap
     lines = len({round(t["t"]) for t in d["tabs"]})
     assert lines >= 2, f"{mode} {w}: the four tabs stayed on one line"

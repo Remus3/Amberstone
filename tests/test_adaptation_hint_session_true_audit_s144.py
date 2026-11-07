@@ -163,7 +163,7 @@ def test_t318_text_kda_cell_does_not_raise(env):
     assert data["avg_kda"]["ratio"] == 8.33
     rows = _games()
     assert len(rows) == 2
-    jinx = [r for r in rows if r["champion"] == "Jinx"][0]
+    jinx = next(r for r in rows if r["champion"] == "Jinx")
     assert jinx["kda"] is None and jinx["kda_ratio"] is None
 
 
@@ -216,7 +216,7 @@ def test_t320_invalid_utf8_cell_keeps_the_mode(env):
     assert data["games"] == 2 and data["per_mode"]["aram"]["games"] == 2
     rows = _games()
     assert len(rows) == 2
-    bad = [r for r in rows if r["champion"] != "Ahri"][0]
+    bad = next(r for r in rows if r["champion"] != "Ahri")
     assert isinstance(bad["champion"], str) and bad["champion"].endswith("A")
     _strict_json(rows)
 
@@ -298,7 +298,7 @@ def test_t323_out_of_range_counts_leave_the_sample(env, triple):
     _insert(env / "aram.db", "Lux", 1, 3, 1, 3, _ts(2))
     data = _summary()
     assert data["avg_kda"]["sample"] == 1 and data["avg_kda"]["ratio"] == 6.0
-    ahri = [r for r in _games() if r["champion"] == "Ahri"][0]
+    ahri = next(r for r in _games() if r["champion"] == "Ahri")
     assert ahri["kda"] is None and ahri["kda_ratio"] is None
 
 

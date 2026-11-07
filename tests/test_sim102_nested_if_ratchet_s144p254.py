@@ -22,9 +22,10 @@ kept every ``and`` operand in the nested form's order, and only the ``elif state
 A fifth slice (RM-1757) merged the last 2 in non-excluded modules (``coach_integration/_sr_prompt.py``
 WaveTracker.update, ``game_reader/snapshot_normalizer.py`` _has_smite), each with no ``else`` on either ``if``.
 
-The other 4 are the baseline below: one frozen file (``ops/rc_supervisor.py``, 2), one file the uiux lane's branch
-changes (``agents/agent5_ui/champion_fallback.py``) and one PKG-excluded tool (``tools/package_portable.py``). The count per file can only
-fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
+The other 4 were the baseline below: one frozen file (``ops/rc_supervisor.py``, 2), one file another lane's branch
+changed (``agents/agent5_ui/champion_fallback.py``) and one PKG-excluded tool (``tools/package_portable.py``). The count per file can only
+fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails. The true-audit lane's
+champion-fallback hardening (s151 landing) left that file with no SIM102 site, so its row went.
 
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -55,7 +56,6 @@ _NOT_THIS_SCOPE = {
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE = {
-    "agents/agent5_ui/champion_fallback.py": 1,
     "ops/rc_supervisor.py": 2,
     "tools/package_portable.py": 1,
 }

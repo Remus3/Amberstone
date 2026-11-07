@@ -58,7 +58,7 @@ def _make_db(path: Path, value: int = 7) -> Path:
     return path
 
 
-@pytest.fixture()
+@pytest.fixture
 def fresh_cache():
     """Run each test against an empty per-thread cache; close what it opened."""
     saved = getattr(_context.DB_CONN_LOCAL, "conns", None)
@@ -253,7 +253,7 @@ def test_t521_cache_still_supports_builder_eviction(tmp_path, fresh_cache):
 
 # -- RM-1962: a UTF-8 BOM read as unreadable ------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def root(tmp_path, monkeypatch):
     monkeypatch.setattr(_context, "APP_DIR", tmp_path)
     return tmp_path

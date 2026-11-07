@@ -506,9 +506,8 @@ class Cleaner:
         if n in _JOKE_NAMES or "spatula" in n:
             return True
         # off-mode: not on this mode's map AND it resolves to a known item
-        if mode in ("sr", "aram") and self.item_idx.get(n) and not _on_map(self.item_idx, name, mode):
-            return True
-        return False
+        return bool(mode in ("sr", "aram") and self.item_idx.get(n)
+                    and not _on_map(self.item_idx, name, mode))
 
     def _families_in(self, items: list[str]) -> set[str]:
         out: set[str] = set()

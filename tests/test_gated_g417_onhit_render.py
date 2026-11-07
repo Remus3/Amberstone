@@ -98,7 +98,7 @@ def test_daemon_slayer_row_is_fed_by_ds_preview_not_build_plan():
     assert "live: dedupedPicks," in AM_JS
     assert 'fetch("/api/build-order", {' in AM_JS
     # /api/build-plan only feeds the badges + counter chips.
-    assert "const planState = isLive ? (planStates[String(id)] || \"\") : \"\";" in AM_JS
+    assert 'const planState = isLive ? (planStates[String(id)] || "") : "";' in AM_JS
 
 
 def test_row_classes_cap_and_mute_drop_are_as_stated():

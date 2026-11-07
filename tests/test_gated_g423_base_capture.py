@@ -243,4 +243,4 @@ def test_run_rejects_bad_sample_count(tmp_path):
                               root=str(tmp_path))
     assert g423.main(["watch", "--samples", "0", "--root", str(tmp_path)]) == 2
     with pytest.raises(ValueError):
-        g423.run(args, sampler=lambda: {})
+        g423.run(args, sampler=dict)

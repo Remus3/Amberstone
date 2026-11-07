@@ -108,7 +108,7 @@ def _win(db: Path, mid: int):
         conn.close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def dbs(tmp_path: Path, monkeypatch) -> dict:
     mode_dir = tmp_path / "db"
     mode_dir.mkdir()

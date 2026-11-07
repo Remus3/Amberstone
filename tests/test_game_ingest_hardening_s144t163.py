@@ -18,7 +18,7 @@ import pytest
 import agents.agent2_backend.game_ingest as gi
 
 
-@pytest.fixture()
+@pytest.fixture
 def aram_db(tmp_path: Path, monkeypatch) -> Path:
     import agents.agent2_backend.db_schema as dbs
 

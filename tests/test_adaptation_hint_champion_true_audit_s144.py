@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture()
+@pytest.fixture
 def db(tmp_path: Path, monkeypatch) -> Path:
     import agents.agent2_backend.db_schema as dbs
     from coaches import adaptation_hint
@@ -382,8 +382,8 @@ def test_bucket_table_missing_a_column_never_raises(tmp_path, monkeypatch):
 def test_null_modifier_and_huge_item_id(db):
     _matchup(db, "Lux", None)
     assert _mod().matchup_delta("Ahri", "aram", "Lux") == 0.0
-    agg = '{"top_items": [{"item_id": 123456789012345678, "delta": 0.2,' \
-          ' "matches": 6}, {"item_id": 3, "delta": 0.2, "matches": 6}]}'
+    agg = ('{"top_items": [{"item_id": 123456789012345678, "delta": 0.2,'
+           ' "matches": 6}, {"item_id": 3, "delta": 0.2, "matches": 6}]}')
     _bucket(db, agg=agg)
     line = _mod().format_hint_line("Ahri", "aram")
     assert "historic items: 3 +20% (n=6)." in line

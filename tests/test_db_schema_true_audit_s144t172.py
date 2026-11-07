@@ -39,13 +39,13 @@ _REAL_CONNECT = sqlite3.connect
 _CORRUPT = b"this is not a sqlite database header" * 8
 
 
-@pytest.fixture()
+@pytest.fixture
 def db_dir(tmp_path: Path, monkeypatch) -> Path:
     monkeypatch.setattr(dbs, "DB_DIR", tmp_path)
     return tmp_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def opened(monkeypatch) -> list[sqlite3.Connection]:
     """Record every connection the module opens through sqlite3.connect."""
     conns: list[sqlite3.Connection] = []

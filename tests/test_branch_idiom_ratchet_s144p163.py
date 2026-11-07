@@ -17,8 +17,9 @@ None of the rules is in ruff.toml's ``select``. Measured 2026-11-05 with
 
 Two lines keep a pre-fix spelling ON PURPOSE as the premise of an older ratchet
 (tests/test_ternary_or_ratchet_s144p143.py, tests/test_removeprefix_merged_branch_ratchet_s144p135.py)
-and carry a reasoned ``noqa``. Two findings sit in files another owner holds (tests/conftest.py, the
-launcher test) and are baselined below. Scope is the test directories only; production modules are left
+and carry a reasoned ``noqa``. Two findings sat in files another owner holds (tests/conftest.py, the
+launcher test) and were baselined below; RM-1746 later merged the tests/conftest.py branch, so only the
+launcher row stays. Scope is the test directories only; production modules are left
 to their owners. The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding.
 """
 from __future__ import annotations
@@ -43,7 +44,6 @@ _RULES = "SIM114,FURB110,FURB188,FURB171,PLC0207,RUF046"
 _TEST_DIRS = ("tests/", "agents/daemon_slayer/tests/", "tools/tests/")
 # file -> finding count that stays because another owner holds the file. Only shrinks.
 _BASELINE: dict[str, int] = {
-    "tests/conftest.py": 1,  # SIM114; rootdir conftest, the main session's
     "tests/test_launcher_key_read_rm810.py": 1,  # FURB188; launcher test, PKG-owned
 }
 _FIXED = (

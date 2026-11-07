@@ -10,6 +10,7 @@ mutable dicts. All data is SYNTHETIC (no real Riot ids or payloads).
 from __future__ import annotations
 
 import json
+import math
 import sqlite3
 
 import pytest
@@ -56,13 +57,13 @@ def _kill(ts, killer, assists, pos):
                          ids=["huge", "neg-huge"])
 def test_to_frac_huge_int_does_not_raise(bad):
     x, y = ot.to_frac(bad, bad)
-    assert x != x and y != y  # nan, nan
+    assert math.isnan(x) and math.isnan(y)
 
 
 @pytest.mark.parametrize("bad", [float("inf"), float("-inf"), True, b"12"])
 def test_to_frac_non_finite_or_non_number_is_nan(bad):
     x, y = ot.to_frac(bad, 100)
-    assert x != x and y != y
+    assert math.isnan(x) and math.isnan(y)
 
 
 # --- RM-1840: a junk 1:00 position is not a real location ------------------
@@ -253,10 +254,10 @@ class _DeletingConn:
         self._victim = victim
 
     def execute(self, sql, params=()):
-        if sql.startswith("SELECT queue_id, map_id, has_timeline"):
-            if params and params[0] == self._victim:
-                self._real.execute("DELETE FROM matches WHERE match_id = ?",
-                                   (self._victim,))
+        if (sql.startswith("SELECT queue_id, map_id, has_timeline")
+                and params and params[0] == self._victim):
+            self._real.execute("DELETE FROM matches WHERE match_id = ?",
+                               (self._victim,))
         return self._real.execute(sql, params)
 
 

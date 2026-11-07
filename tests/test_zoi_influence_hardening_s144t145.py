@@ -125,7 +125,7 @@ def test_negative_px_and_negative_confidence_is_no_presence():
             _dot("red", 0.8, 0.2, px=30, conf=0.5)]
     z = compute_zoi(dots, my_level=6, game_time_s=600)
     _assert_sane(z)
-    blue = [b for b in z["bubbles"] if b["team"] == "blue"][0]
+    blue = next(b for b in z["bubbles"] if b["team"] == "blue")
     assert blue["weight"] == 0.0
     assert blue["r_frac"] == round(_R_MIN_FRAC, 5)
     assert z["map_control"]["ally_control_pct"] == 0

@@ -108,8 +108,8 @@ def test_no_new_default_newline_text_writer():
     counts = _tree_counts()
     new = {rel: n for rel, n in counts.items() if n > _BASELINE.get(rel, 0)}
     assert not new, (
-        "text-mode writers without newline= (CRLF on Windows) - pass newline=\"\\n\" "
-        f"(csv: lineterminator=\"\\n\"), file: count: {new}"
+        'text-mode writers without newline= (CRLF on Windows) - pass newline="\\n" '
+        f'(csv: lineterminator="\\n"), file: count: {new}'
     )
 
 

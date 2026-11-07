@@ -228,7 +228,7 @@ def test_quick_review_columns_inside_the_view(hero_at):
 def test_layout_above_720_is_unchanged(hero_at):
     w, tag, _t, d, _e = hero_at
     if w <= _WRAP_MAX:
-        pytest.skip("narrow layout")
+        return  # not this case: narrow layout
     assert d["identDisplay"] == "grid" and d["identTracks"] == 7, (
         f"{tag}: identity {d['identDisplay']} {d['identTracks']} tracks")
     assert d["gridTracks"] == 4, f"{tag}: stats {d['gridTracks']} tracks"
@@ -243,7 +243,7 @@ def test_layout_above_720_is_unchanged(hero_at):
 def test_identity_wraps_and_quick_review_stacks_at_720(hero_at):
     w, tag, _t, d, _e = hero_at
     if w > _WRAP_MAX:
-        pytest.skip("wide layout")
+        return  # not this case: wide layout
     assert d["identDisplay"] == "flex", f"{tag}: {d['identDisplay']}"
     qr = d["qr"]
     lefts = {round(q["l"]) for q in qr}

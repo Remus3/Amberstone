@@ -7,8 +7,8 @@ kit. Nine production sites are now one conditional expression each (``core/build
 ``tools/upstream_drift_check.py``). The condition, both arms and the arm that is evaluated are unchanged: a
 conditional expression is as lazy as the block it replaces.
 
-One file is the named baseline (one finding): ``tests/test_rank_tier_live_budget.py``, which the queue lane's branch
-changes, so it is left to that lane. Five more sites (``agents/agent4_coach_mentor/analyzer.py``,
+One file was the named baseline (one finding): ``tests/test_rank_tier_live_budget.py``, which the queue lane's branch
+changed, so it was left to that lane; its landed rewrite (s151) has no SIM108 site, so the row went. Five more sites (``agents/agent4_coach_mentor/analyzer.py``,
 ``dashboard/_deterministic_coaching.py``, ``docs/_rsc_score/tally_ab.py``, ``tests/_replace_faults.py``,
 ``tests/test_math_core_golden.py``) were converted in a second step. The count per file can only fall: a file that
 reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
@@ -41,9 +41,7 @@ _NOT_THIS_SCOPE = {
     "ops/fleet_kit/": "vendored byte-for-byte, pinned by ops/fleet_kit/MANIFEST.json",
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
-_BASELINE = {
-    "tests/test_rank_tier_live_budget.py": 1,
-}
+_BASELINE: dict[str, int] = {}
 _FIXED = (
     "agents/agent4_coach_mentor/analyzer.py",
     "dashboard/_deterministic_coaching.py",

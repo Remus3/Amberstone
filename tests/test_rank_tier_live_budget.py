@@ -1416,9 +1416,8 @@ def _module_bound_names(tree):
             out |= _FRESH_CTORS
         if isinstance(n, ast.Name) and not isinstance(n.ctx, ast.Load):
             out.add(n.id)
-        elif isinstance(n, type_params):
-            out.add(n.name)
-        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        elif isinstance(n, (*type_params, ast.FunctionDef, ast.AsyncFunctionDef,
+                            ast.ClassDef)):
             out.add(n.name)
         elif isinstance(n, ast.arg):
             out.add(n.arg)
@@ -1426,9 +1425,7 @@ def _module_bound_names(tree):
             out.add((n.asname or n.name).split(".")[0])
         elif isinstance(n, (ast.Global, ast.Nonlocal)):
             out.update(n.names)
-        elif isinstance(n, ast.ExceptHandler) and n.name:
-            out.add(n.name)
-        elif isinstance(n, (ast.MatchAs, ast.MatchStar)) and n.name:
+        elif isinstance(n, (ast.ExceptHandler, ast.MatchAs, ast.MatchStar)) and n.name:
             out.add(n.name)
         elif isinstance(n, ast.MatchMapping) and n.rest:
             out.add(n.rest)

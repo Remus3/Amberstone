@@ -126,9 +126,8 @@ def is_plausible_cv(field, cv_value, lc_value=None) -> bool:
 
         hi = max(abs(cv), abs(lc))
         lo = min(abs(cv), abs(lc))
-        if hi >= CV_DIVERGENCE_ABS_FLOOR and hi / max(lo, 1.0) >= CV_ORDER_OF_MAGNITUDE_FACTOR:
-            return False
-        return True
+        return not (hi >= CV_DIVERGENCE_ABS_FLOOR
+                    and hi / max(lo, 1.0) >= CV_ORDER_OF_MAGNITUDE_FACTOR)
     except Exception:  # noqa: BLE001 - fail-soft: an unjudgeable read is open
         return True
 
