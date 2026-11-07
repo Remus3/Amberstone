@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import gc
 import json
+import re
 import sqlite3
 import sys
 import threading
@@ -215,12 +216,18 @@ def test_t520_open_cached_connection_is_kept(tmp_path, fresh_cache):
 def test_t521_thread_exit_closes_its_connections(tmp_path, fresh_cache):
     db = _make_db(tmp_path / "x.db")
     held = []
+    ids = []
 
     def request_thread():
         conn = _context.ro_conn(db)
         conn.execute("SELECT x FROM t").fetchone()
         held.append(conn)   # keep the object alive past the thread
+        ids.append(id(conn))
 
+    # Finalize garbage other modules left in this worker first, and count only
+    # this test's own connection below: under xdist an earlier module's leaked
+    # connections can be collected inside the recording window (s151 landing).
+    gc.collect()
     with warnings.catch_warnings(record=True) as rec:
         warnings.simplefilter("always")
         t = threading.Thread(target=request_thread)
@@ -233,8 +240,13 @@ def test_t521_thread_exit_closes_its_connections(tmp_path, fresh_cache):
             held[0].total_changes  # noqa: B018
         held.clear()
         gc.collect()
+    def _addr(msg: str) -> int | None:
+        m = re.search(r"object at (0x[0-9A-Fa-f]+)", msg)
+        return int(m.group(1), 16) if m else None
+
     unclosed = [r for r in rec if issubclass(r.category, ResourceWarning)
-                and "unclosed database" in str(r.message)]
+                and "unclosed database" in str(r.message)
+                and _addr(str(r.message)) in ids]
     assert unclosed == []
 
 
