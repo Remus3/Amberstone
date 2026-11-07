@@ -180,6 +180,10 @@ G4-07 / G4-10 were tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle
 route parses the load-time `apply_all_out_bonus`, and `/hps` alone parses `apply_ability_hsp_amp`
 with no RC caller of `hps_for`; each row holds its own AGE CHECK). G4-06 and G4-11 got an AGE
 CHECK only (still no live residual); no count moved.
+G4-14 got an AGE CHECK on 2026-11-06 (s144 lane gated cycle 90: the full-screen overlay of
+2026-06-21 removed the P4.1 dock and the premise of the P4.3 / P4.5 separation, and the P4.4 panel
+selector is a reload only; the P4.2 + Interact-now eyeballs stay open under a stated predicate); it
+stays OPEN; no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -3522,6 +3526,67 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   arrangement; `#ovset` panel selector + Interact-now; Re-arrange + Show dashboard. **P4.6 IS this
   whole-of-Phase-4 checklist.** Geometry halves are practice-acceptable; combat-driven cues want a real
   game. rc-shell MAIN relaunch (G6-01) first. Item 686 proved the 4.1 ovscale model live-buggy once.
+  **AGE CHECK (lane 9 PREP s144 cycle 90, S144-G-81, source read at `a042900db`, 2026-11-06; NOT a
+  tick, NOT struck; no game up: :8888 `/api/state` gave no body and the LCU phase was None at
+  2026-11-06T21:47-06:00). The live residue is narrower than the row text: two of the five P4
+  criteria lost their premise within a week of shipping, and a third was ruled a reload only.**
+  (1) P4.1 "zoomed dock, right edge, no clip against the work area": GONE. `d97154449` (2026-06-21,
+  the Overlay Doctrine) made the overlay one FULL-SCREEN transparent click-through window over the
+  work area, and `98bc288bf` (item 567, the same day) re-sized it to `primary.bounds` so ovscale =
+  native height / 1080 (`rc-shell/src/main.js` `createOverlayWindow`), with per-widget positions in
+  `web/js/lib/overlay_layout.js`.
+  There is no dock left to clip. The scale-tracking half (a display change re-sizes the window and
+  reloads it at the new ovscale) is G6-04, CLOSED PASS 2026-08-02, which recorded the window at
+  2560x1440 @ 0,0 live. What remains of P4.1 is an eyeball that the widgets read cleanly over a
+  bright scene at that zoom.
+  (2) P4.3 / P4.5 separated windows: the PREMISE IS DEAD and the code still runs.
+  `resolveSeparatedCompanionBounds` (`rc-shell/src/overlay_state.js`) moves an overlapping companion
+  to the side of the overlay with more free room. Against a full-screen overlay both rooms are 0, the
+  tie goes left, and EVERY companion is moved to the work-area top-left (x = area.x, y = area.y,
+  moved true). Measured this cycle with node over the module: overlay 0,0 2560x1440; work areas
+  2560x1400 and 2560x1440; 520x900 companions at 1700,200 / 2000,300 / 0,0; all six results were
+  0,0 moved true. So P4.3 (a) "fully clear of the overlay" holds for no position, and Re-arrange /
+  Show dashboard (P4.5 (a) / (b)) can only park the dashboard top-left under the transparent HUD.
+  The node tests on this function (`rc-shell/test/overlay_state.test.js`, the
+  `resolveSeparatedCompanionBounds` block) still use a 598 px docked overlay (three docked right, one
+  docked left), never a full-screen one, so they pass on a geometry that no longer exists. The
+  AUTOMATIC snap is opt-in: `keepCompanion` defaults FALSE since 2026-06-27
+  (`OVERLAY_SETTINGS_DEFAULTS`), `separateWindows` defaults true, and `applySurface` runs the auto
+  layout only when both windows show. Re-arrange and Show dashboard (`raiseCompanion`) force the
+  same snap whatever those settings say.
+  (3) P4.4 (a) panel-set selector: a reload only. `applyPanelSet` reloads at `?panelset=NAME`, the
+  page stamps `body[data-panelset]`, and no CSS rule keys off it (`bdb583474`, 2026-11-05, RM-1272
+  item 10; pinned by `tests/snapshot_panels/test_overlay_hotkey_hints.py`
+  `test_panel_sets_change_no_widget`). That commit dropped the hotkey's menu row; the #ovset
+  Coach / Build / Threat segment (`web/js/panels/overlay_ds_controls.js` `_settingsHtml`) still
+  offers the same no-op. "Swaps the overlay panel set" cannot pass as written; (b) "the lit segment
+  matches" is a DOM fact, not a live one.
+  (4) Still live and still eyeball-only: P4.2 opacity (`applyOverlayOpacity` -> `setOpacity`;
+  default 1, so the recede is opt-in), click-through zones (`applyClickThrough` via
+  `effectiveIgnoreMouse`; default ON), idle dim (`web/js/lib/overlay_idle.js`, `IDLE_DELAY_MS` 8000),
+  and P4.4 (c) Interact now (`setOverlayActive`, auto-revert `activeRevertSec`, default 20).
+  PRECONDITION: the running rc-shell main process started after the newest `rc-shell/src` commit
+  it is judged on (G6-01; since the 2026-10-31 launcher cutover any app start does this; record the
+  process start time).
+  PREDICATE (stated before any game; operator eyeball over a real League game at 2560x1440
+  borderless, overlay ON): PASS iff all four hold: (i) at #ovset Opacity 50 the HUD widgets visibly
+  dim, and at 100 they return; (ii) PASSIVE with zones ON: a click on open map reaches the game,
+  and the cursor over #ovset or a drag handle takes clicks with no Alt+Shift+A; (iii) Interact now
+  makes the HUD take clicks, and it drops back to PASSIVE (the active glow goes out) about
+  Auto-passive seconds later; (iv) after about 8 s with no coach change and no pointer the widgets
+  dim, and the next coach update wakes them. FAIL on any one. P4.3, P4.5 and P4.4 (a) are NOT graded
+  by a game; they wait on proposal (A) / (B) below.
+  EVIDENCE CONTRACT: per item, pass or fail + local time + `liveclient` gameTime from `/api/state` at
+  that minute + the #ovset values in force (opacity, auto-passive, zones) + the rc-shell process
+  start time.
+  SUBSTITUTION CHECK: a node test, the real-Chromium `test_overlay_view` fixture or an `/api/state`
+  read shows the behavior was COMPUTED; only the eyeball over the composited game shows it RENDERED.
+  A pass on (ii) with zones OFF says nothing about zones.
+  PROPOSALS (a human decides; filed, not edited, because each touches `rc-shell/**` or
+  `web/js/panels/`): (A) re-scope the separation rule for a full-screen overlay, or retire it; until
+  then a keepCompanion-ON operator gets the dashboard snapped top-left on every in-game show. (B)
+  drop or re-point the #ovset panel-set segment, as RM-1272 item 10 dropped the hotkey row. (C)
+  re-base the `resolveSeparatedCompanionBounds` node tests on a full-screen overlay.
 - **G4-15** (was B40) Live UI watch STANDING ritual (items 243/244): tick champ-select + in-game
   dashboard vs `/api/state` each ranked game. **Standing per-game, never one-shot - it does not close.**
 - **G4-16** `[BROADENED 2026-07-18 - was the R103 addendum, now the whole chip family]` Counter-hint
