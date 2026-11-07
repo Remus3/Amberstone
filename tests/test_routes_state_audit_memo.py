@@ -82,8 +82,8 @@ def _reference_outcomes(q: pathlib.Path, max_count: int = 3) -> list:
     agrees with itself.
     """
     outcomes: list = []
-    for raw in q.read_text(encoding="utf-8", errors="replace").splitlines():
-        raw = raw.strip()
+    for raw_line in q.read_text(encoding="utf-8", errors="replace").splitlines():
+        raw = raw_line.strip()
         if not raw:
             continue
         try:

@@ -189,8 +189,8 @@ def declared_names(code: str) -> set[str]:
     names |= set(re.findall(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)", code))
     names |= set(re.findall(r"\bclass\s+([A-Za-z_$][\w$]*)", code))
     for m in re.finditer(r"\bimport\s*\{([^}]*)\}", code):
-        for part in m.group(1).split(","):
-            part = part.strip()
+        for raw_part in m.group(1).split(","):
+            part = raw_part.strip()
             if part:
                 names.add(part.split(" as ")[-1].strip())
     names |= set(re.findall(r"\bimport\s+([A-Za-z_$][\w$]*)\s*(?:,|from)", code))

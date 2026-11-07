@@ -63,8 +63,8 @@ def pinned_suffixes() -> set[str]:
     """The `*.<ext> text eol=lf` pins, read from `.gitattributes` itself."""
     out: set[str] = set()
     raw = (ROOT / ".gitattributes").read_bytes().decode("utf-8")
-    for line in raw.splitlines():
-        line = line.strip()
+    for raw_line in raw.splitlines():
+        line = raw_line.strip()
         if line.startswith("#"):
             continue
         m = _PIN.match(line)

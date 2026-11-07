@@ -571,7 +571,8 @@ def _mut_primary_verdict_flipped(text: str) -> str:
 
 def _blank_responder_columns(block: list[str]) -> list[str]:
     out = list(block[:2])
-    for line in block[2:]:
+    for raw_line in block[2:]:
+        line = raw_line
         for column in (2, 3, 4, 5):
             line = _set_cell(line, column, "")
         out.append(line)

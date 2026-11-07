@@ -276,8 +276,8 @@ def test_real_fusion_shadow_corpus_invariants():
     comparable = {"gold", "level", "cs", "kda"}
     records = narrowed = comparable_lost = disagree_lost = augsel_lost = 0
 
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        line = line.strip()
+    for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:

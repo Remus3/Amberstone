@@ -83,8 +83,8 @@ def _eog_db(tmp_path, players):
     items = ", ".join(f"item{i}_id INTEGER" for i in range(7))
     conn.execute("CREATE TABLE aram_player_stats (match_id TEXT, game_name TEXT, "
                  f"tag_line TEXT, team_id INTEGER, {items})")
-    for name, team_id, ids in players:
-        ids = (list(ids) + [0] * 7)[:7]
+    for name, team_id, raw_ids in players:
+        ids = (list(raw_ids) + [0] * 7)[:7]
         conn.execute("INSERT INTO aram_player_stats VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                      (GID, name, "TST", team_id, *ids))
     conn.commit()

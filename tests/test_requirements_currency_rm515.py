@@ -93,8 +93,8 @@ UNPINNED_BY_DECISION = ("requests", "urllib3", "cryptography")
 
 def _pins() -> dict[str, str]:
     pins = {}
-    for line in REQ.read_text(encoding="utf-8").splitlines():
-        line = line.split("#", 1)[0].strip()
+    for raw_line in REQ.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split("#", 1)[0].strip()
         if not line:
             continue
         name, sep, ver = line.partition("==")

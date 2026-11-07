@@ -42,6 +42,13 @@ Slice 8 (S144-P-266) renamed the same shape (plus dict-unwrap neighbours) in ten
 ``tft/tft_prompt`` x2, ``tools/arena_shadow_report``, ``tools/gated_tft15_planner``): 12 findings gone,
 18 remain in held scope.
 
+Slice 9 (S144-P-267) renamed the same shape (plus tuple-unpack and inner-loop neighbours) in eleven test modules
+(``test_gated_lx05_tape_check``, ``test_pytest_per_run_temproot_rm878``, ``test_requirements_currency_rm515``,
+``test_responder_grammar_table``, ``test_routes_state_audit_memo``, ``test_task_queue_gate_limbo_reconciler``,
+``test_task_queue_reconciler``, ``test_text_line_endings``, ``test_tft_coach_lane8_cycle34``,
+``test_vision_merge_augment_rehome_b01b``, ``test_web_js_unimported_calls_s144q43``): 11 findings gone, 7 remain in
+held scope.
+
 The count per file can only fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -75,17 +82,6 @@ _BASELINE = {
     "docs/_rsc_score/calibrate.py": 1,
     "docs/_rsc_score/calibrate_rep.py": 1,
     "ops/rc_transactional_deploy.py": 1,
-    "tests/test_gated_lx05_tape_check.py": 1,
-    "tests/test_pytest_per_run_temproot_rm878.py": 1,
-    "tests/test_requirements_currency_rm515.py": 1,
-    "tests/test_responder_grammar_table.py": 1,
-    "tests/test_routes_state_audit_memo.py": 1,
-    "tests/test_task_queue_gate_limbo_reconciler.py": 1,
-    "tests/test_task_queue_reconciler.py": 1,
-    "tests/test_text_line_endings.py": 1,
-    "tests/test_tft_coach_lane8_cycle34.py": 1,
-    "tests/test_vision_merge_augment_rehome_b01b.py": 1,
-    "tests/test_web_js_unimported_calls_s144q43.py": 1,
     "tft/tft_coach_engine.py": 3,
     "tools/ds_wiki_staleness_check.py": 1,
 }
@@ -156,6 +152,18 @@ _FIXED = (
     "tft/tft_prompt.py",
     "tools/arena_shadow_report.py",
     "tools/gated_tft15_planner.py",
+    # slice 9 (S144-P-267): the same shape in eleven test modules.
+    "tests/test_gated_lx05_tape_check.py",
+    "tests/test_pytest_per_run_temproot_rm878.py",
+    "tests/test_requirements_currency_rm515.py",
+    "tests/test_responder_grammar_table.py",
+    "tests/test_routes_state_audit_memo.py",
+    "tests/test_task_queue_gate_limbo_reconciler.py",
+    "tests/test_task_queue_reconciler.py",
+    "tests/test_text_line_endings.py",
+    "tests/test_tft_coach_lane8_cycle34.py",
+    "tests/test_vision_merge_augment_rehome_b01b.py",
+    "tests/test_web_js_unimported_calls_s144q43.py",
 )
 
 
