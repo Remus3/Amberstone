@@ -13,10 +13,12 @@ Two zones:
   spawn here must pass ``creationflags=`` (any expression but a literal ``0`` / ``None``) or
   splat ``**kwargs`` (the guard cannot see inside, so it does not guess). Measured 2026-11-07
   over the git index (alias-aware AST): 39 unflagged spawns in 29 non-test files, every one of
-  them in the operator-CLI trees; the runtime zone is clean. Three more spawns splat **kwargs
-  and are trusted: tools/console_flash_control.py:80 and tools/ci_impact_selector.py:331 / :358
-  (the last two splat ``_PATH_TEXT``, which carries only text / encoding / errors, so they are
-  in truth unflagged CI-selector spawns: an operator-CLI file, left to a later step).
+  them in the operator-CLI trees; the runtime zone is clean. A ``**kwargs`` splat is trusted
+  (the guard cannot see inside a parameter) EXCEPT when it names a module-level dict literal,
+  or is one inline, whose keys are all string constants and none is ``creationflags``
+  (S144-P-335: tools/ci_impact_selector.py splatted ``_PATH_TEXT``, text / encoding / errors
+  only, and was trusted as flagged until that rule; its three spawns now pass the flag). The
+  one trusted splat left is tools/console_flash_control.py:80, a real parameter dict.
 - OPERATOR CLI (``tools/``, ``scripts/``, ``ops/audit/``, ``ops/migrate/``): a developer runs
   these from a console, where a child inherits that console and nothing flashes. They are held
   in ``_BASELINE`` (file -> unflagged-spawn count), which only shrinks: a new file, or a file
@@ -52,7 +54,6 @@ _BASELINE = {
     "tools/build_python_embed.py": 1,
     "tools/bootstrap_env_check.py": 2,
     "tools/build_rank_baselines.py": 1,
-    "tools/ci_impact_selector.py": 1,
     "tools/citation_audit.py": 1,
     "tools/dev_cli.py": 2,
     "tools/drift_guard.py": 2,
@@ -86,10 +87,28 @@ def _aliases(tree: ast.AST) -> tuple[set[str], set[str]]:
     return mods, funcs
 
 
+def _flagless_dicts(tree: ast.Module) -> set[str]:
+    """Module-level ``NAME = {...}`` dict literals with string keys and no creationflags."""
+    out: set[str] = set()
+    for n in tree.body:
+        if (isinstance(n, ast.Assign) and len(n.targets) == 1
+                and isinstance(n.targets[0], ast.Name) and _flagless_literal(n.value)):
+            out.add(n.targets[0].id)
+    return out
+
+
+def _flagless_literal(v: ast.AST) -> bool:
+    """True for a dict literal whose keys are all string constants, none creationflags."""
+    return (isinstance(v, ast.Dict) and all(
+        isinstance(k, ast.Constant) and isinstance(k.value, str) for k in v.keys)
+        and not any(k.value == "creationflags" for k in v.keys))
+
+
 def _unflagged_spawns(source: str) -> int:
     """Count subprocess spawns with no usable creationflags in ``source``."""
     tree = ast.parse(source)
     mods, funcs = _aliases(tree)
+    flagless = _flagless_dicts(tree)
     count = 0
     for n in ast.walk(tree):
         if not isinstance(n, ast.Call):
@@ -103,8 +122,10 @@ def _unflagged_spawns(source: str) -> int:
             continue
         flagged = False
         for kw in n.keywords:
-            if kw.arg is None:  # **kwargs: trusted
-                flagged = True
+            if kw.arg is None:  # **kwargs: trusted unless a visibly flagless dict
+                v = kw.value
+                if not (_flagless_literal(v) or (isinstance(v, ast.Name) and v.id in flagless)):
+                    flagged = True
             elif kw.arg == "creationflags":
                 v = kw.value
                 flagged = not (isinstance(v, ast.Constant) and v.value in (0, None))
@@ -173,6 +194,19 @@ def test_detector_sees_each_spawn_shape():
     assert _unflagged_spawns("def run(x):\n    return x\nrun(1)\n") == 0
 
 
+def test_detector_sees_a_splat_of_a_flagless_dict_literal():
+    """S144-P-335: ``**_TEXT`` where _TEXT is text / encoding only is not a creationflags."""
+    assert _unflagged_spawns(
+        "import subprocess\n_T = {'text': True, 'encoding': 'utf-8'}\n"
+        "subprocess.run(['git'], **_T)\n") == 1
+    assert _unflagged_spawns(
+        "import subprocess\nsubprocess.run(['git'], **{'text': True})\n") == 1
+    # an explicit creationflags= beside the splat still flags the call
+    assert _unflagged_spawns(
+        "import subprocess\n_T = {'text': True}\n"
+        "subprocess.run(['git'], creationflags=8, **_T)\n") == 0
+
+
 def test_detector_passes_the_flagged_shapes():
     assert _unflagged_spawns(
         "import subprocess\nsubprocess.run(['git'], creationflags=0x08000000)\n") == 0
@@ -180,5 +214,14 @@ def test_detector_passes_the_flagged_shapes():
         "import subprocess\nsubprocess.run(['git'], creationflags=NO_WINDOW)\n") == 0
     assert _unflagged_spawns(
         "import subprocess\nsubprocess.run(['git'], **kw)\n") == 0
+    # a splatted name that is not a visible dict literal (a parameter, a call) stays trusted
+    assert _unflagged_spawns(
+        "import subprocess\nkw = make()\nsubprocess.run(['git'], **kw)\n") == 0
+    # a splatted dict literal that DOES carry the flag passes
+    assert _unflagged_spawns(
+        "import subprocess\nK = {'creationflags': 1, 'text': True}\n"
+        "subprocess.run(['git'], **K)\n") == 0
+    assert _unflagged_spawns(
+        "import subprocess\nsubprocess.run(['git'], **{'creationflags': 1})\n") == 0
     assert _unflagged_spawns(
         "from subprocess import Popen\nPopen(['git'], creationflags=_flags())\n") == 0
