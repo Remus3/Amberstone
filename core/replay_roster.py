@@ -202,7 +202,7 @@ def _riot_id_parts(raw, src):
     """(name, tag) from one roster `riot_id`, or a loud ValueError.
 
     Surrounding whitespace is stripped from each half (the same rule as
-    `core.rofl_archive.parse_riot_id`): Riot trims it, so a padded id could
+    `core.rofl_archive.parse_account`): Riot trims it, so a padded id could
     never resolve and was reported as a stale id every run. A second '#' is
     a typo, not part of the tag - Riot tags cannot hold one.
     """

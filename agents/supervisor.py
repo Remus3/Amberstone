@@ -231,8 +231,8 @@ def _should_emit_game_summary(payload: dict[str, Any]) -> bool:
     filed ``game-summary`` rows, 91 came back ``unknown game_mode`` and
     79 ``missing champion`` - 170 rows (29 pct) that round-tripped the
     scheduler only to hit a hardcoded early return in
-    ``agents.agent2_backend.game_ingest.ingest`` (lines 203-216). Both
-    refusals are decidable from the payload alone, so decide them here.
+    ``agents.agent2_backend.game_ingest.ingest_game_summary`` (its two
+    early returns). Both refusals are decidable from the payload alone, so decide them here.
 
     Checked in the INGESTER'S order so the logged reason matches the one
     ingest would have recorded. ``_select_mode_db`` stays the single
