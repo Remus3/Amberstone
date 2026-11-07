@@ -1587,7 +1587,7 @@ def _bind_setattr_marks(nodes, tainted, late=frozenset()) -> None:
 # on the side of a miss, so the precision is given up. Plain `=` keeps its
 # RM-1443 clearing rule (`_retaint`).
 
-def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
+def _bind_walrus(nodes, tainted, late=frozenset(), *, drop=True) -> None:
     """`(m := url)` binds `m` for the rest of the scope. Applied BEFORE a
     statement's sinks are checked: a sink in the same expression may run
     after the walrus (`log.info(m) if (m := url) else None`).
@@ -1600,7 +1600,10 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
     comprehension, a generator, a lambda body or default) makes none, as
     a comprehension's value may name its own target, not the enclosing
     name (residual: a walrus there over an enclosing name, a lambda
-    default's included, is not an alias)."""
+    default's included, is not an alias).
+    S144-Q-107: `drop=False` (a re-pass of `_Flow._expr_step`'s fixed
+    point) still makes the target's new marks but ends none, so the
+    binding only ADDS."""
     for node in nodes:
         sites = []
         _call_views(node, tainted, late, sites, kinds=ast.NamedExpr)
@@ -1611,7 +1614,8 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
             muts = _value_mut_specs(sub.value, seen, late)    # S144-Q-96
             joined = (_new_alias_marks([sub.target], sub.value, tainted)
                       if seen is tainted else set())    # S144-Q-102
-            _drop_aliases(sub.target.id, tainted)    # RM-1794
+            if drop:
+                _drop_aliases(sub.target.id, tainted)    # RM-1794
             tainted |= joined
             _bind_names(sub.target, _is_tainted(sub.value, seen, late),
                         tainted, clear=False)
@@ -2995,18 +2999,31 @@ class _Flow:
         """Check the sinks in `nodes` and apply their walrus bindings."""
         state = set(state)
         nodes = list(nodes)
-        # Both binding kinds only ADD taint, so they are run to a fixed point:
-        # within one statement a walrus may read a container a later mutator
-        # fills (`g(q.append(url), m := q[0])`), or one mutator a container
-        # another fills after it (RM-1558).
+        # The bindings are run to a fixed point: within one statement a
+        # walrus may read a container a later mutator fills
+        # (`g(q.append(url), m := q[0])`), or one mutator a container
+        # another fills after it (RM-1558). S144-Q-107: a walrus also ENDS
+        # its target's `_ALIAS` marks (`_drop_aliases`), so it ends them on
+        # the first pass only; a re-pass that ended them again would rotate
+        # them (`g((t := a), (a := b), (b := t))` flipped between two
+        # states of one size and stopped on the wrong one), so the first
+        # pass compares the set itself. A re-pass still makes the marks a
+        # walrus reads afresh: every walrus is bound before every mutator
+        # (S144-Q-108), so a mutator before it in source order
+        # (`g(b.append(url), (b := n), (n := a))`) is read only through
+        # them. Every later pass only ADDS, so there an unchanged size is
+        # an unchanged state.
+        first = frozenset(state)
+        drop = True
         while True:
             before = len(state)
-            _bind_walrus(nodes, state, self.ever)
+            _bind_walrus(nodes, state, self.ever, drop=drop)
             _bind_mutators(nodes, state, self.ever)
             _bind_mut_calls(nodes, state, self.ever)
             _bind_setattr_marks(nodes, state, self.ever)    # S144-Q-96
-            if len(state) == before:
+            if state == first if drop else len(state) == before:
                 break
+            drop = False
         _check_sinks(nodes, stmt, state, self.report, self.ever)
         for node in nodes:
             for sub in ast.walk(node):
@@ -4693,6 +4710,34 @@ _CHECKER_SAMPLES = (
     ("a walrus in a comprehension does not alias the enclosing name of its target",
      "def f(url, xs):\n    x = []\n    [(a := x) for x in xs]\n    a.append(url)\n"
      "    raise E(x)\n", False),
+    # S144-Q-107: the walrus aliases of one statement are ended once, in
+    # source order, as separate `=` statements end them; a re-pass of the
+    # fixed point must not rotate them again. A re-pass still makes the
+    # marks afresh, so a rotation keeps its old aliases too (the safe side,
+    # residual), and a fill before a walrus is read through them.
+    ("a walrus rotation leaves the last name aliasing the first source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    b.append(url)\n    raise E(m)\n", True),
+    ("a walrus rotation leaves the middle name aliasing the second source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    a.append(url)\n    raise E(n)\n", True),
+    ("a walrus rotation leaves the temporary aliasing the first source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    t.append(url)\n    raise E(m)\n", True),
+    ("a fill before a walrus chain in one statement still reaches its source",
+     "def f(url):\n    a = []\n    b = a\n    n = []\n"
+     "    g(b.append(url), (b := n), (n := a))\n    raise E(a)\n", True),
+    ("a walrus cycle with a fill in one statement reaches a fixed point",
+     "def f(url):\n    a = []\n    b = []\n    c = a\n    t = []\n    n = []\n"
+     "    g(c.append(url), (n := t), (b := t), (t := c), (c := n))\n"
+     "    b.append(url)\n    raise E(a)\n", True),
+    # A first pass that ends as many marks as it adds still changed the
+    # state, so it is re-run: here it fills `q`, ends `a`'s two marks and
+    # taints `z`, and only a re-pass reads the filled `q` into `k`.
+    ("a walrus re-reads a filled container after a size-neutral first pass",
+     "def f(url):\n    m = []\n    q = []\n    a = m\n"
+     "    g((k := q[0] + ''), q.append(url), (a := ''), (z := url + ''))\n"
+     "    raise E(k)\n", True),
     # Every binding form re-binds the name, not only `=`, and a lambda's
     # parameters and a comprehension's targets are its own names.
     ("a for target re-binding an alias does not fill its source",
