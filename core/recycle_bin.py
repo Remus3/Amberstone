@@ -26,7 +26,13 @@ unattended caller, so this module does not rely on it. Instead it:
      earlier than the clock read taken just before the shell call (minus
      LANDED_SLACK_S), so an OLDER recycle of the same path cannot pass. If the file is gone but no record
      exists, the result is nuked=True and callers must halt (vod_retention
-     does).
+     and progress_watch do). A truncated $I record is never that proof.
+
+An API-layer error never escapes (both callers loop over a batch): before
+the shell call it is a refusal; at or after it the outcome is confirmed the
+same way, and anything unproven is nuked=True. A path holding a NUL or a
+wildcard is refused before any API call, because pFrom is a NUL-separated,
+wildcard-expanding list.
 
 There was no recycle helper in the tree before this module (probe 2026-10-04:
 grep for SHFileOperation / FOF_ALLOWUNDO / send2trash found none;
@@ -37,6 +43,7 @@ recycle a real file.
 """
 from __future__ import annotations
 
+import ctypes
 import os
 import stat
 import struct
@@ -99,14 +106,19 @@ def parse_index_record(data: bytes) -> Optional[tuple]:
 
 
 def _index_path(data: bytes, version: int) -> Optional[str]:
+    # A record shorter than its own declared path field is TRUNCATED, not a
+    # shorter path: its readable prefix can name a different file (".mp4"
+    # cut from ".mp4.part"), so it is never proof of a landing.
     try:
         if version == 1:
+            if len(data) < 24 + 520:
+                return None
             raw = data[24:24 + 520]
         elif version == 2:
             if len(data) < 28:
                 return None
             n = struct.unpack_from("<i", data, 24)[0]
-            if n <= 0:
+            if n <= 0 or len(data) < 28 + 2 * n:
                 return None
             raw = data[28:28 + 2 * n]
         else:
@@ -120,6 +132,15 @@ def _index_path(data: bytes, version: int) -> Optional[str]:
 
 def _norm(p: str) -> str:
     return os.path.normcase(os.path.normpath(str(p)))
+
+
+def _reg_int(value) -> Optional[int]:
+    """A REG_DWORD / REG_QWORD integer, or None for any other shape (a
+    REG_SZ, REG_BINARY bytes, None). The bin policy is only PROOF when it
+    reads as the integer type Windows writes; anything else is unprovable."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
 
 
 def index_dirs_contain(dirs: Iterable[Path], original: str,
@@ -156,7 +177,7 @@ class WindowsShellApi:
     def kind(self, path) -> Optional[str]:
         try:
             st = os.lstat(path)
-        except OSError:
+        except (OSError, ValueError):  # ValueError: embedded NUL
             return None
         attrs = getattr(st, "st_file_attributes", 0)
         if stat.S_ISLNK(st.st_mode) or attrs & stat.FILE_ATTRIBUTE_REPARSE_POINT:
@@ -203,18 +224,24 @@ class WindowsShellApi:
         for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
             try:
                 with winreg.OpenKey(hive, _POLICIES) as k:
-                    if int(winreg.QueryValueEx(k, "NoRecycleFiles")[0]) == 1:
-                        return (0, True)
+                    no_recycle = _reg_int(
+                        winreg.QueryValueEx(k, "NoRecycleFiles")[0])
             except OSError:
-                pass
+                continue  # no policy key / value: the policy is not set
+            if no_recycle is None:
+                return None  # a value we cannot read proves nothing
+            if no_recycle != 0:
+                return (0, True)
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                                 _BITBUCKET + "\\" + guid) as k:
-                cap_mb = int(winreg.QueryValueEx(k, "MaxCapacity")[0])
-                nuke = int(winreg.QueryValueEx(k, "NukeOnDelete")[0])
+                cap_mb = _reg_int(winreg.QueryValueEx(k, "MaxCapacity")[0])
+                nuke = _reg_int(winreg.QueryValueEx(k, "NukeOnDelete")[0])
         except OSError:
             return None
-        return (cap_mb * 1024 * 1024, bool(nuke))
+        if cap_mb is None or nuke is None or cap_mb < 0:
+            return None
+        return (cap_mb * 1024 * 1024, nuke != 0)
 
     def delete_allow_undo(self, path) -> int:
         import ctypes
@@ -260,47 +287,88 @@ class WindowsShellApi:
 # -- the checked operation -----------------------------------------------------
 
 
+# What the shell layer may raise. recycle_checked() turns each into a result,
+# because both callers (core.vod_retention.apply, tools/progress_watch.reap)
+# loop over a batch and an escape would abort it mid-way and lose the report
+# of every file already recycled. Named, not `except Exception`: a genuine
+# programming error outside this set still surfaces.
+_API_ERRORS = (OSError, ValueError, TypeError, ArithmeticError, LookupError,
+               AttributeError, ctypes.ArgumentError)
+
+# SHFileOperationW's pFrom is a NUL-separated LIST and expands wildcards, so a
+# NUL would split one path into several and a "*" / "?" would recycle every
+# match. Neither is legal in a Windows file name; refuse before any API call.
+_UNSAFE_PATH_CHARS = ("\0", "*", "?")
+
+
+def _refuse(p: str, detail: str) -> RecycleResult:
+    return RecycleResult(False, p, METHOD_RECYCLE_BIN, "refused: " + detail)
+
+
+def _guarded(fn, *args):
+    """(value, None) or (None, exception type name)."""
+    try:
+        return fn(*args), None
+    except _API_ERRORS as e:
+        return None, type(e).__name__
+
+
 def recycle_checked(path, *, api=None) -> RecycleResult:
-    """Send ONE file to the Recycle Bin, or refuse. Never unlinks."""
+    """Send ONE file to the Recycle Bin, or refuse. Never unlinks, never
+    raises an API-layer error: every outcome is a RecycleResult, and any
+    outcome that cannot prove where the file went is nuked=True (halt)."""
     p = str(path)
+    if any(c in p for c in _UNSAFE_PATH_CHARS):
+        return _refuse(p, "path holds a NUL or wildcard character")
     if api is None:
         if sys.platform != "win32":
-            return RecycleResult(False, p, METHOD_RECYCLE_BIN,
-                                 "refused: Recycle Bin only exists on Windows")
+            return _refuse(p, "Recycle Bin only exists on Windows")
         api = WindowsShellApi()
 
-    kind = api.kind(p)
-    if kind != "file":
-        return RecycleResult(False, p, METHOD_RECYCLE_BIN,
-                             f"refused: not a regular file (kind={kind})")
-    size = int(api.size(p))
-    policy = api.bin_policy(p)
-    if policy is None:
-        return RecycleResult(False, p, METHOD_RECYCLE_BIN,
-                             "refused: bin policy unreadable for this volume;"
-                             " cannot prove the file would not be nuked")
-    cap, nuke = policy
-    if nuke:
-        return RecycleResult(False, p, METHOD_RECYCLE_BIN,
-                             "refused: the volume's bin deletes immediately")
-    if cap is None or size >= cap:
-        return RecycleResult(False, p, METHOD_RECYCLE_BIN,
-                             f"refused: too large for the bin ({size} >= {cap}"
-                             " bytes); Windows would delete it permanently")
+    # -- 1. PREFLIGHT: nothing has been touched, so any error is a refusal.
+    try:
+        kind = api.kind(p)
+        if kind != "file":
+            return _refuse(p, f"not a regular file (kind={kind})")
+        size = int(api.size(p))
+        policy = api.bin_policy(p)
+        if policy is None:
+            return _refuse(p, "bin policy unreadable for this volume;"
+                              " cannot prove the file would not be nuked")
+        cap, nuke = policy
+        if nuke:
+            return _refuse(p, "the volume's bin deletes immediately")
+        if cap is None or size >= cap:
+            return _refuse(p, f"too large for the bin ({size} >= {cap}"
+                              " bytes); Windows would delete it permanently")
+        since = float(api.now())
+    except _API_ERRORS as e:
+        return _refuse(p, f"preflight raised {type(e).__name__}; nothing was"
+                          " deleted")
 
-    since = float(api.now())
-    rc = api.delete_allow_undo(p)
-    if rc != 0:
+    # -- 2. SHELL CALL. A raise leaves the outcome unknown: confirm below.
+    rc, raised = _guarded(api.delete_allow_undo, p)
+    if raised is None and not isinstance(rc, int):
+        raised = f"non-integer rc {type(rc).__name__}"
+    if raised is None and rc != 0:
         return RecycleResult(False, p, METHOD_RECYCLE_BIN,
                              f"shell delete failed rc={rc:#x}"
                              if rc >= 0 else "shell delete aborted")
-    if api.exists(p):
+    note = "" if raised is None else f" (shell call raised {raised})"
+
+    # -- 3. CONFIRM. Only a fresh $I record for our path proves a landing.
+    present, _ = _guarded(api.exists, p)
+    if present:
         return RecycleResult(False, p, METHOD_RECYCLE_BIN,
-                             "shell call returned 0 but the file is still present")
-    if not api.bin_contains(p, since):
-        return RecycleResult(False, p, METHOD_RECYCLE_BIN,
-                             "file is gone but NOT found in the Recycle Bin"
-                             " index - treat as a permanent delete",
-                             nuked=True)
-    return RecycleResult(True, p, METHOD_RECYCLE_BIN,
-                         f"landed in the Recycle Bin ({size} bytes)")
+                             "shell call returned 0 but the file is still"
+                             " present" if raised is None else
+                             "the file is still present" + note)
+    landed, landed_err = _guarded(api.bin_contains, p, since)
+    if landed is True:
+        return RecycleResult(True, p, METHOD_RECYCLE_BIN,
+                             f"landed in the Recycle Bin ({size} bytes)" + note)
+    why = ("NOT found in the Recycle Bin index" if landed_err is None else
+           f"the bin index check raised {landed_err}")
+    return RecycleResult(False, p, METHOD_RECYCLE_BIN,
+                         f"file is gone or unreadable and {why}{note} - treat"
+                         " as a permanent delete", nuked=True)
