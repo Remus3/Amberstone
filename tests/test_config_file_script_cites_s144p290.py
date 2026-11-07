@@ -41,11 +41,11 @@ def _files(tracked: frozenset[str]) -> list[str]:
         if rel.startswith(_OUT_OF_SCOPE_PREFIXES):
             continue
         name = rel.rsplit("/", 1)[-1]
-        if rel.startswith(_CONFIG_PREFIXES) and not rel.endswith((".txt", ".json")):
-            picked.append(rel)
-        elif "/" not in rel and (name in _CONFIG_NAMES or rel.endswith(_CONFIG_SUFFIXES)):
-            picked.append(rel)
-        elif rel.endswith((".ahk", ".vbs")):
+        if (
+            (rel.startswith(_CONFIG_PREFIXES) and not rel.endswith((".txt", ".json")))
+            or ("/" not in rel and (name in _CONFIG_NAMES or rel.endswith(_CONFIG_SUFFIXES)))
+            or rel.endswith((".ahk", ".vbs"))
+        ):
             picked.append(rel)
     return sorted(picked)
 

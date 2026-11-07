@@ -32,9 +32,9 @@ def _sites(source: str) -> list[int]:
     nothing reads any more (S144-P-308), and ``from asyncio import get_event_loop`` is the call in waiting."""
     out = []
     for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Attribute) and node.attr == "get_event_loop":
-            out.append(node.lineno)
-        elif isinstance(node, ast.Name) and node.id == "get_event_loop":
+        if (isinstance(node, ast.Attribute) and node.attr == "get_event_loop") or (
+            isinstance(node, ast.Name) and node.id == "get_event_loop"
+        ):
             out.append(node.lineno)
         elif isinstance(node, ast.ImportFrom):
             out.extend(node.lineno for a in node.names if a.name == "get_event_loop")
