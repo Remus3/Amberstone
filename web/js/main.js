@@ -4335,6 +4335,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       '<path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8ZM160 208H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/>' +
     '</svg>'
   );
+  // S144-U-194: a MAINS RECENT KDA ("24/14/20") may break after a slash.
+  // UAX 14 keeps a number/slash/number run unbreakable, so at a 320 px
+  // window an 8-character monospace KDA (72.5 px) ran 11 px past its
+  // 61 px RECENT cell (more than half of the rewind DB's KDAs are 7 or 8
+  // characters). A <wbr> after each slash only breaks where the KDA does
+  // not fit; from 360 px up it stays one line. Guard:
+  // tests/snapshot_panels/test_lobby_mains_recent_cell.py.
+  function _lvKdaHtml(kda) {
+    return escapeHtml(kda || "-").replace(/\//g, "/<wbr>");
+  }
   // s162 v2: full uppercase per operator spec ("TOP | JUNGLE | MIDDLE
   // | BOTTOM | SUPPORT | FILL"). UTILITY is the LCU's enum value for
   // the support role; "SUPPORT" is the operator-facing label.
@@ -4808,7 +4818,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         '</span>' +
         '<span class="lv-mc-recent">' +
           '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + escapeHtml(result || "-") + '</span>' +
-          '<span class="lv-mc-kda">' + escapeHtml(lm.kda || "-") + '</span>' +
+          '<span class="lv-mc-kda">' + _lvKdaHtml(lm.kda) + '</span>' +
         '</span>' +
         overallHtml +
         formHtml
@@ -5370,7 +5380,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           '</span>' +
           '<span class="lv-mc-recent">' +
             `<span class="lv-mc-result lv-mc-result-${resultLow}">${escapeHtml(result || "-")}</span>` +
-            `<span class="lv-mc-kda">${escapeHtml(lm.kda || "-")}</span>` +
+            `<span class="lv-mc-kda">${_lvKdaHtml(lm.kda)}</span>` +
           '</span>'
         );
         // Wire copy for this party member:

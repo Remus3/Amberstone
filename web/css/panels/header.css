@@ -2117,8 +2117,17 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: var(--fs-xs); font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.08em;
 }
-.lv-mc-result-won  { color: var(--good); }
-.lv-mc-result-lost { color: var(--bad); }
+/* S144-U-194: web/js/main.js writes the result word lower-cased
+ * (dashboard/routes_lobby_aux.py emits "WIN" / "LOSS"), so the class is
+ * lv-mc-result-win / -loss. These rules named -won / -lost and never
+ * matched, so WIN and LOSS rendered in the inherited --text since s162.
+ * LOSS takes the RM-1550 lift (--bad mixed 30 percent toward --text in
+ * oklab): plain --bad measured 3.28 to 3.79:1 on the row's --surface-alt
+ * in five themes, under AA 4.5:1 for this 16px bold word. WIN keeps
+ * --good (AA in every theme).
+ * Guard: tests/snapshot_panels/test_lobby_mains_recent_cell.py. */
+.lv-mc-result-win  { color: var(--good); }
+.lv-mc-result-loss { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 .lv-mc-kda {
   /* UI scale v2.1: 13 -> --fs-xs (16). */
   font-size: var(--fs-xs); color: var(--text-dim);
@@ -2151,7 +2160,11 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-family: "SF Mono", Consolas, monospace;
 }
 .lv-mc-wl .lv-mc-w { color: var(--good); }
-.lv-mc-wl .lv-mc-l { color: var(--bad); }
+/* S144-U-194: the losses count takes the same RM-1550 lift as the RECENT
+ * LOSS word on its row (.lv-mc-result-loss): plain --bad measured 3.28:1
+ * (arcane) on the row's --surface-alt, under AA in five themes, and would
+ * be a second, darker red beside the lifted LOSS. */
+.lv-mc-wl .lv-mc-l { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 /* E11: .lv-mc-total-kda + .lv-mc-deaths removed - the raw K/D/A triplet
  * cell was dropped from the Overall column. */
 .lv-mc-kda-score {
