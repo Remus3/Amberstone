@@ -33,9 +33,14 @@ export const PHASE_UNKNOWN = "unknown";
 // (rc-shell/test/overlay_phase_contract.test.js).
 export const PHASE_WIDGETS = Object.freeze({
   lobby: Object.freeze([]),
-  // Pre-game coaching is allowed (live_directive_gate.js). w-build hosts the
-  // matchup card + the draft-elo chip; w-ovds is the knob pane worth touching only
-  // while a pick can still change; w-arambalance self-gates to ARAM.
+  // Pre-game coaching is allowed (live_directive_gate.js). w-build is placed so
+  // its matchup card + draft-elo chip can paint the tick the :2999 roster answers,
+  // but both read that roster (active_match.js _amDsSyntheticCs,
+  // _renderDraftEloFromCtx), so before the feed the pane paints whatever the coach
+  // payload carries or its own empty line, and never a matchup answer: in champ
+  // select that answer is the companion's (doctrine section 10, RM-1384 / RM-1385).
+  // w-ovds is the knob pane worth touching only while a pick can still change;
+  // w-arambalance self-gates to ARAM.
   "champ-select": Object.freeze(["w-call", "w-choices", "w-build", "w-ovds", "w-arambalance"]),
   loading: Object.freeze(["w-call", "w-choices", "w-build", "w-arambalance"]),
   "post-game": Object.freeze([]),

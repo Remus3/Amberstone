@@ -382,6 +382,64 @@ def test_hint_reads_the_live_binding_from_the_bridge(mock_server, pw_browser):
     assert not errors, f"JS errors [bridge]: {errors[:3]}"
 
 
+def test_a_rebind_reaches_every_reminder_and_the_menu(mock_server, pw_browser):
+    """MAIN ORDER 2215 item 10 says "rebindable". Ruled (NA4, 2026-11-07): RC builds
+    no rebind feature here; the reminder is rebind-READY, so every reminder and the
+    launcher menu read the one live map and none holds a literal. The test above
+    proves it for the launcher only; this proves it for every interactive widget the
+    doctrine names, plus the menu reference rows."""
+    from tests.snapshot_panels.test_overlay_launcher_menu import _MENU_READY, _TAP_LAUNCHER
+
+    old = _authority()
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        page.wait_for_selector("#w-launcher > .ovx-hotkey-hint", state="attached", timeout=5_000)
+        page.wait_for_selector("#ovset #ovset-panelset", state="attached", timeout=10_000)
+        result = page.evaluate(
+            """async () => {
+                const C = await import('/js/panels/coach_choices.js');
+                C.renderCoachChoices({coach: {choices: [
+                    {key: 'A', label: 'Trade', confidence: 'high'},
+                    {key: 'B', label: 'Back off', confidence: 'mid'}]}});
+                const H = await import('/js/lib/overlay_hotkeys.js');
+                const L = await import('/js/lib/overlay_layout.js');
+                window.rcShell = {getOverlayHotkeys: async () => ({
+                    active: 'Ctrl+Alt+Z', visible: 'Ctrl+Alt+V',
+                    hide: 'Ctrl+Alt+H', reset: 'Ctrl+Alt+R'})};
+                const ok = await H.hydrateOverlayHotkeys();
+                L.placeOverlayField();
+                const hints = {};
+                const ws = L._internals._registry().concat([L._internals.LAUNCHER]);
+                for (const w of ws) {
+                    const el = document.querySelector(w.sel);
+                    const h = el && el.querySelector(':scope > .ovx-hotkey-hint');
+                    if (h) hints[w.id] = [h.dataset.ovxHotkey, h.textContent];
+                }
+                delete window.rcShell;
+                return {ok, hints};
+            }"""
+        )
+        assert result["ok"] is True, result
+        hints = result["hints"]
+        # Non-vacuous: every widget the doctrine table names carries a reminder.
+        assert {"w-launcher", "w-choices", "w-build", "w-ovds"} <= set(hints), hints
+        rebound = {"active": "Ctrl+Alt+Z", "visible": "Ctrl+Alt+V",
+                   "hide": "Ctrl+Alt+H", "reset": "Ctrl+Alt+R"}
+        for wid, (action, text) in hints.items():
+            assert text == rebound[action], f"{wid} kept a literal: {text!r}"
+            assert text != old[action], f"{wid} still shows the old bind"
+        assert page.evaluate(_TAP_LAUNCHER) is True
+        page.wait_for_function(_MENU_READY, timeout=5_000)
+        menu = page.eval_on_selector(".ovx-menu-hotkeys", "e => e.textContent")
+        for action, key in rebound.items():
+            assert key in menu, f"menu row for {action} kept a literal: {menu!r}"
+            assert old[action] not in menu, f"menu still names {old[action]}: {menu!r}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [rebind]: {errors[:3]}"
+
+
 @pytest.mark.parametrize("panelset", ["coach", "build", "threat"])
 def test_panel_sets_change_no_widget(panelset, mock_server, pw_browser):
     """Why the panel-cycle key has no reminder. Its press reloads the overlay at

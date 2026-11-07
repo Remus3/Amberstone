@@ -85,12 +85,22 @@ const FIXTURES = Object.freeze({
   ],
 });
 
-function windowVerb(state) {
+function windowPair(state) {
   const surface = ov.resolveSurface(state.mode_key, false, ov.liveGameFromState(state));
   return ov.windowActionsWithPolicy(surface, {
     keepCompanion: ov.OVERLAY_SETTINGS_DEFAULTS.keepCompanion,
-  }).overlay;
+  });
 }
+
+function windowVerb(state) {
+  return windowPair(state).overlay;
+}
+
+// The companion column holds a view id, or the one window token "hidden" when the
+// shell hides the dashboard window outright, so no view shows. Which view shows is
+// pinned in pytest (dashboard/view_router_state.py and the main.js PGR edge); the
+// window half is the shell's, so it is pinned here, from the same pipeline.
+const COMPANION_HIDDEN = "hidden";
 
 async function phaseModule() {
   const file = path.join(ROOT, "web", "js", "lib", "overlay_phase.js");
@@ -111,6 +121,16 @@ for (const row of ROWS) {
       const where = JSON.stringify(state);
       assert.strictEqual(overlayPhaseFromState(state), row.phase, `phase @ ${where}`);
       assert.strictEqual(windowVerb(state), row.window, `window @ ${where}`);
+    }
+  });
+
+  test(`doc row ${row.phase}: companion window ${row.companion === COMPANION_HIDDEN ? "hide" : "show"}`, () => {
+    // RM-1272 residue: this cell was a pytest literal for in-game. Derive it: the
+    // dashboard window is hidden exactly where the cell says "hidden", and shown
+    // (with the cell's view) everywhere else.
+    const want = row.companion === COMPANION_HIDDEN ? "hide" : "show";
+    for (const state of FIXTURES[row.phase]) {
+      assert.strictEqual(windowPair(state).companion, want, `companion @ ${JSON.stringify(state)}`);
     }
   });
 

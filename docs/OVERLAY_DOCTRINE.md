@@ -343,6 +343,12 @@ What this means today, plainly:
   (`#csv-sugg-ds-matchup`) and the draft-elo chip, but both read the live `:2999`
   roster (`active_match.js _amDsSyntheticCs`, `_renderDraftEloFromCtx`), so on the
   loading screen the card has nothing to paint on either surface yet.
+- So the `w-build` cell in the champ-select and loading rows means PLACED, not
+  answering: before the feed the pane paints whatever the coach payload carries or
+  its own empty line ("... will render here mid-game"), never a matchup answer. It
+  is placed so the card paints the tick the roster answers. Whether the window
+  shows in those phases at all is RM-1384 (operator 2026-11-05: wait for a live
+  session); a loading-screen card fed from the `:2999` roster is RM-1385.
 
 --------------------------------------------------------------------------------
 ## 11. HOTKEY REMINDERS (MAIN ORDER 2026-10-31 2215 item 10)
@@ -376,6 +382,22 @@ reminder fails it.
   to a map pinned equal to it when there is no bridge. **No binding is rebindable
   today.** They are constants in rc-shell and `tools/hotkey_listener.py`; a rebind
   feature is a separate decision, and the reminder will follow one with no change.
+- RULED 2026-11-07 (session 152 NA4, on the ORDER's word "rebindable"): the
+  reminder is rebind-READY and no rebind feature is built under item 10. Every
+  reminder and every launcher-menu row reads the one live map, none holds a
+  literal: `test_a_rebind_reaches_every_reminder_and_the_menu` rebinds all four
+  actions over the bridge and reads each back. Rejected: a rebind UI or a per-host
+  bind file read by both rc-shell and the Win32 listener, because the listener's
+  decoder is Ctrl+Shift-only by construction (`HotkeyDecoder.on_keydown`), the
+  in-game delivery path can only be verified in a live game (section 5 of
+  `docs/ELECTRON_OVERLAY.md`), and a bad bind silently costs the in-game ACTIVE
+  flip. Reverses if: MAIN or the operator asks for rebinding itself, or a live
+  collision between an RC chord and a League or app bind is measured. The per-chip
+  `Alt+1/2/3` keys are page-local (`panels/coach_choices.js` owns key and label
+  together) and outside that map.
+- A registered TFT panel keeps the action it names (`registerTftOverlayPanel`
+  passes `hotkey` through), and the reserved planner slot (`TFT_PLANNER_SLOT`, a
+  picker) names `active`, so the planner shows its reminder the day it registers.
 - Rule tiers: neutral ink at the OBJECTIVE footer's alpha, the overlay's smallest type
   token, no hue, no motion, no layout of its own. `pointer-events:none`, so it is never
   a hit target or a click-through zone. It sheds in combat (`body[data-fight="1"]`, rule

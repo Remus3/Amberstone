@@ -57,7 +57,10 @@ export const TFT_MOUNT_IDS = Object.freeze({
 
 // Reserved default box for the TFT-14 prior-top-4 planner picker (design px,
 // 1920x1080): bottom-left, under the trait panel and left of the shop.
-// tests/test_overlay_tft_layout.py keeps every other default clear of it.
+// tests/test_overlay_tft_layout.py keeps every other default clear of it. A
+// picker takes input, so the slot names the binding its reminder shows (MAIN
+// ORDER 2215 item 10, docs/OVERLAY_DOCTRINE.md section 11): PASSIVE is
+// click-through until the ACTIVE flip.
 export const TFT_PLANNER_SLOT = Object.freeze({
   id: "w-tft-planner",
   mountId: "ovt-planner",
@@ -65,6 +68,7 @@ export const TFT_PLANNER_SLOT = Object.freeze({
   x: 12,
   y: 836,
   w: 210,
+  hotkey: "active",
 });
 
 // The /api/state lists the lobby panel reads, first non-empty wins: every
@@ -680,6 +684,9 @@ export function registerTftOverlayPanel(spec) {
     tier: typeof s.tier === "string" ? s.tier : "ambient",
     label: typeof s.label === "string" && s.label ? s.label : id,
     game: "tft",
+    // RC-HOTKEY-HINTS: passed through as named; registerOverlayWidget keeps a
+    // known action only, so a picker gets its reminder and garbage gets none.
+    hotkey: s.hotkey,
   });
   if (!ok) return false;
   _extraPanels.set(id, { mountId, render: s.render });

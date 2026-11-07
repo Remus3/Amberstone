@@ -895,6 +895,30 @@ test("planner hook: a registered TFT panel joins the field, the TFT menu and the
   assert.strictEqual(el.dataset.ovxId, tft.TFT_PLANNER_SLOT.id);
 });
 
+test("planner hook: the hotkey a panel names reaches the registry (RC-HOTKEY-HINTS)", () => {
+  // MAIN ORDER 2215 item 10, docs/OVERLAY_DOCTRINE.md section 11: an interactive
+  // widget shows its hotkey, and registerOverlayWidget keeps a known action. The
+  // TFT hook used to rebuild the entry without it, so the planner (a picker, the
+  // reserved slot's purpose) could never carry its reminder. An unknown action is
+  // still dropped by the registry, and a panel that names none carries none.
+  const I = layout._internals;
+  const render = () => {};
+  assert.strictEqual(tft.TFT_PLANNER_SLOT.hotkey, "active", "the reserved picker slot names its key");
+  assert.strictEqual(tft.registerTftOverlayPanel({
+    id: "w-tft-keyed", mountId: "ovt-keyed", x: 640, y: 640, w: 100, hotkey: "active", render,
+  }), true);
+  assert.strictEqual(tft.registerTftOverlayPanel({
+    id: "w-tft-badkey", mountId: "ovt-badkey", x: 660, y: 660, w: 100, hotkey: "constructor", render,
+  }), true);
+  assert.strictEqual(tft.registerTftOverlayPanel({
+    id: "w-tft-nokey", mountId: "ovt-nokey", x: 680, y: 680, w: 100, render,
+  }), true);
+  const byId = (id) => I._registry().find((w) => w.id === id);
+  assert.strictEqual(byId("w-tft-keyed").hotkey, "active");
+  assert.ok(!("hotkey" in byId("w-tft-badkey")), "an unknown action is dropped");
+  assert.ok(!("hotkey" in byId("w-tft-nokey")), "no key named, none carried");
+});
+
 test("planner hook: malformed specs are refused", () => {
   const render = () => {};
   assert.strictEqual(tft.registerTftOverlayPanel(null), false);

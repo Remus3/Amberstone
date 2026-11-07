@@ -39,6 +39,8 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 DOCTRINE = ROOT / "docs" / "OVERLAY_DOCTRINE.md"
 PHASE_JS = ROOT / "web" / "js" / "lib" / "overlay_phase.js"
 PHASE_TEST = ROOT / "web" / "js" / "lib" / "overlay_phase.test.mjs"
+MAIN_JS = ROOT / "web" / "js" / "main.js"
+SHELL_CONTRACT = ROOT / "rc-shell" / "test" / "overlay_phase_contract.test.js"
 SCREENSHOTS = Path(__file__).parent / "screenshots"
 _NODE = shutil.which("node")
 
@@ -174,7 +176,8 @@ def test_phase_lobby_shows_only_the_launcher(mock_server, pw_browser):
 
 def test_phase_champ_select_shows_the_pregame_set(mock_server, pw_browser):
     field = _assert_row("champ-select", pw_browser, mock_server)
-    # w-build hosts the matchup card + the draft-elo chip (web/index.html).
+    # w-build is placed (its matchup card + draft-elo chip wait for the :2999
+    # roster, so this is not a matchup answer; doctrine section 10).
     assert not field["w-build"]["ovxHidden"]
     assert field["w-objgauges"]["ovxHidden"], "a live-only cue must not show in champ select"
 
@@ -396,11 +399,44 @@ def test_doc_companion_column_matches_the_view_router():
     assert derive_view("Lobby", "sr", None, live=False).view == rows["lobby"]["companion"]
     assert derive_view("ChampSelect", "sr", None, live=False).view == rows["champ-select"]["companion"]
     assert derive_view("GameStart", "sr", "champ-select", live=False).view == rows["loading"]["companion"]
+    # In-game the shell hides the dashboard window, so no view shows: that cell is a
+    # window token, derived in rc-shell/test/overlay_phase_contract.test.js from
+    # windowActionsWithPolicy (test_rc_shell_phase_contract_runs_under_node runs it).
     assert rows["in-game"]["companion"] == "hidden"
-    # Post-game reaches last-match through the one-shot PGR edge, which pins it
-    # as the manual view; derive_view alone says home once the feed is gone.
-    assert rows["post-game"]["companion"] == "last-match"
+    # Post-game reaches its view through the one-shot PGR edge, which pins it as the
+    # manual view; derive_view alone says home once the feed is gone. The view is the
+    # one main.js saves on that edge, read off disk (RM-1272 residue: was a literal).
     assert is_postgame_pgr_edge("EndOfGame", "in-progress") is True
+    assert rows["post-game"]["companion"] == _pgr_edge_view()
+
+
+def _pgr_edge_view():
+    """The view _viewAutoDerive saves on the game-end edge (web/js/main.js): the
+    _viewSaveManual call that sits right before the edge's PGR fetch."""
+    src = MAIN_JS.read_text(encoding="utf-8")
+    hits = re.findall(
+        r'_viewSaveManual\("([a-z-]+)"\);\s*\}\s*catch\s*\(_\)\s*\{\}\s*\n'
+        r"\s*try\s*\{\s*fetchAndRenderLastMatch\(\);",
+        src,
+    )
+    assert len(hits) == 1, f"the PGR edge's view save is not unique in main.js: {hits}"
+    return hits[0]
+
+
+@pytest.mark.skipif(_NODE is None, reason="node not on PATH")
+def test_rc_shell_phase_contract_runs_under_node():
+    """The window and companion-window columns are pinned in rc-shell; run that
+    contract here too, so a pytest-only landing cannot leave it red."""
+    done = subprocess.run(
+        [_NODE, "--test", str(SHELL_CONTRACT)],
+        capture_output=True, text=True, timeout=60, cwd=str(ROOT / "rc-shell"),
+    )
+    out = done.stdout + done.stderr
+    assert done.returncode == 0, out[-2000:]
+    assert re.search(r"pass [1-9]\d*", out), out[-500:]
+    assert re.search(r"fail 0\b", out), out[-500:]
+    # Non-vacuous: the derived in-game companion row ran.
+    assert "doc row in-game: companion window hide" in out, out[-1500:]
 
 
 @pytest.mark.skipif(_NODE is None, reason="node not on PATH")

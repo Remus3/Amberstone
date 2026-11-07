@@ -121,8 +121,10 @@ test("the gate: every widget in-game, the list elsewhere, unknown fails open", (
   }
 });
 
-test("the map carries the matchup host into champ select and loading", () => {
-  // w-build hosts #csv-sugg-ds-matchup and #am-draft-elo (web/index.html).
+test("the map keeps w-build placed in champ select and loading", () => {
+  // w-build hosts #csv-sugg-ds-matchup and #am-draft-elo (web/index.html). Placed,
+  // not answering: both read the live :2999 roster, so neither paints a matchup
+  // before the feed (doctrine section 10; RM-1384 / RM-1385 hold the live half).
   assert.ok(PHASE_WIDGETS["champ-select"].includes("w-build"));
   assert.ok(PHASE_WIDGETS.loading.includes("w-build"));
   assert.deepStrictEqual(PHASE_WIDGETS.lobby, []);
