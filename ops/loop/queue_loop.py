@@ -1118,6 +1118,14 @@ def run_cycle(cycle: int, *, lane: str = LANE, worktree=None, run_id=None,
     return _record(outcome, outcome == OUTCOME_COMPLETED, pid, clock(), detail)
 
 
+# RM-1270 residue (s152): the lane_status.log reason of the three hard stops (ci
+# red, a kill that did not take, consecutive errors). The vocabulary is pinned
+# at limit / STOP / operator / cap (lanes.LANE_EVENT_REASONS); a hard stop is the
+# driver's own halt - not the operator's stop file, not a cap, not a usage limit
+# - so it reads STOP, as the lane driver's PARKED and QUEUE_DRAINED stops do.
+HARD_STOP_STATUS_REASON = "STOP"
+
+
 def _lane_status_stop(lane, reason, *, root, emit) -> None:
     """Write the lane_status.log stop line, only under an injected root (RM-1270).
 
@@ -1126,6 +1134,10 @@ def _lane_status_stop(lane, reason, *, root, emit) -> None:
     said and swallowed, because a status line never ends a lane. There is no
     resume here on purpose: the next real claim writes it (lanes.try_acquire_lane),
     and a resume before the claim would be false on a refused acquire.
+
+    Every run_loop stop path calls it once, just before its `break`: the three
+    stop files, the fair yield (cap) and the three hard stops
+    (HARD_STOP_STATUS_REASON). The normal end, max_cycles, is not a stop.
     """
     if root is None:
         return
@@ -1297,6 +1309,8 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
             emit(f"queue-loop stop: ci is RED on {verdict['sha']} "
                  f"(run {verdict['run_id']}) - refusing to push another row "
                  f"onto a broken {CI_REF}")
+            _lane_status_stop(lane, HARD_STOP_STATUS_REASON, root=status_root,
+                              emit=emit)
             break
         if record["outcome"] == OUTCOME_KILL_FAILED:
             # HARD STOP. The next cycle would fire a second worker into a
@@ -1305,6 +1319,8 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
             stopped_by = OUTCOME_KILL_FAILED
             emit(f"queue-loop stop: pid {record['pid']} survived its kill - "
                  f"refusing to launch into {lane} again this run")
+            _lane_status_stop(lane, HARD_STOP_STATUS_REASON, root=status_root,
+                              emit=emit)
             break
         if record["outcome"] == OUTCOME_ERROR:
             consecutive_errors += 1
@@ -1313,6 +1329,8 @@ def run_loop(*, max_cycles: int = DEFAULT_MAX_CYCLES,
                 stopped_by = STOPPED_BY_CONSECUTIVE_ERRORS
                 emit(f"queue-loop stop: {consecutive_errors} consecutive "
                      f"error cycles - {record['detail']}")
+                _lane_status_stop(lane, HARD_STOP_STATUS_REASON,
+                                  root=status_root, emit=emit)
                 break
         else:
             # CONSECUTIVE, not cumulative. One bad cycle between good ones is a

@@ -3,14 +3,26 @@ lane_status.log stop and resume lines, under an injected root only.
 
 No injected root writes nothing at all, which is what keeps the existing run_loop
 callers in the test files away from the live log. main() is the one injector.
+
+The residue a verifier named (s152 IN2): the three hard stops - CI red, a kill
+that did not take, consecutive errors - wrote no line, and only the sentinel and
+fair-yield stops had a test. Every run_loop stop path is now driven below.
 """
 from __future__ import annotations
 
 import contextlib
+import datetime
 
 import pytest
 
-from tests.test_queue_loop import _loop_seams, lanes, qloop
+from tests.test_queue_loop import (
+    _fake_wait,
+    _loop_seams,
+    _mono,
+    _new_head_every_call,
+    lanes,
+    qloop,
+)
 
 
 def _quiet(*_a):
@@ -102,6 +114,103 @@ def test_a_status_fault_is_said_and_never_ends_the_loop(control, monkeypatch):
                              cycle_log=control / "c.jsonl", emit=said.append, **seams)
     assert summary["stopped_by"] == "STOP"
     assert any("lane status" in line for line in said)
+
+
+# ---- every non-sentinel stop path (s152 IN2: the hard stops wrote no line) ----
+
+# The reason vocabulary is pinned (limit / STOP / operator / cap). A hard stop is
+# the driver's own halt: not the operator's file, not a cap, not a usage limit.
+STOP_PATHS = {"fair_yield": "cap", "ci_red": "STOP", "kill_failed": "STOP",
+              "consecutive_errors": "STOP"}
+
+
+def _boom_cycle(_cycle, **_kw):
+    raise RuntimeError("boom")
+
+
+def _stop_path(path, monkeypatch):
+    """(run_loop kwargs that end the loop on `path`, the stopped_by it reads)."""
+    if path == "fair_yield":
+        _log, seams = _loop_seams(alive_ticks=1)
+        seams["should_yield"] = lambda: True
+        return {"max_cycles": 3, **seams}, qloop.STOPPED_BY_FAIR_YIELD
+    if path == "ci_red":
+        _log, seams = _loop_seams(alive_ticks=1)
+        seams["head_sha"] = _new_head_every_call()
+        _seen, seams["wait"] = _fake_wait(qloop.CI_FAILURE)
+        return {"max_cycles": 3, **seams}, qloop.STOPPED_BY_CI_RED
+    if path == "kill_failed":
+        _log, seams = _loop_seams(alive_ticks=-1, tick=1.0, kill_takes=False)
+        seams["monotonic"] = _mono(tick=1.0)
+        return ({"max_cycles": 3, "cycle_timeout_s": 3, "poll_s": 10,
+                 "kill_grace_s": 20, **seams}, qloop.OUTCOME_KILL_FAILED)
+    assert path == "consecutive_errors"
+    _log, seams = _loop_seams(alive_ticks=1)
+    monkeypatch.setattr(qloop, "run_cycle", _boom_cycle)
+    return ({"max_cycles": 5, "max_consecutive_errors": 2, **seams},
+            qloop.STOPPED_BY_CONSECUTIVE_ERRORS)
+
+
+def _outcomes(summary) -> list:
+    return [r["outcome"] for r in summary["records"]]
+
+
+@pytest.mark.parametrize("lane", ["queue", "ds"])
+@pytest.mark.parametrize("path", sorted(STOP_PATHS))
+def test_every_stop_path_logs_one_stop_with_its_lane_and_reason(control, monkeypatch,
+                                                                path, lane):
+    kw, stopped_by = _stop_path(path, monkeypatch)
+    summary = qloop.run_loop(lane=lane, control_dir=control, status_root=control / "lanes",
+                             cycle_log=control / "c.jsonl", emit=_quiet, **kw)
+    assert summary["stopped_by"] == stopped_by
+    raw = (control / "lane_status.log").read_text(encoding="ascii").splitlines()
+    assert len(raw) == 1, raw
+    ts, *rest = raw[0].split(" ")
+    assert rest == [lane, "stop", STOP_PATHS[path]]
+    assert datetime.datetime.fromisoformat(ts).tzinfo is not None
+
+
+@pytest.mark.parametrize("path", sorted(STOP_PATHS))
+def test_a_status_fault_on_any_stop_path_is_said_and_changes_nothing(control, monkeypatch,
+                                                                     path):
+    kw, stopped_by = _stop_path(path, monkeypatch)
+    base = qloop.run_loop(control_dir=control, cycle_log=control / "a.jsonl",
+                          emit=_quiet, **kw)
+
+    def boom(*_a, **_k):
+        raise OSError("disk gone")
+
+    monkeypatch.setattr(qloop.lanes, "mark_lane_stopped", boom)
+    kw, _ = _stop_path(path, monkeypatch)
+    said = []
+    got = qloop.run_loop(control_dir=control, status_root=control / "lanes",
+                         cycle_log=control / "b.jsonl", emit=said.append, **kw)
+    assert (got["stopped_by"], got["cycles_run"], _outcomes(got)) == (
+        stopped_by, base["cycles_run"], _outcomes(base))
+    assert sum("lane status" in line for line in said) == 1
+    assert _status(control / "lanes") == []
+
+
+@pytest.mark.parametrize("path", sorted(STOP_PATHS))
+def test_no_injected_root_logs_no_stop_on_any_path(control, monkeypatch, path):
+    calls = []
+    monkeypatch.setattr(qloop.lanes, "mark_lane_stopped", lambda *a, **k: calls.append(a))
+    kw, stopped_by = _stop_path(path, monkeypatch)
+    summary = qloop.run_loop(control_dir=control, cycle_log=control / "c.jsonl",
+                             emit=_quiet, **kw)
+    assert summary["stopped_by"] == stopped_by
+    assert calls == []
+
+
+def test_a_hard_stop_after_an_open_cap_stop_replaces_its_reason(control, monkeypatch):
+    """The newest stop is the open one, so the next claim resumes it as STOP."""
+    lanes.mark_lane_stopped("queue", "cap", root=control / "lanes")
+    kw, _ = _stop_path("consecutive_errors", monkeypatch)
+    qloop.run_loop(control_dir=control, status_root=control / "lanes",
+                   cycle_log=control / "c.jsonl", emit=_quiet, **kw)
+    assert _status(control / "lanes") == [["queue", "stop", "cap"], ["queue", "stop", "STOP"]]
+    assert lanes.mark_lane_resumed("queue", root=control / "lanes") is True
+    assert _status(control / "lanes")[-1] == ["queue", "resume", "STOP"]
 
 
 @pytest.mark.parametrize("argv,expected", [
