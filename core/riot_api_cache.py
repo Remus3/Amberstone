@@ -380,7 +380,7 @@ class RiotApiCache:
         the `.db` under-reports the real disk cost.
         """
         total = 0
-        for suffix in ("",) + _DB_SIDECAR_SUFFIXES:
+        for suffix in ("", *_DB_SIDECAR_SUFFIXES):
             try:
                 total += self._db_path.with_name(
                     self._db_path.name + suffix).stat().st_size

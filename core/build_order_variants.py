@@ -526,7 +526,7 @@ def _engine_up() -> bool:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
-                    choices=("all",) + DS_MODE_KEYS,
+                    choices=("all", *DS_MODE_KEYS),
                     help="Which MODE(s) to generate: sr/aram/arena or all "
                          "(default: all). Selects modes ONLY - it does NOT "
                          "expand the champion roster; use --champions all "

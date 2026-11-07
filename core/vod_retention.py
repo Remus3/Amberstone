@@ -266,7 +266,7 @@ def select_for_deletion(rows: Iterable[VodRow], policy: Policy,
             staged.append([r, ACTION_KEEP, keep])
         elif keep:
             staged.append([r, ACTION_CANDIDATE,
-                           keep + [f"aged out ({age_days:.1f} d >="
+                           [*keep, f"aged out ({age_days:.1f} d >="
                                    f" {policy.keep_days:g} d)"]])
         else:
             staged.append([r, ACTION_CANDIDATE, ["no keep condition"]])
@@ -286,7 +286,7 @@ def select_for_deletion(rows: Iterable[VodRow], policy: Policy,
             if remaining <= policy.cap_bytes:
                 break
             s[1] = ACTION_CANDIDATE
-            s[2] = list(s[2]) + ["over cap: oldest unpinned evicted first"]
+            s[2] = [*s[2], "over cap: oldest unpinned evicted first"]
             remaining -= s[0].size_bytes or 0
     out.bytes_after = remaining
     out.over_cap_after = remaining > policy.cap_bytes

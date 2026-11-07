@@ -203,11 +203,11 @@ class Histogram(_Metric):
         for lv, (counts, total, n) in items:
             base = list(zip(self.labelnames, lv))
             for i, le in enumerate(self.buckets):
-                bl = base + [("le", _format_bucket_le(le))]
+                bl = [*base, ("le", _format_bucket_le(le))]
                 lstr = "{" + ",".join(
                     f'{k}="{_escape_label(v)}"' for k, v in bl) + "}"
                 out.append(f"{self.name}_bucket{lstr} {counts[i]}")
-            bl = base + [("le", "+Inf")]
+            bl = [*base, ("le", "+Inf")]
             lstr = "{" + ",".join(
                 f'{k}="{_escape_label(v)}"' for k, v in bl) + "}"
             out.append(f"{self.name}_bucket{lstr} {n}")

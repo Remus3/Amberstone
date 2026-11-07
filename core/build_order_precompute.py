@@ -929,7 +929,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     """
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
-                    choices=("all",) + _MODE_KEYS,
+                    choices=("all", *_MODE_KEYS),
                     help="Which MODE(s) to generate: sr/aram/arena or all "
                          "(default: all). Selects modes ONLY - it does NOT "
                          "expand the champion roster; use --champions all "

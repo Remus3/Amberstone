@@ -1117,7 +1117,7 @@ def _count_leaves(payload: dict) -> int:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
-                    choices=("all",) + _MODE_KEYS,
+                    choices=("all", *_MODE_KEYS),
                     help="Restrict generation to one mode (default: all).")
     ap.add_argument("--champions", default="",
                     help="CSV of my-champ DDragon ids (default: SEED_CHAMPIONS).")

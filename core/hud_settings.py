@@ -65,8 +65,8 @@ _RES_MAX = 10000
 _LAYOUT_KEYS = ("GlobalScale", "ShowTeamFramesOnLeft", "MirroredScoreboard",
                 "FlipMiniMap", "MinimapScale")
 # Broader OCR-relevant HUD context (surfaced, not part of the key).
-_HUD_CONTEXT_KEYS = _LAYOUT_KEYS + (
-    "DrawHealthBars", "ShowFPSAndLatency", "ShowPlayerStats",
+_HUD_CONTEXT_KEYS = (
+    *_LAYOUT_KEYS, "DrawHealthBars", "ShowFPSAndLatency", "ShowPlayerStats",
     "NumericCooldownFormat", "ShowSummonerNames", "ShopScale")
 # Color / gamma correction settings (PersistedSettings.json).
 _COLOR_KEYS = ("ColorBrightness", "ColorContrast", "ColorGamma",

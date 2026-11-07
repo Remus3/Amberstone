@@ -355,7 +355,7 @@ def plan_build(
                 terms = _score(new_seq)
                 builds_evaluated += 1
                 children_here += 1
-                new_items = parent.items + (_to_planned(row, terms),)
+                new_items = (*parent.items, _to_planned(row, terms))
                 offspring.append(_Candidate(items=new_items, total=terms.total))
 
         if not offspring:
