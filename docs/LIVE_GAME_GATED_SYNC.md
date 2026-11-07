@@ -176,6 +176,10 @@ lane gated cycle 88: the three `/dps`-only seams have no live caller of `dps_for
 `/rank` wire, `/ehp` has no RC caller for `apply_cc_floor`, `assume_archetype_hp_pct` is an RC-side
 flag no live caller sets, and no live dispatch arms `assume_ms_utility`; the shared AGE CHECK sits
 in G2-02, the others in their own rows); no count moved.
+G4-07 / G4-10 were tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 89: no DS
+route parses the load-time `apply_all_out_bonus`, and `/hps` alone parses `apply_ability_hsp_amp`
+with no RC caller of `hps_for`; each row holds its own AGE CHECK). G4-06 and G4-11 got an AGE
+CHECK only (still no live residual); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -3263,10 +3267,42 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   slot 2 median 5.0. Nothing has been retuned yet.
   NO LIVE RESIDUAL ON THE DATA - this half never needed a client. What remains is headless code:
   retune `_ASSUMED_ABILITY_RANK` 4 -> 5, and flip the seam in the live survivability path.
-- **G4-07** (was B36) R50 `apply_all_out_bonus` (K'Sante): confirm the empowered-mark value in an
+  **AGE CHECK (lane 9 PREP s144 cycle 89, S144-G-80; source read at local main `86ed5e52d`, no
+  game up; NOT a tick). Both halves are still undone, and the row still needs no game.**
+  `_ASSUMED_ABILITY_RANK = 4` stands in `_passive_flat_mitigation_overrides.py` (the `:99` / `:234`
+  cites above have drifted by one line, and the read at `:235` is now clamped) and in its
+  kept-in-sync twin `_passive_mitigation_overrides.py`. `/ehp` and `/rank-tank` parse the flag (`server.py`
+  `_route_ehp`, `_route_rank_tank`), and `core/daemon_slayer_client.py` `rank_tank_for` / `ehp_for`
+  emit it when True. But the live survivability callers never pass it: the tank branch of
+  `rank_for_primary_archetype` and `core/defensive_picks.py`'s `rank_tank_for` call omit it, it is
+  not in `dashboard/routes_state.py` `_DS_PREVIEW_SEAM_BOOLS`, and `ehp_for` has no RC caller.
+  The live flip is therefore also a missing producer, not only a default.
+- **G4-07** `[BLOCKED ON WIRING 2026-11-06]` (was B36) R50 `apply_all_out_bonus` (K'Sante): confirm the empowered-mark value in an
   actual All Out fight + tune `conditional_probability` 0.5 vs real All-Out uptime. **NOT a pure HTTP
   flag-flip** - it is a load-time `AbilitiesSnapshot.load()` flag (`abilities.py:675`), so threading it
   needs per-request snapshot construction (separate FUTURE task). Only fires if K'Sante is played.
+  **AGE CHECK (lane 9 PREP s144 cycle 89, S144-G-80; source read at local main `86ed5e52d`, no
+  game up; NOT a tick). Still unreachable live: no game drains this row today.** The flag is a
+  keyword of `AbilitiesSnapshot.load` (now near `abilities.py:1283`; the `:675` cite is stale) and is
+  consumed only by `_apply_all_out_bonus_overrides`. No DS route parses `apply_all_out_bonus`, and
+  no tracked `.py` / `.js` / `.mjs` outside `agents/daemon_slayer/` (tests aside) names it. The
+  server's only flag-ON snapshot holder (`server.py` `_AbilitiesOverrideCache`) builds
+  `apply_ability_base_overrides=True` alone. `load_default()` and `data_loader.py` call
+  `AbilitiesSnapshot.load()` with no seam flags (`data_loader.py` passes only `patch` / `data_root`). The 0.5 is still the `conditional_probability` of the
+  `_ALL_OUT_BONUS_OVERRIDES` `("KSante", "P", 0)` entry. PRECONDITION for return to the drain list:
+  the per-request snapshot path lands AND a live caller sets the flag for a K'Sante holder, recording
+  its outbound body with `ts` and the `:2999` `gameData.gameTime` it read. Predicate stated NOW,
+  graded only after that lands, in one real SR game with a K'Sante: PASS iff a recorded body for
+  K'Sante carries `apply_all_out_bonus` true, a `:2999` read within 10 s of game time shows
+  `KSante` in `allPlayers[]`, and the DS answer to that body differs from the same body with the
+  flag OFF. The uptime half (tune 0.5) cannot be graded from `:2999`: per the Riot Live Client
+  schema (not re-measured this cycle) it carries no buff or R-state field and no per-hit damage. Its
+  source would be a post-game Match-V5 timeline (`CHAMPION_KILL` `victimDamageReceived`, stored by
+  `scripts/rewind_scraper.py` as `victim_damage_json`). Which `spellName` that timeline gives the
+  mark consume is NOT measured; reading one is the first step. SUBSTITUTION CHECK: a hand-built
+  `AbilitiesSnapshot.load(apply_all_out_bonus=True)` call, a fixture or a DS unit test answers
+  whether the engine COMPUTES the bonus; only a producer's recorded body joined to a live read
+  answers whether RC SENT it.
 - **G4-08** (was B42) R59 `assume_lifeline_shield` - **CLOSED 2026-07-18; there is no live surface to
   eyeball.** MEASURED against a REAL enemy Lifeline holder: Yone genuinely held Immortal Shieldbow 6673
   in NA1_5557160206 (participants row, patch 16.9 q400). Modelling THAT Yone as the target
@@ -3305,13 +3341,30 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   separately gated (G2-23); and these builds span patches 14.15-15.24 scored against a 16.14.1 engine.
   **NO LIVE RESIDUAL - the row never needed a client.** What remains is the operator-gated flip.
   SOURCE: LEDGER 745 + 831.
-- **G4-10** (was B47c) R109 `apply_ability_hsp_amp` - item HSP amp of the CHAMPION-ABILITY heal/shield
+- **G4-10** `[BLOCKED ON WIRING 2026-11-06]` (was B47c) R109 `apply_ability_hsp_amp` - item HSP amp of the CHAMPION-ABILITY heal/shield
   throughput in `compute_hps` (an enchanter's Ardent/Staff/Redemption/Moonstone/Mikael amped her ITEM
   heals but NOT her ABILITY heals - Soraka Q/W, Janna E, Lulu E; live-proven delta==0 on 8 enchanters,
   Soraka +6.65 HPS / ~6.3%). CALIBRATION FLAG (adversarial review): the amp reuses the item side's
   PRODUCT convention (`prod(1 + heal_shield_amp_pct)`) which diverges from real-League ADDITIVE HSP
   stacking and from the EHP path's additive `_hsp_amp.sum_wielder_hsp_pct` - a pre-existing item-side
   asymmetry, NOT a regression. **A two-HSP-item build is the calibration case.** SOURCE: LEDGER 857.
+  **AGE CHECK (lane 9 PREP s144 cycle 89, S144-G-80; source read
+  at local main `86ed5e52d`, no game up; NOT a tick). Producer-orphan: no game drains this row
+  today.** `apply_ability_hsp_amp` is parsed by `/hps` only (`server.py` `_route_hps`; the RM-172
+  comment there says it is NOT shared with `/rank-enchanter`). Its only RC sender is
+  `core/daemon_slayer_client.py` `hps_for`, which has no RC caller. It is not in
+  `_DS_PREVIEW_SEAM_BOOLS`, and no `web/` JS sends it (the one `web/` hit is the static mock
+  `web/mock/addendum_a_concepts.html`). The calibration question (PRODUCT vs ADDITIVE stacking on a
+  two-HSP-item build) is a rules-and-code question: `:2999` carries no heal or shield throughput
+  field (per the Riot Live Client schema, not re-measured this cycle), so a game cannot answer it.
+  PRECONDITION for return to the drain list: a live caller of `hps_for` (or a forwarding scorer)
+  sets the flag for an enchanter holder and records its outbound body with `ts` and the `:2999`
+  `gameData.gameTime` it read. Predicate stated NOW, graded only after that lands, in one real SR
+  game with an enchanter holding an HSP item: PASS iff a recorded `/hps` body carries
+  `apply_ability_hsp_amp` true and its `items` list equals, as a set, that player's `allPlayers[].items[].itemID`
+  set from a `:2999` read within 10 s of game time. SUBSTITUTION CHECK: a hand-POSTed `/hps` body,
+  the LEDGER 857 delta or a DS unit test answers whether the engine COMPUTES the amp; only the
+  producer's recorded body joined to a live read answers whether RC SENT it.
 - **G4-11** `[NEW ROW 2026-07-18]` `[RE-FILED 2026-07-18]` R127 `apply_cdragon_resource_guard` (ENGINE
   1.213.0, LEDGER 901, `5f0c4a0d`, `abilities.py:677` default False - source-verified). **RE-FILE
   source: GATE 4; destination: ordinary non-gated CODE work. The live gate is discharged; the row is
@@ -3331,6 +3384,11 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   other champs" was measured as SCORE invariance (airtight for the 172 unmoved champions), but MF's own
   input moved 1.4854x and HER build reco was never diffed - diff it before flipping.
   **NO LIVE RESIDUAL. Do not schedule a game for this row.**
+  AGE CHECK (lane 9 PREP s144 cycle 89, S144-G-80; source read at local main `86ed5e52d`; NOT a
+  tick): still true. The flag's two CODE sites are now the `AbilitiesSnapshot.load` keyword (near
+  `abilities.py:1285`) and its consumer (near `:1513`); the `:677` / `:812` / `:898` cites above are
+  stale line numbers. `load_default()` still calls a bare `AbilitiesSnapshot.load()`, and no DS
+  route or RC caller passes the flag.
 
 ### In-game render / behavior (real combat pressure)
 
