@@ -32,6 +32,10 @@ from tests._basetemp_guard import pytest_configure, pytest_unconfigure  # noqa: 
 # <repo>/API-Key-Claude.txt, including at COLLECTION (vision_server resolves
 # the key at import). Installed here, before either suite is collected.
 from tests._anthropic_key_guard import install as _install_anthropic_key_guard
+# RM-2037: under CI (or RC_FAIL_FAST_NAMES=1) the controlling process prints
+# "RC-FAIL <when> <nodeid> :: <error>" the moment a test fails, so a run killed
+# before its summary (a step ceiling, a job kill) still names every failure.
+from tests._fail_fast_names import pytest_sessionstart  # noqa: F401
 
 _install_subtest_guard()
 _install_anthropic_key_guard()
