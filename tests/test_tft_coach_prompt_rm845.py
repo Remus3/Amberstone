@@ -6,7 +6,7 @@ Measured before the fix (origin/main 4b0bc3ce4):
       S/A/B boon tiers) sent as the system block on EVERY call, while
       tft/tft_set.py:140 resolve_set() defaults to the newest ingested set,
       Set 18.
-  tft/tft_pbe_engine.py:24-177 TFT_PBE_SYSTEM_PROMPT - 9821 chars: patch 17.3
+  tft/tft_pbe_engine.py (removed, RM-292 b):24-177 TFT_PBE_SYSTEM_PROMPT - 9821 chars: patch 17.3
       notes and a "META S-TIER COMPS" list (tier claims no data backs).
   tft/tft_coach_engine.py:505-512 rewrote every "carousel" in the model's
       answer to "God boon" whatever set was running.

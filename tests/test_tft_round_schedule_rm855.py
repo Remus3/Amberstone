@@ -9,7 +9,7 @@ the Gods tables from `tft/tft_pbe_data.py` (`CONSTANTS_SET = 17` :24,
 default set (`tft/tft_set.py` `resolve_set` :140), so a Set 18 game carried
 Set 17 god rounds, PvE rounds and tempo notes; the tempo note reaches the
 coach prompt as "Milestone: ..." (`tft/tft_coach_engine.py` :330-331,
-`tft/tft_pbe_engine.py` :118-119).
+`tft/tft_pbe_engine.py`, since removed, :118-119).
 
 Set 18's schedule is NOT in the ingested data: the CommunityDragon extract
 (`data/meta/tft_set18_cdragon.json`) names carousel rounds and a Stage 3-7 in

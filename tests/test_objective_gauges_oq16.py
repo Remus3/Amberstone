@@ -18,8 +18,8 @@ toward ready. This slice ships it as a LIVE overlay widget:
 Data contract (grep-verified producers):
   - liveclient.game_time_s + liveclient.objective_events:
     dashboard/_liveclient.py:97 + :265-301.
-  - summoner_cooldowns rows: dashboard/_state_cooldowns.py ->
-    core/summoner_cooldowns.compute_cooldowns rows (:317-324; summs
+  - summoner_cooldowns rows (both modules since removed, 538c61e4b):
+    dashboard/_state_cooldowns.py -> core/summoner_cooldowns.compute_cooldowns rows (:317-324; summs
     d_/f_cd_remaining_s per :219-225, ult cd_remaining_s per :242-247).
   - Objective schedule literals MIRROR core/event_callouts.py; the
     ScheduleMirrorTests below pin the JS copies against the Python

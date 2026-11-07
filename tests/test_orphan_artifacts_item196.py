@@ -7,7 +7,7 @@ Pins 7 dead artifacts as PERMANENTLY removed:
 
 Each had ZERO callers across .py / .js / .md / .ps1 / .bat / .xml surfaces.
 Targets the scripts operated on (tft/comp_control.py + data/tft_set17_meta.json)
-do not exist.  The .bak files were atomic-write insurance from s167 DB ops,
+did not exist (already removed).  The .bak files were atomic-write insurance from s167 DB ops,
 not persistent restore points.  The runtime artifacts were one-off dumps with
 zero consumers in 22-28 days at item 196 ship time.
 
