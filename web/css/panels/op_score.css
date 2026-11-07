@@ -71,7 +71,9 @@
 #bi-opscore-mount .op-ylab,
 #bi-opscore-mount .op-xlab {
   font-size: 13px;
-  fill: var(--text-faint, #9ca3af);
+  /* S144-U-205: --text-faint was 3.64-3.94:1 on the chart's --surface-3,
+   * under AA wherever the label renders under large-text size (923 px). */
+  fill: var(--text-dim, #9ca3af);
   font-variant-numeric: tabular-nums;
 }
 #bi-opscore-mount .op-xlab-end { text-anchor: end; }
@@ -113,7 +115,8 @@
   align-items: center;
   gap: var(--space-2, 8px);
 }
-#bi-opscore-mount .op-arc-chip .op-arc-side { color: var(--text-faint, #9ca3af); }
+/* S144-U-205: --text-faint was 3.64-3.94:1 on the chip's --surface-3. */
+#bi-opscore-mount .op-arc-chip .op-arc-side { color: var(--text-dim, #9ca3af); }
 #bi-opscore-mount .op-arc-chip.op-win  { border-color: var(--signal-good, #6ec977); }
 #bi-opscore-mount .op-arc-chip.op-loss { border-color: var(--signal-bad, #ff5050); }
 #bi-opscore-mount .op-caption {

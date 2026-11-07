@@ -84,7 +84,12 @@
   font-variant-numeric: tabular-nums;
 }
 #bi-duration-mount .dw-val.dw-good { color: var(--signal-good, #6ec977); }
-#bi-duration-mount .dw-val.dw-bad  { color: var(--signal-bad, #ff5050); }
+/* S144-U-205: the worse value / lean chip took bare --signal-bad, 4.44:1
+ * arcane and 4.48 moonlit on the chart surface. Text takes the RM-1550
+ * red-text lift (70 percent toward --text in oklab); the bar fill and the
+ * chip frame keep bare --signal-bad, so the state still reads by hue.
+ * Guard: tests/snapshot_panels/test_build_insights_chart_text_contrast.py. */
+#bi-duration-mount .dw-val.dw-bad  { color: color-mix(in oklab, var(--signal-bad, #ff5050) 70%, var(--text)); }
 #bi-duration-mount .dw-val.dw-dim  { color: var(--signal-dim, #8a8e9c); }
 #bi-duration-mount .dw-n {
   margin-left: var(--space-2, 8px);
@@ -175,7 +180,8 @@
   min-height: var(--hit-min, 42px);
   padding: var(--space-2, 8px) var(--space-3, 12px);
   font-size: var(--fs-sm, 18px);
-  color: var(--text-faint, #9ca3af);
+  /* S144-U-205: --text-faint was 3.64-3.94:1 on --surface-3. */
+  color: var(--text-dim, #9ca3af);
   background: var(--surface-3);
   border: 1px solid var(--border-soft);
   border-radius: var(--panel-radius-sm, 10px);
@@ -200,5 +206,8 @@
   white-space: nowrap;
 }
 #bi-duration-mount .dw-chip.dw-good { color: var(--signal-good, #6ec977); }
-#bi-duration-mount .dw-chip.dw-bad  { color: var(--signal-bad, #ff5050); }
+#bi-duration-mount .dw-chip.dw-bad  {
+  color: color-mix(in oklab, var(--signal-bad, #ff5050) 70%, var(--text));
+  border-color: var(--signal-bad, #ff5050);
+}
 #bi-duration-mount .dw-chip.dw-dim  { color: var(--signal-dim, #8a8e9c); }
