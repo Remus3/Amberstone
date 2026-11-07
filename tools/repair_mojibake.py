@@ -173,7 +173,7 @@ def _skip(path: Path, rel_posix: str) -> bool:
 def _tracked_files() -> list[Path]:
     out = subprocess.run(
         ["git", "ls-files", "-z"], cwd=ROOT,
-        capture_output=True, check=True,
+        capture_output=True, check=True, timeout=60,
     ).stdout
     return [ROOT / p for p in out.decode("utf-8").split("\0") if p]
 

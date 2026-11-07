@@ -380,6 +380,7 @@ def tracked_files(root: Path) -> list[str]:
         encoding="utf-8",   # RM-830: git writes UTF-8 names, not the locale's
         errors="replace",
         check=True,
+        timeout=60,
     ).stdout
     return [p for p in out.split("\0") if p]
 

@@ -382,6 +382,7 @@ def check_untracked_authored(
         r = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z", f"{a}/"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=60,
         )
         if r.returncode != 0:
             continue
@@ -412,9 +413,9 @@ def check_git_hooks_path(root: pathlib.Path) -> list[Finding]:
     try:
         out = subprocess.run(
             ["git", "-C", str(root), "config", "core.hooksPath"],
-            capture_output=True, text=True,
+            capture_output=True, text=True, timeout=60,
         )
-    except OSError:
+    except (OSError, subprocess.SubprocessError):
         return []
     configured = out.stdout.strip()
     if configured.replace("\\", "/").rstrip("/").endswith(".githooks"):

@@ -45,11 +45,11 @@ def main() -> int:
     # tracked-hooks layout exists to provide.
     subprocess.run(
         ["git", "-C", str(REPO_ROOT), "config", "core.hooksPath", HOOKS_DIRNAME],
-        check=True,
+        check=True, timeout=60,
     )
     active = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "config", "core.hooksPath"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, timeout=60,
     ).stdout.strip()
 
     print(f"core.hooksPath = {active}")
