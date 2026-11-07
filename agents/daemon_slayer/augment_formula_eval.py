@@ -42,10 +42,31 @@ It never raises on unknown shapes - returns 0.0 (so an unknown part is a
 zero-contribution part, consistent with how the engine treats unregistered
 augments). The caller decides whether the resulting number is a stat grant,
 a damage value, a heal amount, etc., based on the calculation KEY name.
+
+Input contract (S144-T-589). The payload is cdragon JSON RC does not author,
+so every public function returns a FINITE float (or, for the overlay, a dict
+of finite floats) and never raises, whatever the shape:
+
+* a number field (``mNumber``, ``mCoefficient``, a ``dataValues`` entry, a
+  ``StatContext`` stat) is read through ``_num``: a bool, NaN, +-inf, an int
+  too large for a float or anything ``float()`` refuses reads 0.0; a numeric
+  string ("0.5") still parses, as it did before;
+* a key field (``__type``, ``mDataValue``, a calc name) must be a str and
+  ``mStat`` an int or an integral float (never a bool - ``False`` used to
+  hash as 0 and read HP); anything else is an unknown shape (0.0);
+* ``level_index`` must be an int (never a bool); anything else reads level 0;
+* a non-mapping ``data_values`` / ``calculations`` / ``stats`` reads empty,
+  a non-mapping ``base_stats`` reads as absent, a missing or foreign context
+  is the empty ``StatContext()``, a non-list / non-tuple ``mFormulaParts``
+  has no parts, and an ``mStatFormula`` that is not a real number (a bool,
+  an array) is no refinement;
+* a part, sum or product that overflows to a non-finite value is 0.0.
 """
 
 from __future__ import annotations
 
+import math
+import numbers
 from dataclasses import dataclass, field
 from typing import Mapping
 
@@ -127,6 +148,73 @@ class StatContext:
     level_index: int = 0
 
 
+_EMPTY_CTX = StatContext()
+
+
+def _num(value: object) -> float:
+    """Coerce one payload number to a finite float; 0.0 when it is not one.
+
+    A bool is not a number here (``True`` used to read 1.0). ``float()``
+    still parses a numeric string, so the pre-slice coercion is preserved,
+    but NaN / +-inf (a float or the strings "nan" / "1e999") and an int too
+    large for a float (OverflowError) read 0.0 instead of poisoning a sum
+    or raising.
+    """
+    if isinstance(value, bool):
+        return 0.0
+    try:
+        out = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+    return out if math.isfinite(out) else 0.0
+
+
+def _finite(value: float) -> float:
+    """Return ``value`` when finite, else 0.0 (a sum or product overflowed)."""
+    return value if math.isfinite(value) else 0.0
+
+
+def _ctx(ctx: object) -> StatContext:
+    """A missing or foreign context reads as the empty ``StatContext()``."""
+    return ctx if isinstance(ctx, StatContext) else _EMPTY_CTX
+
+
+def _mapping(value: object) -> Mapping:
+    """A non-mapping container reads as empty."""
+    return value if isinstance(value, Mapping) else {}
+
+
+def _stat_key(ordinal: object) -> str | None:
+    """Map a Riot StatType ordinal to a canonical key, or None.
+
+    Accepts an integral number (a numpy int included) or an integral float
+    (2.0 hashed equal to 2 before this slice and keeps mapping); refuses a
+    bool (``False`` hashed as 0 and read HP), an unhashable value (a list
+    raised TypeError) and anything else.
+    """
+    if isinstance(ordinal, bool):
+        return None
+    if isinstance(ordinal, float):
+        if not ordinal.is_integer():
+            return None
+        ordinal = int(ordinal)
+    if not isinstance(ordinal, numbers.Integral):
+        return None
+    return _STAT_ORDINAL_TO_KEY.get(int(ordinal))
+
+
+def _is_bonus_formula(stat_formula: object) -> bool:
+    """True when ``mStatFormula`` is the bonus refinement (2, or 2.0).
+
+    Only a real number is compared (a bool never equals 2, so it needs no
+    guard of its own); an array-like (``numpy.ndarray == 2`` has no single
+    truth value) used to raise ValueError from the ``and``.
+    """
+    if not isinstance(stat_formula, numbers.Real):
+        return False
+    return bool(stat_formula == _STAT_FORMULA_BONUS)
+
+
 def read_stat(
     ctx: StatContext,
     ordinal: int | None,
@@ -136,18 +224,26 @@ def read_stat(
 
     Returns 0.0 for unknown ordinals (zero-contribution sentinel).
     ``stat_formula=2`` reads the bonus delta when ``base_stats`` is
-    available; otherwise the total is returned.
+    available; otherwise the total is returned. A stat value that is not a
+    finite number reads 0.0 (see ``_num``); a non-mapping ``base_stats``
+    reads as absent.
     """
-    if ordinal is None:
-        return 0.0
-    key = _STAT_ORDINAL_TO_KEY.get(ordinal)
+    key = _stat_key(ordinal)
     if key is None:
         return 0.0
-    total = float(ctx.stats.get(key, 0.0) or 0.0)
-    if stat_formula == _STAT_FORMULA_BONUS and ctx.base_stats is not None:
-        base = float(ctx.base_stats.get(key, 0.0) or 0.0)
-        return total - base
+    ctx = _ctx(ctx)
+    total = _num(_mapping(ctx.stats).get(key, 0.0))
+    if _is_bonus_formula(stat_formula) and isinstance(ctx.base_stats, Mapping):
+        return _finite(total - _num(ctx.base_stats.get(key, 0.0)))
     return total
+
+
+def _level_index(ctx: StatContext) -> int:
+    """The context's level index; a non-integral value (or a bool) reads 0."""
+    idx = ctx.level_index
+    if isinstance(idx, bool) or not isinstance(idx, numbers.Integral):
+        return 0
+    return int(idx)
 
 
 def _read_data_value(
@@ -156,26 +252,20 @@ def _read_data_value(
     idx: int,
 ) -> float:
     """Read ``aug.data_values[name][idx]`` with float-cast + bounds-check."""
-    if not name:
+    if not isinstance(name, str) or not name:
         return 0.0
-    arr = aug.data_values.get(name)
+    arr = _mapping(getattr(aug, "data_values", None)).get(name)
     if isinstance(arr, list):
         if 0 <= idx < len(arr):
-            try:
-                return float(arr[idx])
-            except (TypeError, ValueError):
-                return 0.0
+            return _num(arr[idx])
         # If the requested level index is out of range, fall back to the
         # last entry (the cdragon dataValues arrays are 7-long and pad the
         # tail; level-7 reads land here when an augment caps below level 7).
         if arr:
-            try:
-                return float(arr[-1])
-            except (TypeError, ValueError):
-                return 0.0
+            return _num(arr[-1])
         return 0.0
     if isinstance(arr, (int, float)):
-        return float(arr)
+        return _num(arr)
     return 0.0
 
 
@@ -188,22 +278,19 @@ def _read_data_value(
 
 
 def _eval_number(part: dict, aug: Augment, ctx: StatContext) -> float:
-    try:
-        return float(part.get("mNumber", 0.0))
-    except (TypeError, ValueError):
-        return 0.0
+    return _num(part.get("mNumber", 0.0))
 
 
 def _eval_named_data_value(part: dict, aug: Augment, ctx: StatContext) -> float:
     name = part.get("mDataValue")
-    return _read_data_value(aug, name, ctx.level_index)
+    return _read_data_value(aug, name, _level_index(ctx))
 
 
 def _eval_stat_by_named_data_value(
     part: dict, aug: Augment, ctx: StatContext
 ) -> float:
     name = part.get("mDataValue")
-    val = _read_data_value(aug, name, ctx.level_index)
+    val = _read_data_value(aug, name, _level_index(ctx))
     stat = read_stat(ctx, part.get("mStat"), part.get("mStatFormula"))
     return val * stat
 
@@ -211,10 +298,7 @@ def _eval_stat_by_named_data_value(
 def _eval_stat_by_coefficient(
     part: dict, aug: Augment, ctx: StatContext
 ) -> float:
-    try:
-        coef = float(part.get("mCoefficient", 0.0))
-    except (TypeError, ValueError):
-        coef = 0.0
+    coef = _num(part.get("mCoefficient", 0.0))
     ordinal = part.get("mStat")
     if ordinal is None:
         # Bare coefficient (no stat target): the cdragon runtime treats
@@ -241,14 +325,18 @@ def evaluate_part(part: dict, aug: Augment, ctx: StatContext) -> float:
     Unknown ``__type`` returns 0.0 (zero-contribution sentinel). The
     evaluator never raises on unknown shapes - keeping the
     contract symmetric with how the engine treats unregistered augments.
+    A non-str ``__type`` is an unknown shape, and a contribution that
+    overflows to a non-finite value is 0.0.
     """
     if not isinstance(part, dict):
         return 0.0
     ptype = part.get("__type")
+    if not isinstance(ptype, str):
+        return 0.0
     fn = _PART_DISPATCH.get(ptype)
     if fn is None:
         return 0.0
-    return fn(part, aug, ctx)
+    return _finite(fn(part, aug, _ctx(ctx)))
 
 
 def evaluate_calculation(
@@ -257,11 +345,15 @@ def evaluate_calculation(
     """Evaluate a single GameCalculation entry.
 
     Sums ``mFormulaParts`` entries; multiplies the sum by ``mMultiplier``
-    when present. Returns 0.0 for an empty/missing calc.
+    when present. Returns 0.0 for an empty/missing calc, a non-list
+    ``mFormulaParts`` and a sum or product that overflows.
     """
     if not isinstance(calc, dict):
         return 0.0
-    parts = calc.get("mFormulaParts") or ()
+    ctx = _ctx(ctx)
+    parts = calc.get("mFormulaParts")
+    if not isinstance(parts, (list, tuple)):
+        parts = ()
     total = 0.0
     for p in parts:
         total += evaluate_part(p, aug, ctx)
@@ -269,7 +361,7 @@ def evaluate_calculation(
     if isinstance(multiplier_part, dict):
         mult = evaluate_part(multiplier_part, aug, ctx)
         total = total * mult
-    return total
+    return _finite(total)
 
 
 def evaluate_named_calculation(
@@ -277,12 +369,13 @@ def evaluate_named_calculation(
 ) -> float:
     """Look up a named calculation on the augment and evaluate it.
 
-    Returns 0.0 if the calc name is absent or the augment carries no
-    calculations.
+    Returns 0.0 if the calc name is absent or not a str, or the augment
+    carries no (mapping of) calculations.
     """
-    if not aug.calculations:
+    calcs = _mapping(getattr(aug, "calculations", None))
+    if not calcs or not isinstance(name, str):
         return 0.0
-    return evaluate_calculation(aug.calculations.get(name), aug, ctx)
+    return evaluate_calculation(calcs.get(name), aug, ctx)
 
 
 # ---- Stat-grant calc key -> canonical stat overlay key --------------------
@@ -320,19 +413,25 @@ def stat_overlay_from_calculations(
     its calc keys map to a canonical stat grant via
     :data:`STAT_GRANT_CALC_KEYS`. This is the wiring path that, once
     populated, displaces the hand-maintained `_AUGMENT_STAT_OVERLAYS`
-    registry entry for that augment.
+    registry entry for that augment. Every value is finite: a grant that
+    evaluates non-finite is dropped, and an accumulated total that
+    overflows is dropped too.
     """
-    if not aug.calculations:
+    calcs = _mapping(getattr(aug, "calculations", None))
+    if not calcs:
         return {}
     if not STAT_GRANT_CALC_KEYS:
         return {}
-    if ctx is None:
-        ctx = StatContext()
+    ctx = _ctx(ctx)
     out: dict[str, float] = {}
     for calc_key, stat_key in STAT_GRANT_CALC_KEYS.items():
-        if calc_key not in aug.calculations:
+        if calc_key not in calcs:
             continue
         v = evaluate_named_calculation(aug, calc_key, ctx)
         if v:
-            out[stat_key] = out.get(stat_key, 0.0) + float(v)
+            total = out.get(stat_key, 0.0) + v
+            if math.isfinite(total):
+                out[stat_key] = total
+            else:
+                out.pop(stat_key, None)
     return out
