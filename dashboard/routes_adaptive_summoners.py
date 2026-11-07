@@ -97,8 +97,8 @@ _SPELL_NAMES: dict[int, str] = {
 
 def _parse_int_csv(raw: str) -> list[int]:
     out: list[int] = []
-    for chunk in (raw or "").split(","):
-        chunk = chunk.strip()
+    for raw_chunk in (raw or "").split(","):
+        chunk = raw_chunk.strip()
         if not chunk:
             continue
         try:

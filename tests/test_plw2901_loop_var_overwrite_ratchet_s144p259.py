@@ -20,6 +20,11 @@ Slice 4 (S144-P-262) renamed the same shape in four more tools (``build_third_pa
 ``inbox_responder_runner`` x2, ``replay_laning_verdict_validate`` x2, ``stop_claim_gate`` x2) and in
 ``replay_matchup_validate`` ``_parse_levels`` x1: 11 findings gone, 67 remain in held scope.
 
+Slice 5 (S144-P-263) renamed the same shape in ten more modules (``dashboard/routes_adaptive_summoners``,
+``routes_diag``, ``routes_pickban``, ``routes_spike_curve``, ``routes_state``, ``server``, and the gated tools
+``gated_ds_flag_eyeball``, ``gated_g237_lband_shadow``, ``gated_g313_mayhem_aug``, ``gated_g314_tower_input`` x2): 11
+findings gone, 56 remain in held scope.
+
 The count per file can only fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -61,13 +66,7 @@ _BASELINE = {
     "core/log_scrub.py": 1,
     "core/patch_impact.py": 3,
     "dashboard/_deterministic_coaching.py": 1,
-    "dashboard/routes_adaptive_summoners.py": 1,
-    "dashboard/routes_diag.py": 1,
-    "dashboard/routes_pickban.py": 1,
     "dashboard/routes_playstyle_labels.py": 1,
-    "dashboard/routes_spike_curve.py": 1,
-    "dashboard/routes_state.py": 1,
-    "dashboard/server.py": 1,
     "docs/_rsc_score/calibrate.py": 2,
     "docs/_rsc_score/calibrate_rep.py": 1,
     "lcu/lcu_postgame_collector.py": 1,
@@ -92,10 +91,6 @@ _BASELINE = {
     "tft/tft_prompt.py": 2,
     "tools/arena_shadow_report.py": 1,
     "tools/ds_wiki_staleness_check.py": 1,
-    "tools/gated_ds_flag_eyeball.py": 1,
-    "tools/gated_g237_lband_shadow.py": 1,
-    "tools/gated_g313_mayhem_aug.py": 1,
-    "tools/gated_g314_tower_input.py": 2,
     "tools/gated_lx05_tape_check.py": 2,
     "tools/gated_lx07_recap_check.py": 1,
     "tools/gated_tft15_planner.py": 1,
@@ -139,6 +134,17 @@ _FIXED = (
     "tools/inbox_responder_runner.py",
     "tools/replay_laning_verdict_validate.py",
     "tools/stop_claim_gate.py",
+    # slice 5 (S144-P-263): the same shape in six dashboard modules and four gated tools.
+    "dashboard/routes_adaptive_summoners.py",
+    "dashboard/routes_diag.py",
+    "dashboard/routes_pickban.py",
+    "dashboard/routes_spike_curve.py",
+    "dashboard/routes_state.py",
+    "dashboard/server.py",
+    "tools/gated_ds_flag_eyeball.py",
+    "tools/gated_g237_lband_shadow.py",
+    "tools/gated_g313_mayhem_aug.py",
+    "tools/gated_g314_tower_input.py",
 )
 
 

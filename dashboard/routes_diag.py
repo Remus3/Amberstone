@@ -157,10 +157,10 @@ def _serve_decisions_log(h) -> None:
         # `limit` VALID entries are in hand, so junk costs nothing.
         entries: list = []
         with fh:
-            for line in _iter_lines_newest_first(fh):
+            for raw_line in _iter_lines_newest_first(fh):
                 if len(entries) >= limit:
                     break
-                line = line.strip()
+                line = raw_line.strip()
                 if not line:
                     continue
                 try:

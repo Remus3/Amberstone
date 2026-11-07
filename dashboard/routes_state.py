@@ -102,8 +102,8 @@ def _agent6_audit_outcomes_ex(max_count: int = 3) -> tuple[list, bool]:
     # to completion is cacheable.
     scanned_clean = True
     try:
-        for raw in q.read_text(encoding="utf-8", errors="replace").splitlines():
-            raw = raw.strip()
+        for raw_entry in q.read_text(encoding="utf-8", errors="replace").splitlines():
+            raw = raw_entry.strip()
             if not raw:
                 continue
             try:

@@ -164,8 +164,8 @@ def read_shadow_tail(path: Path, tail_bytes: int = TAIL_BYTES) -> dict | None:
             raw = fh.read()
     except OSError:
         return None
-    for line in reversed(raw.decode("utf-8", errors="replace").splitlines()):
-        line = line.strip()
+    for raw_line in reversed(raw.decode("utf-8", errors="replace").splitlines()):
+        line = raw_line.strip()
         if not line:
             continue
         try:
@@ -347,8 +347,8 @@ def render(result: dict) -> str:
 
 def load_samples(path: Path) -> list[dict]:
     out = []
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        line = line.strip()
+    for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:
