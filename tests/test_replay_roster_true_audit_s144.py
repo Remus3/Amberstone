@@ -220,7 +220,7 @@ def test_a_duplicate_account_is_rejected_case_insensitively(tmp_path):
     path = _write_roster(tmp_path, {"players": [
         {"role": "TOP", "riot_id": "Alpha#NA1"},
         {"role": "MID", "riot_id": "alpha#na1"}]})
-    with pytest.raises(ValueError, match="(?i)duplicate"):
+    with pytest.raises(ValueError, match=r"(?i)duplicate"):
         rr.load_roster(path)
 
 

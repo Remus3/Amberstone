@@ -51,13 +51,8 @@ FIXED = (
 )
 
 # rel path -> number of B007 findings it may keep. Only shrinks. Test scaffolding
-# (the DS tests belong to lane ds). tools/stop_claim_gate.py is a ruff FALSE POSITIVE:
-# the loop target ``turn`` is read by the nested ``flag()`` closure, so it must
-# keep its name (renaming it to ``_turn`` blanked every finding's turn).
+# (the DS tests belong to lane ds).
 _BASELINE = {
-    "agents/agent3_testing/suite/test_round12.py": 1,
-    "agents/agent3_testing/suite/test_round14.py": 1,
-    "agents/agent3_testing/suite/test_round18.py": 1,
     "agents/daemon_slayer/tests/test_ability_resolution_p1l20.py": 1,
     "agents/daemon_slayer/tests/test_allyamp_item304.py": 1,
     "agents/daemon_slayer/tests/test_antitank_item308.py": 1,
@@ -76,22 +71,6 @@ _BASELINE = {
     "agents/daemon_slayer/tests/test_threatrange_item301.py": 1,
     "agents/daemon_slayer/tests/test_waveclear_item300.py": 1,
     "agents/daemon_slayer/tests/test_zonecontrol_item302.py": 1,
-    "tests/test_arm_confirm_server_gate.py": 1,
-    "tests/test_champion_loadout_collapse_aram_arena.py": 2,
-    "tests/test_champion_loadout_collapse_to_paths.py": 1,
-    "tests/test_champion_loadouts_no_unique_clash.py": 1,
-    "tests/test_cost_health_watchdog.py": 1,
-    "tests/test_ds_feed_index.py": 2,
-    "tests/test_edge_watcher_p24.py": 1,
-    "tests/test_laning_scenario_precompute.py": 5,
-    "tests/test_loadout_pollution_cleanup_item213.py": 2,
-    "tests/test_moon_sync_poller.py": 1,
-    "tests/test_obs_recorder.py": 1,
-    "tests/test_pickban_targets.py": 1,
-    "tests/test_session_hygiene.py": 2,
-    "tests/test_smoothed_rates_101qq.py": 1,
-    "tests/test_xdist_suite_fragments_s144q33.py": 1,
-    "tools/stop_claim_gate.py": 1,
 }
 
 

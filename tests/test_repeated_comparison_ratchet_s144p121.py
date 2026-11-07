@@ -50,9 +50,6 @@ _FIXED = (
 # file -> number of findings still there. Only shrinks.
 _BASELINE = {
     "ops/fleet_kit/fleet_suite_gate.py": 1,
-    "tests/test_rank_tier_live_budget.py": 1,
-    "tests/test_rc_facts_missed_run_skip_s147.py": 1,
-    "tests/test_smart_quote_hygiene.py": 1,
 }
 
 

@@ -12,7 +12,7 @@ cannot see a custom ``items()``, and every receiver here is a plain dict or a ``
 The baseline is the findings that stay because someone else owns the file: the vendored fleet kit
 (byte-pinned to MAIN's MANIFEST) and two modules changed on another lane branch
 (``tools/daemon_slayer_wiki_ability_extract.py``, ``tools/ddragon_mirror_refresh.py``; their
-entries leave when that lane lands). A baseline entry that stops offending fails
+entries left once that lane's cd7fb1a5c fixed them). A baseline entry that stops offending fails
 ``test_baseline_is_exact`` until it is dropped; a new finding anywhere else fails
 ``test_no_new_findings``.
 
@@ -49,8 +49,6 @@ _OUT_OF_SCOPE = (
 # file -> finding count that stays because another owner holds the file. Only shrinks.
 _BASELINE = {
     "ops/fleet_kit/fleet_claims.py": 1,
-    "tools/daemon_slayer_wiki_ability_extract.py": 1,
-    "tools/ddragon_mirror_refresh.py": 2,
 }
 _FIXED = (
     "core/data_retention.py",
