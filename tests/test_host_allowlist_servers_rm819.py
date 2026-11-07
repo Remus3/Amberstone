@@ -34,7 +34,7 @@ import http.server
 import logging
 import socket
 import threading
-from typing import Callable, Iterator
+from typing import Callable, Generator
 
 import pytest
 
@@ -143,7 +143,7 @@ def _stop(srv, serve: threading.Thread) -> None:
 
 
 @contextlib.contextmanager
-def _serving(srv) -> Iterator[int]:
+def _serving(srv) -> Generator[int, None, None]:
     serve = threading.Thread(target=srv.serve_forever, daemon=True,
                              name="rm819-serve")
     serve.start()
