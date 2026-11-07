@@ -184,6 +184,9 @@ G4-14 got an AGE CHECK on 2026-11-06 (s144 lane gated cycle 90: the full-screen 
 2026-06-21 removed the P4.1 dock and the premise of the P4.3 / P4.5 separation, and the P4.4 panel
 selector is a reload only; the P4.2 + Interact-now eyeballs stay open under a stated predicate); it
 stays OPEN; no count moved.
+G4-15 got an AGE CHECK and a per-game card on 2026-11-06 (s144 lane gated cycle 91: the in-game
+surface is the overlay, not the dashboard, since 2026-06-27; champ select stays on the companion); it
+is standing and never closes; no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -3589,6 +3592,49 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   re-base the `resolveSeparatedCompanionBounds` node tests on a full-screen overlay.
 - **G4-15** (was B40) Live UI watch STANDING ritual (items 243/244): tick champ-select + in-game
   dashboard vs `/api/state` each ranked game. **Standing per-game, never one-shot - it does not close.**
+  **READY (lane 9 PREP s144 cycle 91, S144-G-82, source read at `4f1027e1b`, 2026-11-06; NOT a
+  tick - a standing row never ticks; no game up: :8888 `/api/state` and :2999 both curl 000 at
+  2026-11-06T22:28-06:00).** AGE CHECK: the row's "in-game dashboard" names a surface the operator
+  retired for in-game viewing on 2026-06-27 (memories `feedback_electron_overlay_only`,
+  `feedback_companion_not_ingame_viewing_source`). In game the operator sees the rc-shell OVERLAY
+  (`?overlay=1`, the full-screen transparent HUD); `applySurface` (`rc-shell/src/main.js`) hides the
+  companion (the `:8888` dashboard window) on the in-game surface unless the `keepCompanion` setting
+  is on, and that defaults OFF (`OVERLAY_SETTINGS_DEFAULTS.keepCompanion: false`,
+  `rc-shell/src/overlay_state.js`; the comment above `applySurface` still says "default ON" - stale,
+  the defaults object wins). So the ritual is two surfaces per game: the COMPANION at champ select,
+  the OVERLAY in game. A companion glance mid-game counts only if the operator turned keepCompanion
+  on; record which. The 2026-06-01 item-244 watch that set this ritual checked the build chooser
+  (3 paths + userbuild), DS-vs-enemy-comp with no junk rows, the summoners, and the post-game ingest
+  row; the post-game half is the G7 rails' business, not this row's.
+  **PER-GAME CARD (ranked SR q420 per the gate header; any SR game serves the UI half).**
+  (1) CHAMP SELECT, after the local pick locks: `curl -sk https://127.0.0.1:8888/api/state` once.
+  PREDICATE (stated before any game): `cs_archetype_pick.champion` is non-empty and names the locked
+  champion (stamped from the champ-select `my_champion` id, `dashboard/_state_builder.py`, the
+  item-244 F1 fix); the companion's champ-select view (`renderChampSelectView`,
+  `web/js/panels/champ_select.js`) shows that champion and a non-empty build chooser. FAIL iff the
+  view names another champion than the state, or shows an empty build chooser while the state
+  carries a pick.
+  (2) IN GAME, past 3:00 game time. In-game = a non-empty `liveclient` or LCU phase InProgress, never
+  `mode_key` alone (`tools/gated_live_probe.py` reports in-game iff `mode_key` is in its live set AND
+  `liveclient` is non-empty). Run `python tools/gated_live_probe.py --json > <evidence>.json`,
+  read `/api/state` `liveclient.level`, `liveclient.cs` and `liveclient.kda` (the "k/d/a" string)
+  from one `curl` of the same moment, and within 10 s glance at the overlay Stats widget (`w-stats`,
+  `#am-statspanel`) "You" row: `lvl` = `liveclient.level`, `cs` = `liveclient.cs`, `kda` = the RATIO
+  (k+a)/max(d,1) of `liveclient.kda` (`renderStatsPanel` -> `_kdaRatio`, `web/js/panels/stats_panel.js`),
+  NOT the k/d/a string, shown to 1 decimal by `_fmt` when not whole. PREDICATE: each cell equals
+  the state value (kda: the rounded ratio), or trails it by at most one
+  game event (a kill or a CS that landed between the curl and the glance). FAIL iff a cell is AHEAD
+  of the state, shows another player's value, or holds still across two curls 60 s apart while the
+  state moved (an overlay render or poll freeze; NOT G4-19's class, which is the server cache
+  collapsing `liveclient` to `{}`, so the state would not move). A "-" cell while the state carries
+  the value is a FAIL; "-" with the field null in the
+  state is the honest absent state, not a defect.
+  (3) EVIDENCE CONTRACT, one line per game appended under this row: both values per field (state and
+  painted), the state field path and the widget id, ISO time + `game_time`, mode + queue, and the
+  surface (companion / overlay / companion with keepCompanion on). SUBSTITUTION: the probe JSON
+  proves only what the server SERVED; this row is the glance that the overlay PAINTED it. A probe
+  with no glance records nothing here, and a capture of a view rendered from the same state is the
+  substitution kill.
 - **G4-16** `[BROADENED 2026-07-18 - was the R103 addendum, now the whole chip family]` Counter-hint
   chip in-game eyeball. The full situational counter-build program is CODE-COMPLETE and the live
   plumbing blocker is FIXED (LEDGER 916, `18fdf4d0`: `dashboard/_liveclient.py` now emits raw
