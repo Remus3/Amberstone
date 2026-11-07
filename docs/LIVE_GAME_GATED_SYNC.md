@@ -4405,6 +4405,28 @@ waits on the RM-875 wiring.)
 - **G5-03** (was D3) Arena boots 22xxxx mirror residual: augment-phase VISUAL confirm the pushed boot
   renders (icon may 404 per `reference_items_index_alias_ids`, display name correct). Data fix shipped
   (`f8353d5d`). STATUS: no boot anvil rolled in the 8 augment rounds played 2026-07-04.
+  **RE-CHECK (lane 9 PREP s144 cycle 97, 2026-11-07, source read at `7ba80f328`; NOT a tick, nothing
+  struck).** The "icon may 404" clause is STALE, and was already stale when filed: the memory it cites
+  describes a first-seen-wins `byName` and a `web/js/dashboard.js` consumer that is gone (Settled).
+  `scripts/data_pipeline.py:288-297` now sorts shorter ids first before `setdefault` (landed
+  `537247958`, 2026-05-05, six weeks before `f8353d5d4`), so the panel's name lookup
+  (`web/js/lib/items_index.js:34` `_resolveItemId`; Arena `item_build` is display names,
+  `coaches/arena_coach.py:907`) resolves boots to the 4-digit id: tracked `web/data/items_index.json`
+  (16.22.1) maps `berserkersgreaves` 3006, `sorcerersshoes` 3020, `platedsteelcaps` 3047,
+  `mercurystreads` 3111, `ionianbootsoflucidity` 3158, `bootsofswiftness` 3009, `symbioticsoles` 3010,
+  `synchronizedsouls` 3013. Even an alias id would not blank: the gitignored local cache
+  `<repo>/web/data/ddragon/16.22.1/img/item/` holds 863 PNGs, 176 of them 22-prefixed (both `3006.png`
+  and `223006.png` present), and the item tile path retries the DDragon CDN on error
+  (`web/js/panels/item_build.js:106-112`, `web/js/main.js:2752-2756`,
+  `web/js/panels/active_match.js:2985-2999`). NOT every renderer does: the variant rows
+  (`_ibRenderRows`, `item_build.js:412`) take `item_ids` as-is and HIDE the icon on error with no CDN
+  retry, so there a 22-prefixed id missing from the local cache would show an empty cell (the
+  verifier's catch; not seen live, and the cache holds all 176 alias PNGs today). What stays live: the pushed
+  boot APPEARING by name on the rendered Arena build panel once a boot anvil rolls; the G5-01 probe's
+  `offered` (`core/anvil_shadow.py:189` / `:220`) names the anvil, then capture a frame whose `ts` is
+  checked against `game_time_s`. PREDICATE (the tick): PASS iff a boot named in `offered` (or bought)
+  shows on the rendered build panel with a non-blank icon; a blank tile or a missing boot is FAIL; no
+  boot anvil this game is NO RESULT.
 - **G5-04** (was D9) R74/DSV8 `assume_physical_burst` (Goredrinker 226630 Thirsting Slash, 175% base
   AD physical AoE active) - **PREMISE REWRITTEN 2026-07-18: the blocker is NOT "no prismatic rolled",
   it is WIRING.** SETTLED HEADLESS: the engine math is exact and leak-free. The measured burst delta
@@ -4423,6 +4445,21 @@ waits on the RM-875 wiring.)
   inside `_route_burst`, still /burst-only.)
   NO LIVE RESIDUAL until the flag is plumbed to /rank - re-file that wiring as headless code work, and
   do NOT spend an Arena sitting waiting for 226630 to roll for this row. DS restart on the eventual flip.
+  **RE-CHECK (lane 9 PREP s144 cycle 97, 2026-11-07, source read at `7ba80f328`; NOT a tick).** The
+  conclusion holds; three cites moved. `burst_for` is now
+  `core/daemon_slayer_client.py:2065`, the parameter `:2098` (default False), the body key `:2166-2167`;
+  `git grep` finds no other reference under `core/`, `coaches/`, `coach_integration/`, `modes/`,
+  `dashboard/`, `app/` or `web_dashboard.py`, and no non-test caller of `burst_for(` at all. The /burst
+  comment is `agents/daemon_slayer/server.py:2287-2291` inside `_route_burst` (`:2254`); the pin is
+  `_effects_data.py:3848` in the `"226630"` entry (`:3832`). `inspect.signature`:
+  `rank_for_primary_archetype` (`core/daemon_slayer_client.py:2991`) has 47 parameters and
+  `dispatch_for_coach` 23, neither `assume_physical_burst`; `burst.rank_items_by_burst` lacks it,
+  `burst.compute_burst_damage` has it. "DS restart on the eventual flip" STILL HOLDS, unlike G5-05:
+  the key is parsed per request only by /burst (`:2291`), which has no on-screen consumer; the /rank
+  family does not parse it (`server.py:2930-2932` for /rank-assassin, and `rank_items_by_burst` has no
+  such parameter), so plumbing it to a ranked route is DS code and needs the `:8860` restart (an
+  adversarial pass refuted this cycle's first draft, which called the clause stale). Still NO LIVE
+  RESIDUAL.
 - **G5-05** (was D4) `apply_mode_modifiers` Arena re-rank validate - Arena ar/swift growth-addends are
   the only schedulable mode where this seam re-ranks (URF/OFA/USB/NB rotate). NOT attempted
   2026-07-04. DS restart.
