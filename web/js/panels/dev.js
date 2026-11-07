@@ -452,9 +452,27 @@ function _replayLoadMatch(matchId, rowEl, opts) {
         return m.matches.find((x) => x.match_id === matchId) || null;
       })
     : fetch("/api/replay/match/" + encodeURIComponent(matchId)).then(r => r.ok ? r.json() : null);
+  // S144-U-184: a newest pick that does not load (a null reply: a 404 or a
+  // ui_mock id the fixture lacks; or a rejected fetch) used to leave the
+  // meta line on "loading <id>..." for good, with the previous match still
+  // in the scrubber, clock, minimap and grid under the highlighted row. It
+  // now says so and drops the previous match; picking the row again
+  // retries. Guard: tests/snapshot_panels/test_replay_failed_load.py.
+  const failed = () => {
+    if (seq !== _REPLAY.loadSeq) return;
+    _REPLAY.match = null;
+    _REPLAY.snapshotIdx = 0;
+    const slider = document.getElementById("replay-slider");
+    if (slider) { slider.max = "0"; slider.value = "0"; slider.disabled = true; }
+    const m = document.getElementById("replay-meta");
+    if (m) m.textContent = "could not load " + matchId + " - pick it again to retry";
+    _replayShowNoFrames("match did not load");
+    if (reveal && (!rowEl || rowEl.classList.contains("active"))) _replayRevealMain();
+  };
   matchPromise
     .then(d => {
-      if (seq !== _REPLAY.loadSeq || !d) return;
+      if (seq !== _REPLAY.loadSeq) return;
+      if (!d) { failed(); return; }
       _REPLAY.match = d;
       _REPLAY.snapshotIdx = 0;
       _replayMapAttach(d);
@@ -482,12 +500,38 @@ function _replayLoadMatch(matchId, rowEl, opts) {
           p.champion_id === (d.tracked && d.tracked.champion_id));
         try { loadReviewPlayer(matchId, me ? Number(me.team_id) : null); } catch (_) {}
       }
-      _replayRenderSnapshot(0);
+      // S144-U-184: a match stored with no timeline frames (the store holds
+      // such rows, e.g. an ARAM Mayhem q2400 game) left the previous
+      // match's clock and grid under this one's meta line.
+      if ((d.snapshots || []).length) _replayRenderSnapshot(0);
+      else _replayShowNoFrames("no timeline frames stored for this match");
       // S144-U-182: reveal only for the pick still showing (a later pick
       // that already loaded keeps its own place).
       if (reveal && (!rowEl || rowEl.classList.contains("active"))) _replayRevealMain();
     })
-    .catch(e => console.warn("replay match:", e));
+    .catch(e => {
+      console.warn("replay match:", e);
+      failed();
+    });
+}
+// S144-U-184: the frame-less state of the clock, minimap and grid, with one
+// note row in the grid (the same home-empty row the page opens with).
+function _replayShowNoFrames(note) {
+  const clock = document.getElementById("replay-clock");
+  if (clock) clock.textContent = "-";
+  _REPLAY_MAP.model = null;
+  const fig = document.getElementById("replay-map-figure");
+  if (fig) fig.hidden = true;
+  const tbody = document.getElementById("replay-grid-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  const tr = document.createElement("tr");
+  const td = document.createElement("td");
+  td.colSpan = 7;
+  td.className = "home-empty";
+  td.textContent = note;
+  tr.appendChild(td);
+  tbody.appendChild(tr);
 }
 function _replayRenderSnapshot(idx, mapTms) {
   const d = _REPLAY.match;

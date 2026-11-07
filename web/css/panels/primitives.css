@@ -518,5 +518,19 @@ body > header { transition: height 180ms ease; }
   content: "\2756"; font-size: var(--fs-xl); line-height: 1;
   color: var(--accent); opacity: 0.35;
 }
+/* S144-U-184: display:flex took the grid placeholder <td> out of table
+ * layout, so its colspan was ignored and the note sat in a 105 px column
+ * at the grid's left edge, wrapped into a 150-240 px tall stack (measured
+ * at 1920x920). The cell stays a table cell spanning the grid; the sigil
+ * is a block above the centred note. Guard:
+ * tests/snapshot_panels/test_replay_failed_load.py. */
+.replay-grid td.home-empty {
+  display: table-cell;
+  vertical-align: middle;
+}
+.replay-grid td.home-empty::before {
+  display: block;
+  margin-bottom: var(--space-2);
+}
 
 
