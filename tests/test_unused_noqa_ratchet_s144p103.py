@@ -24,8 +24,10 @@ directives (the 3 _BASELINE files plus a `# noqa: B018` in two test modules);
 ruff 0.17.2 and 0.17.3 read those 5 plus 30 `# noqa: BLE001` in 21 production
 modules, every one on a handler that logs with ``exc_info=True``, which 0.17's
 BLE001 no longer flags. The 30 directives (any rationale text kept as a plain
-comment) and the 2 B018 ones (B018 never fires on a subscript) were dropped and
-those modules joined FIXED; the _BASELINE is unchanged.
+comment) and the 2 B018 ones (B018 never fires on a subscript) were dropped; 20
+of the 21 production modules joined FIXED (dashboard/routes_last_match.py was
+already in FIXED), so 22 FIXED lines were added counting the two B018 test
+modules; the _BASELINE is unchanged.
 """
 from __future__ import annotations
 
