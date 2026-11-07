@@ -47,6 +47,7 @@ import json
 import re
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -391,20 +392,54 @@ body {{ zoom: {scale}; }}
                lineW: line.getBoundingClientRect().width,
                height: box.height, position: getComputedStyle(lead).position };
     }"""
-    try:
+
+    def render() -> dict:
         with playwright.sync_playwright() as p:
             browser = p.chromium.launch()
             pg = browser.new_page(viewport={"width": 1920, "height": 1080})
             pg.set_content(page_html)
-            out = pg.evaluate(js)
+            result = pg.evaluate(js)
             browser.close()
+        return result
+
+    try:
+        # RM-2031: an xdist worker that already ran a snapshot_panels test holds
+        # that session browser's loop as its main thread's running loop, and
+        # the sync API refuses to start beside it. A fresh thread has no
+        # running loop, so the probe starts there and leaves the main-thread
+        # marker the session browser needs untouched.
+        return _on_a_fresh_thread(render)
     except playwright.Error as exc:
-        # RM-2031: only a missing browser binary is a skip. Any other refusal
-        # (e.g. the sync API inside an xdist worker's running loop) fails.
-        if "Executable doesn't exist" not in str(exc):
-            raise
+        _skip_only_a_missing_browser(exc)
+        raise
+
+
+def _on_a_fresh_thread(fn, timeout: float = 120.0):
+    """Run ``fn`` on a new thread; return its value or re-raise its error."""
+    box: dict = {}
+
+    def worker() -> None:
+        try:
+            box["out"] = fn()
+        except BaseException as exc:  # noqa: BLE001 - re-raised on the caller
+            box["exc"] = exc
+
+    t = threading.Thread(target=worker, name="callouts-probe", daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        raise TimeoutError(f"the headless probe ran past {timeout} s")
+    if "exc" in box:
+        raise box["exc"]
+    return box["out"]
+
+
+def _skip_only_a_missing_browser(exc: BaseException) -> None:
+    """RM-2031: only a missing browser binary is a skip (a missing package is
+    the importorskip above). The old blanket `except Exception` also read the
+    sync API's refusal as "headless chromium unavailable", a green skip."""
+    if "Executable doesn't exist" in str(exc):
         pytest.skip(f"headless chromium unavailable: {exc}")
-    return out
 
 
 @pytest.mark.parametrize("scale", [0.8, 1.0, 1.6])
@@ -440,29 +475,38 @@ def test_lead_pill_is_not_a_ragged_column():
     assert m["height"] <= 140, f"lead pill is {m['height']:.1f}px tall"
 
 
-def test_a_sync_api_refusal_fails_instead_of_skipping():
-    """RM-2031. In an xdist worker that already holds the snapshot session
-    browser, Playwright's sync API refuses to start a second session ("Sync API
-    inside the asyncio loop"). The old blanket `except Exception` turned that
-    refusal into `pytest.skip("headless chromium unavailable")`, a green skip of
-    all three geometry tests. Only a missing browser binary may skip; drive
-    `_measure` inside a running loop (a fresh thread's, so the main-thread
-    marker the session browser needs is never touched) and read the outcome."""
+def test_the_probe_measures_inside_a_running_loop():
+    """RM-2031. In an xdist worker that already ran a snapshot_panels test, the
+    main thread's running loop is the session browser's, and the sync API
+    refused to start beside it; the old blanket `except Exception` read that as
+    `pytest.skip("headless chromium unavailable")`, a green skip of all three
+    geometry tests. Drive `_measure` inside a running loop (a fresh thread's,
+    so the main-thread marker is never touched): it must MEASURE, neither skip
+    nor fail."""
     pytest.importorskip("playwright.sync_api")
     from tests._asyncio_isolation import run_coro
 
     async def inside_a_running_loop():
         try:
-            _measure(1.0)
+            return _measure(1.0)
         except BaseException as exc:  # noqa: BLE001 - pytest.skip raises a BaseException
             return exc
-        return None
 
-    exc = run_coro(inside_a_running_loop(), timeout=60.0)
-    assert exc is not None, "the sync API started inside a running loop"
-    assert not isinstance(exc, pytest.skip.Exception), (
-        f"a sync API refusal read as a green skip: {exc}")
-    assert "asyncio loop" in str(exc), exc
+    out = run_coro(inside_a_running_loop(), timeout=180.0)
+    assert isinstance(out, dict), f"the probe did not measure inside a running loop: {out!r}"
+    assert out["position"] == "fixed", out
+
+
+def test_only_a_missing_browser_binary_is_a_skip():
+    """RM-2031. Any other Playwright refusal (the sync API's "inside the asyncio
+    loop" included) stays an error, never a green skip."""
+    playwright = pytest.importorskip("playwright.sync_api")
+    refusal = playwright.Error(
+        "It looks like you are using Playwright Sync API inside the asyncio loop.")
+    _skip_only_a_missing_browser(refusal)  # returns: the caller re-raises
+    missing = playwright.Error("BrowserType.launch: Executable doesn't exist at /x")
+    with pytest.raises(pytest.skip.Exception):
+        _skip_only_a_missing_browser(missing)
 
 
 # --------------------------------------------------------------------------- #
