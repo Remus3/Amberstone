@@ -10,6 +10,8 @@ caller (``FileIngest`` swallows it as a ``warning``, which is how it stayed unse
 that never raises for the wrong reason: ``get_running_loop()`` inside ``try / except RuntimeError``.
 
 The ratchet is an AST walk over every tracked ``.py`` (a name in a string or comment does not count), baseline empty.
+It matches any attribute / name / import reference, not only a call (S144-P-308: a test mock still configured
+``_aio.get_event_loop.return_value`` after the production code stopped reading it).
 ``ops/fleet_kit/`` is vendored byte-for-byte and is skipped; it has no site today.
 """
 from __future__ import annotations
@@ -26,14 +28,17 @@ _SKIP = ("ops/fleet_kit/",)
 
 
 def _sites(source: str) -> list[int]:
+    """Every reference to the name, not only a call: ``mock.get_event_loop.return_value`` configures a seam
+    nothing reads any more (S144-P-308), and ``from asyncio import get_event_loop`` is the call in waiting."""
     out = []
     for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Call):
-            fn = node.func
-            name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
-            if name == "get_event_loop":
-                out.append(node.lineno)
-    return out
+        if isinstance(node, ast.Attribute) and node.attr == "get_event_loop":
+            out.append(node.lineno)
+        elif isinstance(node, ast.Name) and node.id == "get_event_loop":
+            out.append(node.lineno)
+        elif isinstance(node, ast.ImportFrom):
+            out.extend(node.lineno for a in node.names if a.name == "get_event_loop")
+    return sorted(set(out))
 
 
 def test_no_get_event_loop_in_the_tracked_tree():
@@ -59,7 +64,7 @@ def test_no_get_event_loop_in_the_tracked_tree():
 def test_the_detector_sees_both_call_shapes():
     """Positive control: a clean tree must not be a detector that stopped matching."""
     assert _sites("import asyncio\nasyncio.get_event_loop()\n") == [2]
-    assert _sites("from asyncio import get_event_loop\nget_event_loop().run_forever()\n") == [2]
+    assert _sites("from asyncio import get_event_loop\nget_event_loop().run_forever()\n") == [1, 2]
     assert _sites("import asyncio\nasyncio.get_running_loop()\nx = 'get_event_loop()'\n") == []
 
 
