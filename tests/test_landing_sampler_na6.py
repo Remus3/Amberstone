@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -233,11 +234,12 @@ class _FakeProc:
     """A Popen stand-in: alive until kill() (the handle fallback) or a
     taskkill fake marks it dead. die_on_kill=False = a kill that fails."""
 
-    def __init__(self, alive=True, die_on_kill=True, handle="open"):
+    def __init__(self, alive=True, die_on_kill=True, handle="open", poll_error=None):
         self.pid = 4242
         self.alive = alive
         self.die_on_kill = die_on_kill
         self.kills = 0
+        self.poll_error = poll_error
         # CPython's Windows Popen keeps its process handle in `_handle`, a
         # Handle(int) whose `closed` turns True only on Close() / GC.
         if handle == "open":
@@ -246,6 +248,8 @@ class _FakeProc:
             self._handle = SimpleNamespace(closed=True)
 
     def poll(self):
+        if self.poll_error is not None:
+            raise self.poll_error
         return None if self.alive else 1
 
     def wait(self, timeout=None):
@@ -257,6 +261,157 @@ class _FakeProc:
         self.kills += 1
         if self.die_on_kill:
             self.alive = False
+
+
+# ---------------------------------------------------------------- round 3: no path escapes the kill
+
+
+def _names_interrupting_on(call_no, exc):
+    """The verifier's probe_kbi.py reader: raise on the Nth process read."""
+    n = {"i": 0}
+
+    def names():
+        n["i"] += 1
+        if n["i"] == call_no:
+            raise exc
+        return []
+
+    return names
+
+
+def _void_json(tmp_path):
+    return json.loads((tmp_path / "sampler" / "VOID.json").read_text(encoding="ascii"))
+
+
+def test_keyboard_interrupt_mid_run_kills_first_and_returns_94(tmp_path):
+    proc = _FakeProc()
+    run, calls = _taskkill(proc, "ok")
+    child = ls.PopenChild(proc, run=run)
+    rc, _ = _run(tmp_path, child, lambda: 9000.0, _names_interrupting_on(2, KeyboardInterrupt()), reap_s=0.0)
+    assert rc == ls.EXIT_INTERRUPTED == 94
+    assert [c[0] for c in calls] == [["taskkill", "/F", "/T", "/PID", "4242"]]
+    assert proc.alive is False
+    void = _void_json(tmp_path)
+    assert void["reason"] == "sampler_interrupted"
+    assert void["tree_confirmed"] is True
+
+
+def test_any_sampler_error_mid_run_kills_first_and_returns_94(tmp_path):
+    proc = _FakeProc()
+    run, calls = _taskkill(proc, "ok")
+    child = ls.PopenChild(proc, run=run)
+    child.wait = lambda timeout: (_ for _ in ()).throw(RuntimeError("wait broke"))
+    rc, _ = _run(tmp_path, child, lambda: 9000.0, list, reap_s=0.0)
+    assert rc == ls.EXIT_INTERRUPTED
+    assert len(calls) == 1
+    assert _void_json(tmp_path)["reason"] == "sampler_error: RuntimeError"
+
+
+def test_an_interrupt_whose_kill_is_not_confirmed_returns_92(tmp_path, capsys):
+    proc = _FakeProc(die_on_kill=False)
+    run, _ = _taskkill(proc, "nonzero")
+    child = ls.PopenChild(proc, run=run)
+    rc, _ = _run(tmp_path, child, lambda: 9000.0, _names_interrupting_on(2, KeyboardInterrupt()), reap_s=0.0)
+    assert rc == ls.EXIT_VOID_UNCONFIRMED
+    assert _void_json(tmp_path)["reason"] == "sampler_interrupted"
+    assert "child NOT confirmed exited" in capsys.readouterr().err
+
+
+def test_a_second_interrupt_during_the_void_writes_is_swallowed(tmp_path, monkeypatch):
+    real_append = ls._append
+
+    def append(path, row):
+        if row.get("phase") == "void" or row.get("stop"):
+            raise KeyboardInterrupt
+        real_append(path, row)
+
+    monkeypatch.setattr(ls, "_append", append)
+    child = _FakeChild()
+    rc, _ = _run(tmp_path, child, _seq([25000.0, 900.0, 900.0]), list)
+    assert child.killed == 1
+    assert rc == ls.EXIT_VOID
+    assert (tmp_path / "sampler" / "VOID.json").exists()
+
+
+def test_stop_does_not_depend_on_poll_succeeding():
+    proc = _FakeProc(poll_error=OSError(6, "The handle is invalid"))
+    run, calls = _taskkill(proc, "ok")
+    out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
+    assert [c[0] for c in calls] == [["taskkill", "/F", "/T", "/PID", "4242"]]
+    assert out["poll_error"].startswith("OSError")
+    assert out["taskkill_rc"] == 0
+    assert out["child_exited"] is True
+    assert out["tree_confirmed"] is True
+
+
+def test_poll_failing_without_a_held_handle_still_kills_through_the_handle_fallback():
+    proc = _FakeProc(poll_error=OSError(6, "The handle is invalid"), handle=None)
+    run, calls = _taskkill(proc, "ok")
+    out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
+    assert calls == []
+    assert proc.kills == 1
+    assert out["fallback"] == "Popen.kill"
+    assert out["tree_confirmed"] is False
+
+
+def test_launch_any_exception_is_93(tmp_path):
+    for exc in (ValueError("bad argument"), TypeError("bad type"), KeyboardInterrupt()):
+
+        def launch(cmd, exc=exc):
+            raise exc
+
+        out = tmp_path / type(exc).__name__
+        rc = ls.run_sampler(
+            ["x"],
+            out,
+            launch=launch,
+            physical=lambda: 25000.0,
+            commit=None,
+            names=list,
+            interval=0.0,
+            clock=lambda: "T",
+        )
+        assert rc == ls.EXIT_LAUNCH_FAILED == 93, exc
+        assert not (out / "VOID.json").exists()
+
+
+class _BrokenStream:
+    def write(self, _s):
+        raise OSError(22, "Invalid argument")
+
+    def flush(self):
+        raise OSError(22, "Invalid argument")
+
+    def fileno(self):
+        raise OSError(22, "Invalid argument")
+
+
+def test_emit_never_raises_on_a_broken_or_closed_stream(monkeypatch):
+    monkeypatch.setattr(sys, "stdout", _BrokenStream())
+    ls._emit("stdout", "x")
+    monkeypatch.setattr(sys, "stdout", None)
+    ls._emit("stdout", "x")
+    r, w = os.pipe()
+    os.close(r)
+    with os.fdopen(w, "w") as stream:
+        monkeypatch.setattr(sys, "stdout", stream)
+        ls._emit("stdout", "landing_sampler: exit 90")
+
+
+def test_main_final_print_on_a_broken_stdout_keeps_the_void_code(tmp_path, monkeypatch):
+    monkeypatch.setattr(ls, "run_sampler", lambda *a, **k: ls.EXIT_VOID)
+    monkeypatch.setattr(sys, "stdout", _BrokenStream())
+    monkeypatch.setattr(sys, "stderr", _BrokenStream())
+    rc = ls.main(["--dir", str(tmp_path / "s"), "--child-log", str(tmp_path / "c.txt"), "--", "x"])
+    assert rc == ls.EXIT_VOID
+
+
+def test_the_exit_code_table_is_documented_in_the_docstring_and_operations():
+    ops = (Path(ls.__file__).resolve().parent.parent / "docs" / "OPERATIONS.md").read_text(encoding="ascii")
+    line = next(x for x in ops.splitlines() if "tools/landing_sampler.py" in x)
+    for code in (ls.EXIT_VOID, ls.EXIT_REFUSED, ls.EXIT_VOID_UNCONFIRMED, ls.EXIT_LAUNCH_FAILED, ls.EXIT_INTERRUPTED):
+        assert f"- {code} " in ls.__doc__, code
+        assert f"{code} =" in line, code
 
 
 def _taskkill(proc, mode):

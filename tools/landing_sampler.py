@@ -53,7 +53,10 @@ PopenChild holds the Popen for the sampler's lifetime.
 Diagnostics come AFTER the kill and are best-effort, each guarded: a failed
 samples.jsonl row never stops monitoring or the kill (loud stderr once), and
 a failed VOID.json write forces exit 92 with a loud stderr line - never a
-traceback exit 1.
+traceback exit 1. The kill never depends on poll(): poll is a guarded
+diagnostic (exited_before_kill / poll_error), confirmation is a guarded reap
+of the held handle, and a failed poll with the handle held still runs
+taskkill (without the handle, the Popen.kill fallback).
 
 Residual (documented, not fixed): `/T` walks descendants by their recorded
 parent pid at kill time. Windows does not invalidate a parent pid when the
@@ -61,21 +64,35 @@ parent exits, so pid reuse can, rarely, put an unrelated process whose dead
 parent had the same pid as a member of this tree under the /T walk. The held
 handle protects only the child's own pid.
 
-Sequence: one "pre" read; a stop already holding there REFUSES (exit 91,
-REFUSED.json, nothing launched). Then the command is launched (child stdout
-and stderr to --child-log, CREATE_NO_WINDOW on Windows); a launch that raises
-OSError is exit 93 (a "launch_failed" row, no VOID.json). Then a read every
---interval seconds until the child exits (its exit code is returned) or a
-stop holds. EVERY stop kills first, then tries to write VOID.json (never
-graded), and returns:
-- 90 EXIT_VOID: taskkill /F /T returned 0, the child is confirmed exited,
-  and VOID.json was written;
-- 92 EXIT_VOID_UNCONFIRMED: anything else - the fallback was needed (the
-  gate is dead but pytest and its workers are NOT confirmed dead, since the
-  gate holds no job object), the child exited before the kill and taskkill
-  did not return 0, the child is not confirmed exited, stop() itself raised,
-  or VOID.json could not be written. The sampler prints a loud stderr line;
-  the landing agent must then find and end the remaining suite tree by hand.
+Sequence: one "pre" read; a stop already holding there REFUSES. Then the
+command is launched (child stdout and stderr to --child-log, CREATE_NO_WINDOW
+on Windows) and read every --interval seconds until the child exits or a
+stop holds. From the launch on, the launch and the whole monitoring loop sit
+in ONE try / except BaseException: any exception or KeyboardInterrupt (a
+reader, wait(), a log row, the void itself) takes the same kill-first path
+(VOID.json reason "sampler_interrupted" or "sampler_error: <type>") and
+nothing is re-raised. Every stdout / stderr line goes through _emit, which
+never raises and leaves nothing buffered for the exit flush.
+
+Exit codes (the one table; docs/OPERATIONS.md Session procedure repeats it):
+- the child's own exit code: it exited by itself, no STOP (assert the gate's
+  summary line in --child-log);
+- 90 EXIT_VOID: a real STOP; taskkill /F /T returned 0, the child is
+  confirmed exited, and VOID.json was written;
+- 91 EXIT_REFUSED: a STOP at the pre-launch read; nothing launched;
+  REFUSED.json best-effort;
+- 92 EXIT_VOID_UNCONFIRMED: a STOP or an interruption whose kill is NOT
+  confirmed - the fallback was needed (the gate is dead but pytest and its
+  workers are NOT confirmed dead: the gate holds no job object), the child
+  exited before the kill and taskkill did not return 0, the child is not
+  confirmed exited, stop() itself raised - or VOID.json could not be
+  written. A loud stderr line says which; the landing agent must find and
+  end the remaining suite tree by hand;
+- 93 EXIT_LAUNCH_FAILED: launch raised any Exception (or was interrupted)
+  and handed back no child; nothing to kill, no VOID.json;
+- 94 EXIT_INTERRUPTED: the sampler itself was interrupted or failed after
+  the launch (no STOP); the child tree kill is confirmed as for 90 and
+  VOID.json was written. Never graded.
 
 Readers reuse the vendored kit and the launcher (no subprocess per read):
 physical = ops/fleet_kit/fleet_lanes.py free_ram_mb (GlobalMemoryStatusEx
@@ -99,6 +116,7 @@ import contextlib
 import functools
 import importlib
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -118,6 +136,7 @@ EXIT_LAUNCH_FAILED = 93
 EXIT_VOID = 90
 EXIT_REFUSED = 91
 EXIT_VOID_UNCONFIRMED = 92
+EXIT_INTERRUPTED = 94
 
 # Lower-case image names. The s152 ruling's list: LeagueClient*, League of
 # Legends, RiotClient*, vgc, vgtray; plus "Riot Client.exe" and the TFT game
@@ -224,6 +243,15 @@ class PopenChild:
         except subprocess.TimeoutExpired:
             return None
 
+    def _reap(self, reap_s: float) -> Optional[int]:
+        """Confirmation only: the exit code within reap_s, else None. Never
+        raises, and independent of wait() so a broken monitor wait cannot
+        void a confirmation."""
+        try:
+            return self.proc.wait(timeout=reap_s)
+        except BaseException:  # noqa: BLE001 - unconfirmed on any failure, re-raise nothing
+            return None
+
     def handle_held(self) -> bool:
         """True only while this sampler provably holds an OPEN process handle
         to the child: CPython's Windows Popen keeps it in `_handle`, a
@@ -244,12 +272,14 @@ class PopenChild:
                 check=False,
             )
             out["taskkill_rc"] = res.returncode
-        except Exception as exc:  # noqa: BLE001 - timeout, missing exe, anything: recorded
+        except BaseException as exc:  # noqa: BLE001 - timeout, missing exe, anything: recorded
             out["taskkill_error"] = _err(exc)
 
     def stop(self, reap_s: float = REAP_TIMEOUT_S) -> dict:
         """taskkill /F /T on the child's pid; on any failure, Popen.kill on
-        the held handle (child pid only). Never raises from taskkill."""
+        the held handle (child pid only). Never raises. The kill never
+        depends on poll(): poll is a guarded diagnostic, confirmation is a
+        guarded reap."""
         out = {
             "pid": self.pid,
             "taskkill_rc": None,
@@ -259,40 +289,40 @@ class PopenChild:
             "child_exited": False,
             "tree_confirmed": False,
             "exited_before_kill": False,
-            "handle_held": None,
+            "handle_held": False,
+            "poll_error": None,
             "note": None,
         }
-        rc = self.proc.poll()
-        if rc is not None:
-            # The gate exited on its own before the kill; its pytest tree
-            # may not have. /T on its pid only while the held handle keeps
-            # that pid from being reused.
-            out.update(child_rc=rc, child_exited=True, exited_before_kill=True)
+        pre = None
+        try:
+            pre = self.proc.poll()
+            out["exited_before_kill"] = pre is not None
+        except BaseException as exc:  # noqa: BLE001 - diagnostic only; the kill goes on
+            out["poll_error"] = _err(exc)
+        with contextlib.suppress(BaseException):
             out["handle_held"] = self.handle_held()
-            if not out["handle_held"]:
-                out["note"] = (
-                    "child exited before kill; descendants unverified "
-                    "(no open handle, so the pid may be reused: taskkill skipped)"
-                )
-                return out
+        # /T only while the pid is provably this child's: the open handle
+        # reserves it even after exit; else a poll that read it running.
+        tried = out["handle_held"] or (out["poll_error"] is None and pre is None)
+        if tried:
             self._taskkill(out)
-            out["tree_confirmed"] = out["taskkill_rc"] == 0
-            if not out["tree_confirmed"]:
-                out["note"] = "child exited before kill; descendants unverified"
-            return out
-        self._taskkill(out)
-        if out["taskkill_rc"] == 0:
-            rc = self.wait(reap_s)
-        if rc is None:
+        rc = self._reap(reap_s) if out["taskkill_rc"] == 0 else None
+        if rc is None and out["exited_before_kill"]:
+            rc = pre
+        elif rc is None:
             try:
                 self.proc.kill()
                 out["fallback"] = "Popen.kill"
-            except Exception as exc:  # noqa: BLE001 - recorded; the child is then unconfirmed
+            except BaseException as exc:  # noqa: BLE001 - recorded; the child is then unconfirmed
                 out["fallback"] = "Popen.kill failed: " + _err(exc)
-            rc = self.wait(reap_s)
+            rc = self._reap(reap_s)
         out["child_rc"] = rc
         out["child_exited"] = rc is not None
         out["tree_confirmed"] = out["taskkill_rc"] == 0 and out["fallback"] is None and rc is not None
+        if out["exited_before_kill"] and not out["tree_confirmed"]:
+            out["note"] = "child exited before kill; descendants unverified" + (
+                "" if tried else " (no open handle, so the pid may be reused: taskkill skipped)"
+            )
         return out
 
 
@@ -303,11 +333,18 @@ def kill_tree_argv(pid: int) -> list:
 def launch_child(cmd: list, child_log: Path) -> PopenChild:
     """Start `cmd` with stdout + stderr appended to `child_log`."""
     child_log.parent.mkdir(parents=True, exist_ok=True)
-    with open(child_log, "ab") as fh:
-        proc = subprocess.Popen(
-            cmd, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT, creationflags=_flags()
-        )
-    return PopenChild(proc)
+    child = None
+    try:
+        with open(child_log, "ab") as fh:
+            proc = subprocess.Popen(
+                cmd, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT, creationflags=_flags()
+            )
+            child = PopenChild(proc)
+    except OSError:
+        if child is None:
+            raise
+        # Only the parent's log-handle close failed: the child runs and is held.
+    return child
 
 
 # ---------------------------------------------------------------- the loop
@@ -358,17 +395,25 @@ def run_sampler(
     tracker = StopTracker()
     warned = []
 
-    def write(fn: Callable, *args) -> Optional[str]:
-        """A best-effort diagnostic write: never raises; loud once on failure."""
+    def guarded(catch, fn: Callable, *args) -> Optional[str]:
         try:
             fn(*args)
-        except Exception as exc:  # noqa: BLE001 - a diagnostic write never ends monitoring
+        except catch as exc:
             msg = _err(exc)
             if not warned:
                 warned.append(msg)
-                _loud(f"landing_sampler: WARNING diagnostic write failed ({msg}); monitoring continues")
+                _emit("stderr", f"landing_sampler: WARNING diagnostic write failed ({msg}); monitoring continues")
             return msg
         return None
+
+    def write(fn: Callable, *args) -> Optional[str]:
+        """A monitoring-time diagnostic write: an Exception is recorded, but a
+        KeyboardInterrupt still reaches the kill path below."""
+        return guarded(Exception, fn, *args)
+
+    def final(fn: Callable, *args) -> Optional[str]:
+        """An after-the-kill diagnostic write: re-raises nothing."""
+        return guarded(BaseException, fn, *args)
 
     def read() -> tuple:
         """The stop-deciding reads only (no subprocess); commit rides along."""
@@ -403,27 +448,49 @@ def run_sampler(
         refused = {"phase": "refused", "t": stamp(), "reason": reason, "cmd": list(cmd)}
         failed = write(_marker, out_dir / "REFUSED.json", refused)
         if failed:
-            _loud(f"landing_sampler: REFUSED ({reason}) but REFUSED.json NOT written ({failed}); nothing launched")
+            _emit(
+                "stderr",
+                f"landing_sampler: REFUSED ({reason}) but REFUSED.json NOT written ({failed}); nothing launched",
+            )
         return EXIT_REFUSED
+    # From the launch on, ONE handler: any exception or KeyboardInterrupt
+    # (a reader, wait(), a row, the void itself) goes through the same
+    # kill-first path; nothing is re-raised.
+    st: dict = {"child": None, "reason": None, "kill": None, "run_row": None}
     try:
-        child = launch(cmd)
-    except OSError as exc:
-        launch_row = {"phase": "launch_failed", "t": stamp(), "error": _err(exc), "cmd": list(cmd)}
-        write(_append, log, launch_row)
-        return EXIT_LAUNCH_FAILED
-    while True:
-        rc = child.wait(interval)
-        if rc is not None:
-            write(_append, log, {"phase": "exit", "t": stamp(), "rc": rc})
-            return rc
-        reason, *vals = read()
-        if reason:
-            # KILL FIRST: nothing (no write, no git, no clock) runs between
-            # the stop decision and stop(); every diagnostic comes after.
-            kill = _stop_child(child, reap_s)
-            run_row = functools.partial(row_for, "run", reason, *vals)
-            return _void(child, kill, reason, out_dir, log, write, run_row, stamp)
-        write(_append, log, row_for("run", None, *vals))
+        try:
+            st["child"] = launch(cmd)
+        except Exception as exc:  # noqa: BLE001 - any launch failure: no handle, nothing to kill
+            write(_append, log, {"phase": "launch_failed", "t": stamp(), "error": _err(exc), "cmd": list(cmd)})
+            return EXIT_LAUNCH_FAILED
+        child = st["child"]
+        while True:
+            rc = child.wait(interval)
+            if rc is not None:
+                write(_append, log, {"phase": "exit", "t": stamp(), "rc": rc})
+                return rc
+            reason, *vals = read()
+            if reason:
+                # KILL FIRST: nothing (no write, no git, no clock) runs
+                # between the stop decision and stop().
+                st["reason"] = reason
+                st["kill"] = _stop_child(child, reap_s)
+                st["run_row"] = functools.partial(row_for, "run", reason, *vals)
+                return _void(child, st["kill"], reason, out_dir, log, final, st["run_row"], stamp)
+            write(_append, log, row_for("run", None, *vals))
+    except BaseException as exc:  # noqa: BLE001 - re-raise nothing once launched: kill first
+        child = st["child"]
+        if child is None:
+            final(_append, log, {"phase": "launch_failed", "t": stamp(), "error": _err(exc), "cmd": list(cmd)})
+            _emit("stderr", f"landing_sampler: launch interrupted ({_err(exc)}); no child handle, nothing killed")
+            return EXIT_LAUNCH_FAILED
+        if st["kill"] is None:
+            st["kill"] = _stop_child(child, reap_s)
+        if st["reason"] is not None:
+            # The STOP's kill already ran; only its diagnostics were cut short.
+            return _void(child, st["kill"], st["reason"], out_dir, log, final, st["run_row"], stamp)
+        why = "sampler_interrupted" if isinstance(exc, KeyboardInterrupt) else f"sampler_error: {type(exc).__name__}"
+        return _void(child, st["kill"], why, out_dir, log, final, None, stamp, interrupted=_err(exc))
 
 
 def _mb(value) -> Optional[float]:
@@ -433,30 +500,55 @@ def _mb(value) -> Optional[float]:
         return None
 
 
-def _loud(msg: str) -> None:
-    """stderr, flushed; a closed stderr must not turn a VOID into exit 1."""
-    with contextlib.suppress(Exception):
-        print(msg, file=sys.stderr, flush=True)
+def _emit(stream_name: str, msg: str) -> None:
+    """One line to sys.stdout / sys.stderr. Never raises, and leaves nothing
+    buffered: a real fd gets os.write, so a closed pipe cannot fail the
+    interpreter's exit flush (exit 120) after a VOID."""
+    with contextlib.suppress(BaseException):
+        stream = getattr(sys, stream_name, None)
+        if stream is None:
+            return
+        data = msg + "\n"
+        try:
+            fd = stream.fileno()
+        except (OSError, ValueError, AttributeError):
+            stream.write(data)
+            stream.flush()
+            return
+        stream.flush()
+        os.write(fd, data.encode("ascii", "replace"))
 
 
 def _stop_child(child, reap_s: float) -> dict:
     """child.stop(), never raising: an exception is recorded as unconfirmed."""
     try:
         return dict(child.stop(reap_s=reap_s))
-    except Exception as exc:  # noqa: BLE001 - VOID.json is written whatever stop() does
+    except BaseException as exc:  # noqa: BLE001 - VOID.json is written whatever stop() does
         return {"stop_error": _err(exc), "child_exited": False, "tree_confirmed": False}
 
 
 def _void(
-    child, kill: dict, reason: str, out_dir: Path, log: Path, write: Callable, run_row: Callable, stamp: Callable
+    child,
+    kill: dict,
+    reason: str,
+    out_dir: Path,
+    log: Path,
+    write: Callable,
+    run_row: Optional[Callable],
+    stamp: Callable,
+    interrupted: Optional[str] = None,
 ) -> int:
-    """After the kill: best-effort, individually guarded diagnostics; 90 only
-    when the tree is confirmed AND VOID.json was written, else 92 + loud."""
+    """After the kill: best-effort, individually guarded diagnostics. 90 (a
+    real STOP) or 94 (the sampler interrupted) only when the tree kill is
+    confirmed AND VOID.json was written; else 92 + a loud stderr line."""
     failures = []
-    failed = write(lambda: _append(log, run_row()))
-    if failed:
-        failures.append(f"samples.jsonl run row: {failed}")
-    row = {"phase": "void", "t": stamp(), "reason": reason, "pid": child.pid}
+    if run_row is not None:
+        failed = write(lambda: _append(log, run_row()))
+        if failed:
+            failures.append(f"samples.jsonl run row: {failed}")
+    row = {"phase": "void", "t": stamp(), "reason": reason, "pid": getattr(child, "pid", None)}
+    if interrupted is not None:
+        row["error"] = interrupted
     row.update(kill)
     failed = write(_append, log, row)
     if failed:
@@ -465,8 +557,8 @@ def _void(
     confirmed = row.get("tree_confirmed") is True
     if confirmed and not void_failed:
         if failures:
-            _loud(f"landing_sampler: VOID written, tree confirmed dead; log rows lost: {'; '.join(failures)}")
-        return EXIT_VOID
+            _emit("stderr", f"landing_sampler: VOID written, tree confirmed dead; log rows lost: {'; '.join(failures)}")
+        return EXIT_INTERRUPTED if interrupted is not None else EXIT_VOID
     what = []
     if void_failed:
         what.append(f"VOID.json NOT written ({void_failed})")
@@ -478,9 +570,10 @@ def _void(
         what.append("child exited before kill; descendants unverified")
     elif not confirmed:
         what.append("suite tree NOT confirmed dead (fallback kill: the gate pid only)")
-    _loud(
-        f"landing_sampler: VOID {reason}: {'; '.join(what)} (pid {child.pid}; taskkill_rc "
-        f"{row.get('taskkill_rc')}, fallback {row.get('fallback')}) - end the remaining suite tree by hand"
+    _emit(
+        "stderr",
+        f"landing_sampler: VOID {reason}: {'; '.join(what)} (pid {row['pid']}; taskkill_rc "
+        f"{row.get('taskkill_rc')}, fallback {row.get('fallback')}) - end the remaining suite tree by hand",
     )
     return EXIT_VOID_UNCONFIRMED
 
@@ -501,12 +594,13 @@ def main(argv: Optional[list] = None) -> int:
     head = (lambda: read_head(a.repo)) if a.repo is not None else None
     rc = run_sampler(cmd, a.dir, launch=lambda c: launch_child(c, a.child_log), head=head, interval=a.interval)
     verdict = {
-        EXIT_LAUNCH_FAILED: "launch failed (see samples.jsonl)",
         EXIT_VOID: "VOID (see VOID.json)",
         EXIT_REFUSED: "REFUSED (see REFUSED.json)",
         EXIT_VOID_UNCONFIRMED: "VOID, suite tree NOT confirmed dead (see VOID.json)",
+        EXIT_LAUNCH_FAILED: "launch failed (see samples.jsonl)",
+        EXIT_INTERRUPTED: "sampler interrupted, child tree killed (see VOID.json)",
     }
-    print(f"landing_sampler: exit {rc} {verdict.get(rc, 'child exit code')}")
+    _emit("stdout", f"landing_sampler: exit {rc} {verdict.get(rc, 'child exit code')}")
     return rc
 
 
