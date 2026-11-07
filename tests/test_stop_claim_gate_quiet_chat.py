@@ -195,6 +195,23 @@ def test_the_same_claim_restated_in_a_later_turn_surfaces_again(tmp_path):
     assert _context(proc).startswith("stop_claim_gate: 1 unbacked claim ")
 
 
+def test_every_sentence_finding_carries_its_source_turn():
+    """F4 (s152): RM-1750 (39f72b5c3) renamed audit()'s sentence-loop variable
+    to `_turn` because ruff B007 cannot see that the nested flag() reads it,
+    so every finding was keyed on turn "" and a restatement in a later turn
+    read as already surfaced. Each flagged sentence names its own row's uuid;
+    an evidence-only finding has no source turn."""
+    rows = _main_rows("The full suite passes.", "The full suite passes.")
+    rows.append({"type": "assistant", "uuid": "a-bp", "sessionId": SID,
+                 "message": {"role": "assistant", "content": [
+                     {"type": "tool_use", "id": "toolu_bp", "name": "Bash",
+                      "input": {"command": "git commit --no-verify -m x"}}]}})
+    found = [(f["check"], f["turn"]) for f in gate.audit(gate.collect_evidence(rows))]
+    assert sorted(found) == [("hook_bypass", ""),
+                             ("tests_pass_without_run", "a-0"),
+                             ("tests_pass_without_run", "a-1")], found
+
+
 def test_a_reentry_stop_does_not_mark_a_finding_seen(tmp_path):
     transcript = _session(tmp_path, _main_rows("The full suite passes."))
     quiet, report = _run(tmp_path, transcript, reentry=True)

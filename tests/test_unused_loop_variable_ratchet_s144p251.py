@@ -7,6 +7,11 @@ name now carries the dummy prefix (``_i``, ``_mode``, ``_code``, ``_turn``, ``_p
 ``tests/test_xdist_suite_fragments_s144q33.py``, which read the loop variable only AFTER the loop; it is now a
 list and a ``[-1]`` index. No other behaviour changes: a loop variable that nothing reads cannot be observed.
 
+CORRECTED s152 (F4): the ``_turn`` rename in ``tools/stop_claim_gate.py`` DID change behaviour. B007 cannot see a
+read from a nested function, and ``audit()``'s ``flag()`` read ``turn`` that way, so every finding was keyed on
+``""`` and a claim restated in a later turn read as already surfaced. ``flag()`` now takes ``turn`` as a parameter.
+Before renaming a B007 hit, grep the enclosing function for a nested ``def`` / ``lambda`` that reads the name.
+
 The held scope is every tracked ``.py`` file NOT under the two fences:
 
 - ``agents/daemon_slayer/``: the DS lane's tree (30 findings), untouched by the repo lane.
