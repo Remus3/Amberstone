@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-11-07 - size-budget relocation (session 152 NA4), 1 line
+
+`ROADMAP.md` stood at 73668 of 81920 bytes on `765ab2d77` (the `tools/drift_guard.py` warn line is 73728), and the session 152 filings (`BACKLOG.md` "S152 filings") would cross it. The line below moves here VERBATIM as it stood at `765ab2d77`: the RM-734 row, SHIPPED 2026-10-30 by the s144 queue lane (`31f50e210`, landed s144 L5, LEDGER 1965; its `BACKLOG.md` head reads SHIPPED). Rule: a line moves only when every RM id it names reads SHIPPED / CLOSED in its `BACKLOG.md` head and the line names no open residual; no other `ROADMAP.md` line met it on that tree. Open rows were not moved.
+
+- **[ ] RM-734 (Tier-1, filed by the session 106 merger, LEDGER 1709; `queue-ready` s133 c6): the push CI impact slice cannot select repo-wide guards that walk the git index.** Body + acceptance in `BACKLOG.md` "Session 106 filings".
+
 ## 2026-11-01 - size-budget relocation (session 148 /done, DRIVE-RC), 1 line
 
 `ROADMAP.md` stood at 74207 of 81920 bytes on `a52bc77ed` (the `tools/drift_guard.py` warn line is 73728). The header note below moves here VERBATIM; a one-line pointer stays. No row moved.
