@@ -52,6 +52,7 @@ that turning into a DB hot loop.
 Failure modes:
   - missing / wrong-length ids -> 400 with a clear error
   - non-integer ids -> 400
+  - a queue value with no id (``queue=,``) or more than 16 queue ids -> 400
   - DB unavailable -> 503 with a structured error
   - any other exception -> 500 + structured error; never raises
 """
@@ -107,10 +108,26 @@ def _parse_int_list(raw: str, expected: int) -> tuple[list[int], str | None]:
     return (ids, None)
 
 
+# Most queue ids one request may name (the draft-score route's cap; well
+# under core.draft_elo_db.MAX_QUEUE_IDS, so the module never refuses one).
+_MAX_QUEUE_IDS = 16
+
+
 def _parse_queues(raw: str) -> tuple[tuple[int, ...] | None, str | None]:
+    """Queue-id filter. Blank = the default SR queue set.
+
+    A value that is present but holds no id (``queue=,``) is a 400. It
+    used to become an EMPTY filter, which dropped the queue clause from
+    every query (all queues counted) and cached that answer under the
+    default-queue key, so the next plain request was served it too.
+    """
     if not raw:
         return (None, None)
     parts = [p.strip() for p in raw.split(",") if p.strip()]
+    if not parts:
+        return (None, "expected at least one queue id")
+    if len(parts) > _MAX_QUEUE_IDS:
+        return (None, f"expected at most {_MAX_QUEUE_IDS} queue ids")
     ids: list[int] = []
     for p in parts:
         try:
