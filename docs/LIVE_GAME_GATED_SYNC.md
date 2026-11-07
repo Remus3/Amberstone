@@ -168,6 +168,9 @@ caller arms them on a route that reads them; the AGE CHECK sits in G2-08); no co
 G2-18 / G2-19 were tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 86: nothing in RC
 calls `/ehp`, no DS route parses `assume_caster_lowhp` and the ruled live HP feed is unshipped, and
 no live caller arms the DSV2/3/4 burst seams; each row holds its own AGE CHECK); no count moved.
+G2-09 / G2-12 were tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 87: four DS routes
+parse `apply_passive_mitigation` but no live RC caller arms it, and no DS route parses
+`assume_passive_reflect`, RM-1391 still OPEN; each row holds its own AGE CHECK); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -999,8 +1002,33 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   `live_flip_eyeball.py`, a fixture or a DS unit test answers whether the engine COMPUTES the
   credit; only the producer's own recorded outbound body, joined to a `:2999` read at the same game
   time, answers whether RC SENT it for the live build.
-- **G2-09** (was B14) R35 `apply_passive_mitigation` + snapshot (Galio/Garen/MasterYi percent-DR);
+- **G2-09** `[BLOCKED ON WIRING 2026-11-06]` (was B14) R35 `apply_passive_mitigation` + snapshot (Galio/Garen/MasterYi percent-DR);
   confirm the rank-4 + 0.3-uptime assumptions read sane.
+  **AGE CHECK (lane 9 PREP s144 cycle 87, S144-G-78; local main `20db38d67`, no game up; NOT a tick).
+  The routes carry the seam; no live RC caller arms it.** In `agents/daemon_slayer/server.py`
+  `_route_ehp`, `_route_rank_tank`, `_route_hybrid` and `_route_rank_bruiser` each parse
+  `_opt_bool(body, "apply_passive_mitigation", False)` and forward it; `compute_ehp` always holds the
+  `DataSnapshot`, so the "+ snapshot" half needs no transport. In `core/daemon_slayer_client.py`
+  `rank_tank_for`, `ehp_for`, `rank_bruiser_for` and `hybrid_for` emit the key when True, but the one
+  live dispatcher, `rank_for_primary_archetype`, has no such parameter and its tank and bruiser
+  branches call `rank_tank_for` / `rank_bruiser_for` without it; `core/defensive_picks.py` calls
+  `rank_tank_for` without it; `dashboard/routes_state.py` `_DS_PREVIEW_SEAM_BOOLS` does not list it;
+  no code file (`.py` / `.js` / `.mjs`) outside `agents/daemon_slayer/`,
+  `core/daemon_slayer_client.py` and `tests/` names it. The three registry champions resolve to the archetypes those routes serve
+  (`core/archetype_picks.py` `get_archetype_for`, DDragon default: Galio tank, Garen and MasterYi
+  bruiser), so the gap is the producer, not the route. The rank-4 (`_ASSUMED_ABILITY_RANK = 4`) and
+  0.3 (`_ACTIVE_DR_PROB = 0.3`) assumptions live in
+  `agents/daemon_slayer/_passive_mitigation_overrides.py` and stay unexercised in every live ranking.
+  PRECONDITION for return to the drain list: the dispatcher (or the panel's `/api/ds-preview` seam
+  list) arms `apply_passive_mitigation` for a live Galio / Garen / MasterYi ranking, and the outbound
+  body is recorded with `ts` and `gameData.gameTime`. Predicate stated NOW, graded only after that
+  lands, in one practice-tool SR game on one of the three: PASS iff a recorded `/rank-tank` (Galio)
+  or `/rank-bruiser` (Garen / MasterYi) body carries `"apply_passive_mitigation": true` with
+  `champion` equal to `activePlayer` `championName` from a `:2999` read within 10 s of game time of
+  the body; record `activePlayer.abilities.W.abilityLevel` from that read beside the assumed rank 4
+  (the gap is the evidence for the rank-4 eyeball, written when the producer names its surface).
+  SUBSTITUTION CHECK: as G2-04 (an in-process `compute_ehp` call or a hand-POSTed `/rank-tank` body
+  answers COMPUTES, not SENT).
 - **G2-10** `[BLOCKED ON WIRING 2026-11-06]` (was B15) R45 Poppy W low-HP doubled percent-of-resist tier - feed
   `caster_current_hp_pct` (drop own HP), sub-40%-HP EHP ranking sane.
   **AGE CHECK (lane 9 PREP s144 cycle 84, RM-1673; local main `ba0df749f`, no game up; NOT a tick).
@@ -1046,10 +1074,30 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   stack HP the assumed curve stands in for; record both - the gap is the evidence for the "live
   stack feed" follow-up. SUBSTITUTION CHECK: as G2-04 (an in-process `compute_ehp` call answers
   COMPUTES, not SENT).
-- **G2-12** (was B17) R49 `assume_passive_reflect` (Rammus W) + R68 the ITEM Thorns lane on the SAME
+- **G2-12** `[BLOCKED ON WIRING 2026-11-06]` (was B17) R49 `assume_passive_reflect` (Rammus W) + R68 the ITEM Thorns lane on the SAME
   seam (Thornmail 3075 + mirrors 223075/323075 + Bramble Vest 3076). Practice bots DO attack, so the
   1.0s cadence + 3.0s window assumptions are exercisable for both streams. STRICTER READ: re-check
   ranking-vs-real-comp in the GATE 3 ARAM sitting.
+  **AGE CHECK (lane 9 PREP s144 cycle 87, S144-G-78; local main `20db38d67`, no game up; NOT a tick).
+  No DS route parses the flag and no RC caller sends it, so no practice game can exercise either
+  stream.** Re-measured: the only code files naming `assume_passive_reflect` are
+  `agents/daemon_slayer/dps.py`, `agents/daemon_slayer/burst.py` and
+  `agents/daemon_slayer/_passive_reflect_overrides.py` (plus tests), with zero hits in `agents/daemon_slayer/server.py`, `core/` and `web/`;
+  `tests/test_ds_parity_map.py` `_UNREACHABLE_OK` still lists it for `/burst` and `/dps`. This is
+  the same finding the G3-15 PREP AUDIT leg (3) recorded at `412042dc8`, unchanged at this HEAD, and
+  RM-1391 (wire the consumer, Tier-2 engine route) is still OPEN in `BACKLOG.md`. The 2026-07-20
+  "mechanism proven + leak-free control" advance in the header is the Python-API compute half (the
+  +8.963 pct pre-factor delta G3-15 leg (3) cites), not a rendered or sent read. PRECONDITION for return to the drain list: RM-1391
+  lands (route parse or `/rank*` forward, an RC caller for thorn carriers, the two parity-map
+  entries deleted in the same slice), and the outbound body is recorded with `ts` and
+  `gameData.gameTime`. Predicate stated NOW, graded only after that lands, in one practice-tool SR
+  game: PASS iff a recorded body to the route the slice wires carries `"assume_passive_reflect": true`
+  for a build whose `:2999` `allPlayers[]` row (active player, within 10 s of game time of the body)
+  is Rammus or holds 3075 / 223075 / 323075 / 3076, AND a recorded body for a no-carrier build in the
+  same game does not carry the flag (or ranks byte-identical OFF vs ON). The cadence / window eyeball
+  and the ranking-vs-real-comp read are G3-15 leg (3), whose predicate already stands. SUBSTITUTION
+  CHECK: as G3-15 leg (3) (a direct `compute_dps` / `compute_burst_damage` call with the flag set,
+  or `live_flip_eyeball.py`, answers COMPUTES, not SENT).
 - **G2-13** `[BLOCKED ON WIRING 2026-11-06]` (was B18) R51 `gate_target_hp_amp` per-instant consumer (dummy HP is settable) -
   per-instant / stepped scenario eval, **NOT a blind burst-scorer flip**. Transport WIRED (OQ17).
   **AGE CHECK (lane 9 PREP s144 cycle 83, RM-1672; source read at local main `ba0df749f`, no game
