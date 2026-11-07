@@ -8,7 +8,10 @@ words nearby (quarantined, removed, retired, never existed, ...); that is a hist
 the guard accepts it. Three were bare and are fixed with this guard (tools/champion_loadout_validate_meta.py,
 tools/hotfix_kaisa_aram_ashe_sr_item263.py, tools/champion_loadout_align.py). The rest are the named exceptions below.
 
-The rule: every cite of an untracked ``<top-dir>/<path>.py`` needs a history word within three lines either side, or an
+S144-P-288 widens the scan to ``.ps1`` / ``.bat`` / ``.sh`` / ``.mjs`` / ``.js`` cites in the same production ``.py``
+prose: measured 2026-11-06, two bare cites (both in tools/build_portable.py, PKG-owned, named in ``_ALLOWED``).
+
+The rule: every cite of an untracked ``<top-dir>/<path>.py`` (or script extension above) needs a history word within three lines either side, or an
 entry in ``_ALLOWED`` (file, path) with the reason. ``_ALLOWED`` only shrinks: an entry that no longer matches a cite
 fails ``test_allowlist_is_exact``. ``test_scanner_is_live`` proves the scan reports a bare cite, accepts a marked one
 and ignores a tracked path, since an empty scan would pass for any reason.
@@ -23,7 +26,9 @@ from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
 _TOP_DIRS = (
     "core|tools|ops|app|lcu|dashboard|coaches|modes|agents|scripts|vision_server|coach_integration|lib|tft"
 )
-_CITE_RE = re.compile(rf"(?<![\w./-])((?:{_TOP_DIRS})/[A-Za-z0-9_./-]*[A-Za-z0-9_]\.py)(?![\w])")
+_CITE_RE = re.compile(
+    rf"(?<![\w./-])((?:{_TOP_DIRS})/[A-Za-z0-9_./-]*[A-Za-z0-9_]\.(?:py|ps1|bat|sh|mjs|js))(?![\w])"
+)
 _HISTORY_RE = re.compile(
     r"quarantin|remov|delet|retired|never existed|no longer|\bgone\b|was dropped|deprecat|superseded",
     re.IGNORECASE,
@@ -45,6 +50,10 @@ _ALLOWED = {
     ("tools/citation_audit.py", "ops/runtime/ui_recon/recon.py"),
     # A file of the other repo this one adopted a helper from (S144-P-287: only the word "sibling" marked it before).
     ("core/ports.py", "tools/lw_ports.py"),
+    # S144-P-288: tools/build_portable.py (PKG, main session owns it, so a lane cannot edit the docstring) names two
+    # startup scripts that were never tracked. FILED for the PKG owner; drop these when the cites are marked or gone.
+    ("tools/build_portable.py", "ops/autostart_on_login.bat"),
+    ("tools/build_portable.py", "ops/launch_new_system.bat"),
 }
 
 
@@ -107,6 +116,18 @@ def test_scanner_is_live():
     far = "see tools/absent.py\n" + "x\n" * 4 + "removed\n"
     assert scan_source(far, tracked) == [(1, "tools/absent.py")]
     assert scan_source("see core/a/b/absent_two.py now\n", tracked) == [(1, "core/a/b/absent_two.py")]
+
+
+def test_non_py_script_cites_are_scanned_too():
+    """S144-P-288: a production docstring that names a ``.ps1`` / ``.bat`` / ``.sh`` / ``.mjs`` / ``.js`` script is a
+    pointer like a ``.py`` one (tools/build_portable.py cited two startup ``.bat`` files that were never tracked, and
+    the ``.py``-only scan never saw them)."""
+    tracked = frozenset({"ops/real.ps1"})
+    for ext in ("ps1", "bat", "sh", "mjs", "js"):
+        assert scan_source(f"run ops/absent.{ext} first\n", tracked) == [(1, f"ops/absent.{ext}")], ext
+        assert scan_source(f"run ops/absent.{ext} (removed)\n", tracked) == [], ext
+    assert scan_source("run ops/real.ps1 first\n", tracked) == []
+    assert scan_source("config tools/data.json here\n", tracked) == []
 
 
 def test_a_weak_word_does_not_mark_a_cite_as_history():
