@@ -244,7 +244,8 @@ This doctrine is built by LIVE iteration, not one big-bang commit:
    for a wiring change; bounce rc-shell when the main process changed.
 3. Capture the live overlay (desktop MCP screenshot on Legion, or the headless
    `?overlay=1&ui_mock=1` render) and check it against sections 1 + 5 + 4.
-4. Gemini design-director critique (`tools/gemini_ask.ps1`) on the capture;
+4. Independent verifier critique of the capture (the Gemini design-director
+   pass and its `tools/gemini_ask.ps1` were decommissioned and removed);
    take its recommendation, log it, refine.
 5. Repeat until each widget passes the glance test + the Hextech bar.
 
