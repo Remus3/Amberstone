@@ -365,12 +365,14 @@ function _replayViewRefresh() {
         // button activation never fires a second load.
         // RM-1062: Ctrl / Alt / Meta + key is left to the recording
         // player (modifier+Space plays from anywhere).
-        btn.addEventListener("click", () => _replayLoadMatch(m.match_id, btn));
+        // S144-U-182: a pick by click or key brings the loaded match into
+        // view where the panes stack (_replayRevealMain).
+        btn.addEventListener("click", () => _replayLoadMatch(m.match_id, btn, { reveal: true }));
         btn.addEventListener("keydown", (e) => {
           if (e.ctrlKey || e.altKey || e.metaKey) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            _replayLoadMatch(m.match_id, btn);
+            _replayLoadMatch(m.match_id, btn, { reveal: true });
           }
         });
         ul.appendChild(li);
@@ -379,14 +381,51 @@ function _replayViewRefresh() {
       // s220 PGR S5: auto-load the focused match (from PGR Review ->).
       // Fires AFTER all rows are mounted so .active highlighting works.
       if (focusRow) {
-        _replayLoadMatch(focusMatchId, focusRow);
         try { focusRow.scrollIntoView({ block: "nearest" }); } catch (_) {}
+        _replayLoadMatch(focusMatchId, focusRow, { reveal: true });
       }
     })
     .catch(e => console.warn("replay matches:", e));
   _replayLoadItemsIndex();
 }
-function _replayLoadMatch(matchId, rowEl) {
+// S144-U-182: at 720 px and under the panes stack (primitives.css), the
+// match list above the main pane, and the view section scrolls both as one
+// page. A pick loaded the match below the list and left the view where it
+// was, so the loaded match was out of sight (measured: at 640x307, the 300%
+// zoom of the 1920x920 baseline, the main pane began 53 px under the view's
+// bottom). Once the match has loaded (the meta line can grow a line), scroll
+// the least that shows the main pane's head: its top through the bottom of
+// the scrubber. Where that head is taller than the view, its top leads, so
+// the meta line shows. Side by side (main pane beside the list) and where
+// the head already shows, nothing moves. Focus is not moved: the picked row
+// keeps it, so Tab and Shift+Tab walk the list as before.
+// Guard: tests/snapshot_panels/test_replay_pick_reveals_main.py.
+function _replayRevealMain() {
+  const sec = document.getElementById("view-replay");
+  const list = sec && sec.querySelector(".replay-list-pane");
+  const main = sec && sec.querySelector(".replay-main-pane");
+  const slider = document.getElementById("replay-slider");
+  if (!list || !main || !slider) return;
+  const mr = main.getBoundingClientRect();
+  if (!mr.height || mr.top < list.getBoundingClientRect().bottom - 1) return;
+  const sr = sec.getBoundingClientRect();
+  const top = Math.max(0, sr.top + sec.clientTop);
+  const bottom = Math.min(window.innerHeight, sr.top + sec.clientTop + sec.clientHeight);
+  const headBottom = slider.getBoundingClientRect().bottom;
+  if (mr.top >= top - 1 && headBottom <= bottom + 1) return;
+  try {
+    if (headBottom - mr.top > bottom - top) {
+      main.scrollIntoView({ block: "start", inline: "nearest" });
+    } else {
+      slider.scrollIntoView({ block: "nearest", inline: "nearest" });
+      if (main.getBoundingClientRect().top < top - 1) {
+        main.scrollIntoView({ block: "start", inline: "nearest" });
+      }
+    }
+  } catch (_) {}
+}
+function _replayLoadMatch(matchId, rowEl, opts) {
+  const reveal = !!(opts && opts.reveal);
   // RM-1062: aria-current names the loaded match for a screen reader.
   document.querySelectorAll(".replay-match-row.active").forEach(r => {
     r.classList.remove("active");
@@ -439,6 +478,9 @@ function _replayLoadMatch(matchId, rowEl) {
         try { loadReviewPlayer(matchId, me ? Number(me.team_id) : null); } catch (_) {}
       }
       _replayRenderSnapshot(0);
+      // S144-U-182: reveal only for the pick still showing (a later pick
+      // that already loaded keeps its own place).
+      if (reveal && (!rowEl || rowEl.classList.contains("active"))) _replayRevealMain();
     })
     .catch(e => console.warn("replay match:", e));
 }
