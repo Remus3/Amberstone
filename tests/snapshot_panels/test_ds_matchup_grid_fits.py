@@ -36,10 +36,15 @@ import pytest
 
 from tests.snapshot_panels.conftest import _WS_STUB
 
-_MEASURE = """async () => {
+_MEASURE = """async (forcePageRender) => {
   await document.fonts.ready;
   const m = await import('/js/panels/ds_matchup.js');
   const host = document.getElementById('csv-sugg-ds-matchup');
+  // RM-2032: detach the page's two render sources from this host before the
+  // measure: the fetch-land scheduler, and the id both page paths find it by
+  // (no stylesheet selects it by id, so the layout is unchanged).
+  m.setDsMatchupScheduler(null);
+  host.removeAttribute('id');
   const landed = (b, v, s) => ({ok: true, champ_a: 'Jinx', champ_b: b,
     verdict: v, swing_pct: s, pct_a_removed: 0.3, pct_b_removed: 0.55,
     notes: [], a_can_full_combo: false});
@@ -75,6 +80,12 @@ _MEASURE = """async () => {
   const p = read();
   m._resetDsMatchup();
   m.renderDsMatchup(host, landed('Kaisa', 'all_in', 100), grid);
+  if (forcePageRender) {
+    // RM-2032 control: the page's own render path landing between the
+    // render and the read (as a state envelope or a fetch land does).
+    m.renderDsMatchupForChampSelect({my_champion: 222, their_team: [
+      {championId: 266, assignedPosition: 'top'}]}, 'csv-sugg-ds-matchup');
+  }
   await frame();
   const l = read();
   const list = host.querySelector('.dsm-grid-list');
@@ -95,9 +106,11 @@ _VERDICTS = ["ALL IN", "BACK OFF", "EVEN", "TRADE", "BACK OFF"]
 _CACHE: dict = {}
 
 
-def _measure(pw_browser, mock_server, w: int, h: int) -> dict:
-    if (w, h) in _CACHE:
-        return _CACHE[(w, h)]
+def _measure(pw_browser, mock_server, w: int, h: int,
+             force_page_render: bool = False) -> dict:
+    key = (w, h, force_page_render)
+    if key in _CACHE:
+        return _CACHE[key]
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(viewport={"width": w, "height": h})
     page = ctx.new_page()
@@ -116,7 +129,7 @@ def _measure(pw_browser, mock_server, w: int, h: int) -> dict:
             " return !!g && g.checkVisibility(); })()",
             timeout=10_000,
         )
-        m = page.evaluate(_MEASURE)
+        m = page.evaluate(_MEASURE, force_page_render)
     finally:
         page.close()
         ctx.close()
@@ -124,8 +137,20 @@ def _measure(pw_browser, mock_server, w: int, h: int) -> dict:
     assert [r["champ"]["text"] for r in m["landed"]] == _CHAMPS, m["landed"]
     assert [r["verdict"]["text"] for r in m["landed"]] == _VERDICTS, m
     assert [r["verdict"]["text"] for r in m["pending"]] == ["-"] * 5, m
-    _CACHE[(w, h)] = m
+    _CACHE[key] = m
     return m
+
+
+def test_a_page_render_between_render_and_read_cannot_repaint_the_measure(
+        mock_server, pw_browser):
+    """RM-2032. The page renders into the same host on its own (each state
+    envelope through renderDsMatchupForChampSelect, a fetch land through the
+    scheduler), so a page render landing between renderDsMatchup and read()
+    repainted the synthetic grid (seen in test_layout_follows_the_list_width
+    [1440-900] at s151 and test_baseline_is_one_line_four_tracks under -n 6
+    at s152). Force exactly that render; the measure must still read its own
+    five rows (_measure asserts the champions and verdicts)."""
+    _measure(pw_browser, mock_server, 1440, 900, force_page_render=True)
 
 
 def test_baseline_is_one_line_four_tracks(mock_server, pw_browser):
