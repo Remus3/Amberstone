@@ -4801,6 +4801,29 @@ waits on the RM-875 wiring.)
   `coach.choices` in a live Arena window is a G2-28 compliance FAIL, not a G5-07 pass. RE-FILE
   PROPOSAL (a human edits; the lane does not): fold G5-07 into G7-17 as a dependency line, and drop
   "live serve flip" from its text while B4 stands.
+  **RE-CHECK (lane 9 PREP s144 cycle 101, 2026-11-07, source read at `0e0673235` on main
+  `86ed5e52d`; NOT a tick, NOT struck; no game up: `:8888`, `:2999` and `:8860` all curl 000).**
+  Every cite above HOLDS, no drift: `LIVE_SUPPRESSED_FIELDS` `dashboard/_state_builder.py:422`,
+  `suppress_live_directives` `:464` applied `:1052`, `resolve_choices` call `:1028`;
+  `LIVE_GAME_FLAGS` `core/live_game_gate.py:31`; `directivesAllowed` gate
+  `web/js/panels/coach_choices.js:211`; `_ARENA_CHOICE_LABELS` `core/arena_deterministic_coach.py:78`,
+  `_safe_choices` `:232`, `build_block` field `:374`; `shadow_log_arena_coach`
+  `dashboard/_deterministic_coaching.py:1493`, its `log_arena_coach` call `:1639`, `resolve_choices`
+  def `:1067`; `coaches/arena_coach.py:867` (`_choices_list`) and the `[]` prompt clause `:190`.
+  Idle re-run of the one-liner (run from the worktree with `python -B` and the main checkout's
+  `data/arena_coach_shadow.jsonl` passed by absolute path, so no bytecode lands in the main
+  checkout): cutoff `2026-07-01T00:00:00+00:00` -> `617 3`, `2026-10-25T06:28:48+00:00` -> `0 0`,
+  `2026-11-01T01:33:09+00:00` -> `0 0` (still 617 rows, still NO RESULT).
+  CUTOFF RULE, stated before any game: the add-on's cutoff is the G7-17 readback's `restart` line
+  value, copied verbatim (`tools/gated_g717_arena_readback.py` prints it as UTC isoformat WITH
+  microseconds, e.g. `2026-11-01T01:33:09.977397+00:00`; shadow rows spell `ts` the same way, UTC
+  `+00:00` with microseconds, 617/617, so the string compare orders correctly). It therefore
+  inherits the G7-17 DEAD-RC TRAP (G7-17 RE-CHECK, cycle 100): `health.json` still reads `alive`
+  true, `pid` 18724 (not running), `started_at` 2026-11-01T01:33:09Z, while `launcher_status.json`
+  top `state` is `halted` (`updated` 2026-11-01T02:17:21Z). A stale cutoff cannot false-PASS this
+  add-on (a down RC logs no rows, so the count stays 0 = NO RESULT), but the same precondition binds:
+  launcher `state` `running` and `:8888` `/api/state` 200 BEFORE the game, else start RC first and
+  use the NEW `started_at`.
 - **G5-08** (was the B47b Arena tail) Celestial Opposition Arena mirror **444644 magnitude confirm**
   (Meraki 50% vs DDragon 90%) - the id is EXCLUDED from the R108 credit pending this live-Arena read.
   **PREP 2026-10-25 (lane 9 s133 cycle 6, data read at DS 16.21.1; NOT a tick).**
