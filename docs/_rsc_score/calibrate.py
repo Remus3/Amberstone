@@ -293,8 +293,8 @@ def parse_scorer(path):
             raise ParseError(f"{path}:{lineno}: unparseable ROW line: {line[:120]!r}")
         row_id = m.group(1)
         kv = {}
-        for part in m.group(2).split("|"):
-            part = part.strip()
+        for raw_part in m.group(2).split("|"):
+            part = raw_part.strip()
             if not part:
                 continue
             if "=" not in part:

@@ -49,6 +49,10 @@ Slice 9 (S144-P-267) renamed the same shape (plus tuple-unpack and inner-loop ne
 ``test_vision_merge_augment_rehome_b01b``, ``test_web_js_unimported_calls_s144q43``): 11 findings gone, 7 remain in
 held scope.
 
+Slice 10 (S144-P-269) renamed the last seven sites (``docs/_rsc_score/calibrate`` and ``calibrate_rep`` ``part``,
+``ops/rc_transactional_deploy`` ``item``, ``tft/tft_coach_engine`` ``val`` x3, ``tools/ds_wiki_staleness_check`` ``text``):
+the held scope is now at zero and ``_BASELINE`` is empty, so ANY new finding fails ``test_no_file_exceeds_its_baseline``.
+
 The count per file can only fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -78,13 +82,7 @@ _NOT_THIS_SCOPE = {
     "ops/fleet_kit/": "vendored byte-for-byte, pinned by ops/fleet_kit/MANIFEST.json",
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
-_BASELINE = {
-    "docs/_rsc_score/calibrate.py": 1,
-    "docs/_rsc_score/calibrate_rep.py": 1,
-    "ops/rc_transactional_deploy.py": 1,
-    "tft/tft_coach_engine.py": 3,
-    "tools/ds_wiki_staleness_check.py": 1,
-}
+_BASELINE: dict[str, int] = {}
 _FIXED = (
     "core/branch_review.py",
     "core/coach_trace.py",
@@ -152,6 +150,12 @@ _FIXED = (
     "tft/tft_prompt.py",
     "tools/arena_shadow_report.py",
     "tools/gated_tft15_planner.py",
+    # slice 10 (S144-P-269): the last seven sites.
+    "docs/_rsc_score/calibrate.py",
+    "docs/_rsc_score/calibrate_rep.py",
+    "ops/rc_transactional_deploy.py",
+    "tft/tft_coach_engine.py",
+    "tools/ds_wiki_staleness_check.py",
     # slice 9 (S144-P-267): the same shape in eleven test modules.
     "tests/test_gated_lx05_tape_check.py",
     "tests/test_pytest_per_run_temproot_rm878.py",

@@ -185,7 +185,8 @@ def _with_staged_hashes(files: Any, staging_root: Any) -> Any:
     if not isinstance(files, list) or not isinstance(staging_root, str) or not staging_root:
         return files
     out = []
-    for item in files:
+    for entry in files:
+        item = entry
         if isinstance(item, dict) and "sha256" not in item:
             try:
                 staged = contained_path(Path(staging_root).resolve(), item.get("staged"))

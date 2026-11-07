@@ -663,10 +663,10 @@ def _parse_response(text: str, *, gods: bool | None = None) -> dict:
                "reasoning:", "note:", "explanation:")
     _BANNED  = ("placeholder", "<placeholder>", "[placeholder]",
                 "blank", "n/a", "<none>", "[none]")
-    for key, val in list(fields.items()):
-        if not val:
+    for key, raw_val in list(fields.items()):
+        if not raw_val:
             continue
-        val = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', val)
+        val = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', raw_val)
         lower = val.lower()
         if lower.strip() in _BANNED:
             fields[key] = ""
