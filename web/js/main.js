@@ -2158,10 +2158,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   let _historyMockPromise = null;
   function _historyMockLoad() {
     if (_historyMockPromise) return _historyMockPromise;
-    _historyMockPromise = fetch("/data/ui_mock/history.json", { cache: "no-store" })
+    // S144-U-211: a failed fixture load is not cached, so the next visit
+    // to the view fetches again (a cached null read as a failure for good).
+    const p = fetch("/data/ui_mock/history.json", { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
-      .catch(() => null);
-    return _historyMockPromise;
+      .catch(() => null)
+      .then((j) => {
+        if (!j && _historyMockPromise === p) _historyMockPromise = null;
+        return j;
+      });
+    _historyMockPromise = p;
+    return p;
   }
   function _historyIsMock() {
     return document.body && document.body.dataset.uiMock === "1";
@@ -2192,14 +2199,61 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const losses = ms.filter((m) => _historyResult(m) === "loss").length;
     return { wins, losses, label: (wins + losses) ? `${wins}W-${losses}L` : "" };
   }
+  // S144-U-211: a History fetch that fails (an HTTP error, a rejected
+  // fetch, a body that is not JSON, a reply with no sessions array) says
+  // the sessions did not load. An HTTP error used to return without
+  // painting and a rejected fetch was swallowed, so the list stayed on
+  // "loading..." for good; a reply with no sessions array read "no
+  // sessions in scope", a false statement about the store. The previous
+  // scope's sessions, matches and season stats are dropped so a failed
+  // scope pick never shows the old scope under the new tab. Entering the
+  // view, or picking a scope, fetches again.
+  // Guard: tests/snapshot_panels/test_history_list_fetch_failure.py.
+  function _historyFetchFailed() {
+    _HISTORY._sessions = [];
+    _HISTORY.allMatches = [];
+    _HISTORY.seasonStats = {};
+    _HISTORY.selectedSession = null;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set("history-session-count", "-");
+    const ul = document.getElementById("history-session-list");
+    if (ul) {
+      ul.innerHTML = "";
+      const li = document.createElement("li");
+      li.className = "home-empty";
+      li.textContent = "sessions did not load - reopen History to retry";
+      ul.appendChild(li);
+    }
+    _historySetSeasonStats({}, false);
+    _historyPopulateFilterOptions();
+    const matchUl = document.getElementById("history-match-list");
+    if (matchUl) {
+      matchUl.innerHTML = "";
+      const li = document.createElement("li");
+      li.className = "home-empty";
+      li.textContent = "no sessions loaded";
+      matchUl.appendChild(li);
+    }
+    set("history-detail-head", "SELECT A SESSION");
+    set("history-filter-count", "");
+  }
   function _historyFetchAndRender() {
+    // S144-U-211: only the newest request paints. A scope picked before
+    // the previous reply landed used to let the older reply replace the
+    // newer scope's sessions under the newer scope's tab.
+    const seq = (_HISTORY.fetchSeq = (_HISTORY.fetchSeq || 0) + 1);
     const promise = _historyIsMock()
       ? _historyMockLoad().then((p) => _historyMockSliceForScope(p, _HISTORY.scope))
       : fetch("/api/history?scope=" + encodeURIComponent(_HISTORY.scope), { cache: "no-store" })
           .then((r) => (r && r.ok ? r.json() : null));
+    // A rejected fetch reads as null here, so only a FETCH failure paints
+    // the did-not-load line; a throw while painting is swallowed below, as
+    // before, and never replaces sessions already painted.
     promise
+      .catch(() => null)
       .then((d) => {
-        if (!d) return;
+        if (seq !== _HISTORY.fetchSeq) return;
+        if (!d || !Array.isArray(d.sessions)) { _historyFetchFailed(); return; }
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set("history-session-count", (d.sessions || []).length + " session" + ((d.sessions||[]).length===1?"":"s"));
         const ul = document.getElementById("history-session-list");
