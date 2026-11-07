@@ -732,6 +732,31 @@ def _chain_names(expr):
     return names, expr
 
 
+# S144-Q-91: the literal displays. Their value is always an instance of the
+# builtin type itself, never of a class the module defines, and a builtin
+# type takes no new attribute, so an attribute off one is the builtin's own.
+# An f-string is one unless it is exactly one field (`_builtin_receiver`).
+_BUILTIN_DISPLAYS = (ast.Constant, ast.List, ast.Tuple, ast.Set, ast.Dict,
+                     ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+
+
+def _builtin_receiver(expr) -> bool:
+    """S144-Q-91: `expr` is a literal display (`', '.join`, `[1].count`,
+    `f'at {u}'.strip`), so no class attribute mark (`_ATTR_MARKS`) is read
+    off it, whatever its name. An f-string that is ONE field and nothing
+    else (`f'{u}'`, `f'{u:>3}'`, `f'{u!s}'`) is not one: its value is
+    what the field's `__format__` returns, which may be an instance of a
+    `str` subclass the module defines (verifier, measured on 3.14); joining
+    a literal part or a second field always builds a plain `str`. Every
+    other receiver - a name, a call, an operator - may be an instance of
+    the class that made the mark, so it stays read: the safe side.
+    Residual: a name bound only to a literal (`s = 'x'; s.strip()`) is
+    still read, since the marks carry no receiver type."""
+    if isinstance(expr, ast.JoinedStr):
+        return len(expr.values) != 1 or isinstance(expr.values[0], ast.Constant)
+    return isinstance(expr, _BUILTIN_DISPLAYS)
+
+
 def _is_logger_expr(expr, tainted=frozenset()) -> bool:
     """`expr` may evaluate to a logger OBJECT (RM-1563): a log-ish name
     anywhere along its chain (`log`, `self.log`, `get_logger()`,
@@ -747,6 +772,8 @@ def _is_logger_expr(expr, tainted=frozenset()) -> bool:
         if _LOGOBJ + root.id in tainted:
             return True
         attrs = names[:-1]
+    elif _builtin_receiver(root) and names:
+        attrs = names[:-1]    # S144-Q-91: the first attribute is the builtin's
     else:
         attrs = names
     if any(_LOGOBJATTR + n in tainted for n in attrs):
@@ -851,7 +878,8 @@ _LOGOBJ = "logobj:"
 # then read as one - off `self`, `cls`, the class or an instance (`self.p(m)`,
 # `self.lg.info(m)`). The receiver is not checked, and the marks flow out of
 # the class with the rest of its state, so `o.p(m)` after the class is a sink
-# whatever `o` is: the safe side.
+# whatever `o` is: the safe side. S144-Q-91: except off a literal display
+# (`'{}'.p(m)`, `_builtin_receiver`), whose attribute is the builtin's own.
 _LOGATTR = "logattr:"
 _LOGOBJATTR = "logobjattr:"
 # RM-1786: a WRAPPER (`_SINKFN`) the class body binds at its own level - a
@@ -865,7 +893,8 @@ _LOGOBJATTR = "logobjattr:"
 # `inst:<class>` binds it unless the receiver is the class name itself
 # (`C.g(o, url)` is unbound). On a call that binds it, the first parameter
 # of a plain method is the receiver itself (`_RECV`). As with `_LOGATTR`, the
-# receiver is otherwise not checked: the safe side.
+# receiver is otherwise not checked: the safe side. S144-Q-91: except that no
+# attribute mark is read off a literal display (`_builtin_receiver`).
 _SINKATTR = "sinkattr:"
 # RM-1790: a def that puts one parameter's value INTO the object another
 # parameter names (`def h(q, v): q.append(v)`, `def h(self, v): self.q = v`)
@@ -1675,7 +1704,8 @@ def _is_log_callable(expr, tainted=frozenset()) -> bool:
     spelling that keeps a plain function from binding `self`."""
     if isinstance(expr, ast.Name) and _LOGFN + expr.id in tainted:
         return True
-    if isinstance(expr, ast.Attribute) and _LOGATTR + expr.attr in tainted:
+    if (isinstance(expr, ast.Attribute) and _LOGATTR + expr.attr in tainted
+            and not _builtin_receiver(expr.value)):    # S144-Q-91
         return True
     if isinstance(expr, ast.IfExp):
         return (_is_log_callable(expr.body, tainted)
@@ -2445,8 +2475,11 @@ def _attr_specs(f, tainted):
 def _attr_ways(kind, recv):
     """How a call off receiver `recv` binds the first parameter of a method
     mark of kind `kind` (`_attr_specs`): `plain` (unbound), `bound` (off
-    the receiver) or `cls` (off the receiver's class), one or more of them."""
+    the receiver) or `cls` (off the receiver's class), one or more of them.
+    S144-Q-91: none off a literal display (`_builtin_receiver`)."""
     owner = kind[len("inst:"):]
+    if _builtin_receiver(recv):
+        return ()    # S144-Q-91: the builtin's own method, never the mark's
     if kind == "static":
         return ("plain",)
     if kind == "any":
@@ -5269,6 +5302,49 @@ _CHECKER_SAMPLES = (
     ("lambda that stores a literal, not its source",
      "def f(url):\n    h = lambda q, v: q.append('x')\n    r = []\n    h(r, url)\n"
      "    log.info(r)\n", False),
+    # S144-Q-91: a call off a literal display (`_builtin_receiver`) runs the
+    # builtin type's own method, never a method a class body defines, so no
+    # attribute mark of that name is read off it. A name or call receiver
+    # may be an instance of the class, so it stays read as before.
+    ("str literal receiver of a method wrapper",
+     "class F:\n    def join(self, xs):\n        log.info(xs)\ndef f(url):\n"
+     "    ', '.join(url)\n", False),
+    ("f-string receiver of a method wrapper that logs self",
+     "class C:\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    f'at {url}'.strip()\n", False),
+    ("two-field f-string receiver of a method wrapper that logs self",
+     "class C:\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    f'{url}{url}'.strip()\n", False),
+    # A one-field f-string is what `__format__` returns: a str subclass may
+    # define the method (verifier counterexample), so it stays read.
+    ("one-field f-string receiver of a str subclass method stays flagged",
+     "class S(str):\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    f'{url}'.strip()\n", True),
+    ("one-field formatted f-string receiver stays flagged",
+     "class S(str):\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    f'{url:>3}'.strip()\n", True),
+    ("list display receiver of a method wrapper",
+     "class C:\n    def count(self, v):\n        log.info(v)\ndef f(url):\n"
+     "    [1].count(url)\n", False),
+    ("f-string receiver of a mutating method",
+     "class C:\n    def format(self, q):\n        q.append(self)\ndef f(url):\n"
+     "    r = []\n    f'at {url}'.format(r)\n    log.info(r)\n", False),
+    ("str literal receiver of a class logging attribute",
+     "class C:\n    format = log.info\ndef f(url):\n    '{}'.format(url)\n", False),
+    ("str literal receiver of a class logger object attribute",
+     "class C:\n    upper = logging.getLogger('x')\ndef f(url):\n"
+     "    'x'.upper.info(url)\n", False),
+    ("name receiver of a method wrapper stays flagged",
+     "class C:\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    url.strip()\n", True),
+    ("call receiver of a mutating method stays flagged",
+     "class C:\n    def format(self, q):\n        q.append(self)\ndef f(url):\n"
+     "    r = []\n    g(url).format(r)\n    log.info(r)\n", True),
+    ("name receiver of a class logging attribute stays flagged",
+     "class C:\n    format = log.info\ndef f(o, url):\n    o.format(url)\n", True),
+    ("name receiver of a class logger object attribute stays flagged",
+     "class C:\n    upper = logging.getLogger('x')\ndef f(o, url):\n"
+     "    o.upper.info(url)\n", True),
 )
 
 
