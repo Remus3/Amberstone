@@ -31,12 +31,14 @@ found), so an empty enumeration cannot pass.
 import re
 from pathlib import Path
 
+from tests import _css_split
+
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
 INDEX = WEB / "index.html"
 MAIN_JS = WEB / "js" / "main.js"
 RIGHT_NOW_JS = WEB / "js" / "panels" / "right_now.js"
-HEADER_CSS = WEB / "css" / "panels" / "header.css"
+HEADER_CSS = "web/css/panels/header.css"  # read via tests/_css_split (RM-726 rule 5)
 ACTIVITY_CSS = WEB / "css" / "panels" / "input_activity.css"
 
 _POPOUT_IDS = (
@@ -145,8 +147,11 @@ def test_no_web_js_names_the_popout_or_its_fetch():
 
 
 def test_no_web_css_styles_the_popout():
-    files = _walk("css", ".css", ("web/css/panels/header.css",
-                                  "web/css/overlay.css"))
+    # header.css is anchored as its whole split family (RM-726 rule 5): a
+    # popout rule resurrected in a landed split piece is still in the walk.
+    family = tuple(p.relative_to(ROOT).as_posix()
+                   for p in _css_split.family_paths(HEADER_CSS))
+    files = _walk("css", ".css", (*family, "web/css/overlay.css"))
     hits = sorted(f"{rel}: {n}" for rel, src in files.items()
                   for n in _CSS_NEEDLES if n in src)
     assert not hits, f"web/css still styles the digest popout: {hits}"
