@@ -137,7 +137,7 @@ function renderItemTiles(container, names, opts) {
         tile.style.setProperty("--buy-pct", (pct * 100).toFixed(0) + "%");
         if (pct >= 1) tile.classList.add("can-afford");
         // Gold caption: "need N" = remaining gold to complete the buy.
-        // TODO: subtract owned sub-item values once items_recipes.json is
+        // TODO(WP-B3): subtract owned sub-item values once items_recipes.json is
         // generated - for now N = cost - currentGold, clamped to 0 for
         // the can-afford case.
         const need = Math.max(0, Math.round(cost - opts.currentGold));
