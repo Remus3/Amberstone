@@ -4395,6 +4395,21 @@ waits on the RM-875 wiring.)
   has no `anvil_choices`, so `ArenaVisionReader` could never emit an anvil; the reader now goes direct
   (`USE_RELAY = False`, `d47e9906b`). The DRAIN CARD predicate is the test; G7-17 step (d) runs it.
   SOURCE: LEDGER 779/820; git `8f651ca7`, `9779296c`.
+  **RE-CHECK (lane 9 PREP s144 cycle 99, 2026-11-07, source read at `66a922e3b`; NOT a tick, nothing
+  struck).** The DRAIN CARD's anvil BASELINE ("30 rows / 16260 B") and its "PREDICATE IS NOW
+  POISONED" warning are STALE: RM-867 (`d37e806c1`, LEDGER 1838) renamed the 30 leaked rows to the
+  gitignored `data/anvil_rm867_test_leak_2026-09_shadow.jsonl` (16260 B, still on disk) and the writer
+  now refuses an injection-probe offer (`core/anvil_shadow.py:195` `offer_is_injection_probe`, defined
+  `:256`; the reader skips such rows, `:369`). Measured on the main checkout 02:40 local:
+  `data/anvil_shadow.jsonl` is ABSENT (the normal pre-game state, recreated on the first real anvil
+  row); `data/augment_shadow.jsonl` 3 rows / 3016 B, last `ts` 2026-07-21T03:13:15Z, mode `arena`,
+  round `~1`. The card's `python -c` one-liner crashes with FileNotFoundError on an absent file; use
+  `python tools/anvil_shadow_probe.py` (RM-873) instead, which printed
+  `FAIL: ... absent (no real anvil row yet)`, exit 1, this cycle. The card's PREDICATE is unchanged
+  and is now clean: any row after this game's start is real play. Cites moved: the dispatch is
+  `coaches/arena_coach.py:626` `_handle_augment_select` / `:629` `_handle_anvil` (was `:596` / `:599`),
+  defs `:936` / `:1091`, `ArenaVisionReader` `:1159`, `USE_RELAY = False` `:1202`; the writer's
+  `offered` fields are `core/anvil_shadow.py:189` / `:220` (unchanged).
 - **G5-02** (was D2) `set_augment_intent` 4-PATCH endpoint discovery at a real Arena augment phase.
   **PATH IS STALE:** `tools/gamepc_lcu_agent.py:1179` predates the Game-PC retirement - re-home the
   chain BEFORE running. (Re-probed 2026-10-25, lane 9 s133 cycle 5: that file is gone and the chain is
@@ -4402,6 +4417,27 @@ waits on the RM-875 wiring.)
   `/lol-cherry-game-intra-event/v1/augment-select`. The re-home precondition is met; the live discovery
   is still owed.) Recipe: `docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md`. No Cherry augment session
   surfaced in `/api/state` 2026-07-04 (shares the G5-01 root cause). SOURCE: ROADMAP.md:113 / RM-24.
+  **RE-CHECK (lane 9 PREP s144 cycle 99, 2026-11-07, source read at `66a922e3b`; NOT a tick, nothing
+  struck).** Cites moved: the handler is `tools/lcu_agent.py:938` (`if name == "set_augment_intent"`,
+  was `:800-849`), and the chain is FOUR attempts, not "PATCH then POST": PATCH
+  `/lol-cherry-game-intra-event/v1/augment-select`, PATCH `/lol-cherry/v1/augment-select`, PATCH
+  `/lol-cherry-summoner/v1/augments`, POST `/lol-cherry-game-intra-event/v1/augment-select`
+  (`:969-974`), body `{"augmentId", "slotIndex"}`, first 2xx wins. `ROADMAP.md:113` no longer names
+  RM-24 (archived, `ROADMAP.md:164`). **The dashboard click cannot fire it live:** the only UI caller
+  (`web/js/panels/champ_select.js:3866`, wired at `:1037` on the champ-select Arena pane) needs
+  `augments.options`, which `lcu/champ_select_shape.py:469` always sets to `[]`, so no clickable
+  option ever renders from live data. The live discovery therefore uses the recipe's MANUAL route
+  (`docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md` step 2: POST `/api/lcu-cmd`, `dashboard/routes_loadout.py:853`,
+  `{"cmd": "set_augment_intent", "augment_id": <id>, "slot": 0}`) or step 5 (`RC_LIVE_ARENA=1`
+  `tests/test_set_augment_intent_handler.py::LiveAugmentSelectIntegrationTests`, which loads
+  `tools/lcu_agent.py` directly). That recipe's "Game-PC agent" hop and its whole "Game-PC agent
+  redeploy reminder" section are STALE (1-PC, ADR-011): the chain is now :8888 -> :8889
+  `/lcu-cmd` queue -> the Legion `tools/lcu_agent.py` (`drain_once` `:1852`). This is an LCU WRITE:
+  an operator-present drain only, never a watcher lane. PREDICATE (stated before any game): PASS iff,
+  during an in-game Arena augment-pick window, the envelope has `ok: true` and names an `endpoint`
+  AND the client shows that augment taken; `ok: false` with all four in `tried` is a RESULT (record
+  each status; then the doc's "If all 4 paths 404" list); `ok: true` with no augment taken on screen
+  is FAIL (a 2xx that did nothing).
 - **G5-03** (was D3) Arena boots 22xxxx mirror residual: augment-phase VISUAL confirm the pushed boot
   renders (icon may 404 per `reference_items_index_alias_ids`, display name correct). Data fix shipped
   (`f8353d5d`). STATUS: no boot anvil rolled in the 8 augment rounds played 2026-07-04.
