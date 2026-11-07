@@ -4906,6 +4906,28 @@ waits on the RM-875 wiring.)
   partner. A FAIL is a Tier-1 adapter fix (the partner from a subteam signal, not `team` equality, and
   the same question for `coaches/arena_coach.py` `is_partner`, which uses the same equality); the
   column stays shadow-only either way.
+  **RE-CHECK (lane 9 PREP s144 cycle 98, 2026-11-07, source read at `6b092a493`; NOT a tick).** The
+  row's read sha `d257c4f43` is not an ancestor of HEAD (a lane sha re-written on landing), so every
+  cite was re-read by symbol. MOVED (the text above is kept as cycle 11's record):
+  `core/arena_coach_shadow.py:139` `_focus_board_column` is now `:140` (guarded by
+  `_safe_focus_board_column` `:193`, called at `:289` and `:297`); `dashboard/_liveclient.py:284-285`
+  (the `team != my_team` enemy rule) is now `:388-390` (`my_team` `:388`; the name now passes
+  `_str_or`), and the shadow's `enemy_comp` still reads that list (`core/arena_coach_shadow.py:266-269`,
+  `lc.get("enemy_team")`); `lcu/champ_select_shape.py:180` `arena_teams` is now `:181`
+  (`additionalSubteamData` read at `:193`). HOLD: `core/focus_board_live.py:283` `roster_from_lc`
+  (`my_team` at `:298`, the `team == my_team` split at `:320`); `:32` TEAMS still says
+  "my partner the one ally" and "the 2v2 team TTK", so the docstring fix owed above is still owed;
+  `core/queue_modes.py:82` and `lcu/champ_select_shape.py:62` still read 1750 as "Arena 3x6";
+  `KILL_SWITCH_ENV` `RC_FOCUS_BOARD_SHADOW` (`core/focus_board_live.py:108`) still defaults ON
+  (`enabled()`, `:152`, only `0` disables). NEW cite: the `coaches/arena_coach.py` `is_partner`
+  equality named above is `:1305` (`p.get("team") == my_team_id and p is not me`). BASELINE (idle,
+  read-only): `data/arena_coach_shadow.jsonl` in the main checkout still holds 617 rows,
+  2026-07-05..07-21, 0 with a `focus_board` column, so no Arena game has run since RM-844; RC's last
+  `health.json` `started_at` is 2026-11-01T01:33Z (after RM-854, no restart owed) and :8888 did not
+  answer this cycle. `python tools/gated_g5_focus_layout.py --data-root <repo>/data` with no capture
+  printed INCOMPLETE (subteams, roster and shadow each NO_RESULT) and exited 1, the idle shape the
+  drain expects. Predicate,
+  drain steps and substitution check unchanged; nothing ticked; no count moved.
 
 ---
 
