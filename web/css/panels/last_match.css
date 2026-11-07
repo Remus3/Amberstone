@@ -1369,8 +1369,11 @@
   border-color: var(--good);
 }
 .lm-tc-group-result[data-result="win"]::before { content: "\25B2 "; }
+/* S144-U-206: the DEFEAT word took bare --bad, 4.44:1 arcane and 4.48
+ * moonlit on --surface. Text takes the RM-1550 red-text lift (70 percent
+ * toward --text in oklab); the frame keeps bare --bad. */
 .lm-tc-group-result[data-result="loss"] {
-  color: var(--bad);
+  color: color-mix(in oklab, var(--bad) 70%, var(--text));
   border-color: var(--bad);
 }
 .lm-tc-group-result[data-result="loss"]::before { content: "\25BC "; }
@@ -1399,8 +1402,12 @@
   border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);   /* item 182 v2.1: 19 -> 18 (participant row default) */
 }
+/* S144-U-206: the self row filled with the whole --hextech-border tint
+ * (a 16-34 percent border token), so its level, CS and #rank cells
+ * (--text-dim) read 3.67-4.36:1 in five themes. Half the tint keeps the
+ * row's hue and its --accent frame; every cell clears AA. */
 .lm-tc-row.lm-tc-row-me {
-  background: var(--hextech-border);
+  background: color-mix(in srgb, var(--hextech-border) 50%, transparent);
   border-color: var(--accent);
 }
 .lm-tc-portrait {
@@ -1422,7 +1429,8 @@
 }
 .lm-tc-tag {
   font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (player riot tag) */
-  color: var(--text-faint);
+  /* S144-U-206: --text-faint was 2.42-3.32:1 on the self row's tint. */
+  color: var(--text-dim);
   font-weight: 500;
 }
 /* s220: per-player score / MVP-SVP cell (left of level). MVP = best on
@@ -1445,7 +1453,11 @@
 }
 .lm-tc-score[data-kind="rank"] { color: var(--text-dim); }
 .lm-tc-score[data-kind="mvp"]  { color: var(--accent); }
-.lm-tc-score[data-kind="svp"]  { color: var(--accent-2); }
+/* S144-U-206: bare --accent-2 was 3.39-3.75:1 on --surface in ember,
+ * bloodmoon and arcane (1.75 on the self row). SVP text mixes 45 percent
+ * toward --text in oklab (70 left the self row's SVP at 3.93); the SVP
+ * card's crown and frame keep bare --accent-2. */
+.lm-tc-score[data-kind="svp"]  { color: color-mix(in oklab, var(--accent-2) 55%, var(--text)); }
 .lm-tc-score-badge {
   /* item 182 v2.1 OPERATOR EXCEPTION: 14px PRESERVED for 3-char MVP/SVP/#N
    * badge density in the per-row score cell (44px score column width must
@@ -1484,8 +1496,10 @@
   border-radius: var(--panel-radius-sm);
 }
 .lm-tc-mvp[hidden] { display: none; }
+/* S144-U-206: the same half tint as the self row; the full tint put the
+ * MVP word and its tier at 3.47:1 arcane and 4.35 terminal. */
 .lm-tc-mvp[data-kind="mvp"] {
-  background: var(--hextech-border);
+  background: color-mix(in srgb, var(--hextech-border) 50%, transparent);
   border-color: var(--accent);
   border-left-color: var(--accent);
 }
@@ -1526,7 +1540,7 @@
   line-height: 1;
 }
 .lm-tc-mvp[data-kind="svp"] .lm-tc-mvp-badge {
-  color: var(--accent-2);
+  color: color-mix(in oklab, var(--accent-2) 55%, var(--text));   /* S144-U-206 */
 }
 .lm-tc-mvp-name {
   font-size: var(--fs-sm);   /* item 182 v2.1: 18 -> 18 (token swap; MVP card name) */
@@ -1571,7 +1585,7 @@
 .lm-tc-mvp-score[data-tier="good"]      .lm-tc-mvp-score-value,
 .lm-tc-mvp-score[data-tier="good"]      .lm-tc-mvp-score-tier { color: var(--good); }
 .lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-value,
-.lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-tier { color: var(--accent-2); }
+.lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-tier { color: color-mix(in oklab, var(--accent-2) 55%, var(--text)); }   /* S144-U-206 */
 .lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-value,
 .lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-tier { color: var(--bad); }
 

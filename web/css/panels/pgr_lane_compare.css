@@ -137,7 +137,9 @@
   font-variant-numeric: tabular-nums;
 }
 .plc-ahead { color: var(--signal-good, #6ec977); }
-.plc-behind { color: var(--signal-bad, #ff5050); }
+/* S144-U-206: bare --signal-bad was 3.89-4.45:1 on the card in five
+ * themes. Text takes the RM-1550 lift; the behind bar keeps bare red. */
+.plc-behind { color: color-mix(in oklab, var(--signal-bad, #ff5050) 70%, var(--text)); }
 .plc-even { color: var(--signal-dim, #8a8e9c); }
 
 /* Row tint on the lead side so a glance reads ahead/behind. */
