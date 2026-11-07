@@ -3748,10 +3748,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   let _homeMockPromise = null;
   function _homeMockLoad() {
     if (_homeMockPromise) return _homeMockPromise;
-    _homeMockPromise = fetch("/data/ui_mock/home.json", { cache: "no-store" })
+    // S144-U-212: a failed fixture load is not cached, so the next poll or
+    // visit fetches again (a cached null read as a failure for good).
+    const p = fetch("/data/ui_mock/home.json", { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
-      .catch(() => null);
-    return _homeMockPromise;
+      .catch(() => null)
+      .then((j) => {
+        if (!j && _homeMockPromise === p) _homeMockPromise = null;
+        return j;
+      });
+    _homeMockPromise = p;
+    return p;
   }
   function _homeIsMock() {
     return document.body && document.body.dataset.uiMock === "1";
@@ -3868,9 +3875,58 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         });
       });
   }
+  // S144-U-212: a Home summary fetch that fails (an HTTP error, a rejected
+  // fetch, a body that is not JSON, a reply with no recent array) says the
+  // summary did not load. An HTTP error used to return without painting and
+  // a rejected fetch was swallowed, so RECENT 3 and THIS WEEK stayed on
+  // "loading..." under a hero reading "no games yet today", and a reply
+  // with no recent array read "no matches yet" - both false statements
+  // about the match store. A tab that already painted from a good reply
+  // keeps that paint (a failed 20 s poll of the same scope); otherwise the
+  // previous tab's cards, pick and chips are dropped so a failed tab switch
+  // never shows the old tab under the new one. The 20 s poll, a view entry
+  // and a tab pick all fetch again, hence "retrying".
+  // Guard: tests/snapshot_panels/test_home_summary_fetch_failure.py.
+  function _homeFetchFailed() {
+    if (_HOME.paintedTab === _HOME.modeTab) return;
+    _HOME.paintedTab = null;
+    _HOME.streaks = {};
+    _HOME.trends = {};
+    _HOME.last20 = {};
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set("home-hero-sub", "summary did not load - retrying");
+    const headline = document.getElementById("home-hero-headline");
+    if (headline) {
+      headline.classList.remove("up", "down", "flat");
+      headline.textContent = "";
+    }
+    set("home-hero-kda", "-");
+    set("home-hero-cs", "-");
+    document.querySelectorAll(".home-hero-chip .home-hero-spark")
+      .forEach((svg) => { svg.innerHTML = ""; });
+    _homeRenderWlStrip(null);
+    const paint = (id, text) => {
+      const host = document.getElementById(id);
+      if (!host) return;
+      host.innerHTML = "";
+      const div = document.createElement("div");
+      div.className = "home-empty";
+      div.textContent = text;
+      host.appendChild(div);
+    };
+    paint("home-recent-list", "matches did not load - retrying");
+    paint("home-week-list", "week did not load - retrying");
+    const bg = document.getElementById("home-hero-bg");
+    if (bg) bg.style.backgroundImage = "";
+    _homeRenderCoach(null);
+    // The snapshot card is its own fetch; re-aim it at the active tab so a
+    // failed tab switch never leaves the previous tab's card (rank unknown).
+    _renderHomeSnapshot(_HOME.modeTab, null);
+  }
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
+    const tab = _HOME.modeTab;
     // RM-508: request generation. applyView("home") / a mode-tab switch clear
     // the in-flight guard and refetch, so two requests can be outstanding; an
     // OLDER response landing last (the startup tick's live /api/home/summary
@@ -3887,12 +3943,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
               + (_HOME.modeTab !== "ALL" ? "?mode=" + _HOME.modeTab : ""),
               { cache: "no-store" })
           .then((r) => (r && r.ok ? r.json() : null));
+    // S144-U-212: a rejected fetch reads as null here, so only a FETCH
+    // failure paints the did-not-load lines; a throw while painting is
+    // swallowed below, as before, and never replaces a good paint.
     promise
+      .catch(() => null)
       .then((data) => {
         if (gen !== _HOME.gen) return;  // superseded - never paint stale data
         _HOME.fetching = false;
-        if (!data) return;
+        if (!data || !Array.isArray(data.recent)) { _homeFetchFailed(); return; }
         _HOME.lastFetchAt = Date.now();
+        _HOME.paintedTab = tab;
         // Cache streaks for any later reader (the hero sub-line reads them
         // via the _homeRenderToday call below).
         _HOME.streaks = data.streaks || {};
