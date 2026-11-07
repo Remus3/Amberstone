@@ -398,7 +398,11 @@ body {{ zoom: {scale}; }}
             pg.set_content(page_html)
             out = pg.evaluate(js)
             browser.close()
-    except Exception as exc:  # noqa: BLE001 - no browser binary is a skip, not a failure
+    except playwright.Error as exc:
+        # RM-2031: only a missing browser binary is a skip. Any other refusal
+        # (e.g. the sync API inside an xdist worker's running loop) fails.
+        if "Executable doesn't exist" not in str(exc):
+            raise
         pytest.skip(f"headless chromium unavailable: {exc}")
     return out
 
@@ -434,6 +438,31 @@ def test_lead_pill_is_not_a_ragged_column():
     still fails the pre-fix render."""
     m = _measure(1.0)
     assert m["height"] <= 140, f"lead pill is {m['height']:.1f}px tall"
+
+
+def test_a_sync_api_refusal_fails_instead_of_skipping():
+    """RM-2031. In an xdist worker that already holds the snapshot session
+    browser, Playwright's sync API refuses to start a second session ("Sync API
+    inside the asyncio loop"). The old blanket `except Exception` turned that
+    refusal into `pytest.skip("headless chromium unavailable")`, a green skip of
+    all three geometry tests. Only a missing browser binary may skip; drive
+    `_measure` inside a running loop (a fresh thread's, so the main-thread
+    marker the session browser needs is never touched) and read the outcome."""
+    pytest.importorskip("playwright.sync_api")
+    from tests._asyncio_isolation import run_coro
+
+    async def inside_a_running_loop():
+        try:
+            _measure(1.0)
+        except BaseException as exc:  # noqa: BLE001 - pytest.skip raises a BaseException
+            return exc
+        return None
+
+    exc = run_coro(inside_a_running_loop(), timeout=60.0)
+    assert exc is not None, "the sync API started inside a running loop"
+    assert not isinstance(exc, pytest.skip.Exception), (
+        f"a sync API refusal read as a green skip: {exc}")
+    assert "asyncio loop" in str(exc), exc
 
 
 # --------------------------------------------------------------------------- #
