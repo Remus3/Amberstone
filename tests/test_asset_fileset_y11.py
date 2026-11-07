@@ -141,4 +141,7 @@ def test_both_callers_share_one_fileset_function(tmp_path):
     assert len(calls) == 2, f"expected both callers to use asset_fileset: {calls}"
     assert stamp == future
     import hashlib
-    assert h == hashlib.sha1(f"only.css:{int(future)}".encode()).hexdigest()[:10]
+    # s144 true-audit cycle 175 (F1): each file is keyed on mtime_ns + size.
+    st = lone.stat()
+    key = f"only.css:{st.st_mtime_ns}:{st.st_size}"
+    assert h == hashlib.sha1(key.encode()).hexdigest()[:10]
