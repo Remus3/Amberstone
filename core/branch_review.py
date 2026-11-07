@@ -95,8 +95,8 @@ def _rows(lines: list[str]):
     """Yield every line that parses to a JSON object, non-finite numbers
     already read as None. A corrupt or pathologically nested line is not
     fatal - it is skipped."""
-    for line in lines:
-        line = line.strip()
+    for raw_line in lines:
+        line = raw_line.strip()
         if not line:
             continue
         try:

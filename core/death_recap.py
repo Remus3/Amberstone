@@ -464,8 +464,8 @@ def read_rows(path: Optional[Path] = None) -> list[dict]:
     out: list[dict] = []
     try:
         with open(p, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
+            for raw_line in f:
+                line = raw_line.strip()
                 if not line:
                     continue
                 try:

@@ -682,8 +682,8 @@ def read_directive_history(n, ctl=None):
     if not p.exists():
         return []
     recs = []
-    for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
-        line = line.strip()
+    for raw_line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:

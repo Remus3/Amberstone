@@ -122,8 +122,8 @@ def read_marks(path: Optional[os.PathLike] = None) -> list[dict]:
     except OSError:
         return []
     out: list[dict] = []
-    for line in raw.splitlines():
-        line = line.strip()
+    for raw_line in raw.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:
@@ -237,8 +237,8 @@ def read_marks_strict(path: Optional[os.PathLike] = None) -> list[dict]:
     except (OSError, UnicodeDecodeError) as exc:
         raise MarksUnreadable(f"{p}: {exc}") from exc
     out: list[dict] = []
-    for n, line in enumerate(raw.splitlines(), 1):
-        line = line.strip()
+    for n, raw_line in enumerate(raw.splitlines(), 1):
+        line = raw_line.strip()
         if not line:
             continue
         try:

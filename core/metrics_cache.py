@@ -638,8 +638,8 @@ class MetricsCache:
             else:
                 lines = text.splitlines()
             entries: List[Dict[str, Any]] = []
-            for line in lines:
-                line = line.strip()
+            for raw_line in lines:
+                line = raw_line.strip()
                 if not line:
                     continue
                 try:

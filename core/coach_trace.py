@@ -152,8 +152,8 @@ def read_recent(limit: int = 50) -> list:
             return []
         lines = _TRACE_FILE.read_text(encoding="utf-8", errors="replace").splitlines()
         out = []
-        for line in lines[-limit:]:
-            line = line.strip()
+        for raw_line in lines[-limit:]:
+            line = raw_line.strip()
             if not line:
                 continue
             try:
