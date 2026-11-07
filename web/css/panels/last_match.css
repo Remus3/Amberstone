@@ -300,15 +300,19 @@
   color: var(--accent);
   margin-top: 4px;
 }
-/* RC2: excellent stays gold (the default), the rest map to signal hues. */
+/* RC2: excellent stays gold (the default), the rest map to signal hues.
+ * S144-U-207: the 16 px tier word on --surface read 3.00-3.28:1 for OK
+ * (bare --accent-2; ember, bloodmoon, arcane) and 3.89-4.45 for Bad (bare
+ * --bad; five themes). OK takes the S144-U-206 SVP mix, Bad the RM-1550
+ * red-text lift; the value keeps its tier word's colour. */
 .lm-hero-score[data-tier="excellent"] .lm-hero-score-value,
 .lm-hero-score[data-tier="excellent"] .lm-hero-score-tier { color: var(--accent); }
 .lm-hero-score[data-tier="good"]      .lm-hero-score-value,
 .lm-hero-score[data-tier="good"]      .lm-hero-score-tier { color: var(--good); }
 .lm-hero-score[data-tier="ok"]        .lm-hero-score-value,
-.lm-hero-score[data-tier="ok"]        .lm-hero-score-tier { color: var(--accent-2); }
+.lm-hero-score[data-tier="ok"]        .lm-hero-score-tier { color: color-mix(in oklab, var(--accent-2) 55%, var(--text)); }
 .lm-hero-score[data-tier="bad"]       .lm-hero-score-value,
-.lm-hero-score[data-tier="bad"]       .lm-hero-score-tier { color: var(--bad); }
+.lm-hero-score[data-tier="bad"]       .lm-hero-score-tier { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 
 /* Item 131 Slice A wire: per-role grading rubric block. Mirrors the
  * .lm-hero-score visual but with an S+/S/A/B/C/D tier and the role
@@ -598,7 +602,9 @@
  * and inherits --text-faint. Size inherits .lm-hero-stat-sub - no new
  * font sizes. */
 .lm-bench-high { color: var(--signal-good); }
-.lm-bench-low  { color: var(--signal-bad); }
+/* S144-U-207: bare --signal-bad was 4.44:1 arcane, 4.48 moonlit on
+ * --surface; LOW takes the RM-1550 red-text lift. */
+.lm-bench-low  { color: color-mix(in oklab, var(--signal-bad) 70%, var(--text)); }
 
 /* s219 v6: rank-tier comparison panel on the right end of the hero row.
  * 2 rows x 4 columns mirror section 2's stats grid:
@@ -1587,7 +1593,7 @@
 .lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-value,
 .lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-tier { color: color-mix(in oklab, var(--accent-2) 55%, var(--text)); }   /* S144-U-206 */
 .lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-value,
-.lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-tier { color: var(--bad); }
+.lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-tier { color: color-mix(in oklab, var(--bad) 55%, var(--text)); }   /* S144-U-207: bare --bad 2.93-4.45 on the card's tint; 70 left 4.43 moonlit */
 
 .lm-tc-lvl,
 .lm-tc-kda,
