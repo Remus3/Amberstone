@@ -171,6 +171,11 @@ no live caller arms the DSV2/3/4 burst seams; each row holds its own AGE CHECK);
 G2-09 / G2-12 were tagged BLOCKED ON WIRING on 2026-11-06 (s144 lane gated cycle 87: four DS routes
 parse `apply_passive_mitigation` but no live RC caller arms it, and no DS route parses
 `assume_passive_reflect`, RM-1391 still OPEN; each row holds its own AGE CHECK); no count moved.
+G2-02 / G2-03 / G2-05 / G2-06 / G2-15 / G2-16 were tagged BLOCKED ON WIRING on 2026-11-06 (s144
+lane gated cycle 88: the three `/dps`-only seams have no live caller of `dps_for` and die on the
+`/rank` wire, `/ehp` has no RC caller for `apply_cc_floor`, `assume_archetype_hp_pct` is an RC-side
+flag no live caller sets, and no live dispatch arms `assume_ms_utility`; the shared AGE CHECK sits
+in G2-02, the others in their own rows); no count moved.
 The 2026-08-12 `hz_choice_shadow` game_id row was filed as a SECOND "G3-14"; it is G3-16 since
 2026-10-24 and, like G6-04, was never in the 111 (its commit `0dc5dbd0d` did not touch this line).
 G5-11 (the focus-board Arena team layout, filed 2026-10-27 by s144 lane gated cycle 11) was never in
@@ -912,11 +917,45 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   already files under "Not actually live-gated" for DSV5 `RC_COMP_HP_LEAN` - eyeball DONE, remainder is
   ONE operator decision. **CAVEAT: this is a DISPOSITION change on the row's own recorded evidence; no
   new measurement closed it.** Do not schedule a game for this row. SOURCE: LEDGER 779.
-- **G2-02** (was B7) B1 `apply_melee_aa_gate` - melee bruiser build drops Runaan's, ranged carry
+- **G2-02** `[BLOCKED ON WIRING 2026-11-06]` (was B7) B1 `apply_melee_aa_gate` - melee bruiser build drops Runaan's, ranged carry
   byte-identical. /dps route transport WIRED (OQ17).
-- **G2-03** (was B8) R7 `assume_passive_as_stacks` (Irelia/Jax/Ezreal/Volibear at full stacks; stacks
+  **AGE CHECK (lane 9 PREP s144 cycle 88, S144-G-79; source read at local main `86ed5e52d`, no game
+  up; NOT a tick). Producer-orphan, shared by G2-02, G2-03 and G2-05: all three seams are parsed by
+  `/dps` only, the one client function that sends them there has no live caller, and the live path
+  that carries two of them posts to `/rank`, which drops them.** Measured with `inspect.signature`:
+  `compute_dps` takes `apply_melee_aa_gate`, `assume_passive_as_stacks` and `apply_target_vuln`;
+  `rank_items` takes none of the three; `compute_hybrid` takes `apply_melee_aa_gate` but
+  `rank_items_by_hybrid` does not. In `agents/daemon_slayer/server.py` the only parse sites are in
+  `_route_dps` (`_opt_bool(body, ...)` for all three), whose own comment says `rank_items()` does not
+  forward them. In `core/daemon_slayer_client.py`, `dps_for` emits all three when True, but no code
+  file outside `tests/` calls it. `rank_for` emits `assume_passive_as_stacks` / `apply_target_vuln`
+  into the `/rank` body and `rank_for_primary_archetype` forwards both on its carry branch only;
+  `_route_rank` reads neither key, so both die on the wire. The arming points are unarmed too:
+  `coach_integration/archetype_dispatch.py` `dispatch_for_coach` takes both (default False) and no
+  coach passes them; `dashboard/routes_state.py` `_DS_PREVIEW_SEAM_BOOLS` lists both and no `web/`
+  `.js` file sends either. `apply_melee_aa_gate` has no dispatcher parameter, no ds-preview entry and
+  no RC caller at all. PRECONDITION for return to the drain list: a live producer posts the flag to
+  `/dps` (a `dps_for` caller), or a Tier-2 change threads it into `rank_items` + `/rank` (or
+  `rank_items_by_hybrid` + `/rank-bruiser` for the melee bruiser case), and the outbound body is
+  recorded with `ts` and the Live Client `gameData.gameTime` it read. Predicate stated NOW, graded
+  only after that lands, in one practice-tool SR game on a melee champion holding Runaan's Hurricane
+  3085: PASS iff a recorded body to a route that parses `apply_melee_aa_gate` carries it `true` with
+  an item list that contains 3085 and equals the active player's `:2999`
+  `allPlayers[].items[].itemID` within 10 s of game time of the body. The "drops Runaan's" eyeball
+  is written when the producer names its surface. SUBSTITUTION CHECK: as G2-04 (an in-process
+  `compute_dps` call, a hand-POSTed `/dps` body or a DS unit test answers COMPUTES, not SENT).
+- **G2-03** `[BLOCKED ON WIRING 2026-11-06]` (was B8) R7 `assume_passive_as_stacks` (Irelia/Jax/Ezreal/Volibear at full stacks; stacks
   buildable vs dummies/minions). **Irelia eyeball SANE 2026-07-02** (/dps 38.90 -> 47.96, +23%); the
   flip stays gated across the 4 tabled champs.
+  **AGE CHECK (s144 cycle 88, S144-G-79): producer-orphan, measured in G2-02.** The 2026-07-02
+  Irelia figure is a `/dps` compute read; no live RC path sends the flag to a route that reads it
+  (the carry dispatch sends it to `/rank`, which drops it). The four registry keys are Irelia, Jax,
+  Ezreal and Volibear (`agents/daemon_slayer/_passive_as_overrides.py` `_PASSIVE_AS_OVERRIDES`).
+  Predicate stated NOW, graded only after a producer lands, in one practice-tool SR game on one of
+  the four: PASS iff a recorded body to `/dps` (or a successor route that parses the key) carries
+  `"assume_passive_as_stacks": true` with `champion` equal to the `championName` of the `:2999`
+  `allPlayers[]` row whose `riotId` equals `activePlayer.riotId`, read within 10 s of game time of
+  the body. Substitution check as G2-02.
 - **G2-04** `[BLOCKED ON WIRING 2026-11-06]` (was B9) R5 `assume_missing_hp_heal_amp` + live caster missing-HP feed (drop own HP vs
   bots; coach-side hp/hp_max already emitted, item 639).
   **AGE CHECK (lane 9 PREP s144 cycle 84, RM-1673; source read at local main `ba0df749f`, no game
@@ -951,11 +990,38 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   has `caster_missing_hp_pct` >= 0.40. SUBSTITUTION CHECK: `live_flip_eyeball.py`, a hand-POSTed body,
   a DS unit test or a fixture answers whether the engine COMPUTES the amp; only the producer's own
   recorded body joined to a `:2999` read at the same game time answers whether RC SENT it.
-- **G2-05** (was B10) R12 `apply_target_vuln` (Vladimir/Evenshroud) + the R43 Imperial Mandate rider
+- **G2-05** `[BLOCKED ON WIRING 2026-11-06]` (was B10) R12 `apply_target_vuln` (Vladimir/Evenshroud) + the R43 Imperial Mandate rider
   (4005/224005/324005). Broaden the consumer beyond AA DPS to ability_dps + burst.
-- **G2-06** (was B11) R14 `apply_cc_floor` floor-model sanity for close-range Maokai/Ashe/Hecarim R.
+  **AGE CHECK (s144 cycle 88, S144-G-79): producer-orphan, measured in G2-02; the "broaden" half is
+  unshipped.** `apply_target_vuln` is still read only by `compute_dps`; by `inspect.signature` no
+  public `ability_dps` or `burst` function takes it. The registry
+  (`agents/daemon_slayer/_target_vulnerability_overrides.py`) keys Vladimir (R, 0.10), Evenshroud
+  3001 / 223001 (0.07) and the R43 Imperial Mandate rider 4005 / 224005 / 324005 (0.07). Predicate
+  stated NOW, graded only after a producer lands, in one practice-tool SR game on Vladimir or
+  holding Evenshroud or Imperial Mandate: PASS iff a recorded body to `/dps` (or a successor route
+  that parses the key) carries `"apply_target_vuln": true` and either `champion` Vladimir or an item
+  list that contains 3001 or 4005 and equals the active player's `:2999` items, from a read within
+  10 s of game time of the body. Substitution check as G2-02.
+- **G2-06** `[BLOCKED ON WIRING 2026-11-06]` (was B11) R14 `apply_cc_floor` floor-model sanity for close-range Maokai/Ashe/Hecarim R.
   **CODE PREREQ (headless):** thread the flag through the compute_ehp / compute_hybrid /
   cc-blended-EHP consumer chain - none thread it yet. Not eyeball-able until that lands.
+  **AGE CHECK (s144 cycle 88, S144-G-79; local main `86ed5e52d`, no game up; NOT a tick). The CODE
+  PREREQ line above is half stale; the row is now producer-orphan.** RM-201 threaded `apply_cc_floor`
+  into `compute_ehp` (it rides the per-enemy `compute_cc_pressure` call and is AND-gated with
+  `include_conditional`), and `server.py` `_route_ehp` parses it. By `inspect.signature` no ranker
+  or hybrid entry point takes it (`rank_items_by_ehp`, `compute_hybrid` and `rank_items_by_hybrid`
+  do not; besides `compute_ehp` only the per-enemy helper `cc_pressure.compute_cc_pressure` does),
+  as the route comment says. The only client sender, `ehp_for` (emits `apply_cc_floor`,
+  `include_conditional` and `enemies`), has no caller outside `core/daemon_slayer_client.py` and
+  `tests/` - the same `/ehp` orphan as G2-11. PRECONDITION for return to the drain list: an RC
+  caller posts `/ehp` with `apply_cc_floor`, `include_conditional` and a non-empty `enemies` list
+  in a live game (or a Tier-2 change threads the floor into a ranker the dispatcher calls), and the
+  outbound body is recorded with `ts` and `gameData.gameTime`. Predicate stated NOW, graded only
+  after that lands, in one practice-tool SR game against Maokai, Ashe or Hecarim bots: PASS iff a
+  recorded `/ehp` body carries both flags `true` and an `enemies` list naming exactly the
+  `championName` values of the `:2999` `allPlayers[]` rows on the other team, read within 10 s of
+  game time of the body, and that list holds at least one of the three. SUBSTITUTION CHECK: as
+  G2-04 (an in-process `compute_ehp` call or a hand-POSTed `/ehp` body answers COMPUTES, not SENT).
 - **G2-07** (was B12) R17 + R39 anti-tank level-ramp (`compute_antitank(level=)`) - **CLOSED
   2026-07-18, NOT LIVE-GATED.** `compute_antitank` is a pure function of (champion, level) - no live
   state, no render, no transport dependency - so the ramp confirm never needed a running client.
@@ -1142,11 +1208,28 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   per-instant discipline. Transport WIRED (OQ17), producer-orphan. Re-measured 2026-11-06: no
   live caller sends `gate_caster_hp_amp`, `caster_current_hp_pct` or `runes`; AGE CHECK,
   precondition and predicate in G2-13.
-- **G2-15** (was B20) OQ1/R55 `assume_archetype_hp_pct` OFF-vs-ON re-rank (BotRK 3153 / Hellfire 4017 /
+- **G2-15** `[BLOCKED ON WIRING 2026-11-06]` (was B20) OQ1/R55 `assume_archetype_hp_pct` OFF-vs-ON re-rank (BotRK 3153 / Hellfire 4017 /
   Fulmination 443055 only). Own-build sanity reached **3/3 2026-07-04** (Kalista + Tristana + Vayne).
   The flag is NOT a `/rank` body param (`server.py:452-453` exposes only exempt_offclass_by_win +
   prefer_kit_axis_by_win), so the OFF-vs-ON flip itself needs the DS restart with the seam armed. The
   0.5 sustained-fraction CALIBRATION is GATE 7 (G7-14). SOURCE: LEDGER 718 + 779.
+  **AGE CHECK (s144 cycle 88, S144-G-79; local main `86ed5e52d`, no game up; NOT a tick). The
+  sentence above is STALE; the row is producer-orphan.** `target_current_hp_pct` IS now a `/rank`
+  body param (`server.py` `_route_rank`: `_opt_float(body, "target_current_hp_pct", 1.0)`, forwarded
+  to `rank_items`), and `_route_rank_bruiser` parses it too. `assume_archetype_hp_pct` is not a DS
+  key at all: it is an RC-side flag of `rank_for_primary_archetype` (`core/daemon_slayer_client.py`)
+  that resolves `core/ds_archetype_hp_pct.py` `archetype_target_current_hp_pct` (0.5 for a sustained
+  archetype, 1.0 otherwise) into `target_current_hp_pct`, so the OFF-vs-ON flip needs no DS restart.
+  No live caller sets it: `dispatch_for_coach` has no such parameter, `_DS_PREVIEW_SEAM_BOOLS` does
+  not list it, `core/archetype_mismatch.py`'s call omits it, and no code file outside those two core
+  modules and `tests/` names it. PRECONDITION for return to the drain list: a live producer arms it
+  (a dispatcher parameter or a ds-preview seam entry), and the outbound body is recorded with `ts`
+  and `gameData.gameTime`. Predicate stated NOW, graded only after that lands, in one practice-tool
+  SR game on a champion RC dispatches as carry or bruiser and holding 3153, 4017 or 443055: PASS iff
+  a recorded `/rank` or `/rank-bruiser` body carries `"target_current_hp_pct": 0.5` with an item
+  list that equals the active player's `:2999` items within 10 s of game time of the body. The
+  OFF-vs-ON re-rank eyeball is written when the producer names its surface. Substitution check as
+  G2-02.
 - **G2-16** (was B41) R58 `assume_ms_utility` - **PARTIAL 2026-07-18.** SETTLED HEADLESS: the
   mechanism fires and is directional - MS carriers gain rank with the seam ON (Sion Force of Nature
   4401 rank 40 -> 37; Darius Dead Man's Plate 3742 rank 11 -> 8). **THE MS-LESS CONTROL DOES NOT HOLD
@@ -1160,6 +1243,21 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   MS items should gain modest credit and no MS-less staple should be displaced by more than a slot -
   and sanity-check the 0.5 fraction / 0.15 cap against how much the movement speed actually bought you
   in that fight.
+  `[BLOCKED ON WIRING 2026-11-06]` **AGE CHECK (s144 cycle 88, S144-G-79; local main `86ed5e52d`,
+  no game up; NOT a tick). Producer-orphan: the LIVE RESIDUAL above has no live surface today.**
+  `server.py` `_route_hybrid` and `_route_rank_bruiser` parse `assume_ms_utility`, and
+  `rank_bruiser_for` / `hybrid_for` emit it, but `rank_for_primary_archetype` has no such parameter
+  and its bruiser branch calls `rank_bruiser_for` without it; `hybrid_for` has no caller outside
+  `core/daemon_slayer_client.py` and `tests/`; no dispatcher parameter or `_DS_PREVIEW_SEAM_BOOLS`
+  entry names it (the only other hit outside the engine, the client and tests is the static mock
+  `web/mock/addendum_a_concepts.html`). So the in-game `/rank-bruiser` order cannot show the seam.
+  PRECONDITION for return to the drain list: a live producer arms it on a `/rank-bruiser` (or
+  `/hybrid`) call, and the outbound body is recorded with `ts` and `gameData.gameTime`. Predicate
+  stated NOW, graded only after that lands, in one practice-tool SR game on a juggernaut: PASS iff
+  a recorded `/rank-bruiser` body carries `"assume_ms_utility": true` with an item list that
+  contains 3742 or 4401 and equals the active player's `:2999` items within 10 s of game time of the
+  body. The score-pinned MS-less control above stays a headless re-instrument before any flip.
+  Substitution check as G2-02.
 - **G2-17** `[BLOCKED ON WIRING 2026-11-06]` (was B41b) R75/DSV9 `assume_shielded_target` (Serpent's Fang 6695). Practice suffices
   (assumed pool 0.20 x target max HP, melee 50% / ranged 35%); a REAL game vs Shieldbow/enchanter comps
   is the stronger eyeball. Sanity = the credit does not dominate a real-damage item swap.
