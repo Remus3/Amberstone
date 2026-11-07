@@ -25,12 +25,28 @@ sups" bottom by aggregated metric. Operator sees both lanes when nothing
 locked yet so they can reason about pairings before committing.
 
 Query params:
-  my_role          : bot | sup. Default "bot". Drives 'none' mode.
+  my_role          : bot | sup. Default "bot"; anything else reads "bot".
+                     Drives 'none' mode.
   ally_bot_lock    : champion name | empty. Locked bot ally.
   ally_bot_hover   : champion name | empty. Hovered bot ally.
   ally_sup_lock    : champion name | empty. Locked sup ally.
   ally_sup_hover   : champion name | empty. Hovered sup ally.
-  top_n            : int, default 4, max 4 (UI grid).
+  top_n            : ASCII digits (at most 6), default 4, clamped to 1..4.
+
+Trust boundary (S144-T-601): this is a GET route on :8888, so a LAN peer
+reaches it with any query. A champion value, once ASCII blanks are stripped,
+is empty (absent) or 1-32 characters of ASCII letters, digits, space,
+apostrophe, period and ampersand, starting with a letter or digit - every
+DDragon name and display name ("Kai'Sa", "Dr. Mundo", "Nunu & Willump")
+fits. A champion value outside that shape is a 400 "<param>_invalid", and a
+top_n that is not ASCII digits a 400 "top_n_invalid"; a refusal never echoes
+the value and is checked before the cache or the seed is touched. A
+non-finite rate in a cell is served as null (rank 0), and every 200 body is
+dumped with allow_nan=False, so the browser never meets a bare NaN token.
+
+The 101.qq.com live feed no longer drives the lobby with locks: the live
+client (web/js/panels/lobby_duo_synergy.js) sends only my_role and top_n.
+The lock / hover parameters stay for any caller that wants a pairing.
 
 Response:
   {
@@ -58,21 +74,37 @@ Cell shape:
     "smoothed_rate":    0.5644          Laplace-smoothed pair rate
   }
 
-Cache: 5s TTL keyed on the full query tuple.
+Cache: 5s TTL keyed on the full query tuple, timed on the monotonic
+clock (a wall clock stepped back must not extend it).
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
+import re
 import threading
 import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from core import smoothed_rates_101qq as _ssq
+from core.log_scrub import scrub_log
 from dashboard._dispatch import equals
+from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
+
+# S144-T-601: query shapes checked at the trust boundary.
+_CHAMP_PARAMS = ("ally_bot_lock", "ally_bot_hover", "ally_sup_lock",
+                 "ally_sup_hover")
+# Explicit ASCII classes (no \w, no re.IGNORECASE folding); fullmatch, so a
+# trailing newline is not absorbed by "$".
+_CHAMP_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9 '.&]{0,31}")
+_TOP_N_RE = re.compile(r"[0-9]{1,6}")
+# Only ASCII blanks are stripped: str.strip() would also eat U+3000 and the
+# other Unicode spaces, letting a non-ASCII value through the shape check.
+_ASCII_BLANKS = " \t\r\n\f\v"
 
 # Cache parameters.
 _CACHE_TTL_S = 5.0
@@ -106,7 +138,12 @@ _TIPS_LOCK = threading.RLock()
 
 def _load_tips() -> dict:
     """Lazy-load + cache the laning tips JSON. Returns
-    {default: str, pairs: {key: str}}. Empty defaults on missing/garbage."""
+    {default: str, pairs: {key: str}}. Empty defaults on missing/garbage.
+
+    Read once per process: an edit to the file takes effect on the next
+    RC restart. A non-string "default" reads as no default (it used to be
+    rendered with str(), so a list showed as "['x', 1]"); a non-string
+    pair value is dropped."""
     global _TIPS_CACHE
     with _TIPS_LOCK:
         if _TIPS_CACHE is not None:
@@ -115,7 +152,8 @@ def _load_tips() -> dict:
         try:
             raw = json.loads(_TIPS_PATH.read_text(encoding="utf-8"))
             if isinstance(raw, dict):
-                out["default"] = str(raw.get("default") or "")
+                default = raw.get("default")
+                out["default"] = default if isinstance(default, str) else ""
                 pairs = raw.get("pairs")
                 if isinstance(pairs, dict):
                     out["pairs"] = {str(k): str(v) for k, v in pairs.items()
@@ -144,15 +182,67 @@ def _qs_str(qs: dict, key: str, default: str = "") -> str:
     return str(val or default).strip()
 
 
-def _qs_int(qs: dict, key: str, default: int) -> int:
+class _BadQuery(ValueError):
+    """A query value outside its shape. ``code`` is the fixed, server-authored
+    400 error string; the offending value is never carried."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
+def _first(qs: dict, key: str) -> str:
     raw = qs.get(key)
     if not raw:
-        return default
+        return ""
     val = raw[0] if isinstance(raw, list) else raw
-    try:
-        return int(val)
-    except (TypeError, ValueError):
-        return default
+    return val if isinstance(val, str) else ""
+
+
+def _qs_champ(qs: dict, key: str) -> str:
+    """A champion parameter: "" when absent or blank, else the stripped
+    value when it fits ``_CHAMP_RE``; anything else raises ``_BadQuery``."""
+    val = _first(qs, key).strip(_ASCII_BLANKS)
+    if not val:
+        return ""
+    if not _CHAMP_RE.fullmatch(val):
+        raise _BadQuery(f"{key}_invalid")
+    return val
+
+
+def _qs_top_n(qs: dict) -> int:
+    """top_n: absent or blank reads the default; ASCII digits are clamped to
+    1.._MAX_TOP_N; anything else (a sign, "1_1", non-ASCII digits) raises
+    ``_BadQuery``. int() alone accepted all of those."""
+    val = _first(qs, "top_n").strip(_ASCII_BLANKS)
+    if not val:
+        return _DEFAULT_TOP_N
+    if not _TOP_N_RE.fullmatch(val):
+        raise _BadQuery("top_n_invalid")
+    return max(1, min(int(val), _MAX_TOP_N))
+
+
+def _r4(value):
+    """A cell rate: an int as it is, a finite float rounded to 4 places,
+    anything else (NaN, an infinity, a non-number) None - the client renders
+    None as "-", while a bare NaN token fails its JSON.parse."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and math.isfinite(value):
+        return round(value, 4)
+    return None
+
+
+def _rank(value) -> int:
+    """A solo cell rank: the rounded median, or 0 (the payload's "unknown"
+    rank) when it is not a finite number."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0
+    if isinstance(value, float) and not math.isfinite(value):
+        return 0
+    return int(round(value))
 
 
 def _resolve_mode(bot_lock: str, bot_hover: str,
@@ -181,13 +271,13 @@ def _solo_to_cell(rec) -> dict:
         "champ":         rec.champ,
         "champ_key":     rec.champ_id,
         "icon_id":       rec.champ_id,
-        "rank":          int(round(rec.rank)),
-        "iwinrate":      round(rec.iwinrate, 4),
-        "itemp":         round(rec.itemp, 4),
+        "rank":          _rank(rec.rank),
+        "iwinrate":      _r4(rec.iwinrate),
+        "itemp":         _r4(rec.itemp),
         "pair_with":     None,
         "pair_with_key": None,
         "doublewinrate": None,
-        "smoothed_rate": round(rec.smoothed_rate, 4),
+        "smoothed_rate": _r4(rec.smoothed_rate),
     }
 
 
@@ -195,7 +285,10 @@ def _duo_to_cell(rec, *, partner_side: str) -> dict:
     """DuoRec -> JSON cell dict.
 
     partner_side='sup' means this cell IS the bot and 'pair_with' is the sup.
-    partner_side='bot' means this cell IS the sup and 'pair_with' is the bot."""
+    partner_side='bot' means this cell IS the sup and 'pair_with' is the bot.
+
+    itemp is the PAIR's play-rate share on both cells: the seed carries one
+    (itemp1) per pairing, none per support."""
     if partner_side == "sup":
         # This cell is the bot; partner is the sup.
         return {
@@ -203,12 +296,12 @@ def _duo_to_cell(rec, *, partner_side: str) -> dict:
             "champ_key":     rec.bot_id,
             "icon_id":       rec.bot_id,
             "rank":          rec.irank,
-            "iwinrate":      round(rec.iwinrate_bot, 4),
-            "itemp":         round(rec.itemp_bot, 4),
+            "iwinrate":      _r4(rec.iwinrate_bot),
+            "itemp":         _r4(rec.itemp_bot),
             "pair_with":     rec.sup,
             "pair_with_key": rec.sup_id,
-            "doublewinrate": round(rec.doublewinrate, 4),
-            "smoothed_rate": round(rec.smoothed_rate, 4),
+            "doublewinrate": _r4(rec.doublewinrate),
+            "smoothed_rate": _r4(rec.smoothed_rate),
         }
     # partner_side == "bot": this cell is the sup; partner is the bot.
     return {
@@ -216,12 +309,12 @@ def _duo_to_cell(rec, *, partner_side: str) -> dict:
         "champ_key":     rec.sup_id,
         "icon_id":       rec.sup_id,
         "rank":          rec.irank,
-        "iwinrate":      round(rec.iwinrate_sup, 4),
-        "itemp":         round(rec.itemp_bot, 4),
+        "iwinrate":      _r4(rec.iwinrate_sup),
+        "itemp":         _r4(rec.itemp_bot),
         "pair_with":     rec.bot,
         "pair_with_key": rec.bot_id,
-        "doublewinrate": round(rec.doublewinrate, 4),
-        "smoothed_rate": round(rec.smoothed_rate, 4),
+        "doublewinrate": _r4(rec.doublewinrate),
+        "smoothed_rate": _r4(rec.smoothed_rate),
     }
 
 
@@ -248,11 +341,16 @@ def _health_block() -> dict:
     """
     try:
         block = dict(_ssq.health())
+        block["available"] = True
+        # S144-T-601: the 200 body is dumped with allow_nan=False, so a
+        # block that is not strict JSON degrades HERE instead of turning
+        # the whole grid into a 500.
+        json.dumps(block, allow_nan=False)
     except Exception as exc:  # noqa: BLE001
-        log.warning("api/duo-synergy: health unavailable: %s", exc)
+        log.warning("api/duo-synergy: health unavailable: %s: %s",
+                    type(exc).__name__, scrub_log(str(exc)))
         return {"available": False,
                 "message": "freshness unavailable - see logs"}
-    block["available"] = True
     return block
 
 
@@ -271,7 +369,12 @@ def _build_payload(my_role: str, bot_lock: str, bot_hover: str,
         bot_id = _ssq._resolve_id(bot_lock)
         sup_id = _ssq._resolve_id(sup_lock)
         pair = _ssq.pair_synergy(bot_lock, sup_lock)
+        # The tips file is keyed by the seed's DDragon names; the lookup
+        # resolves case-insensitively, so key a resolved pair by ITS names,
+        # not the caller's spelling ("jinx" used to miss "Jinx:Senna").
+        tip_bot, tip_sup = bot_lock, sup_lock
         if pair is not None:
+            tip_bot, tip_sup = pair.bot, pair.sup
             top_row.append(_duo_to_cell(pair, partner_side="sup"))
             bottom_row.append(_duo_to_cell(pair, partner_side="bot"))
         else:
@@ -289,7 +392,7 @@ def _build_payload(my_role: str, bot_lock: str, bot_hover: str,
                 "pair_with": bot_lock, "pair_with_key": bot_id,
                 "doublewinrate": None, "smoothed_rate": 0.5,
             })
-        laning_tips = _laning_tips_for(bot_lock, sup_lock)
+        laning_tips = _laning_tips_for(tip_bot, tip_sup)
 
     elif mode in ("bot_locked", "bot_hover"):
         # The bot champion is committed/hovered; top row shows just it,
@@ -345,51 +448,62 @@ def _build_payload(my_role: str, bot_lock: str, bot_hover: str,
 
 def _serve_duo_synergy(h) -> None:
     """GET /api/duo-synergy - route entry point."""
-    t0 = time.time()
+    # Monotonic clocks: a wall clock stepped back used to keep a cached grid
+    # alive for the whole step and could report a negative elapsed_ms.
+    t0 = time.perf_counter()
     try:
         qs = parse_qs(urlparse(h.path).query or "")
         my_role = _qs_str(qs, "my_role", "bot").lower()
         if my_role not in ("bot", "sup"):
             my_role = "bot"
-        bot_lock = _qs_str(qs, "ally_bot_lock")
-        bot_hover = _qs_str(qs, "ally_bot_hover")
-        sup_lock = _qs_str(qs, "ally_sup_lock")
-        sup_hover = _qs_str(qs, "ally_sup_hover")
-        top_n = _qs_int(qs, "top_n", _DEFAULT_TOP_N)
-        top_n = max(1, min(top_n, _MAX_TOP_N))
+        try:
+            bot_lock, bot_hover, sup_lock, sup_hover = (
+                _qs_champ(qs, key) for key in _CHAMP_PARAMS)
+            top_n = _qs_top_n(qs)
+        except _BadQuery as bad:
+            # A fixed code, never the value; nothing cached, seed untouched.
+            h._send(400, json.dumps({"ok": False, "error": bad.code})
+                    .encode("utf-8"), "application/json")
+            return
 
         cache_key = (my_role, bot_lock, bot_hover, sup_lock, sup_hover, top_n)
-        now = time.time()
+        now = time.monotonic()
         with _CACHE_LOCK:
             cached = _CACHE.get(cache_key)
-            if cached and (now - cached[0]) < _CACHE_TTL_S:
+            if cached and 0.0 <= (now - cached[0]) < _CACHE_TTL_S:
                 payload = dict(cached[1])
                 payload["cached"] = True
-                payload["elapsed_ms"] = int((time.time() - t0) * 1000)
-                h._send(200, json.dumps(payload).encode("utf-8"),
-                        "application/json")
+                payload["elapsed_ms"] = _elapsed_ms(t0)
+                h._send(200, json.dumps(payload, allow_nan=False)
+                        .encode("utf-8"), "application/json")
                 return
 
         payload = _build_payload(my_role, bot_lock, bot_hover, sup_lock,
                                  sup_hover, top_n)
         payload["cached"] = False
-        payload["elapsed_ms"] = int((time.time() - t0) * 1000)
+        payload["elapsed_ms"] = _elapsed_ms(t0)
+        # allow_nan=False: a non-finite number the cell helpers did not see
+        # raises here and becomes the fixed 500 below (and is not cached),
+        # instead of a 200 whose bare NaN token the browser rejects.
+        body = json.dumps(payload, allow_nan=False).encode("utf-8")
 
         cacheable = dict(payload)
         cacheable.pop("cached", None)
         cacheable.pop("elapsed_ms", None)
         _cache_put(cache_key, now, cacheable)
 
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        h._send(200, body, "application/json")
     except Exception as exc:  # noqa: BLE001
-        log.warning("api/duo-synergy: %s", exc)
+        # RM-835: a fixed body; send_error logs the cause once, scrubbed,
+        # with its type name and the traceback.
         try:
-            # Raw exception text stays in the log only.
-            h._send(500, json.dumps(
-                {"ok": False, "error": "internal error - see logs"})
-                .encode("utf-8"), "application/json")
+            send_error(h, exc, fields={"ok": False}, log_traceback=True)
         except Exception:  # noqa: BLE001
             pass
+
+
+def _elapsed_ms(t0: float) -> int:
+    return max(0, int((time.perf_counter() - t0) * 1000))
 
 
 GET_ROUTES = [
