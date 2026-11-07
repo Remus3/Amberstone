@@ -14,7 +14,11 @@ STANDING RULES
   .git/filter-repo/commit-map (copy in the sidecar backup dir; c77c7c8df -> 9e00df26c). KEEP both bundles (kit
   f762e532dc7484ef, stash-keep 91c867414a7ae8a3); .git/fleet-rewrite/s68/ is the run record. No gc / prune / reflog
   expire: stash@{1..11} live only in the reflog (12 entries; {0} = the rewritten duplicate of {1}); 10 sha-named
-  files in .git/ are filter-repo's stash pseudo-refs, left in place. A second force push of any kind goes back to
+  files in .git/ are filter-repo's stash pseudo-refs, left in place. OPEN (s151 /done): the /done commit 249d993c0
+  set off git's own auto gc (no gc.* config, defaults), which rewrote .git/logs/refs/stash at 20:25:31; read back
+  12 stash entries intact (oldest 2026-10-25). Default reflog expiry can drop the oldest entries on a later auto gc
+  as early as about 2026-11-24: decide before then (a never-expire for refs/stash in local git config, or rely on
+  the stash-keep bundle). A second force push of any kind goes back to
   the operator.
 - PUSH: main only, normal route (tier: /done + 1 per hour), and only a sha with a gated whole-suite exit 0 on that
   exact sha (LEDGER 2047 section 7; no docs-only exception). NEVER delete riot.txt from origin.
