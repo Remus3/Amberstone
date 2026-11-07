@@ -398,6 +398,16 @@ body > header { transition: height 180ms ease; }
   font-size: var(--fs-xs);
   color: var(--text-dim);
 }
+/* S144-U-193: the note holds 3 lines in every face. Where the Timeline wraps
+ * under the map (923 px and other stacked widths) the note's line count
+ * moved the whole ribbon: 2 lines in the first-paint fallback, 3 in Lato's
+ * stub and in monospace, so a webfont swap shifted the filter labels 18 px
+ * past RM-1072's 1 px. The 76-character note wraps to at most 3 lines in a
+ * 300 px column even in monospace; a narrower figure may still grow it
+ * (min-height, never a clip). */
+.replay-map-note {
+  min-height: 3lh;
+}
 .replay-map-clock {
   font-size: var(--fs-sm);
   font-weight: 700;

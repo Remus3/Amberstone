@@ -1,6 +1,6 @@
 {
   "mock": true,
-  "note": "Mock fixture for the Replay view (state-coverage check 5/7 per docs/UI_SCALE_SPEC_V2.md). Activated by ?ui_mock=1 URL flag or the Settings > Display > Dev UI mock data toggle. Each match is self-contained: list-shape metadata at the top level + participants + snapshots + events inline.",
+  "note": "Mock fixture for the Replay view (state-coverage check 5/7 per docs/UI_SCALE_SPEC_V2.md). Activated by ?ui_mock=1 URL flag or the Settings > Display > Dev UI mock data toggle. Each match is self-contained: list-shape metadata at the top level + participants + snapshots + events inline. Shape follows core/replay_history.py match_detail: each snapshot carries the frame's own timestamp_ms (minute = round(timestamp_ms / 60000, 1)); the SR win carries a pos on every frame entry and a kills list (one row per CHAMPION_KILL event) so the minimap draws. Frame times, frame positions, kill positions and assists are copied from one stored normal-draft match (seat by seat; a kill takes the same killer and victim pair, else the same killer nearest in time); ids, names and stat lines stay synthetic. The ranked row keeps no pos (the no-positions map state).",
   "matches": [
     {
       "match_id": "MOCK_NORMAL_DRAFT_WIN",
@@ -27,65 +27,76 @@
       ],
       "snapshots": [
         {
+          "timestamp_ms": 0,
           "minute": 0,
           "entries": [
-            {"participant_id": 1, "level": 1, "total_gold": 500,  "cs": 0,  "items": []},
-            {"participant_id": 2, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1041]},
-            {"participant_id": 3, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1056]},
-            {"participant_id": 4, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1055]},
-            {"participant_id": 5, "level": 1, "total_gold": 500,  "cs": 0,  "items": [3850]},
-            {"participant_id": 6, "level": 1, "total_gold": 500,  "cs": 0,  "items": [2003]},
-            {"participant_id": 7, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1041]},
-            {"participant_id": 8, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1056]},
-            {"participant_id": 9, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1055]},
-            {"participant_id": 10, "level": 1, "total_gold": 500, "cs": 0,  "items": [3858]}
+            {"participant_id": 1, "level": 1, "total_gold": 500,  "cs": 0,  "items": [],     "pos": [554, 581]},
+            {"participant_id": 2, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1041], "pos": [593, 464]},
+            {"participant_id": 3, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1056], "pos": [557, 345]},
+            {"participant_id": 4, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1055], "pos": [458, 271]},
+            {"participant_id": 5, "level": 1, "total_gold": 500,  "cs": 0,  "items": [3850], "pos": [335, 269]},
+            {"participant_id": 6, "level": 1, "total_gold": 500,  "cs": 0,  "items": [2003], "pos": [14500, 14511]},
+            {"participant_id": 7, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1041], "pos": [14539, 14394]},
+            {"participant_id": 8, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1056], "pos": [14503, 14275]},
+            {"participant_id": 9, "level": 1, "total_gold": 500,  "cs": 0,  "items": [1055], "pos": [14404, 14201]},
+            {"participant_id": 10, "level": 1, "total_gold": 500, "cs": 0,  "items": [3858], "pos": [14281, 14199]}
           ]
         },
         {
+          "timestamp_ms": 600244,
           "minute": 10,
           "entries": [
-            {"participant_id": 1, "level": 7,  "total_gold": 4250, "cs": 78,  "items": [3047, 3133, 1029]},
-            {"participant_id": 2, "level": 6,  "total_gold": 3950, "cs": 12,  "items": [1041, 1036, 1031]},
-            {"participant_id": 3, "level": 7,  "total_gold": 4500, "cs": 82,  "items": [3145, 1056]},
-            {"participant_id": 4, "level": 8,  "total_gold": 5200, "cs": 105, "items": [3006, 3144]},
-            {"participant_id": 5, "level": 6,  "total_gold": 3800, "cs": 18,  "items": [3850, 3158]},
-            {"participant_id": 6, "level": 6,  "total_gold": 3500, "cs": 64,  "items": [2003, 3076]},
-            {"participant_id": 7, "level": 5,  "total_gold": 3200, "cs": 8,   "items": [1041, 1029]},
-            {"participant_id": 8, "level": 7,  "total_gold": 4100, "cs": 75,  "items": [3151]},
-            {"participant_id": 9, "level": 7,  "total_gold": 4400, "cs": 88,  "items": [3144, 3006]},
-            {"participant_id": 10, "level": 6, "total_gold": 3300, "cs": 14,  "items": [3858, 3047]}
+            {"participant_id": 1, "level": 7,  "total_gold": 4250, "cs": 78,  "items": [3047, 3133, 1029], "pos": [586, 790]},
+            {"participant_id": 2, "level": 6,  "total_gold": 3950, "cs": 12,  "items": [1041, 1036, 1031], "pos": [4315, 9480]},
+            {"participant_id": 3, "level": 7,  "total_gold": 4500, "cs": 82,  "items": [3145, 1056],       "pos": [5950, 8987]},
+            {"participant_id": 4, "level": 8,  "total_gold": 5200, "cs": 105, "items": [3006, 3144],       "pos": [12411, 2507]},
+            {"participant_id": 5, "level": 6,  "total_gold": 3800, "cs": 18,  "items": [3850, 3158],       "pos": [12453, 2137]},
+            {"participant_id": 6, "level": 6,  "total_gold": 3500, "cs": 64,  "items": [2003, 3076],       "pos": [4052, 9701]},
+            {"participant_id": 7, "level": 5,  "total_gold": 3200, "cs": 8,   "items": [1041, 1029],       "pos": [4152, 9796]},
+            {"participant_id": 8, "level": 7,  "total_gold": 4100, "cs": 75,  "items": [3151],             "pos": [13851, 13915]},
+            {"participant_id": 9, "level": 7,  "total_gold": 4400, "cs": 88,  "items": [3144, 3006],       "pos": [14039, 11087]},
+            {"participant_id": 10, "level": 6, "total_gold": 3300, "cs": 14,  "items": [3858, 3047],       "pos": [13413, 2597]}
           ]
         },
         {
+          "timestamp_ms": 1200401,
           "minute": 20,
           "entries": [
-            {"participant_id": 1, "level": 13, "total_gold": 9800,  "cs": 152, "items": [3047, 3071, 3742, 1029]},
-            {"participant_id": 2, "level": 12, "total_gold": 9200,  "cs": 32,  "items": [3110, 3047, 1031, 3067]},
-            {"participant_id": 3, "level": 14, "total_gold": 10500, "cs": 168, "items": [3145, 3115, 1056]},
-            {"participant_id": 4, "level": 14, "total_gold": 11200, "cs": 198, "items": [3006, 3094, 3144, 1037]},
-            {"participant_id": 5, "level": 12, "total_gold": 9100,  "cs": 38,  "items": [3850, 3107, 3158, 3504]},
-            {"participant_id": 6, "level": 11, "total_gold": 8200,  "cs": 124, "items": [3047, 3076, 3083]},
-            {"participant_id": 7, "level": 10, "total_gold": 7800,  "cs": 18,  "items": [3110, 1031, 3067]},
-            {"participant_id": 8, "level": 13, "total_gold": 9400,  "cs": 138, "items": [3152, 3047, 3157]},
-            {"participant_id": 9, "level": 13, "total_gold": 9900,  "cs": 162, "items": [3144, 3006, 1037]},
-            {"participant_id": 10, "level": 11, "total_gold": 7900, "cs": 28,  "items": [3858, 3107, 3047]}
+            {"participant_id": 1, "level": 13, "total_gold": 9800,  "cs": 152, "items": [3047, 3071, 3742, 1029], "pos": [10133, 5008]},
+            {"participant_id": 2, "level": 12, "total_gold": 9200,  "cs": 32,  "items": [3110, 3047, 1031, 3067], "pos": [11510, 6206]},
+            {"participant_id": 3, "level": 14, "total_gold": 10500, "cs": 168, "items": [3145, 3115, 1056],       "pos": [1741, 10142]},
+            {"participant_id": 4, "level": 14, "total_gold": 11200, "cs": 198, "items": [3006, 3094, 3144, 1037], "pos": [8719, 4680]},
+            {"participant_id": 5, "level": 12, "total_gold": 9100,  "cs": 38,  "items": [3850, 3107, 3158, 3504], "pos": [5475, 3372]},
+            {"participant_id": 6, "level": 11, "total_gold": 8200,  "cs": 124, "items": [3047, 3076, 3083],       "pos": [3914, 13651]},
+            {"participant_id": 7, "level": 10, "total_gold": 7800,  "cs": 18,  "items": [3110, 1031, 3067],       "pos": [10174, 4643]},
+            {"participant_id": 8, "level": 13, "total_gold": 9400,  "cs": 138, "items": [3152, 3047, 3157],       "pos": [9369, 5866]},
+            {"participant_id": 9, "level": 13, "total_gold": 9900,  "cs": 162, "items": [3144, 3006, 1037],       "pos": [11958, 11426]},
+            {"participant_id": 10, "level": 11, "total_gold": 7900, "cs": 28,  "items": [3858, 3107, 3047],       "pos": [10359, 4764]}
           ]
         },
         {
+          "timestamp_ms": 1800532,
           "minute": 30,
           "entries": [
-            {"participant_id": 1,  "level": 16, "total_gold": 14200, "cs": 218, "items": [3047, 3071, 3742, 3053, 3065]},
-            {"participant_id": 2,  "level": 14, "total_gold": 12800, "cs": 48,  "items": [3110, 3047, 3193, 3742]},
-            {"participant_id": 3,  "level": 16, "total_gold": 14800, "cs": 232, "items": [3145, 3115, 3157, 1056]},
-            {"participant_id": 4,  "level": 16, "total_gold": 16200, "cs": 282, "items": [3006, 3094, 3046, 3144]},
-            {"participant_id": 5,  "level": 14, "total_gold": 12400, "cs": 54,  "items": [3850, 3107, 3504, 3001]},
-            {"participant_id": 6,  "level": 14, "total_gold": 11500, "cs": 182, "items": [3047, 6630, 3083, 3193]},
-            {"participant_id": 7,  "level": 12, "total_gold": 10500, "cs": 26,  "items": [3110, 3193, 3067]},
-            {"participant_id": 8,  "level": 16, "total_gold": 13800, "cs": 202, "items": [3152, 3047, 3157, 3742]},
-            {"participant_id": 9,  "level": 15, "total_gold": 13400, "cs": 228, "items": [3144, 3006, 6675]},
-            {"participant_id": 10, "level": 13, "total_gold": 11200, "cs": 38,  "items": [3858, 3107, 3047, 3504]}
+            {"participant_id": 1,  "level": 16, "total_gold": 14200, "cs": 218, "items": [3047, 3071, 3742, 3053, 3065], "pos": [10786, 1593]},
+            {"participant_id": 2,  "level": 14, "total_gold": 12800, "cs": 48,  "items": [3110, 3047, 3193, 3742],       "pos": [5450, 11527]},
+            {"participant_id": 3,  "level": 16, "total_gold": 14800, "cs": 232, "items": [3145, 3115, 3157, 1056],       "pos": [6780, 6233]},
+            {"participant_id": 4,  "level": 16, "total_gold": 16200, "cs": 282, "items": [3006, 3094, 3046, 3144],       "pos": [6113, 6145]},
+            {"participant_id": 5,  "level": 14, "total_gold": 12400, "cs": 54,  "items": [3850, 3107, 3504, 3001],       "pos": [6020, 6905]},
+            {"participant_id": 6,  "level": 14, "total_gold": 11500, "cs": 182, "items": [3047, 6630, 3083, 3193],       "pos": [1715, 7595]},
+            {"participant_id": 7,  "level": 12, "total_gold": 10500, "cs": 26,  "items": [3110, 3193, 3067],             "pos": [12021, 6529]},
+            {"participant_id": 8,  "level": 16, "total_gold": 13800, "cs": 202, "items": [3152, 3047, 3157, 3742],       "pos": [7015, 13437]},
+            {"participant_id": 9,  "level": 15, "total_gold": 13400, "cs": 228, "items": [3144, 3006, 6675],             "pos": [5708, 9312]},
+            {"participant_id": 10, "level": 13, "total_gold": 11200, "cs": 38,  "items": [3858, 3107, 3047, 3504],       "pos": [10856, 10588]}
           ]
         }
+      ],
+      "kills": [
+        {"timestamp_ms": 230254,  "minute": 3.8,  "killer_id": 1, "victim_id": 6,  "assists": [],     "pos": [3328, 11272]},
+        {"timestamp_ms": 385841,  "minute": 6.4,  "killer_id": 7, "victim_id": 2,  "assists": [8],    "pos": [9866, 4762]},
+        {"timestamp_ms": 768301,  "minute": 12.8, "killer_id": 4, "victim_id": 9,  "assists": [5],    "pos": [13575, 4441]},
+        {"timestamp_ms": 815701,  "minute": 13.6, "killer_id": 5, "victim_id": 10, "assists": [3, 4], "pos": [12876, 1827]},
+        {"timestamp_ms": 1488912, "minute": 24.8, "killer_id": 4, "victim_id": 6,  "assists": [3, 5], "pos": [9557, 6064]}
       ],
       "events": [
         {"clock_s": 230, "type": "CHAMPION_KILL",          "team": 100, "actor": 1,  "actor_champion": "Jax",    "actor_name": "TopGapper", "victim": 6,  "victim_champion": "Teemo",     "victim_name": "BlindPick99", "lane": "TOP_LANE"},
@@ -122,6 +133,7 @@
       ],
       "snapshots": [
         {
+          "timestamp_ms": 0,
           "minute": 0,
           "entries": [
             {"participant_id": 1, "level": 1, "total_gold": 1000, "cs": 0, "items": []},
@@ -129,6 +141,7 @@
           ]
         },
         {
+          "timestamp_ms": 300104,
           "minute": 5,
           "entries": [
             {"participant_id": 1, "level": 5, "total_gold": 4200, "cs": 0, "items": [3742, 3107]},
@@ -136,6 +149,7 @@
           ]
         },
         {
+          "timestamp_ms": 600215,
           "minute": 10,
           "entries": [
             {"participant_id": 1, "level": 10, "total_gold": 8400, "cs": 0, "items": [3742, 3107, 3504, 3001]},
@@ -165,7 +179,7 @@
         {"participant_id": 6,  "team_id": 200, "champion_id": 21,  "champion_name": "MissFortune", "summoner_name": "ARAM_DC", "team_won": null}
       ],
       "snapshots": [
-        {"minute": 0, "entries": []}
+        {"timestamp_ms": 0, "minute": 0, "entries": []}
       ],
       "events": []
     },
@@ -186,6 +200,7 @@
       ],
       "snapshots": [
         {
+          "timestamp_ms": 0,
           "minute": 0,
           "entries": [
             {"participant_id": 1, "level": 1,  "total_gold": 500, "cs": 0, "items": [3850]},
@@ -193,6 +208,7 @@
           ]
         },
         {
+          "timestamp_ms": 900349,
           "minute": 15,
           "entries": [
             {"participant_id": 1, "level": 11, "total_gold": 6200,  "cs": 0,   "items": [3504, 3107, 3158]},
