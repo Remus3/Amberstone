@@ -709,7 +709,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .hpgr-back:focus-visible {
   background: var(--info-soft);
   border-color: var(--info);
-  outline: none;
+}
+/* S144-U-208: keyboard focus drew no ring (outline: none) and painted
+ * exactly the hover fill, so a focused Back read as a hovered one. The
+ * house ring (RM-1210): 2px solid --accent, offset 2px (the head has no
+ * neighbouring control). Pinned by
+ * tests/snapshot_panels/test_hpgr_back_focus_ring.py. */
+.hpgr-back:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .hpgr-tag {
   display: inline-block;
