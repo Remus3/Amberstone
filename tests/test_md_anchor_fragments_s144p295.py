@@ -31,7 +31,7 @@ from tests.test_md_relative_link_targets_s144p294 import (
 _ALLOWED: set[tuple[str, str]] = set()
 
 # Any ``](target)`` closes a link, so an image-wrapped badge ``[![alt](img)](#frag)`` is seen too (P-294's
-# ``_LINK`` needs a bracket-free link text and misses it: a FILING, not touched here).
+# ``_LINK`` uses the same ``](target)`` form since S144-P-296).
 _LINK = re.compile(r"\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)")
 _HEADING = re.compile(r"^ {0,3}#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*$", re.M)
 _HTML_ANCHOR = re.compile(r"""<a\s[^>]*?\b(?:name|id)\s*=\s*["']([^"']+)["']""", re.I)

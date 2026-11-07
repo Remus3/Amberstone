@@ -14,6 +14,10 @@ Fenced code blocks and inline code spans are stripped first (a regex shown in pr
 ``:<line>`` or ``:<line>-<line>`` on a target is a line cite and is dropped before resolving; ``http(s):``,
 ``mailto:`` and ``#anchor`` targets are not repo files.
 
+S144-P-296: the link pattern is anchored on the ``](target)`` join, not on a bracket-free ``[text]`` prefix, so the
+outer target of an image-wrapped badge ``[![b](img.svg)](page.md)`` (README.md line 9) is checked too. Re-measured over
+the same scope: still zero dangling targets in a living doc.
+
 ``_ALLOWED`` (file, target) only shrinks and ships empty.
 """
 from __future__ import annotations
@@ -32,7 +36,9 @@ _ALLOWED: set[tuple[str, str]] = set()
 
 _FENCE = re.compile(r"^[ \t]*(```|~~~).*?^[ \t]*\1[^\n]*$", re.S | re.M)
 _INLINE_CODE = re.compile(r"`[^`\n]*`")
-_LINK = re.compile(r"\[[^\]\n]*\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)")
+# Anchored on the ``](target)`` join only: a link text that itself holds ``]`` (an image-wrapped badge,
+# ``[![b](img.svg)](page.md)``) has no bracket-free text, so a ``[text]`` prefix would skip the outer target.
+_LINK = re.compile(r"\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)")
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _LINE_CITE = re.compile(r":\d+(?:-\d+)?$")
 
@@ -138,11 +144,13 @@ def test_scanner_is_live():
         "Line cite: [l](../web/js/x.js:12-20). Dir: [d](adr/). Image: ![i](x/gone.png).\n"
         "```\n[fenced](nope/fenced.md)\n```\n"
         "Inline `[code](nope/inline.md)` text.\n"
+        "Badge: [![b](x/badge.svg)](adr/BADGE_GONE.md) and [![b](https://example.org/b.svg)](adr/README.md).\n"
     )
     got = {t for _n, t in link_targets(src)}
     assert got == {
         "adr/README.md", "adr/GONE.md", "web/js/x.js", "../web/js/x.js:12-20", "adr/", "x/gone.png",
+        "x/badge.svg", "adr/BADGE_GONE.md",
     }
     bad = {t for t in got if not resolves("docs/a.md", t, tracked, dirs)}
-    assert bad == {"adr/GONE.md", "web/js/x.js", "x/gone.png"}
+    assert bad == {"adr/GONE.md", "web/js/x.js", "x/gone.png", "x/badge.svg", "adr/BADGE_GONE.md"}
     assert [n for n, t in link_targets(src) if t == "adr/GONE.md"] == [2]
