@@ -1563,7 +1563,7 @@ def _mutated_exprs(call):
     return out
 
 
-def _bind_mutators(sub, seen, tainted, late=frozenset()) -> None:
+def _bind_mutators(sub, seen, tainted, late=frozenset(), recv=None) -> None:
     """`q.append(url)` leaves `q` carrying the url for the rest of the scope.
     Applied with the walrus bindings, before the statement's sinks.
     RM-1563: each call is judged with the view `_call_views` gives it, so
@@ -1571,14 +1571,21 @@ def _bind_mutators(sub, seen, tainted, late=frozenset()) -> None:
     (`[q.append(x) for x in [url]]`). RM-1794: so does `setattr(q, 'u',
     url)` and a dunder store (`_mutated_exprs`), and the value reaches
     every alias of the object (`_taint_aliases`). S144-Q-108: one call
-    `sub` read with view `seen`, in `_bind_in_order`'s order."""
+    `sub` read with view `seen`, in `_bind_in_order`'s order.
+    S144-Q-110: `recv`, when given, holds the `_ALIAS` marks as they stood
+    when each part of the call was read (`_bind_in_order`); the aliases of
+    the object filled are read where it was (`_operand_view`: a receiver
+    before the arguments, a `setattr` object before the later ones), so
+    `a.append((a := n) or url)` fills what `a` named before the walrus.
+    Its own names are still bound (the safe side)."""
     targets = _mutated_exprs(sub)
     if targets:
         args = list(sub.args) + [kw.value for kw in sub.keywords]
         if any(_is_tainted(a, seen, late) for a in args):
             for target in targets:
                 _bind_names(target, True, tainted, clear=False)
-                _taint_aliases(target, tainted, seen)
+                _taint_aliases(target, tainted,
+                               _operand_view(sub, target, recv, seen))
 
 
 def _bind_setattr_marks(call, seen, tainted, late=frozenset()) -> None:
@@ -1611,7 +1618,8 @@ def _bind_setattr_marks(call, seen, tainted, late=frozenset()) -> None:
 # on the side of a miss, so the precision is given up. Plain `=` keeps its
 # RM-1443 clearing rule (`_retaint`).
 
-def _bind_walrus(sub, seen, tainted, late=frozenset(), *, drop=True) -> None:
+def _bind_walrus(sub, seen, tainted, late=frozenset(), *, drop=True,
+                 join=True) -> None:
     """`(m := url)` binds `m` for the rest of the scope. Applied BEFORE a
     statement's sinks are checked: a sink in the same expression may run
     after the walrus (`log.info(m) if (m := url) else None`).
@@ -1625,16 +1633,21 @@ def _bind_walrus(sub, seen, tainted, late=frozenset(), *, drop=True) -> None:
     a comprehension's value may name its own target, not the enclosing
     name (residual: a walrus there over an enclosing name, a lambda
     default's included, is not an alias).
-    S144-Q-107: `drop=False` (a re-pass of `_Flow._expr_step`'s fixed
-    point) still makes the target's new marks but ends none, so the
-    binding only ADDS. S144-Q-108: one walrus `sub` read with view `seen`,
-    in `_bind_in_order`'s order."""
+    S144-Q-107: `drop=False` (a walrus that may not run, or any walrus on
+    a re-pass) ends none of the target's marks, so the binding only ADDS.
+    S144-Q-108: one walrus `sub` read with view `seen`, in
+    `_bind_in_order`'s order. S144-Q-109: `join=False` (a re-pass of
+    `_Flow._expr_step`'s fixed point) makes no `_ALIAS` marks: the first
+    pass made them where the walrus stands, and a re-pass reads the marks
+    of the later walruses too, so a rotation
+    (`g((t := a), (a := b), (b := t))`) made every name reach every
+    source."""
     is_alias = _is_log_callable(sub.value, seen)
     is_obj = _is_logger_expr(sub.value, seen)
     wrapper = _value_wrapper_specs(sub.value, seen, late)
     muts = _value_mut_specs(sub.value, seen, late)    # S144-Q-96
     joined = (_new_alias_marks([sub.target], sub.value, tainted)
-              if seen is tainted else set())    # S144-Q-102
+              if join and seen is tainted else set())    # S144-Q-102
     if drop:
         _drop_aliases(sub.target.id, tainted)    # RM-1794
     tainted |= joined
@@ -1647,7 +1660,8 @@ def _bind_walrus(sub, seen, tainted, late=frozenset(), *, drop=True) -> None:
     _bind_mut(sub.target.id, muts, tainted)
 
 
-def _bind_in_order(nodes, tainted, late=frozenset(), *, drop=True) -> bool:
+def _bind_in_order(nodes, tainted, late=frozenset(), *, drop=True,
+                   recv=None) -> bool:
     """S144-Q-108: apply the binding sites of `nodes` - every walrus
     (`_bind_walrus`) and every call that fills a receiver, a helper's
     argument or an attribute (`_bind_mutators`, `_bind_mut_calls`,
@@ -1665,12 +1679,22 @@ def _bind_in_order(nodes, tainted, late=frozenset(), *, drop=True) -> bool:
     fills `a`'s old source (the safe side).
     A walrus that may not run (`_maybe_skipped`) ends no alias: the path
     that skips it keeps the old ones (the RM-1557 rule, the safe side).
-    Residual: a call's receiver is read where the call stands, after its
-    arguments, so a walrus in the arguments re-binding the receiver's
-    name (`a.append((a := n) and url)`) fills the new object, not the old.
+    `drop=False` (a re-pass) ends and makes no walrus `_ALIAS` marks
+    (S144-Q-109).
+    S144-Q-110: a call's receiver is read before its arguments, and each
+    argument before the next, but the call is applied after them all, so
+    the `_ALIAS` marks are kept as they stand after each part
+    (`_PreCall`, a receiver's or argument's own walrus included) and a
+    fill reaches what the object named then (`_operand_view`):
+    `a.append((a := n) or url)` and `h(a, (a := n) or url)` fill `a`'s old
+    object. They are kept in `recv` (by call and part) on the first pass
+    and read from it on a re-pass, whose marks are those the first pass
+    ended on. A copied view does not change within a pass, so it is its
+    own record.
     Returns whether any walrus ran with `drop` on, so may have ended marks
     (`_Flow._expr_step` then always re-passes)."""
     ended = False
+    recv = {} if recv is None else recv
     for node in nodes:
         sites = []
         _call_views(node, tainted, late, sites,
@@ -1678,13 +1702,18 @@ def _bind_in_order(nodes, tainted, late=frozenset(), *, drop=True) -> bool:
         skipped = set()
         _maybe_skipped(node, skipped)
         for sub, seen in sites:
+            if isinstance(sub, _PreCall):
+                if drop and seen is tainted:
+                    recv[(id(sub.call), id(sub.part))] = {
+                        e for e in tainted if e.startswith(_ALIAS)}
+                continue
             if isinstance(sub, ast.NamedExpr):
                 ends = drop and id(sub) not in skipped
                 ended = ended or ends
-                _bind_walrus(sub, seen, tainted, late, drop=ends)
+                _bind_walrus(sub, seen, tainted, late, drop=ends, join=drop)
                 continue
-            _bind_mutators(sub, seen, tainted, late)
-            _bind_mut_calls(sub, seen, tainted, late)
+            _bind_mutators(sub, seen, tainted, late, recv)
+            _bind_mut_calls(sub, seen, tainted, late, recv)
             _bind_setattr_marks(sub, seen, tainted, late)    # S144-Q-96
     return ended
 
@@ -2152,9 +2181,15 @@ def _alias_closure(found, edges):
 
 def _chain_root(expr):
     """The name an attribute / element chain hangs off (`a` for `a.b[c].d`),
-    or None if it hangs off anything else (a call, a literal)."""
+    or None if it hangs off anything else (a call, a literal).
+    S144-Q-114: a walrus hands back the object it binds, so a chain off one
+    hangs off its target (`t` for `(t := a).q`), which its `_ALIAS` marks
+    tie to what it was bound from: `(t := a).append(url)` fills `a`'s
+    object. Before, it hung off nothing, so the fill reached no alias."""
     while isinstance(expr, (ast.Attribute, ast.Subscript, ast.Starred)):
         expr = expr.value
+    if isinstance(expr, ast.NamedExpr):
+        expr = expr.target
     return expr.id if isinstance(expr, ast.Name) else None
 
 
@@ -2276,14 +2311,16 @@ def _call_mutated_names(fn, view):
     return found
 
 
-def _bind_mut_calls(call, seen, tainted, late=frozenset()) -> None:
+def _bind_mut_calls(call, seen, tainted, late=frozenset(), recv=None) -> None:
     """RM-1790: a call through a mutating helper whose source argument is
     tainted leaves its destination argument's names carrying the value, as
     `q.append(url)` leaves `q` (`_bind_mutators`): `h(q, url)` with
     `def h(q, v): q.append(v)` taints `q`, and `self.h(url)` with
     `def h(self, v): self.q.append(v)` taints `self`. Add-only; each call
     is judged with the view `_call_views` gives it. S144-Q-108: one call,
-    in `_bind_in_order`'s order."""
+    in `_bind_in_order`'s order. S144-Q-110: a destination's aliases are
+    read where it was (`_operand_view`), before the later arguments:
+    `h(a, (a := n) or url)` fills what `a` named before the walrus."""
     for dst, src in _mut_pairs(call, seen):
         # RM-1793: an always pair needs no tainted argument.
         if src == _MUT_ALWAYS or any(
@@ -2291,7 +2328,8 @@ def _bind_mut_calls(call, seen, tainted, late=frozenset()) -> None:
             for arg in _spec_args(call, {dst}):
                 _bind_names(arg, True, tainted, clear=False)
                 # RM-1794: and every alias of its object.
-                _taint_aliases(arg, tainted, seen)
+                _taint_aliases(arg, tainted,
+                               _operand_view(call, arg, recv, seen))
 
 
 def _param_specs(fn):
@@ -2702,8 +2740,42 @@ def _call_views(node, view, late, out, kinds=ast.Call, post=False) -> None:
         out.append((node, view))
     for child in _eval_children(node) if post else ast.iter_child_nodes(node):
         _call_views(child, view, late, out, kinds, post)
+        if post and isinstance(node, ast.Call):
+            out.append((_PreCall(node, child), view))    # S144-Q-110
     if isinstance(node, kinds) and post:
         out.append((node, view))
+
+
+class _PreCall:
+    """S144-Q-110: the point in `_call_views`'s `post=True` order where
+    `part` of call `call` (its callee, an argument or a keyword) has been
+    read and the parts after it not yet (`_bind_in_order` keeps the
+    `_ALIAS` marks there)."""
+
+    __slots__ = ("call", "part")
+
+    def __init__(self, call, part):
+        self.call = call
+        self.part = part
+
+
+def _operand_view(call, expr, recv, seen):
+    """S144-Q-110: the view the aliases of `expr`, an object `call` fills,
+    are read from: the `_ALIAS` marks `recv` kept just after the part of
+    `call` holding it was read (the callee for a receiver, else the
+    argument or keyword), or `seen` where none was kept (a copied view)."""
+    part = None
+    if isinstance(call.func, ast.Attribute) and expr is call.func.value:
+        part = call.func
+    for arg in call.args:
+        if expr is arg or (isinstance(arg, ast.Starred) and expr is arg.value):
+            part = arg
+    for kw in call.keywords:
+        if expr is kw.value:
+            part = kw
+    if recv is None or part is None:
+        return seen
+    return recv.get((id(call), id(part)), seen)
 
 
 def _eval_children(node):
@@ -2714,8 +2786,9 @@ def _eval_children(node):
     value (`**m` has no key), and a parameter list its positional defaults
     before its keyword-only ones (the annotations last: they may run lazily
     or never). A def's or class's decorators run before its defaults and
-    bases (`_def_parts`). Residual: a call's receiver is read before its
-    arguments, but the call is applied after them."""
+    bases (`_def_parts`). A call's receiver is read before its arguments
+    but the call is applied after them, so `_call_views` marks the point
+    after each part (`_PreCall`, S144-Q-110)."""
     if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
         return [node.value] + [c for c in ast.iter_child_nodes(node)
                                if c is not node.value]
@@ -3157,23 +3230,29 @@ class _Flow:
         # the first pass only; a re-pass that ended them again would rotate
         # them (`g((t := a), (a := b), (b := t))` flipped between two
         # states of one size and stopped on the wrong one), so the first
-        # pass compares the set itself. A re-pass still makes the marks a
-        # walrus reads afresh (the safe side; S144-Q-109 tracks the false
-        # positives). Every later pass only ADDS, so there an unchanged size
+        # pass compares the set itself. S144-Q-109: a re-pass makes no
+        # walrus `_ALIAS` marks either: it would read the marks of the
+        # walruses after it, so a rotation made every name reach every
+        # source. Every later pass only ADDS, so there an unchanged size
         # is an unchanged state. S144-Q-108: within a pass every binding
         # site runs in evaluation order (`_bind_in_order`), so a fill before
         # a walrus in source order (`g(b.append(url), (b := n), (n := a))`)
-        # is read before the walrus ends its alias. Where that order is not
-        # Python's (a call's receiver, read before its arguments), a first
-        # pass may end an alias before a fill and put it back after, ending
-        # on the state it began with; so a first pass in which any walrus
-        # ran with `drop` on is always re-passed (S144-Q-108 verifier round 2:
-        # `g(a.append((a := n) and url), (a := m))` filled `m`).
+        # is read before the walrus ends its alias. S144-Q-110: a call's
+        # receiver is read before its arguments and each argument before the
+        # next, so the aliases of an object a call fills are the marks kept
+        # where it was read on the first pass (`recv`), on every pass.
+        # A first pass in which any walrus ran with `drop` on is always
+        # re-passed (S144-Q-108 verifier round 2): a first pass may end an
+        # alias and put it back, ending on the state it began with. Kept as
+        # the safe side: since `recv` no known program needs it (the
+        # S144-Q-110 verifier's `setattr` and helper cases no longer do).
         first = frozenset(state)
         drop = True
+        recv = {}
         while True:
             before = len(state)
-            ended = _bind_in_order(nodes, state, self.ever, drop=drop)
+            ended = _bind_in_order(nodes, state, self.ever, drop=drop,
+                                   recv=recv)
             if (state == first and not ended) if drop else len(state) == before:
                 break
             drop = False
@@ -4866,9 +4945,8 @@ _CHECKER_SAMPLES = (
      "    raise E(x)\n", False),
     # S144-Q-107: the walrus aliases of one statement are ended once, in
     # source order, as separate `=` statements end them; a re-pass of the
-    # fixed point must not rotate them again. A re-pass still makes the
-    # marks afresh, so a rotation keeps its old aliases too (the safe side,
-    # residual), and a fill before a walrus is read through them.
+    # fixed point must not rotate them again, and a fill before a walrus is
+    # read through the aliases it ends.
     ("a walrus rotation leaves the last name aliasing the first source",
      "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
      "    g((t := a), (a := b), (b := t))\n    b.append(url)\n    raise E(m)\n", True),
@@ -4892,6 +4970,21 @@ _CHECKER_SAMPLES = (
      "def f(url):\n    m = []\n    q = []\n    a = m\n"
      "    g((k := q[0] + ''), q.append(url), (a := ''), (z := url + ''))\n"
      "    raise E(k)\n", True),
+    # S144-Q-109: a re-pass makes no walrus `_ALIAS` marks, so a name does
+    # not keep the aliases it had before its own walrus in one statement
+    # (a re-pass re-joined them: each row below was flagged).
+    ("a walrus rotation does not leave the last name aliasing the second source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    b.append(url)\n    raise E(n)\n", False),
+    ("a walrus rotation does not leave the middle name aliasing the first source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    a.append(url)\n    raise E(m)\n", False),
+    ("a walrus rotation does not leave the temporary aliasing the second source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    t.append(url)\n    raise E(n)\n", False),
+    ("a walrus swap does not leave the re-bound name aliasing its old source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b))\n    a.append(url)\n    raise E(m)\n", False),
     # S144-Q-108: the bindings of one statement run in evaluation order, so
     # a fill before a walrus that re-binds its alias reaches the old source,
     # whatever binds it (a mutator, a helper, setattr, a comprehension), and
@@ -4965,9 +5058,8 @@ _CHECKER_SAMPLES = (
      "    n.append(url)\n    raise E(a)\n", False),
     # Decorators run before a def's defaults or a class's bases, and
     # positional defaults before keyword-only ones (`_def_parts`,
-    # `_eval_children`). A first pass in which a walrus ended an alias is
-    # re-passed even when it ends on the state it began with: a receiver
-    # is read before the arguments that re-bind and restore its name.
+    # `_eval_children`). A fill between walruses that end and restore its
+    # alias reaches the old source on the first pass.
     ("a decorator fill runs before a default's walrus",
      "def f(url, n):\n    m = []\n    a = m\n    @deco(a.append(url))\n"
      "    def h(z=(a := n)):\n        pass\n    raise E(m)\n", True),
@@ -5009,11 +5101,74 @@ _CHECKER_SAMPLES = (
      "def f(url):\n    m = []\n    a = m\n    b = []\n"
      "    def inner(a):\n        b.append(url)\n    inner(0)\n    raise E(m)\n", False),
     # Here every other mark the statement makes is already there, so the
-    # first pass ends on the state it began with.
+    # first pass ends on the state it began with; the receiver's aliases
+    # are read before its arguments (S144-Q-110), so that pass fills `m`.
     ("a receiver fill between walruses that end and restore its alias",
      "def f(url):\n    m = []\n    n = []\n    n.append(url)\n    a = n\n"
      "    a.append(url)\n    g((a := m))\n"
      "    g(a.append((a := n) and url), (a := m))\n    raise E(m)\n", True),
+    # S144-Q-110: a call's receiver is read before its arguments, so a
+    # mutator fills the object its receiver named then, though a walrus in
+    # the arguments re-binds the name (`_bind_in_order`: `_PreCall`).
+    ("a receiver is filled though a walrus in its arguments re-binds it",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    a.append((a := n) or url)\n    raise E(m)\n", True),
+    ("a walrus in a receiver's arguments does not make it fill the new object",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    a.append((a := n) or url)\n    raise E(n)\n", False),
+    ("a receiver re-bound by an earlier walrus is filled though a later one re-binds it",
+     "def f(url):\n    m = []\n    n = []\n    a = n\n"
+     "    g((a := m), a.append((a := n) or url))\n    raise E(m)\n", True),
+    ("a walrus receiver is filled though a walrus in its arguments re-binds it",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    (a := m).append((a := n) or url)\n    raise E(m)\n", True),
+    ("a walrus receiver's arguments do not make it fill the new object",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    (a := m).append((a := n) or url)\n    raise E(n)\n", False),
+    # A re-pass reads a container a later call fills into an earlier one
+    # (`g(b.append(k), k.append(url))`: `b` holds `k`); the receiver is
+    # still the object it named on the first pass, not where the
+    # statement left the name.
+    ("a container filled later reaches the old object of an earlier receiver",
+     "def f(url):\n    m = []\n    k = []\n    b = m\n"
+     "    g(b.append(k), (b := []), k.append(url))\n    raise E(m)\n", True),
+    # A `setattr` object or a helper destination is read before the later
+    # arguments too, also on a first pass that adds nothing and ends on
+    # the state it began with (S144-Q-110 verifier).
+    ("a setattr object re-bound by a later argument is filled at its old object",
+     "def f(url, c):\n    z = C()\n    a = z\n    n = [url]\n    g(c or (a := url + ''))\n"
+     "    g(setattr(a, 'u', (a := n) or url))\n    raise E(z)\n", True),
+    ("a helper destination re-bound by a later argument is filled at its old object",
+     "def h(q, x):\n    q.append(x)\ndef f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    h(a, (a := n) or url)\n    raise E(m)\n", True),
+    ("a keyword helper destination re-bound by a later keyword is filled at its old object",
+     "def h(q, x):\n    q.append(x)\ndef f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    h(q=a, x=(a := n) or url)\n    raise E(m)\n", True),
+    ("a walrus in a later argument does not make a helper fill the new object",
+     "def h(q, x):\n    q.append(x)\ndef f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    h(a, (a := n) or url)\n    raise E(n)\n", False),
+    ("a setattr object re-bound and restored by later arguments",
+     "def f(url, c):\n    z = C()\n    a = z\n    n = [url]\n    g(c or (a := url + ''))\n"
+     "    g(setattr(a, 'u', (a := n) or url), (a := z))\n    raise E(z)\n", True),
+    ("a helper destination re-bound and restored by later arguments",
+     "def h(q, x):\n    q.append(x)\ndef f(url, c):\n    z = []\n    a = z\n    n = [url]\n"
+     "    g(c or (a := url + ''))\n    g(h(a, (a := n) or url), (a := z))\n    raise E(z)\n",
+     True),
+    # S144-Q-114: a walrus hands back the object it binds, so a fill off one
+    # reaches what it was bound from (`_chain_root`).
+    ("a walrus receiver fills the object it was bound from",
+     "def f(url):\n    m = []\n    a = m\n    (t := a).append(url)\n    raise E(m)\n", True),
+    ("a walrus setattr object fills the object it was bound from",
+     "def f(url):\n    m = C()\n    a = m\n    setattr((t := a), 'u', url)\n    raise E(m)\n",
+     True),
+    ("a walrus helper destination fills the object it was bound from",
+     "def h(q, x):\n    q.append(x)\ndef f(url):\n    m = []\n    a = m\n"
+     "    h((t := a), url)\n    raise E(m)\n", True),
+    ("a walrus receiver in an outer receiver's arguments fills its own object",
+     "def f(url):\n    m = []\n    a = m\n    t = []\n    t.append((t := a).append(url))\n"
+     "    raise E(m)\n", True),
+    ("a walrus receiver bound to a new object does not fill an old one",
+     "def f(url):\n    m = []\n    a = m\n    (a := []).append(url)\n    raise E(m)\n", False),
     # Every binding form re-binds the name, not only `=`, and a lambda's
     # parameters and a comprehension's targets are its own names.
     ("a for target re-binding an alias does not fill its source",
