@@ -253,7 +253,7 @@ function renderSpendGates() {
 // Loads recent matches from /api/replay/matches; clicking one fetches
 // /api/replay/match/<id> and lets the user scrub through per-minute
 // snapshots. Items, level, gold, CS reflect the slider position.
-const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null, loadSeq: 0 };
+const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null, loadSeq: 0, listSeq: 0 };
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the three fetch
@@ -263,10 +263,17 @@ const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null, loadSeq: 0 };
 let _replayMockPromise = null;
 function _replayMockLoad() {
   if (_replayMockPromise) return _replayMockPromise;
-  _replayMockPromise = fetch("/data/ui_mock/replay.json", { cache: "no-store" })
+  // S144-U-210: a failed fixture load is not cached, so the next visit to
+  // the view fetches again (a cached null read as a failure for good).
+  const p = fetch("/data/ui_mock/replay.json", { cache: "no-store" })
     .then((r) => (r && r.ok ? r.json() : null))
-    .catch(() => null);
-  return _replayMockPromise;
+    .catch(() => null)
+    .then((j) => {
+      if (!j && _replayMockPromise === p) _replayMockPromise = null;
+      return j;
+    });
+  _replayMockPromise = p;
+  return p;
 }
 function _replayIsMock() {
   return document.body && document.body.dataset.uiMock === "1";
@@ -317,15 +324,41 @@ function _replayViewRefresh() {
     focusMatchId = sessionStorage.getItem("rc-replay-focus-match") || null;
     if (focusMatchId) sessionStorage.removeItem("rc-replay-focus-match");
   } catch (_) {}
+  // S144-U-210: a list fetch that fails (an HTTP error, a rejected fetch,
+  // a body that is not JSON, a reply with no matches array) says the
+  // matches did not load. It used to reach the empty branch as null and
+  // read "no matches in rewind_history.db" (a 500 said the store was
+  // empty), and a rejected fetch left "loading..." for good. Entering the
+  // view fetches again. Only the newest list request paints: the view left
+  // and re-entered before the first reply landed used to let an older
+  // failed reply replace the newer list.
+  // Guard: tests/snapshot_panels/test_replay_list_fetch_failure.py.
+  const listSeq = ++_REPLAY.listSeq;
+  const listFailed = () => {
+    if (listSeq !== _REPLAY.listSeq) return;
+    const ul = document.getElementById("replay-match-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+    const li = document.createElement("li");
+    li.className = "home-empty";
+    li.textContent = "matches did not load - reopen Replay to retry";
+    ul.appendChild(li);
+  };
   const matchesPromise = _replayIsMock()
-    ? _replayMockLoad().then((m) => (m && m.matches) ? { matches: m.matches } : null)
+    ? _replayMockLoad().then((m) => (m && Array.isArray(m.matches)) ? { matches: m.matches } : null)
     : fetch("/api/replay/matches?limit=30").then(r => r.ok ? r.json() : null);
+  // A rejected fetch reads as null here, so only a FETCH failure paints the
+  // did-not-load line; a throw while painting rows is logged below, as
+  // before, and never replaces rows already painted.
   matchesPromise
+    .catch(e => { console.warn("replay matches:", e); return null; })
     .then(j => {
+      if (listSeq !== _REPLAY.listSeq) return;
+      if (!j || !Array.isArray(j.matches)) { listFailed(); return; }
       const ul = document.getElementById("replay-match-list");
       if (!ul) return;
       ul.innerHTML = "";
-      const items = (j && j.matches) || [];
+      const items = j.matches;
       if (!items.length) {
         ul.innerHTML = '<li class="home-empty">no matches in rewind_history.db</li>';
         return;
