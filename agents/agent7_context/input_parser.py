@@ -253,7 +253,9 @@ def _first_json_object(text: str) -> dict[str, Any] | None:
 
     The old ``\\{.*\\}`` DOTALL search spanned from the FIRST brace to the
     LAST, so prose braces on either side of the model's object made it
-    undecodable and the raw JSON was shown as prose.
+    undecodable and the raw JSON was shown as prose. A pathologically
+    nested candidate (``RecursionError`` from the decoder) is skipped like
+    any other undecodable one (true-audit s144 cycle 182).
     """
     decoder = json.JSONDecoder()
     pos = text.find("{")
@@ -262,7 +264,7 @@ def _first_json_object(text: str) -> dict[str, Any] | None:
         tries += 1
         try:
             obj, _end = decoder.raw_decode(text, pos)
-        except ValueError:
+        except (ValueError, RecursionError):
             obj = None
         if isinstance(obj, dict):
             return obj
