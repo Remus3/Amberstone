@@ -127,7 +127,7 @@ Measure with `inspect.signature` and real calls; never inherit a docstring.
 - **Injection.** Shell strings built by concatenation, SQL built by f-string, HTML written into the DOM from a payload field. Parameterize, quote, escape.
 - **Secret handling - the hard one.** `<repo>\API-Key-Claude.txt` is gitignored and its contents must NEVER reach a log line, an exception message,
   an error string, a dashboard panel, a test fixture, a commit, or a subagent prompt. Measured readers: `main.py`, `ops/rc_supervisor.py`,
-  `ops/rc_transactional_deploy.py`, `coaches/_base_coach.py`, `coaches/tft_coach.py`, `coaches/tft_pbe_coach.py`, `dashboard/routes_coach.py`,
+  `ops/rc_transactional_deploy.py`, `coaches/_base_coach.py`, `coaches/tft_coach.py`, `dashboard/routes_coach.py`,
   `app/_game_lifecycle.py`, `agents/agent7_context/warm_session.py`, `performance_tracker.py`, `tft/tft_coach_engine.py`. Trace every path the value can take
   and assert in a test that a raised exception, a `repr()` and a log record all fail to contain it. Several of those are FROZEN - 6a governs before you edit.
 - **The `except Exception` census.** `ruff.toml` selects `BLE` as an explicit ratchet ("no NEW bare `except Exception`") with per-file ignores for the DS
