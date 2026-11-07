@@ -2501,6 +2501,16 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   display: flex; flex-direction: column; gap: var(--space-1);
   font-variant-numeric: tabular-nums;
 }
+/* S144-U-196: a Session MATCHES row wraps its KDA and time onto a second
+ * line when one line cannot hold them, and neither value breaks inside
+ * itself. Unwrapped, the row's min-content (grade + "RenataGlasc" + KDA +
+ * time, 272 px) set the single-column grid track, so at 320 px every
+ * Session card was 302 px wide and the view scrolled sideways; at 360 to
+ * 400 "3:58 PM" broke into "3:58" over "PM". Every ui_mock row is one
+ * line from 720 px up (at 480 only the longest wraps). Guard:
+ * tests/snapshot_panels/test_session_user_builds_narrow_fit.py. */
+.session-match-list .history-match-row { flex-wrap: wrap; }
+.session-match-list .history-match-row > .dim { white-space: nowrap; }
 /* No-data state inside the Session lists takes the shared hextech sigil
  * (scoped to Session; the global .home-empty is untouched). Mirrors the
  * History list empty-state below. */
@@ -2777,6 +2787,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   padding: var(--space-2) var(--space-3); /* was 6 10  -> 8 12             */
   font-size: var(--fs-md);                /* was 14px -> 22px              */
   min-height: var(--hit-min);             /* 42px fingertip floor          */
+  /* S144-U-196: may shrink below its intrinsic width (a flex item's
+   * min-width: auto held it at 294 px in a 246 px toolbar at 320). */
+  min-width: 0;
   /* RC2 Hextech reskin: input wells sit on the dark --surface-3 icon-well
    * tier (consumed via --surface-alt) with the gold-tinted --border. */
   background: var(--surface-alt); border: 1px solid var(--border);
@@ -2949,6 +2962,18 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   gap: var(--space-1);                    /* was 2px  -> 4px               */
   min-width: 0;
 }
+/* S144-U-196: at 480 px and under (400% zoom of the 1920 baseline) a build
+ * row puts its name, sub-line and item icons on a line of their own and its
+ * Edit and Delete buttons on a second line at the right edge. On one line
+ * the two buttons kept their width and the name column got the rest: 17 px
+ * at 320 (the name ellipsized to nothing, every 26 px icon ran past it) and
+ * 57 px at 360. Guard:
+ * tests/snapshot_panels/test_session_user_builds_narrow_fit.py. */
+@media (max-width: 480px) {
+  .ub-build-row > .ub-build-meta { grid-column: 1 / -1; }
+  .ub-build-row > :nth-child(2) { grid-column: 2; }
+  .ub-build-row > :nth-child(3) { grid-column: 3; }
+}
 .ub-build-label {
   font-size: var(--fs-md);                /* was 14px -> 22px              */
   font-weight: 800; color: var(--text);
@@ -2983,8 +3008,16 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   padding-bottom: var(--space-2);         /* was 5px  -> 8px               */
 }
 .ub-form-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
+  /* S144-U-196: minmax(0, 1fr), not 1fr - a bare 1fr track's minimum is
+   * its field's min-content, so two 264 px inputs held the form at 586 px
+   * and the view scrolled from 480 down. */
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3) var(--space-4);     /* was 10 12 -> 12 16            */
+}
+/* S144-U-196: at 720 px and under the editor is one field per line. Guard:
+ * tests/snapshot_panels/test_session_user_builds_narrow_fit.py. */
+@media (max-width: 720px) {
+  .ub-form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .ub-field {
   display: flex; flex-direction: column;
@@ -3104,6 +3137,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 @media (max-width: 1100px) {
   .ub-sp-grid { grid-template-columns: repeat(6, minmax(56px, 1fr)); }
+}
+/* S144-U-196: at 720 px and under the spell grid takes as many 56 px
+ * columns as fit instead of a fixed six (6 x 56 + gaps = 376 px, wider than
+ * the whole view at 320). Placed after the 1100 px rule so it wins there. */
+@media (max-width: 720px) {
+  .ub-sp-grid { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
 }
 .ub-sp-cell {
   display: flex; flex-direction: column; align-items: center;

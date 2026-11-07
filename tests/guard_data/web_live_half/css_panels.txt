@@ -113,7 +113,7 @@ ece991bae676f1905ec0d60796217afbd24a97d2507a54766a188cd737561a58  web/css/panels
 
 be0085f4552fabac1f772b510ddf636a3b1b974b2ed52b3ac6fc3c309d0e19ea  web/css/panels/right_now.css
 
-c94f37c307efd26cc43c9fd0afc643eb69bb164fb550886dae3b5a1d33099ca9  web/css/panels/session_hygiene.css
+06f1940df944e7c95617855fdcdf40c1ed59164bc52aeb11d273a8c3fea79c57  web/css/panels/session_hygiene.css
 
 c531f35f29a652c066890340cb1744798968c1e2c8bc5597c6e8f7d95c8febbc  web/css/panels/snowball_elasticity.css
 

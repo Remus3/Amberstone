@@ -101,7 +101,15 @@ uiux hover modules of RM-1763 and RM-1764:
     and colour over 0.12s on hover and un-hover. Its reads were settled only
     by a 250 ms sleep; they now await getAnimations().finished on the tab
     (its _SETTLE), and the pin holds the sleep out of the module.
-This module pins all thirty-four verdicts at runtime with each test's own opener,
+Audit (2026-11-07, s144 uiux cycle 186, S144-U-196, the same detector at
+each read moment), the s144 uiux module of S144-U-194, landed on lane/uiux
+with no row here:
+  - test_lobby_mains_recent_cell: boot-stamped (?theme=), never swaps
+    in-page, no sheet; it clicks a MAINS tab and reads the RECENT result
+    word and the OVERALL W / L colours of the freshly rendered rows. Nothing
+    it reads, nor any ancestor, transitions at that moment, so none is
+    needed.
+This module pins all thirty-five verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -190,7 +198,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The thirty-four modules audited above, keyed by file name.
+# The thirty-five modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_build_insights_sort_header_hover.py",
@@ -210,6 +218,7 @@ _COVERED = {
     "test_last_match_review_nav_hover.py",
     "test_lm_hero_stats_disclosure.py",
     "test_lobby_lane_popup_keyboard.py",
+    "test_lobby_mains_recent_cell.py",
     "test_lobby_mains_tabs.py",
     "test_lobby_queue_buttons_focus_ring.py",
     "test_match_row_focus_ring.py",
@@ -967,6 +976,53 @@ def test_review_nav_hover_reads_wait_out_their_transition(mock_server, pw_browse
     assert src.count("page.hover(") == 1 and src.count("page.mouse.move(2, 2)") == 2, (
         "a hover or un-hover in the module bypasses _hover / _unhover"
     )
+
+
+@pytest.mark.parametrize("tab", ("you", "party"))
+@pytest.mark.parametrize("theme", _THEMES)
+def test_lobby_mains_recent_cell_reads_are_settled(
+    mock_server, pw_browser, theme, tab
+):
+    # test_lobby_mains_recent_cell boots each theme (?theme=), never swaps
+    # in-page, clicks a MAINS tab and reads the rows it renders. Replays its
+    # read path and lists what runs on the read elements at that moment.
+    from tests.snapshot_panels import test_lobby_mains_recent_cell as rc
+
+    mock_server._store["data"] = rc._STATE
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True,
+        viewport={"width": rc._SIZES[0][0], "height": rc._SIZES[0][1]},
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    try:
+        page.goto(mock_server.url + f"/?ui_mock=1&theme={theme}#lobby",
+                  wait_until="domcontentloaded", timeout=15_000)
+        page.wait_for_function(
+            "document.body.dataset.view === 'lobby'"
+            " && !!document.getElementById('lv-mc-tab-party')",
+            timeout=10_000,
+        )
+        page.click(f"#lv-mc-tab-{tab}")
+        page.wait_for_function(
+            "(tab) => { const l = document.getElementById("
+            "'lv-mainchamps-list'); return !!l && l.dataset.tab === tab"
+            " && l.querySelectorAll('.lv-mc-result').length >= 3; }",
+            arg=tab, timeout=10_000,
+        )
+        page.evaluate(rc._SETTLE)
+        booted = page.evaluate(_BOOTED)
+        running = page.evaluate(
+            _RUNNING_NOW,
+            "#lv-mainchamps-list .lv-mc-result, "
+            "#lv-mainchamps-list .lv-mc-wl .lv-mc-w, "
+            "#lv-mainchamps-list .lv-mc-wl .lv-mc-l",
+        )
+    finally:
+        ctx.close()
+        mock_server._store["data"] = {}
+    assert booted == theme, (theme, booted)
+    assert running == [], f"{theme} {tab}: {running}"
 
 
 def test_positive_control_detects_a_real_transition(mock_server, pw_browser):
