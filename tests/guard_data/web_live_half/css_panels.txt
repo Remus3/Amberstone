@@ -107,7 +107,7 @@ ef16d5e1d85d05da4f8d056b34b17cc2f8d161767f168921c5a685475c0eaae0  web/css/panels
 
 03b10bd9eb5fac85a176288d806a08e426136dd4467ff0ac0951504415946223  web/css/panels/primitives.css
 
-f2b885f5536cad1828f685117f7d908420a5b16310286182682e99242802b16d  web/css/panels/replay_events.css
+6b749497010b684d08cb3106b08f1a80065ca5dfe2e4675a44cd00979db5ea3f  web/css/panels/replay_events.css
 
 665fa34e49038e5cb1650046ed1061ba7b7bd2680f979ba5a99f0c8ed56153b4  web/css/panels/review_player.css
 

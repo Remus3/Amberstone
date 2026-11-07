@@ -632,9 +632,13 @@ function _replayRenderSnapshot(idx, mapTms) {
 // event clock (seconds) to the nearest per-frame snapshot by minute, moves
 // the slider, and re-renders the grid at that frame - so a timeline click
 // is real navigation (the "actionable event timeline", not a passive log).
-function _replaySeekToClock(clockS) {
+// S144-U-187: matchId is the ribbon's match; a row whose match is not the
+// one in the scrubber (its events landed before its match reply) does not
+// seek. Guard: tests/snapshot_panels/test_replay_pending_pick_ribbon.py.
+function _replaySeekToClock(clockS, matchId) {
   const d = _REPLAY.match;
   if (!d || !Array.isArray(d.snapshots) || !d.snapshots.length) return;
+  if (matchId != null && d.match_id !== matchId) return;
   const targetMin = (Number(clockS) || 0) / 60;
   let bestIdx = 0, bestDelta = Infinity;
   for (let i = 0; i < d.snapshots.length; i++) {

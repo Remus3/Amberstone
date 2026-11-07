@@ -53,12 +53,14 @@ const _RE = {
   flags:   [],
   // S144-U-186: the ribbon note while a pick that did not load is showing
   // (null = the markup's own "No timeline events for this match.").
+  // S144-U-187: NOTE_LOADING while a new pick's events are pending.
   note:    null,
 };
 
 const FLAG_LABEL = "you flagged";
 const NOTE_PLAIN  = "No timeline events for this match.";
 const NOTE_FAILED = "No timeline events - the match did not load.";
+const NOTE_LOADING = "Loading timeline events...";
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the events fetch
@@ -246,8 +248,17 @@ function _renderEvents() {
   if (!list || !empty || !count) return;
   const events = _RE.events || [];
   const flags  = _RE.flags || [];
-  count.textContent = String(events.length);
+  const loading = _RE.note === NOTE_LOADING;
+  // S144-U-187: "-" (no data yet) while loading, never a count of 0.
+  count.textContent = loading ? "-" : String(events.length);
   empty.textContent = _RE.note || NOTE_PLAIN;
+  if (loading) list.setAttribute("aria-busy", "true");
+  else {
+    list.removeAttribute("aria-busy");
+    // Release the height held by loadReplayEvents for the pending pick.
+    const section = document.getElementById("replay-events-section");
+    if (section) section.style.minHeight = "";
+  }
   if (!events.length && !flags.length) {
     list.innerHTML = "";
     empty.hidden = false;
@@ -297,8 +308,8 @@ export function loadReplayEvents(matchId) {
   if (!section) return;
   const seq = ++_RE.seq;
   const fresh = () => seq === _RE.seq;
-  _RE.note = null;
   if (!matchId) {
+    _RE.note = null;
     section.hidden = true;
     _RE.matchId = null;
     _RE.events = [];
@@ -306,19 +317,35 @@ export function loadReplayEvents(matchId) {
     _renderEvents();
     return;
   }
+  // S144-U-187: a pick of a DIFFERENT match drops the previous match's rows
+  // at once (they were listed under "loading <id>..." until this reply
+  // landed, each a seek into the previous match) and says the events are
+  // loading. The section keeps its current height until the reply renders,
+  // so nothing under it moves twice. A filter toggle on the same match
+  // keeps its rows (they still belong to the match in the scrubber).
+  // Guard: tests/snapshot_panels/test_replay_pending_pick_ribbon.py.
+  if (matchId !== _RE.matchId) {
+    const h = section.hidden ? 0 : section.getBoundingClientRect().height;
+    _RE.events = [];
+    _RE.flags = [];
+    _RE.note = NOTE_LOADING;
+    _renderEvents();
+    if (h > 0) section.style.minHeight = `${h}px`;
+  }
   _RE.matchId = matchId;
   section.hidden = false;
   if (_replayEventsIsMock()) {
     _replayEventsMockLoad()
       .then((m) => {
         if (!fresh()) return;
+        _RE.note = null;
         if (!m || !Array.isArray(m.matches)) { _RE.events = []; _RE.flags = []; _renderEvents(); return; }
         const hit = m.matches.find((x) => x.match_id === matchId);
         _RE.events = (hit && Array.isArray(hit.events)) ? hit.events : [];
         _RE.flags = (hit && Array.isArray(hit.you_flagged)) ? hit.you_flagged : [];
         _renderEvents();
       })
-      .catch(() => { if (!fresh()) return; _RE.events = []; _RE.flags = []; _renderEvents(); });
+      .catch(() => { if (!fresh()) return; _RE.note = null; _RE.events = []; _RE.flags = []; _renderEvents(); });
     return;
   }
   const includeParam = [..._RE.include].sort().join(",");
@@ -328,6 +355,7 @@ export function loadReplayEvents(matchId) {
     .then((r) => r.json())
     .then((d) => {
       if (!fresh()) return;
+      _RE.note = null;
       if (!d || !d.ok) {
         _RE.events = [];
         _RE.flags = [];
@@ -340,6 +368,7 @@ export function loadReplayEvents(matchId) {
     .catch((err) => {
       if (!fresh()) return;
       try { console.warn("[replay-events] fetch failed:", err); } catch (_) {}
+      _RE.note = null;
       _RE.events = [];
       _RE.flags = [];
       _renderEvents();
@@ -380,7 +409,9 @@ function _seekFromRow(target) {
   const row = target && target.closest ? target.closest(".replay-events-row") : null;
   if (!row || !_seekHandler) return;
   const c = Number(row.getAttribute("data-clock"));
-  if (!isNaN(c)) _seekHandler(c);
+  // S144-U-187: the row's match rides along, so the scrubber can refuse a
+  // row of a match it does not hold yet.
+  if (!isNaN(c)) _seekHandler(c, _RE.matchId);
 }
 
 /**

@@ -266,6 +266,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* S144-U-187: fills the section's held height while a new pick's events
+   * load (replay_events.js loadReplayEvents), so the note sits centred in
+   * that box, not at its top. Inert otherwise: the section is content-height
+   * (.replay-map-row aligns flex-start), so there is no space to grow into. */
+  flex: 1 0 auto;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-1);
   font-size: var(--fs-sm);
