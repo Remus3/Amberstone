@@ -65,8 +65,8 @@ _NAMED = {
     ("tools/timeline_ingest.py", "main"): _SINK,
     ("tools/replay_roster_pull.py", "_open_log_sink"): _SINK + "; main() holds the returned stream",
     ("tools/console_flash_detector.py", "__init__"): (
-        "the _Stream class owns the handle; the detector's run closes the stream on both of its "
-        "exit paths (stream.close())"),
+        "the _Stream class owns the handle; the detector's run closes the stream in a finally "
+        "around _capture, so every exit path including a raise closes it (S144-P-356)"),
 }
 
 

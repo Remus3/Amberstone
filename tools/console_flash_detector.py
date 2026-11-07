@@ -149,12 +149,24 @@ _WINEVENTPROC = ctypes.WINFUNCTYPE(
 
 
 def run(seconds: float, out_path: Path) -> int:
-    """Capture for `seconds`, writing the event stream to `out_path`."""
+    """Capture for `seconds`, writing the event stream to `out_path`.
+
+    The log stream is opened here and closed here, whatever `_capture` does:
+    a raise from the Win32 binding, the hook install or any log write used to
+    strand the open handle (S144-P-356)."""
     if sys.platform != "win32":
         sys.stderr.write("console_flash_detector runs on Windows only\n")
         return 2
 
     stream = _Stream(out_path)
+    try:
+        return _capture(seconds, out_path, stream)
+    finally:
+        stream.close()
+
+
+def _capture(seconds: float, out_path: Path, stream: _Stream) -> int:
+    """The hook, the message pump and the log lines; the caller owns `stream`."""
     api = _Win32()
     counters = {"events": 0, "pumps": 0}
 
@@ -177,16 +189,17 @@ def run(seconds: float, out_path: Path) -> int:
             f"EVENT ts={stamp} event=0x{event:04x} hwnd=0x{handle:08x} pid={pid} exe={exe} cls={cls}")
 
     callback = _WINEVENTPROC(_on_event)
+    # START goes out BEFORE the hook is installed: a failing log write must not
+    # leave a live hook behind with nothing to unhook it.
+    stream.write(f"START ts={_now()} seconds={seconds:.0f} pid={os.getpid()} out={out_path.name}")
     hook = api.user32.SetWinEventHook(
         EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW, None,
         ctypes.cast(callback, ctypes.c_void_p), 0, 0,
         WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS)
 
-    stream.write(f"START ts={_now()} seconds={seconds:.0f} pid={os.getpid()} out={out_path.name}")
     if not hook:
         stream.write(f"HOOK LOST ts={_now()} reason=SetWinEventHook-returned-0")
         stream.write(f"END ts={_now()} events=0 pumps=0")
-        stream.close()
         return 1
 
     msg = wintypes.MSG()
@@ -221,7 +234,6 @@ def run(seconds: float, out_path: Path) -> int:
         api.user32.UnhookWinEvent(hook)
         stream.write("END ts={} events={} pumps={}".format(
             _now(), counters["events"], counters["pumps"]))
-        stream.close()
     return 0
 
 
