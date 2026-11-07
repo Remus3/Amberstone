@@ -18,6 +18,11 @@ S144-P-296: the link pattern is anchored on the ``](target)`` join, not on a bra
 outer target of an image-wrapped badge ``[![b](img.svg)](page.md)`` (README.md line 9) is checked too. Re-measured over
 the same scope: still zero dangling targets in a living doc.
 
+S144-P-299: a reference-style definition line ``[label]: path "title"`` (up to three leading spaces, optional angle
+brackets) is a link target too and is checked the same way. Measured 2026-11-06 over the same scope: zero definitions
+exist in a scoped file, so this is a keep-out guard, and ``][x]`` runs in prose (an array index such as ``[a][0]``)
+are not definitions and are not matched; a footnote definition ``[^1]: text`` is not a link target either.
+
 ``_ALLOWED`` (file, target) only shrinks and ships empty.
 """
 from __future__ import annotations
@@ -39,6 +44,13 @@ _INLINE_CODE = re.compile(r"`[^`\n]*`")
 # Anchored on the ``](target)`` join only: a link text that itself holds ``]`` (an image-wrapped badge,
 # ``[![b](img.svg)](page.md)``) has no bracket-free text, so a ``[text]`` prefix would skip the outer target.
 _LINK = re.compile(r"\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)")
+# A reference definition owns its whole line: ``[label]: target``, optional ``<...>``, optional quoted or
+# parenthesised title.
+_REFDEF = re.compile(
+    r"^ {0,3}\[(?!\^)[^\]\n]+\]:[ \t]*<?([^\s>]+)>?"
+    r"(?:[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^)\n]*\)))?[ \t]*$",
+    re.M,
+)
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _LINE_CITE = re.compile(r":\d+(?:-\d+)?$")
 
@@ -71,12 +83,13 @@ def link_targets(source: str) -> list[tuple[int, str]]:
     blanked = _FENCE.sub(lambda m: "\n" * m.group(0).count("\n"), source)
     blanked = _INLINE_CODE.sub(lambda m: " " * len(m.group(0)), blanked)
     found: list[tuple[int, str]] = []
-    for m in _LINK.finditer(blanked):
-        target = m.group(1)
-        if target.startswith("#") or _SCHEME.match(target):
-            continue
-        found.append((blanked.count("\n", 0, m.start()) + 1, target))
-    return found
+    for pattern in (_LINK, _REFDEF):
+        for m in pattern.finditer(blanked):
+            target = m.group(1)
+            if target.startswith("#") or _SCHEME.match(target):
+                continue
+            found.append((blanked.count("\n", 0, m.start()) + 1, target))
+    return sorted(found)
 
 
 def resolves(rel_file: str, target: str, tracked: frozenset[str], dirs: frozenset[str]) -> bool:
@@ -145,12 +158,23 @@ def test_scanner_is_live():
         "```\n[fenced](nope/fenced.md)\n```\n"
         "Inline `[code](nope/inline.md)` text.\n"
         "Badge: [![b](x/badge.svg)](adr/BADGE_GONE.md) and [![b](https://example.org/b.svg)](adr/README.md).\n"
+        "Index prose: arr[a][0] stays prose.\n"
+        "[ok]: adr/README.md\n"
+        "  [gone]: <adr/REF_GONE.md> \"A title\"\n"
+        "[web]: https://example.org/x 'T'\n"
+        "[top]: #anchor\n"
+        "[cite]: ../web/js/x.js:3 (paren title)\n"
+        "    [indented]: adr/CODEBLOCK_GONE.md\n"
+        "[^1]: Footnote\n"
     )
     got = {t for _n, t in link_targets(src)}
     assert got == {
         "adr/README.md", "adr/GONE.md", "web/js/x.js", "../web/js/x.js:12-20", "adr/", "x/gone.png",
-        "x/badge.svg", "adr/BADGE_GONE.md",
+        "x/badge.svg", "adr/BADGE_GONE.md", "adr/REF_GONE.md", "../web/js/x.js:3",
     }
     bad = {t for t in got if not resolves("docs/a.md", t, tracked, dirs)}
-    assert bad == {"adr/GONE.md", "web/js/x.js", "x/gone.png", "x/badge.svg", "adr/BADGE_GONE.md"}
+    assert bad == {
+        "adr/GONE.md", "web/js/x.js", "x/gone.png", "x/badge.svg", "adr/BADGE_GONE.md", "adr/REF_GONE.md",
+    }
     assert [n for n, t in link_targets(src) if t == "adr/GONE.md"] == [2]
+    assert [n for n, t in link_targets(src) if t == "adr/REF_GONE.md"] == [11]
