@@ -1628,7 +1628,7 @@
 .lm-tc-augs {
   display: flex;
   gap: 2px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;   /* S144-U-190: wraps inside its auto track */
   align-items: center;
 }
 .lm-tc-aug {
@@ -1647,6 +1647,68 @@
 .lm-tc-aug[data-rarity="gold"]      { border-color: #f5b87c; }
 .lm-tc-aug[data-rarity="prismatic"] { border-color: #7cd5e0; }
 .lm-tc-aug[data-rarity="bronze"]    { border-color: #c08457; }
+
+/* S144-U-190: the rosters fit any width. A full row is the fixed grid
+ * above: 40 + 144 + 56 + 32 + 84 + 60 + 70 px tracks, a 200 px item
+ * strip, 7 gaps, padding and border = 778 px, so a group with its
+ * padding needs 800 px. Every group held that width whatever room it
+ * had: the view scrolled sideways from about 880 px down (853 in 282 at
+ * 320) and, with ALLY | ENEMY side by side, from 1201 to about 1720
+ * (1667 in 1163 at 1201), live Build tab and archive view alike.
+ * - ALLY | ENEMY sit side by side only while two whole 800 px groups
+ *   fit, and stack otherwise (1920 keeps its two halves).
+ * - The augment strip wraps inside its own track, so augment mode needs
+ *   one 20 px icon column and its gap more (808 px), not one column per
+ *   augment: 4 augments one-line (874 px) ran 15 px past each 859 px
+ *   1920 half.
+ * - Each group is a size container, so it takes the width it is given;
+ *   a row narrower than its full grid wraps its cells instead: portrait,
+ *   name and score on the first line, then level, KDA, summoners,
+ *   augments, CS and items, each at its desktop track width, so those
+ *   cells keep one left edge down the roster and still read as columns.
+ *   Under 212 px (a 320 window) the score leaves the name its line. The
+ *   flex values below only act in that wrapped (flex) row.
+ * Guard: tests/snapshot_panels/test_pgr_roster_reflow.py. */
+.lm-tc-table.lm-row-half {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 800px), 1fr));
+}
+.lm-tc-group { container: lm-tc-group / inline-size; }
+.lm-tc-portrait { flex: none; }
+.lm-tc-name { flex: 1 1 calc(100% - 109px); }
+.lm-tc-score { flex: 0 0 56px; }
+.lm-tc-lvl { flex: 0 0 32px; }
+.lm-tc-kda { flex: 0 0 84px; }
+.lm-tc-summs { flex: 0 0 60px; }
+.lm-tc-augs { flex: none; max-width: 100%; }
+.lm-tc-cs { flex: 0 0 70px; }
+.lm-tc-items { flex: 1 1 100%; }
+@container lm-tc-group (width < 778px) {
+  .lm-tc-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 7px 6px;
+  }
+  .lm-tc-items {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+@container lm-tc-group (width < 808px) {
+  #lm-tc-table[data-aug="1"] .lm-tc-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 7px 6px;
+  }
+  #lm-tc-table[data-aug="1"] .lm-tc-items {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+@container lm-tc-group (width < 212px) {
+  .lm-tc-name { flex-basis: calc(100% - 45px); }
+}
 
 .lm-tc-empty {
   font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; empty state) */

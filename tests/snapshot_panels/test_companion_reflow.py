@@ -17,6 +17,13 @@ build list takes the full width; the 2-up list|form only appears while the
 editor pane is open - covered by test_user_builds_review_r30.py). So
 user-builds joins only the companion-single-column guard, not the desktop
 two-column one.
+
+S144-U-190 update: the Post Game Review's only .lm-row-half is the team
+roster table, which sits on the Build tab and is hidden at rest. Read hidden,
+its grid-template-columns is the SPECIFIED value, so this guard read a value
+nothing drew. It now opens the Build tab and reads the rendered roster table
+(#lm-tc-table), whose halves stack until two whole roster groups fit
+(test_pgr_roster_reflow.py pins every width).
 """
 import pytest
 
@@ -25,7 +32,7 @@ import pytest
 CASES = [
     ("settings", ".settings-body"),
     ("lobby", ".lobby-view-grid"),
-    ("last-match", ".lm-row-half"),
+    ("last-match", "#lm-tc-table"),
 ]
 # user-builds is single-column at rest at both widths (R30 page-7) - it guards
 # the companion direction only.
@@ -43,11 +50,27 @@ def _open(pw_browser, mock_server, view, w, h):
     page.add_init_script(_WS_STUB)
     errors: list[str] = []
     page.on("pageerror", lambda e: errors.append(str(e)))
+    # The Post Game Review mock loads only for a named mode (sr here).
+    mode = "&mode=sr" if view == "last-match" else ""
     page.goto(
-        mock_server.url + f"/?ui_mock=1#{view}",
+        mock_server.url + f"/?ui_mock=1{mode}#{view}",
         wait_until="domcontentloaded", timeout=15_000,
     )
     return ctx, page, errors
+
+
+def _reveal(page, view):
+    # The roster table is on the Post Game Review Build tab, hidden at rest.
+    if view != "last-match":
+        return
+    page.wait_for_function(
+        "(() => { const t = document.getElementById('lm-mode-tag');"
+        " return t && t.textContent.trim() !== '-'; })()", timeout=10_000)
+    page.locator(".lm-tab[data-tab=build]").click()
+    page.wait_for_function(
+        "(() => { const t = document.getElementById('lm-tc-table');"
+        " return t && !t.hidden && t.getBoundingClientRect().width > 0; })()",
+        timeout=10_000)
 
 
 def _track_count(page, sel):
@@ -72,6 +95,7 @@ def test_companion_single_column(view, sel, mock_server, pw_browser):
         page.wait_for_function(
             "(s) => document.querySelector(s) !== null", arg=sel, timeout=10_000
         )
+        _reveal(page, view)
         tracks = _track_count(page, sel)
         assert tracks == 1, (
             f"{view}: {sel} not single-column at 920px (companion): {tracks} tracks"
@@ -89,6 +113,7 @@ def test_desktop_multi_column(view, sel, mock_server, pw_browser):
         page.wait_for_function(
             "(s) => document.querySelector(s) !== null", arg=sel, timeout=10_000
         )
+        _reveal(page, view)
         tracks = _track_count(page, sel)
         assert tracks == 2, (
             f"{view}: {sel} lost its desktop two-column layout at 1920px: "

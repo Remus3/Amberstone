@@ -4,7 +4,10 @@
 
 #pgr-lane-compare-mount[hidden] { display: none; }
 
+/* S144-U-190: the card is a size container so its rows can reflow (see
+ * the end of this file). */
 .plc-card {
+  container: plc-card / inline-size;
   margin: 8px 0 10px;
   padding: 10px 12px;
   background: var(--surface-2, rgba(255, 255, 255, 0.02));
@@ -35,13 +38,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 6px 16px;
   margin-bottom: 12px;
 }
 .plc-side {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
   min-height: var(--hit-min, 42px);
 }
 .plc-side-opp { flex-direction: row-reverse; }
@@ -137,3 +143,16 @@
 /* Row tint on the lead side so a glance reads ahead/behind. */
 .plc-row[data-lead="ahead"] .plc-bar-mine { background: var(--signal-good, #6ec977); }
 .plc-row[data-lead="behind"] .plc-bar-mine { background: var(--signal-bad, #ff5050); }
+
+/* S144-U-190: the card fits a narrow window. The champion-vs-champion
+ * line held both sides on one line and each metric row a fixed 84 px
+ * label + a 56 + 56 px value body + a 64 px delta (296 px), so in the
+ * Build tab the card ran past the view from about 500 px down (462 in
+ * 442 at 480, 382 in 282 at 320). Now the two sides wrap onto their own
+ * lines (above), and under 296 px a row puts its label and delta on one
+ * line and the value body, at full width, under them.
+ * Guard: tests/snapshot_panels/test_pgr_roster_reflow.py. */
+@container plc-card (width < 296px) {
+  .plc-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .plc-row-body { grid-column: 1 / -1; grid-row: 2; }
+}

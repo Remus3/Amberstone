@@ -63,7 +63,7 @@ b8c3d0090365363a16ae6fd974293a2fbc7c7755055cb48d80a987d400a39922  web/css/panels
 
 ea7fba8356634592871a528a572a3e9cfa5197cc874c9d661bbd79f074174379  web/css/panels/item_build.css
 
-b040931a39a673e732fadf75202c09404284757a4aab974cf3b1a1dbcb4591e1  web/css/panels/last_match.css
+323e1743c1409f4d4726269cc6b9a3643b45e97dd3d0546f6737f97f294c85af  web/css/panels/last_match.css
 
 7f792391d7fdd7726e80ae988fb733d1c455f655fca606d2a4d7a46b7aec72d1  web/css/panels/map_state.css
 
@@ -93,7 +93,7 @@ cf050723dde73c50e405ab84c0148fa91a86854169b82d7471cb2f074bcea5ef  web/css/panels
 
 cba815085ce1ad071651f476620625ca6616a77b44b0e794a98af0015e49c31e  web/css/panels/pgr_build_wpa.css
 
-0e7b93c7e56a3edb2b6918dd60c7237361c9c2f3e7a2496810908d72e4e35775  web/css/panels/pgr_lane_compare.css
+98e5acaab760b5029fe2720779f5a5efc6bb403a24134089912146e5d55e1de1  web/css/panels/pgr_lane_compare.css
 
 ff9e0bff9756ae5df716a7ed1aae5d85ccf69ffcb0514331571dd3563216da63  web/css/panels/pgr_loadout.css
 
