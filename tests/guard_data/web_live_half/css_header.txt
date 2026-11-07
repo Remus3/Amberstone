@@ -1,5 +1,5 @@
 # Live-half digests for web/css/panels/header.css - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-c375beb9185d18c15de890366f5ea42870cc9e0b2e1137d65e4193641c4146c9  web/css/panels/header.css
+08b465e32f219d9185685e56caa44f04564b214fd87d9b4924c869089db9afef  web/css/panels/header.css
 

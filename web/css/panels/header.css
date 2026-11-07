@@ -2511,8 +2511,33 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * 400 "3:58 PM" broke into "3:58" over "PM". Every ui_mock row is one
  * line from 720 px up (at 480 only the longest wraps). Guard:
  * tests/snapshot_panels/test_session_user_builds_narrow_fit.py. */
-.session-match-list .history-match-row { flex-wrap: wrap; }
-.session-match-list .history-match-row > .dim { white-space: nowrap; }
+/* S144-U-198: the same wrap now serves the History match list, and the
+ * row's parts are classes (web/js/main.js wrote them as inline styles, which
+ * no rule here could override). The name takes its one-line width before it
+ * grows (flex-basis auto), so when the row is too narrow the TIME wraps, not
+ * the name; justify-content: flex-end puts a wrapped KDA / time on the row's
+ * right edge, under the time column of the one-line rows. A line holding the
+ * growing name has no free space, so one-line rows are unchanged. The name
+ * is capped 4rem short of the row (the result glyph, grade pip and their
+ * gaps need 36 px) so a long name wraps INSIDE itself beside the grade
+ * instead of leaving the pip alone on a line, and its auto right margin
+ * keeps that capped line left-aligned. Measured before: Session 360 / 320
+ * dropped the time to the row's LEFT edge; History squeezed the name to
+ * 36 px from 480 to 400 and at 1201, and at 360 / 320 its timestamp broke
+ * over three lines and ran up to 56 px past the row.
+ * Guard: tests/snapshot_panels/test_match_row_time_right_align.py. */
+.session-match-list .history-match-row,
+.history-match-list .history-match-row {
+  flex-wrap: wrap; justify-content: flex-end;
+}
+.session-match-list .history-match-row > .dim,
+.history-match-list .history-match-row > .dim { white-space: nowrap; }
+.history-match-row > .hmr-name {
+  flex: 1 1 auto; min-width: 0; max-width: calc(100% - 4rem);
+  margin-left: var(--space-2); margin-right: auto;
+  overflow-wrap: anywhere;
+}
+.history-match-row > .hmr-time { margin-left: var(--space-2); }
 /* No-data state inside the Session lists takes the shared hextech sigil
  * (scoped to Session; the global .home-empty is untouched). Mirrors the
  * History list empty-state below. */

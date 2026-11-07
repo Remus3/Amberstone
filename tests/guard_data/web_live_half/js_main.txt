@@ -1,5 +1,5 @@
 # Live-half digests for web/js/main.js - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-22b117c53c80315b54867fa74b907ea9b6aa2dde592c48d5961b053de2e420eb  web/js/main.js
+b3370247393098856d3e99c5c0174358602d36c24476ad53a463a68fcc2db63c  web/js/main.js
 

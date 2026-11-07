@@ -2049,9 +2049,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             li.className = "history-match-row";
             const grade = String(m.grade || "-")[0];
             li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
-              `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
-              `<span class="dim">${escapeHtml(m.kda)}</span>` +
-              `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
+              `<span class="hmr-name">${escapeHtml(m.champion)} \u00B7 ${escapeHtml(m.mode)}</span>` +
+              `<span class="dim hmr-kda">${escapeHtml(m.kda)}</span>` +
+              `<span class="dim hmr-time">${escapeHtml(m.timestamp)}</span>`;
             // HIST1: clicking a Session match row opens its detached
             // historical PGR (keyed on the row timestamp).
             _wireMatchRowToHistoricalPgr(li, m.timestamp);
@@ -2361,10 +2361,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     li.dataset.mode = m.mode || "";
     li.dataset.grade = grade;
     li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
-      `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
+      `<span class="hmr-name">${escapeHtml(m.champion)} \u00B7 ${escapeHtml(m.mode)}</span>` +
       badge +
-      `<span class="dim">${escapeHtml(m.kda)}</span>` +
-      `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
+      `<span class="dim hmr-kda">${escapeHtml(m.kda)}</span>` +
+      `<span class="dim hmr-time">${escapeHtml(m.timestamp)}</span>`;
     // HIST1: clicking a History match row opens its detached historical
     // PGR (keyed on the row timestamp).
     _wireMatchRowToHistoricalPgr(li, m.timestamp);
