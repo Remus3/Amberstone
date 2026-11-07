@@ -338,3 +338,59 @@ def test_every_settings_checkbox_draws_the_one_system_focus_ring(
     # theme, so a hard-coded colour would fail on at least one theme.
     assert len(tokens) >= 3, f"--focus-ring did not vary by theme: {tokens}"
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+# S144-U-178 (s144 uiux): every .settings-row checkbox is a flex item with
+# the default flex-shrink 1 beside a text span that breaks between words, so
+# from 720px down the box gave up its width to the text: measured 13x24 on
+# Dev mode, Dev UI mock data, Force Flash on Snowball and the three champ
+# select auto-push rows at 480 and under, 19.4x24 on Dev mode at 720 (the
+# "Dev mode checkbox draws smaller than the gate checkboxes" row, U-169).
+# A squeezed native checkbox paints a narrow box beside its square
+# neighbours. Ruling: the visible control keeps its declared square at every
+# width; the text wraps instead. This pins it on the widths the narrow-reflow
+# file covers, plus the two desktop widths above.
+NARROW_VIEWPORTS = [(1920, 920), (923, 1280), (720, 900), (480, 900), (320, 900)]
+
+_SIZES = """
+() => {
+  const out = [];
+  for (const cb of document.querySelectorAll(
+      '#view-settings input[type=checkbox]')) {
+    const r = cb.getBoundingClientRect();
+    if (!r.width) continue;
+    const lab = cb.closest('label');
+    out.push({id: cb.id || cb.dataset.pvPanel || 'gate',
+              kind: lab ? lab.className : '(no label)',
+              w: Math.round(r.width * 10) / 10,
+              h: Math.round(r.height * 10) / 10});
+  }
+  return out;
+}
+"""
+
+
+@pytest.mark.parametrize("vp", NARROW_VIEWPORTS, ids=lambda v: f"{v[0]}x{v[1]}")
+def test_every_settings_checkbox_keeps_its_square_box_at_every_width(
+    mock_server, pw_browser, vp
+):
+    ctx, page, errors = _open(pw_browser, mock_server, vp)
+    try:
+        sizes = page.evaluate(_SIZES)
+    finally:
+        page.close()
+        ctx.close()
+    # Anchor: the whole view was measured, Dev mode row included.
+    kinds = _kinds(sizes)
+    assert kinds["settings-row"] == 8, f"static settings rows: {kinds}"
+    assert kinds["spend-gate-row"] == 2, f"spend-gate rows: {kinds}"
+    assert kinds["pv-cell"] >= 10, f"panel-visibility cells: {kinds}"
+    assert any(s["id"] == "set-dev-mode" for s in sizes), sizes[:3]
+    rows = [s for s in sizes if "settings-row" in s["kind"]]
+    off = [s for s in rows if s["w"] != 24 or s["h"] != 24]
+    assert not off, f"{vp}: settings-row checkbox not 24x24: {off}"
+    # One size across the view: a row box never draws smaller than another.
+    assert len({(s["w"], s["h"]) for s in sizes}) == 1, (
+        f"{vp}: checkbox sizes differ: {sorted({(s['w'], s['h']) for s in sizes})}"
+    )
+    assert not errors, f"JS errors: {errors[:3]}"

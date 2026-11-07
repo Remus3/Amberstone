@@ -3444,8 +3444,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * its visible-but-unchecked state stays the neutral well. The colored
  * meaning never stands on hue alone here - the adjacent <span> label
  * carries the setting name (WCAG 1.4.1). */
+/* S144-U-178: flex none, so the box keeps its 24px square beside a long
+ * label; with the default shrink it gave its width to the text from 720px
+ * down (13x24 at 480 and under). The text wraps instead. */
 .settings-row input[type="checkbox"] {
   width: 24px; height: 24px;       /* was 14x14 -> 24x24                */
+  flex: none;
   accent-color: var(--good);
   cursor: pointer;
 }
