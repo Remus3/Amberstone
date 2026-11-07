@@ -298,7 +298,7 @@ def _serve_draft_score(h) -> None:
             _cache_put(key, now, stored)
         _send_json(h, 200, _respond(stored, ally, enemy, queue_ids,
                                     cached=False, t0=t0))
-    except Exception:  # noqa: BLE001 - route boundary: never leak, always log
+    except Exception:  # route boundary: never leak, always log
         log.exception("api/draft-score: unexpected failure")
         try:
             _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})

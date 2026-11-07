@@ -799,7 +799,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.spec_watch and _run_spec_watch() == 2:
             return 2
         return 0
-    except Exception as e:  # noqa: BLE001 - hard unexpected failure -> exit 2
+    except Exception as e:  # hard unexpected failure -> exit 2
         logger.exception("upstream_drift_check hard error: %s", e)
         return 2
 

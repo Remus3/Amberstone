@@ -146,7 +146,7 @@ def _serve_session_hygiene(h) -> None:
         _cache_put(key, now, stored)
 
         _send_json(h, 200, _respond(stored, cached=False, t0=t0))
-    except Exception:  # noqa: BLE001 - route boundary: always answer
+    except Exception:  # route boundary: always answer
         log.exception("api/session-hygiene: unexpected failure")
         try:
             # Raw exception text stays in the log only.
