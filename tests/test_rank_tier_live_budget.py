@@ -950,9 +950,13 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # one, and a re-wrap by name (`g = staticmethod(g)`), judged before the
     # binding drops the target's own wrapper. A tuple target is split as a
     # logging alias is (`_wrapper_bindings`: `h, k = g, fetch`, `h, k = k, h`).
-    wrapper = _value_wrapper_specs(value, tainted, late) if plain else set()
     wrappers = ([b for t in targets for b in _wrapper_bindings(t, value, tainted, late)]
                 if plain else [])
+    # S144-Q-96: a mutating helper is bound the same ways (`k = h`,
+    # `h = lambda q, v: q.append(v)`).
+    muts = ([b for t in targets
+             for b in _wrapper_bindings(t, value, tainted, late, _value_mut_specs)]
+            if plain else [])
     # RM-1563: `self.p = log.info` stores the alias in an attribute, as a
     # class body's `p = log.info` does, so it makes the same mark. Add-only:
     # one store does not replace what another instance or the class holds.
@@ -960,18 +964,12 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # read off the receiver and the value (`_attr_store_kinds`). RM-1563:
     # a store off any receiver but `self` may land on a class
     # (`C.g = lambda self, m: ...`, `cls.g = ...`), which binds `self`.
+    # S144-Q-96: so is a mutating helper (`_MUTATTR`, `_attr_store_marks`).
     attr_marks = set()
     for target in targets if plain else []:
         if isinstance(target, ast.Attribute):
-            if _is_log_callable(value, tainted):
-                attr_marks.add(_LOGATTR + target.attr)
-            if _is_logger_expr(value, tainted):
-                attr_marks.add(_LOGOBJATTR + target.attr)
-            if wrapper:
-                attr_marks.update(
-                    f"{_SINKATTR}{target.attr} {kind} {spec}"
-                    for kind in _attr_store_kinds(target.value, value)
-                    for spec in wrapper)
+            attr_marks |= _attr_store_marks(target.attr, target.value, value,
+                                            tainted, late)
     tainted |= attr_marks
     # RM-1794: the object marks the binding makes, judged before it ends
     # the targets' own marks (`a = a.q` still reaches what `a` did).
@@ -990,6 +988,8 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
         _bind_log_alias(name, is_alias, tainted, is_obj)
     for name, specs in wrappers:
         _bind_wrapper(name, specs, tainted)
+    for name, pairs in muts:
+        _bind_mut(name, pairs, tainted)
 
 
 _METHOD_WRAPPERS = ("staticmethod", "classmethod")
@@ -1004,24 +1004,58 @@ def _method_wrapped(value):
     return None
 
 
-def _value_wrapper_specs(value, tainted, late=frozenset()):
+def _value_wrapper_specs(value, tainted, late=frozenset(), mark=None):
     """The `_SINKFN` specs of the callable `value` evaluates to, judged with
     `tainted` as it stands: a lambda's own (RM-1563), the one a staticmethod
     / classmethod wraps (RM-1786), and RM-1563: a name already bound to
     a wrapper (`h = g`, and `g = staticmethod(g)` through the wrapper call)
-    and either arm of a conditional. Empty for any other value."""
+    and either arm of a conditional. Empty for any other value.
+    S144-Q-96: with `mark=_MUTFN` the same read gives the `_MUTFN` pairs
+    of a mutating helper (`_value_mut_specs`)."""
+    mark = mark or _SINKFN
     inner = _method_wrapped(value)
     if inner is not None:
-        return _value_wrapper_specs(inner, tainted, late)
+        return _value_wrapper_specs(inner, tainted, late, mark)
     if isinstance(value, ast.Lambda):
-        return set(_sink_specs(value, tainted, late))
+        judge = _mut_specs if mark == _MUTFN else _sink_specs
+        return set(judge(value, tainted, late))
     if isinstance(value, ast.Name):
-        prefix = _SINKFN + value.id + " "
+        prefix = mark + value.id + " "
         return {e[len(prefix):] for e in tainted if e.startswith(prefix)}
     if isinstance(value, ast.IfExp):
-        return (_value_wrapper_specs(value.body, tainted, late)
-                | _value_wrapper_specs(value.orelse, tainted, late))
+        return (_value_wrapper_specs(value.body, tainted, late, mark)
+                | _value_wrapper_specs(value.orelse, tainted, late, mark))
     return set()
+
+
+def _value_mut_specs(value, tainted, late=frozenset()):
+    """S144-Q-96: the `_MUTFN` pairs of the callable `value` evaluates to,
+    read as `_value_wrapper_specs` reads a wrapper: a lambda's own, the
+    one a staticmethod / classmethod wraps, a name already bound to a
+    mutating helper (`k = h`) and either arm of a conditional."""
+    return _value_wrapper_specs(value, tainted, late, _MUTFN)
+
+
+def _attr_store_marks(attr, recv, value, tainted, late=frozenset()):
+    """RM-1563 / RM-1786: the marks a store of `value` on attribute `attr`
+    of `recv` from outside a class body makes (`self.p = log.info`,
+    `self.g = lambda m: log.info(m)`): `_LOGATTR` / `_LOGOBJATTR` for a
+    logging function or logger object, and a method mark per kind
+    (`_attr_store_kinds`) and spec for a wrapper (`_SINKATTR`) and,
+    S144-Q-96, a mutating helper (`_MUTATTR`). Shared by `_retaint` and
+    a `setattr` with a literal name (`_bind_setattr_marks`)."""
+    marks = set()
+    if _is_log_callable(value, tainted):
+        marks.add(_LOGATTR + attr)
+    if _is_logger_expr(value, tainted):
+        marks.add(_LOGOBJATTR + attr)
+    for attr_mark, specs in ((_SINKATTR, _value_wrapper_specs(value, tainted, late)),
+                             (_MUTATTR, _value_mut_specs(value, tainted, late))):
+        if specs:
+            marks.update(f"{attr_mark}{attr} {kind} {spec}"
+                         for kind in _attr_store_kinds(recv, value)
+                         for spec in specs)
+    return marks
 
 
 def _value_kinds(value):
@@ -1491,6 +1525,28 @@ def _bind_mutators(nodes, tainted, late=frozenset()) -> None:
                         _taint_aliases(target, tainted, seen)
 
 
+def _bind_setattr_marks(nodes, tainted, late=frozenset()) -> None:
+    """S144-Q-96: `setattr(o, 'cb', h)` with a literal name stores `h` on
+    an attribute as `o.cb = h` does, so it makes the same marks
+    (`_attr_store_marks`: a logging function, a wrapper, a mutating
+    helper). Add-only, as every attribute store is; each call is judged
+    with the view `_call_views` gives it. A non-literal name is not
+    tracked (residual)."""
+    for node in nodes:
+        calls = []
+        _call_views(node, tainted, late, calls)
+        for call, seen in calls:
+            f, args = call.func, call.args
+            if (isinstance(f, ast.Name) and f.id == "setattr" and len(args) == 3
+                    and not call.keywords
+                    and not any(isinstance(a, ast.Starred) for a in args)
+                    and isinstance(args[1], ast.Constant)
+                    and isinstance(args[1].value, str)
+                    and args[1].value.isidentifier()):
+                tainted |= _attr_store_marks(args[1].value, args[0], args[2],
+                                             seen, late)
+
+
 # RM-1557: the binding forms this walk added - `for` targets, `with ... as`
 # targets and walrus - only ever ADD taint, never clear a name. A clearing
 # model was tried in cycle 128 and four independent verifier rounds each found
@@ -1516,13 +1572,16 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
             is_alias = _is_log_callable(sub.value, seen)
             is_obj = _is_logger_expr(sub.value, seen)
             wrapper = _value_wrapper_specs(sub.value, seen, late)
+            muts = _value_mut_specs(sub.value, seen, late)    # S144-Q-96
             _drop_aliases(sub.target.id, tainted)    # RM-1794
             _bind_names(sub.target, _is_tainted(sub.value, seen, late),
                         tainted, clear=False)
             _bind_log_alias(sub.target, is_alias, tainted, is_obj)
             # RM-1563: `(h := g)` makes `h` a wrapper, add-only like the
-            # rest of the walrus binding.
+            # rest of the walrus binding. S144-Q-96: so does `(k := h)` a
+            # mutating helper.
             _bind_wrapper(sub.target.id, wrapper, tainted)
+            _bind_mut(sub.target.id, muts, tainted)
 
 
 # Context managers whose __enter__ hands back the object they were given.
@@ -1717,7 +1776,8 @@ def _iter_alias_bindings(target, iterable, tainted):
     return [b for item in items for b in _alias_bindings(target, item, tainted)]
 
 
-def _wrapper_bindings(target, value, tainted, late=frozenset()):
+def _wrapper_bindings(target, value, tainted, late=frozenset(),
+                      judge=_value_wrapper_specs):
     """RM-1563: (name, `_SINKFN` specs) for every plain name `target`
     binds from `value`, split as `_alias_bindings` splits a logging alias:
     a bare name takes the whole value's specs (`_value_wrapper_specs`), a
@@ -1725,24 +1785,26 @@ def _wrapper_bindings(target, value, tainted, late=frozenset()):
     same length and no starred element (`h, k = g, fetch` makes only `h` a
     wrapper), and any other split of a literal value gives EVERY name the
     union of its leaves' specs: the safe side. A non-literal value
-    (`h, k = pair()`) is not tracked (residual)."""
+    (`h, k = pair()`) is not tracked (residual). S144-Q-96: `judge` reads
+    the specs (`_value_mut_specs` for a mutating helper's pairs)."""
     if isinstance(target, ast.Name):
-        return [(target.id, _value_wrapper_specs(value, tainted, late))]
+        return [(target.id, judge(value, tainted, late))]
     if (isinstance(target, (ast.Tuple, ast.List))
             and isinstance(value, (ast.Tuple, ast.List))
             and len(target.elts) == len(value.elts)
             and not any(isinstance(e, ast.Starred)
                         for e in target.elts + value.elts)):
         return [b for t, v in zip(target.elts, value.elts)
-                for b in _wrapper_bindings(t, v, tainted, late)]
+                for b in _wrapper_bindings(t, v, tainted, late, judge)]
     leaves = _literal_elts(value)
     if not leaves:
         return []
-    specs = set().union(*(_value_wrapper_specs(e, tainted, late) for e in leaves))
+    specs = set().union(*(judge(e, tainted, late) for e in leaves))
     return [(n.id, specs) for n in _target_names(target)]
 
 
-def _iter_wrapper_bindings(target, iterable, tainted, late=frozenset()):
+def _iter_wrapper_bindings(target, iterable, tainted, late=frozenset(),
+                           judge=_value_wrapper_specs):
     """RM-1563: what a `for` or comprehension target binds as a wrapper
     from each item of a literal iterable (`for h in (g,)`), unioned over the
     items as `_iter_alias_bindings` does. Non-literal: not tracked."""
@@ -1755,7 +1817,7 @@ def _iter_wrapper_bindings(target, iterable, tainted, late=frozenset()):
         else:
             items.append(elt)
     return [b for item in items
-            for b in _wrapper_bindings(target, item, tainted, late)]
+            for b in _wrapper_bindings(target, item, tainted, late, judge)]
 
 
 def _log_args(call, tainted=frozenset()):
@@ -1799,6 +1861,9 @@ def _default_bindings(fn, state, late=frozenset()):
             bound.add(_LOGOBJ + arg.arg)
         for spec in _value_wrapper_specs(default, state, late):
             bound.add(f"{_SINKFN}{arg.arg} {spec}")
+        # S144-Q-96: and a mutating helper's pairs (`def f(r, k=h)`).
+        for pair in _value_mut_specs(default, state, late):
+            bound.add(f"{_MUTFN}{arg.arg} {pair}")
     return bound
 
 
@@ -2013,6 +2078,12 @@ def _mut_pairs(call, view):
             if entry.startswith(prefix):
                 dst, src = entry[len(prefix):].split(">", 1)
                 pairs.add((dst, src))
+    elif isinstance(f, ast.Lambda):
+        # S144-Q-96: a lambda called in place is judged where it stands,
+        # as `_wrapper_args` judges a wrapper.
+        for pair in _mut_specs(f, view):
+            dst, src = pair.split(">", 1)
+            pairs.add((dst, src))
     elif isinstance(f, ast.Attribute):
         prefix = _MUTATTR + f.attr + " "
         for entry in view:
@@ -2147,7 +2218,7 @@ def _param_base(fn, names, state, late):
     own = names if isinstance(fn, ast.Lambda) else names | _def_locals(fn)
     base = frozenset(e for e in _shadow_aliases(base, own) if not shadowed(e))
     return base | {e for e in _default_bindings(fn, state, late)
-                   if e.startswith((_LOGFN, _LOGOBJ, _SINKFN))}
+                   if e.startswith((_LOGFN, _LOGOBJ, _SINKFN, _MUTFN))}
 
 
 def _mut_specs(fn, state, late=frozenset()):
@@ -2161,11 +2232,15 @@ def _mut_specs(fn, state, late=frozenset()):
     one walk per parameter (memoised, so the walks `_sink_specs` already
     made are reused), into a throwaway report. What `dst` carries is read
     from every state the body may leave it in (fall-through, `return` and
-    every state inside, as the def arm's flow-out is). Residuals: a lambda,
-    an alias (`k = h`) and a helper stored on an attribute from outside a
-    class body (by `=` or `setattr`) make no pair (RM-1794: a helper
-    that stores INTO its parameter through `setattr(q, 'u', v)` makes
-    one); a parameter mutated
+    every state inside, as the def arm's flow-out is). S144-Q-96: a
+    lambda is judged the same way, and a helper is bound as a wrapper is
+    (`_value_mut_specs`: an alias `k = h`, a conditional, a tuple, a
+    walrus, a `for` or comprehension target over a literal, a default, a
+    staticmethod over one, a store on an attribute by `=` or by `setattr`
+    with a literal name: `_attr_store_marks`). Residuals: a `setattr`
+    with a non-literal name makes no mark, and a re-bound helper keeps
+    its old pairs through the late view, the rule a wrapper follows (the
+    safe side); a parameter mutated
     and then re-bound (`q.append('x'); q = [v]`) is read as still carrying
     `v`, the RM-1788 safe side.
 
@@ -2399,6 +2474,8 @@ def _comp_bind(gen, view, late):
     found = _is_tainted(gen.iter, view, late)
     aliases = _iter_alias_bindings(gen.target, gen.iter, view)
     wrappers = _iter_wrapper_bindings(gen.target, gen.iter, view, late)
+    muts = _iter_wrapper_bindings(gen.target, gen.iter, view, late,
+                                  _value_mut_specs)    # S144-Q-96
     inner = set(view)
     # RM-1794: the target is the comprehension's own name.
     _drop_target_aliases(gen.target, inner)
@@ -2407,6 +2484,8 @@ def _comp_bind(gen, view, late):
         _bind_log_alias(name, is_alias, inner, is_obj)
     for name, specs in wrappers:
         _bind_wrapper(name, specs, inner)
+    for name, pairs in muts:
+        _bind_mut(name, pairs, inner)
     return inner
 
 
@@ -2878,6 +2957,7 @@ class _Flow:
             _bind_walrus(nodes, state, self.ever)
             _bind_mutators(nodes, state, self.ever)
             _bind_mut_calls(nodes, state, self.ever)
+            _bind_setattr_marks(nodes, state, self.ever)    # S144-Q-96
             if len(state) == before:
                 break
         _check_sinks(nodes, stmt, state, self.report, self.ever)
@@ -3092,6 +3172,8 @@ class _Flow:
         found = _is_tainted(stmt.iter, state, self.ever)
         aliases = _iter_alias_bindings(stmt.target, stmt.iter, state)
         wrappers = _iter_wrapper_bindings(stmt.target, stmt.iter, state, self.ever)
+        muts = _iter_wrapper_bindings(stmt.target, stmt.iter, state, self.ever,
+                                      _value_mut_specs)    # S144-Q-96
 
         def run_pass(entry):
             # The target is assigned once per item, so a sink in it
@@ -3105,6 +3187,8 @@ class _Flow:
                 _bind_log_alias(name, is_alias, body_in, is_obj)
             for name, specs in wrappers:
                 _bind_wrapper(name, specs, body_in)
+            for name, pairs in muts:
+                _bind_mut(name, pairs, body_in)
             return entry, self.block(stmt.body, body_in)
 
         exhausted, breaks = self._loop(state, run_pass)
@@ -5099,6 +5183,92 @@ _CHECKER_SAMPLES = (
     ("a literal getattr re-binds nothing, the dict builtin is logged",
      "y = getattr(o, 'x')\ndef h(q, v):\n    q.append(v)\ndef f(url, x):\n"
      "    h(dict(), url)\n    log.info(isinstance(x, dict))\n", False),
+    # S144-Q-96: a mutating helper is bound the way a wrapper is - a
+    # lambda, an alias (`k = h`, a conditional, a tuple, a walrus, a `for`
+    # or comprehension target over a literal, a default), a staticmethod
+    # over one in a class body, one stored on an attribute from outside a
+    # class body, and one stored by `setattr` with a literal name (which
+    # stores a wrapper and a logging function too). The clean rows keep it
+    # tied to the value: a clean source, and an alias re-bound before the
+    # call.
+    ("lambda mutating helper, the caller logs it",
+     "def f(url):\n    h = lambda q, v: q.append(v)\n    r = []\n    h(r, url)\n"
+     "    log.info(r)\n", True),
+    ("module lambda mutating helper",
+     "h = lambda q, v: q.append(v)\ndef f(url):\n    r = []\n    h(r, url)\n"
+     "    log.info(r)\n", True),
+    ("lambda mutating helper called in place",
+     "def f(url):\n    r = []\n    (lambda q, v: q.append(v))(r, url)\n"
+     "    log.info(r)\n", True),
+    ("alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    k = h\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", True),
+    ("module alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\nk = h\ndef f(url):\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", True),
+    ("conditional alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url, c):\n    k = h if c else g\n"
+     "    r = []\n    k(r, url)\n    log.info(r)\n", True),
+    ("conditional alias, the mutating helper in the else arm",
+     "def h(q, v):\n    q.append(v)\ndef f(url, c):\n    k = g if c else h\n"
+     "    r = []\n    k(r, url)\n    log.info(r)\n", True),
+    ("tuple alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    k, j = h, 1\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", True),
+    ("walrus alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    (k := h)\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", True),
+    ("for target over a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    r = []\n"
+     "    for k in (h,):\n        k(r, url)\n    log.info(r)\n", True),
+    ("comprehension target over a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    r = []\n"
+     "    [k(r, url) for k in (h,)]\n    log.info(r)\n", True),
+    ("mutating helper as a parameter default",
+     "def h(q, v):\n    q.append(v)\ndef f(url, k=h):\n    r = []\n    k(r, url)\n"
+     "    log.info(r)\n", True),
+    ("wrapper calling a mutating helper default, the caller logs it",
+     "def h(q, v):\n    q.append(v)\ndef w(q, v, k=h):\n    k(q, v)\ndef f(url):\n"
+     "    r = []\n    w(r, url)\n    log.info(r)\n", True),
+    ("staticmethod over a mutating helper in a class body",
+     "def h(q, v):\n    q.append(v)\nclass C:\n    cb = staticmethod(h)\n"
+     "def f(c, url):\n    r = []\n    c.cb(r, url)\n    log.info(r)\n", True),
+    ("mutating helper stored on an attribute",
+     "def h(q, v):\n    q.append(v)\ndef f(o, url):\n    o.cb = h\n    r = []\n"
+     "    o.cb(r, url)\n    log.info(r)\n", True),
+    ("mutating lambda stored on self, another method calls it",
+     "class C:\n    def __init__(self):\n        self.cb = lambda q, v: q.append(v)\n"
+     "    def f(self, url):\n        r = []\n        self.cb(r, url)\n"
+     "        log.info(r)\n", True),
+    ("mutating helper stored by setattr",
+     "def h(q, v):\n    q.append(v)\ndef f(o, url):\n    setattr(o, 'cb', h)\n"
+     "    r = []\n    o.cb(r, url)\n    log.info(r)\n", True),
+    ("wrapper stored by setattr",
+     "def w(v):\n    log.info(v)\ndef f(o, url):\n    setattr(o, 'cb', w)\n"
+     "    o.cb(url)\n", True),
+    ("logging function stored by setattr",
+     "def f(o, url):\n    setattr(o, 'p', log.info)\n    o.p(url)\n", True),
+    ("lambda mutating helper called with a clean source",
+     "def f(url):\n    h = lambda q, v: q.append(v)\n    r = []\n    h(r, 'x')\n"
+     "    log.info(r)\n", False),
+    ("alias of a mutating helper called with a clean source",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    k = h\n    r = []\n"
+     "    k(r, 'x')\n    log.info(r)\n", False),
+    ("alias of a mutating helper re-bound before the call",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    k = h\n    k = g\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", False),
+    ("mutating helper stored by setattr, called with a clean source",
+     "def h(q, v):\n    q.append(v)\ndef f(o, url):\n    setattr(o, 'cb', h)\n"
+     "    r = []\n    o.cb(r, 'x')\n    log.info(r)\n", False),
+    # Stored on `self` by `setattr`, the lambda binds no receiver (the
+    # store lands on the instance), so the url goes into the url, not self.
+    ("mutating lambda stored on self by setattr, self is logged",
+     "class C:\n    def f(self, url):\n"
+     "        setattr(self, 'cb', lambda q, v: q.append(v))\n        r = []\n"
+     "        self.cb(url, r)\n        log.info(self)\n", False),
+    ("lambda that stores a literal, not its source",
+     "def f(url):\n    h = lambda q, v: q.append('x')\n    r = []\n    h(r, url)\n"
+     "    log.info(r)\n", False),
 )
 
 
