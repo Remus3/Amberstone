@@ -103,10 +103,10 @@ def main(argv: list[str] | None = None) -> int:
 
     # Match filter map: match_id -> (game_mode, bucket).
     match_info: dict = {}
-    for match_id, game_mode, dur in cur.execute(
+    for match_id, game_mode, raw_dur in cur.execute(
             "SELECT match_id, game_mode, game_duration_s FROM matches"):
         mode = (game_mode or "").strip()
-        dur = int(dur or 0)
+        dur = int(raw_dur or 0)
         if dur < MIN_DURATION_S or mode in SKIP_MODES:
             continue
         match_info[match_id] = (mode, bucket_for(dur))
@@ -131,7 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     n_participants = 0
     seen_matches: set = set()
 
-    for match_id, team_id, pos, kills, assists, dmg, gold in cur.execute(
+    for match_id, team_id, raw_pos, kills, assists, dmg, gold in cur.execute(
             "SELECT match_id, team_id, team_position, kills, assists,"
             " total_damage_dealt_to_champs, gold_earned FROM participants"):
         info = match_info.get(match_id)
@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
             row_metrics["dmg_share_pct"] = 100.0 * int(dmg or 0) / dmg_total
 
         groups = [mode]
-        pos = (pos or "").strip()
+        pos = (raw_pos or "").strip()
         if pos:
             groups.append(pos)
         for group in groups:

@@ -301,11 +301,11 @@ def extract_kill_counts(conn: sqlite3.Connection, match_id: str, pid_a: int, pid
     except sqlite3.Error:
         return (0, 0)
     a_b = b_a = 0
-    for killer, victim, assists in rows:
-        if killer is None or victim is None:
+    for raw_killer, raw_victim, assists in rows:
+        if raw_killer is None or raw_victim is None:
             continue
         try:
-            killer, victim = int(killer), int(victim)
+            killer, victim = int(raw_killer), int(raw_victim)
         except (TypeError, ValueError):
             continue
         if not _assists_empty(assists):

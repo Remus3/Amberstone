@@ -313,12 +313,12 @@ def extract_kill_counts(
         return {"solo": (0, 0), "any": (0, 0)}
 
     a_b_any = b_a_any = a_b_solo = b_a_solo = 0
-    for killer, victim, assists_json in rows:
-        if killer is None or victim is None:
+    for raw_killer, raw_victim, assists_json in rows:
+        if raw_killer is None or raw_victim is None:
             continue
         try:
-            killer = int(killer)
-            victim = int(victim)
+            killer = int(raw_killer)
+            victim = int(raw_victim)
         except (TypeError, ValueError):
             continue
         is_a_on_b = killer == pid_a and victim == pid_b

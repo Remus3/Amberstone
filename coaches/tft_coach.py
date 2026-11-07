@@ -104,8 +104,8 @@ def _coach_board_to_placement(board_text):
              "azir","viktor","heimerdinger","vex","karma","ahri","neeko","zilean"}
     parts = _re.split(r'\|', board_text)
     all_names = []
-    for part in parts:
-        part = _re.sub(r'^(FRONT|BACK|MID)[:\s]*', '', part.strip(), flags=_re.IGNORECASE)
+    for raw_part in parts:
+        part = _re.sub(r'^(FRONT|BACK|MID)[:\s]*', '', raw_part.strip(), flags=_re.IGNORECASE)
         for w in _re.split(r'\s+', part):
             name = w.strip(" [](),")
             if name and len(name) >= 3 and name[0].isupper() and name.lower() not in _skip:

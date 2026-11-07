@@ -191,8 +191,8 @@ def coaching_digest(
         if not isinstance(t, dict):
             continue
         cold = t.get("cold")
-        for e in cold if isinstance(cold, list) else ():
-            e = _streak_entry(e)
+        for raw_e in cold if isinstance(cold, list) else ():
+            e = _streak_entry(raw_e)
             if e is None or e["delta"] >= 0:
                 continue
             severity = min(1.0, abs(e["delta"]) / 2.0)
@@ -209,8 +209,8 @@ def coaching_digest(
                 "data": e,
             })
         hot = t.get("hot")
-        for e in hot if isinstance(hot, list) else ():
-            e = _streak_entry(e)
+        for raw_e in hot if isinstance(hot, list) else ():
+            e = _streak_entry(raw_e)
             if e is None or e["delta"] <= 0:
                 continue
             severity = min(0.7, e["delta"] / 2.0)

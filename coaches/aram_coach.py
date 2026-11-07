@@ -164,8 +164,8 @@ def _parse_item_reasons(reasons_str: str) -> dict:
     if not reasons_str:
         return {}
     out: dict[str, str] = {}
-    for pair in reasons_str.split(";"):
-        pair = pair.strip()
+    for raw_pair in reasons_str.split(";"):
+        pair = raw_pair.strip()
         if not pair or "=" not in pair:
             continue
         name, _, reason = pair.partition("=")
