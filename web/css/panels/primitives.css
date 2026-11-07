@@ -204,8 +204,13 @@ body > header { transition: height 180ms ease; }
 }
 .replay-match-row.won:focus-visible  { box-shadow: inset 3px 0 0 var(--good), inset var(--focus-ring); }
 .replay-match-row.lost:focus-visible { box-shadow: inset 3px 0 0 var(--bad), inset var(--focus-ring); }
+/* S144-U-179: the top line wraps, so under the 320 floor (280 px and
+ * down) the queue label drops under the champion, still right-aligned by
+ * its auto margin, instead of running past the row and the view. A row
+ * that fits keeps its one line. */
 .replay-match-top {
   display: flex; align-items: baseline; gap: var(--space-2);
+  flex-wrap: wrap;
   font-size: var(--fs-sm); font-weight: 700;
 }
 .replay-match-verdict {
@@ -312,10 +317,17 @@ body > header { transition: height 180ms ease; }
   gap: var(--space-4);
   flex-wrap: wrap;
 }
+/* S144-U-179: the meta wants 12rem on the clock's line (so the clock
+ * still drops under it where both do not fit, as before), may shrink to
+ * the pane, and breaks a match id longer than the pane: at 300 px the
+ * 191 px id ran 9 px past a 196 px pane and its clip cut the id off.
+ * Guard: tests/snapshot_panels/test_replay_narrow_reflow.py. */
 .replay-meta {
   font-size: var(--fs-sm); color: var(--text-dim);
   font-variant-numeric: tabular-nums;
-  flex: 1;
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .replay-clock {
   font-size: var(--fs-stat); font-weight: 900;
