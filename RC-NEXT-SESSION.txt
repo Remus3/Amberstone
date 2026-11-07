@@ -311,7 +311,7 @@ lanes-running-ruling.md and 2026-11-06-s150-landing-launch-line-recheck-ruling.m
 (2215), ops/loop/inbox_tick.py --pending.
 
 Acceptance: the operator's scope line honoured or changed by the operator; RM-1974 (a)-(c) done; a gated rc 0 on
-local HEAD; that exact sha pushed, bot_merge_check clean, ci green on it (the 6 Linux-only reds folded, RM-1657 closed); the LEDGER 2064 owed rows filed; PR #29 re-applied or
-declined by the recipe; row 2215 read; RM-1267 week read 2026-11-08; the operator batch re-asked in one line.
+local HEAD; that exact sha pushed, bot_merge_check clean, ci green on it (the 6 Linux-only reds folded, RM-1657
+closed); the LEDGER 2064 owed rows filed; PR #29 re-applied or declined by the recipe; row 2215 read; RM-1267 week read 2026-11-08; the operator batch re-asked in one line.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
