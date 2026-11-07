@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+from tests._timing_budget import fleet_test_guard
 from tools import landing_sampler as ls
 
 SRC = Path(ls.__file__).read_text(encoding="ascii")
@@ -491,7 +492,7 @@ def test_stop_on_an_exited_child_without_a_held_handle_skips_taskkill():
 
 def test_handle_held_reads_a_real_popen_handle(tmp_path):
     child = ls.launch_child([sys.executable, "-c", "pass"], tmp_path / "c.txt")
-    assert child.wait(60) == 0
+    assert child.wait(fleet_test_guard.budget(60)) == 0
     assert child.proc.poll() == 0
     assert child.handle_held() is (sys.platform == "win32")
 
@@ -769,5 +770,5 @@ def test_source_never_uses_stop_process_or_detached_process():
 def test_launch_child_writes_the_childs_output_to_the_log(tmp_path):
     log = tmp_path / "child.txt"
     child = ls.launch_child([sys.executable, "-c", "print('na6-child-ok')"], log)
-    assert child.wait(60) == 0
+    assert child.wait(fleet_test_guard.budget(60)) == 0
     assert "na6-child-ok" in log.read_text(encoding="ascii")
