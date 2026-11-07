@@ -1497,13 +1497,15 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   wants the four mounts POPULATED in a live game; two compliance commits since filing make a populated
   mount in a live game a defect. (1) `w-spike` is gone: `538c61e4b` (B3, 2026-08-11) deleted the
   power-spike cue mount (`web/index.html` am-grid comment "Do not reinstate";
-  `docs/OVERLAY_COMPLIANCE_PLAN.md`). (2) `f2b7c4bae` (B4-b / RM-189, 2026-08-12) blanks all three
-  remaining feeds while a game is live, server-side and client-side: `dashboard/_state_builder.py`
-  `LIVE_SUPPRESSED_ENVELOPE_FIELDS = ("callouts", "lead_projection")` via `suppress_live_envelope`
-  and `"choices"` in `LIVE_SUPPRESSED_FIELDS` via `suppress_live_directives` (both gated on
+  `docs/OVERLAY_COMPLIANCE_PLAN.md`). (2) B4 (RM-189, two commits, 2026-08-12) blanks all three
+  remaining feeds while a game is live, server-side and client-side: B4-b `f2b7c4bae` added
+  `dashboard/_state_builder.py` `LIVE_SUPPRESSED_ENVELOPE_FIELDS = ("callouts", "lead_projection")`
+  via `suppress_live_envelope`, and B4-a `25540abab` had already put `"choices"` in
+  `LIVE_SUPPRESSED_FIELDS` via `suppress_live_directives` (cite corrected s144 c93, S144-G-84:
+  `git show 25540abab` / `f2b7c4bae -- dashboard/_state_builder.py` add each symbol; both gated on
   `core/live_game_gate.py` `is_live_game`, any of `LIVE_GAME_FLAGS` = has_game / aram_mode /
-  arena_mode / tft_mode / brawl_mode), and `web/js/lib/live_directive_gate.js` `directivesAllowed`
-  gates `renderLead` / `renderCallouts` (`web/js/panels/callouts.js`) and `renderCoachChoices`
+  arena_mode / tft_mode / brawl_mode), and B4-b's `web/js/lib/live_directive_gate.js`
+  `directivesAllowed` gates `renderLead` / `renderCallouts` (`web/js/panels/callouts.js`) and `renderCoachChoices`
   (`web/js/panels/coach_choices.js`) to the clear-and-hide branch. The S7 split itself (reachable as
   `e6ac21b0e` + merge `a87e6ef11`; the row's `a486142b` is its pre-rewrite twin, not reachable from
   HEAD) still stands in `web/js/main.js` `pollMinimap`, so the arena/tft poll now feeds those
