@@ -233,6 +233,40 @@ def test_open_shared_missing_file_returns_none(tmp_path):
     assert _open_shared(tmp_path / "nope.log", seek_end=True) is None
 
 
+def test_open_shared_closes_a_handle_whose_seek_fails(tmp_path, monkeypatch):
+    # S144-P-355: the seek to the end follows the open. When it raises OSError the
+    # function returns None (the poll loop retries) - and the handle it just
+    # opened must be closed on the way out, not left for the garbage collector.
+    import sys as _sys
+
+    import tools.lcu_push_watcher as w
+
+    class _Handle:
+        closed = False
+
+        def seek(self, *_a):
+            raise OSError(22, "seek refused")
+
+        def close(self):
+            self.closed = True
+
+    handle = _Handle()
+    if _sys.platform == "win32":
+        monkeypatch.setattr(w, "_win_open_shared_delete", lambda _p: handle)
+    else:
+        monkeypatch.setattr(w.Path, "open", lambda _self, *_a, **_k: handle)
+    p = tmp_path / "2026-07-11.log"
+    p.write_text("l1\n", encoding="utf-8")
+    assert w._open_shared(p, seek_end=True) is None
+    assert handle.closed, "the opened handle was left open after the seek failed"
+    # a good seek still returns the open handle, unclosed
+    ok = _Handle()
+    ok.seek = lambda *_a: 0
+    handle = ok
+    got = w._open_shared(p, seek_end=True)
+    assert got is ok and not ok.closed
+
+
 # --- RM-1311: the log anchors are cited by symbol, and still emitted -------
 # The module docstring cited its anchors as lcu_client.py:77 ... (13 file:line
 # cites, every one drifted). A line number goes stale on the next edit above it,
