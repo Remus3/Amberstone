@@ -284,8 +284,8 @@ SCORE_LINE = re.compile(r"^ROW\s+(chunk\d+-\d+)\s*\|\s*(.*)$")
 def parse_scorer(path):
     text = Path(path).read_text(encoding="utf-8")
     rows = {}
-    for lineno, line in enumerate(text.splitlines(), 1):
-        line = line.rstrip()
+    for lineno, raw_line in enumerate(text.splitlines(), 1):
+        line = raw_line.rstrip()
         if not line.startswith("ROW "):
             continue
         m = SCORE_LINE.match(line)

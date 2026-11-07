@@ -265,8 +265,8 @@ def split_from_ds_profile(profile: Any) -> Optional[tuple[float, float, float, f
     if not isinstance(rows, list):
         return None
     acc = {"physical": 0.0, "magic": 0.0, "true": 0.0}
-    for r in rows:
-        r = _as_dict(r)
+    for raw_row in rows:
+        r = _as_dict(raw_row)
         kind = _TYPE_ALIASES.get(str(r.get("damage_type") or "").lower())
         if kind is None:
             continue

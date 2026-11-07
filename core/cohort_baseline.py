@@ -138,10 +138,10 @@ def build(rows) -> dict:
     out = {}
     for role, metrics in sorted(by_role.items()):
         out[role] = {}
-        for name, values in sorted(metrics.items()):
-            if len(values) < 20:
+        for name, raw_values in sorted(metrics.items()):
+            if len(raw_values) < 20:
                 continue
-            values = sorted(values)
+            values = sorted(raw_values)
             out[role][name] = {
                 "n": len(values),
                 "mean": round(statistics.mean(values), 3),

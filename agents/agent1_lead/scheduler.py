@@ -363,8 +363,8 @@ class Scheduler:
                         # last" which `recent_events()` relies on.
                         latest: dict[str, str] = {}
                         non_empty = 0
-                        for line in lines:
-                            line = line.strip()
+                        for raw_line in lines:
+                            line = raw_line.strip()
                             if not line:
                                 continue
                             non_empty += 1
@@ -951,8 +951,8 @@ class Scheduler:
         latest: str | None = None
         try:
             with self._queue_log.open("r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
+                for raw_line in f:
+                    line = raw_line.strip()
                     if not line:
                         continue
                     try:
@@ -1071,8 +1071,8 @@ class Scheduler:
         events: list[dict[str, Any]] = []
         try:
             with self._queue_log.open("r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
+                for raw_line in f:
+                    line = raw_line.strip()
                     if not line:
                         continue
                     try:

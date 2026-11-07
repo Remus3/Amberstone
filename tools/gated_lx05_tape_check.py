@@ -130,14 +130,14 @@ def fold_rows(rows: list, cat: Optional[lit.ItemCatalog] = None,
     sold after a Manamune buy) consumes its held source; counted in ``stats``."""
     stats = {} if stats is None else stats
     inv: dict = {}
-    for _ts, etype, _pid, iid, team_id, raw in rows:
+    for _ts, etype, _pid, raw_iid, team_id, raw in rows:
         try:
             meta = json.loads(raw or "{}")
         except ValueError:
             meta = {}
         meta = meta if isinstance(meta, dict) else {}
         c = inv.setdefault((meta.get("riot_id"), team_id), Counter())
-        iid = _int(iid) or 0
+        iid = _int(raw_iid) or 0
         if etype == lit.EV_PURCHASED:
             c[iid] += 1
         elif etype == lit.EV_SOLD:
@@ -165,8 +165,8 @@ def final_from_eog(conn: sqlite3.Connection, game_id: str, mode: str) -> dict:
         name, tag, team_id = row[0], row[1], row[2]
         key = (f"{name}#{tag}" if tag else name, team_id)
         c = out.setdefault(key, Counter())
-        for iid in row[3:]:
-            iid = _int(iid)
+        for raw_iid in row[3:]:
+            iid = _int(raw_iid)
             if iid and iid > 0:
                 c[iid] += 1
     return out

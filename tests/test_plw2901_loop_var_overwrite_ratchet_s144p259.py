@@ -25,6 +25,12 @@ Slice 5 (S144-P-263) renamed the same shape in ten more modules (``dashboard/rou
 ``gated_ds_flag_eyeball``, ``gated_g237_lband_shadow``, ``gated_g313_mayhem_aug``, ``gated_g314_tower_input`` x2): 11
 findings gone, 56 remain in held scope.
 
+Slice 6 (S144-P-264) renamed the same shape (plus three neighbours: ``for r in rows: r = _as_dict(r)``,
+``for name, values in ...: values = sorted(values)``, ``for lg in loggers: lg = getLogger(lg)``) in nine more modules
+(``agents/_supervisor_http`` x1, ``agents/agent1_lead/scheduler`` x3, ``core/cohort_baseline``, ``core/death_recap``,
+``core/log_scrub``, ``docs/_rsc_score/calibrate`` x1, ``tools/gated_lx05_tape_check`` x2, ``tools/gated_lx07_recap_check``,
+``tools/gated_tft_qa_summary``): 12 findings gone, 44 remain in held scope.
+
 The count per file can only fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -55,19 +61,14 @@ _NOT_THIS_SCOPE = {
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE = {
-    "agents/_supervisor_http.py": 1,
-    "agents/agent1_lead/scheduler.py": 3,
     "coaches/adaptation_hint_digest.py": 2,
     "coaches/aram_coach.py": 1,
     "coaches/tft_coach.py": 1,
     "core/build_order_precompute.py": 1,
-    "core/cohort_baseline.py": 1,
-    "core/death_recap.py": 1,
-    "core/log_scrub.py": 1,
     "core/patch_impact.py": 3,
     "dashboard/_deterministic_coaching.py": 1,
     "dashboard/routes_playstyle_labels.py": 1,
-    "docs/_rsc_score/calibrate.py": 2,
+    "docs/_rsc_score/calibrate.py": 1,
     "docs/_rsc_score/calibrate_rep.py": 1,
     "lcu/lcu_postgame_collector.py": 1,
     "ops/loop/repo_review.py": 2,
@@ -91,10 +92,7 @@ _BASELINE = {
     "tft/tft_prompt.py": 2,
     "tools/arena_shadow_report.py": 1,
     "tools/ds_wiki_staleness_check.py": 1,
-    "tools/gated_lx05_tape_check.py": 2,
-    "tools/gated_lx07_recap_check.py": 1,
     "tools/gated_tft15_planner.py": 1,
-    "tools/gated_tft_qa_summary.py": 1,
     "tools/replay_matchup_validate.py": 2,
     "tools/replay_pickban_validate.py": 2,
 }

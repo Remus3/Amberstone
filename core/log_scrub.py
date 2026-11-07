@@ -338,8 +338,8 @@ def install_scrub_filter(*loggers: logging.Logger | str) -> None:
     A logger's filters see only the records created on THAT logger, not a
     child's, so each name a package logs on is installed explicitly (the
     package guard enumerates them from source)."""
-    for lg in loggers:
-        if isinstance(lg, str):
-            lg = logging.getLogger(lg)
+    for logger_or_name in loggers:
+        lg = (logging.getLogger(logger_or_name) if isinstance(logger_or_name, str)
+              else logger_or_name)
         if not any(isinstance(f, ScrubFilter) for f in lg.filters):
             lg.addFilter(ScrubFilter())
