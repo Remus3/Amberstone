@@ -112,7 +112,37 @@ _DS_TREE = "agents/daemon_slayer/tests/"
 # and `nightly-full-suite`) were raised 75 -> 110 and both jobs 95 -> 125. The
 # floor now pins that decision, so a regression to 75 is red here rather than
 # a killed run on the next dispatch. Re-measure before LOWERING it.
-_MIN_SUITE_STEP_CEILING_MIN = 110
+# 2026-11-07 UPDATE (RM-2036, s153). Push run 42383196203 on `e37f0d1b4` was
+# killed by the 110m step ceiling at 95 percent of its progress stream with no
+# pytest summary, so its ~72 failures went unnamed (RM-2037). Suite-step minutes
+# over the 11 newest hosted full runs (BACKLOG RM-2036): 62.1 .. 106.6 complete,
+# and 110.2 killed at 95 percent, which projects to 110.2 / 0.95 = 116.0 min.
+# The pytest stop (`--session-timeout`, below) is the number a slow run must
+# clear, so it is sized first: 116.0 / 0.85 = 136.5 min is the RM-2036 15
+# percent headroom floor today, and the suite grew 64.3k -> 69.5k outcomes
+# (+8 percent) in the 1.6 days 52266153f..e37f0d1b4, so 150 min keeps 15
+# percent headroom through about +10 percent more growth (127.5 min of tail)
+# and stops only past +29 percent. Step = 150 + 10 = 160 (see
+# _SUMMARY_SLACK_MIN); job = 160 + 15 = 175 (guard floor 172).
+_MIN_SUITE_STEP_CEILING_MIN = 160
+
+# RM-2036: pytest itself must stop BEFORE the step ceiling, or a slow run is
+# killed mid-stream and prints no failure summary. pytest-timeout's
+# `--session-timeout=<seconds>` (2.3.0+, pinned 2.4.0 in
+# .github/ci/requirements-ci.txt) is checked by EACH xdist worker after each
+# test; a worker past it sets `session.shouldfail`, xdist's controller turns
+# that into `Interrupted` and pytest prints FAILURES, the short test summary
+# and the stats line, exit code 2 (a red step). MEASURED 2026-11-07 on a
+# scratch project, pytest-xdist 3.8.0 / pytest-timeout 2.4.0, `-n 2 --dist
+# loadfile --max-worker-restart=0 --session-timeout=4`: rc 2 in 5 s, every
+# FAILED nodeid listed, then `xdist.dsession.Interrupted: session-timeout: 4.0
+# sec exceeded`. A worker checks only BETWEEN tests, so the stop can land one
+# per-test `--timeout` late; the step ceiling must clear the session timeout by
+# that plus _SUMMARY_SLACK_MIN for fixture teardown, xdist node teardown and
+# printing the failure list. Not a `timeout -s INT` wrapper: every ci.yml guard
+# derives the suite step from a line that STARTS with `pytest`.
+_MIN_SESSION_TIMEOUT_MIN = 150
+_SUMMARY_SLACK_MIN = 5
 
 # MEASURED 2026-08-04: `Install Playwright Chromium` took 10m33s on run
 # 30820229244 (cache miss) against 27s on the runs either side. Everything a job
@@ -384,3 +414,116 @@ def test_step_ceiling_is_reached_before_the_job_ceiling():
         "dies first and the conclusion is `cancelled` rather than `failure` - "
         "restoring exactly the defect RM-156 fixed."
     )
+
+
+def _pytest_command_lines(run: str) -> list[str]:
+    """The logical `pytest ...` lines of a `run:` body: continuations joined,
+    whole-line and trailing shell comments dropped, so an option that appears
+    only in prose cannot satisfy the guard."""
+    joined = re.sub(r"\\\r?\n", " ", run)
+    out = []
+    for raw in joined.splitlines():
+        line = _SHELL_COMMENT.sub("", raw).strip()
+        if re.match(r"pytest\b", line):
+            out.append(line)
+    return out
+
+
+def _option_seconds(line: str, name: str) -> float | None:
+    """`--name=N` or `--name N` on one pytest line, as seconds; None if absent."""
+    try:
+        tokens = shlex.split(line)
+    except ValueError:
+        tokens = line.split()
+    for i, tok in enumerate(tokens):
+        value = None
+        if tok.startswith(f"--{name}="):
+            value = tok.split("=", 1)[1]
+        elif tok == f"--{name}" and i + 1 < len(tokens):
+            value = tokens[i + 1]
+        if value is not None:
+            try:
+                return float(value)
+            except ValueError:
+                return None
+    return None
+
+
+def _pytest_stop_problems(step: dict) -> list[str]:
+    """Why this step's pytest would NOT stop and print its summary before the
+    step ceiling kills it (RM-2036); empty when it would."""
+    ceiling = step.get("timeout-minutes")
+    lines = _pytest_command_lines(step.get("run") or "")
+    if not lines:
+        return ["no pytest command line in the step"]
+    problems = []
+    for line in lines:
+        session_s = _option_seconds(line, "session-timeout")
+        per_test_s = _option_seconds(line, "timeout")
+        if session_s is None:
+            problems.append(
+                "no `--session-timeout=<seconds>` on the pytest line, so a slow "
+                "run is killed by the step ceiling with no failure summary"
+            )
+            continue
+        if per_test_s is None:
+            problems.append(
+                "no per-test `--timeout=<seconds>`, so one hung test can hold "
+                "a worker past the session timeout without bound"
+            )
+            continue
+        if session_s < _MIN_SESSION_TIMEOUT_MIN * 60:
+            problems.append(
+                f"--session-timeout={session_s:g}s is under the RM-2036 floor "
+                f"of {_MIN_SESSION_TIMEOUT_MIN * 60}s, so it would interrupt "
+                "an ordinary slow-but-green run"
+            )
+        if isinstance(ceiling, (int, float)):
+            need_s = session_s + per_test_s + _SUMMARY_SLACK_MIN * 60
+            if ceiling * 60 < need_s:
+                problems.append(
+                    f"step ceiling {ceiling}m = {ceiling * 60}s is under "
+                    f"session {session_s:g}s + one per-test timeout "
+                    f"{per_test_s:g}s + {_SUMMARY_SLACK_MIN}m summary slack "
+                    f"= {need_s:g}s, so the step can die before pytest prints"
+                )
+    return problems
+
+
+def test_dual_suite_steps_stop_pytest_before_their_step_ceiling():
+    """RM-2036: run 42383196203 hit the step ceiling at 95 percent and printed
+    no summary, so ~72 failures went unnamed. pytest must end itself first."""
+    offenders = []
+    for job_name, _job, step in _dual_suite_steps(_load_workflows()["ci.yml"]):
+        for problem in _pytest_stop_problems(step):
+            offenders.append(f"{job_name}: {problem}")
+    assert not offenders, "\n".join(offenders)
+
+
+_GOOD_RUN = (
+    "# a comment naming --session-timeout=1 must not count\n"
+    "pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \\\n"
+    "  -n auto --dist loadfile --max-worker-restart=0 --session-timeout=9000\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("step", "expect_ok"),
+    [
+        ({"timeout-minutes": 160, "run": _GOOD_RUN}, True),
+        # NEGATIVE CONTROLS: the shape this module must reject.
+        ({"timeout-minutes": 160, "run": _GOOD_RUN.replace(" --session-timeout=9000", "")}, False),
+        (
+            {"timeout-minutes": 160, "run": _GOOD_RUN.replace(" --session-timeout=9000", "  # --session-timeout=9000")},
+            False,
+        ),
+        ({"timeout-minutes": 159, "run": _GOOD_RUN}, False),
+        ({"timeout-minutes": 160, "run": _GOOD_RUN.replace("--timeout=300", "--timeout=600")}, False),
+        ({"timeout-minutes": 160, "run": _GOOD_RUN.replace("9000", "3000")}, False),
+        ({"timeout-minutes": 160, "run": _GOOD_RUN.replace(" --timeout=300", "")}, False),
+        ({"timeout-minutes": 160, "run": _GOOD_RUN.replace("--session-timeout=9000", "--session-timeout 9000")}, True),
+    ],
+)
+def test_pytest_stop_probe_rejects_a_missing_or_late_stop(step, expect_ok):
+    """The probe above is not decoration: each control flips it."""
+    assert (not _pytest_stop_problems(step)) is expect_ok, _pytest_stop_problems(step)

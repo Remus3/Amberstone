@@ -128,7 +128,10 @@ jobs:
     # 110), in lockstep with `check` below for the same reason as the
     # 2026-08-29 raise: same suite, same latent failure. The `check` step
     # comment carries the measurement.
-    timeout-minutes: 125
+    # RAISED 125 -> 175 on 2026-11-07 (RM-2036) with this job's step (110 ->
+    # 160), in lockstep with `check` again; the measurement is on the `check`
+    # job's dual-suite step.
+    timeout-minutes: 175
     steps:
       # Every `uses:` is pinned to a full commit SHA with its release tag as a
       # trailing comment (supply-chain order, 2026-10-05). Dependabot's
@@ -192,7 +195,10 @@ jobs:
         # tests/test_ci_job_timeout_headroom_rm156.py.
         # RAISED 75 -> 110 on 2026-10-31 (s146 C3); see the `check` job's
         # dual-suite step for the measurement.
-        timeout-minutes: 110
+        # RAISED 110 -> 160 on 2026-11-07 (RM-2036), and pytest now stops
+        # itself first (`--session-timeout=9000`, 150 min) so a slow run still
+        # prints its failure summary; same measurement, `check` job below.
+        timeout-minutes: 160
         run: |
           # Runs the exhaustive 23k+ test suite.
           #
@@ -240,8 +246,10 @@ jobs:
           # every replacement worker (1 + 4 x n times by default), so one hung
           # test would burn the step timeout instead of failing in 5 minutes.
           # Pinned by tests/test_xdist_worker_restart_cap_rm754.py.
+          #
+          # --session-timeout=9000 (RM-2036): see the `check` job's copy.
           pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
-            -n auto --dist loadfile --max-worker-restart=0
+            -n auto --dist loadfile --max-worker-restart=0 --session-timeout=9000
 
   check:
     if: github.event_name != 'schedule'
@@ -301,7 +309,11 @@ jobs:
     # RAISED 95 -> 125 on 2026-10-31 (s146 C3) with the dual-suite step (75 ->
     # 110); the measurement is on that step. 110 + 12 = 122 is the guard's
     # floor here, and 125 keeps a small margin above it.
-    timeout-minutes: 125
+    #
+    # RAISED 125 -> 175 on 2026-11-07 (RM-2036) with the dual-suite step (110
+    # -> 160); the measurement is on that step. 160 + 12 = 172 is the guard's
+    # floor, and 175 keeps the same 3-minute margin the 125 had.
+    timeout-minutes: 175
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -723,7 +735,22 @@ jobs:
         # dual suite" step, CI_JOB / CI_STEP) and marking slow tests (saves
         # under 2 minutes). The guard's step floor is now 110, so a regression
         # to 75 is red in tests/test_ci_job_timeout_headroom_rm156.py.
-        timeout-minutes: 110
+        #
+        # RAISED 110 -> 160 on 2026-11-07 (RM-2036). Push run 42383196203 on
+        # e37f0d1b4 was killed by the 110m ceiling at 95 percent of its
+        # progress stream with NO pytest summary, so its ~72 failures went
+        # unnamed (RM-2037). Suite-step minutes, the 11 newest hosted full
+        # runs: 62.1 .. 106.6 complete, and 110.2 killed at 95 percent, which
+        # projects to 110.2 / 0.95 = 116.0. Sizing, pytest stop first: 116.0 /
+        # 0.85 = 136.5 min is the 15 percent headroom floor today, and the
+        # suite grew 64.3k -> 69.5k outcomes in 1.6 days, so the stop is 150
+        # min (headroom holds through ~10 percent more growth, the stop fires
+        # only past ~29 percent). Step = 150 + 5 (one per-test --timeout, as a
+        # worker checks the session clock only between tests) + 5 (teardown and
+        # printing the failure list) = 160. Hosted job cap is 360; the repo is
+        # public, so standard-runner minutes are not billed. The lasting fix
+        # (shard or trim, BACKLOG RM-2036 options 2-3) is separate.
+        timeout-minutes: 160
         run: |
           # 2026-10-09 (PERF-AUDIT 2026-10-08 item 1): this step no longer
           # gates every push. It runs on pull_request, on workflow_dispatch
@@ -798,8 +825,18 @@ jobs:
           # None, which callers read as an engine verdict. Fixed at source in
           # 95cded3b. Any future "the DS tests are flaky under -n" claim should
           # be re-measured before it is believed.
+          #
+          # --session-timeout=9000 (RM-2036, pytest-timeout 2.3.0+): pytest
+          # ends ITSELF at 150 min, before this step's 160m ceiling, so a slow
+          # run still prints FAILURES, the short test summary and the stats
+          # line instead of being killed mid-stream. Each xdist worker checks
+          # it after each test; a worker past it sets shouldfail, the
+          # controller raises Interrupted, and the step exits 2 (red, not a
+          # silent pass). Not a `timeout -s INT` wrapper: every guard that
+          # reads this file derives the suite step from a line starting with
+          # `pytest`. Pinned by tests/test_ci_job_timeout_headroom_rm156.py.
           pytest tests/ agents/daemon_slayer/tests/ -q --tb=short --timeout=300 \
-            -n auto --dist loadfile --max-worker-restart=0
+            -n auto --dist loadfile --max-worker-restart=0 --session-timeout=9000
 
       - name: mypy gradual typing
         continue-on-error: true

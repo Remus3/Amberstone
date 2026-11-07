@@ -334,7 +334,10 @@ CI_STEPS = (CI_SUCCESS, CI_FAILURE, CI_CANCELLED, CI_SKIPPED, CI_TIMEOUT,
 # the prose contract was under-set. NOTE: this is ONE budget for the whole
 # `wait_for_ci` call - the single re-dispatch after a `cancelled` run watches
 # against the same deadline, it does not get a second one.
-DEFAULT_CI_WAIT_S = 7800
+# RAISED 7800 -> 10800 (180 min) on 2026-11-07 (RM-2036): the `check` job went
+# 125 -> 175 minutes (its full dual suite step 110 -> 160); 180 = 175 + the
+# same 5 minutes of runner-queue slack.
+DEFAULT_CI_WAIT_S = 10800
 # A `ci` run is measured in tens of minutes. Polling faster than a minute buys
 # nothing and spends API quota that `gh` shares with everything else on the box.
 DEFAULT_CI_POLL_S = 60
