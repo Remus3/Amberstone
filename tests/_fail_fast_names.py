@@ -91,7 +91,7 @@ def first_error_line(report) -> str:
     A plain-string longrepr (an XPASS(strict), an xdist worker crash) is read
     as itself: `longreprtext` renders it behind xdist's
     "[gw1] <platform> -- Python <ver> <exe>" worker header, and that header
-    is never the message (verifier finding on 49ef0ccea).
+    is never the message (verifier finding on 06f1a4521).
     """
     try:
         crash = getattr(report.longrepr, "reprcrash", None)
