@@ -738,6 +738,12 @@ def _adjudicate_call(prompt_body, instruction):
     return out
 
 # ---- adjudicator roles -------------------------------------------------
+def _read_plan(root=None):
+    """The uncapped plan text the director context is built from."""
+    plan = (Path(root) if root is not None else ROOT) / "docs/ORCHESTRATION_PLAN.md"
+    return plan.read_text(encoding="utf-8", errors="replace") if plan.exists() else "(no plan file)"
+
+
 def build_director_context(last_done, last_audit, *, root=None, ctl=None,
                            plan_cap=None, escalation=""):
     """Pure: assemble the context appended after the director prompt template.
@@ -747,10 +753,7 @@ def build_director_context(last_done, last_audit, *, root=None, ctl=None,
     directive chain already issued this run) plus a BUILD-ON / de-dup rule, so
     the director cannot re-issue just-shipped work. root/ctl are injectable for
     tests; production calls use the module ROOT/CTL."""
-    base = Path(root) if root is not None else ROOT
-    plan = base / "docs/ORCHESTRATION_PLAN.md"
-    plan_txt = plan.read_text(encoding="utf-8", errors="replace") if plan.exists() else "(no plan file)"
-    plan_txt = cap_bytes_head_tail(plan_txt, PLAN_CTX_CAP if plan_cap is None else plan_cap,
+    plan_txt = cap_bytes_head_tail(_read_plan(root), PLAN_CTX_CAP if plan_cap is None else plan_cap,
                                    "ORCHESTRATION_PLAN", PLAN_CTX_HEAD)
     chain = _format_directive_chain(read_directive_history(12, ctl=ctl))
     ctx = (
@@ -823,7 +826,11 @@ def build_director_body(last_done, last_audit, *, root=None, ctl=None):
                                  escalation=escalation)
     overflow = len(tmpl) + len(ctx) - ADJ_STDIN_CAP
     if overflow > 0:
-        plan_cap = max(PLAN_CTX_CAP - overflow - PLAN_CTX_SLACK, PLAN_CTX_MIN)
+        # Repaid out of the plan bytes actually DELIVERED. PLAN_CTX_CAP - overflow
+        # assumed the plan filled its whole slice; RM-712 cut the plan below the
+        # cap, and a budget still larger than the plan cut nothing.
+        delivered = min(PLAN_CTX_CAP, len(_read_plan(root)))
+        plan_cap = max(delivered - overflow - PLAN_CTX_SLACK, PLAN_CTX_MIN)
         ctx = build_director_context(last_done, last_audit, root=root, ctl=ctl,
                                      plan_cap=plan_cap, escalation=escalation)
     return tmpl + ctx

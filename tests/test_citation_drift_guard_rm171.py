@@ -149,19 +149,10 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "A gated row citing the shipped package's own audit doc as the source "
         "of a claim. Point-in-time; the doc shipped inside the mirror.",
     ),
-    (
-        "docs/ORCHESTRATION_PLAN.md",
-        "Share/README.md:19-32",
-        "HISTORICAL",
-        "A plan row describing the package README's stated scope at the time "
-        "the session was written.",
-    ),
-    (
-        "docs/ORCHESTRATION_PLAN.md",
-        "tools/ds_share_sync.py:60",
-        "HISTORICAL",
-        "Same plan, citing the sync tool's mirrored-module list.",
-    ),
+    # 2026-11-07, RM-712: the ORCHESTRATION_PLAN.md entries for
+    # Share/README.md:19-32 and tools/ds_share_sync.py:60 left the budget with
+    # the DONE rows that carried them (now in docs/ORCHESTRATION_PLAN_HISTORY.md,
+    # HISTORY scope). The citations were not re-pointed.
     (
         "docs/specs/DECISION_cdragon_cross_reference.md",
         "Share/src/agents/daemon_slayer/abilities.py:622",
@@ -263,26 +254,17 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     # docs/SKIPIF_AUDIT_2026-07-27.md (test_pengu_plugin_skeleton.py:22) left the
     # budget with their docs: the archive is HISTORY scope, where a dated record's
     # citation stays as written. The citations themselves were not re-pointed.
+    # 2026-11-07, RM-712: the ORCHESTRATION_PLAN.md entries for
+    # spike_cue.js:109-112 and dashboard/_state_cooldowns.py:18 left the budget
+    # with the DONE rows that carried them (now in
+    # docs/ORCHESTRATION_PLAN_HISTORY.md, HISTORY scope).
     (
-        "docs/ORCHESTRATION_PLAN.md",
-        "spike_cue.js:109-112",
-        "DELETED",
-        "Same removal as the BACKLOG entry above; the plan records the cue's "
-        "original edge-detection design.",
-    ),
-    (
-        "docs/ORCHESTRATION_PLAN.md",
+        "docs/LIVE_GAME_GATED_SYNC.md",
         "dashboard/_state_cooldowns.py:18",
         "DELETED",
         "The summoner + ultimate cooldown ledger backend was removed "
         "2026-08-11 - Riot bans tracking enemy summoner-spell cooldowns and "
         "forbids ultimate timers for every player.",
-    ),
-    (
-        "docs/LIVE_GAME_GATED_SYNC.md",
-        "dashboard/_state_cooldowns.py:18",
-        "DELETED",
-        "Same removal as the ORCHESTRATION_PLAN entry above.",
     ),
     (
         "CLAUDE.md",
@@ -359,27 +341,10 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "Same; WP-E5 now sits at :64/:338 but the row cites :817 vs :823 as a "
         "pair.",
     ),
-    (
-        "docs/ORCHESTRATION_PLAN.md",
-        "gemini_audit.ps1:32",
-        "DELETED",
-        "tools/gemini_audit.ps1 (NOT ops/ - verified in the commit's own "
-        "diffstat) was removed by the Gemini decommission 7ce4af80, alongside "
-        "gemini_ask.ps1, gemini_audit_prompt.md and GEMINI.md. MERGER-OWNED "
-        "FILE - reported, not edited, by RM-171.",
-    ),
-    (
-        "docs/ORCHESTRATION_PLAN.md",
-        "_sync_base.py:114",
-        "EXTERNAL",
-        "playwright package internal, never in this repo. MERGER-OWNED FILE.",
-    ),
-    (
-        "docs/ORCHESTRATION_PLAN.md",
-        "_connection.py:319",
-        "EXTERNAL",
-        "playwright package internal, never in this repo. MERGER-OWNED FILE.",
-    ),
+    # 2026-11-07, RM-712: the ORCHESTRATION_PLAN.md entries for
+    # gemini_audit.ps1:32, _sync_base.py:114 and _connection.py:319 left the
+    # budget with the DONE rows that carried them (now in
+    # docs/ORCHESTRATION_PLAN_HISTORY.md, HISTORY scope).
     # RESOLVED 2026-08-31 (lane 8 cycle 41). The file grew from 1235 to 1310
     # lines when the id-list cap landed, so :1263 came back into range. The
     # verifier's caveat is why the doc row was ALSO re-pointed rather than
@@ -752,6 +717,38 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:3"),
         ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:7"),
         ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:12"),
+    )
+) + tuple(
+    # 2026-11-07, RM-712 (session 144 queue lane). docs/ORCHESTRATION_PLAN.md
+    # moved every DONE round, the old findings entries and the R229 findings
+    # block VERBATIM into docs/ORCHESTRATION_PLAN_HISTORY.md (four blocks, each
+    # sha256-pinned by tests/test_orchestration_plan_relocation_rm712.py), so
+    # the plan shrank from 818 lines to about 108 and the plan line numbers
+    # below now run past its end. Each one is a dated citation of the plan as
+    # it stood: the RM-712 row body naming the duplicate heading it was filed
+    # against, a gated row's SOURCE line, and two LEAP specs' "Closes:" /
+    # evidence lines. Re-pointing them at the history file would make each
+    # claim a line number in a file it never cited. BACKLOG.md is the research
+    # lane's and docs/LIVE_GAME_GATED_SYNC.md the gated lane's in s144; when a
+    # row there is re-worded the guard reports the entry as no longer broken
+    # and it is deleted here.
+    (doc, raw, "HISTORICAL",
+     "Cites a docs/ORCHESTRATION_PLAN.md line that RM-712 relocated verbatim "
+     "to docs/ORCHESTRATION_PLAN_HISTORY.md on 2026-11-07 - see the block "
+     "comment above for why it is not re-pointed.")
+    for doc, raw in (
+        ("BACKLOG.md", "docs/ORCHESTRATION_PLAN.md:243"),
+        ("docs/LIVE_GAME_GATED_SYNC.md", "docs/ORCHESTRATION_PLAN.md:296"),
+        ("docs/specs/leap/LEAP-04-build-order-precompute-backfill.md",
+         "docs/ORCHESTRATION_PLAN.md:358"),
+        ("docs/specs/leap/LEAP-04-build-order-precompute-backfill.md",
+         "docs/ORCHESTRATION_PLAN.md:362"),
+        ("docs/specs/leap/LEAP-07-build-coherence-calibration-r2.md",
+         "ORCHESTRATION_PLAN.md:354"),
+        ("docs/specs/leap/LEAP-07-build-coherence-calibration-r2.md",
+         "docs/ORCHESTRATION_PLAN.md:360"),
+        ("docs/specs/leap/LEAP-07-build-coherence-calibration-r2.md",
+         "docs/ORCHESTRATION_PLAN.md:362"),
     )
 )
 
