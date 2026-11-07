@@ -43,6 +43,9 @@ MAX_ERROR_CHARS = 200
 _NO_TEXT = "(no error text)"
 _ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+# xdist's worker info line (xdist getworkerinfoline):
+# "[gw1] win32 -- Python 3.14.4 C:\...\python.exe".
+_WORKER_HEADER = re.compile(r"^\[[^\]\s]+\] \S+ -- Python \S+")
 
 
 def enabled(environ=None) -> bool:
@@ -84,6 +87,11 @@ def first_error_line(report) -> str:
     xdist any other longrepr (a missing fixture, a collection-style error)
     arrives as plain text whose first line is the file, so the first `E` line
     wins there, then the first non-blank line.
+
+    A plain-string longrepr (an XPASS(strict), an xdist worker crash) is read
+    as itself: `longreprtext` renders it behind xdist's
+    "[gw1] <platform> -- Python <ver> <exe>" worker header, and that header
+    is never the message (verifier finding on 49ef0ccea).
     """
     try:
         crash = getattr(report.longrepr, "reprcrash", None)
@@ -94,21 +102,27 @@ def first_error_line(report) -> str:
         pass
     text = ""
     try:
-        text = report.longreprtext or ""
+        if isinstance(report.longrepr, str):
+            text = report.longrepr
     except Exception:  # noqa: BLE001
         text = ""
+    if not text:
+        try:
+            text = report.longreprtext or ""
+        except Exception:  # noqa: BLE001
+            text = ""
     if not text:
         try:
             text = "" if report.longrepr is None else str(report.longrepr)
         except Exception:  # noqa: BLE001
             text = ""
-    lines = [ln.rstrip() for ln in text.splitlines() if ln.strip()]
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip() and not _WORKER_HEADER.match(ln.strip())]
     for ln in lines:
         if ln.startswith("E ") or ln == "E":
             found = ln[1:].strip()
             if found:
                 return found
-    return lines[0].strip() if lines else ""
+    return lines[0] if lines else ""
 
 
 def format_line(report) -> str:

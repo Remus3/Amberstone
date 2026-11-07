@@ -159,6 +159,43 @@ def test_works_under_xdist_and_names_each_failure_once(pytester, monkeypatch):
     ], result.outlines
 
 
+_XPASS_STRICT = """
+import pytest
+
+
+@pytest.mark.xfail(strict=True, reason="meant to fail")
+def test_xp():
+    pass
+"""
+
+
+@pytest.mark.parametrize("dist", [(), ("-n", "2")], ids=["serial", "xdist"])
+def test_a_strict_xpass_names_its_reason_not_the_worker_header(pytester, monkeypatch, dist):
+    # Verifier finding: under xdist a plain-text longrepr renders behind the
+    # "[gw1] <platform> -- Python <ver> <exe>" worker header, and that header
+    # was printed instead of the message.
+    if dist:
+        pytest.importorskip("xdist")
+    _gate(monkeypatch, **{ffn.ENV_SWITCH: "1"})
+    pytester.makepyfile(test_xp=_XPASS_STRICT)
+    result = pytester.runpytest(*PLUGIN, "-q", *dist)
+    result.assert_outcomes(failed=1)
+    assert _rc_lines(result) == ["RC-FAIL call test_xp.py::test_xp :: [XPASS(strict)] meant to fail"], result.outlines
+
+
+def test_a_crashed_xdist_worker_names_the_crash_not_the_worker_header(pytester, monkeypatch):
+    pytest.importorskip("xdist")
+    _gate(monkeypatch, **{ffn.ENV_SWITCH: "1"})
+    pytester.makepyfile(test_dies="import os\n\n\ndef test_dies():\n    os._exit(1)\n")
+    result = pytester.runpytest(*PLUGIN, "-q", "-n", "2")
+    result.assert_outcomes(failed=1)
+    (line,) = _rc_lines(result)
+    assert line.startswith("RC-FAIL "), line
+    assert " test_dies.py::test_dies :: worker 'gw" in line, line
+    assert "crashed while running" in line, line
+    assert " -- Python " not in line, line
+
+
 def test_error_text_is_one_ascii_line_of_at_most_200_chars(pytester, monkeypatch):
     _gate(monkeypatch, **{ffn.ENV_SWITCH: "1"})
     pytester.makepyfile(
@@ -198,6 +235,24 @@ def test_a_serialized_report_names_its_E_line():
     )
     rep = _report(when="setup", longrepr=text, longreprtext=text)
     assert ffn.format_line(rep) == ("RC-FAIL setup tests/t.py::test_x :: fixture 'nope' not found")
+
+
+_WORKER_HEADER = "[gw1] win32 -- Python 3.14.4 C:\\Python314\\python.exe"
+
+
+def test_a_plain_text_longrepr_wins_over_the_worker_header():
+    msg = "worker 'gw1' crashed while running 'tests/t.py::test_x'"
+    rep = _report(when="???", longrepr=msg, longreprtext=_WORKER_HEADER + "\n" + msg)
+    assert ffn.format_line(rep) == "RC-FAIL ??? tests/t.py::test_x :: " + msg
+
+
+def test_the_worker_header_and_blank_lines_are_never_the_message():
+    other = SimpleNamespace()  # not a str, no reprcrash: only longreprtext speaks
+    text = _WORKER_HEADER + "\n\n   \n[XPASS(strict)] meant to fail\n"
+    rep = _report(longrepr=other, longreprtext=text)
+    assert ffn.format_line(rep) == "RC-FAIL call tests/t.py::test_x :: [XPASS(strict)] meant to fail"
+    only_header = _report(longrepr=other, longreprtext=_WORKER_HEADER)
+    assert ffn.format_line(only_header) == "RC-FAIL call tests/t.py::test_x :: (no error text)"
 
 
 def test_control_and_escape_characters_are_made_safe():
