@@ -77,11 +77,17 @@ shape so the dashboard route wires identically):
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
 from .ability_dps import _PER_SPELL_CC_DURATIONS
 from .cc_conditional import get_conditional_entries
+
+# Most raw roster entries ``_read_roster`` reads; a longer (or unbounded)
+# iterable is refused whole. dashboard/_get_caps.MAX_CHAMPION_LIST is 16
+# (an Arena lobby), so 64 clears every real roster with headroom.
+_MAX_ROSTER_ENTRIES = 64
 
 # Canonical Q-W-E-R order used as the deterministic spell tiebreak.
 _SPELL_RANK = {"Q": 0, "W": 1, "E": 2, "R": 3}
@@ -192,51 +198,87 @@ def _has_enabler_tool(champion: str) -> bool:
     return False
 
 
-def _resolve_enablers(owner: str, roster: List[str]) -> Tuple[str, ...]:
+def _champ_name(raw: object) -> str:
+    """One roster element as an exact, stripped ``str``; ``""`` to skip.
+
+    Only ``str`` elements are champions: ``None`` / bytes / numbers / bools
+    are skipped rather than ``str()``-ed (``b"Leona"`` is not ``"b'Leona'"``
+    and ``True`` is not a champion). A ``str`` subclass is copied down to an
+    exact ``str`` through ``str.__str__`` and stripped through ``str.strip``,
+    so an overridden ``__str__`` / ``strip`` / ``__eq__`` / ``__hash__`` can
+    neither raise here nor forge a registry match nor carry its own text
+    into a card.
+    """
+    if not isinstance(raw, str):
+        return ""
+    return str.strip(str.__str__(raw))
+
+
+def _read_roster(roster: object) -> List[str]:
+    """The distinct champion names of ``roster``, in first-seen order.
+
+    Fail-soft by contract (``compute_cc_pairing`` never raises):
+
+      * a bare ``str`` is ONE champion, never iterated character by
+        character (``"Sett"`` used to read as ``S`` / ``e`` / ``t`` / ``t``
+        and silently surface zero cards);
+      * ``None`` and anything non-iterable is no roster; ``bytes`` iterates
+        as ints, which ``_champ_name`` skips, so it reads as no roster too;
+      * at most ``_MAX_ROSTER_ENTRIES`` raw entries are read - a longer
+        (or unbounded) iterable is refused as a whole, so an infinite
+        iterator returns instead of hanging the caller;
+      * an iterable that raises mid-iteration is refused as a whole: a
+        half-read team would under-report its enablers.
+    """
+    if isinstance(roster, str):
+        raw_items: List[object] = [roster]
+    else:
+        try:
+            it = iter(roster)  # type: ignore[call-overload]
+            raw_items = list(itertools.islice(it, _MAX_ROSTER_ENTRIES + 1))
+        except Exception:  # noqa: BLE001 - caller iterables are untrusted; contract says never raises
+            return []
+        if len(raw_items) > _MAX_ROSTER_ENTRIES:
+            return []
+    out: List[str] = []
+    for raw in raw_items:
+        champ = _champ_name(raw)
+        if champ and champ not in out:
+            out.append(champ)
+    return out
+
+
+def _resolve_enablers(
+    owner: str, distinct: List[str], tool: Dict[str, bool]
+) -> Tuple[str, ...]:
     """Ordered teammates (excluding the owner) who can enable a condition.
 
-    A teammate qualifies when they carry a hard-CC / displacement tool
-    (``_has_enabler_tool``). The owner champion is never its own enabler.
-    Duplicate roster entries collapse (first occurrence wins) and roster
+    ``distinct`` is the de-duplicated roster from ``_read_roster`` and
+    ``tool`` its per-call ``_has_enabler_tool`` memo, so a roster of N
+    champions costs N registry probes instead of one per card per
+    teammate. The owner champion is never its own enabler and roster
     order is preserved for a deterministic hint.
     """
-    out: List[str] = []
-    seen: set[str] = set()
-    for raw in roster or []:
-        if not raw:
-            continue
-        champ = str(raw).strip()
-        if not champ or champ == owner or champ in seen:
-            continue
-        seen.add(champ)
-        if _has_enabler_tool(champ):
-            out.append(champ)
-    return tuple(out)
+    return tuple(c for c in distinct if c != owner and tool.get(c, False))
 
 
 def compute_cc_pairing(roster: List[str]) -> CcPairingResult:
     """Ally CC-pairing cards for the operator's OWN roster.
 
     For each DISTINCT champion in ``roster`` (first occurrence wins;
-    blank / None entries skipped), emits one card per conditional CC
+    blank / None / non-str entries skipped; a bare string is one
+    champion; see ``_read_roster``), emits one card per conditional CC
     entry whose ``condition`` is ALLY-ENABLABLE (in ``_ALLY_ENABLABLE``).
     SELF-set conditions (``nth_hit`` / ``channel`` / ``devour`` / ...) are
     skipped - there is no teammate pairing to surface for them. Each card
     carries the resolved enabler teammates from the SAME roster. Cards are
     sorted by conditional CC duration DESC, then champion, then Q-W-E-R
     slot, for a deterministic render order. Never raises; returns an empty
-    result for an empty / all-unknown / all-self-set roster.
+    result for an empty / all-unknown / all-self-set / non-iterable /
+    over-long roster.
     """
-    seen: set[str] = set()
-    distinct: List[str] = []
-    for raw in roster or []:
-        if not raw:
-            continue
-        champ = str(raw).strip()
-        if not champ or champ in seen:
-            continue
-        seen.add(champ)
-        distinct.append(champ)
+    distinct = _read_roster(roster)
+    tool = {c: _has_enabler_tool(c) for c in distinct}
 
     cards: List[CcPairingCard] = []
     for champ in distinct:
@@ -247,7 +289,7 @@ def compute_cc_pairing(roster: List[str]) -> CcPairingResult:
                 continue
             if not entry.durations_s:
                 continue
-            enablers = _resolve_enablers(champ, distinct)
+            enablers = _resolve_enablers(champ, distinct, tool)
             cards.append(
                 CcPairingCard(
                     champion=champ,
