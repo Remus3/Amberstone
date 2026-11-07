@@ -931,7 +931,10 @@ _MUT_ALWAYS = "*"
 # the scope around it (`_shadow_aliases`), as a lambda's parameters and a
 # comprehension's targets do in their view (`_call_views`), and a def's
 # locals' marks do not flow out (`_drop_locals`). Like `_LOGFN` the marks
-# carry no value.
+# carry no value. S144-Q-113 (c): an object STORED into a container
+# (`a.append(k)`, `a.x = k`, `b = [k]`, a mutating helper) is a part of it
+# too, marked `_ALIAS + k + " " + a` (`_held_marks`), so a value put into
+# `k` later is in `a`.
 _ALIAS = "alias:"
 
 
@@ -1003,6 +1006,40 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # RM-1794: the object marks the binding makes, judged before it ends
     # the targets' own marks (`a = a.q` still reaches what `a` did).
     joined = _new_alias_marks(targets, value, tainted) if plain else set()
+    # S144-Q-113 (c): what the binding stores into a container is a part of
+    # it (`b = [k]`, `a.x = k`, and `a += [k]` in place), judged before the
+    # targets are re-bound, as the alias marks are. A store into an
+    # attribute or element of an object the binding did not re-bind first
+    # is applied before the re-binding too, so one that ends a held name or
+    # the container's own ends the mark with it (`d.x, a = a, []` holds the
+    # old `a`). A name bound to a new container, and a store into an
+    # object an earlier target re-bound (`a, a.x = C(), k`: `_held_pairs`
+    # `late`), is applied with the alias marks, after the old marks end;
+    # there a held name the binding re-binds (`a = [a]`, `b, k = [k], []`)
+    # was read before it was, so it stands for what reached its OLD object
+    # (`j = k` before: `j`), as `_new_alias_marks` reads `a = a.q`.
+    # Residuals: a `for` / `with` target store (`for a.x in [k]`) holds
+    # nothing; and (the safe side) a container emptied or a part replaced
+    # (`a.clear()`, `a.pop()`, `a[0] = []` after `a[0] = k`) still holds
+    # what it held.
+    if plain:
+        bound = set()
+        pairs = [p for t in targets for p in _held_pairs(t, value, bound)]
+    else:
+        bound = set()
+        pairs = [(_chain_root(sub), _held_roots(value), False)
+                 for sub in _in_place_targets(stmt.target, stmt)]
+    early = set()
+    for container, held, after in pairs:
+        if not after:
+            early |= _held_marks(container, held)
+            continue
+        joined |= _held_marks(container, held - bound)
+        old = held & bound
+        if old:
+            joined |= {_alias_mark(s, container) for s, d in _alias_edges(tainted)
+                       if d in old and s != container}
+    tainted |= early
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
@@ -1259,6 +1296,153 @@ def _new_alias_marks(targets, value, tainted):
                 marks |= {_alias_mark(name, d) for s, d in edges if s == name != d}
                 if whole:
                     marks |= {_alias_mark(s, name) for s, d in edges if d == name != s}
+    return marks
+
+
+_DISPLAYS = (ast.List, ast.Tuple, ast.Set)
+
+
+def _held_roots(value):
+    """S144-Q-113 (c): the root names of the objects a container that
+    stores `value` then HOLDS: what `value` may be (`_alias_roots`: `k`,
+    `k.q`, either arm of a conditional, both sides of a walrus) and every
+    element of a list, tuple, set or dict display in it, nested displays
+    and a dict's keys included (`[k]`, `{'x': [k]}`). A call, an operator,
+    a slice or a comprehension is read as a new object holding none of
+    them (`list(k)`, `k[:]`, `[x for x in k]`). Residuals: one may still
+    hold `k` (`[k] + []`, `[k] * 2`, `list([k])`, `dict(x=k)`, `W(k)`,
+    `[k for _ in xs]`, and `a = a + [k]`, `a += (k,)`) or a shallow copy
+    `k`'s PARTS (`a.append(k[:]); k[0].append(url)`), and a later fill is
+    missed there; and (the safe side) a
+    root stands for its whole object, so a part (`a.append(k.q)`) or the
+    items a starred element or an `extend` / `update` argument copies
+    (`[*k]`, `a.extend(k)`) are read as `k` itself, and a later fill of
+    `k` is read as reaching the container."""
+    if isinstance(value, _DISPLAYS):
+        return set().union(*(_held_roots(e) for e in value.elts))
+    if isinstance(value, ast.Dict):
+        return set().union(*(_held_roots(e) for e in (*value.keys, *value.values)
+                             if e is not None))
+    if isinstance(value, ast.IfExp):
+        return _held_roots(value.body) | _held_roots(value.orelse)
+    if isinstance(value, ast.BoolOp):
+        return set().union(*(_held_roots(v) for v in value.values))
+    if isinstance(value, ast.NamedExpr):
+        return _held_roots(value.value) | {value.target.id}
+    return {root for root, _ in _alias_roots(value)}
+
+
+def _contained_roots(value):
+    """S144-Q-113 (c): the root names of the objects a NEW container that
+    `value` builds holds (`[k]`, `{'x': k}`, through either arm of a
+    conditional, every operand of an `or` / `and` and a walrus's value):
+    a name bound to it holds them. The value itself, when it is a name or
+    a part of one, is an alias, not a container (`_alias_roots`)."""
+    if isinstance(value, (*_DISPLAYS, ast.Dict)):
+        return _held_roots(value)
+    if isinstance(value, ast.IfExp):
+        return _contained_roots(value.body) | _contained_roots(value.orelse)
+    if isinstance(value, ast.BoolOp):
+        return set().union(*(_contained_roots(v) for v in value.values))
+    if isinstance(value, ast.NamedExpr):
+        return _contained_roots(value.value)
+    return set()
+
+
+def _held_marks(container, held):
+    """S144-Q-113 (c): the `_ALIAS` marks `held -> container`: an object a
+    container holds is a PART of it, so a value put into it later is in
+    the container (`a.append(k); k.append(url)` fills `a`). One-way, as a
+    part read out is: a value put into the container does not reach what
+    it holds. A container that hangs off no name (`f().append(k)`) gets
+    no mark: no name could reach it (a guard against a mark to `None`,
+    which no program can read)."""
+    if container is None:
+        return set()
+    return {_alias_mark(r, container) for r in held if r != container}
+
+
+def _held_pairs(target, value, bound):
+    """S144-Q-113 (c): (container root, `_held_roots`, late) for every
+    object `target = value` stores into a container: a plain name bound to
+    a new container holds what the display holds (`b = [k]`:
+    `_contained_roots`), and an attribute or element store puts the value
+    itself into the target's root (`a.x = k`, `a['x'] = [k]`:
+    `_held_roots`). A tuple target is paired element by element with a
+    tuple value of the same length and no starred part; any other
+    unpacking stores a PART of the value into each attribute or element
+    target (read as the whole: the safe side) and binds each name to a
+    part (`_alias_pairs`). A starred name is a new list of parts
+    (residual: not a container here); a starred attribute or element
+    (`*a.x, b = p`) holds them as any store does. Python stores the targets left to
+    right, so `bound` collects the names re-bound so far, and `late` says
+    the store lands in an object bound by this binding: a name's new
+    container, or an attribute or element of a root an earlier target
+    re-bound (`a, a.x = C(), k` fills the new `a`)."""
+    if isinstance(target, ast.Name):
+        bound.add(target.id)
+        return [(target.id, _contained_roots(value), True)]
+    if isinstance(target, (ast.Attribute, ast.Subscript)):
+        root = _chain_root(target)
+        return [(root, _held_roots(value), root in bound)]
+    if not isinstance(target, (ast.Tuple, ast.List)):
+        return []
+    elts = target.elts
+    if (isinstance(value, (ast.Tuple, ast.List)) and len(value.elts) == len(elts)
+            and not any(isinstance(e, ast.Starred) for e in (*elts, *value.elts))):
+        return [p for t, v in zip(elts, value.elts) for p in _held_pairs(t, v, bound)]
+    # A part of the value goes to each target: an attribute or element
+    # store holds it (read as the whole value), a name only binds it.
+    held = _held_roots(value)
+    out = []
+
+    def walk(t):
+        if isinstance(t, ast.Starred):
+            walk(t.value)
+        elif isinstance(t, (ast.Tuple, ast.List)):
+            for e in t.elts:
+                walk(e)
+        elif isinstance(t, ast.Name):
+            bound.add(t.id)
+        elif isinstance(t, (ast.Attribute, ast.Subscript)):
+            root = _chain_root(t)
+            out.append((root, held, root in bound))
+    for t in elts:
+        walk(t)
+    return out
+
+
+def _call_held_marks(call, view):
+    """S144-Q-113 (c): the `_ALIAS` marks a call that stores its arguments
+    into an object makes (`_held_marks`): the receiver of a `_MUTATORS`
+    call, the object of `setattr` or an unbound dunder store
+    (`_mutated_exprs`) holds every argument (`a.append(k)`,
+    `a.insert(0, k)`, `d.setdefault('x', k)`, `setattr(o, 'x', k)`), and a
+    mutating helper's destination holds its source argument (`h(a, k)`
+    with `def h(q, v): q.append(v)`: `_mut_pairs`, read from `view`).
+    Residuals: a key is read as held too (`d.__setitem__(k, v)`, the safe
+    side); a helper pair says only that the source's VALUE reaches the
+    destination, so `def h(q, v): q.append(str(v))` is read as holding
+    `v` (the safe side); a receiver, or a held name, re-bound by a walrus
+    later in the same call (`a.append((a := n) or k)`,
+    `a.extend([k, (k := [])])`, `h(a, k, (k := []))`) is marked at its
+    new object, so a fill of the old one is missed (so is a display that
+    re-binds its own element: `a = [k, (k := [])]`); and a destination
+    passed starred from a display (`h(*[a], k)`) hangs off no name, so
+    it gets no mark."""
+    marks = set()
+    targets = _mutated_exprs(call)
+    if targets:
+        held = set().union(*(_held_roots(a) for a in
+                             (*call.args, *(kw.value for kw in call.keywords))))
+        for target in targets:
+            marks |= _held_marks(_chain_root(target), held)
+    for dst, src in _mut_pairs(call, view):
+        if src == _MUT_ALWAYS:
+            continue
+        held = set().union(*(_held_roots(a) for a in _spec_args(call, {src})))
+        for arg in _spec_args(call, {dst}):
+            marks |= _held_marks(_chain_root(arg), held)
     return marks
 
 
@@ -1691,6 +1875,11 @@ def _bind_in_order(nodes, tainted, late=frozenset(), *, drop=True,
     and read from it on a re-pass, whose marks are those the first pass
     ended on. A copied view does not change within a pass, so it is its
     own record.
+    S144-Q-113 (c): a call that stores an object into another makes it a
+    part of that one (`_call_held_marks`), on the first pass only (a
+    re-pass would read a name a later walrus re-bound) and only with the
+    enclosing state itself, as a walrus's alias marks are (residual: a
+    store in a comprehension, generator or lambda makes none).
     Returns whether any walrus ran with `drop` on, so may have ended marks
     (`_Flow._expr_step` then always re-passes)."""
     ended = False
@@ -1715,6 +1904,8 @@ def _bind_in_order(nodes, tainted, late=frozenset(), *, drop=True,
             _bind_mutators(sub, seen, tainted, late, recv)
             _bind_mut_calls(sub, seen, tainted, late, recv)
             _bind_setattr_marks(sub, seen, tainted, late)    # S144-Q-96
+            if drop and seen is tainted:
+                tainted |= _call_held_marks(sub, seen)    # S144-Q-113 (c)
     return ended
 
 
@@ -5169,6 +5360,216 @@ _CHECKER_SAMPLES = (
      "    raise E(m)\n", True),
     ("a walrus receiver bound to a new object does not fill an old one",
      "def f(url):\n    m = []\n    a = m\n    (a := []).append(url)\n    raise E(m)\n", False),
+    # S144-Q-113 (c): an object stored into a container is a part of it,
+    # so a value put into the object later is in the container
+    # (`_held_marks`); a value put into the container does not reach it.
+    ("an appended object filled later is in its container",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    k.append(url)\n    raise E(a)\n",
+     True),
+    ("an inserted object filled later is in its container",
+     "def f(url):\n    a = []\n    k = []\n    a.insert(0, k)\n    k.append(url)\n    raise E(a)\n",
+     True),
+    ("a setdefault object filled later is in its dict",
+     "def f(url):\n    a = {}\n    k = []\n    a.setdefault('x', k)\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an added object given an attribute later is in its set",
+     "def f(url):\n    a = set()\n    k = C()\n    a.add(k)\n    k.u = url\n"
+     "    raise E(a)\n", True),
+    ("an element store holds an object filled later",
+     "def f(url):\n    a = {}\n    k = []\n    a['x'] = k\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an attribute store holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    a.x = k\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a self attribute store holds an object filled later",
+     "class C:\n    def f(self, url):\n        k = []\n        self.q = k\n        k.append(url)\n"
+     "        raise E(self)\n", True),
+    ("a setattr store holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    setattr(a, 'x', k)\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a paired tuple store holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    a.x, b = k, []\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a list display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [k]\n    k.append(url)\n    raise E(a)\n", True),
+    ("a nested dict display holds an object filled later",
+     "def f(url):\n    k = []\n    a = {'x': [k]}\n    k.append(url)\n    raise E(a)\n", True),
+    ("an in-place += display holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a += [k]\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a mutating helper's destination holds its source filled later",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    a = []\n    k = []\n    h(a, k)\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a mutating method's receiver holds its source filled later",
+     "class C:\n    def __init__(self):\n        self.q = []\n    def h(self, v):\n"
+     "        self.q.append(v)\n    def f(self, url):\n        k = []\n        self.h(k)\n"
+     "        k.append(url)\n        raise E(self)\n", True),
+    ("a helper that stores a local then fills it mutates its parameter",
+     "def w(q, v):\n    k = []\n    q.append(k)\n    k.append(v)\ndef f(url):\n    a = []\n"
+     "    w(a, url)\n    raise E(a)\n", True),
+    ("an object held two levels down filled later",
+     "def f(url):\n    a = []\n    b = []\n    k = []\n    a.append(b)\n    b.append(k)\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("an alias of a held object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    j = k\n    j.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an object appended through a container alias filled later",
+     "def f(url):\n    a = []\n    b = a\n    k = []\n    b.append(k)\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an object held by a container that is then re-bound still reaches its alias",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    b = a\n    a = []\n"
+     "    k.append(url)\n    raise E(b)\n", True),
+    ("an object appended under a walrus is filled through the walrus name",
+     "def f(url):\n    a = []\n    k = []\n    a.append((j := k))\n    j.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a new object appended under a walrus is filled through the walrus name",
+     "def f(url):\n    a = []\n    a.append((j := []))\n    j.append(url)\n    raise E(a)\n", True),
+    ("a display in a conditional arm appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append([k] if k is not None else [])\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a display in an and operand appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k is not None and [k])\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a name bound to a conditional display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [k] if k is not None else []\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a name bound to an or display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [] or [k]\n    k.append(url)\n    raise E(a)\n", True),
+    ("a name bound to a walrus display holds an object filled later",
+     "def f(url):\n    k = []\n    a = (j := [k])\n    k.append(url)\n    raise E(a)\n", True),
+    ("a container re-bound to a display of itself still holds its old parts",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    a = [a]\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a store of a name the same binding re-binds holds the old object",
+     "def f(url):\n    d = C()\n    a = []\n    d.x, a = a, []\n    a.append(url)\n"
+     "    raise E(d)\n", False),
+    ("a new display appended under a walrus holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append((j := [k]))\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an else arm display appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append([] if k is None else [k])\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a first or operand display appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append([k] or [])\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a name bound to an else arm display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [] if k is None else [k]\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a name bound to a first or operand display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [k] or []\n    k.append(url)\n    raise E(a)\n", True),
+    ("a dict key given an attribute later is in its dict",
+     "def f(url):\n    k = C()\n    a = {k: 1}\n    k.u = url\n    raise E(a)\n", True),
+    ("a keyword argument stored by update is in its dict",
+     "def f(url):\n    a = {}\n    k = []\n    a.update(x=k)\n    k.append(url)\n    raise E(a)\n",
+     True),
+    ("an unpacked part stored on an attribute holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    p = [k, []]\n    a.x, b = p\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a store into a name an earlier target re-bound fills the new object",
+     "def f(url):\n    k = []\n    a, a.x = C(), k\n    k.append(url)\n    raise E(a)\n", True),
+    ("a store into a name a later target re-binds fills the old object",
+     "def f(url):\n    a = C()\n    k = []\n    a.x, a = k, C()\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a part appended and then filled is in the container",
+     "def f(url):\n    k = C()\n    k.q = []\n    a = []\n    a.append(k.q)\n    k.q.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a nested list display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [[k]]\n    k.append(url)\n    raise E(a)\n", True),
+    ("a tuple display holds an object filled later",
+     "def f(url):\n    k = []\n    a = (k,)\n    k.append(url)\n    raise E(a)\n", True),
+    ("a set display holds an object given an attribute later",
+     "def f(url):\n    k = C()\n    a = {k}\n    k.u = url\n    raise E(a)\n", True),
+    ("a middle or operand display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [] or [k] or []\n    k.append(url)\n    raise E(a)\n", True),
+    ("a starred attribute target of a paired value holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    *a.x, b = k, []\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a starred attribute target of an unpacked name holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    p = [k, []]\n    *a.x, b = p\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a nested attribute target of an unpacked name holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    p = [[k, 1], 2]\n    (a.x, c), b = p\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("an unpacked store into a name an earlier target re-bound fills the new object",
+     "def f(url):\n    k = []\n    p = [C(), k]\n    a, a.x = p\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an unpacked store into a name a later target re-binds fills the old object",
+     "def f(url):\n    o = C()\n    a = o\n    k = []\n    p = [k, C()]\n    a.x, a = p\n"
+     "    k.append(url)\n    raise E(o)\n", True),
+    ("a chained store into a name the first target re-bound leaves the old object",
+     "def f(url):\n    o = C()\n    a = o\n    k = C()\n    a = a.x = k\n    k.u = url\n"
+     "    raise E(o)\n", False),
+    ("an in-place += of a name copies items, not the object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a += k\n    k.append(url)\n    raise E(a)\n", False),
+    ("a helper destination holds only its source argument",
+     "def h(q, v, w):\n    q.append(v)\ndef f(url):\n    a = []\n    k = []\n    j = []\n"
+     "    h(a, k, j)\n    j.append(url)\n    raise E(a)\n", False),
+    ("an object appended to an attribute container is in its root",
+     "def f(url):\n    a = C()\n    a.items = []\n    k = []\n    a.items.append(k)\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a dict key stored by setdefault is in its dict",
+     "def f(url):\n    d = {}\n    k = C()\n    d.setdefault(k, None)\n    k.u = url\n"
+     "    raise E(d)\n", True),
+    ("an in-place += of a name holds the objects that name holds",
+     "def f(url):\n    k2 = []\n    k = [k2]\n    a = C()\n    a.x = []\n    a.x += k\n"
+     "    k2.append(url)\n    raise E(a)\n", True),
+    ("a helper storing its starred parameter holds every later argument",
+     "def h(q, *vs):\n    q.extend(vs)\ndef f(url):\n    a = []\n    k = []\n    j = []\n"
+     "    h(a, k, j)\n    j.append(url)\n    raise E(a)\n", True),
+    ("a middle or operand display appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append([] or [k] or [])\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a list-shaped target store holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    [a.x, b] = k, []\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a nested list target store of an unpacked name holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    p = [[k, 1], 2]\n    [a.x, c], b = p\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a list display value is paired element by element",
+     "def f(url):\n    a = C()\n    k = []\n    n = []\n    a.x, b = [n, k]\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a display of a name the binding re-binds holds the old object",
+     "def f(url):\n    k = []\n    j = k\n    b, k = [k], []\n    j.append(url)\n    raise E(b)\n",
+     True),
+    ("a display of a name the binding re-binds does not hold the new object",
+     "def f(url):\n    k = []\n    b, k = [k], []\n    k.append(url)\n    raise E(b)\n", False),
+    ("a helper with several destinations holds its source in each",
+     "def h(v, *qs):\n    qs[1].append(v)\ndef f(url):\n    a = []\n    b = []\n    k = []\n"
+     "    h(k, a, b)\n    k.append(url)\n    raise E(b)\n", True),
+    ("a container appended to itself is not reached through a re-bound name",
+     "def f(url):\n    a = []\n    a.append(a)\n    b = a\n    a = []\n    b.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a comprehension target appended is not the enclosing name",
+     "def f(url, xs):\n    x = []\n    a = []\n    [a.append(x) for x in xs]\n    x.append(url)\n"
+     "    raise E(a)\n", False),
+    ("an object held by a module container filled in a function",
+     "G = []\ndef f(url):\n    k = []\n    G.append(k)\n    k.append(url)\ndef g():\n"
+     "    log.info(G)\n", True),
+    ("an object appended in a loop filled later in the body",
+     "def f(url, xs):\n    a = []\n    for x in xs:\n        k = []\n        a.append(k)\n"
+     "        k.append(url)\n    raise E(a)\n", True),
+    ("a held object re-bound before the fill is not in the container",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    k = []\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a held object re-bound by a later walrus in the statement is not filled",
+     "def f(url):\n    a = []\n    k = []\n    g(a.append(k), (k := []))\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a value put into a container does not reach the object it holds",
+     "def f(url):\n    k = []\n    a = [k]\n    a.append(url)\n    raise E(k)\n", False),
+    ("a container re-bound before the fill holds nothing",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    a = []\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a slice copy appended is not the object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k[:])\n    k.append(url)\n    raise E(a)\n",
+     False),
+    ("a call over an object appended is not the object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append(len(k))\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a copy built by a call holds nothing filled later",
+     "def f(url):\n    k = []\n    a = list(k)\n    k.append(url)\n    raise E(a)\n", False),
+    ("a paired tuple store holds only its own element",
+     "def f(url):\n    a = C()\n    k = []\n    n = []\n    a.x, b = n, k\n    k.append(url)\n"
+     "    raise E(a)\n", False),
     # Every binding form re-binds the name, not only `=`, and a lambda's
     # parameters and a comprehension's targets are its own names.
     ("a for target re-binding an alias does not fill its source",
