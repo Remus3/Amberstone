@@ -3651,9 +3651,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 /* Mode accent vocabulary - blue for modes that historically used
  * cyan (aram), pink for arena, gold for brawl, rust for tft. */
 .mode-pill.aram   { color: var(--info);      border-color: var(--info-soft); }
-.mode-pill.arena  { color: var(--advisory);  border-color: var(--advisory-soft); }
+/* S144-U-199: the two red pills take the RM-1550 lift (70% toward --text
+ * in oklab, as .lv-mc-result-loss): solid --bad / --advisory measured
+ * 4.44:1 (arcane, the default theme), 4.48 (moonlit) and ARENA 4.49 (ember)
+ * on the footer surface, under AA 4.5 for the 16 px / 700 footer pill.
+ * Guard: tests/snapshot_panels/test_footer_mode_pill_contrast.py. */
+.mode-pill.arena  { color: color-mix(in oklab, var(--advisory) 70%, var(--text)); border-color: var(--advisory-soft); }
 .mode-pill.brawl  { color: var(--gold);      border-color: var(--gold-soft); }
-.mode-pill.tft    { color: var(--bad);       border-color: var(--bad-soft); }
+.mode-pill.tft    { color: color-mix(in oklab, var(--bad) 70%, var(--text)); border-color: var(--bad-soft); }
 .mode-pill.sr     { color: var(--good);      border-color: var(--good-soft); }
 .mode-pill.client { color: var(--text-dim);  border-color: var(--border); }
 
