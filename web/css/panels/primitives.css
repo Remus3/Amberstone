@@ -414,6 +414,8 @@ body > header { transition: height 180ms ease; }
   flex: 1; overflow: auto;
   border-radius: var(--panel-radius-sm);
   min-height: 360px;
+  /* S144-U-185: sizes the grid note to the visible pane (cqw below). */
+  container-type: inline-size;
 }
 /* RM-1785: narrow windows and high zoom (300% of the 1920x920 baseline
  * is 640 wide, 400% is 480; WCAG 1.4.10 reflows at 320) - the 720px line
@@ -531,6 +533,37 @@ body > header { transition: height 180ms ease; }
 .replay-grid td.home-empty::before {
   display: block;
   margin-bottom: var(--space-2);
+}
+/* S144-U-185: at 480 px and under the scoreboard keeps its 414 px table
+ * and scrolls sideways inside .replay-grid-wrap (RM-1777), and the note
+ * was centred across the whole table, so at 480 "no player rows stored
+ * for this frame" ran 23 px past the 348 px pane and at 320 "no match
+ * selected" ran 96 px past the 188 px pane, the sigil off-view too
+ * (MEASURED, ui_mock, headless). The note text and its sigil now live in
+ * a .replay-grid-note box one visible pane wide (100cqw of the wrap)
+ * pinned to the pane's left edge (sticky), so both stay centred in what
+ * is on screen. The cell keeps its vertical padding only. Guard:
+ * tests/snapshot_panels/test_replay_empty_frame.py. */
+.replay-grid td.home-empty:has(> .replay-grid-note) {
+  padding-inline: 0;
+}
+.replay-grid td.home-empty:has(> .replay-grid-note)::before {
+  content: none;
+}
+.replay-grid-note {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: 100cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-4);
+}
+.replay-grid-note::before {
+  content: "\2756"; font-size: var(--fs-xl); line-height: 1;
+  color: var(--accent); opacity: 0.35;
 }
 
 

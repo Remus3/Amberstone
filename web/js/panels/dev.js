@@ -522,6 +522,13 @@ function _replayShowNoFrames(note) {
   _REPLAY_MAP.model = null;
   const fig = document.getElementById("replay-map-figure");
   if (fig) fig.hidden = true;
+  _replayGridNote(note);
+}
+// The one note row the grid shows in place of player rows (the same
+// home-empty row the page opens with), spanning all 7 columns. The text
+// sits in a .replay-grid-note box one visible pane wide, so it stays on
+// screen where the table scrolls sideways (S144-U-185).
+function _replayGridNote(note) {
   const tbody = document.getElementById("replay-grid-body");
   if (!tbody) return;
   tbody.innerHTML = "";
@@ -529,7 +536,10 @@ function _replayShowNoFrames(note) {
   const td = document.createElement("td");
   td.colSpan = 7;
   td.className = "home-empty";
-  td.textContent = note;
+  const span = document.createElement("span");
+  span.className = "replay-grid-note";
+  span.textContent = note;
+  td.appendChild(span);
   tr.appendChild(td);
   tbody.appendChild(tr);
 }
@@ -556,6 +566,13 @@ function _replayRenderSnapshot(idx, mapTms) {
     if (ta !== tb) return ta - tb;
     return a.participant_id - b.participant_id;
   });
+  // S144-U-185: a frame with no entries (a match stored with frames but no
+  // participant rows; the ui_mock ARAM row) left a bare header over an empty
+  // body under a live clock. Guard: tests/snapshot_panels/test_replay_empty_frame.py.
+  if (!entries.length) {
+    _replayGridNote("no player rows stored for this frame");
+    return;
+  }
   for (const e of entries) {
     const p = partsByPid.get(e.participant_id) || {};
     const tr = document.createElement("tr");
