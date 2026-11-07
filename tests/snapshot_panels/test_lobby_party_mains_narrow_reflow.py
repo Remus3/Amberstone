@@ -35,7 +35,8 @@ Contract pinned at 640x900, 480x800, 400x740, 360x740 and 320x640:
   - the MASTERY and RECENT headers sit over their cells (centre in the
     cell, within 4px of its centre) and are not cut;
     the PLAYER header is hidden (the cell names itself).
-Above the line (722x900, 1920x920) the four desktop tracks and the one-line
+Above the line (842x900, 1920x920; the Lobby's line is 840 px since
+S144-U-197) the four desktop tracks and the one-line
 row stand.
 """
 import json
@@ -47,7 +48,7 @@ from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_lobby_mains_top8_narrow_reflow import _SETTLE
 
 _NARROW = ((640, 900), (480, 800), (400, 740), (360, 740), (320, 640))
-_WIDE = ((722, 900), (1920, 920))
+_WIDE = ((842, 900), (1920, 920))
 _IDS = [str(s[0]) for s in _NARROW]
 _WIDE_IDS = [str(s[0]) for s in _WIDE]
 

@@ -39,7 +39,8 @@ Contract pinned here at 640x900, 480x800, 360x740 and 320x640:
 The view stops scrolling sideways at 640 and 480. At 360 and 320 the PARTY
 card's duo-synergy block (RM-881, the queue lane's) still scrolls it, so
 those two are strict xfails that turn red when that fix lands.
-Above the line (722x900) both cards keep the desktop templates.
+Above the line (842x900; the Lobby's line is 840 px since S144-U-197) both
+cards keep the desktop templates.
 """
 import json
 
@@ -49,7 +50,7 @@ from tests.snapshot_panels import _webfont_stub
 from tests.snapshot_panels.conftest import _WS_STUB
 
 _NARROW = ((640, 900), (480, 800), (360, 740), (320, 640))
-_WIDE = (722, 900)
+_WIDE = (842, 900)
 _IDS = [str(s[0]) for s in _NARROW]
 
 _TOP8 = [

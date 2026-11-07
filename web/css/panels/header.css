@@ -2294,8 +2294,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * carries its own KP% / CS/m / Dmg label. At 400px and under the copy
  * button sits under the champion icon, so the icon column is 50px, not 76:
  * at 320 the 76px column left RECENT and OVERALL 53px each, which cut the
- * "12/4/8" KDA by a pixel and pushed the OVERALL header 10px past its row. */
-@media (max-width: 720px) {
+ * "12/4/8" KDA by a pixel and pushed the OVERALL header 10px past its row.
+ * S144-U-197: from 840px, the Lobby's line (see the RM-1775 block). */
+@media (max-width: 840px) {
   .lv-top8-row {
     display: flex; flex-wrap: wrap; align-items: center;
     row-gap: calc(var(--space-1) / 2);
@@ -2338,8 +2339,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * the two get must hold "Mastery" (67px) and the RECENT header (57px).
  * At 400px and under the copy button sits under the icon (50px column),
  * as on YOUR MAINS. Pinned by
- * tests/snapshot_panels/test_lobby_party_mains_narrow_reflow.py. */
-@media (max-width: 720px) {
+ * tests/snapshot_panels/test_lobby_party_mains_narrow_reflow.py.
+ * S144-U-197: from 840px, the Lobby's line (see the RM-1775 block). */
+@media (max-width: 840px) {
   .lv-mainchamps-list[data-tab="party"] .lv-mc-row,
   .lv-mainchamps-categories[data-tab="party"] .lv-mc-cats-party {
     grid-template-columns: 76px minmax(0, 1.15fr) minmax(0, 1fr);
@@ -3353,8 +3355,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * holding the desktop columns, the actions still pushed right; the QUEUE
  * buttons wrap with the lane pair kept as one unit. MAINS and TOP 8 reflow
  * in the RM-1776 block that ends the Lobby panel rules (pinned by
- * tests/snapshot_panels/test_lobby_narrow_reflow.py). */
-@media (max-width: 720px) {
+ * tests/snapshot_panels/test_lobby_narrow_reflow.py).
+ * S144-U-197: the Lobby's line is 840px, not 720, in this block and in the
+ * RM-1776 and S144-U-180 blocks. Measured at 720: the desktop rows need 808px of window
+ * (a 734px card), so from 721 to 807 every card stayed 734 wide, 87px past
+ * the view's content box at 721 (the view scrolled sideways) and still in
+ * its right padding at 800. Pinned by
+ * tests/snapshot_panels/test_lobby_reflow_line_fit.py. */
+@media (max-width: 840px) {
   .lobby-view-grid { grid-template-columns: minmax(0, 1fr); }
   .lobby-view-queue-controls { flex-wrap: wrap; }
   .lobby-members-list .lobby-member-row {
