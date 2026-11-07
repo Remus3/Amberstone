@@ -83,7 +83,7 @@ async function queryUsage(startDate, endDate) {
     headers
   );
 
-  const lines = [`Anthropic spend  ${startDate} → ${endDate}\n`];
+  const lines = [`Anthropic spend  ${startDate} to ${endDate}\n`];
 
   // -- Cost section (amounts in cents -> divide by 100 for USD) ------------------
   if (cRes.status === 200) {
@@ -96,7 +96,7 @@ async function queryUsage(startDate, endDate) {
       byCost[m] = (byCost[m] || 0) + amt;
       total += amt;
     }
-    lines.push('── Cost (USD) ──');
+    lines.push('-- Cost (USD) --');
     for (const [m, cents] of Object.entries(byCost).sort()) {
       lines.push(`  ${m}: $${(cents / 100).toFixed(4)}`);
     }
@@ -108,7 +108,7 @@ async function queryUsage(startDate, endDate) {
   // -- Token section -------------------------------------------------------------
   if (uRes.status === 200) {
     const results = (uRes.body.data?.[0]?.results) ?? [];
-    lines.push('── Tokens ──');
+    lines.push('-- Tokens --');
     for (const row of results) {
       const cw = (row.cache_creation?.ephemeral_5m_input_tokens || 0)
                + (row.cache_creation?.ephemeral_1h_input_tokens || 0);

@@ -67,10 +67,8 @@ _PATTERNS = ("*.py", "*.toml", "*.ini", "*.yml", "*.yaml", "*.json",
 # already-listed file still fails, while re-wording a line that keeps the same
 # glyph does not churn the baseline.
 _BASELINE: dict[str, tuple[str, ...]] = {
-    ".github/workflows/patch-day-ddragon-sync.yml": ("U+2192", "U+2713", "U+2717"),
     "tests/snapshot_panels/fixtures/sr.json": ("U+00B7", "U+2192"),
     "tests/snapshot_panels/fixtures/tft.json": ("U+00B7", "U+2605"),
-    "tools/usage-mcp-server.js": ("U+2192", "U+2500"),
     "web/css/panels/header.css": ("U+26A0", "U+2715", "U+27F3"),
     "web/css/panels/input_activity.css": ("U+203A",),
     "web/css/panels/map_state.css": ("U+2212", "U+27E8", "U+27E9"),
