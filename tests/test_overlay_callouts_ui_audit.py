@@ -493,6 +493,10 @@ def test_the_probe_measures_inside_a_running_loop():
             return exc
 
     out = run_coro(inside_a_running_loop(), timeout=180.0)
+    if isinstance(out, pytest.skip.Exception):
+        # A box with playwright but no chromium binary: skip like the three
+        # geometry siblings, never a red (s153 merger, NA5 verifier (v)).
+        raise out
     assert isinstance(out, dict), f"the probe did not measure inside a running loop: {out!r}"
     assert out["position"] == "fixed", out
 
