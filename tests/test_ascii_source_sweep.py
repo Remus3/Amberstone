@@ -68,13 +68,8 @@ _PATTERNS = ("*.py", "*.toml", "*.ini", "*.yml", "*.yaml", "*.json",
 # glyph does not churn the baseline.
 _BASELINE: dict[str, tuple[str, ...]] = {
     ".github/workflows/patch-day-ddragon-sync.yml": ("U+2192", "U+2713", "U+2717"),
-    "agents/agent0_gatekeeper/allowed_ops.json": ("U+00A7",),
-    "agents/agent0_gatekeeper/target_allowlist.json": ("U+00A7",),
-    "lib/http/blocklist.json": ("U+00A7",),
-    "ops/phase3_install.ps1": ("U+00A7", "U+FEFF"),
     "tests/snapshot_panels/fixtures/sr.json": ("U+00B7", "U+2192"),
     "tests/snapshot_panels/fixtures/tft.json": ("U+00B7", "U+2605"),
-    "tools/preflight.cmd": ("U+2500",),
     "tools/usage-mcp-server.js": ("U+2192", "U+2500"),
     "web/css/panels/header.css": ("U+26A0", "U+2715", "U+27F3"),
     "web/css/panels/input_activity.css": ("U+203A",),

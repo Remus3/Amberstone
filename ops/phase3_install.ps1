@@ -1,4 +1,4 @@
-﻿# Phase 3 installer for Legion-PC (§11.12).
+# Phase 3 installer for Legion-PC (section 11.12).
 # Idempotent: safe to re-run. Requires an elevated shell.
 #
 # What this does:
