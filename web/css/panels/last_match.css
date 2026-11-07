@@ -947,7 +947,15 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 8px 0;
+  /* S144-U-181: 8 px (--space-2) side padding. At 0 the widest labels
+   * (AI Analysis, Review) sat flush on the active tab's 1 px accent
+   * border (0.0 px of clearance either side). Not 12 (--space-3): that
+   * makes the one-line strip 497 px, 1 px past the 496 px nav at a
+   * 640 px window, so Review would wrap there; at 8 every pinned width
+   * keeps its line structure. Guard:
+   * tests/snapshot_panels/test_last_match_tabs_narrow.py
+   * test_label_clears_its_border. */
+  padding: 8px var(--space-2);
   min-width: 96px;
   min-height: var(--hit-min);   /* item 182 v2.1: 42px hit-target floor */
   text-align: center;

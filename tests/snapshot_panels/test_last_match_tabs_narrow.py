@@ -30,9 +30,13 @@ Contract pinned in all three modes at 1920x920, 722x900, 640x900,
     section's border box;
   - when the strip wraps, Review ends its last line at the nav's right
     content edge (it is the "leaves this view" control).
-Above 640 nothing moves: at 1920, 722 and 640 the four tabs share one
-line at 0 / 136 / 238 / 340 px from the nav's content left, 130 / 96 /
-96 / 108 px wide (border box), as before.
+Above 640 nothing wraps: at 1920, 722 and 640 the four tabs share one
+line at 0 / 151.5 / 253.5 / 355.5 px from the nav's content left,
+145.5 / 96 / 96 / 123.5 px wide (border box). Before S144-U-181 gave
+.lm-tab its 8 px side padding they sat at 0 / 136 / 238 / 340, 130 /
+96 / 96 / 108 wide, with AI Analysis and Review flush on their border.
+Every label keeps 8 px or more between its ink box and its border at
+every width (S144-U-181; was 0.0 for AI Analysis and Review).
 """
 import pytest
 
@@ -44,8 +48,9 @@ _MODES = ("sr", "aram", "arena")
 _ONE_LINE_MIN = 640
 _CASES = [(w, h, m) for (w, h) in _SIZES for m in _MODES]
 _IDS = [f"{m}-{w}" for (w, h, m) in _CASES]
-_WIDE_LEFTS = (0, 136, 238, 340)
-_WIDE_WIDTHS = (130, 96, 96, 108)
+_WIDE_LEFTS = (0, 151.5, 253.5, 355.5)
+_WIDE_WIDTHS = (145.5, 96, 96, 123.5)
+_LABEL_CLEAR = 8  # --space-2 side padding (.lm-tab, S144-U-181)
 _RING = 4  # 2 px outline + 2 px outline-offset (.lm-tab:focus-visible)
 
 _SETTLE = (
@@ -66,10 +71,16 @@ _READ = """() => {
   const sr = sec.getBoundingClientRect();
   const tabs = [...strip.querySelectorAll(".lm-tab")].map((b) => {
     const r = b.getBoundingClientRect();
+    const cs = getComputedStyle(b);
+    const rg = document.createRange();
+    rg.selectNodeContents(b);
+    const lr = rg.getBoundingClientRect();
     return {text: b.textContent.trim(), nav: b.classList.contains(
       "lm-tab-nav"), l: r.left, r: r.right, t: r.top, b: r.bottom,
       w: r.width, h: r.height,
-      minH: parseFloat(getComputedStyle(b).minHeight)};
+      minH: parseFloat(cs.minHeight),
+      clearL: lr.left - (r.left + parseFloat(cs.borderLeftWidth)),
+      clearR: (r.right - parseFloat(cs.borderRightWidth)) - lr.right};
   });
   return {box: [left, right], sec: [sr.left, sr.right, sr.top, sr.bottom],
           strip: [strip.scrollWidth, strip.clientWidth], tabs};
@@ -165,7 +176,7 @@ def test_wrapped_review_ends_at_the_nav_right_edge(tabs_at):
         f"{mode} {w}: Review is not on the last line")
 
 
-def test_unchanged_at_640_and_wider(tabs_at):
+def test_one_line_geometry_at_640_and_wider(tabs_at):
     w, mode, d, _e = tabs_at
     if w < _ONE_LINE_MIN:
         return  # not this case: narrow: the strip may wrap
@@ -185,3 +196,15 @@ def test_narrow_widths_wrap_rather_than_overflow(tabs_at):
         return  # not this case: only 480 and under must wrap
     lines = len({round(t["t"]) for t in d["tabs"]})
     assert lines >= 2, f"{mode} {w}: the four tabs stayed on one line"
+
+
+def test_label_clears_its_border(tabs_at):
+    """S144-U-181: no tab label touches its border. With 0 px side
+    padding the widest label (AI Analysis) sat flush on the active
+    tab's 1 px accent border; every label now keeps at least the 8 px
+    --space-2 side padding between its ink box and the border."""
+    w, mode, d, _e = tabs_at
+    tight = [f"{t['text']} {t['clearL']:.1f}/{t['clearR']:.1f}"
+             for t in d["tabs"]
+             if min(t["clearL"], t["clearR"]) < _LABEL_CLEAR - 0.5]
+    assert not tight, f"{mode} {w}: label within {_LABEL_CLEAR} px: {tight}"
