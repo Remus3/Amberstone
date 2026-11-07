@@ -290,6 +290,15 @@ function _seekBlockedHint() {
   return null;
 }
 
+// S144-U-189: the title of one row that cannot seek, naming its clock.
+function _blockedRowTitle(why, row) {
+  const el = row.querySelector(".replay-events-clock");
+  const clock = el ? el.textContent : "";
+  return why === HINT_PENDING
+    ? `Jumps the scrubber to ${clock} once the match loads`
+    : `No timeline frames are stored for this match, so this row cannot jump the scrubber to ${clock}`;
+}
+
 // Disables the listed rows (out of the tab order, no click, no hover)
 // and shows the hint while they cannot seek; re-enables them in place,
 // with no rebuild, once they can. Guard:
@@ -300,7 +309,17 @@ function _applySeekable() {
   if (!list) return;
   const rows = list.querySelectorAll(".replay-events-row");
   const why = rows.length ? _seekBlockedHint() : null;
-  rows.forEach((b) => { b.disabled = !!why; });
+  rows.forEach((b) => {
+    b.disabled = !!why;
+    // S144-U-189: a disabled row's title (hover tooltip and accessible
+    // description) says why it cannot jump, not "Jump the scrubber to";
+    // the row's own seek title is kept on the node and put back when it
+    // can seek. Rows are fresh nodes after each rebuild, so the first
+    // pass here always reads the markup's title. Guard:
+    // tests/snapshot_panels/test_replay_ribbon_disabled_row_title.py.
+    if (b.dataset.seekTitle === undefined) b.dataset.seekTitle = b.title || "";
+    b.title = why ? _blockedRowTitle(why, b) : b.dataset.seekTitle;
+  });
   if (hint) {
     hint.textContent = why || "";
     hint.hidden = !why;

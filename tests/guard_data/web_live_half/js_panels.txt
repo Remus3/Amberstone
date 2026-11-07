@@ -107,7 +107,7 @@ cbf54d38530c10d1022b898ac3b059c0ee150b0a3432cf9eb41d33bec2d71a75  web/js/panels/
 
 228ee686c3f9f705c8342cec7ab351b11d31edb7beba00fe46f96a1dfb52cb38  web/js/panels/post_game_phases.js
 
-ce02b9da8b7d7b9689e431376e4aa723235deb5277340dbf13425d90230b5c12  web/js/panels/replay_events.js
+5e222db9d0095bcb1cd44adf75600e5eef14bcca36c7ca72de750559f4cb9408  web/js/panels/replay_events.js
 
 4376b53463ac26cafc489fb8fbffe350cbe015e985be0f1d9bddc9d0d51c57e4  web/js/panels/replay_minimap.js
 
