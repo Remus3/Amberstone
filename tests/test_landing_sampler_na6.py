@@ -21,6 +21,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from tools import landing_sampler as ls
 
@@ -232,11 +233,17 @@ class _FakeProc:
     """A Popen stand-in: alive until kill() (the handle fallback) or a
     taskkill fake marks it dead. die_on_kill=False = a kill that fails."""
 
-    def __init__(self, alive=True, die_on_kill=True):
+    def __init__(self, alive=True, die_on_kill=True, handle="open"):
         self.pid = 4242
         self.alive = alive
         self.die_on_kill = die_on_kill
         self.kills = 0
+        # CPython's Windows Popen keeps its process handle in `_handle`, a
+        # Handle(int) whose `closed` turns True only on Close() / GC.
+        if handle == "open":
+            self._handle = SimpleNamespace(closed=False)
+        elif handle == "closed":
+            self._handle = SimpleNamespace(closed=True)
 
     def poll(self):
         return None if self.alive else 1
@@ -264,6 +271,8 @@ def _taskkill(proc, mode):
             raise FileNotFoundError(2, "The system cannot find the file specified", "taskkill")
         if mode == "nonzero":
             return subprocess.CompletedProcess(argv, 128, "", "ERROR: access denied")
+        if mode == "not_found":
+            return subprocess.CompletedProcess(argv, 128, "", 'ERROR: The process "4242" not found.')
         if mode == "ok":
             proc.alive = False
             return subprocess.CompletedProcess(argv, 0, "SUCCESS", "")
@@ -290,13 +299,190 @@ def test_stop_is_taskkill_f_t_on_the_launched_pid_only():
     assert out["tree_confirmed"] is True
 
 
-def test_stop_on_an_exited_child_runs_nothing():
+def test_stop_on_an_exited_child_with_the_handle_held_still_runs_taskkill_t():
     proc = _FakeProc(alive=False)
     run, calls = _taskkill(proc, "ok")
     out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
-    assert calls == []
+    assert [c[0] for c in calls] == [["taskkill", "/F", "/T", "/PID", "4242"]]
     assert proc.kills == 0
+    assert out["exited_before_kill"] is True
+    assert out["handle_held"] is True
     assert out["child_exited"] is True
+    assert out["tree_confirmed"] is True
+
+
+def test_stop_on_an_exited_child_taskkill_not_found_is_unverified():
+    proc = _FakeProc(alive=False)
+    run, calls = _taskkill(proc, "not_found")
+    out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
+    assert len(calls) == 1
+    assert proc.kills == 0
+    assert out["exited_before_kill"] is True
+    assert out["taskkill_rc"] == 128
+    assert out["tree_confirmed"] is False
+    assert "descendants unverified" in out["note"]
+
+
+def test_stop_on_an_exited_child_without_a_held_handle_skips_taskkill():
+    for handle in ("closed", None):
+        proc = _FakeProc(alive=False, handle=handle)
+        run, calls = _taskkill(proc, "ok")
+        out = ls.PopenChild(proc, run=run).stop(reap_s=0.0)
+        assert calls == [], handle
+        assert out["handle_held"] is False, handle
+        assert out["tree_confirmed"] is False, handle
+        assert "descendants unverified" in out["note"], handle
+
+
+def test_handle_held_reads_a_real_popen_handle(tmp_path):
+    child = ls.launch_child([sys.executable, "-c", "pass"], tmp_path / "c.txt")
+    assert child.wait(60) == 0
+    assert child.proc.poll() == 0
+    assert child.handle_held() is (sys.platform == "win32")
+
+
+def test_run_child_exited_before_kill_returns_92_with_its_reason(tmp_path, capsys):
+    proc = _FakeProc()
+    run, _ = _taskkill(proc, "not_found")
+    child = ls.PopenChild(proc, run=run)
+
+    def physical():
+        proc.alive = proc.alive and physical.n < 2
+        physical.n += 1
+        return 900.0 if physical.n > 1 else 25000.0
+
+    physical.n = 0
+    rc, _ = _run(tmp_path, child, physical, list, reap_s=0.0)
+    void = json.loads((tmp_path / "sampler" / "VOID.json").read_text(encoding="ascii"))
+    assert rc == ls.EXIT_VOID_UNCONFIRMED
+    assert void["exited_before_kill"] is True
+    assert "child exited before kill; descendants unverified" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------- kill first, writes best-effort
+
+
+def test_run_the_kill_happens_before_any_write_of_the_stop_tick(tmp_path, monkeypatch):
+    events = []
+    real_append = ls._append
+
+    class _Child(_FakeChild):
+        def stop(self, reap_s=None):
+            events.append("stop")
+            return super().stop(reap_s)
+
+    def append(path, row):
+        events.append("append:" + row["phase"] + (":stop" if row.get("stop") else ""))
+        real_append(path, row)
+
+    def head():
+        events.append("head")
+        return "abc123"
+
+    monkeypatch.setattr(ls, "_append", append)
+    rc = ls.run_sampler(
+        ["x"],
+        tmp_path / "sampler",
+        launch=lambda c: _Child(),
+        physical=_seq([25000.0, 900.0, 900.0]),
+        commit=None,
+        names=list,
+        head=head,
+        interval=0.0,
+        clock=lambda: "T",
+        reap_s=0.0,
+    )
+    assert rc == ls.EXIT_VOID
+    stop_at = events.index("stop")
+    assert events[stop_at - 1] == "append:run", events
+    assert events[stop_at + 1 :] == ["head", "append:run:stop", "append:void"], events
+
+
+def _probe_run(tmp_path, monkeypatch, case):
+    """The verifier's probe_void.py cases: a failing write on the stop path."""
+    child = _FakeChild()
+    real_append = ls._append
+
+    def bad_append(path, row):
+        if case == "void_append" and row.get("phase") == "void":
+            raise OSError(28, "No space left on device")
+        if case == "run_append" and row.get("phase") == "run" and row.get("stop"):
+            raise OSError(28, "No space left on device")
+        if case == "all_append":
+            raise OSError(28, "No space left on device")
+        return real_append(path, row)
+
+    monkeypatch.setattr(ls, "_append", bad_append)
+    if case == "void_json":
+
+        def bad_marker(path, row):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(ls, "_marker", bad_marker)
+    rc = ls.run_sampler(
+        ["x"],
+        tmp_path / "sampler",
+        launch=lambda c: child,
+        physical=lambda: 500.0,
+        commit=lambda: 1.0,
+        names=list,
+        interval=0.0,
+        reap_s=0.0,
+    )
+    return rc, child
+
+
+def test_probe_failed_stop_row_append_still_kills_and_writes_void(tmp_path, monkeypatch, capsys):
+    rc, child = _probe_run(tmp_path, monkeypatch, "run_append")
+    assert child.killed == 1
+    assert (tmp_path / "sampler" / "VOID.json").exists()
+    assert rc == ls.EXIT_VOID
+    assert "samples.jsonl" in capsys.readouterr().err
+
+
+def test_probe_failed_void_row_append_still_kills_and_writes_void(tmp_path, monkeypatch):
+    rc, child = _probe_run(tmp_path, monkeypatch, "void_append")
+    assert child.killed == 1
+    assert (tmp_path / "sampler" / "VOID.json").exists()
+    assert rc == ls.EXIT_VOID
+
+
+def test_probe_every_append_failing_still_kills_and_writes_void(tmp_path, monkeypatch):
+    rc, child = _probe_run(tmp_path, monkeypatch, "all_append")
+    assert child.killed == 1
+    assert (tmp_path / "sampler" / "VOID.json").exists()
+    assert rc == ls.EXIT_VOID
+
+
+def test_probe_failed_void_json_write_forces_92_never_1(tmp_path, monkeypatch, capsys):
+    rc, child = _probe_run(tmp_path, monkeypatch, "void_json")
+    assert child.killed == 1
+    assert rc == ls.EXIT_VOID_UNCONFIRMED
+    assert "VOID.json NOT written" in capsys.readouterr().err
+
+
+def test_a_failed_non_stop_row_append_keeps_monitoring(tmp_path, monkeypatch):
+    child = _FakeChild()
+    real_append = ls._append
+
+    def bad_append(path, row):
+        if row.get("phase") in ("pre", "run") and not row.get("stop"):
+            raise OSError(28, "No space left on device")
+        return real_append(path, row)
+
+    monkeypatch.setattr(ls, "_append", bad_append)
+    rc = ls.run_sampler(
+        ["x"],
+        tmp_path / "sampler",
+        launch=lambda c: child,
+        physical=_seq([25000.0, 25000.0, 900.0, 900.0]),
+        commit=None,
+        names=list,
+        interval=0.0,
+        reap_s=0.0,
+    )
+    assert rc == ls.EXIT_VOID
+    assert child.killed == 1
 
 
 def test_stop_falls_back_to_the_held_handle_on_every_taskkill_failure():
