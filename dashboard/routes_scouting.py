@@ -44,11 +44,30 @@ when that computation failed.
 Degraded (Riot key absent): {"ok": false, "reason": "riot_key_unconfigured",
 "players": []} with HTTP 200 - the dashboard renders a friendly empty
 state, never a raw error (see CLAUDE.md Error Handling).
+
+Input contract (S144-T-592; this route is not a control endpoint, so a LAN
+peer reaches it):
+  - a puuid is one ``[A-Za-z0-9_-]{1,128}`` token after strip(); anything
+    else is skipped exactly like a non-string entry - never fetched, echoed
+    or cached. The walk over ``puuids`` stops once the cap is known.
+  - a League-V4 entry whose tier, rank, leaguePoints, wins or losses has the
+    wrong type or range (bool, negative, fractional, non-finite, a string
+    count, markup) fails THAT player soft to unranked-with-error and is not
+    cached; an ABSENT field keeps its old meaning (lp / counts 0, division
+    None). A junk queueType reads as absent. A non-list entries value is an
+    error, not "Unranked".
+  - an opening-tendency result that is not a dict, or a per-player value
+    that is not a dict of strict-JSON data (no NaN / inf), reads None for
+    that row; the response body is always strict JSON.
+  - cache ages and elapsed_ms use monotonic clocks; failure logs name the
+    exception type only.
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
+import re
 import threading
 import time
 from typing import Any, Optional
@@ -71,6 +90,33 @@ _CACHE_LOCK = threading.Lock()
 _CACHE_MAX = 512
 _CACHE_EVICT = 128
 
+# One Riot puuid is 78 url-safe base64 characters; 128 is the same bound
+# core/sgp_client.py uses for the same identifier.
+_PUUID_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+# League-V4 tier / division / queue tokens. The tier is NOT checked against
+# a fixed ladder (Riot added EMERALD in 2023); it only has to be a plain
+# upper-case word.
+_TIER_RE = re.compile(r"[A-Z]{1,20}")
+_DIVISION_RE = re.compile(r"[IVX]{1,4}")
+_QUEUE_RE = re.compile(r"[A-Z0-9_]{1,40}")
+# Wins, losses and LP far above anything real (and inside a JS safe int).
+_MAX_COUNT = 1_000_000
+
+
+class _BadEntry(ValueError):
+    """A League-V4 field with the wrong type or range (message = its name)."""
+
+
+def _finite_clock(now: Any) -> Optional[float]:
+    """``now`` as a finite float, else None (bool refused)."""
+    if isinstance(now, bool) or not isinstance(now, (int, float)):
+        return None
+    try:
+        now = float(now)
+    except OverflowError:
+        return None
+    return now if math.isfinite(now) else None
+
 
 def _reset_cache_for_tests() -> None:
     """Test-only: clear the scouting result cache."""
@@ -79,14 +125,22 @@ def _reset_cache_for_tests() -> None:
 
 
 def _cache_get(puuid: str, now: float) -> Optional[dict]:
+    """A cached shaped row younger than _RANK_TTL_S, else None. An entry
+    stamped AFTER ``now`` (a clock that stepped back) is a miss, not fresh."""
+    now = _finite_clock(now)
+    if now is None:
+        return None
     with _CACHE_LOCK:
         hit = _CACHE.get(puuid)
-        if hit and (now - hit[0]) < _RANK_TTL_S:
+        if hit and 0.0 <= (now - hit[0]) < _RANK_TTL_S:
             return hit[1]
     return None
 
 
 def _cache_put(puuid: str, now: float, shaped: dict) -> None:
+    now = _finite_clock(now)
+    if now is None:
+        return
     with _CACHE_LOCK:
         _CACHE[puuid] = (now, shaped)
         if len(_CACHE) > _CACHE_MAX:
@@ -131,35 +185,83 @@ def _shape_rank(puuid: str, entries: Any) -> dict:
     Picks the solo-queue entry (falling back to highest-tier ranked
     entry) via core.riot_api.pick_solo_rank. An empty / None list, or an
     entry with no tier, yields the graceful unranked dict.
+
+    Raises _BadEntry when entries is not a list or a rank field has the
+    wrong type or range; _scout_one turns that into unranked-with-error
+    and does not cache it. Absent fields keep their old meaning.
     """
+    if entries is None:
+        return _unranked(puuid)
+    if not isinstance(entries, list):
+        raise _BadEntry("entries")
     if not entries:
         return _unranked(puuid)
     entry = riot_api.pick_solo_rank(entries)
     if not isinstance(entry, dict):
         return _unranked(puuid)
-    tier = str(entry.get("tier") or "").strip().upper()
+    tier = _token(entry, "tier", _TIER_RE)
     if not tier or tier in ("NONE", "UNRANKED"):
         return _unranked(puuid)
-    division = str(entry.get("rank") or "").strip().upper()
-    lp = entry.get("leaguePoints")
-    lp = int(lp) if isinstance(lp, (int, float)) else 0
-    wins = int(entry.get("wins") or 0)
-    losses = int(entry.get("losses") or 0)
+    division = _token(entry, "rank", _DIVISION_RE)
+    lp = _count(entry, "leaguePoints")
+    wins = _count(entry, "wins")
+    losses = _count(entry, "losses")
     total = wins + losses
+    queue = entry.get("queueType")
+    queue = queue.strip().upper() if isinstance(queue, str) else ""
+    # format_rank_entry gives "DIAMOND IV 12 LP"; it is handed only the
+    # validated fields, so it can neither raise on nor echo a junk value.
+    # An absent leaguePoints still renders without the LP part.
+    display = riot_api.format_rank_entry({
+        "tier": tier,
+        "rank": division,
+        "leaguePoints": None if entry.get("leaguePoints") is None else lp,
+    })
     return {
         "puuid": puuid,
         "ranked": True,
         "tier": tier,
         "division": division or None,
         "lp": lp,
-        "queue": str(entry.get("queueType") or "").upper() or None,
+        "queue": queue if _QUEUE_RE.fullmatch(queue) else None,
         "wins": wins,
         "losses": losses,
         "win_rate_pct": round(100.0 * wins / total) if total > 0 else None,
-        # format_rank_entry gives "DIAMOND IV 12 LP".
-        "display": riot_api.format_rank_entry(entry) or "Unranked",
+        "display": display or "Unranked",
         "cached": False,
     }
+
+
+def _token(entry: dict, key: str, pattern: "re.Pattern[str]") -> str:
+    """A League-V4 text field stripped and upper-cased; "" when absent or
+    blank. Any other type, or text the pattern refuses, raises _BadEntry."""
+    value = entry.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise _BadEntry(key)
+    value = value.strip().upper()
+    if value and not pattern.fullmatch(value):
+        raise _BadEntry(key)
+    return value
+
+
+def _count(entry: dict, key: str) -> int:
+    """A League-V4 non-negative integer (wins / losses / leaguePoints); 0
+    when absent. A bool, string, fractional, non-finite, negative or
+    implausibly large value raises _BadEntry."""
+    value = entry.get(key)
+    if value is None:
+        return 0
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise _BadEntry(key)
+    if isinstance(value, float):
+        if not math.isfinite(value) or not value.is_integer():
+            raise _BadEntry(key)
+        value = int(value)
+    if not 0 <= value <= _MAX_COUNT:
+        raise _BadEntry(key)
+    return int(value)
 
 
 def _scout_one(puuid: str, now: float) -> dict:
@@ -167,10 +269,10 @@ def _scout_one(puuid: str, now: float) -> dict:
 
     A raised exception from the Riot layer fails THIS player to
     unranked-with-error so the batch always completes. The guard covers
-    the SHAPE as well as the fetch: _shape_rank coerces the League-V4
-    wire fields bare (``int(entry.get("wins") or 0)`` and its losses
-    twin) and calls back into riot_api for pick_solo_rank /
-    format_rank_entry, so a malformed entry raised from there. Callers
+    the SHAPE as well as the fetch: _shape_rank raises _BadEntry on a
+    malformed League-V4 field (S144-T-592) and calls back into riot_api
+    for pick_solo_rank / format_rank_entry, either of which can raise on
+    a malformed entry; such a row is never cached. Callers
     build the batch with a list comprehension, so an escape cost every
     OTHER player's rank too, not just this one (RM-349 sibling).
     """
@@ -191,17 +293,25 @@ def _scout_one(puuid: str, now: float) -> dict:
             return _rate_limited(puuid)
         shaped = _shape_rank(puuid, entries)
     except Exception as exc:  # noqa: BLE001 - one bad player must not break batch
-        log.warning("api/scouting: rank resolve failed for a player: %s", exc)
+        log.warning("api/scouting: rank resolve failed for a player: %s",
+                    type(exc).__name__)
         return _unranked(puuid, error=True)
     try:
         _cache_put(puuid, now, dict(shaped))
     except Exception as exc:  # noqa: BLE001 - a cache write must not cost a good row
-        log.warning("api/scouting: rank cache write failed for a player: %s", exc)
+        log.warning("api/scouting: rank cache write failed for a player: %s",
+                    type(exc).__name__)
     return shaped
 
 
 def _extract_puuids(body: Any) -> list[str]:
-    """Pull a clean, de-duped, order-preserving puuid list from the body."""
+    """Pull a clean, de-duped, order-preserving puuid list from the body.
+
+    Only a str matching _PUUID_RE after strip() is kept; anything else is
+    skipped. The walk stops at _MAX_FANOUT + 1 kept puuids - enough for the
+    caller to know the request was capped - so a long list is never read to
+    its end.
+    """
     if not isinstance(body, dict):
         return []
     raw = body.get("puuids")
@@ -213,11 +323,25 @@ def _extract_puuids(body: Any) -> list[str]:
         if not isinstance(item, str):
             continue
         p = item.strip()
-        if not p or p in seen:
+        if not _PUUID_RE.fullmatch(p) or p in seen:
             continue
         seen.add(p)
         out.append(p)
+        if len(out) > _MAX_FANOUT:
+            break
     return out
+
+
+def _strict_json_copy(value: Any) -> Optional[dict]:
+    """A private copy of one player's opening metrics, or None when it is
+    not a dict of strict-JSON data (a NaN / inf would put a bare NaN token
+    in the body, which JSON.parse refuses)."""
+    if not isinstance(value, dict):
+        return None
+    try:
+        return json.loads(json.dumps(value, allow_nan=False))
+    except (TypeError, ValueError, RecursionError):
+        return None
 
 
 def _attach_opening(players: list, puuids: list[str]) -> None:
@@ -231,31 +355,47 @@ def _attach_opening(players: list, puuids: list[str]) -> None:
     try:
         by_puuid = opening_tendency.opening_tendencies(puuids)
     except Exception as exc:  # noqa: BLE001 - opening is best-effort
-        log.warning("api/scouting: opening tendencies failed: %s", exc)
+        log.warning("api/scouting: opening tendencies failed: %s",
+                    type(exc).__name__)
+        by_puuid = {}
+    if not isinstance(by_puuid, dict):
+        log.warning("api/scouting: opening tendencies returned %s, not a dict",
+                    type(by_puuid).__name__)
         by_puuid = {}
     for row in players:
-        row["opening"] = by_puuid.get(row.get("puuid"))
+        row["opening"] = _strict_json_copy(by_puuid.get(row.get("puuid")))
+
+
+def _elapsed_ms(t0: float) -> int:
+    return max(0, int((time.perf_counter() - t0) * 1000))
+
+
+def _json_body(payload: dict) -> bytes:
+    """Strict JSON: a non-finite float raises instead of emitting NaN."""
+    return json.dumps(payload, allow_nan=False).encode("utf-8")
 
 
 def _serve_scouting(h, body) -> None:
     """POST /api/scouting - route entry point."""
-    t0 = time.time()
+    t0 = time.perf_counter()
     try:
         if not riot_api.is_configured():
             payload = {
                 "ok": False,
                 "reason": "riot_key_unconfigured",
                 "players": [],
-                "elapsed_ms": int((time.time() - t0) * 1000),
+                "elapsed_ms": _elapsed_ms(t0),
             }
-            h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+            h._send(200, _json_body(payload), "application/json")
             return
 
         puuids = _extract_puuids(body)
         capped = len(puuids) > _MAX_FANOUT
         puuids = puuids[:_MAX_FANOUT]
 
-        now = time.time()
+        # Monotonic: a wall clock stepped back must not keep a cached row
+        # past its TTL (the cache also refuses an entry stamped later).
+        now = time.monotonic()
         players = [_scout_one(p, now) for p in puuids]
         _attach_opening(players, puuids)
 
@@ -263,16 +403,16 @@ def _serve_scouting(h, body) -> None:
             "ok": True,
             "players": players,
             "capped": capped,
-            "elapsed_ms": int((time.time() - t0) * 1000),
+            "elapsed_ms": _elapsed_ms(t0),
         }
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        h._send(200, _json_body(payload), "application/json")
     except Exception as exc:  # noqa: BLE001
-        log.warning("api/scouting: %s", exc)
+        log.warning("api/scouting: request failed: %s", type(exc).__name__)
         try:
-            # Raw exception text stays in the log only (Error Handling rule).
-            h._send(500, json.dumps(
+            # Raw exception text stays out of the body and the log.
+            h._send(500, _json_body(
                 {"ok": False, "error": "internal error - see logs",
-                 "players": []}).encode("utf-8"), "application/json")
+                 "players": []}), "application/json")
         except Exception:  # noqa: BLE001
             pass
 
