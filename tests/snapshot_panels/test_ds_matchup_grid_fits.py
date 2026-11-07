@@ -16,9 +16,10 @@ zero-width column. The 1920x920 baseline was fine.
 Contract pinned here:
   - the 1920x920 baseline is unchanged: one line per row, four tracks
     (56 / 1fr / 104 / 56 px) (control);
-  - under a 360 px list (the 768 / 640 / 480 windows) a row is two lines
-    of three tracks, and at every size every row sits inside the BUILD
-    pane with no page overflow;
+  - under a 360 px list (the 768 window) a row is two lines of three
+    tracks, and at every size every row sits inside the BUILD pane with no
+    page overflow (since RM-1772 the panes stack full width at 720 px and
+    under, so the 640 / 480 windows give a 544 / 384 px list, one line);
   - at every size, every cell of every row sits inside its row, and the
     role, the verdict ("BACK OFF" is the widest) and the swing are whole;
   - the champion name (at most 10 characters, _shortName) is whole and on
@@ -142,11 +143,14 @@ def test_baseline_is_one_line_four_tracks(mock_server, pw_browser):
 @pytest.mark.parametrize("w,h", _SIZES)
 def test_layout_follows_the_list_width(w, h, mock_server, pw_browser):
     """One line of four tracks from a 360 px list up; two lines of three
-    tracks under it (the 768 / 640 / 480 windows), and every row stays
-    inside the BUILD pane, whose overflow: hidden is what cut the cells."""
+    tracks under it (the 768 window), and every row stays inside the BUILD
+    pane, whose overflow: hidden is what cut the cells. RM-1772 (landed after
+    this test) stacks the Active Match panes in one full-width column at
+    720 px and under, so only a window above 720 and at or under 768 still
+    gives a list under 360 px."""
     m = _measure(pw_browser, mock_server, w, h)
     narrow = m["listW"] < 360
-    assert narrow == (w <= 768), (w, m["listW"])
+    assert narrow == (720 < w <= 768), (w, m["listW"])
     assert not m["docOverflow"], w
     for r in m["pending"] + m["landed"]:
         assert len(r["cols"].split()) == (3 if narrow else 4), (w, r["cols"])
