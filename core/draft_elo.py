@@ -35,20 +35,64 @@ Why log-odds Elo over additive WR averages:
   Glicko use to mix multiple independent edges into a single match
   prediction. Additive Elo ratings ARE the right thing to sum.
 
-Numerical guards (none of which a real caller hits, but defensive):
-  - win_rate clamped to (0.001, 0.999) before the rating transform so a
-    1.0 or 0.0 input does not blow up to +/- infinity.
-  - rating_to_winrate is unbounded-input safe (extreme deltas saturate
-    cleanly to ~0 or ~1).
+Numerical guards (the live route feeds Laplace rates, which never hit
+them; they hold for every direct caller - S144-T-582):
+  - win_rate clamped to [0.001, 0.999] before the rating transform so a
+    1.0 or 0.0 input (or +/-inf, or an int too large for a float) does
+    not blow up to +/- infinity.
+  - A win rate or rating that is not a real number (NaN, bool, None, a
+    str, an object whose __float__ raises) carries no information and
+    reads as neutral: rating 0.0 / win rate 0.5. Before S144-T-582 a NaN
+    or True win rate read as +1199.8, the STRONGEST possible rating.
+  - rating_to_winrate is unbounded-input safe: extreme deltas saturate to
+    exactly 0.0 or 1.0 instead of raising OverflowError, so every output
+    is finite and strict-JSON serializable.
+  - Neutral is +0.0, never -0.0 (a no-data row serialized as "-0.0").
+  - ``scale`` is configuration, not data: anything but a finite positive
+    real number is a ValueError (0 divided by zero, a negative scale
+    silently inverted every rating, True ran at scale 1).
 """
 from __future__ import annotations
 
 import math
+import numbers
+import operator
 from dataclasses import dataclass
 
 
 _EPS = 1e-3       # clamp WR to (EPS, 1-EPS) before the log
 _LOG_SCALE = 400.0  # canonical Elo log-scale (chess + League MMR convention)
+
+
+def _real(value: object) -> float | None:
+    """Return ``value`` as a float, or None when it is not a real number.
+
+    bool is not a number here (True would read as a 100% win rate).
+    NaN is None. An int too large for a float keeps its sign as +/-inf so
+    the callers clamp / saturate it. A raising ``__float__`` is None.
+    """
+    if isinstance(value, bool) or not isinstance(value, numbers.Real):
+        return None
+    try:
+        out = float(value)
+    except OverflowError:
+        try:
+            return math.inf if value > 0 else -math.inf
+        except Exception:  # noqa: BLE001 - a hostile __gt__ is no number
+            return None
+    except Exception:  # noqa: BLE001 - a hostile __float__ is no number
+        return None
+    if out != out:  # NaN
+        return None
+    return out
+
+
+def _check_scale(scale: object) -> float:
+    """``scale`` as a finite positive float, else ValueError."""
+    s = _real(scale)
+    if s is None or not math.isfinite(s) or s <= 0.0:
+        raise ValueError(f"scale must be a finite positive number, got {scale!r}")
+    return s
 
 
 def winrate_to_rating(win_rate: float, scale: float = _LOG_SCALE) -> float:
@@ -57,12 +101,18 @@ def winrate_to_rating(win_rate: float, scale: float = _LOG_SCALE) -> float:
     Identity points: ``wr == 0.5`` -> rating 0. Above 0.5 -> positive,
     below -> negative. The scale defaults to 400 (chess + LoL MMR).
 
-    Extreme inputs are clamped to (0.001, 0.999) so the log10 is finite.
+    Extreme inputs are clamped to [0.001, 0.999] so the log10 is finite.
     A real caller pulls win rates from ``laplace_rate`` which never
-    returns the endpoints, so the clamp is defensive only.
+    returns the endpoints, so the clamp is defensive only. A value that
+    is not a real number reads as neutral (0.0); see the module header.
     """
-    wr = max(_EPS, min(1.0 - _EPS, float(win_rate)))
-    return -scale * math.log10(1.0 / wr - 1.0)
+    s = _check_scale(scale)
+    wr = _real(win_rate)
+    if wr is None:
+        return 0.0
+    wr = max(_EPS, min(1.0 - _EPS, wr))
+    # + 0.0 turns the -0.0 that -s * log10(1.0) yields at wr 0.5 into +0.0.
+    return -s * math.log10(1.0 / wr - 1.0) + 0.0
 
 
 def rating_to_winrate(rating: float, scale: float = _LOG_SCALE) -> float:
@@ -73,9 +123,21 @@ def rating_to_winrate(rating: float, scale: float = _LOG_SCALE) -> float:
       rating +100 -> ~0.640
       rating +400 -> ~0.909
       rating -400 -> ~0.091
+
+    Never raises on ``rating``: an extreme delta saturates to exactly 0.0
+    or 1.0 and a non-number (NaN, bool, None, ...) is a coin flip, 0.5.
     """
-    # Stable sigmoid form: 1 / (1 + 10^(-x/scale)).
-    return 1.0 / (1.0 + math.pow(10.0, -float(rating) / scale))
+    s = _check_scale(scale)
+    r = _real(rating)
+    if r is None:
+        return 0.5
+    x = r / s
+    # Stable logistic in base 10: the power is always 10^(-|x|) <= 1, so
+    # it underflows to 0.0 at the extremes instead of overflowing.
+    if x >= 0.0:
+        return 1.0 / (1.0 + math.pow(10.0, -x))
+    t = math.pow(10.0, x)
+    return t / (1.0 + t)
 
 
 @dataclass(frozen=True)
@@ -210,20 +272,26 @@ def top_contributions(
     enumerators); a mismatch is silently ignored (only the prefix
     that matches is considered). This is defensive against a future
     schema drift; real callers always pass coherent triples.
+
+    Row hygiene (S144-T-582): a row whose pair is not two exact integer
+    ids (bool, 64.9, 64.0, "64", None, a 1- or 3-tuple, a list - the
+    signature and both enumerators say tuple) or whose rating
+    is not a finite real number is dropped ALONE - a NaN key made the
+    sort order undefined and lost the real top row, and int(64.9) named
+    champion 64. A count that is not a non-negative integer reads as 0
+    (unknown sample, never True -> 1). Every field is an exact int /
+    float and a neutral delta is +0.0.
     """
     out: list[Contribution] = []
     # Ally pairs: positive rating helps ally.
-    for (a, b), r, n in zip(ally_pairs, ally_pair_ratings, ally_pair_counts):
-        out.append(Contribution(kind="ally-pair", a=int(a), b=int(b),
-                                delta=float(r), n=int(n)))
+    _collect(out, "ally-pair", ally_pairs, ally_pair_ratings,
+             ally_pair_counts, sign=1.0)
     # Enemy pairs: positive rating subtracts from team_score; flip sign.
-    for (a, b), r, n in zip(enemy_pairs, enemy_pair_ratings, enemy_pair_counts):
-        out.append(Contribution(kind="enemy-pair", a=int(a), b=int(b),
-                                delta=-float(r), n=int(n)))
+    _collect(out, "enemy-pair", enemy_pairs, enemy_pair_ratings,
+             enemy_pair_counts, sign=-1.0)
     # Matchups: already ally-perspective rating.
-    for (a, b), r, n in zip(matchup_cross, matchup_ratings, matchup_counts):
-        out.append(Contribution(kind="matchup", a=int(a), b=int(b),
-                                delta=float(r), n=int(n)))
+    _collect(out, "matchup", matchup_cross, matchup_ratings,
+             matchup_counts, sign=1.0)
     # Sort by abs(delta) descending. Stable sort keeps ally-pair before
     # enemy-pair before matchup on ties, which makes the test pin
     # deterministic without affecting the top-N for any real input.
@@ -231,3 +299,46 @@ def top_contributions(
     if limit and limit > 0:
         return out[:limit]
     return out
+
+
+def _exact_id(value: object) -> int | None:
+    """An integer id as an exact int, else None.
+
+    bool is refused explicitly; operator.index already refuses a float
+    (64.9 and 64.0 alike) and a str, so neither is truncated into an id.
+    """
+    if isinstance(value, bool):
+        return None
+    try:
+        return int(operator.index(value))
+    except Exception:  # noqa: BLE001 - any non-index value is no id
+        return None
+
+
+def _pair_ids(pair: object) -> tuple[int, int] | None:
+    """A 2-tuple of exact integer ids, else None."""
+    if not isinstance(pair, tuple) or len(pair) != 2:
+        return None
+    a, b = _exact_id(pair[0]), _exact_id(pair[1])
+    if a is None or b is None:
+        return None
+    return a, b
+
+
+def _count(value: object) -> int:
+    """A sample count as a non-negative exact int; anything else is 0."""
+    n = _exact_id(value)
+    return n if n is not None and n >= 0 else 0
+
+
+def _collect(out: list[Contribution], kind: str, pairs, ratings, counts,
+             *, sign: float) -> None:
+    """Append one Contribution per well-formed row; drop a bad row alone."""
+    for pair, r, n in zip(pairs, ratings, counts):
+        ids = _pair_ids(pair)
+        rating = _real(r)
+        if ids is None or rating is None or not math.isfinite(rating):
+            continue
+        # + 0.0 keeps a neutral row at +0.0 after the enemy sign flip.
+        out.append(Contribution(kind=kind, a=ids[0], b=ids[1],
+                                delta=sign * rating + 0.0, n=_count(n)))
