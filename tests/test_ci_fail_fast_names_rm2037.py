@@ -237,7 +237,7 @@ def test_a_serialized_report_names_its_E_line():
     assert ffn.format_line(rep) == ("RC-FAIL setup tests/t.py::test_x :: fixture 'nope' not found")
 
 
-_WORKER_HEADER = "[gw1] win32 -- Python 3.14.4 C:\\Python314\\python.exe"
+_WORKER_HEADER = "[gw1] linux -- Python 3.12.16 /usr/bin/python3"
 
 
 def test_a_plain_text_longrepr_wins_over_the_worker_header():

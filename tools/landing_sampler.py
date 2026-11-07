@@ -360,9 +360,11 @@ def _append(path: Path, row: dict) -> None:
 
 
 def _marker(path: Path, row: dict) -> None:
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes((json.dumps(row, indent=1) + "\n").encode("ascii"))
-    tmp.replace(path)
+    # The repo's one atomic writer (RM-258 / RM-261 guard): a per-writer
+    # scratch name and the PermissionError retry, never a hand-rolled rename.
+    from core.polled_json import atomic_write_bytes
+
+    atomic_write_bytes(path, (json.dumps(row, indent=1) + "\n").encode("ascii"))
 
 
 def _call(reader: Optional[Callable], errors: dict, key: str):

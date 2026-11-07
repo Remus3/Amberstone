@@ -410,7 +410,8 @@ body {{ zoom: {scale}; }}
         # marker the session browser needs untouched.
         return _on_a_fresh_thread(render)
     except playwright.Error as exc:
-        _skip_only_a_missing_browser(exc)
+        if _is_a_missing_browser(exc):
+            pytest.skip(f"headless chromium unavailable: {exc}")
         raise
 
 
@@ -434,12 +435,14 @@ def _on_a_fresh_thread(fn, timeout: float = 120.0):
     return box["out"]
 
 
-def _skip_only_a_missing_browser(exc: BaseException) -> None:
+def _is_a_missing_browser(exc: BaseException) -> bool:
     """RM-2031: only a missing browser binary is a skip (a missing package is
     the importorskip above). The old blanket `except Exception` also read the
-    sync API's refusal as "headless chromium unavailable", a green skip."""
-    if "Executable doesn't exist" in str(exc):
-        pytest.skip(f"headless chromium unavailable: {exc}")
+    sync API's refusal as "headless chromium unavailable", a green skip.
+    A predicate, not the skip itself: the skip sits in `_measure`'s
+    `except playwright.Error` handler, where tests/test_skip_condition_hygiene.py
+    can see it gate on the optional playwright import."""
+    return "Executable doesn't exist" in str(exc)
 
 
 @pytest.mark.parametrize("scale", [0.8, 1.0, 1.6])
@@ -507,10 +510,9 @@ def test_only_a_missing_browser_binary_is_a_skip():
     playwright = pytest.importorskip("playwright.sync_api")
     refusal = playwright.Error(
         "It looks like you are using Playwright Sync API inside the asyncio loop.")
-    _skip_only_a_missing_browser(refusal)  # returns: the caller re-raises
+    assert not _is_a_missing_browser(refusal)  # the caller re-raises it
     missing = playwright.Error("BrowserType.launch: Executable doesn't exist at /x")
-    with pytest.raises(pytest.skip.Exception):
-        _skip_only_a_missing_browser(missing)
+    assert _is_a_missing_browser(missing)
 
 
 # --------------------------------------------------------------------------- #
