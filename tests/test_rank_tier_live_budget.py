@@ -5141,7 +5141,10 @@ def test_defect_f_leak_checker_cost_is_not_exponential_in_def_nesting(tmp_path, 
     t0 = time.perf_counter()
     found = _message_leak_sites(p)
     elapsed = time.perf_counter() - t0
-    assert elapsed < 5.0, elapsed
+    # Idle-box bound 5 s, scaled by the live suite-gate load (U5). budget()
+    # tops out at MAX_SLOTS (4) x 5 = 20 s, still far below the unfixed
+    # walk's minutes at depth 9, so no cap is needed to tell fixed from broken.
+    assert elapsed < fleet_test_guard.budget(5.0), elapsed
     assert bool(found) is leak, found
 
 
