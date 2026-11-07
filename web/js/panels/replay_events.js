@@ -41,6 +41,10 @@ function _portraitUrl(champName) {
 // existing Replay scrubber so a route change tears it down cleanly.
 const _RE = {
   matchId: null,
+  // S144-U-183: bumped by every loadReplayEvents call; a reply applies only
+  // while it is still the newest request (a late reply for an earlier pick
+  // or filter used to replace the ribbon of the later one).
+  seq: 0,
   include: new Set(),  // subset of {items, skills, wards}
   events:  [],
   // RM-638: the player's in-game "mark this moment" presses for this match
@@ -285,6 +289,8 @@ function _eventRowHtml(e) {
 export function loadReplayEvents(matchId) {
   const section = document.getElementById("replay-events-section");
   if (!section) return;
+  const seq = ++_RE.seq;
+  const fresh = () => seq === _RE.seq;
   if (!matchId) {
     section.hidden = true;
     _RE.matchId = null;
@@ -298,13 +304,14 @@ export function loadReplayEvents(matchId) {
   if (_replayEventsIsMock()) {
     _replayEventsMockLoad()
       .then((m) => {
+        if (!fresh()) return;
         if (!m || !Array.isArray(m.matches)) { _RE.events = []; _RE.flags = []; _renderEvents(); return; }
         const hit = m.matches.find((x) => x.match_id === matchId);
         _RE.events = (hit && Array.isArray(hit.events)) ? hit.events : [];
         _RE.flags = (hit && Array.isArray(hit.you_flagged)) ? hit.you_flagged : [];
         _renderEvents();
       })
-      .catch(() => { _RE.events = []; _RE.flags = []; _renderEvents(); });
+      .catch(() => { if (!fresh()) return; _RE.events = []; _RE.flags = []; _renderEvents(); });
     return;
   }
   const includeParam = [..._RE.include].sort().join(",");
@@ -313,6 +320,7 @@ export function loadReplayEvents(matchId) {
   fetch(url, { headers: { "Accept": "application/json" } })
     .then((r) => r.json())
     .then((d) => {
+      if (!fresh()) return;
       if (!d || !d.ok) {
         _RE.events = [];
         _RE.flags = [];
@@ -323,6 +331,7 @@ export function loadReplayEvents(matchId) {
       _renderEvents();
     })
     .catch((err) => {
+      if (!fresh()) return;
       try { console.warn("[replay-events] fetch failed:", err); } catch (_) {}
       _RE.events = [];
       _RE.flags = [];

@@ -250,7 +250,7 @@ function renderSpendGates() {
 // Loads recent matches from /api/replay/matches; clicking one fetches
 // /api/replay/match/<id> and lets the user scrub through per-minute
 // snapshots. Items, level, gold, CS reflect the slider position.
-const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null };
+const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null, loadSeq: 0 };
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the three fetch
@@ -432,6 +432,11 @@ function _replayLoadMatch(matchId, rowEl, opts) {
     r.removeAttribute("aria-current");
   });
   if (rowEl) { rowEl.classList.add("active"); rowEl.setAttribute("aria-current", "true"); }
+  // S144-U-183: only the newest pick's reply is applied. Pick A on a slow
+  // reply then pick B, and A's late reply used to repaint the meta line,
+  // scrubber, map and grid as A under row B, and re-arm the recording lane
+  // for A. Guard: tests/snapshot_panels/test_replay_stale_load.py.
+  const seq = ++_REPLAY.loadSeq;
   const meta = document.getElementById("replay-meta");
   if (meta) meta.textContent = "loading " + matchId + "...";
   // s220 PGR S5: fire the Match-V5 timeline event ribbon fetch in
@@ -449,7 +454,7 @@ function _replayLoadMatch(matchId, rowEl, opts) {
     : fetch("/api/replay/match/" + encodeURIComponent(matchId)).then(r => r.ok ? r.json() : null);
   matchPromise
     .then(d => {
-      if (!d) return;
+      if (seq !== _REPLAY.loadSeq || !d) return;
       _REPLAY.match = d;
       _REPLAY.snapshotIdx = 0;
       _replayMapAttach(d);
