@@ -3114,6 +3114,42 @@ survivability flips below cannot roll otherwise.
   the NB half rides any Nexus Blitz game the operator happens to play. One For All and GAMEMODEX also
   get the NB prompt and write `mode` `brawl`, so an `--mode nb` PASS counts only when the live-client
   `gameMode` at the first hit is `NEXUSBLITZ` (record it in the evidence).
+  **RM-869 RE-CHECK (lane 9 PREP s144 cycle 102, 2026-11-07, source read at `b8d0026ad`; NOT a
+  tick; PROBE, PREDICATE and SUBSTITUTION CHECK above unchanged).** (1) **Both shas above are
+  pre-rewrite twins, not reachable from HEAD or `main`.** `.git/filter-repo/commit-map` maps
+  `bfa4bbfbe` to `a79f8a26a` (same subject, same committer time 2026-10-25T07:01:01Z, an empty
+  `coaches/` diff between the twins) and `f073b1ca1` to `44532fe1c`; read `a79f8a26a` wherever the
+  block above says `bfa4bbfbe`, including "is an ancestor of the main checkout's HEAD" (true of
+  `a79f8a26a`, false of `bfa4bbfbe`). The tool keys its restart check on the committer TIME constant
+  (`FIX_COMMITTED_UTC`), not the sha, so the rewrite does not move its verdict; its docstring still
+  names `bfa4bbfbe`. (2) **Line cites, block-above value then HEAD value:** `_build_vision_reader`
+  `coaches/aram_coach.py:837` is now `:839` (its `r.USE_RELAY = False` `:865`); ARAM `_run_vision`
+  `:869` is now `:871`; the ARAM `:920` write block (its first key line) is now `:922`
+  (`cur = load_json` `:920`, loop `:921`, four keys `:922-925`, non-null guard `:927`); Brawl `USE_RELAY = False` `coaches/brawl_coach.py:643` is now
+  `:637` and `r.USE_RELAY = self.USE_RELAY` `:652` is now `:646`; Brawl `_run_vision` `:245` is now
+  `:243`; its writes `:263-269` are now `:261-267` (`safe_write` `:268`); `_ensure_data`
+  `coaches/_base_coach.py:671` holds and (unchanged since `44532fe1c`) delegates to `_write_blank_artifact` (call `:678`, def `:684`), whose
+  `safe_write(self._out, self._blank_artifact_data())` is `:687`, so "a new instance blanks first"
+  still holds; `core/vision_routing.py:148-164` holds (`if dropped:` `:148`, `_log_merge_drops`
+  `:164`, the JSONL writer `_log_merge_drops` `:225`); `core/game_snapshot.py:127-131` holds. The
+  URF / NB unread keys still have no reader (field lists `coaches/brawl_coach.py:604` NB turrets, `:618-619` URF, validators
+  `:607-625`, prompt `:579-595`). The line drift is 18 commits on the three coach files since
+  `44532fe1c`, mostly lint / cite-to-symbol (e.g. `f7e88a157` ClassVar, `a2503f89e`, `5a6013974`, `1f2504bcd`,
+  `7e55c31ae`); the `_run_vision`, `_build_vision_reader` and `_ensure_data` bodies carry no code
+  hunk. ONE behaviour change sits on both write paths: `ef2c7db22` (RM-1297) makes `load_json`
+  (`coaches/_base_coach.py:64`) return `{}` for a non-object JSON document; that only lets a vision
+  write proceed onto an empty dict, so it cannot put a non-seed value on disk without a vision
+  read and does not move the predicate. (3) **Idle run** (2026-11-07 ~04:14 local, `python -B
+  tools/gated_rm869_vision_fields.py --mode <m> --samples 1 --interval 0`, main checkout's data):
+  aram NO_GAME, nb NO_GAME, urf UNOBSERVABLE, each exit 1; restart PASS on cutoff
+  2026-11-01T01:33:09Z. That restart PASS is HOLLOW today: `ops/runtime/launcher_status.json`
+  reads `halted` (last updated 2026-11-01T02:17:21Z) and `health.json` pid 18724 is not running while it
+  still says `alive` true (the cycle 100 dead-RC finding on G7-17). The tool's restart line reads
+  `started_at` only, so ADD to the probe's precondition: before the game, `launcher_status.json`
+  `state` running and `:8888/api/state` answering 200, else the window is NO RESULT (a dead RC
+  writes no coaching file, so a stale `started_at` cannot false-PASS the fields half). The
+  coaching files are stale as expected: `data/aram_coaching_data.json` mtime 2026-08-02,
+  `data/brawl_coaching_data.json` 2026-04-19, both before the cutoff.
 - **G3-15** ARAM re-checks of GATE 2 rows (no separate work, just look while you are here): G2-12 R49
   reflect ranking-vs-real-comp (the stricter read), G2-29 the ARAM flood-tint question, G2-38 PD->Kraken
   level-tick stability (ARAM-suitable, no enemy-comp dependency).
