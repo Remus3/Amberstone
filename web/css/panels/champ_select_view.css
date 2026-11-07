@@ -1461,60 +1461,8 @@
     grid-template-columns: repeat(auto-fill,
       minmax(max(58px, calc((100% - 25px) / 5)), 1fr));
   }
-  /* Arena: me + two teammates; a 64 px icon cell keeps 84 px. */
-  #view-champ-select .csv-duo-row {
-    grid-template-columns: repeat(auto-fill,
-      minmax(max(84px, calc((100% - 17px) / 3)), 1fr));
-  }
-  #view-champ-select .csv-duo-cell { min-width: 0; }
-  #view-champ-select .csv-duo-cell-name {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  /* Arena augments: a PRISMATIC grade label needs 92 px. */
-  #view-champ-select .csv-augment-slots {
-    grid-template-columns: repeat(auto-fill,
-      minmax(max(96px, calc((100% - 13px) / 3)), 1fr));
-  }
-  #view-champ-select .csv-augment-slot { min-width: 0; }
-  /* Arena enemy sub-teams: icon + lock mark + an elided name. */
-  #view-champ-select .csv-arena-team-row {
-    grid-template-columns: repeat(auto-fill,
-      minmax(max(96px, calc((100% - 13px) / 3)), 1fr));
-  }
-  #view-champ-select .csv-arena-cell { min-width: 0; }
-  /* The build list and the 200 px rune side rail share one flex row; the
-   * rail drops under the builds when both do not fit (it held the builds
-   * column to 14 px at 320) and then spans the line. */
-  #view-champ-select .csv-builds-row { flex-wrap: wrap; }
-  #view-champ-select .csv-rune-side {
-    flex: 1 0 200px;
-    width: auto;
-  }
-  /* A build path's six item icons wrap rather than run past the row. */
-  #view-champ-select .csv-build-path-items,
-  #view-champ-select .csv-build-items {
-    flex-wrap: wrap;
-    min-width: 0;
-  }
-  /* An ARAM / Arena / experimental build row (checkbox | meta | spells |
-   * items) is a wrapping flex row at every width (RM-1781 moved the
-   * U-170 flex row to the base rule; its grid let the meta column fall
-   * to 0 px at 640). Here the items, once on their own line, are capped
-   * at the row less the 20 px spells and a gap, so on a narrow row they
-   * share a line with the spells instead of leaving them alone. */
-  #view-champ-select .csv-build-row .csv-build-items {
-    max-width: calc(100% - 30px);
-  }
-  /* The badge never runs past its column: a long name wraps inside the
-   * pill (never elides) once the line is narrower than 200 px. */
-  #view-champ-select .csv-build-row .csv-build-badge {
-    max-width: 100%;
-    box-sizing: border-box;
-    white-space: normal;
-  }
+  /* The Arena and build chooser rules of this block open the Build
+   * chooser rows section below (RM-1974). */
 }
 /* At 480 px and under the side-by-side rows stack. The My Pick state,
  * portrait and name go one under another (the portrait stays centred);
@@ -1970,6 +1918,68 @@
  * removed with the wrapper. */
 
 /* -- Build chooser rows (SR / ARAM / Arena) ------------------------- */
+/* RM-1780 at 720 px and under, its Arena and build chooser half (the
+ * measurements are on the RM-1780 block above, after the R30 reflow).
+ * RM-1974 moved these rules here unchanged from the end of that block, so
+ * they sit in the CV-2 slice of docs/WEB_CSS_SPLIT_PLAN.md. No rule
+ * between their old place and this one can match an element they style,
+ * so the cascade is the same; they still come before the base rules. */
+@media (max-width: 720px) {
+  /* Arena: me + two teammates; a 64 px icon cell keeps 84 px. */
+  #view-champ-select .csv-duo-row {
+    grid-template-columns: repeat(auto-fill,
+      minmax(max(84px, calc((100% - 17px) / 3)), 1fr));
+  }
+  #view-champ-select .csv-duo-cell { min-width: 0; }
+  #view-champ-select .csv-duo-cell-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Arena augments: a PRISMATIC grade label needs 92 px. */
+  #view-champ-select .csv-augment-slots {
+    grid-template-columns: repeat(auto-fill,
+      minmax(max(96px, calc((100% - 13px) / 3)), 1fr));
+  }
+  #view-champ-select .csv-augment-slot { min-width: 0; }
+  /* Arena enemy sub-teams: icon + lock mark + an elided name. */
+  #view-champ-select .csv-arena-team-row {
+    grid-template-columns: repeat(auto-fill,
+      minmax(max(96px, calc((100% - 13px) / 3)), 1fr));
+  }
+  #view-champ-select .csv-arena-cell { min-width: 0; }
+  /* The build list and the 200 px rune side rail share one flex row; the
+   * rail drops under the builds when both do not fit (it held the builds
+   * column to 14 px at 320) and then spans the line. */
+  #view-champ-select .csv-builds-row { flex-wrap: wrap; }
+  #view-champ-select .csv-rune-side {
+    flex: 1 0 200px;
+    width: auto;
+  }
+  /* A build path's six item icons wrap rather than run past the row. */
+  #view-champ-select .csv-build-path-items,
+  #view-champ-select .csv-build-items {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  /* An ARAM / Arena / experimental build row (checkbox | meta | spells |
+   * items) is a wrapping flex row at every width (RM-1781 moved the
+   * U-170 flex row to the base rule; its grid let the meta column fall
+   * to 0 px at 640). Here the items, once on their own line, are capped
+   * at the row less the 20 px spells and a gap, so on a narrow row they
+   * share a line with the spells instead of leaving them alone. */
+  #view-champ-select .csv-build-row .csv-build-items {
+    max-width: calc(100% - 30px);
+  }
+  /* The badge never runs past its column: a long name wraps inside the
+   * pill (never elides) once the line is narrower than 200 px. */
+  #view-champ-select .csv-build-row .csv-build-badge {
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+  }
+}
 .csv-builds-body {
   display: flex;
   flex-direction: column;
