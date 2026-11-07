@@ -16,6 +16,10 @@ Slice 3 (S144-P-261) renamed the same shape in nine more tools (``atlas_fonts``,
 ``credential_history_scan``, ``laning_verdict_information_probe``, ``moon_sync_poller``, ``rc_facts``,
 ``repin_subagent_cli``, ``repo_insights``): 9 findings gone, 78 remain in held scope.
 
+Slice 4 (S144-P-262) renamed the same shape in four more tools (``build_third_party_notices`` x4,
+``inbox_responder_runner`` x2, ``replay_laning_verdict_validate`` x2, ``stop_claim_gate`` x2) and in
+``replay_matchup_validate`` ``_parse_levels`` x1: 11 findings gone, 67 remain in held scope.
+
 The count per file can only fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -87,7 +91,6 @@ _BASELINE = {
     "tft/tft_placement.py": 1,
     "tft/tft_prompt.py": 2,
     "tools/arena_shadow_report.py": 1,
-    "tools/build_third_party_notices.py": 4,
     "tools/ds_wiki_staleness_check.py": 1,
     "tools/gated_ds_flag_eyeball.py": 1,
     "tools/gated_g237_lband_shadow.py": 1,
@@ -97,11 +100,8 @@ _BASELINE = {
     "tools/gated_lx07_recap_check.py": 1,
     "tools/gated_tft15_planner.py": 1,
     "tools/gated_tft_qa_summary.py": 1,
-    "tools/inbox_responder_runner.py": 2,
-    "tools/replay_laning_verdict_validate.py": 2,
-    "tools/replay_matchup_validate.py": 3,
+    "tools/replay_matchup_validate.py": 2,
     "tools/replay_pickban_validate.py": 2,
-    "tools/stop_claim_gate.py": 2,
 }
 _FIXED = (
     "core/branch_review.py",
@@ -133,6 +133,12 @@ _FIXED = (
     "tools/rc_facts.py",
     "tools/repin_subagent_cli.py",
     "tools/repo_insights.py",
+    # slice 4 (S144-P-262): the same shape in four more tools (replay_matchup_validate keeps its
+    # killer/victim int-coercion sites, a different shape).
+    "tools/build_third_party_notices.py",
+    "tools/inbox_responder_runner.py",
+    "tools/replay_laning_verdict_validate.py",
+    "tools/stop_claim_gate.py",
 )
 
 

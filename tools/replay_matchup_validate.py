@@ -738,8 +738,8 @@ def _write_report(report: dict, out_path: Path) -> None:
 
 def _parse_levels(raw: str) -> List[int]:
     out: List[int] = []
-    for chunk in raw.split(","):
-        chunk = chunk.strip()
+    for raw_chunk in raw.split(","):
+        chunk = raw_chunk.strip()
         if not chunk:
             continue
         out.append(int(chunk))

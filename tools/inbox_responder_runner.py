@@ -803,8 +803,8 @@ def _delivery_entries(root) -> Optional[list]:
         raw = path.read_text(encoding="utf-8")
     except OSError:
         return None
-    for line in raw.splitlines():
-        line = line.strip()
+    for raw_line in raw.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:
@@ -1652,8 +1652,8 @@ def trial_rows(path, agreement_id: str) -> list:
         raw = Path(path).read_text(encoding="utf-8")
     except OSError:
         return out
-    for line in raw.splitlines():
-        line = line.strip()
+    for raw_line in raw.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:
