@@ -1639,8 +1639,12 @@ def audit(ev):
         if EV_BYPASS.search(command) and re.search(r"\bgit\b", command):
             flag("hook_bypass", command, observed=command)
 
-    for sentence, line, _turn in _sentences_with_turn(ev["texts"],
-                                                     ev.get("text_turns") or []):
+    for sentence, line, sentence_turn in _sentences_with_turn(ev["texts"],
+                                                              ev.get("text_turns") or []):
+        # flag() reads `turn` from this scope to key the per-session seen set, so
+        # bind it per sentence. A loop target named `turn` reads as unused to ruff
+        # B007, and renaming it to `_turn` left every finding on turn "".
+        turn = sentence_turn
         claims_pass = bool(CLAIM_TESTS_PASS.search(sentence))
         if claims_pass and not ran_pytest:
             flag("tests_pass_without_run", sentence)                       # 1
