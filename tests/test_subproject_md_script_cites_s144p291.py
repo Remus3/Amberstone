@@ -11,10 +11,8 @@ ships at zero so a new doc cannot start with a dangling pointer.
 
 Out of scope: dated or append-only records (``_DATED_ROOTS``: auditor proposals and reports, ``ops/audit/``,
 ``ops/loop/reports/``, the CHANGELOG), the vendored kit, and the main-session owned rule / ledger files. ``docs/``
-subdirectories (specs, adr, qa, audits, handoff and the rest) are NOT scanned by this or any guard: the p285 guard
-reads only the root-level ``docs/*.md``. Measured 2026-11-06, 15 of the 124 files below ``docs/`` carry a bare
-cite of an untracked script; most are dated specs or QA records, so they are a FILING (S144-P-291 report), not
-swept here. The same p284 scanner is used: a cite of an untracked ``<top-dir>/<path>.<ext>`` needs a
+subdirectories are scanned by tests/test_docs_subdir_md_script_cites_s144p292.py (the p285 guard reads only the
+root-level ``docs/*.md``). The same p284 scanner is used: a cite of an untracked ``<top-dir>/<path>.<ext>`` needs a
 history word within three lines, or an entry in ``_ALLOWED`` (file, path), which only shrinks.
 """
 from __future__ import annotations
@@ -33,8 +31,8 @@ _DATED_ROOTS = (
 )
 _DATED_FILES = frozenset({"agents/daemon_slayer/CHANGELOG.md"})
 # Covered by a sibling guard (tools/*.md p284, root-level docs/*.md p285, README.md p290), vendored (kit), or held
-# by the main session (rules, ledgers, hand-off). The docs/ SUBDIRECTORIES are excluded here and covered by no
-# guard (see the module docstring).
+# by the main session (rules, ledgers, hand-off). The docs/ SUBDIRECTORIES are excluded here and covered by the
+# p292 guard (see the module docstring).
 _ELSEWHERE_ROOTS = ("docs/", "tools/", "ops/fleet_kit/")
 _ELSEWHERE_FILES = frozenset({
     "README.md", "CLAUDE.md", "ROADMAP.md", "BACKLOG.md", "WAKEUP_NOTES.md",
