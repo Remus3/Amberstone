@@ -68,6 +68,6 @@ def live_game_now() -> bool:
     """
     try:
         return is_live_game(_read_health())
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("live_game_now: health read failed", exc_info=True)
         return False

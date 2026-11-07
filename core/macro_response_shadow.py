@@ -127,7 +127,7 @@ def log_macro_response(
 
         return record
 
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("macro_response_shadow.log_macro_response failed", exc_info=True)
         return None
 

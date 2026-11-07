@@ -210,6 +210,6 @@ def log_live_bands(
 
         return record
 
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("live_benchmark_band_shadow.log_live_bands failed", exc_info=True)
         return None

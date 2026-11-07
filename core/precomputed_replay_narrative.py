@@ -728,6 +728,6 @@ def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
             }
         )
         return out
-    except Exception:  # noqa: BLE001 - fail-soft, never raise on the build path
+    except Exception:  # fail-soft, never raise on the build path
         log.debug("build_narrative failed", exc_info=True)
         return out

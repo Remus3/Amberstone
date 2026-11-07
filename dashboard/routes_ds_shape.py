@@ -282,7 +282,7 @@ def _serve_ds_shape(h) -> None:
         try:
             send_error(h, exc, public_msg="ds-shape failed - see logs",
                        fields={"ok": False})
-        except Exception:  # noqa: BLE001
+        except Exception:
             log.debug("ds-shape: the error reply could not be sent",
                       exc_info=True)
 

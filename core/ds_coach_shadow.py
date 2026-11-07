@@ -81,6 +81,6 @@ def log_coach_hints(
 
         return record
 
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("ds_coach_shadow.log_coach_hints failed", exc_info=True)
         return None

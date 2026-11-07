@@ -108,6 +108,6 @@ def log_replay_narrative(
 
         return record
 
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("replay_narrative_shadow.log_replay_narrative failed", exc_info=True)
         return None

@@ -3,9 +3,14 @@
 Some ratchet facts belong to one ruff, not to the tree. ruff 0.17 stopped firing
 BLE001 on a handler that logs with exc_info=True and stopped firing RET504 at two
 baselined sites, so run 42003344193 (.github/ci/requirements-ci.txt, ruff 0.17.2)
-reads directives and baseline rows differently from ruff 0.15.12, the local one
-every lane and landing runs. Such a check reads only the ruff it was measured
-against.
+reads directives and baseline rows differently from ruff 0.15.12. Such a check
+reads only the ruff it was measured against.
+
+RM-1974 (a): the local ruff moved to 0.17.3 on 2026-11-05, so both ratchets were
+re-measured on one tree with ruff 0.15.16, 0.17.2 (the CI pin) and 0.17.3. The
+two 0.17 runs read identically; every delta from 0.15 is that BLE001 / RET504
+change (named in each ratchet's docstring), so MEASURED_RUFF is now (0, 17) and
+the CI runs these checks instead of skipping them.
 """
 from __future__ import annotations
 
@@ -13,7 +18,7 @@ import re
 import subprocess
 import sys
 
-MEASURED_RUFF = (0, 15)
+MEASURED_RUFF = (0, 17)
 
 
 def ruff_minor() -> tuple[int, int]:

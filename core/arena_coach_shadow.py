@@ -148,7 +148,7 @@ def _focus_board_column(det: dict, lc: dict, mode_key: str) -> dict | None:
     rule_pick = _rule_pick(det.get("target_priority"))
     try:
         from core import focus_board_live  # lazy: keeps DS off this import path
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.debug("arena_coach_shadow: focus board adapter import failed",
                   exc_info=True)
         fb: dict = {"status": "unavailable", "notes": [
@@ -159,7 +159,7 @@ def _focus_board_column(det: dict, lc: dict, mode_key: str) -> dict | None:
                 return None
             # RM-854: a cached board or ``pending``, never a compute here.
             fb = focus_board_live.board_for_lc(lc, mode_key, background=True)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.debug("arena_coach_shadow: focus board failed", exc_info=True)
             fb = {"status": focus_board_live.STATUS_ERROR, "notes": [
                 f"focus board failed ({type(exc).__name__}) - no board"]}
@@ -195,7 +195,7 @@ def _safe_focus_board_column(det: dict, lc: dict, mode_key: str) -> dict | None:
     the column, never a dropped row."""
     try:
         return _focus_board_column(det, lc, mode_key)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.debug("arena_coach_shadow: focus board column failed", exc_info=True)
         return {"rule_pick": "", "board_pick": "", "agree": None,
                 "rule_pick_board_rank": None, "status": "error",
@@ -216,7 +216,7 @@ def _prefetch_board(lc: dict, mode_key: str) -> None:
     try:
         from core import focus_board_live  # lazy: keeps DS off this import path
         focus_board_live.prefetch(lc, mode_key)
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("arena_coach_shadow: focus board prefetch failed",
                   exc_info=True)
 
@@ -320,7 +320,7 @@ def log_arena_coach(
 
         return record
 
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("arena_coach_shadow.log_arena_coach failed", exc_info=True)
         return None
 

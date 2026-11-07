@@ -611,7 +611,7 @@ def _worker_loop(stop: threading.Event) -> None:
             _WORKER_BUSY = True
         try:
             _run_job(job, stop)
-        except Exception:  # noqa: BLE001 - the worker never dies on a job
+        except Exception:  # the worker never dies on a job
             log.warning("focus_board_live: board worker job failed",
                         exc_info=True)
         finally:

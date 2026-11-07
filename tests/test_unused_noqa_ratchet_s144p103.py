@@ -18,6 +18,14 @@ _BASELINE (rel path -> why it is not in this slice). The ratchet:
 Only unused-because-the-rule-did-not-fire directives count (`unused:` in
 ruff's message); a `non-enabled:` directive (a rule the config ignores, kept
 for a stricter lint run) is deliberate and out of scope.
+
+RM-1974 (a), re-measured 2026-11-07 on one tree: ruff 0.15.16 read 5 unused
+directives (the 3 _BASELINE files plus a `# noqa: B018` in two test modules);
+ruff 0.17.2 and 0.17.3 read those 5 plus 30 `# noqa: BLE001` in 21 production
+modules, every one on a handler that logs with ``exc_info=True``, which 0.17's
+BLE001 no longer flags. The 30 directives (any rationale text kept as a plain
+comment) and the 2 B018 ones (B018 never fires on a subscript) were dropped and
+those modules joined FIXED; the _BASELINE is unchanged.
 """
 from __future__ import annotations
 
@@ -41,27 +49,49 @@ FIXED = (
     "agents/agent2_backend/file_ingest.py",
     "agents/agent2_backend/pipeline/orchestrator.py",
     "agents/agent7_context/warm_session.py",
+    "core/aram_coach_shadow.py",
     "core/archetype_picks.py",
+    "core/arena_coach_shadow.py",
     "core/build_order_precompute.py",
+    "core/champ_select_shadow.py",
+    "core/comp_coverage.py",
+    "core/det_coach_shadow.py",
+    "core/ds_coach_shadow.py",
+    "core/focus_board_live.py",
+    "core/hz_choice_shadow.py",
+    "core/live_benchmark_band_shadow.py",
+    "core/live_game_gate.py",
+    "core/macro_response_shadow.py",
     "core/operator_notify.py",
+    "core/precomputed_anvil_advisor.py",
+    "core/precomputed_replay_narrative.py",
+    "core/replay_narrative_shadow.py",
     "core/replay_seek.py",
     "dashboard/routes_archetype.py",
     "dashboard/routes_auto_accept.py",
     "dashboard/routes_ban_suggest.py",
     "dashboard/routes_coach_choice.py",
+    "dashboard/routes_ds_shape.py",
     "dashboard/routes_item_wpa.py",
     "dashboard/routes_last_match.py",
     "dashboard/routes_ops_panels.py",
+    "dashboard/routes_player_snapshot.py",
     "dashboard/routes_post_game_wpa.py",
+    "dashboard/routes_recordings.py",
     "dashboard/routes_rune_wpa.py",
     "dashboard/routes_skill_wpa.py",
+    "dashboard/routes_sr_draft.py",
     "dashboard/routes_summspell_wpa.py",
+    "dashboard/routes_tft.py",
     "lib/game_data/fetch.py",
     "ops/loop/lane_launcher.py",
     "tests/snapshot_panels/test_settings_spend_gate_focus.py",
     "tests/snapshot_panels/test_settings_spend_gate_residue.py",
     "tests/test_build_order_precompute.py",
     "tests/test_decision_detector_lane8_cycle12.py",
+    "tests/test_first_element_slice_test_code_ratchet_s144p167.py",
+    "tests/test_sorted_first_min_test_code_ratchet_s144p168.py",
+    "tft/tft_scouting.py",
     "tft/tft_state_reader.py",
     "tools/gated_lx11_minimap_check.py",
     "tools/hotkey_listener.py",

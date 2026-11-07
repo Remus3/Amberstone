@@ -167,7 +167,7 @@ def compute_anvil_pick(
             _names(alive_opponents, _MAX_LIST),
             _clamp_int(hp_pct, 0, 100, 100),
         )
-    except Exception:  # noqa: BLE001 - fail-soft on the live coach path
+    except Exception:  # fail-soft on the live coach path
         log.debug("recompute_arena_build failed for the anvil substrate",
                   exc_info=True)
         return _low_conf(offered)

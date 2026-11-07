@@ -84,7 +84,7 @@ def test_first_element_spellings_agree():
     assert keys[0] == next(iter(mapping))
     misses = [r for r in rows if r["k"] == "zz"]
     with pytest.raises(IndexError):
-        misses[0]  # noqa: B018
+        misses[0]
     with pytest.raises(StopIteration):
         next(r for r in rows if r["k"] == "zz")
 

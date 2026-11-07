@@ -108,6 +108,6 @@ def log_det_coaching(
 
         return record
 
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("det_coach_shadow.log_det_coaching failed", exc_info=True)
         return None

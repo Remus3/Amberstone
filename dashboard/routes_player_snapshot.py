@@ -246,7 +246,7 @@ def _serve_player_snapshot(h) -> None:
         since = int(time.time() * 1000) - hours * 3_600_000
         gpi = player_gpi.compute_gpi(mode=mode, since_ts=since)
         model = _build_snapshot_model(gpi, mode, hours)
-    except Exception:  # noqa: BLE001 - route trust boundary; logged with traceback
+    except Exception:  # route trust boundary; logged with traceback
         log.warning("api/player-snapshot: model build failed; serving the "
                     "degraded model", exc_info=True)
         model = _degraded_model(mode, hours)

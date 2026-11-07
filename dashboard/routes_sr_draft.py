@@ -390,7 +390,7 @@ def _serve_sr_draft_apply_post(h, payload) -> None:
             "item_ids":   item_ids,
             "notes":      notes,
         }).encode(), "application/json")
-    except Exception as exc:  # noqa: BLE001 - the route's last-resort 500
+    except Exception as exc:  # the route's last-resort 500
         # Raw exception text stays in the log only, with its traceback.
         log.warning("api/sr-draft/apply: %s: %s", type(exc).__name__,
                     scrub_log(str(exc)), exc_info=True)

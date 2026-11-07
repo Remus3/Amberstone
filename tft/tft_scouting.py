@@ -739,7 +739,7 @@ class Scouter:
     def _run_safe(self, identities, token, kw) -> None:
         try:
             self._run(identities, token, **kw)
-        except Exception as exc:  # noqa: BLE001 - a background run must never raise
+        except Exception as exc:  # a background run must never raise
             log.warning("tft_scouting: run failed: %s", exc, exc_info=True)
 
     def scout(self, identities: list, **kw) -> dict:
@@ -768,7 +768,7 @@ class Scouter:
                 return {}
             try:
                 cards[idx] = self._scout_one(ident, deadline)
-            except Exception as exc:  # noqa: BLE001 - one bad card never sinks the run
+            except Exception as exc:  # one bad card never sinks the run
                 log.warning("tft_scouting: slot %d failed: %s", ident.slot, exc, exc_info=True)
                 cards[idx] = unavailable_digest(ident, "unavailable")
             self._write(self._doc("scouting", game_id, phase, identity_source, cards, started,

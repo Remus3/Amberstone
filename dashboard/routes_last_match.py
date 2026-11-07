@@ -447,7 +447,7 @@ def _ensure_retry_thread() -> None:
                 try:
                     time.sleep(INGEST_RETRY_TICK_S)
                     _drain_ingest_queue_once()
-                except Exception:  # never let the thread die  # noqa: BLE001
+                except Exception:  # never let the thread die
                     log.warning("ingest retry drain failed", exc_info=True)
 
         # Daemon: the drain holds no resource across ticks (each ingest
@@ -483,7 +483,7 @@ def _drain_ingest_queue_once() -> int:
             continue
         try:
             verdict, _info = _try_ingest_once(body)
-        except Exception:  # one entry must not cost the rest  # noqa: BLE001
+        except Exception:  # one entry must not cost the rest
             log.warning("ingest retry drain: game %s failed; kept until its "
                         "deadline", _queued_game_id(body), exc_info=True)
             keep.append((deadline, body))

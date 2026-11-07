@@ -6,12 +6,17 @@ line (RET504), and one HTTP handler class ended three ``-> None`` methods with a
 call after every other branch had ``return``-ed a value (RET503); each now returns the expression directly.
 RM-1692 then ended ``scripts/cache_ddragon_assets.py`` ``fetch`` with an explicit ``return False``.
 
-The baseline is the findings that stay, each for a named reason:
+Under ruff 0.15 the baseline held two findings, each for a named reason:
 
 - ``ops/fleet_kit/fleet_suite_gate.py``: a vendored kit file pinned by ``ops/fleet_kit/MANIFEST.json``; never
   edited locally.
 - ``tools/sibling_name_sweep.py``: ``rc`` is assigned inside ``try`` and read again in ``finally``, so the
   assignment is not unnecessary; ruff's finding is a false positive here.
+
+RM-1974 (a), re-measured 2026-11-07 on one tree: ruff 0.15.16 still reports exactly those two RET504 sites
+(``fleet_suite_gate.py`` and ``sibling_name_sweep.py``, one each), while ruff 0.17.2 and 0.17.3 report none
+anywhere (0.17 stopped firing RET504 there; see ``tests/_ruff_version.py``). Both rows were dropped, so the
+baseline is empty and any RET504 / RET503 finding in scope now fails.
 
 A baseline entry that stops offending fails ``test_baseline_is_exact`` until it is dropped; a new finding
 anywhere else fails ``test_no_new_findings``.
@@ -47,10 +52,8 @@ _OUT_OF_SCOPE = (
     "agents/agent3_testing/suite/",
 )
 # file -> finding count that stays (reasons in the module docstring). Only shrinks.
-_BASELINE = {
-    "ops/fleet_kit/fleet_suite_gate.py": 1,
-    "tools/sibling_name_sweep.py": 1,
-}
+# Empty under ruff 0.17 (RM-1974 (a)): the two 0.15 rows no longer offend.
+_BASELINE: dict[str, int] = {}
 _FIXED = (
     "agents/_supervisor_http.py",
     "agents/agent2_backend/migration_rewind.py",

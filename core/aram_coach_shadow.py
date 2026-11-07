@@ -209,7 +209,7 @@ def log_aram_coach(
 
         return record
 
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("aram_coach_shadow.log_aram_coach failed", exc_info=True)
         return None
 

@@ -84,7 +84,7 @@ def test_min_and_sorted_first_agree():
     assert ordered_paths[0] == min(p for p in paths) == "a/y.json"
     empty = sorted([])
     with pytest.raises(IndexError):
-        empty[0]  # noqa: B018
+        empty[0]
     with pytest.raises(ValueError):
         min([])
 

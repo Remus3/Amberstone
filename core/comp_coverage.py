@@ -313,7 +313,7 @@ def champion_profile(name: Any) -> Optional[dict]:
             "cover": [a for a in COVER_AXES if a in cover],
             "vuln": [a for a in VULN_AXES if a in vuln],
         }
-    except Exception:  # noqa: BLE001 - fail-soft
+    except Exception:  # fail-soft
         logger.debug("champion_profile failed for %r", name, exc_info=True)
         return None
 
@@ -416,7 +416,7 @@ def coverage_from_team_context(tc: Any) -> Optional[dict]:
         mode_key = mode_key_from_queue_id(tc.get("queue_id")) or "sr"
         return compute_coverage(_locked(tc.get("allies")),
                                 _locked(tc.get("enemies")), mode_key)
-    except Exception:  # noqa: BLE001 - fail-soft, never raises into state build
+    except Exception:  # fail-soft, never raises into state build
         logger.debug("coverage_from_team_context failed", exc_info=True)
         return None
 

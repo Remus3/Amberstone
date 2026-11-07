@@ -183,7 +183,7 @@ def log_champ_select_advice(
             _WARNED.discard(tkey)
         return record
 
-    except Exception as exc:  # noqa: BLE001 - fail-soft on the route path
+    except Exception as exc:  # fail-soft on the route path
         with _LOCK:
             first = tkey not in _WARNED
             _WARNED.add(tkey)

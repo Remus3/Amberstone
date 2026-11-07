@@ -831,7 +831,7 @@ def _engine_refresh(n: int) -> None:
         with _ENGINE_LOCK:
             _ENGINE_MODELS[n] = model
             _ENGINE_WARNED["failed"] = False
-    except Exception as exc:  # noqa: BLE001 - a background build must never raise
+    except Exception as exc:  # a background build must never raise
         if not _ENGINE_WARNED["failed"]:
             _ENGINE_WARNED["failed"] = True
             log.warning("api/tft/engine: model build failed: %s", exc, exc_info=True)
@@ -1173,7 +1173,7 @@ def _guard(label: str, fn):
     def handler(h, *args):
         try:
             fn(h, *args)
-        except Exception as exc:  # noqa: BLE001 - raw text to the log only
+        except Exception as exc:  # raw text to the log only
             log.warning("%s: %s", label, exc, exc_info=True)
             try:
                 _send_json(h, 500, INTERNAL_ERROR)

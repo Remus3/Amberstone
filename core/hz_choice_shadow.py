@@ -251,6 +251,6 @@ def log_precomputed_choices(
 
         return record
 
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.debug("hz_choice_shadow.log_precomputed_choices failed", exc_info=True)
         return None

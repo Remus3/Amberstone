@@ -295,7 +295,7 @@ def _stream(h, real: str) -> None:
         # whose JSON 500 would land INSIDE the body (s144 F2).
         try:
             left = _copy_body(h, fh, start, length)
-        except Exception:  # noqa: BLE001 - headers already sent; see above
+        except Exception:  # headers already sent; see above
             log.warning("api/recordings: stream aborted", exc_info=True)
             h.close_connection = True
             return
@@ -370,7 +370,7 @@ def _serve_recordings(h) -> None:
             _json(h, 404, {"ok": False, "error": "no_video"})
             return
         _stream(h, real)
-    except Exception as exc:  # noqa: BLE001 - never leak a path in a reply
+    except Exception as exc:  # never leak a path in a reply
         # The traceback goes to the local log only (s144 F5); the reply below
         # stays generic.
         log.warning("api/recordings: %s", type(exc).__name__, exc_info=True)
