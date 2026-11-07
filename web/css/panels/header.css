@@ -2429,10 +2429,21 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 /* grade-tinted trajectory chips (mirrors the PGR/home grade ramp). */
 .session-trend-chip.S { color: var(--accent);   border-color: var(--accent); }
 .session-trend-chip.A { color: var(--good);     border-color: var(--good); }
-.session-trend-chip.B { color: var(--accent-2); border-color: var(--accent-2); }
 .session-trend-chip.C { color: var(--info);     border-color: var(--info); }
 .session-trend-chip.D { color: var(--warn);     border-color: var(--warn); }
-.session-trend-chip.F { color: var(--bad);      border-color: var(--bad); }
+/* S144-U-201: the bare --accent-2 / --bad text sat under AA 4.5 on the
+ * chip's --surface-3 (B 2.56:1 bloodmoon, F 3.28:1 arcane), so B and F mix
+ * their hue 60 percent into --text, as the Home RECENT grade cell does for
+ * D / F; the border keeps the bare hue, so the grade still reads by colour.
+ * Guard: tests/snapshot_panels/test_session_text_contrast.py. */
+.session-trend-chip.B {
+  color: color-mix(in oklab, var(--accent-2) 60%, var(--text));
+  border-color: var(--accent-2);
+}
+.session-trend-chip.F {
+  color: color-mix(in oklab, var(--bad) 60%, var(--text));
+  border-color: var(--bad);
+}
 
 .session-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--panel-gap);

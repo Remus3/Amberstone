@@ -83,7 +83,7 @@ d76c3062504d3d09a25a845373a5cf86b102e4bbf85d9405719a171706008271  web/css/panels
 
 ad306d4a15fb282d9a9da006fb7ef0d9fede68fc44c5974c0c9a6fa7e004a948  web/css/panels/panel_visibility.css
 
-c75559a0d3af36d41849872deb4059c7b052631d0fb041cb4f0ce9960b6d9fc9  web/css/panels/patch_impact.css
+aa0c1e3260efd055e4630eb753752279946724d1db75436d83e2825bfcdb2fb9  web/css/panels/patch_impact.css
 
 52cfb92b32abb7e75a35057f72d343e87a18c968b7c26b9c3971f85ec9366179  web/css/panels/perf_curve.css
 
