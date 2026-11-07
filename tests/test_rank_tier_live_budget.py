@@ -1593,7 +1593,14 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
     after the walrus (`log.info(m) if (m := url) else None`).
     RM-1563: the value is judged with the view `_call_views` gives it, so
     a walrus in a comprehension sees the comprehension's targets
-    (`[(m := x) for x in [url]]`); it still binds the enclosing scope."""
+    (`[(m := x) for x in [url]]`); it still binds the enclosing scope.
+    S144-Q-102: a walrus read with the enclosing state itself makes the
+    `_ALIAS` marks `=` makes (`if (a := m): a.append(url)` fills `m`),
+    judged before it ends the target's own. One read with a copied view (a
+    comprehension, a generator, a lambda body or default) makes none, as
+    a comprehension's value may name its own target, not the enclosing
+    name (residual: a walrus there over an enclosing name, a lambda
+    default's included, is not an alias)."""
     for node in nodes:
         sites = []
         _call_views(node, tainted, late, sites, kinds=ast.NamedExpr)
@@ -1602,7 +1609,10 @@ def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
             is_obj = _is_logger_expr(sub.value, seen)
             wrapper = _value_wrapper_specs(sub.value, seen, late)
             muts = _value_mut_specs(sub.value, seen, late)    # S144-Q-96
+            joined = (_new_alias_marks([sub.target], sub.value, tainted)
+                      if seen is tainted else set())    # S144-Q-102
             _drop_aliases(sub.target.id, tainted)    # RM-1794
+            tainted |= joined
             _bind_names(sub.target, _is_tainted(sub.value, seen, late),
                         tainted, clear=False)
             _bind_log_alias(sub.target, is_alias, tainted, is_obj)
@@ -1996,10 +2006,14 @@ def _mutated_names(fn):
 def _add_alias_edges(node, edges) -> None:
     """RM-1794: the alias edges (`_alias_pairs`) a plain assignment
     `node` makes into `edges` (name -> the names a value put into its
-    object reaches), as `_new_alias_marks` makes them."""
+    object reaches), as `_new_alias_marks` makes them. S144-Q-102: a
+    walrus makes them too, wherever it stands (flow-insensitive, as the
+    edges are: the safe side for flow-out)."""
     if isinstance(node, ast.Assign):
         targets, value = node.targets, node.value
     elif isinstance(node, ast.AnnAssign) and node.value is not None:
+        targets, value = [node.target], node.value
+    elif isinstance(node, ast.NamedExpr):
         targets, value = [node.target], node.value
     else:
         return
@@ -4652,6 +4666,33 @@ _CHECKER_SAMPLES = (
      "a = m\ndef f(url, a):\n    a.append(url)\nraise E(m)\n", False),
     ("an alias made inside a def does not flow out of it",
      "def g():\n    a = G\nG.append(url)\nraise E(a)\n", False),
+    # S144-Q-102: a walrus binds an alias as `=` does (`_bind_walrus`).
+    ("a walrus alias filled in place fills its source",
+     "def f(url):\n    m = []\n    if (a := m):\n        a.append(url)\n    raise E(m)\n",
+     True),
+    ("a walrus alias of a part fills its source",
+     "def f(url):\n    m = C()\n    if (a := m.q):\n        a.append(url)\n    raise E(m)\n",
+     True),
+    ("a source filled in place is read through its walrus alias",
+     "def f(url):\n    m = []\n    if (a := m):\n        pass\n    m.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a parameter filled through a walrus alias reaches a later def",
+     "def g(m):\n    if (a := m):\n        a.append(url)\ndef f(m):\n    raise E(m)\n", True),
+    ("a walrus over a walrus aliases both names",
+     "def f(url):\n    m = []\n    if (a := (b := m)):\n        a.append(url)\n"
+     "    raise E(m)\n", True),
+    ("a walrus re-binding a name to a part of itself still reaches the old object",
+     "def f(url):\n    m = []\n    a = m\n    if (a := a[0]):\n        a.append(url)\n"
+     "    raise E(m)\n", True),
+    ("a walrus bound to a copy is not an alias",
+     "def f(url):\n    m = []\n    if (a := list(m)):\n        a.append(url)\n    raise E(m)\n",
+     False),
+    ("a walrus alias re-bound before the fill does not taint the source",
+     "def f(url):\n    m = []\n    if (a := m):\n        a = []\n        a.append(url)\n"
+     "    raise E(m)\n", False),
+    ("a walrus in a comprehension does not alias the enclosing name of its target",
+     "def f(url, xs):\n    x = []\n    [(a := x) for x in xs]\n    a.append(url)\n"
+     "    raise E(x)\n", False),
     # Every binding form re-binds the name, not only `=`, and a lambda's
     # parameters and a comprehension's targets are its own names.
     ("a for target re-binding an alias does not fill its source",
