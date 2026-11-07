@@ -2,8 +2,8 @@
 
 Item-200 Slice A migration tool. Sister to ``tools/champion_loadout_align.py``
 (item 167) which regenerates SR via the DS engine, and to
-``tools/migrate_carry_summoners_flash_barrier.py`` (item 169) which flipped
-SR carry [4,7] -> [4,21].
+``tools/migrate_carry_summoners_flash_barrier.py`` (item 169, quarantined in
+RC2 P7.3 and no longer tracked) which flipped SR carry [4,7] -> [4,21].
 
 Invariants enforced (one per ``build_path``):
 
