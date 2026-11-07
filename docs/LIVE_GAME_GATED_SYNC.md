@@ -5244,6 +5244,26 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   `FIGHT SMART` 139; 42 blank-Haiku rows), cohort 0, report `awaiting_accrual` (617 left out);
   `data/anvil_shadow.jsonl` is now ABSENT (the 30 leaked rows in the GATE 5 DRAIN CARD baseline are
   gone), so any anvil row after the cutoff is the first real one; exit 1.
+  **RE-CHECK (lane 9 PREP s144 cycle 100, 2026-11-07, source read at `7f361a92e`; NOT a tick).**
+  Cites HOLD, no drift: `_since_filter` `tools/arena_shadow_report.py:535` (still a plain string
+  compare, `r["ts"] >= since`), `FLIP_GATE = 0.70` `:97`; `_arena_artifact_is_blank`
+  `dashboard/_deterministic_coaching.py:1474`; rule 1 `core/arena_action_rule.py:109-110` (`camp_phase
+  is True` -> `BUY ITEMS`); `USE_RELAY = False` `coaches/arena_coach.py:1202`; `_VISION_INTERVAL =
+  20.0` `:441`; `4d07738aa` committer time 2026-10-25T01:28:48-05:00 = the tool's 06:28:48Z.
+  Idle re-run (2026-11-07 09:11Z, no game, `:8888` and `:2999` both curl 000): exit 1 INCOMPLETE;
+  restart PASS (cutoff 2026-11-01T01:33:09Z); camp NOT_SEEN (the one snapshot is mtime
+  2026-07-21T03:17:31Z, `mode` arena, `camp_phase` false - before the cutoff, so not counted); cohort
+  0 rows; report `awaiting_accrual`, 617 left out; anvil NO_ROW.
+  **NEW TRAP - the `restart` PASS can read a DEAD RC.** `ops/runtime/health.json` still says `alive`
+  true, `pid` 18724, `started_at` 2026-11-01T01:33:09Z (file mtime 2026-11-01T02:17:20Z), but that
+  pid is not running and `ops/runtime/launcher_status.json` reads top `state` `halted` (every service
+  `halted`, `updated` 2026-11-01T02:17:21Z; `_top_state` `ops/launcher/service_host.py:1718`). A
+  stopped RC never rewrites `started_at`, so the tool's default cutoff is the LAST run's start, not a
+  live one. It cannot give a false PASS on the evidence checks (an RC that is down logs no rows, so
+  the cohort stays 0 and the verdict INCOMPLETE), but `restart` PASS alone is NOT proof RC loaded the
+  fix for THIS game. Precondition, stated before any game: `launcher_status.json` top `state` reads
+  `running` (`:1730-1731`) and `curl -sk https://127.0.0.1:8888/api/state` answers 200 BEFORE the
+  game starts; else start RC first and use the new `started_at`, and record both times in the tick.
 - **G7-18** (was G18) ORUN5 grade-fold refinement (`assume_carry_share_grade` default-OFF at
   `core/post_game_rubric.py:410`, OR-gated with the existing carry_efficiency fold). Shipped headless
   byte-identical OFF (full-dict equality across 7 role/stat fixtures). The live default-ON flip = pass
