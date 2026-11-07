@@ -34,6 +34,9 @@ _ALLOWED = {
     ("tests/test_launcher_update_cycle_pkg6b.py", "core/a.py"),
     ("tests/test_launcher_update_hardening_pkg6b.py", "core/a.py"),
     ("tests/test_launcher_update_hardening_pkg6b.py", "core/b.py"),
+    # The docstring lists the five scripts it pins as removed; the word "removed" sits in its first lines, more than
+    # three apart from the list (S144-P-287: the word "sibling" marked this one before).
+    ("tests/test_orphan_scripts_rm227.py", "ops/phase3_summary.py"),
     # The per-session lane drivers are gitignored runtime files the test describes, never tracked.
     ("tests/test_fleet_test_guard_lane_driver_rm874.py", "ops/loop/control/lane_prompts/s133_lane_driver.py"),
     ("tests/test_fleet_test_guard_lane_driver_rm874.py", "ops/loop/control/lane_prompts/s134_lane_driver.py"),

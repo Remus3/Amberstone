@@ -48,6 +48,10 @@ _ALLOWED = {
     ("docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md", "tools/gamepc_lcu_agent.py"),
     # A "landed this session" snapshot of the retired DS Share mirror sync (2026-09-07 removal).
     ("docs/OVERLAY_COMPLIANCE_PLAN.md", "tools/ds_share_sync.py"),
+    # "Prior pin, kept for the audit trail" lines of the main-session-owned tracker (read-only here): dated history,
+    # marked only by a weak word before S144-P-287 narrowed the shared history words.
+    ("docs/DS_SWEEP_TRACKER.md", "coaches/tft_pbe_coach.py"),
+    ("docs/DS_SWEEP_TRACKER.md", "tft/tft_pbe_engine.py"),
 }
 
 

@@ -29,8 +29,7 @@ _CITE_RE = re.compile(
     rf"(?<![\w./-])((?:{_TOP_DIRS})/[A-Za-z0-9_./-]*[A-Za-z0-9_]\.(?:py|ps1|bat|sh|mjs|js))(?![\w])"
 )
 _HISTORY_RE = re.compile(
-    r"quarantin|remov|delet|retired|never existed|no longer|\bgone\b|was dropped|deprecat|sibling|history|"
-    r"superseded|replaced|\bold\b|former|earlier|legacy",
+    r"quarantin|remov|delet|retired|never existed|no longer|\bgone\b|was dropped|deprecat|superseded",
     re.IGNORECASE,
 )
 _WINDOW = 3
@@ -109,3 +108,14 @@ def test_scanner_is_live():
     assert scan_source("see tools/real.py\n", tracked) == []
     far = "see tools/absent.py\n" + "x\n" * 4 + "removed\n"
     assert scan_source(far, tracked) == [(1, "tools/absent.py")]
+
+
+def test_a_weak_word_does_not_mark_a_cite_as_history():
+    """S144-P-287: only a word that says the script is gone marks a cite as history. ``history``, ``old``,
+    ``earlier``, ``former``, ``legacy``, ``replaced`` and ``sibling`` sit near live cites too (the p273 twin)."""
+    tracked = frozenset({"tools/real.py"})
+    for weak in ("history_notes", "the old way", "earlier", "former", "legacy", "replaced by", "sibling repo"):
+        assert scan_source(f"see tools/absent.py ({weak})\n", tracked) == [(1, "tools/absent.py")], weak
+    for strong in ("quarantined", "removed", "deleted", "retired", "never existed", "no longer", "gone",
+                   "was dropped", "deprecated", "superseded"):
+        assert scan_source(f"see tools/absent.py ({strong})\n", tracked) == [], strong

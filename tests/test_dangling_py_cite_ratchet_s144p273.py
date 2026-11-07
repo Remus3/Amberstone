@@ -25,8 +25,7 @@ _TOP_DIRS = (
 )
 _CITE_RE = re.compile(rf"(?<![\w./-])((?:{_TOP_DIRS})/[A-Za-z0-9_./-]*[A-Za-z0-9_]\.py)(?![\w])")
 _HISTORY_RE = re.compile(
-    r"quarantin|remov|delet|retired|never existed|no longer|\bgone\b|was dropped|deprecat|sibling|history|"
-    r"superseded|replaced|\bold\b|former|earlier|legacy",
+    r"quarantin|remov|delet|retired|never existed|no longer|\bgone\b|was dropped|deprecat|superseded",
     re.IGNORECASE,
 )
 _WINDOW = 3
@@ -43,6 +42,9 @@ _ALLOWED = {
     ("tools/citation_audit.py", "core/NOSUCHFILE_zzz.py"),
     # A gitignored runtime artefact the tool writes at run time, not a tracked module.
     ("tools/pseudo_screen_overlay.py", "ops/runtime/ui_recon/recon.py"),
+    ("tools/citation_audit.py", "ops/runtime/ui_recon/recon.py"),
+    # A file of the other repo this one adopted a helper from (S144-P-287: only the word "sibling" marked it before).
+    ("core/ports.py", "tools/lw_ports.py"),
 }
 
 
@@ -105,3 +107,15 @@ def test_scanner_is_live():
     far = "see tools/absent.py\n" + "x\n" * 4 + "removed\n"
     assert scan_source(far, tracked) == [(1, "tools/absent.py")]
     assert scan_source("see core/a/b/absent_two.py now\n", tracked) == [(1, "core/a/b/absent_two.py")]
+
+
+def test_a_weak_word_does_not_mark_a_cite_as_history():
+    """S144-P-287: a word that merely sits near a cite is not a history note. ``history`` (a ``history_notes.md``
+    path), ``old``, ``earlier``, ``former``, ``legacy``, ``replaced`` and ``sibling`` each masked a bare cite of a
+    missing script in the shared window; only a word that says the file is gone counts."""
+    tracked = frozenset({"tools/real.py"})
+    for weak in ("history_notes", "the old way", "earlier", "former", "legacy", "replaced by", "sibling repo"):
+        assert scan_source(f"see tools/absent.py ({weak})\n", tracked) == [(1, "tools/absent.py")], weak
+    for strong in ("quarantined", "removed", "deleted", "retired", "never existed", "no longer", "gone",
+                   "was dropped", "deprecated", "superseded"):
+        assert scan_source(f"see tools/absent.py ({strong})\n", tracked) == [], strong
