@@ -145,7 +145,7 @@ def test_exempt_names_exist():
     tracked = _tracked()
     for root in _DATED_ROOTS:
         assert any(p.startswith(root) and p.endswith(".md") for p in tracked), root
-    assert _VERBATIM <= tracked
+    assert tracked >= _VERBATIM
 
 
 def test_scanner_is_live():
