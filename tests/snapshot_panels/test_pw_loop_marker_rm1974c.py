@@ -9,7 +9,7 @@ cleared it around each agent3 test, so in an xdist worker that already held
 the session browser the next snapshot test's first call never returned
 (test_build_insights_sort_header_hover[hextech], killed at 300 s, LEDGER 2064).
 The clear is gone and tests/test_asyncio_isolation_guard.py bans it; the
-conftest's autouse check turns any later marker change into an immediate,
+conftest's setup-hook check (RM-2030) turns any later marker change into an immediate,
 named failure of the next browser test instead of a hang, and puts
 Playwright's loop back so the rest of the worker (and the session teardown's
 b.close()) still runs.
@@ -19,6 +19,9 @@ marker, which would hang this worker) and the one Playwright behaviour it
 rests on: after a sync call the marker IS the recorded session loop.
 """
 import asyncio
+import types
+
+import pytest
 
 from tests.snapshot_panels import conftest as snap
 
@@ -61,3 +64,39 @@ def test_the_session_browser_arms_the_check(pw_browser):
     assert asyncio.events._get_running_loop() is recorded
     assert snap.pw_loop_marker_problem(
         asyncio.events._get_running_loop(), recorded) is None
+
+
+# RM-2030: the check moved from a function-scoped autouse fixture into a
+# tryfirst pytest_runtest_setup hook, because pytest sets up module-scoped
+# fixtures before function-scoped ones, so a module-scoped fixture that takes
+# pw_browser made its Playwright calls before the old check and still hung.
+# Measured on a two-module probe (one test clears the marker, the next module
+# opens its page in a module-scoped fixture): the old conftest hung to
+# --timeout at that fixture; the hook reads one named setup error, and the
+# module's next test passes.
+
+
+def test_the_marker_check_is_a_tryfirst_setup_hook_for_this_folder(request):
+    """It must run before ANY fixture of the item, so it is a setup hook that
+    pluggy calls ahead of pytest's own (which instantiates the fixtures)."""
+    impls = [i for i in request.node.ihook.pytest_runtest_setup.get_hookimpls()
+             if i.function is snap.pytest_runtest_setup]
+    assert len(impls) == 1, "the snapshot conftest's setup hook is not registered"
+    assert impls[0].tryfirst, "the marker check must run before the fixtures"
+
+
+def test_the_setup_hook_fails_a_browser_item_by_name(monkeypatch):
+    """A changed marker fails an item whose closure holds pw_browser, by name.
+    The restore it makes writes back the marker this worker already has, so the
+    live marker is never changed here."""
+    current = asyncio.events._get_running_loop()
+    monkeypatch.setitem(snap._PW_SESSION, "loop", current)
+    monkeypatch.setattr(snap, "pw_loop_marker_problem",
+                        lambda cur, exp: "marker changed (RM-1974c)")
+    browser_item = types.SimpleNamespace(fixturenames=["page_mod", "pw_browser"])
+    with pytest.raises(pytest.fail.Exception, match="RM-1974c"):
+        snap.pytest_runtest_setup(browser_item)
+    assert asyncio.events._get_running_loop() is current
+    # An item that never reaches the browser is left alone.
+    snap.pytest_runtest_setup(types.SimpleNamespace(fixturenames=["tmp_path"]))
+    snap.pytest_runtest_setup(object())

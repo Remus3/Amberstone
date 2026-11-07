@@ -297,7 +297,7 @@ def test_the_one_sanctioned_marker_write_only_restores_playwrights_loop():
     """The carve-out above cannot grow into a clear.
 
     tests/snapshot_panels/conftest.py may write the marker exactly once, and
-    only with the loop pw_browser recorded: the restore its autouse check makes
+    only with the loop pw_browser recorded: the restore its setup-hook check makes
     before failing the first browser test after a changed marker, so the
     worker's later browser tests and the session teardown (b.close()) do not
     hang. Any other spelling or argument there reads red.

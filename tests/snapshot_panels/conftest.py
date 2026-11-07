@@ -427,7 +427,7 @@ _WS_STUB = """
 # there: on Python 3.14 each task step on that loop checks the marker, so with
 # it cleared or swapped the next sync call never completes and the worker waits
 # on the driver pipe until --timeout kills it. pw_browser records the loop; the
-# autouse check below turns a marker that an earlier test in this worker
+# setup hook below (RM-2030) turns a marker that an earlier test in this worker
 # changed into an immediate, named failure of the next browser test instead of
 # a hang (with --max-worker-restart=0 one hang ends the whole run). It puts
 # Playwright's own loop back first - the same write _sync_base.py:114 makes
@@ -452,10 +452,7 @@ def pw_loop_marker_problem(current, expected) -> str | None:
         "tests._asyncio_isolation.run_coro instead of touching the marker.")
 
 
-@pytest.fixture(autouse=True)
-def _pw_loop_marker_intact(request):
-    if "pw_browser" not in request.fixturenames:
-        return
+def pw_loop_marker_restore_or_fail() -> None:
     problem = pw_loop_marker_problem(
         asyncio.events._get_running_loop(), _PW_SESSION["loop"])
     if problem:
@@ -463,6 +460,18 @@ def _pw_loop_marker_intact(request):
         # and the session teardown run; this test still reports the change.
         asyncio.events._set_running_loop(_PW_SESSION["loop"])
         pytest.fail(problem, pytrace=False)
+
+
+# RM-2030: the check was a function-scoped autouse fixture, and pytest sets up
+# module- (and wider-) scoped fixtures first, so a module-scoped fixture that
+# takes pw_browser (e.g. test_build_insights_chart_tabs_narrow.py `tab_at`)
+# made its Playwright calls before it and still hung to --timeout. A tryfirst
+# setup hook runs before ANY fixture of the item. `fixturenames` is the item's
+# whole closure, so a browser reached through another fixture counts.
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    if "pw_browser" in getattr(item, "fixturenames", ()):
+        pw_loop_marker_restore_or_fail()
 
 
 @pytest.fixture(scope="session")
