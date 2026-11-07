@@ -219,7 +219,7 @@ def coverage(samples: list[dict], rows: list[dict], window: list[dict],
     holes = [f"{a.isoformat(timespec='seconds')} -> {b.isoformat(timespec='seconds')}"
              for a, b in zip(points, points[1:]) if (b - a).total_seconds() > MAX_GAP_S]
     dead_runs, run = [], []
-    for s in known + [None]:
+    for s in [*known, None]:
         if s is not None and _dead(s):
             run.append(_wall(s))
             continue

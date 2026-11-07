@@ -128,7 +128,7 @@ class Sweep:
             )
             if fam and fam in self.cleaner._families_in(items[:-1]):
                 continue
-            items = items[:-1] + [cand]
+            items = [*items[:-1], cand]
             self.diversified += 1
         return items
 

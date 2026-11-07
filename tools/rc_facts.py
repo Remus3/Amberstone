@@ -1328,7 +1328,7 @@ def task_health_lines(
         return [head], []
     # Acknowledged lines print FIRST and print even on a clean run: the whole
     # point is that a deliberate disarm stays visible without being an alarm.
-    return [head] + ack_lines + detail_lines, anomalies
+    return [head, *ack_lines, *detail_lines], anomalies
 
 
 def _last_boot_iso() -> str | None:

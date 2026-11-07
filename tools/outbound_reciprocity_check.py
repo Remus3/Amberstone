@@ -459,7 +459,7 @@ def check(
             note = Note(digest=digest)
             by_digest[digest] = note
         if name not in note.names:
-            note.names = tuple(sorted(note.names + (name,)))
+            note.names = tuple(sorted((*note.names, name)))
         note.in_local = note.in_local or local
 
     local_inbox = root / INBOX_DIRNAME

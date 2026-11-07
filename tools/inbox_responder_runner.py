@@ -2719,7 +2719,7 @@ def dry_cycle_report(*, result: CycleResult, config: RunnerConfig, world: Mappin
                  " - every argv flag and result key in section 3 was measured on the pin"
                  " and must be re-measured on this version before the runner is armed"))
 
-    expected_argv = ([str(config.claude_exe)] + _dry_expected_tail(config)
+    expected_argv = ([str(config.claude_exe), *_dry_expected_tail(config)]
                      if config.claude_exe is not None else [])
     got_argv = list(request.argv) if request is not None else []
     rep.check("argv", bool(expected_argv) and got_argv == expected_argv,

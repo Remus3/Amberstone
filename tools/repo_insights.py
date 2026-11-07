@@ -53,7 +53,7 @@ def _git(*args: str) -> str:
 def _numstat_churn(since: str, pathspec: list[str] | None = None) -> tuple[int, int]:
     args = ["log", f"--since={since}", "--numstat", "--pretty=tformat:"]
     if pathspec:
-        args += ["--"] + pathspec
+        args += ["--", *pathspec]
     add = dele = 0
     for line in _git(*args).splitlines():
         parts = line.split("\t")

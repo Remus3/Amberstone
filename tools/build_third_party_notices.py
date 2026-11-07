@@ -460,7 +460,7 @@ def normalize_name(name: str) -> str:
 
 def target_env(python_version: str = "3.14") -> Dict[str, str]:
     parts = python_version.split(".")
-    full = python_version if len(parts) >= 3 else ".".join((parts + ["0", "0"])[:3])
+    full = python_version if len(parts) >= 3 else ".".join([*parts, "0", "0"][:3])
     return {
         "sys_platform": "win32", "platform_system": "Windows", "os_name": "nt",
         "platform_machine": "AMD64", "implementation_name": "cpython",
@@ -856,7 +856,7 @@ def lock_drift(package_json: Mapping[str, object], lock: Mapping[str, object]) -
         problems.append("lockfileVersion {!r} is not 2 or 3".format(lock.get("lockfileVersion")))
     packages = lock.get("packages")
     if not isinstance(packages, dict) or "" not in packages:
-        return problems + ["lock has no packages[''] root entry"]
+        return [*problems, "lock has no packages[''] root entry"]
     root = packages[""]
     if lock.get("name") != package_json.get("name") or root.get("name") != package_json.get("name"):
         problems.append("lock name {!r} / {!r} != package.json name {!r}".format(lock.get("name"), root.get("name"), package_json.get("name")))

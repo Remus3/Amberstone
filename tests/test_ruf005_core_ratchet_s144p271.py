@@ -1,12 +1,12 @@
-"""S144-P-271 - ruff RUF005 (``a + [x]`` / ``a + (x,)`` where ``[*a, x]`` / ``(*a, x)`` does) held at zero in ``core/``.
+"""S144-P-271 - ruff RUF005 (``a + [x]`` / ``a + (x,)`` where ``[*a, x]`` / ``(*a, x)`` does) held at zero in ``core/`` and ``tools/``.
 
 Measured 2026-11-06 with ``ruff check --isolated`` (target py39): 331 findings tree-wide, 16 of them under ``core/``
 in 11 modules. RUF005 is not in ``ruff.toml``. The fix is a pure spelling change for the shapes found here: the
 operands were already a list / tuple of the same kind, and unpacking is the more tolerant of the two (``+`` raises on a
 tuple + list mix, unpacking does not), so a call that worked still returns an equal value of the same type.
 
-This slice holds ONLY ``core/``; ``_SCOPE`` grows one directory per later slice (tools/, tft/, dashboard/, ops/ ... then
-tests/). Nothing under a scoped prefix may have a finding and there is no baseline. The run uses NO config
+S144-P-271 held ``core/``; S144-P-272 added ``tools/`` (26 more findings in 16 modules, one under tools/tests/). ``_SCOPE``
+grows one directory per later slice (tft/, dashboard/, ops/ ... then tests/). Nothing under a scoped prefix may have a finding and there is no baseline. The run uses NO config
 (``--isolated``), so a per-file-ignore cannot hide a finding.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 # Directories held at zero RUF005 findings. A new entry means that whole directory was swept first.
-_SCOPE = ("core/",)
+_SCOPE = ("core/", "tools/")
 _FIXED = (
     "core/build_order_precompute.py",
     "core/build_order_variants.py",
@@ -40,6 +40,22 @@ _FIXED = (
     "core/prom_metrics.py",
     "core/riot_api_cache.py",
     "core/vod_retention.py",
+    "tools/aram_shadow_report.py",
+    "tools/build_third_party_notices.py",
+    "tools/champion_loadout_cleanup_pollution_item213.py",
+    "tools/champion_loadout_sweep_item_s8.py",
+    "tools/ci_impact_selector.py",
+    "tools/dev_cli.py",
+    "tools/gated_g240_ratio_spot.py",
+    "tools/gated_g312_aram_debounce_lag.py",
+    "tools/gated_g506_debounce_lag.py",
+    "tools/gated_rm881_duo_lobby.py",
+    "tools/inbox_responder_runner.py",
+    "tools/inbox_responder_spawn.py",
+    "tools/outbound_reciprocity_check.py",
+    "tools/rc_facts.py",
+    "tools/repo_insights.py",
+    "tools/tests/test_roster_decap_a26.py",
 )
 
 
@@ -64,7 +80,7 @@ def _in_scope(rel: str) -> bool:
 @pytest.fixture(scope="module")
 def tracked() -> set[str]:
     files = {relative_posix(p) for p in repo_files(REPO_ROOT, ("*.py",))}
-    assert len({f for f in files if _in_scope(f)}) > 100, "the tracked-file walk found almost no core/ module"
+    assert len({f for f in files if _in_scope(f)}) > 100, "the tracked-file walk found almost no scoped module"
     return files
 
 

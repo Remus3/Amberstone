@@ -86,7 +86,8 @@ _TAIL_FIELDS = ("item_extra", "objective")
 _FIELDS = (
     "action", "fight_rule", "risk", "reset_item", "item_build",
     "item_build_reasons", "choices",
-) + _TAIL_FIELDS
+    *_TAIL_FIELDS,
+)
 FLIP_GATE = 0.70
 NO_LIVE_BASELINE = "no live baseline"
 NO_COMPARABLE_ROWS = "no comparable rows"

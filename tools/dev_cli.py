@@ -262,7 +262,7 @@ def cmd_smoke() -> int:
 def cmd_perf(extra_args: list[str]) -> int:
     """Run the Phase 2 performance probe. Passes extra args through."""
     _require_tool("tools/run_phase2_perf.py")
-    cmd_args = [_PYTHON, "tools/run_phase2_perf.py"] + list(extra_args)
+    cmd_args = [_PYTHON, "tools/run_phase2_perf.py", *extra_args]
     print(f"Running perf probe: {' '.join(cmd_args)}")
     r = _run(cmd_args)
     return r.returncode

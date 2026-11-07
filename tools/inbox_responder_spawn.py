@@ -247,7 +247,7 @@ def build_request(
     else:
         stdin_bytes = bytes(envelope)
     return SpawnRequest(
-        argv=[str(cfg.claude_exe)] + CLAUDE_ARGV_TAIL(cfg),
+        argv=[str(cfg.claude_exe), *CLAUDE_ARGV_TAIL(cfg)],
         stdin_bytes=stdin_bytes,
         env=dict(env),
         cwd=Path(cwd),

@@ -141,11 +141,11 @@ def grade_sent(traces: list[tuple[str, str, str, int]], want: Mapping[str, str],
         return "NO_RESULT", ["no HTTP trace line in the window: the trace was not captured"]
     notes = [f"{len(traces)} HTTP trace line(s) in the window"]
     if any(path.split("?", 1)[0] == MOCK_URL for _, _, path, _ in traces):
-        return "FAIL", notes + ["a ui_mock duo_synergy.json fetch: the dashboard is in mock mode"]
+        return "FAIL", [*notes, "a ui_mock duo_synergy.json fetch: the dashboard is in mock mode"]
     duo = [(t, path, st) for t, meth, path, st in traces
            if meth == "GET" and urlsplit(path).path == ROUTE]
     if not duo:
-        return "FAIL", notes + ["no GET /api/duo-synergy in the window"]
+        return "FAIL", [*notes, "no GET /api/duo-synergy in the window"]
     hits = []
     for t, path, st in duo:
         q = {k: v[-1] for k, v in parse_qs(urlsplit(path).query).items()}
@@ -155,17 +155,17 @@ def grade_sent(traces: list[tuple[str, str, str, int]], want: Mapping[str, str],
         if tag == "expected":
             hits.append((t, st))
     if not hits:
-        return "FAIL", notes + ["no GET with the expected query"]
+        return "FAIL", [*notes, "no GET with the expected query"]
     if any(st != 200 for _, st in hits):
-        return "FAIL", notes + ["an expected GET answered non-200"]
+        return "FAIL", [*notes, "an expected GET answered non-200"]
     if len(hits) > clients:
         secs = sorted(_secs(t) for t, _ in hits)
         if any(secs[i + clients] - secs[i] <= SPAM_SPAN_S for i in range(len(secs) - clients)):
-            return "FAIL", notes + [f"more than {clients} expected GET(s) within "
-                                    f"{SPAM_SPAN_S} s: the lobby refresh re-fired"]
-        return "NO_RESULT", notes + [f"{len(hits)} expected GETs > {clients} client(s), spread "
-                                     "out: more than one episode or a reload; narrow the window"]
-    return "PASS", notes + [f"{len(hits)} expected GET(s), all 200"]
+            return "FAIL", [*notes, f"more than {clients} expected GET(s) within "
+                                 f"{SPAM_SPAN_S} s: the lobby refresh re-fired"]
+        return "NO_RESULT", [*notes, f"{len(hits)} expected GETs > {clients} client(s), spread "
+                                  "out: more than one episode or a reload; narrow the window"]
+    return "PASS", [*notes, f"{len(hits)} expected GET(s), all 200"]
 
 
 def _secs(hhmmss: str) -> int:
@@ -178,7 +178,7 @@ def default_logs(day: str, base: Path | None = None) -> list[Path]:
     logs = (base or main_checkout() or _ROOT) / "logs"
     rotated = sorted((p for p in logs.glob(f"{day}.log.*") if p.suffix[1:].isdigit()),
                      key=lambda p: -int(p.suffix[1:]))
-    return rotated + [logs / f"{day}.log"]
+    return [*rotated, logs / f"{day}.log"]
 
 
 def main(argv: list[str] | None = None) -> int:

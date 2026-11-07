@@ -174,7 +174,7 @@ def _needles_for(path: str, asset_trees: frozenset):
     trees: List[str] = []
     parts = path.split("/")
     if path.endswith(".py"):
-        mod = parts[:-1] + [parts[-1][:-3]]
+        mod = [*parts[:-1], parts[-1][:-3]]
         if mod[-1] == "__init__":
             mod = mod[:-1]
         if mod:
