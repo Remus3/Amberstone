@@ -315,8 +315,8 @@ def comp_inputs(body: dict) -> dict:
     from core.build_planner.situational import classify_item
     from core.heal_threat import ally_has_antiheal, count_heal_sources
     flat = [str(i) for pl in body.get("enemy_items") or [] for i in pl or []]
-    pen = [i for i in flat if (lambda p: p.is_lethality or p.is_percent_armor_pen
-                               or p.is_percent_magic_pen)(classify_item(i))]
+    pen = [i for i in flat if (p := classify_item(i)).is_lethality or p.is_percent_armor_pen
+           or p.is_percent_magic_pen]
     mine = [classify_item(i) for i in body.get("items") or []]
     return {"heal_sources": count_heal_sources(body.get("enemies") or [], flat),
             "ally_has_antiheal": ally_has_antiheal(body.get("ally_items") or []),
