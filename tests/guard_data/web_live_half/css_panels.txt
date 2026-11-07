@@ -7,7 +7,7 @@
 
 db2ec7fc3c57c747dfe492fff2f2906e54de2dc2dd5dc9d3823b8939af1b99ce  web/css/panels/augment_reco.css
 
-6a3330380565a99a8bfe6815fb948b3868d1217018852ef7728cd435b7834683  web/css/panels/base.css
+a0f056ec3c8017d3cd7e4e5d2dc3cb236b8d4512015c8cad9dd9f653b199e1c0  web/css/panels/base.css
 
 a923d6de4797af53e3e3cdc90d985269bbfe6244c9e677348ee32f54fdc67234  web/css/panels/branch_review.css
 
@@ -59,7 +59,7 @@ b8c3d0090365363a16ae6fd974293a2fbc7c7755055cb48d80a987d400a39922  web/css/panels
 
 8f22528959d5ff156a2bef2a90563100bc8754d35d58e806d6e2bbcb0498cba6  web/css/panels/home.css
 
-c1c7a3d48b8f2b92a78798a0be69adb6a7ae15b241966992251cb4b7306b82f5  web/css/panels/input_activity.css
+390c8807d61957d78e0b4750a4ea4439a812ab71b6c560f7fd138eb2e2e2dfb0  web/css/panels/input_activity.css
 
 ea7fba8356634592871a528a572a3e9cfa5197cc874c9d661bbd79f074174379  web/css/panels/item_build.css
 
@@ -105,9 +105,9 @@ c2300909f54b4394e5ba2c61d94042b8eb0833b70e11d533482abf675355cb2d  web/css/panels
 
 ef16d5e1d85d05da4f8d056b34b17cc2f8d161767f168921c5a685475c0eaae0  web/css/panels/playstyle_labels.css
 
-fd456eb5a8955ee820dcc5b1bf5777d9ebf89b8592a8f52b1f1a7d55549d2f62  web/css/panels/primitives.css
+36c2ce079b99c37178d5dd38aff6175f41eb5b421b9ca7f4dcdf34ce05e84e0c  web/css/panels/primitives.css
 
-4ed44cd6b373b2d84a52521464048cc0e9c04581273a0b3513be270751b0f668  web/css/panels/replay_events.css
+f2b885f5536cad1828f685117f7d908420a5b16310286182682e99242802b16d  web/css/panels/replay_events.css
 
 665fa34e49038e5cb1650046ed1061ba7b7bd2680f979ba5a99f0c8ed56153b4  web/css/panels/review_player.css
 

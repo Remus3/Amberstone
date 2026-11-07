@@ -2037,9 +2037,15 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Champion column = icon + copy button stacked horizontally. */
+/* Champion column = icon + copy button stacked horizontally.
+ * S144-U-177: the 76px icon column holds 50 (icon) + 4 (gap) + 22 (button).
+ * A 6px column gap made 78px, so the button shrank to 20px wide at every
+ * width above 400, desktop included, on both tabs. The row gap stays 6px
+ * for the stacked YOUR MAINS cell at 400px and under (max-width 400px
+ * block below), and the button no longer shrinks. Pinned by
+ * tests/snapshot_panels/test_lobby_mains_copy_box.py. */
 .lv-mc-champ {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 6px 4px;
 }
 .lv-mc-icon {
   width: 50px; height: 50px;
@@ -2057,6 +2063,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
    * to the fingertip floor. */
   position: relative;
   width: 22px; height: 22px;
+  flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-head);
   color: var(--text-dim);
