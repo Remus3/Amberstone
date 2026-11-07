@@ -8,6 +8,7 @@ Architecture:
   (health + state) so panels render immediately without waiting for the HTTP
   fallback (which kicks in only after 4 s).
 """
+import asyncio
 import json
 import os
 import socket
@@ -420,6 +421,50 @@ _WS_STUB = """
 """
 
 
+# RM-1974c: Playwright's sync API keeps its own event loop as the main
+# thread's asyncio running-loop marker between calls
+# (playwright/_impl/_sync_base.py:114 re-sets it after every call) and needs it
+# there: on Python 3.14 each task step on that loop checks the marker, so with
+# it cleared or swapped the next sync call never completes and the worker waits
+# on the driver pipe until --timeout kills it. pw_browser records the loop; the
+# autouse check below turns a marker that an earlier test in this worker
+# changed into an immediate, named failure of the next browser test instead of
+# a hang (with --max-worker-restart=0 one hang ends the whole run). It puts
+# Playwright's own loop back first - the same write _sync_base.py:114 makes
+# after every call - because without that the session teardown's b.close()
+# still hangs (measured: 9 fast errors, then a hang at teardown). This is the
+# one marker write tests/test_asyncio_isolation_guard.py allows.
+_PW_SESSION: dict = {"loop": None}
+
+
+def pw_loop_marker_problem(current, expected) -> str | None:
+    """None when Playwright's next sync call can complete, else why not.
+
+    `current` is the main thread's running-loop marker, `expected` the loop
+    pw_browser recorded (None before the session browser starts)."""
+    if expected is None or current is expected:
+        return None
+    return (
+        f"asyncio's main-thread running-loop marker is {current!r}, not the "
+        f"session browser's loop {expected!r}: a test that ran earlier in this "
+        "worker changed it, and Playwright's next sync call would hang until "
+        "--timeout (RM-1974c). Find that test; drive its coroutine with "
+        "tests._asyncio_isolation.run_coro instead of touching the marker.")
+
+
+@pytest.fixture(autouse=True)
+def _pw_loop_marker_intact(request):
+    if "pw_browser" not in request.fixturenames:
+        return
+    problem = pw_loop_marker_problem(
+        asyncio.events._get_running_loop(), _PW_SESSION["loop"])
+    if problem:
+        # Restore before failing, so the rest of this worker's browser tests
+        # and the session teardown run; this test still reports the change.
+        asyncio.events._set_running_loop(_PW_SESSION["loop"])
+        pytest.fail(problem, pytrace=False)
+
+
 @pytest.fixture(scope="session")
 def pw_browser():
     if sync_playwright is None:
@@ -433,7 +478,11 @@ def pw_browser():
             headless=True,
             args=["--no-sandbox", "--disable-dev-shm-usage"],
         )
-        # RM-1080: every context from this browser takes the Lato webfont
-        # from the local stub, never Google Fonts (_webfont_stub.py).
-        yield OfflineWebfontBrowser(b)
-        b.close()
+        _PW_SESSION["loop"] = asyncio.events._get_running_loop()
+        try:
+            # RM-1080: every context from this browser takes the Lato webfont
+            # from the local stub, never Google Fonts (_webfont_stub.py).
+            yield OfflineWebfontBrowser(b)
+            b.close()
+        finally:
+            _PW_SESSION["loop"] = None

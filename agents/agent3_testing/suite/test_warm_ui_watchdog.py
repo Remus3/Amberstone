@@ -12,9 +12,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests._asyncio_isolation import run_coro
+
 
 def _run(coro):
-    return asyncio.run(coro)
+    # run_coro, never a bare asyncio.run(): this suite can share an xdist
+    # worker with the snapshot_panels browser (RM-1974c).
+    return run_coro(coro)
 
 
 class _FakeWarm:

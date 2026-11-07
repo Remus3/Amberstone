@@ -1,24 +1,22 @@
 """Shared pytest config for the agent3 suite.
 
 1. Ensure the project root is on sys.path.
-2. Defensive asyncio isolation (s236): several agent3 tests
-   (test_auto_analyze / test_round12 / test_round17 /
-   test_warm_ui_watchdog) drive their loop body with a bare
-   ``asyncio.run()``. ``asyncio.run()`` raises
-   "cannot be called from a running event loop" whenever asyncio's
-   per-thread running-loop slot is set - and a prior suite in the
-   full triplet (notably a ``tests/`` ``unittest.IsolatedAsyncioTestCase``
-   class) can, under full-suite load, leave that slot populated even
-   though no loop is actually spinning. The result: those tests pass
-   in isolation but fail in the triplet. Clearing the stale slot
-   before + after each test makes the suite immune to upstream
-   loop-state leakage regardless of which test leaks it (same
-   process-global isolation pattern as the s223 tests/conftest.py
-   autouse fixture).
+2. No asyncio running-loop handling here, on purpose (RM-1974c). An
+   autouse fixture used to clear asyncio's main-thread running-loop
+   marker before and after every agent3 test so the bare
+   ``asyncio.run()`` calls in test_auto_analyze / test_round12 /
+   test_round17 / test_warm_ui_watchdog could start. That marker is
+   not stale: it is the live loop of the tests/snapshot_panels session
+   browser, which Playwright's sync API keeps there between calls. Once
+   an agent3 module ran in an xdist worker that already held that
+   browser, the next snapshot test's first Playwright call never
+   returned (LEDGER 2064, RM-1974 (c)). Those tests now drive their
+   coroutines through ``tests._asyncio_isolation.run_coro`` (a fresh
+   loop on its own thread), and tests/test_asyncio_isolation_guard.py
+   fails on any marker write or bare ``asyncio.run()`` in this suite.
 """
 from __future__ import annotations
 
-import asyncio
 import os
 import sys
 import tempfile
@@ -53,22 +51,6 @@ def pytest_unconfigure(config):
         from tests import _suite_tmp_cleanup
 
         _suite_tmp_cleanup.remove_dir(_CREATED_LOG_DIR)
-
-
-def _clear_running_loop() -> None:
-    # asyncio.events._set_running_loop is a stable CPython internal
-    # (>=3.5.3, used by CPython's own test harness). getattr-guarded so
-    # a future rename degrades to a no-op instead of erroring the suite.
-    setter = getattr(asyncio.events, "_set_running_loop", None)
-    if setter is not None:
-        setter(None)
-
-
-@pytest.fixture(autouse=True)
-def _isolate_asyncio_running_loop():
-    _clear_running_loop()
-    yield
-    _clear_running_loop()
 
 
 @pytest.fixture(autouse=True)

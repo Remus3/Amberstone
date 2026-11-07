@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from tests._asyncio_isolation import run_coro
+
 
 # -- Input latency rollup ---------------------------------------------
 
@@ -93,7 +95,7 @@ def test_mode_transition_fires_on_health_change(tmp_path: Path) -> None:
                                    # NOTE: we DO re-parse, but mode didn't change
         _write_mode("client")
         await ingest._tick()       # transition back
-    asyncio.run(drive())
+    run_coro(drive())
 
     assert calls == [("client", "game"), ("game", "client")]
 
@@ -122,7 +124,7 @@ def test_mode_transition_same_mode_no_callback(tmp_path: Path) -> None:
         health.write_text(json.dumps({"mode": "client", "pid": 123}),
                           encoding="utf-8")
         await ingest._tick()
-    asyncio.run(drive())
+    run_coro(drive())
     assert calls == []
 
 
@@ -147,7 +149,7 @@ def test_mode_transition_callback_exception_swallowed(tmp_path: Path) -> None:
         await asyncio.sleep(0.02)
         health.write_text(json.dumps({"mode": "game"}), encoding="utf-8")
         await ingest._tick()         # callback raises - must be caught
-    asyncio.run(drive())
+    run_coro(drive())
     # If we reach here without propagating, the swallow worked.
 
 

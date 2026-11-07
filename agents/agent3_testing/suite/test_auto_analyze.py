@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests._asyncio_isolation import run_coro
+
 
 @pytest.mark.timeout(10)
 def test_auto_analyze_schedules_then_cancels_on_game_start() -> None:
@@ -32,7 +34,7 @@ def test_auto_analyze_schedules_then_cancels_on_game_start() -> None:
             # Task should be cancelled.
             assert sup._auto_analyze_task.cancelled() or sup._auto_analyze_task.done()
             fake_analyze.assert_not_called()
-    asyncio.run(drive())
+    run_coro(drive())
 
 
 @pytest.mark.timeout(10)
@@ -49,7 +51,7 @@ def test_auto_analyze_fires_after_idle() -> None:
             # Wait past the idle window.
             await asyncio.sleep(0.5)
             fake_analyze.assert_called_once()
-    asyncio.run(drive())
+    run_coro(drive())
 
 
 @pytest.mark.timeout(10)
@@ -66,4 +68,4 @@ def test_game_to_game_transition_does_not_cancel_nothing() -> None:
     # loop.call_soon_threadsafe path doesn't error.
     async def drive():
         sup._on_mode_transition("in_progress", "game")    # still in-game
-    asyncio.run(drive())
+    run_coro(drive())

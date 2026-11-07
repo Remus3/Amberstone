@@ -1,10 +1,11 @@
 """Round 17 - champ-select warm-prime coverage."""
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from tests._asyncio_isolation import run_coro
 
 
 class _FakeWarm:
@@ -34,7 +35,7 @@ def test_champ_select_primes_warm() -> None:
 
     async def drive():
         sup._on_mode_transition("client", "champ_select")
-    asyncio.run(drive())
+    run_coro(drive())
 
     assert len(warm.sends) == 1
     assert "champ-select" in warm.sends[0].lower()
@@ -49,7 +50,7 @@ def test_champ_select_skips_prime_if_already_warm() -> None:
 
     async def drive():
         sup._on_mode_transition("client", "pregame")
-    asyncio.run(drive())
+    run_coro(drive())
     assert warm.sends == []
 
 
@@ -64,7 +65,7 @@ def test_game_end_from_champ_select_does_not_prime_again() -> None:
 
     async def drive():
         sup._on_mode_transition("champ_select", "client")
-    asyncio.run(drive())
+    run_coro(drive())
     assert warm.sends == []
 
 
@@ -79,6 +80,6 @@ def test_game_start_still_primes_after_champ_select() -> None:
 
     async def drive():
         sup._on_mode_transition("champ_select", "game")
-    asyncio.run(drive())
+    run_coro(drive())
     assert len(warm.sends) == 1
     assert "game" in warm.sends[0].lower()
