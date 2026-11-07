@@ -328,7 +328,7 @@ Before lifting ANYTHING external, check the license and say what it is.
 - **BEFORE any non-trivial item, recall first:** `python tools/perseus_recall.py "<task>"`. A `settled` / `ledger` hit saying CLOSED / REFUTED / shipped = stop and report.
 - Recall through that tool, not raw `perseus_vault_recall` (returns bodies twice).
 - Take a `key` from the listing and fetch that ONE entity when you need a body.
-- It is a MIRROR, never the source of truth: never fix a fact only in the vault. Re-sync after changing CLAUDE.md / `memory/*.md` / LEDGER / ROADMAP / BACKLOG: `python tools/perseus_sync.py`; coverage: `--verify`.
+- It is a MIRROR, never the source of truth: never fix a fact only in the vault. Re-sync after changing CLAUDE.md / Claude memory / LEDGER / ROADMAP / BACKLOG: `python tools/perseus_sync.py`; coverage: `--verify`.
 - `status: healthy` is NOT proof recall works; only `embedded == active` is.
 
 ## Session workflow and hand-off
