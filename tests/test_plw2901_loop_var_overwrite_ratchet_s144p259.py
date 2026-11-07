@@ -8,6 +8,10 @@ under the old name in 11 sites across 10 modules (``core/branch_review.py``, ``c
 ``ops/loop/loop_controller.py``). Each was ``for line in X:`` then ``line = line.strip()``; the body only ever read
 the stripped value, and ``line`` is still bound to it after the loop, so behaviour is unchanged.
 
+Slice 2 (S144-P-260) renamed the same shape in 10 more modules (the eight ``tools/*_shadow_report.py`` /
+``live_benchmark_band_report.py`` JSONL readers and ``tools/ds_parity_run.py`` ``load_fixtures``): 10 findings gone,
+87 remain in held scope (``tools/arena_shadow_report.py`` keeps its ``clause`` site, a different shape).
+
 The count per file can only fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 The held scope is every tracked ``.py`` file NOT under the two fences below. The run uses NO config (``--isolated``),
 so a per-file-ignore cannot hide a finding.
@@ -78,16 +82,12 @@ _BASELINE = {
     "tft/tft_coach_engine.py": 3,
     "tft/tft_placement.py": 1,
     "tft/tft_prompt.py": 2,
-    "tools/aram_shadow_report.py": 1,
-    "tools/arena_shadow_report.py": 2,
+    "tools/arena_shadow_report.py": 1,
     "tools/atlas_fonts.py": 1,
     "tools/build_third_party_notices.py": 4,
-    "tools/champ_select_shadow_report.py": 1,
     "tools/ci_impact_selector.py": 1,
     "tools/ci_watchdog.py": 1,
     "tools/credential_history_scan.py": 1,
-    "tools/det_coach_shadow_report.py": 1,
-    "tools/ds_parity_run.py": 1,
     "tools/ds_wiki_staleness_check.py": 1,
     "tools/gated_ds_flag_eyeball.py": 1,
     "tools/gated_g237_lband_shadow.py": 1,
@@ -97,14 +97,9 @@ _BASELINE = {
     "tools/gated_lx07_recap_check.py": 1,
     "tools/gated_tft15_planner.py": 1,
     "tools/gated_tft_qa_summary.py": 1,
-    "tools/hz_shadow_report.py": 1,
     "tools/inbox_responder_runner.py": 2,
     "tools/laning_verdict_information_probe.py": 1,
-    "tools/live_benchmark_band_report.py": 1,
-    "tools/macro_response_shadow_report.py": 1,
     "tools/moon_sync_poller.py": 1,
-    "tools/objective_playbook_shadow_report.py": 1,
-    "tools/ocr_shadow_report.py": 1,
     "tools/rc_facts.py": 1,
     "tools/repin_subagent_cli.py": 1,
     "tools/replay_laning_verdict_validate.py": 2,
@@ -123,6 +118,16 @@ _FIXED = (
     "scripts/repair_tft_match_rows.py",
     "ops/loop/steer.py",
     "ops/loop/loop_controller.py",
+    # slice 2 (S144-P-260): the same shape in the shadow-report and parity tools.
+    "tools/aram_shadow_report.py",
+    "tools/champ_select_shadow_report.py",
+    "tools/det_coach_shadow_report.py",
+    "tools/ds_parity_run.py",
+    "tools/hz_shadow_report.py",
+    "tools/live_benchmark_band_report.py",
+    "tools/macro_response_shadow_report.py",
+    "tools/objective_playbook_shadow_report.py",
+    "tools/ocr_shadow_report.py",
 )
 
 

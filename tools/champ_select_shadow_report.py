@@ -102,8 +102,8 @@ def load_jsonl(path) -> list[dict]:
         text = Path(path).read_text(encoding="utf-8")
     except OSError:
         return out
-    for line in text.splitlines():
-        line = line.strip()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:
