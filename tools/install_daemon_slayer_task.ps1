@@ -13,6 +13,11 @@
 #
 # Mirrors the install pattern used by RC-BridgeWatcher:
 # delete-then-create from the XML in ops/, optionally start immediately.
+#
+# RM-723: ops\RC-DaemonSlayer.xml is a machine-free TEMPLATE. It is rendered
+# first (tools\install_render_task_xml.ps1 fills the checkout root, account and pinned
+# interpreter into a temporary UTF-16 file) and only the rendered file is
+# imported. A refused render stops BEFORE the existing task is deleted.
 
 [CmdletBinding()]
 param(
@@ -22,20 +27,29 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $TaskName = 'RC-DaemonSlayer'
-$XmlPath = Join-Path $PSScriptRoot '..\ops\RC-DaemonSlayer.xml' | Resolve-Path
+$Renderer = Join-Path $PSScriptRoot 'install_render_task_xml.ps1'
+$Rendered = Join-Path ([System.IO.Path]::GetTempPath()) ('rc-task-' + [guid]::NewGuid().ToString('N') + '.xml')
 
 Write-Host "[install] Task: $TaskName"
-Write-Host "[install] XML : $XmlPath"
 
-$existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-if ($existing) {
-    Write-Host "[install] Existing task found; deleting..."
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-}
+try {
+    # First statement in the try: a refused render throws straight to the
+    # finally, so the existing task is never deleted.
+    & $Renderer -Name $TaskName -OutFile $Rendered | Out-Null
+    Write-Host "[install] XML : rendered from ops\$TaskName.xml"
 
-schtasks /Create /TN $TaskName /XML "$XmlPath" /F | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    throw "schtasks /Create failed with exit code $LASTEXITCODE"
+    $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($existing) {
+        Write-Host "[install] Existing task found; deleting..."
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    }
+
+    schtasks /Create /TN $TaskName /XML "$Rendered" /F | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "schtasks /Create failed with exit code $LASTEXITCODE"
+    }
+} finally {
+    Remove-Item -LiteralPath $Rendered -Force -ErrorAction SilentlyContinue
 }
 Write-Host "[install] Created."
 

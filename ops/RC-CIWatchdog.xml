@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
-<!-- TEMPLATE: no machine values are tracked. Before import, replace __RC_USER__ with
-     the logged-on account and __RC_REPO__ with this checkout's absolute path, e.g.
-     (Get-Content ops\RC-CIWatchdog.xml -Raw).Replace('__RC_USER__', $env:USERNAME).Replace('__RC_REPO__', (Get-Location).Path)
-     then Register-ScheduledTask -TaskName RC-CIWatchdog -Xml <that text>. -->
+<!-- TEMPLATE: no machine values are tracked. Render, never import as-is:
+     powershell -ExecutionPolicy Bypass -File tools\install_render_task_xml.ps1 -Name RC-CIWatchdog -OutFile <file>
+     fills the USER (the logged-on account) and REPO (this checkout's absolute
+     path) placeholders, spelled __RC_<NAME>__, and writes the UTF-16 file that
+     schtasks /Create /XML imports (RM-723). -->
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <Date>2026-06-18T00:00:00</Date>
