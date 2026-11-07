@@ -2880,8 +2880,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   background: var(--surface-alt); color: var(--text-dim);
 }
 .ub-btn-ghost:hover { background: var(--surface-2); color: var(--text); border-color: var(--clock); }
+/* S144-U-203: the Delete word takes the RM-1550 red-text lift (--bad
+ * mixed 70% toward --text in oklab, as .lv-mc-result-loss): plain --bad
+ * on the row surface measured 3.28:1 arcane, 3.31 moonlit, 3.66 hextech,
+ * 3.79 ember and bloodmoon, under AA 4.5 for this 16 px / 700 label. The
+ * border keeps plain --bad, and hover still fills --bad under --canvas.
+ * Pinned by tests/snapshot_panels/test_user_builds_text_contrast.py. */
 .ub-btn-danger {
-  background: transparent; color: var(--bad);
+  background: transparent; color: color-mix(in oklab, var(--bad) 70%, var(--text));
   border-color: var(--bad);
 }
 .ub-btn-danger:hover { background: var(--bad); color: var(--canvas); }
@@ -3073,10 +3079,15 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: var(--fs-sm);                /* was 12px -> 18px              */
 }
 .ub-field-wide { grid-column: 1 / -1; }
+/* S144-U-203: the editor's field labels, the "(driven by builder)" note
+ * and the rune picker's empty hint paint --text-dim, not --text-faint:
+ * faint measured 4.31-4.48:1 (labels, note) and 3.64-3.94 (hint) on the
+ * form pane in five themes, under AA 4.5. Pinned by
+ * tests/snapshot_panels/test_user_builds_text_contrast.py. */
 .ub-field > span {
   font-size: var(--fs-xs);                /* was 11px -> 16px              */
   font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text-faint);
+  text-transform: uppercase; color: var(--text-dim);
 }
 .ub-field input, .ub-field select, .ub-field textarea {
   background: var(--surface-alt); border: 1px solid var(--border);
@@ -3112,7 +3123,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-left: 3px solid var(--clock);
 }
 .ub-form-status.ok    { border-left-color: var(--good); color: var(--good); }
-.ub-form-status.error { border-left-color: var(--bad); color: var(--bad); }
+/* S144-U-203: the error line takes the same lift (plain --bad measured
+ * 3.28-3.79:1 on --surface-alt); the left rule keeps plain --bad. */
+.ub-form-status.error { border-left-color: var(--bad); color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 .ub-form-actions {
   display: flex; gap: var(--space-3);     /* was 10px -> 12px              */
   justify-content: flex-end;
@@ -3130,7 +3143,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * existing save-shape stays intact. Token consumers: --fs-xs (caps),
  * --fs-sm (chip text), --space-1..4, --panel-radius-sm, --hit-min. */
 .ub-field-driven {
-  font-style: normal; font-weight: 600; color: var(--text-faint);
+  font-style: normal; font-weight: 600; color: var(--text-dim);
   text-transform: none; letter-spacing: 0.02em;
   font-size: var(--fs-xs);                /* matches `.ub-field > span` tier */
   margin-left: var(--space-1);
@@ -3316,7 +3329,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .ub-rp-rune.selected span { color: var(--text); }
 .ub-rp-empty {
-  font-size: var(--fs-sm); color: var(--text-faint);
+  font-size: var(--fs-sm); color: var(--text-dim);
   padding: var(--space-3);
   text-align: center; font-style: italic;
 }
