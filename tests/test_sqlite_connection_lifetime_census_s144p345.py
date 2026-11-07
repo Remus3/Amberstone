@@ -7,9 +7,10 @@ or parked on ``self`` / a thread-local is closed by someone else, or by nobody. 
 process-wide hazards; this is the database-handle half. Measured 2026-11-07 by AST over every tracked production ``.py``
 (outside ``tests/``, ``docs/``, any ``/tests/`` directory, ``test_*.py`` files and the vendored ``ops/fleet_kit/``): 130
 ``sqlite3.connect`` calls, of which 83 close their connection in the function that opened it and 8 sit under
-``contextlib.closing`` (both safe, not listed). The other 39 are listed in ``_OPEN_SITES`` by (file, scope, kind):
+``contextlib.closing`` (both safe, not listed). The other 39 (36 after S144-P-346) are listed in ``_OPEN_SITES`` by (file, scope, kind):
 
-- ``with-as`` (5 calls in 3 files): the commit-only context manager, the one shape that LEAKS. A ceiling, not an exact set:
+- ``with-as`` (2 calls in 2 files after S144-P-346 converted the 3 in ``coaches/adaptation_hint_temporal.py``; 5 in 3 files
+  when measured): the commit-only context manager, the one shape that LEAKS. A ceiling, not an exact set:
   a new one fails; a fixed one passes, so a lane that converts a site to ``contextlib.closing`` (``db_migrate_kda`` is fixed
   on a lane branch not yet landed) does not break the merge. When a row is fixed, drop it here.
 - ``factory`` (34 calls in 32 files): a connection that is ``return``-ed, or stored for later use, with no ``.close()`` on it in
@@ -44,9 +45,6 @@ _RO_MARKERS = ("mode=ro", "_ro_uri(")
 _WITH_AS_CEILING = {
     ("agents/agent2_backend/db_migrate_kda.py", "ensure_kda_columns"): 1,
     ("agents/agent4_coach_mentor/analyzer.py", "main"): 1,
-    ("coaches/adaptation_hint_temporal.py", "day_of_week_analysis"): 1,
-    ("coaches/adaptation_hint_temporal.py", "duration_analysis"): 1,
-    ("coaches/adaptation_hint_temporal.py", "time_of_day_analysis"): 1,
 }
 
 _RO_OPEN = "read-only opener; the caller closes it"
