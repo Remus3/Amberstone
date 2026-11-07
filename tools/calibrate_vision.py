@@ -35,7 +35,8 @@ def fetch_frame() -> bytes:
     req = urllib.request.Request(
         "http://127.0.0.1:8889/latest-frame", headers={"X-RC-Token": TOKEN}
     )
-    data = json.loads(urllib.request.urlopen(req, timeout=5).read())
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        data = json.loads(resp.read())
     age = time.time() - data.get("ts", 0)
     print(f"frame age={age:.1f}s {data['width']}x{data['height']} {data['format']}")
     return base64.b64decode(data["b64"])
@@ -78,8 +79,8 @@ def main() -> int:
     try:
         from core.tls_policy import client_context_noverify
         _ctx = client_context_noverify()   # RM-752: the shared TLS floor
-        r = urllib.request.urlopen("https://127.0.0.1:8888/api/ocr", timeout=10, context=_ctx)
-        print("OCR result:", r.read().decode())
+        with urllib.request.urlopen("https://127.0.0.1:8888/api/ocr", timeout=10, context=_ctx) as r:
+            print("OCR result:", r.read().decode())
     except Exception as e:  # noqa: BLE001
         print("OCR failed:", e)
 

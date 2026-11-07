@@ -217,7 +217,8 @@ def upload(data: bytes) -> None:
         _upload_url(), data=data, method="POST",
         headers={"X-RC-Token": TOKEN, "Content-Type": "application/json"},
     )
-    urllib.request.urlopen(req, timeout=3).read()
+    with urllib.request.urlopen(req, timeout=3) as resp:
+        resp.read()
 
 
 def loop() -> None:

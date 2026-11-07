@@ -105,8 +105,8 @@ def _post_ingest(puuid: str, detail: dict, dashboard: str) -> tuple[int, str]:
     )
     ctx = ssl._create_unverified_context()
     try:
-        r = urllib.request.urlopen(req, context=ctx, timeout=15)
-        return (r.status, r.read().decode())
+        with urllib.request.urlopen(req, context=ctx, timeout=15) as r:
+            return (r.status, r.read().decode())
     except urllib.error.HTTPError as exc:
         return (exc.code, exc.read().decode())
 
