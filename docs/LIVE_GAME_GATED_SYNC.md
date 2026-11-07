@@ -4517,6 +4517,30 @@ waits on the RM-875 wiring.)
   without `apply_mode_modifiers` is never re-run: code from before the seam cannot have sent the flag.
   (4) The dashboard's DS picks panel is NOT evidence for B: it renders the same dispatch output the
   row records, so reading it instead of the row adds nothing.
+  **RE-CHECK (lane 9 PREP s144 cycle 95, 2026-11-07, source read at `7f0ffcb87`; NOT a tick).**
+  Cites that MOVED (the paragraphs above are kept as their cycles' record): the flag read in CHECK B's
+  header is now `coaches/arena_coach.py:85` (was `:84`; the `f7e88a157` ClassVar import at `:21`). The
+  dispatch forward cited as `archetype_dispatch.py:360` (SPLIT) and `:369` (RE-READ) is now
+  `coach_integration/archetype_dispatch.py:490` `out = _ds.rank_for_primary_archetype(**kwargs)`
+  (`7c71cc132` and `a87abc141` took it to `:373`, then `64f126a3a` grew `dispatch_for_coach`); the
+  flag enters the shared `seams` dict at `:458-459`, so the flat ranking and the ordered-build
+  planner both get it. The SPLIT paragraph's server example `agents/daemon_slayer/server.py:482` is
+  now `:678`, the first of 19 `_opt_bool(body, "apply_mode_modifiers", False)` reads, and its engine
+  gate `engine.py:379-383` is now `:378-382`. Cites that HOLD: `arena_coach.py:709` (call), `:721`
+  (flag passed), `:728` (writer runs only on dispatch rows), `:742-752` (`log_ds_run` with the four
+  RM-875 keys);
+  `core/focus_board_live.py:439` still hard-codes `False`; `core/ds_calibration.py:25-28`;
+  `engine.py:101-108`. `inspect.signature` still finds `apply_mode_modifiers` on `dispatch_for_coach`
+  and on `core.daemon_slayer_client.rank_for_primary_archetype` (15 public client functions carry it).
+  FLAG STATE unchanged: default `"0"`; `git grep` over `ops/` `scripts/` `tools/` `rc-shell/` finds the
+  name only in the G5-05 tool and an old lane report; neither the HKCU nor the HKLM Session Manager
+  `Environment` key sets it. BASELINE unchanged: the main checkout's `data/ds_calibration.jsonl` is
+  still 10469 lines, newest row 2026-08-02 (ARAM); 710 ARENA rows in all, none carrying the
+  `apply_mode_modifiers` key. `python tools/gated_g505_mode_mods.py coach --since 2026-07-01` exits 1
+  INCOMPLETE (NO_RESULT): 615 rows, all `pre_rm875`, engine 1.290.0 (= `ENGINE_VERSION`; DS patch
+  16.21.1). Its tests pass (33). Both predicates stand as written; CHECK B still owes a merger /
+  operator restart under `RC_ARENA_MODE_MODIFIERS=1`, then an Arena game. :8888 `/api/state` gave no
+  body at 2026-11-07T00:30-06:00 (no game).
 - **G5-06** (was D5) `RC_ARENA_STATE_DEBOUNCE` default-ON flip validation. **TRY THE REPLAY
   ALTERNATIVE FIRST to dodge the Arena game entirely.** NOT attempted 2026-07-04.
   **PREP 2026-10-25 (lane 9 s133 cycle 6, source read at `6af9f081f`; NOT a tick).**
