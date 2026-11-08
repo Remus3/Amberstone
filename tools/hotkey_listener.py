@@ -164,7 +164,7 @@ class DecisionCache:
                 req, timeout=HTTP_TIMEOUT, context=_SSL_CTX
             ) as r:
                 payload = json.loads(r.read())
-        except (urllib.error.URLError, ValueError) as exc:
+        except Exception as exc:  # noqa: BLE001 - urlopen wraps only the connect phase in URLError; a body-read timeout or a dropped socket must not end the refresh thread (S144-P-358)
             log.debug("refresh: %s", exc)
             return
         items = payload.get("pending") if isinstance(payload, dict) else None
@@ -177,7 +177,10 @@ class DecisionCache:
 
 def _refresh_loop(cache: DecisionCache, stop: threading.Event) -> None:
     while not stop.is_set():
-        cache.refresh()
+        try:
+            cache.refresh()
+        except Exception:  # the refresh thread never dies on one bad poll (S144-P-358)
+            log.warning("refresh loop: poll failed", exc_info=True)
         stop.wait(POLL_S)
 
 
