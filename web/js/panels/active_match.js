@@ -1397,6 +1397,7 @@ function _amRenderLiveFallback(fb, p, ctx) {
       _AM_MAP.pollHandle = null;
     }
     _AM_MAP.vsCache = null;
+    _AM_MAP.feed = _amMapFeedTrack();
     // RM-1769: no canvas to fit either - release the fit observer.
     if (_AM_MAP.fitObserver) {
       _AM_MAP.fitObserver.disconnect();
@@ -2276,6 +2277,7 @@ const _AM_MAP = {
   pollHandle:   null,    // setInterval handle
   vsCache:      null,    // last successful /api/vision-state response
   fitObserver:  null,    // ResizeObserver re-fitting the canvas (RM-1769)
+  feed:         _amMapFeedTrack(),  // feed-age track (S144-U-221)
 };
 
 function _renderAmMap(host, mode, payload) {
@@ -2388,17 +2390,22 @@ function _amStartMapPolling() {
     const view = document.body.dataset.view;
     if (view !== "active-match") return;
     // S144-U-220: a poll that fails with nothing cached says so instead of
-    // leaving "loading vision..." up; with an answer cached the last good
-    // line stands (the next tick retries either way).
+    // leaving "loading vision..." up. S144-U-221: with an answer cached the
+    // last line is repainted against the feed's age, so a feed that keeps
+    // failing reads as stalled instead of repeating its counts (the next
+    // tick retries either way).
     const failed = () => {
-      if (_AM_MAP.vsCache) return;
       const status = document.getElementById("am-map-status");
-      if (status) status.textContent = _AM_MAP_FEED_FAILED;
+      if (!status) return;
+      status.textContent = _AM_MAP.vsCache
+        ? _amMapStatusText(_AM_MAP.vsCache, _amMapStaleS(_AM_MAP.feed, Date.now()))
+        : _AM_MAP_FEED_FAILED;
     };
     fetch("/api/vision-state", { cache: "no-store" })
       .then((r) => r.ok ? r.json() : null)
       .then((vs) => {
         if (vs) {
+          _amMapNoteFeed(_AM_MAP.feed, vs, Date.now());
           _AM_MAP.vsCache = vs;
           _amDrawOverlay(vs);
         } else {
@@ -2429,7 +2436,45 @@ const _AM_MAP_NO_ENEMIES = "no enemy vision yet";
 // "loading vision..." for the rest of the game).
 const _AM_MAP_FEED_FAILED = "vision feed did not load";
 
-function _amMapStatusText(vs) {
+// S144-U-221: a stalled feed. core/vision_tracker.py stamps every state it
+// writes with t_now = time.time() (every 0.75 s); when the Live Client relay
+// goes stale it stops writing, and data/vision_state.json keeps its last
+// in-game state, which /api/vision-state keeps serving with a 200. The line
+// repainted those counts for the rest of the game. The age is measured on
+// THIS page's clock from the last poll that brought a new t_now, so a skew
+// between the box and the viewer cannot fake a stall. 10 s is the cut the SR
+// coach prompt applies to the same file (coach_integration/_sr_prompt.py
+// _vision_tracker_locs).
+const _AM_MAP_STALE_S = 10;
+
+// Feed-age bookkeeping: { seen, tNow, at } - whether any answer arrived,
+// the last t_now seen and the page time (ms) it was first seen.
+function _amMapFeedTrack() {
+  return { seen: false, tNow: undefined, at: 0 };
+}
+
+// Note one successful answer. A new numeric t_now is an advance; an answer
+// without a numeric t_now cannot be judged, so its arrival counts as one. A
+// non-object is no answer.
+function _amMapNoteFeed(track, vs, nowMs) {
+  if (!track || !vs || typeof vs !== "object") return;
+  const t = vs.t_now;
+  const judged = typeof t === "number" && Number.isFinite(t);
+  if (!track.seen || !judged || t !== track.tNow) {
+    track.seen = true;
+    track.tNow = judged ? t : undefined;
+    track.at = nowMs;
+  }
+}
+
+// Seconds since the feed last advanced; null before any answer. Never
+// negative (a page clock stepping back reads as fresh).
+function _amMapStaleS(track, nowMs) {
+  if (!track || !track.seen) return null;
+  return Math.max(0, (nowMs - track.at) / 1000);
+}
+
+function _amMapStatusText(vs, staleS) {
   const ok = vs && typeof vs === "object" && !Array.isArray(vs);
   const clock = (ok && vs.game_time != null)
     ? _amClock(vs.game_time) + " - " : "";
@@ -2441,6 +2486,11 @@ function _amMapStatusText(vs) {
   const missing = summary.missing_count | 0;
   const dead    = summary.dead_count | 0;
   if (visible + missing + dead <= 0) return clock + _AM_MAP_NO_ENEMIES;
+  if (typeof staleS === "number" && Number.isFinite(staleS)
+      && staleS >= _AM_MAP_STALE_S) {
+    const at = (vs.game_time != null) ? " at " + _amClock(vs.game_time) : "";
+    return `vision feed stalled${at} - ${Math.floor(staleS)}s ago`;
+  }
   const shared = _AM_SHARED_VISION.has(String(vs.game_mode || "").toUpperCase());
   return shared
     ? `${clock}${visible} on bridge - ${dead} dead`
@@ -2456,7 +2506,9 @@ function _amUpdateMapText(vs) {
   const roster = document.getElementById("am-map-roster");
   const enemies = (vs && vs.enemies) || {};
 
-  if (status) status.textContent = _amMapStatusText(vs);
+  if (status) {
+    status.textContent = _amMapStatusText(vs, _amMapStaleS(_AM_MAP.feed, Date.now()));
+  }
 
   if (roster) {
     const frag = document.createDocumentFragment();
@@ -3301,6 +3353,10 @@ export const __test = {
   _amCapgapEnemyNames,
   _amMapStatusText,
   _AM_MAP_FEED_FAILED,
+  _AM_MAP_STALE_S,
+  _amMapFeedTrack,
+  _amMapNoteFeed,
+  _amMapStaleS,
   _resolveMyTeam,
   _threatRow,
   _renderSpikeMarkersFromCtx,

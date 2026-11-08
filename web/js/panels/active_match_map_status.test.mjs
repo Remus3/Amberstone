@@ -97,3 +97,80 @@ test("map status: a summary without total counts its three parts", () => {
 test("map status: the failed-poll line is fixed text and names no count", () => {
   assert.strictEqual(am._AM_MAP_FEED_FAILED, "vision feed did not load");
 });
+
+// S144-U-221: a stalled feed. core/vision_tracker.py stamps every state() it
+// writes with t_now = time.time() (every 0.75 s), but when the Live Client
+// relay goes stale it stops writing and data/vision_state.json keeps its last
+// in-game state, which /api/vision-state keeps serving with a 200. A poll that
+// fails with an answer cached kept the last line too. Either way the line
+// claimed "4 on bridge - 1 dead" for the rest of the game. The pane now
+// measures how long the feed has gone without a new t_now (client-side, so no
+// clock skew between the box and the viewer) and past _AM_MAP_STALE_S says the
+// feed stalled instead of repeating the counts.
+
+test("map stale: the threshold matches the coach prompt's 10 s vision cut", () => {
+  assert.strictEqual(am._AM_MAP_STALE_S, 10);
+});
+
+test("map stale: under the threshold the counts stand", () => {
+  for (const s of [undefined, null, 0, 4.9, 9.99]) {
+    assert.strictEqual(am._amMapStatusText(vs("KIWI", [4, 0, 1]), s),
+      "9:47 - 4 on bridge - 1 dead", String(s));
+  }
+});
+
+test("map stale: past the threshold the counts give way to the stall and its age", () => {
+  assert.strictEqual(am._amMapStatusText(vs("KIWI", [4, 0, 1]), 10),
+    "vision feed stalled at 9:47 - 10s ago");
+  assert.strictEqual(am._amMapStatusText(vs("CLASSIC", [3, 1, 1]), 125.8),
+    "vision feed stalled at 9:47 - 125s ago");
+  const v = vs("CLASSIC", [3, 1, 1]);
+  delete v.game_time;
+  assert.strictEqual(am._amMapStatusText(v, 30), "vision feed stalled - 30s ago");
+});
+
+test("map stale: a non-number or non-finite age is not a stall", () => {
+  for (const s of ["30", NaN, Infinity, -5, true, {}]) {
+    assert.strictEqual(am._amMapStatusText(vs("CLASSIC", [3, 1, 1]), s),
+      "9:47 - 3 visible - 1 MIA - 1 dead", String(s));
+  }
+});
+
+test("map stale: a feed that knows no enemies keeps 'no enemy vision yet'", () => {
+  assert.strictEqual(am._amMapStatusText({}, 60), "no enemy vision yet");
+  assert.strictEqual(am._amMapStatusText(vs("CLASSIC", [0, 0, 0]), 60),
+    "9:47 - no enemy vision yet");
+});
+
+test("map stale: the age runs from the last poll that brought a new t_now", () => {
+  const tr = am._amMapFeedTrack();
+  assert.strictEqual(am._amMapStaleS(tr, 1000), null, "no answer yet is not a stall");
+  am._amMapNoteFeed(tr, { t_now: 100 }, 1000);
+  assert.strictEqual(am._amMapStaleS(tr, 1000), 0);
+  // The same file served again: no advance.
+  am._amMapNoteFeed(tr, { t_now: 100 }, 6000);
+  am._amMapNoteFeed(tr, { t_now: 100 }, 13000);
+  assert.strictEqual(am._amMapStaleS(tr, 13000), 12);
+  // A failed poll notes nothing; the age keeps running.
+  assert.strictEqual(am._amMapStaleS(tr, 20000), 19);
+  // The tracker writes again: fresh.
+  am._amMapNoteFeed(tr, { t_now: 125.5 }, 21000);
+  assert.strictEqual(am._amMapStaleS(tr, 21500), 0.5);
+});
+
+test("map stale: an answer without a numeric t_now counts as fresh on arrival", () => {
+  const tr = am._amMapFeedTrack();
+  am._amMapNoteFeed(tr, {}, 1000);
+  am._amMapNoteFeed(tr, {}, 30000);
+  assert.strictEqual(am._amMapStaleS(tr, 30000), 0);
+  am._amMapNoteFeed(tr, { t_now: "7" }, 40000);
+  assert.strictEqual(am._amMapStaleS(tr, 41000), 1);
+  am._amMapNoteFeed(tr, null, 50000);
+  assert.strictEqual(am._amMapStaleS(tr, 50000), 10, "a null answer is no answer");
+});
+
+test("map stale: a clock that steps back never yields a negative age", () => {
+  const tr = am._amMapFeedTrack();
+  am._amMapNoteFeed(tr, { t_now: 1 }, 50000);
+  assert.strictEqual(am._amMapStaleS(tr, 40000), 0);
+});
