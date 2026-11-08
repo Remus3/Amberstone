@@ -607,13 +607,15 @@ def _apply_idempotent(action: str, body: dict) -> tuple[int, dict]:
         value.wait(remaining)
 
     # The claim is released on EVERY path, including one where settle() itself
-    # raises. Covering only the side effect leaves a real hole: settle ->
-    # remember -> _remember_locked deep-copies the payload BEFORE releasing, so
-    # a payload that cannot be copied dies with the key still reserved and
-    # nothing to wake its waiters - permanently, since _INFLIGHT has no TTL and
-    # purge() does not touch it. Every later request on that key would then
-    # block and be refused until the process restarts, which is a worse outage
-    # than the double-fire this protocol removes.
+    # raises. Covering only the side effect left a real hole: settle ->
+    # remember deep-copied the payload BEFORE releasing, so a payload that
+    # could not be copied died with the key still reserved and nothing to wake
+    # its waiters - permanently, since _INFLIGHT has no TTL and purge() does
+    # not touch it. Every later request on that key would then block and be
+    # refused until the process restarts, which is a worse outage than the
+    # double-fire this protocol removes. remember() now releases the claim
+    # itself before re-raising (S144-T-611); this `finally` stays as the
+    # consumer-side half, so neither side alone is load-bearing.
     settled = False
     try:
         if action == "fire_lane":

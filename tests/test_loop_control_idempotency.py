@@ -936,9 +936,10 @@ def test_a_raising_settle_still_releases_the_claim(ctldir, monkeypatch):
     _INFLIGHT has no TTL and purge() does not touch it, so a key left reserved
     is reserved until the process restarts: every later request on it blocks
     for INFLIGHT_WAIT_S and is then refused, forever. Guarding only the side
-    effect misses this, because settle -> remember -> _remember_locked
-    deep-copies the payload BEFORE releasing. Raised by an adversarial pass
-    after the first version of the unwind covered the side effect alone.
+    effect missed this, because settle -> remember deep-copied the payload
+    BEFORE releasing. Raised by an adversarial pass after the first version
+    of the unwind covered the side effect alone. remember() now releases on a
+    raise as well (S144-T-611); this test pins the consumer-side half.
     """
     monkeypatch.setattr(mod, "_queue_intent",
                         lambda body, key: (200, {"ok": True, "action": "x"}))
