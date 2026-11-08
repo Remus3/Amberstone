@@ -45,10 +45,18 @@ Fail-soft semantics:
   * Missing file -> defaults preserved (no error, no warning).
   * Empty `{}` -> defaults preserved.
   * Malformed JSON -> defaults preserved (one WARNING log at module load).
+    A document nested deeply enough to exhaust the parser's recursion
+    limit counts as malformed.
   * Unknown role keys silently ignored (forward-compatible with future roles).
   * Unknown axis keys silently ignored (forward-compatible with future axes).
-  * Negative weights floored to 0.0 (a negative score weight is nonsense).
+  * Negative weights floored to 0.0 (a negative score weight is nonsense;
+    -0.0 floors to +0.0).
   * Non-numeric values silently ignored (default kept for that axis).
+  * Non-finite values (json.loads accepts NaN, Infinity and -Infinity) and
+    integers too large for a float are ignored with one WARNING each
+    (default kept for that axis): the weights are served verbatim as
+    `weights_used` by GET /api/post-game-rubric, and a bare NaN / Infinity
+    token is invalid JSON to the browser.
   * Non-dict role values silently ignored (a top-level role key whose value
     is not a JSON object cannot carry axis overrides).
 
@@ -93,7 +101,11 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import math
+import numbers
+from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 
 _LOG = logging.getLogger(__name__)
@@ -215,7 +227,10 @@ def _load_weights_overrides() -> dict[str, dict]:
         return {}
     try:
         data = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError, RecursionError):
+        # RecursionError: a deeply nested document exhausts the C parser's
+        # recursion limit. It is not a ValueError, and this runs at import
+        # time, so letting it escape made the module unimportable.
         _LOG.warning(
             "post_game_rubric: malformed JSON at %s; defaults preserved",
             _OVERRIDES_PATH,
@@ -234,6 +249,29 @@ def _load_weights_overrides() -> dict[str, dict]:
     return cleaned
 
 
+def _finite_float(value: object, *, allow_text: bool = False) -> float | None:
+    """Return `value` as a finite float, or None when it is not usable.
+
+    Accepts a real number (int, float, any numbers.Real, or a Decimal,
+    which float() always took) and, when
+    `allow_text` is set, a numeric string (a TEXT cell from the rewind
+    SQLite store). Rejects bool (a subclass of int, never a count or a
+    weight), NaN, +/-Infinity, an integer too large for a float, and any
+    other type. Never raises.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (numbers.Real, Decimal)) or (
+        allow_text and isinstance(value, str)
+    ):
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return numeric if math.isfinite(numeric) else None
+    return None
+
+
 def _apply_overrides(
     defaults: dict[str, RoleWeights],
     overrides: dict[str, dict],
@@ -244,6 +282,8 @@ def _apply_overrides(
     roles). Unknown axis keys are silently dropped (forward-compatible with
     future axes). Negative weights are floored to 0.0. Non-numeric values are
     silently dropped (the default axis weight is kept for that role).
+    Non-finite and float-overflowing values are dropped with a WARNING
+    (default kept); they never raise, because this runs at import time.
 
     Returns a NEW dict; the input `defaults` mapping is not mutated.
     """
@@ -266,9 +306,21 @@ def _apply_overrides(
                 continue
             if not isinstance(value, (int, float)):
                 continue
-            numeric = float(value)
-            numeric = max(numeric, 0.0)
-            fields[axis] = numeric
+            numeric = _finite_float(value)
+            if numeric is None:
+                # NaN / +-Infinity (json.loads accepts all three) or an int
+                # too large for a float (float() raised OverflowError here,
+                # at import time). role and axis are both allow-listed keys.
+                _LOG.warning(
+                    "post_game_rubric: non-finite weight for %s.%s ignored;"
+                    " default kept",
+                    role,
+                    axis,
+                )
+                continue
+            # Floor negatives to 0.0. max(-0.0, 0.0) returns its FIRST
+            # argument, -0.0, so `+ 0.0` turns that into +0.0.
+            fields[axis] = max(numeric, 0.0) + 0.0
         if fields:
             result[role] = dataclasses.replace(base, **fields)
     return result
@@ -374,14 +426,30 @@ def _normalize_role(role: str | None) -> str:
 
     Falls back to MID for unknown / blank / None inputs (MID has the
     most-balanced baseline of the five and is the safest default for a
-    partial scorer).
+    partial scorer). Only ASCII spellings canonicalize: str.upper() folds
+    some non-ASCII letters onto ASCII ones (U+017F LATIN SMALL LETTER LONG S
+    upper-cases to "S", U+0131 DOTLESS I to "I"), and no Riot role string
+    is non-ASCII.
     """
     if not role:
         return "MID"
-    upper = str(role).strip().upper()
-    if not upper:
+    text = str(role).strip()
+    if not text or not text.isascii():
         return "MID"
-    return _ROLE_ALIASES.get(upper, "MID")
+    return _ROLE_ALIASES.get(text.upper(), "MID")
+
+
+def _stat(stats: Mapping, key: str) -> float:
+    """One per-match stat as a finite float; 0.0 when missing or unusable.
+
+    A numeric string counts (a TEXT cell from the rewind store). None, a
+    junk string, a container, a bool, NaN and +/-Infinity all read as 0.0 -
+    the same as a missing key - so the grade never raises and never carries
+    a non-finite component. A non-finite count is corrupt data, not a
+    performance, so it is not allowed to saturate an axis.
+    """
+    value = _finite_float(stats.get(key), allow_text=True)
+    return 0.0 if value is None else value
 
 
 def _component_score(weight: float, raw: float, baseline: float) -> float:
@@ -390,15 +458,23 @@ def _component_score(weight: float, raw: float, baseline: float) -> float:
     weight * clamp(raw / baseline, 0, 2). A 1.0 normalized profile (raw
     matches baseline exactly) contributes weight * 1.0; a 2x outlier
     saturates at weight * 2.0.
+
+    The result is always finite and never -0.0: a NaN or non-positive
+    baseline, a NaN or non-positive ratio, and a non-finite product (a NaN
+    or infinite weight, or a finite weight so large the product overflows)
+    all contribute 0.0. The old clamp let NaN through both of its
+    comparisons and returned weight * NaN.
     """
-    if baseline <= 0:
+    if not baseline > 0.0:
+        # NaN, negative, zero and -0.0 baselines all land here.
         return 0.0
     normalized = raw / baseline
-    if normalized < 0:
-        normalized = 0.0
-    elif normalized > 2.0:
-        normalized = 2.0
-    return weight * normalized
+    if not normalized > 0.0:
+        # NaN (also raw inf / baseline inf), negative, zero and -0.0.
+        return 0.0
+    score = weight * min(normalized, 2.0)
+    # `+ 0.0` turns a -0.0 product (weight -0.0) into +0.0.
+    return score + 0.0 if math.isfinite(score) else 0.0
 
 
 def _grade_bucket(score: float) -> str:
@@ -429,9 +505,11 @@ def compute_role_grade(
         stats: dict carrying kills, deaths, assists, cs, game_time_s,
             obj_participation_pct (0.0-1.0), vision_score,
             damage_dealt_to_champions. Missing keys are treated as 0
-            (fail-soft, never raise). When carry_efficiency is True, also
-            reads gold_share_pct (0-100, from core.carry_share.gold_share_pct)
-            and kp_pct (0-100 kill-participation); both fail-soft to 0.0.
+            (fail-soft, never raise), and so is any unusable value (see
+            _stat); a non-mapping `stats` grades as an empty one. When
+            carry_efficiency is True, also reads gold_share_pct (0-100,
+            from core.carry_share.gold_share_pct) and kp_pct (0-100
+            kill-participation); both fail-soft to 0.0.
         role: TeamPosition / role string. Canonicalized via
             _normalize_role; unknown -> MID.
         weights: optional RoleWeights override. Defaults to the
@@ -458,18 +536,20 @@ def compute_role_grade(
         dict gains a `carry_efficiency` entry ONLY when carry_efficiency or
         assume_carry_share_grade is True.
     """
+    if not isinstance(stats, Mapping):
+        stats = {}
     canonical_role = _normalize_role(role)
     role_weights = weights if weights is not None else _DEFAULT_WEIGHTS[canonical_role]
     baselines = _ROLE_BASELINES[canonical_role]
 
-    kills = float(stats.get("kills", 0) or 0)
-    deaths = float(stats.get("deaths", 0) or 0)
-    assists = float(stats.get("assists", 0) or 0)
-    cs = float(stats.get("cs", 0) or 0)
-    game_time_s = float(stats.get("game_time_s", 0) or 0)
-    obj_pct = float(stats.get("obj_participation_pct", 0) or 0)
-    vision = float(stats.get("vision_score", 0) or 0)
-    damage = float(stats.get("damage_dealt_to_champions", 0) or 0)
+    kills = _stat(stats, "kills")
+    deaths = _stat(stats, "deaths")
+    assists = _stat(stats, "assists")
+    cs = _stat(stats, "cs")
+    game_time_s = _stat(stats, "game_time_s")
+    obj_pct = _stat(stats, "obj_participation_pct")
+    vision = _stat(stats, "vision_score")
+    damage = _stat(stats, "damage_dealt_to_champions")
 
     kda_value = (kills + assists) / max(1.0, deaths)
     minutes = game_time_s / 60.0
@@ -506,8 +586,8 @@ def compute_role_grade(
     # assume_carry_share_grade (ORUN5) is the canonical-named alias - either
     # flag arms the identical fold.
     if carry_efficiency or assume_carry_share_grade:
-        gold_share = float(stats.get("gold_share_pct", 0) or 0)
-        kp = float(stats.get("kp_pct", 0) or 0)
+        gold_share = _stat(stats, "gold_share_pct")
+        kp = _stat(stats, "kp_pct")
         half_weight = _CARRY_EFFICIENCY_WEIGHT / 2.0
         components["carry_efficiency"] = _component_score(
             half_weight, gold_share, _GOLD_SHARE_EVEN_BASELINE
