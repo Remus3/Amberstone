@@ -4,7 +4,8 @@ GET /api/personal-context
 
 The route surfaces the same top-3 death patterns the mode coaches inject
 into their prompts (via core.death_patterns_loader). Loader-level
-fail-soft semantics + 60s mtime-keyed cache + ok=false reason=no_data on
+fail-soft semantics + 60s cache keyed on the file's stat signature
+(mtime_ns, size, file id; S144-T-609) + ok=false reason=no_data on
 missing data (HTTP 200, never 404 - the panel renders the empty state).
 """
 from __future__ import annotations
@@ -221,7 +222,8 @@ class CacheTests(_FsCase):
         h1 = _FakeHandler()
         routes._serve_personal_context(h1)
         # Force the cache entry to expire by rewinding expires_at.
-        routes._CACHE["expires_at"] = time.time() - 1.0
+        # The TTL runs on time.monotonic (S144-T-609).
+        routes._CACHE["expires_at"] = time.monotonic() - 1.0
         h2 = _FakeHandler()
         routes._serve_personal_context(h2)
         # Both calls should return the same shape (file unchanged) but
