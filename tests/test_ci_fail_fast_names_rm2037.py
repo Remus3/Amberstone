@@ -11,10 +11,26 @@ It is on under CI (CI=true or GITHUB_ACTIONS=true) or with
 RC_FAIL_FAST_NAMES=1, off by default locally, and RC_FAIL_FAST_NAMES=0 turns
 it off even under CI. It never changes an outcome.
 
-The behaviour tests run a real inner pytest through pytester with the plugin
-loaded by `-p tests._fail_fast_names` (the inner run does not see this repo's
-conftest files); the wiring test pins that the rootdir conftest.py re-exports
-the plugin's session hook, which is what turns it on for both suites.
+The serial behaviour tests run a real inner pytest in-process through
+pytester with the plugin loaded by `-p tests._fail_fast_names` (the inner run
+does not see this repo's conftest files); the wiring test pins that the
+rootdir conftest.py re-exports the plugin's session hook, which is what turns
+it on for both suites.
+
+The xdist behaviour tests load it differently, for a measured reason (CI run
+42427610342, s154 C1c). An xdist worker is a fresh interpreter whose sys.path
+is xdist's copy of the CONTROLLER's sys.path frozen at interpreter startup
+(xdist/plugin.py `_sys_path`, assigned whole in xdist/remote.py), not the
+live one. CI starts the suite with the `pytest` console script (ci.yml "full
+dual suite"), so that copy never held the repo root, and every inner worker
+died importing `-p tests._fail_fast_names` ("No module named 'tests'", all
+nodes down, 0 outcomes). `python -m pytest` puts the cwd on the startup path,
+which is why a local run stayed green. So an xdist case writes the wiring the
+repo itself uses - a rootdir conftest that puts the repo on sys.path and
+re-exports pytest_sessionstart - and runs the inner pytest as a SUBPROCESS
+started from the pytester dir with PYTHONPATH cleared, so the repo is off
+every inner startup path on every box, however the outer run was launched;
+`test_the_xdist_harness_keeps_the_repo_off_the_inner_startup_path` pins that.
 """
 
 from __future__ import annotations
@@ -27,12 +43,25 @@ from types import SimpleNamespace
 import pytest
 
 from tests import _fail_fast_names as ffn
+from tests._timing_budget import fleet_test_guard
 
 pytest_plugins = ["pytester"]
 
 REPO = Path(__file__).resolve().parents[1]
 PLUGIN = ("-p", "tests._fail_fast_names", "-p", "no:cacheprovider")
 GATE_VARS = ("CI", "GITHUB_ACTIONS", ffn.ENV_SWITCH)
+INNER_TIMEOUT_S = 120
+
+# The repo's own wiring (conftest.py: repo root onto sys.path, then the
+# re-export), written as the inner run's rootdir conftest. A worker imports a
+# rootdir conftest by FILE path, so it needs nothing on its startup sys.path.
+_XDIST_CONFTEST = f"""
+import sys
+
+sys.path.insert(0, {str(REPO)!r})
+
+from tests._fail_fast_names import pytest_sessionstart  # noqa: E402,F401
+"""
 
 _SUITE = """
 import pytest
@@ -91,6 +120,19 @@ def _assert_outcomes_unchanged(result):
     result.assert_outcomes(passed=2, failed=1, errors=2, xfailed=1, skipped=1)
 
 
+def _run_inner_subprocess(pytester, monkeypatch, *args):
+    # `python -m pytest` from the pytester dir: its startup sys.path is that
+    # dir plus the interpreter's own, never the repo (pytester.popen prepends
+    # only the cwd to PYTHONPATH, and an inherited PYTHONPATH is cleared).
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+    return pytester.runpytest_subprocess(*args, timeout=fleet_test_guard.budget(INNER_TIMEOUT_S))
+
+
+def _run_xdist(pytester, monkeypatch, *args):
+    pytester.makeconftest(_XDIST_CONFTEST)
+    return _run_inner_subprocess(pytester, monkeypatch, "-p", "no:cacheprovider", "-q", *args)
+
+
 # ---- behaviour (real inner pytest) -------------------------------------------
 
 
@@ -147,7 +189,7 @@ def test_works_under_xdist_and_names_each_failure_once(pytester, monkeypatch):
         test_alpha="def test_a_ok():\n    pass\n\n\ndef test_a_bad():\n    assert 0, 'alpha broke'\n",
         test_beta="def test_b_ok():\n    pass\n\n\ndef test_b_bad():\n    raise ValueError('beta broke')\n",
     )
-    result = pytester.runpytest(*PLUGIN, "-q", "-n", "2", "--dist", "loadfile")
+    result = _run_xdist(pytester, monkeypatch, "-n", "2", "--dist", "loadfile")
     result.assert_outcomes(passed=2, failed=2)
     # Anchor: the reports really came from xdist workers (each failure header
     # in the long traceback carries its worker id).
@@ -178,7 +220,10 @@ def test_a_strict_xpass_names_its_reason_not_the_worker_header(pytester, monkeyp
         pytest.importorskip("xdist")
     _gate(monkeypatch, **{ffn.ENV_SWITCH: "1"})
     pytester.makepyfile(test_xp=_XPASS_STRICT)
-    result = pytester.runpytest(*PLUGIN, "-q", *dist)
+    if dist:
+        result = _run_xdist(pytester, monkeypatch, *dist)
+    else:
+        result = pytester.runpytest(*PLUGIN, "-q")
     result.assert_outcomes(failed=1)
     assert _rc_lines(result) == ["RC-FAIL call test_xp.py::test_xp :: [XPASS(strict)] meant to fail"], result.outlines
 
@@ -187,13 +232,47 @@ def test_a_crashed_xdist_worker_names_the_crash_not_the_worker_header(pytester, 
     pytest.importorskip("xdist")
     _gate(monkeypatch, **{ffn.ENV_SWITCH: "1"})
     pytester.makepyfile(test_dies="import os\n\n\ndef test_dies():\n    os._exit(1)\n")
-    result = pytester.runpytest(*PLUGIN, "-q", "-n", "2")
+    result = _run_xdist(pytester, monkeypatch, "-n", "2")
     result.assert_outcomes(failed=1)
     (line,) = _rc_lines(result)
     assert line.startswith("RC-FAIL "), line
     assert " test_dies.py::test_dies :: worker 'gw" in line, line
     assert "crashed while running" in line, line
     assert " -- Python " not in line, line
+
+
+def test_the_xdist_harness_keeps_the_repo_off_the_inner_startup_path(pytester, monkeypatch):
+    # Positive control for the xdist cases: under the same harness, loading
+    # the plugin BY NAME fails exactly as CI run 42427610342's inner workers
+    # did. If this ever passes, the harness no longer reproduces CI's launch
+    # and the xdist cases above could go green locally and red on CI again.
+    _gate(monkeypatch, **{ffn.ENV_SWITCH: "1"})
+    pytester.makepyfile(test_ok="def test_ok():\n    pass\n")
+    result = _run_inner_subprocess(pytester, monkeypatch, *PLUGIN, "-q")
+    assert result.ret != 0, result.outlines
+    assert any("No module named 'tests'" in ln for ln in result.outlines + result.errlines), (
+        result.outlines + result.errlines
+    )
+
+
+def test_no_in_process_xdist_run_loads_the_plugin_by_name():
+    # The shape that went red only on CI: `pytester.runpytest(*PLUGIN, "-n", ...)`
+    # passes under `python -m pytest` and loses every inner worker under the
+    # `pytest` console script. An xdist case goes through _run_xdist instead.
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    by_name, offenders = 0, []
+    for node in ast.walk(tree):
+        func = getattr(node, "func", None)
+        if not (isinstance(node, ast.Call) and isinstance(func, ast.Attribute) and func.attr.startswith("runpytest")):
+            continue
+        starred = {a.value.id for a in node.args if isinstance(a, ast.Starred) and isinstance(a.value, ast.Name)}
+        consts = {a.value for a in node.args if isinstance(a, ast.Constant)}
+        if "PLUGIN" in starred:
+            by_name += 1
+            if "-n" in consts or "dist" in starred:
+                offenders.append(node.lineno)
+    assert by_name >= 5, by_name  # anchor: the scan sees the serial cases
+    assert offenders == [], offenders
 
 
 def test_error_text_is_one_ascii_line_of_at_most_200_chars(pytester, monkeypatch):
