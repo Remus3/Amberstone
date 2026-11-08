@@ -79,7 +79,7 @@ _READ = """() => {
         metaKids: meta ? Array.from(meta.querySelectorAll("*"))
           .filter(shown).map((k) => ({
             cls: String(k.className).slice(0, 40), ...box(k),
-            sw: k.scrollWidth, cw: k.clientWidth,
+            sw: k.scrollWidth, cw: k.clientWidth, n: k.textContent.length,
             authW: parseFloat(getComputedStyle(k)
               .getPropertyValue("--csv-badge-w"))})) : [],
         spells: Array.from(row.querySelectorAll(".csv-build-spell"))
@@ -143,7 +143,17 @@ def _by(row):
 # every size. A 500-unit stub (8 px at 16 px) on Windows reproduces exactly
 # that 198 / 201. So the label-fits pin holds on Windows, where it was measured;
 # on every host the layout claim behind it is checked: the badge keeps its
-# whole authored --csv-badge-w, so nothing in the row squeezes the label.
+# whole authored --csv-badge-w, so nothing in the row squeezes the label; the
+# token itself is the authored 200 px; and the label runs past its box by no
+# more than whole-pixel advances can add (rounding adds at most 0.5 px a
+# glyph: 10.5 px for these 21 characters, where the runner read 3 px), so a
+# bigger font or a longer label still fails off Windows.
+# web/css/panels/champ_select_view.css:2089 `--csv-badge-w: 200px;` (the
+# operator's 2026-05-23 130 -> 200 bump so full variant names read in full).
+_AUTHORED_BADGE_W = 200
+_ROUNDING_PX_PER_GLYPH = 0.5
+
+
 def _label_fits_is_pinned():
     return sys.platform == "win32"
 
@@ -158,10 +168,16 @@ def test_meta_parts_stay_inside_the_meta(rows, size):
             assert k["r"] <= meta["r"] + 0.5, (size, k, meta)
         badge = row["metaKids"][0]
         assert "csv-build-badge" in badge["cls"], (size, badge)
-        # The badge is never narrower than its authored width (every host).
-        assert badge["authW"] > 0, (size, badge)
+        # The badge token is its authored width, and the badge is never
+        # narrower than it (every host).
+        assert abs(badge["authW"] - _AUTHORED_BADGE_W) < 0.5, (size, badge)
         assert abs(badge["w"] - badge["authW"]) < 0.5, (size, badge)
-        # The whole label is shown, never elided (the measured host).
+        # The label overruns its box by no more than whole-pixel advances
+        # add (every host) ...
+        assert badge["n"] > 0, (size, badge)
+        assert badge["sw"] <= badge["cw"] + 0.5 + (
+            _ROUNDING_PX_PER_GLYPH * badge["n"]), (size, badge)
+        # ... and on the measured host the whole label is shown, never elided.
         if _label_fits_is_pinned():
             assert badge["cw"] + 0.5 >= badge["sw"], (size, badge)
 

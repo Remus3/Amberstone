@@ -10,6 +10,7 @@ Architecture:
 """
 import asyncio
 import base64
+import functools
 import json
 import os
 import socket
@@ -30,6 +31,8 @@ except ImportError:
     # (run 42003344148); now only a test that asks for pw_browser skips.
     sync_playwright = None
 
+from tests._repo_walk import REPO_ROOT as _REPO_ROOT
+from tests._repo_walk import tracked_relpaths
 from tests.snapshot_panels._webfont_stub import OfflineWebfontBrowser
 
 WEB_DIR = Path(__file__).parent.parent.parent / "web"
@@ -136,8 +139,12 @@ DRAFT_ELO_GOOD_BAND = {
 # requests per run. A missing icon file is answered with this 1x1 PNG, so every
 # icon is drawn at its authored size, its onerror never fires, and no request
 # leaves the box. Every ddragon CDN URL in web/js is such an onerror fallback.
-# A file that exists (the mirror on a dev box, the tracked web/icons/) is
-# still served as itself.
+# A file that exists (the mirror on a dev box) is still served as itself.
+# A directory with tracked files (web/icons/positions/, web/icons/lobby/) is
+# never stood in for: a tracked icon that goes missing still answers 404, so
+# the page's own handling (and any test that reads the icon) sees it. The
+# untracked /icons/ trees the pages ask for are champions/, spells/, runes/,
+# items/ and aram_items/ (the dashboard serves them from the mirror).
 _ICON_STAND_IN = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
     "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
@@ -146,10 +153,28 @@ _ICON_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 _WEB_ROOT = WEB_DIR.resolve()
 
 
+@functools.lru_cache(maxsize=1)
+def _tracked_web_dirs():
+    """The directories under web/ that hold a file in the git index, or None
+    when git cannot say (then every existing directory counts as tracked)."""
+    tracked = tracked_relpaths()
+    if tracked is None:
+        return None
+    return frozenset((_REPO_ROOT / rel).resolve().parent
+                     for rel in tracked if rel.startswith("web/"))
+
+
+def _in_tracked_dir(target: Path) -> bool:
+    dirs = _tracked_web_dirs()
+    if dirs is None:
+        return target.parent.is_dir()
+    return target.parent in dirs
+
+
 def _is_missing_icon(path: str) -> bool:
     """True for an icon image path under _ICON_PREFIXES whose file is not
-    under web/. A path that climbs out of web/ is left to the static
-    handler, which refuses it."""
+    under web/ and whose directory holds no tracked file. A path that climbs
+    out of web/ is left to the static handler, which refuses it."""
     if not path.startswith(_ICON_PREFIXES):
         return False
     if not path.lower().endswith(_ICON_SUFFIXES):
@@ -157,7 +182,9 @@ def _is_missing_icon(path: str) -> bool:
     target = (_WEB_ROOT / unquote(path).lstrip("/")).resolve()
     if not target.is_relative_to(_WEB_ROOT):
         return False
-    return not target.is_file()
+    if target.is_file():
+        return False
+    return not _in_tracked_dir(target)
 
 
 def _make_handler(store: dict, closing: threading.Event) -> type:
