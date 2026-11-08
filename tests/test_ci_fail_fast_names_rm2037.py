@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -241,38 +242,105 @@ def test_a_crashed_xdist_worker_names_the_crash_not_the_worker_header(pytester, 
     assert " -- Python " not in line, line
 
 
-def test_the_xdist_harness_keeps_the_repo_off_the_inner_startup_path(pytester, monkeypatch):
+@pytest.mark.parametrize("foreign_tests_pkg", [False, True], ids=["no-tests-pkg", "foreign-tests-pkg"])
+def test_the_xdist_harness_keeps_the_repo_off_the_inner_startup_path(pytester, monkeypatch, foreign_tests_pkg):
     # Positive control for the xdist cases: under the same harness, loading
     # the plugin BY NAME fails exactly as CI run 42427610342's inner workers
     # did. If this ever passes, the harness no longer reproduces CI's launch
     # and the xdist cases above could go green locally and red on CI again.
+    # The match is the import failure of the plugin itself, either message:
+    # "No module named 'tests'" (no `tests` anywhere on the path, as on CI) or
+    # "No module named 'tests._fail_fast_names'" (a runner whose site-packages
+    # ships some other top-level `tests` package). A plugin that DOES import
+    # prints neither, and its passing inner run fails the exit-code check.
     _gate(monkeypatch, **{ffn.ENV_SWITCH: "1"})
     pytester.makepyfile(test_ok="def test_ok():\n    pass\n")
+    if foreign_tests_pkg:
+        # Stands in for a site-packages top-level `tests`: the inner startup
+        # path starts with the pytester dir, so this package is found first.
+        pytester.mkpydir("tests")
     result = _run_inner_subprocess(pytester, monkeypatch, *PLUGIN, "-q")
-    assert result.ret != 0, result.outlines
-    assert any("No module named 'tests'" in ln for ln in result.outlines + result.errlines), (
-        result.outlines + result.errlines
-    )
+    output = result.outlines + result.errlines
+    assert result.ret != 0, output
+    assert any(_PLUGIN_IMPORT_FAILED.search(ln) for ln in output), output
+
+
+_PLUGIN_IMPORT_FAILED = re.compile(
+    r"""Error importing plugin "tests\._fail_fast_names": No module named '(?:tests|tests\._fail_fast_names)'"""
+)
+
+# Any argument that starts xdist workers: -n / -n2 / -nauto / -n=2,
+# --numprocesses[=N], --dist[=MODE], --tx[=SPEC], and xdist loaded with
+# -pxdist / "-p xdist" (the two-argument "-p", "xdist" is paired below).
+_XDIST_ARG = re.compile(r"-n(?:=?\S+)?|--numprocesses(?:=\S+)?|--dist(?:=\S+)?|--tx(?:=\S+)?|-p\s*xdist(?:\.plugin)?")
+
+
+def _xdist_by_name_calls(source):
+    """(runpytest calls that load the plugin BY NAME, lines of those that also
+    start xdist workers). By name = `*PLUGIN` or a literal
+    "tests._fail_fast_names"; arguments are read through starred tuples."""
+    by_name, offenders = 0, []
+    for node in ast.walk(ast.parse(source)):
+        func = getattr(node, "func", None)
+        if not (isinstance(node, ast.Call) and isinstance(func, ast.Attribute) and func.attr.startswith("runpytest")):
+            continue
+        names, consts = set(), []
+        for arg in node.args:
+            value = arg.value if isinstance(arg, ast.Starred) else arg
+            if isinstance(value, ast.Name):
+                names.add(value.id)
+            elems = value.elts if isinstance(value, (ast.Tuple, ast.List)) else [value]
+            consts += [e.value for e in elems if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+        if "PLUGIN" not in names and not any("tests._fail_fast_names" in c for c in consts):
+            continue
+        by_name += 1
+        pairs = zip(consts, [*consts[1:], ""])
+        if "dist" in names or any(
+            _XDIST_ARG.fullmatch(c) or (c == "-p" and nxt in ("xdist", "xdist.plugin")) for c, nxt in pairs
+        ):
+            offenders.append(node.lineno)
+    return by_name, offenders
 
 
 def test_no_in_process_xdist_run_loads_the_plugin_by_name():
     # The shape that went red only on CI: `pytester.runpytest(*PLUGIN, "-n", ...)`
     # passes under `python -m pytest` and loses every inner worker under the
     # `pytest` console script. An xdist case goes through _run_xdist instead.
-    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
-    by_name, offenders = 0, []
-    for node in ast.walk(tree):
-        func = getattr(node, "func", None)
-        if not (isinstance(node, ast.Call) and isinstance(func, ast.Attribute) and func.attr.startswith("runpytest")):
-            continue
-        starred = {a.value.id for a in node.args if isinstance(a, ast.Starred) and isinstance(a.value, ast.Name)}
-        consts = {a.value for a in node.args if isinstance(a, ast.Constant)}
-        if "PLUGIN" in starred:
-            by_name += 1
-            if "-n" in consts or "dist" in starred:
-                offenders.append(node.lineno)
+    by_name, offenders = _xdist_by_name_calls(Path(__file__).read_text(encoding="utf-8"))
     assert by_name >= 5, by_name  # anchor: the scan sees the serial cases
     assert offenders == [], offenders
+
+
+_XDIST_SPELLINGS = (
+    '"-n", "2"',
+    '"-n2"',
+    '"-nauto"',
+    '"-n=2"',
+    '"--numprocesses", "2"',
+    '"--numprocesses=auto"',
+    '"--dist", "loadfile"',
+    '"--dist=loadfile"',
+    '"--tx", "popen"',
+    '"-p", "xdist"',
+    '"-pxdist"',
+    '"-p xdist"',
+    '*("-n", "2")',
+    "*dist",
+)
+
+
+@pytest.mark.parametrize("spelling", _XDIST_SPELLINGS)
+def test_the_self_scan_flags_every_xdist_spelling(spelling):
+    # Non-vacuity for the guard above: each way to start workers is caught,
+    # through *PLUGIN and through the plugin name spelled out.
+    assert _xdist_by_name_calls(f'pytester.runpytest(*PLUGIN, "-q", {spelling})\n') == (1, [1])
+    spelled = f'pytester.runpytest("-p", "tests._fail_fast_names", {spelling})\n'
+    assert _xdist_by_name_calls(spelled) == (1, [1])
+
+
+def test_the_self_scan_passes_serial_and_xdist_disabled_runs():
+    source = 'pytester.runpytest(*PLUGIN, "-q")\npytester.runpytest(*PLUGIN, "-p", "no:xdist")\n'
+    assert _xdist_by_name_calls(source) == (2, [])
 
 
 def test_error_text_is_one_ascii_line_of_at_most_200_chars(pytester, monkeypatch):
