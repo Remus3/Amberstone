@@ -1,4 +1,12 @@
 # Phase 3 installer for Legion-PC (section 11.12).
+#
+# Status (2026-10-31 launcher cutover): the cutover UNREGISTERED the
+# RC-Phase3-Supervisor task below (docs/OPERATIONS.md, "Moved to the app") and
+# the rc-shell service host now runs `-m agents.supervisor` itself, dev profile
+# only. Do NOT re-run this script on a cut-over host: it would register a
+# second starter beside the host (tools/rc_facts.py LAUNCHER_OWNED_TASKS flags
+# that). Kept for a host that still registers the task.
+#
 # Idempotent: safe to re-run. Requires an elevated shell.
 #
 # What this does:

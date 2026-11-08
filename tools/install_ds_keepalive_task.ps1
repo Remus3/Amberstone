@@ -14,6 +14,12 @@
 # watchdog (a real GET /health round trip, never a port or pid check) while
 # RC's watchdog heartbeat is stale, relaunching only through the owner task.
 #
+# Status (2026-10-31 launcher cutover): RC-DSKeepalive was never registered on
+# the cut-over host and its owner task, RC-DaemonSlayer, is unregistered
+# (docs/OPERATIONS.md, "Moved to the app"), so the keepalive would have no task
+# to relaunch through. Do NOT run this script there (tools/rc_facts.py
+# LAUNCHER_OWNED_TASKS flags a re-registered task as a second starter).
+#
 # Shape = RC-MissionControl's measured working shape
 # (tools/install_mission_control_task.ps1, fix rounds 1-3):
 #   - AtStartup: up at boot before any logon, like the DS owner task.

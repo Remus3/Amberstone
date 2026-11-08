@@ -1,5 +1,12 @@
 # Install (or refresh) the RC-DaemonSlayer scheduled task. Idempotent.
 #
+# Status (2026-10-31 launcher cutover): the cutover UNREGISTERED the
+# RC-DaemonSlayer task this script installs (docs/OPERATIONS.md, "Moved to the
+# app"); RC's DsWatchdog now starts Daemon Slayer as its own child. Do NOT
+# re-run this script on a cut-over host: it would register a second starter
+# beside the host (tools/rc_facts.py LAUNCHER_OWNED_TASKS flags that). Kept for
+# a host that still registers the task.
+#
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File tools\install_daemon_slayer_task.ps1
 #   powershell -ExecutionPolicy Bypass -File tools\install_daemon_slayer_task.ps1 -Start

@@ -17,7 +17,8 @@ Per S10 responsibilities:
   * Graceful shutdown on SIGTERM / SIGBREAK.
 
 The process also acquires a PID lock against ``agents/state/lockfile`` -
-duplicate launches abort cleanly (matching the existing RC-Supervisor pattern).
+duplicate launches abort cleanly (matching the PID-lock pattern of
+``ops/rc_supervisor.py``).
 
 This skeleton is intentionally MVP:
   * Ephemeral LLM dispatch is implemented as a subprocess stub that writes
