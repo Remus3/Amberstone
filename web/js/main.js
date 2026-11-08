@@ -6826,10 +6826,27 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   let minimapTimer = null;
   let minimapInterval = MINIMAP_INTERVAL_SLOW;
   let lastMinimapMode = null;
+  // S144-U-226: a poll request still unanswered after this is aborted and
+  // settles as a failure (the image reads STALE). Above both cadences, so
+  // a slow answer is not cut off by the next tick (the same 5 s as the
+  // vision-state polls, VT_FETCH_TIMEOUT_MS below).
+  const MINIMAP_FETCH_TIMEOUT_MS = 5000;
+  // The one open /api/minimap-crop request of this poll, or null.
+  let minimapInflight = null;
+
+  // Give up on the open request, if any: its answer will never paint.
+  function _dropMinimapInflight() {
+    const req = minimapInflight;
+    if (!req) return;
+    minimapInflight = null;
+    if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
+    if (req.ctl) req.ctl.abort();
+  }
 
   async function refreshMinimap() {
     if (document.hidden) return;
     if (!MINIMAP_MODES.has(state.mode)) {
+      _dropMinimapInflight();
       MM.imgWrap.classList.add("hidden");
       lastMinimapMode = null;
       return;
@@ -6839,19 +6856,62 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // console every 2s in an idle ARAM lobby). Gate on a live game.
     const _lcMM = (state.latest && state.latest.liveclient) || null;
     if (!_lcMM || !Object.keys(_lcMM).length) {
+      _dropMinimapInflight();
       MM.imgWrap.classList.add("hidden");
       lastMinimapMode = null;
       return;
     }
+    // S144-U-226: one request open at a time. This poll used to send one
+    // every tick (500 ms on the fast stream) with no timeout, so a server
+    // that stopped answering collected an open request per tick, the
+    // image never read STALE, and a request still open when the game
+    // ended could land later and show the minimap again. A tick that
+    // finds a request still open sends nothing; one unanswered after
+    // MINIMAP_FETCH_TIMEOUT_MS is aborted (body read included) and
+    // settles as a failure, so the next tick asks again; leaving the game
+    // or the minimap modes gives up on it (above). An answer that lands
+    // after its request was given up on never paints.
+    // A request sent for another minimap mode (SR -> ARAM) is given up on:
+    // its image is the old map.
+    if (minimapInflight && minimapInflight.mode !== state.mode) {
+      _dropMinimapInflight();
+    }
+    if (minimapInflight) return;
+    const ctl = (typeof AbortController === "function")
+      ? new AbortController() : null;
+    const req = { timer: null, ctl, mode: state.mode };
+    minimapInflight = req;
+    // True once, for the request that is still the open one.
+    const settle = () => {
+      if (minimapInflight !== req) return false;
+      minimapInflight = null;
+      if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
+      return true;
+    };
+    req.timer = setTimeout(() => {
+      req.timer = null;
+      if (!settle()) return;
+      if (ctl) ctl.abort();
+      MM.imgWrap.classList.add("stale");
+    }, MINIMAP_FETCH_TIMEOUT_MS);
     const tNow = Date.now();
     const bust = tNow - (tNow % minimapInterval);
+    let painting = false;
     try {
-      const resp = await fetch(`/api/minimap-crop?mode=${state.mode}&_=${bust}`);
+      const resp = await fetch(`/api/minimap-crop?mode=${state.mode}&_=${bust}`,
+        ctl ? { signal: ctl.signal } : undefined);
       if (!resp.ok) {
-        MM.imgWrap.classList.add("hidden");
+        if (settle()) MM.imgWrap.classList.add("hidden");
         return;
       }
       const blob = await resp.blob();
+      if (!settle()) return;
+      // The mode moved on while this answer was on its way: the next tick
+      // asks for the new map instead.
+      if (req.mode !== state.mode) return;
+      // From here on this answer is the current one; a throw while
+      // painting it still marks the image STALE (catch below).
+      painting = true;
       if (blob.type !== "image/png" && blob.type !== "image/jpeg") {
         MM.imgWrap.classList.add("hidden");
         return;
@@ -6876,7 +6936,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       MM.imgWrap.classList.remove("hidden", "stale");
       lastMinimapMode = state.mode;
     } catch (e) {
-      MM.imgWrap.classList.add("stale");
+      if (settle() || painting) MM.imgWrap.classList.add("stale");
     }
   }
   minimapTimer = setInterval(refreshMinimap, minimapInterval);
