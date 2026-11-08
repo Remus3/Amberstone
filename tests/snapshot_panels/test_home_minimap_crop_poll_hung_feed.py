@@ -28,12 +28,38 @@ aborts. Time moves with Playwright's clock. The game state reaches the page
 through a routed /api/state-stream (and /api/state, the fallback poll), so a
 test can end the game mid-run. Drive path: / with the ARAM fixture plus a
 small synthetic derived liveclient block (refreshMinimap only asks that it
-is non-empty).
+is non-empty), with the Map State panel rendered by show_coaching_main
+(S144-U-227: the poll sends nothing while the panel is not rendered, and
+no view renders it).
 """
 import json
 from urllib.parse import parse_qs, urlparse
 
 from tests.snapshot_panels.conftest import _ICON_STAND_IN, _WS_STUB, FIXTURE_DIR
+
+_SHOW_MAIN_CSS = (
+    '<style id="test-show-main">body[data-view] main'
+    " { display: grid !important; }</style>"
+)
+
+
+def show_coaching_main(page):
+    """Serve index.html with one extra rule that renders the top-level
+    <main> (and so the Map State panel) in every view. Call before goto.
+    S144-U-227: every view hides that <main>, and the panel's polls send
+    nothing while it is not rendered (pinned by
+    test_home_minimap_polls_need_rendered_panel.py)."""
+
+    def is_index(url):
+        return urlparse(url).path in ("/", "/index.html")
+
+    def handler(route):
+        resp = route.fetch()
+        body = resp.text().replace("</head>", _SHOW_MAIN_CSS + "</head>", 1)
+        route.fulfill(response=resp, body=body)
+
+    page.route(is_index, handler)
+
 
 _COUNT_JS = r"""
 (() => {
@@ -134,6 +160,7 @@ def _open(pw_browser, mock_server, crop, game):
     page.clock.install()
     page.add_init_script(_WS_STUB)
     page.add_init_script(_COUNT_JS)
+    show_coaching_main(page)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     page.route("**/api/state-stream*", game.stream)

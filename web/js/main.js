@@ -6826,6 +6826,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   let minimapTimer = null;
   let minimapInterval = MINIMAP_INTERVAL_SLOW;
   let lastMinimapMode = null;
+  // S144-U-227: the Map State panel (#minimap) sits in the top-level
+  // <main>, which every view hides (header.css, the body[data-view] main
+  // list, RM-1552) and the overlay shell hides too (overlay.css
+  // main > .panel), so it is never on screen. Its two polls (this one and
+  // refreshVisionOverlay below) still asked the server every 500 ms all
+  // game. Both now send nothing while the panel has no layout box; they
+  // resume by themselves if a view renders it again.
+  // Guard: tests/snapshot_panels/test_home_minimap_polls_need_rendered_panel.py.
+  function _minimapPanelShown() {
+    return !!MM.root && MM.root.getClientRects().length > 0;
+  }
   // S144-U-226: a poll request still unanswered after this is aborted and
   // settles as a failure (the image reads STALE). Above both cadences, so
   // a slow answer is not cut off by the next tick (the same 5 s as the
@@ -6859,6 +6870,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       _dropMinimapInflight();
       MM.imgWrap.classList.add("hidden");
       lastMinimapMode = null;
+      return;
+    }
+    // S144-U-227: nothing to show it in. Give up on the open request too,
+    // so its answer never paints.
+    if (!_minimapPanelShown()) {
+      _dropMinimapInflight();
       return;
     }
     // S144-U-226: one request open at a time. This poll used to send one
@@ -6967,6 +6984,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   async function refreshVisionOverlay() {
     if (!VT_OVERLAY) return;
     if (document.hidden) return;
+    // S144-U-227: the dots and the #mm-state line it paints are both in
+    // the Map State panel; send nothing while it is not rendered.
+    if (!_minimapPanelShown()) return;
     // S144-U-225: one request open at a time. This poll used to send one
     // every 500 ms tick, on every view, with no timeout, so a server that
     // stopped answering collected an open request per tick and a late

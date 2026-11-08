@@ -24,11 +24,16 @@ refreshVisionOverlay (by the caller's stack; active_match.js polls the same
 route) until each settles or its signal aborts. Time moves with
 Playwright's clock. Drive path: / with the ARAM fixture (an in-game
 envelope, so the empty-state "awaiting liveclient data..." line does not
-replace the pill the poll writes).
+replace the pill the poll writes), with the Map State panel rendered by
+show_coaching_main (S144-U-227: the poll sends nothing while the panel is
+not rendered, and no view renders it).
 """
 import json
 
 from tests.snapshot_panels.conftest import _WS_STUB
+from tests.snapshot_panels.test_home_minimap_crop_poll_hung_feed import (
+    show_coaching_main,
+)
 from tests.snapshot_panels.test_ui_mock_active_match_map_stall import _vs
 
 _COUNT_JS = r"""
@@ -97,6 +102,9 @@ def _open(pw_browser, mock_server, feed, want=_FOUR):
     page.clock.install()
     page.add_init_script(_WS_STUB)
     page.add_init_script(_COUNT_JS)
+    # S144-U-227: the poll sends nothing while the Map State panel is not
+    # rendered, and no view renders it.
+    show_coaching_main(page)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     page.route("**/api/vision-state*", feed)
