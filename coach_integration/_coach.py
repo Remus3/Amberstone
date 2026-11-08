@@ -40,7 +40,7 @@ class CoachIntegration:
         cfg_path = Path(__file__).parent.parent / "config" / "coach_settings.json"
         if cfg_path.exists():
             try:
-                cfg = json.loads(cfg_path.read_text())
+                cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
                 self._debounce_s = cfg.get("debounce_seconds", self._debounce_s)
                 self._timeout_s  = cfg.get("timeout_seconds",  self._timeout_s)
                 self._model      = cfg.get("model",            self._model)

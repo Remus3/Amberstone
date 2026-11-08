@@ -194,7 +194,7 @@ def cmd_status() -> int:
     if audit_dir.exists():
         try:
             test_f = audit_dir / ".write_test"
-            test_f.write_text("x", newline="\n")
+            test_f.write_text("x", encoding="utf-8", newline="\n")
             test_f.unlink()
             _ok(f"audit/ is writable ({audit_dir})")
         except Exception as exc:  # noqa: BLE001
