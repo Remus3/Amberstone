@@ -8,13 +8,27 @@ Key functions:
   suggest_items()          - ordered list of recommended items with reason
   aram_item_priority()     - ARAM-specific item priorities
 
-Used by item_advisor.py for context-aware build advice.
+Live caller: comp_context_str is the comp_context_fn of the SR/ARAM worker
+(app/__init__.py -> core/sr_aram_worker.py), so its string lands in the
+COMPOSITION ANALYSIS block of the coaching prompt every tick.
+enemy_damage_profile also feeds core/comp_coverage.py and role_profiles.py.
+
+Input contract (S144-T-616): every public function takes what the live state
+dict carries, which is not guaranteed well-formed. A team or item list may be
+None, a bare string (read as ONE name) or hold non-str entries (skipped); a
+game_mode may be None. Nothing here raises on such input.
+
+A champion with no data/champion_profiles/*.json entry is UNKNOWN and is left
+out of every count and ratio (S144-T-614) - it used to be invented as an AD
+semi-tank fighter. ARAM rules apply to every game_mode the canonical router
+maps to MODE_ARAM, ARAM Mayhem (KIWI) included (S144-T-612).
 """
 
 from champion_profiles import (
     CHAMPIONS, TANKS, FIGHTERS, AD_CHAMPS, AP_CHAMPS,
     HYBRID_CHAMPS, SUSTAIN_CHAMPS, MANA_CHAMPS,
 )
+from core.game_snapshot import MODE_ARAM, mode_from_game_mode_string
 
 # -- Item property maps ---------------------------------------------------------
 
@@ -70,6 +84,34 @@ ARAM_STRONG = {
 }
 
 
+# -- Input normalisation ---------------------------------------------------------
+
+def _names(seq) -> list:
+    """The non-empty str entries of a list-like; a bare str is ONE name."""
+    if isinstance(seq, str):
+        return [seq] if seq.strip() else []
+    if not isinstance(seq, (list, tuple, set, frozenset)):
+        return []
+    return [x for x in seq if isinstance(x, str) and x.strip()]
+
+
+def _profile(name) -> dict:
+    """The champion's profile dict, or {} when it has none."""
+    data = CHAMPIONS.get(name) if isinstance(name, str) else None
+    return data if isinstance(data, dict) else {}
+
+
+def _known(names: list) -> list:
+    """The profiles of the names that HAVE one (unknown names dropped)."""
+    return [d for d in (_profile(n) for n in names) if d]
+
+
+def _is_aram(game_mode) -> bool:
+    """True for every game_mode the canonical router maps to MODE_ARAM."""
+    gm = game_mode if isinstance(game_mode, str) else ""
+    return mode_from_game_mode_string(gm) == MODE_ARAM
+
+
 # -- Damage profile -------------------------------------------------------------
 
 def enemy_damage_profile(enemy_champs: list) -> dict:
@@ -78,12 +120,15 @@ def enemy_damage_profile(enemy_champs: list) -> dict:
             'ad_count': int, 'ap_count': int, 'tank_count': int,
             'sustain_count': int}
     for an enemy team.
+
+    An unprofiled champion is left out of the counts AND the denominator, so
+    a team with no profiled champion reads 0.0 / 0.0 (S144-T-614).
     """
     ad = ap = tanks = sustain = 0
-    total = max(1, len(enemy_champs))
+    known = _known(_names(enemy_champs))
+    total = max(1, len(known))
 
-    for name in enemy_champs:
-        data = CHAMPIONS.get(name, {})
+    for data in known:
         dmg = data.get("dmg", "ad")
         role = data.get("role", "fighter")
 
@@ -121,24 +166,37 @@ def validate_item(item_name: str, champion: str,
                   current_items: list, game_mode: str = "CLASSIC") -> tuple:
     """
     Returns (ok: bool, warning: str).
-    ok=False means the item is suboptimal enough to flag.
+    ok=False means the item is suboptimal enough to flag. A non-str or empty
+    item_name is not judged: (True, "").
     """
+    if not isinstance(item_name, str) or not item_name.strip():
+        return True, ""
     profile  = enemy_damage_profile(enemy_champs)
     ad_pct   = profile["ad"]
     ap_pct   = profile["ap"]
     tanks    = profile["tank_count"]
-    champ_data = CHAMPIONS.get(champion, {})
+    champ_data = _profile(champion)
     item_lower = item_name.lower()
-    is_aram  = "ARAM" in game_mode
+    is_aram  = _is_aram(game_mode)
+    needs_mana = champ_data.get("mana", True)  # default True if unknown
+
+    # -- ARAM: the more specific mana warning, checked FIRST -------------
+    # S144-T-613: it sat below the generic mana branch, which returned for
+    # the same three items, so it could never fire.
+    if is_aram and not needs_mana and any(
+            m.lower() in item_lower
+            for m in ("Tear of the Goddess", "Manamune", "Archangel's Staff")):
+        return False, (
+            f"ARAM: {item_name} is a mana item but {champion} doesn't use mana. "
+            f"Every slot matters in ARAM - pick a combat-relevant item."
+        )
 
     # -- Mana items on non-mana champion --------------------------------
-    if any(m.lower() in item_lower for m in MANA_ITEMS):
-        needs_mana = champ_data.get("mana", True)  # default True if unknown
-        if not needs_mana:
-            return False, (
-                f"{champion} doesn't use mana - {item_name} wastes its mana stats. "
-                f"Replace with a stat-efficient alternative."
-            )
+    if not needs_mana and any(m.lower() in item_lower for m in MANA_ITEMS):
+        return False, (
+            f"{champion} doesn't use mana - {item_name} wastes its mana stats. "
+            f"Replace with a stat-efficient alternative."
+        )
 
     # -- Heavy MR vs AD-heavy team ---------------------------------------
     if any(m.lower() in item_lower for m in MR_ITEMS) and ad_pct >= 0.75:
@@ -148,7 +206,7 @@ def validate_item(item_name: str, champion: str,
         )
 
     # -- Heavy armor vs AP-heavy team ------------------------------------
-    if any(m.lower() in item_lower for m in ARMOR_ITEMS) and item_name != "Warmog's Armor" and ap_pct >= 0.75:
+    if any(m.lower() in item_lower for m in ARMOR_ITEMS) and item_lower != "warmog's armor" and ap_pct >= 0.75:
         return False, (
             f"Enemy team is {ap_pct:.0%} AP - {item_name} provides armor with minimal value. "
             f"Build MR (Banshee's, Force of Nature, Spirit Visage) instead."
@@ -163,15 +221,6 @@ def validate_item(item_name: str, champion: str,
 
     # -- No Grievous Wounds vs heavy healing -----------------------------
     # (Not a flag but a reminder - handled in suggestions)
-
-    # -- ARAM: mana items double-check ----------------------------------
-    if is_aram and any(m.lower() in item_lower for m in ("Tear of the Goddess", "Manamune", "Archangel's Staff")):
-        needs_mana = champ_data.get("mana", True)
-        if not needs_mana:
-            return False, (
-                f"ARAM: {item_name} is a mana item but {champion} doesn't use mana. "
-                f"Every slot matters in ARAM - pick a combat-relevant item."
-            )
 
     return True, ""
 
@@ -190,13 +239,14 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
     ap_pct     = profile["ap"]
     tanks      = profile["tank_count"]
     has_sustain = profile["sustain_count"] >= 2
-    champ_data = CHAMPIONS.get(champion, {})
+    champ_data = _profile(champion)
     role       = champ_data.get("role", "marksman")
     dmg        = champ_data.get("dmg", "ad")
-    is_aram    = "ARAM" in game_mode
+    is_aram    = _is_aram(game_mode)
+    enemies    = _names(enemy_champs)
 
     # Normalise current items to lowercase for lookup
-    owned_lower = {i.lower() for i in (current_items or [])}
+    owned_lower = {i.lower() for i in _names(current_items)}
     has_gw = any(g.lower() in owned_lower for g in GW_ITEMS)
 
     suggestions = []
@@ -232,7 +282,7 @@ def suggest_items(champion: str, enemy_champs: list, ally_champs: list,
 
     if (ad_pct >= 0.6 and role not in ("marksman", "mage")
             and not any(m.lower() in owned_lower for m in ("thornmail", "frozen heart", "randuin"))):
-        has_adc_enemy = any(CHAMPIONS.get(e, {}).get("role") == "marksman" for e in enemy_champs)
+        has_adc_enemy = any(_profile(e).get("role") == "marksman" for e in enemies)
         if has_adc_enemy:
             suggestions.append(("Thornmail",
                 f"Reflect damage to enemy ADC; Grievous Wounds for their healers vs {ad_pct:.0%} AD team"))
@@ -261,8 +311,15 @@ def comp_context_str(champion: str, current_items: list,
     """
     Returns a short formatted string suitable for injecting into the coaching prompt.
     Covers: enemy damage profile, bad-item warnings, top suggestions.
+
+    The damage-profile lines are emitted only when at least one enemy has a
+    profile (S144-T-615: an empty or unprofiled team used to print a made-up
+    "Enemy: mixed 0% AD / 0% AP"). A repeated owned item warns once
+    (S144-T-617). May return "" when there is nothing to say.
     """
-    profile  = enemy_damage_profile(enemy_champs)
+    enemies  = _names(enemy_champs)
+    items    = _names(current_items)
+    profile  = enemy_damage_profile(enemies)
     ad_pct   = profile["ad"]
     ap_pct   = profile["ap"]
     tanks    = profile["tank_count"]
@@ -271,24 +328,25 @@ def comp_context_str(champion: str, current_items: list,
     lines = []
 
     # Damage profile
-    if ad_pct >= 0.75:
-        lines.append(f"Enemy: {ad_pct:.0%} AD - prioritize armor items")
-    elif ap_pct >= 0.75:
-        lines.append(f"Enemy: {ap_pct:.0%} AP - prioritize MR items")
-    else:
-        lines.append(f"Enemy: mixed {ad_pct:.0%} AD / {ap_pct:.0%} AP")
+    if _known(enemies):
+        if ad_pct >= 0.75:
+            lines.append(f"Enemy: {ad_pct:.0%} AD - prioritize armor items")
+        elif ap_pct >= 0.75:
+            lines.append(f"Enemy: {ap_pct:.0%} AP - prioritize MR items")
+        else:
+            lines.append(f"Enemy: mixed {ad_pct:.0%} AD / {ap_pct:.0%} AP")
 
-    if tanks >= 3:
-        lines.append(f"  {tanks} tanks - % armor/magic pen is required")
-    if sustain >= 2:
-        lines.append(f"  {sustain} healing champions - Grievous Wounds needed")
+        if tanks >= 3:
+            lines.append(f"  {tanks} tanks - % armor/magic pen is required")
+        if sustain >= 2:
+            lines.append(f"  {sustain} healing champions - Grievous Wounds needed")
 
     # Item validation on current build
     warnings = []
-    for item in (current_items or []):
-        ok, warn = validate_item(item, champion, enemy_champs, ally_champs,
-                                  current_items, game_mode)
-        if not ok:
+    for item in items:
+        ok, warn = validate_item(item, champion, enemies, ally_champs,
+                                  items, game_mode)
+        if not ok and warn not in warnings:
             warnings.append(warn)
 
     if warnings:
@@ -297,8 +355,8 @@ def comp_context_str(champion: str, current_items: list,
             lines.append(f"  \u2717 {w}")
 
     # Suggestions
-    suggestions = suggest_items(champion, enemy_champs, ally_champs,
-                                 current_items, 0, game_mode)
+    suggestions = suggest_items(champion, enemies, ally_champs,
+                                 items, 0, game_mode)
     if suggestions:
         lines.append("Item priority:")
         for item, reason in suggestions[:2]:
