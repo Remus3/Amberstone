@@ -166,18 +166,17 @@ def _is_percent(units) -> bool:
     return "%" in str(first or "")
 
 
-def _extract_shred(block) -> Optional[tuple[float, float, str]]:
-    """Pull (flat_shred, pct_shred, label_suffix) from a modifier block.
+def _extract_shred(block) -> Optional[tuple[list, bool]]:
+    """Pull ``(values, is_percent)`` from a modifier block.
 
-    ``block`` is an ``abilities.DamageBlock``. Reads ``raw_modifiers`` -
-    a tuple of ``{values: [...], units: [...]}`` dicts. Percent shreds
-    (units carry ``%``) populate ``pct_shred`` (as a 0.0-1.0 fraction);
-    flat shreds populate ``flat_shred`` (resist points). Returns ``None``
-    when the block carries no usable magnitude.
+    ``block`` is an ``abilities.DamageBlock``. Reads the first entry of
+    ``raw_modifiers`` - a tuple of ``{values: [...], units: [...]}`` dicts.
+    ``values`` is the raw per-rank list (percent points or flat resist
+    points); ``is_percent`` is True when the first unit carries ``%``.
+    Returns ``None`` when the block carries no usable magnitude.
 
-    The per-rank value chosen is supplied by the caller via the values
-    list index; this helper returns BOTH the values list slot picked and
-    whether it is percent so the caller can rank-select.
+    The caller rank-selects from ``values`` (``_shred_at_rank``) and turns a
+    percent magnitude into a 0.0-1.0 fraction (``_candidate_shreds``).
     """
     raw = getattr(block, "raw_modifiers", None) or ()
     if not raw:
@@ -190,8 +189,7 @@ def _extract_shred(block) -> Optional[tuple[float, float, str]]:
     if not values:
         return None
     pct = _is_percent(units)
-    # Marker tuple: (values, is_percent). The caller indexes values by rank.
-    return (values, pct)  # type: ignore[return-value]
+    return (values, pct)
 
 
 def _shred_at_rank(values, rank: int) -> float:
