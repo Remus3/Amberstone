@@ -709,10 +709,12 @@ export function _amBuildPainted(el) {
 // (active_match_complete.json: daemon_slayer_picks [] at six items), so the row
 // says so instead of a bare label over a blank strip. Fewer items: "" - the
 // strip stays blank and holds its height (a fetch may still land; never a stuck
-// "loading..." string). The caller passes 0 when no liveclient block is
-// present: the server owned_item_ids drop trinkets and consumables (an
-// undercount shows no line), the raw allPlayers path drops slot >= 6, but the
-// coach items_display fallback can carry the trinket (5 items + trinket = 6).
+// "loading..." string). The caller passes _amLiveclientOwnedIds(lc).length:
+// the server owned_item_ids drop trinkets and consumables (an undercount shows
+// no line) and the roster path drops slot >= 6, but the coach items_display
+// fallback can carry the trinket (5 items + trinket = 6), so it never counts -
+// not when no liveclient block is present, and not when one is present but the
+// server could not match the active player (S144-U-216).
 export function _bmLiveEmptyText(ownedCount) {
   return (Number(ownedCount) || 0) >= 6 ? "All six item slots full" : "";
 }
@@ -773,6 +775,9 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // name so DS rows light up regardless of which currency they carry.
   const ownedNames = _amOwnedItemNames(p, ownedIds);
   const ownedSet = new Set(ownedIds.map(String));
+  // S144-U-216: the full-inventory line counts only the liveclient block's own
+  // ids, never the name-resolved fallback the caller may have passed.
+  const liveOwnedCount = _amLiveclientOwnedIds(lc).length;
   ownedNames.forEach((o) => ownedSet.add(String(o || "").toLowerCase()));
   const livePicks  = _maybeRefreshDsPicks(champion, mode, level, ownedIds);
   const coachPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
@@ -859,6 +864,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     p: dedupedPicks.slice(0, 7).map((r) => (r && (r.id != null ? r.id : (r.item_id != null ? r.item_id : r.name))) || r),
     c: _dsTargetStatsCaption(),
     o: ownedNames,
+    // S144-U-216: the liveclient-sourced count drives the empty LIVE row's
+    // "All six item slots full" line; a change repaints it even when the
+    // display names (o) stay the same.
+    lo: liveOwnedCount,
     // WP-B2: Row2 META order ids, so a standard-build change repaints the strip.
     m: metaOrder.slice(0, 7).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
     // BATCH A: Row3 ULTIMATE order ids, so the from-scratch build change repaints.
@@ -960,7 +969,7 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
         // lands (no-reflow-on-absence); blank, NOT a stuck "loading..." string.
         // S144-U-215: an empty LIVE row beside a full inventory says so
         // (_bmLiveEmptyText) in the same reserved height (build_module.css).
-        const emptyText = isLive ? _bmLiveEmptyText(lc ? ownedIds.length : 0) : "";
+        const emptyText = isLive ? _bmLiveEmptyText(liveOwnedCount) : "";
         rowEl.appendChild(emptyText ? _bmEmptyStrip(emptyText) : _bmStrip());
       }
       mod.appendChild(rowEl);
@@ -1841,8 +1850,26 @@ function _amActivePlayerEntry(lc) {
 // fallback currency, resolved through the ITEMS index. slot >= 6
 // (trinket) excluded to match core.enemy_aware_stats's extraction.
 function _amOwnedItemIds(p, lc) {
+  const ids = _amLiveclientOwnedIds(lc);
+  if (ids.length) return ids;
+  const names = Array.isArray(p && p.items) ? p.items
+    : _splitItemList((p && p.items_display) || "", false);
+  for (const nm of names) {
+    const iid = _resolveItemId(nm);
+    if (iid) ids.push(String(iid));
+  }
+  return ids;
+}
+
+// S144-U-216: the liveclient-sourced half of _amOwnedItemIds - the ids the
+// liveclient block itself says the operator owns (server owned_item_ids first,
+// else the active player's own roster row, slots 0-5). [] when there is no
+// block, or the server could not match the active player and the roster has
+// no row for them. The "All six item slots full" line counts THIS, never the
+// coach items_display name fallback. Exported for the test.
+export function _amLiveclientOwnedIds(lc) {
   const ids = [];
-  if (lc) {
+  if (lc && typeof lc === "object") {
     // Live /api/state envelope: the summarized liveclient block carries a
     // server-authoritative id list (owned_item_ids, dashboard/_liveclient.py)
     // but NOT the full allPlayers[].items structure _amActivePlayerEntry needs
@@ -1863,13 +1890,6 @@ function _amOwnedItemIds(p, lc) {
       const iid = it.itemID || it.itemId || 0;
       if (iid) ids.push(String(iid));
     }
-    if (ids.length) return ids;
-  }
-  const names = Array.isArray(p && p.items) ? p.items
-    : _splitItemList((p && p.items_display) || "", false);
-  for (const nm of names) {
-    const iid = _resolveItemId(nm);
-    if (iid) ids.push(String(iid));
   }
   return ids;
 }

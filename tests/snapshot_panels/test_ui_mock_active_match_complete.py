@@ -234,7 +234,11 @@ _RETAIN_JS = """async () => {
   m._renderAmBuildBody(el, {}, ctx, null, owned);
   const kept = el.innerHTML === painted;
   // 3. six ids but no liveclient (the coach items_display fallback, which can
-  // carry the trinket) -> no full-inventory line; with one -> the line.
+  // carry the trinket) -> no full-inventory line; the server's own six-id
+  // owned_item_ids -> the line. S144-U-216: a liveclient block whose server
+  // list is empty and whose roster has no row for the active player (the
+  // server could not match them) must not borrow the six name-resolved ids
+  // the caller passes - the count comes from the block itself.
   const six = ['3006', '6676', '3031', '3036', '3085', '3340'];
   // Each on a fresh pane: on a painted one the retain guard keeps the paint.
   const paneFor = (lc) => {
@@ -246,9 +250,24 @@ _RETAIN_JS = """async () => {
     return t;
   };
   const noLc = paneFor(null);
-  const withLc = paneFor({ allPlayers: [] });
+  const withLc = paneFor({ allPlayers: [], owned_item_ids: six.slice(0, 6) });
+  const unmatched = paneFor({
+    activePlayer: { summonerName: 'Renamed', riotIdGameName: 'Renamed' },
+    allPlayers: [{ summonerName: 'Other', riotIdGameName: 'Other',
+      items: six.map((id, slot) => ({ itemID: +id, slot })) }],
+    owned_item_ids: [],
+  });
+  // The lean roster's own row: five slotted items plus the slot-6 trinket.
+  const fivePlusTrinket = paneFor({
+    activePlayer: { summonerName: 'Me', riotIdGameName: 'Me' },
+    allPlayers: [{ summonerName: 'Me', riotIdGameName: 'Me',
+      items: ['3006', '6676', '3031', '3036', '3085'].map(
+        (id, slot) => ({ itemID: +id, slot })).concat([{ itemID: 3340, slot: 6 }]) }],
+    owned_item_ids: [],
+  });
   el.remove();
-  return { first, kept, hadIcon: painted.indexOf('3089') >= 0, noLc, withLc };
+  return { first, kept, hadIcon: painted.indexOf('3089') >= 0, noLc, withLc,
+    unmatched, fivePlusTrinket };
 }"""
 
 
@@ -263,6 +282,8 @@ def test_retain_guard_keeps_a_real_paint_but_never_the_scaffold(
         assert r["kept"], r
         assert _FULL not in r["noLc"], r
         assert _FULL in r["withLc"], r
+        assert _FULL not in r["unmatched"], r
+        assert _FULL not in r["fivePlusTrinket"], r
     finally:
         page.close()
         ctx.close()
