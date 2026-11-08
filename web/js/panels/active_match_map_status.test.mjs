@@ -175,6 +175,22 @@ test("map stale: a clock that steps back never yields a negative age", () => {
   assert.strictEqual(am._amMapStaleS(tr, 40000), 0);
 });
 
+// S144-U-232: the poll sends nothing while another view is shown, so the
+// track is marked unobserved and no age is judged until the first request
+// after the return settles it.
+test("map stale: an unobserved track judges no age, and its whole age is back once observed", () => {
+  const tr = am._amMapFeedTrack();
+  assert.strictEqual(tr.unobserved, false, "a new track is observed");
+  am._amMapNoteFeed(tr, { t_now: 100 }, 1000);
+  tr.unobserved = true;
+  assert.strictEqual(am._amMapStaleS(tr, 16000), null);
+  assert.strictEqual(am._amMapIsStale(am._amMapStaleS(tr, 16000)), false);
+  // The same t_now after the return: the feed did not advance while away.
+  am._amMapNoteFeed(tr, { t_now: 100 }, 16500);
+  tr.unobserved = false;
+  assert.strictEqual(am._amMapStaleS(tr, 16500), 15.5);
+});
+
 // S144-U-222: with the status line saying the feed stalled, the per-enemy
 // roster still read the frozen answer as live: "on bridge" in green, "MIA 12s"
 // and a "DEAD 18s" respawn countdown that never ticked, and in SR the gank

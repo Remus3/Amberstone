@@ -2402,8 +2402,18 @@ function _amStartMapPolling() {
   const tick = () => {
     // Only poll while the active-match view is current - otherwise we
     // burn CPU + bandwidth on hidden surfaces.
+    // S144-U-232: while away the page stops watching the feed, so the
+    // track is marked unobserved; see _amMapStaleS. A stall already
+    // judged stays judged (its age keeps running), so a return never
+    // paints a stalled feed's counts as live.
     const view = document.body.dataset.view;
-    if (view !== "active-match") return;
+    if (view !== "active-match") {
+      const feed = _AM_MAP.feed;
+      if (!_amMapIsStale(_amMapStaleS(feed, Date.now()))) {
+        feed.unobserved = true;
+      }
+      return;
+    }
     // S144-U-220: a poll that fails with nothing cached says so instead of
     // leaving "loading vision..." up. S144-U-221: with an answer cached the
     // last line is repainted against the feed's age, so a feed that keeps
@@ -2440,6 +2450,13 @@ function _amStartMapPolling() {
     const settle = () => {
       if (_AM_MAP.inflight !== req) return false;
       _AM_MAP.inflight = null;
+      // S144-U-232: a request that settles while the view is shown (the
+      // one still open on a return, or the first sent after it) observes
+      // the track again, whatever the outcome, before its answer or
+      // failure paints. One settling while away leaves the mark.
+      if (document.body.dataset.view === "active-match") {
+        _AM_MAP.feed.unobserved = false;
+      }
       if (req.timer !== null) {
         clearTimeout(req.timer);
         req.timer = null;
@@ -2516,10 +2533,11 @@ const _AM_MAP_FEED_FAILED = "vision feed did not load";
 // _vision_tracker_locs).
 const _AM_MAP_STALE_S = 10;
 
-// Feed-age bookkeeping: { seen, tNow, at } - whether any answer arrived,
-// the last t_now seen and the page time (ms) it was first seen.
+// Feed-age bookkeeping: { seen, tNow, at, unobserved } - whether any answer
+// arrived, the last t_now seen, the page time (ms) it was first seen, and
+// (S144-U-232) whether the page stopped watching the feed since.
 function _amMapFeedTrack() {
-  return { seen: false, tNow: undefined, at: 0 };
+  return { seen: false, tNow: undefined, at: 0, unobserved: false };
 }
 
 // Note one successful answer. A new numeric t_now is an advance; an answer
@@ -2538,8 +2556,16 @@ function _amMapNoteFeed(track, vs, nowMs) {
 
 // Seconds since the feed last advanced; null before any answer. Never
 // negative (a page clock stepping back reads as fresh).
+// S144-U-232: null while the track is unobserved. The poll sends nothing
+// while another view is shown, so on return `at` is as old as the time
+// away, and the view-change repaint called a feed that wrote the whole time
+// "stalled 15s ago" (roster "no feed", gank band down) until the first poll
+// after the return landed. The first request to settle on the view clears
+// the mark (success, failure or timeout), so a feed that stalled while away
+// reads stalled, with its whole age, one request later (at most the 5 s
+// request timeout); a stall judged before leaving is never marked.
 function _amMapStaleS(track, nowMs) {
-  if (!track || !track.seen) return null;
+  if (!track || !track.seen || track.unobserved) return null;
   return Math.max(0, (nowMs - track.at) / 1000);
 }
 
