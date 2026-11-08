@@ -37,6 +37,7 @@ from tests.snapshot_panels.test_ds_matchup_text_contrast import _ratio
 from tests.snapshot_panels.test_pgr_roster_reflow import _MOCK
 
 _THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
+_SHEET = "*, *::before, *::after { transition: none !important; }"
 _MODES = ["sr", "arena"]
 _VIEWPORTS = [(1920, 920), (923, 1280)]
 _IDS = [f"{w}x{h}" for w, h in _VIEWPORTS]
@@ -80,7 +81,6 @@ def _measure(mock_server, pw_browser, theme, mode, vp):
         page.wait_for_function(
             "document.querySelectorAll('#hpgr-tc-table .lm-tc-row').length"
             " >= 4", timeout=10_000)
-        page.wait_for_timeout(400)  # colour transitions
         rows = page.evaluate(_ALL)
     finally:
         page.close()
@@ -214,8 +214,7 @@ def test_state_marks_reach_their_floor_and_keep_their_hue(
         assert page.evaluate(
             "document.documentElement.dataset.theme || 'hextech'"
         ) == theme, f"booted on the wrong theme, not {theme}"
-        page.add_style_tag(content="* { transition: none !important; }")
-        page.wait_for_timeout(200)
+        page.add_style_tag(content=_SHEET)
         m = page.evaluate(_STATES, vid)
     finally:
         page.close()

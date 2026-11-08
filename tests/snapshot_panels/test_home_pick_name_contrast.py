@@ -42,6 +42,7 @@ from tests.snapshot_panels.test_ds_cards_muted_text_contrast import _HELPERS
 from tests.snapshot_panels.test_ds_matchup_text_contrast import _ratio
 
 _THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
+_SHEET = "*, *::before, *::after { transition: none !important; }"
 _VIEWPORTS = [(1920, 1080), (923, 1280)]
 _IDS = [f"{w}x{h}" for w, h in _VIEWPORTS]
 _AA = 4.5
@@ -95,11 +96,11 @@ def _measure(mock_server, pw_browser, theme, vp):
         assert page.evaluate(
             "document.documentElement.dataset.theme || 'hextech'"
         ) == theme, f"booted on the wrong theme, not {theme}"
-        # The rule carries a 0.12 s colour transition: read settled values.
-        page.wait_for_timeout(300)
+        # The rule carries a 0.12 s colour transition: with transitions off
+        # the rest and hover reads are the settled values (RM-1132).
+        page.add_style_tag(content=_SHEET)
         rest = page.evaluate(_MEASURE, _NAME)
         page.hover(_NAME)
-        page.wait_for_timeout(300)
         hover = page.evaluate(_MEASURE, _NAME)
         reason = page.evaluate(_MEASURE, ".home-coach-pick-reason")
     finally:

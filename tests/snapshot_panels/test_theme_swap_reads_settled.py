@@ -109,7 +109,39 @@ with no row here:
     word and the OVERALL W / L colours of the freshly rendered rows. Nothing
     it reads, nor any ancestor, transitions at that moment, so none is
     needed.
-This module pins all thirty-five verdicts at runtime with each test's own opener,
+Audit (2026-11-08, s144 uiux cycle 207, S144-U-214, a document-wide
+detector: every transition or animation running anywhere in the page at
+each getComputedStyle read the module's own _measure makes, with its fixed
+sleeps taken out and no sheet), the nine s144 uiux contrast modules of
+S144-U-199..U-209, landed on lane/uiux with no row here. All nine stamp
+the theme at BOOT (?theme=) and never swap in-page:
+  - test_footer_mode_pill_contrast, test_home_muted_text_contrast,
+    test_lobby_text_contrast, test_session_text_contrast: no sheet, and
+    none needed - nothing runs at their reads. The footer and Lobby reads
+    re-class the mode pill and the Accept / Party toggles inside one
+    evaluate: nothing on the pill transitions on a re-class, and the
+    toggles DO transition their four border colours, which no read touches
+    (each reads colour and the background under it), so none is needed;
+    the pin holds those transitions to the border colours.
+  - test_historical_pgr_text_contrast: its archive read is settled without
+    its 400 ms sleep (nothing runs at it), so the sleep goes and no sheet
+    is needed; its state-marks read keeps a sheet, now this full
+    transitions-off sheet in place of a bare `*` rule plus a 200 ms sleep.
+  - test_build_insights_chart_text_contrast, test_pgr_text_contrast,
+    test_home_pick_name_contrast, test_user_builds_text_contrast: the
+    Build Insights tabs and Clear button, the PGR tabs, the Tonight's Pick
+    name and the User Builds champion input, Delete and Add buttons DO
+    transition at their reads (tab click, hover, fill, click); they were
+    settled only by 400 / 400 / 300 / 250 ms sleeps. Each opener now adds
+    the sheet and the sleeps are gone. Measured on the way: the Build
+    Insights sleep was also the only wait for the Skills / Runes / Spells
+    / Bench async paint (without it a read saw 14 rows ending in
+    "loading..." instead of 83), now a wait for each tab's own content;
+    and the User Builds "+ Add build" read straddled its background
+    transition with every sleep in place (no sleep sat before it), so it
+    measured a mid-transition fill (hextech 201,172,115 for the settled
+    205,181,132) until the sheet.
+This module pins all forty-four verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -198,9 +230,10 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The thirty-five modules audited above, keyed by file name.
+# The forty-four modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
+    "test_build_insights_chart_text_contrast.py",
     "test_build_insights_sort_header_hover.py",
     "test_champ_select_arena_augment_options.py",
     "test_champ_select_arena_pane_contrast.py",
@@ -211,20 +244,27 @@ _COVERED = {
     "test_ds_combo_controls_hit_floor.py",
     "test_ds_knob_inputs_focus_ring.py",
     "test_ds_matchup_text_contrast.py",
+    "test_footer_mode_pill_contrast.py",
+    "test_historical_pgr_text_contrast.py",
     "test_history_result_marks_contrast.py",
     "test_history_row_hover_marks_contrast.py",
     "test_home_accent2_focus_ring.py",
     "test_home_history_nav_focus_ring.py",
+    "test_home_muted_text_contrast.py",
+    "test_home_pick_name_contrast.py",
     "test_last_match_review_nav_hover.py",
     "test_lm_hero_stats_disclosure.py",
     "test_lobby_lane_popup_keyboard.py",
     "test_lobby_mains_recent_cell.py",
     "test_lobby_mains_tabs.py",
     "test_lobby_queue_buttons_focus_ring.py",
+    "test_lobby_text_contrast.py",
     "test_match_row_focus_ring.py",
     "test_match_row_grade_chip_contrast.py",
     "test_ops_page_state_text_contrast.py",
     "test_panel_visibility_tab_selected_state.py",
+    "test_pgr_text_contrast.py",
+    "test_session_text_contrast.py",
     "test_settings_checkbox_hit_targets.py",
     "test_tab_bars_selected_state.py",
     "test_theme_signal_prim_hue.py",
@@ -232,6 +272,7 @@ _COVERED = {
     "test_user_builds_rune_cells_focus_ring.py",
     "test_user_builds_rune_tabs.py",
     "test_user_builds_spell_chooser_keyboard.py",
+    "test_user_builds_text_contrast.py",
     "test_view_menu_items.py",
     "test_view_menu_keyboard.py",
     "test_zone_pill_contrast.py",
@@ -1024,6 +1065,234 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert booted == theme, (theme, booted)
     assert running == [], f"{theme} {tab}: {running}"
 
+
+# The nine S144-U-214 contrast modules: each one's _measure extra arguments
+# after (mock_server, pw_browser, theme), taken from its own constants (its
+# first viewport, its first mode, the TFT footer state).
+_CONTRAST = {
+    "test_build_insights_chart_text_contrast": ("vp",),
+    "test_footer_mode_pill_contrast": ("fixture",),
+    "test_historical_pgr_text_contrast": ("mode", "vp"),
+    "test_home_muted_text_contrast": ("vp",),
+    "test_home_pick_name_contrast": ("vp",),
+    "test_lobby_text_contrast": ("vp",),
+    "test_pgr_text_contrast": ("mode", "vp"),
+    "test_session_text_contrast": ("vp",),
+    "test_user_builds_text_contrast": ("vp",),
+}
+# The four whose opener adds the sheet before its first interaction.
+_CONTRAST_SHEETED = (
+    "test_build_insights_chart_text_contrast",
+    "test_home_pick_name_contrast",
+    "test_pgr_text_contrast",
+    "test_user_builds_text_contrast",
+)
+
+# Force style on every element, then list every transition / animation
+# running anywhere in the page: what the module's next colour read would see.
+_RUNNING_PAGE = """() => {
+  void document.documentElement.offsetHeight;
+  for (const n of document.querySelectorAll('*')) {
+    const cs = getComputedStyle(n);
+    void (cs.color + cs.backgroundColor + cs.boxShadow + cs.borderTopColor);
+  }
+  return document.getAnimations().map((a) => {
+    const tg = a.effect && a.effect.target;
+    return (tg ? (tg.id || tg.className || tg.tagName) : '?') + ' :: ' +
+      (a.transitionProperty || a.animationName || 'animation');
+  });
+}"""
+
+# Re-class each [id, classes] element through its classes, as the footer and
+# Lobby reads do inside their evaluate, and list what runs on it, its
+# children or an ancestor after each re-class; the class is put back after
+# and what the re-class started is finished, so the module reads as before.
+_RECLASS_RUNNING = """(specs) => {
+  const out = [];
+  let n = 0;
+  for (const [id, classes] of specs) {
+    const el = document.getElementById(id);
+    if (!el) { out.push('missing #' + id); continue; }
+    const watched = new Set([el, ...el.querySelectorAll('*')]);
+    for (let p = el.parentElement; p; p = p.parentElement) watched.add(p);
+    n += 1;
+    const keep = el.className;
+    for (const cls of classes) {
+      el.classList.remove(...classes);
+      el.classList.add(cls);
+      for (const w of watched) {
+        const cs = getComputedStyle(w);
+        void (cs.color + cs.backgroundColor + cs.boxShadow + cs.borderTopColor);
+      }
+      for (const a of document.getAnimations()) {
+        const tg = a.effect && a.effect.target;
+        if (!tg || !watched.has(tg)) continue;
+        out.push(id + '.' + cls + ': ' + (tg.id || tg.className) + ' :: ' +
+          (a.transitionProperty || a.animationName || 'animation'));
+      }
+    }
+    el.className = keep;
+    void getComputedStyle(el).color;
+    for (const a of document.getAnimations()) {
+      const tg = a.effect && a.effect.target;
+      if (tg && watched.has(tg) && a.transitionProperty) a.finish();
+    }
+  }
+  return {n, running: out};
+}"""
+
+
+# What a module's re-class may transition: properties its read never touches.
+_BORDERS = tuple(f"border-{s}-color" for s in ("top", "right", "bottom", "left"))
+_RECLASS_TOLERATED = {"test_lobby_text_contrast": _BORDERS}
+
+
+def _reclass_specs(mod):
+    if mod.__name__.endswith("test_footer_mode_pill_contrast"):
+        return [["mode-pill", list(mod._TAGS)]]
+    if mod.__name__.endswith("test_lobby_text_contrast"):
+        return [[k, [c for c, _t in v]] for k, v in mod._TOGGLES.items()]
+    return None
+
+
+class _ProbePage:
+    """A module's own page, with a probe before each colour read: every
+    evaluate whose script calls getComputedStyle first lists what runs."""
+
+    def __init__(self, page, rec):
+        self._page, self._rec = page, rec
+
+    def evaluate(self, expr, *args, **kw):
+        if "getComputedStyle" in expr:
+            self._rec["reads"] += 1
+            self._rec["running"] += self._page.evaluate(_RUNNING_PAGE)
+            if self._rec["reclass"] and expr == self._rec["measure"]:
+                got = self._page.evaluate(_RECLASS_RUNNING, self._rec["reclass"])
+                self._rec["reclassed"] += got["n"]
+                self._rec["reclass_running"] += got["running"]
+        return self._page.evaluate(expr, *args, **kw)
+
+    def add_style_tag(self, **kw):
+        if self._rec.get("drop_sheet") and kw.get("content") == _SHEET:
+            self._rec["dropped"] += 1
+            return None
+        return self._page.add_style_tag(**kw)
+
+    def __getattr__(self, name):
+        return getattr(self._page, name)
+
+
+class _ProbeContext:
+    def __init__(self, ctx, rec):
+        self._ctx, self._rec = ctx, rec
+
+    def new_page(self):
+        page = self._ctx.new_page()
+        for css in self._rec.get("inject", ()):
+            page.add_init_script(
+                "document.addEventListener('DOMContentLoaded', () => {"
+                " const s = document.createElement('style');"
+                f" s.textContent = {css!r}; document.head.appendChild(s); }});"
+            )
+        return _ProbePage(page, self._rec)
+
+    def __getattr__(self, name):
+        return getattr(self._ctx, name)
+
+
+class _ProbeBrowser:
+    def __init__(self, browser, rec):
+        self._browser, self._rec = browser, rec
+
+    def new_context(self, **kw):
+        return _ProbeContext(self._browser.new_context(**kw), self._rec)
+
+
+def _contrast_run(mock_server, pw_browser, name, theme, **opts):
+    import importlib
+
+    mod = importlib.import_module(f"tests.snapshot_panels.{name}")
+    pick = {"vp": lambda: mod._VIEWPORTS[0], "mode": lambda: mod._MODES[0],
+            "fixture": lambda: "tft"}
+    extra = [pick[axis]() for axis in _CONTRAST[name]]
+    rec = {"reads": 0, "running": [], "reclass_running": [], "reclassed": 0,
+           "dropped": 0,
+           "measure": getattr(mod, "_MEASURE", None),
+           "reclass": _reclass_specs(mod), **opts}
+    try:
+        mod._measure(mock_server, _ProbeBrowser(pw_browser, rec), theme, *extra)
+    finally:
+        mock_server._store["data"] = {}
+    return rec
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+@pytest.mark.parametrize("name", sorted(_CONTRAST))
+def test_contrast_module_reads_are_settled(mock_server, pw_browser, name, theme):
+    # Each module's own _measure, run through a probe that lists everything
+    # running in the page at each of its colour reads (and, for the footer
+    # and Lobby, after each re-class their read makes).
+    rec = _contrast_run(mock_server, pw_browser, name, theme)
+    assert rec["reads"] >= 1, f"{name}: the probe saw no colour read"
+    assert not rec["running"], (
+        f"{name}/{theme}: a read would straddle a transition (add the"
+        f" transitions-off sheet to its opener): {sorted(set(rec['running']))[:8]}"
+    )
+    if not rec["reclass"]:
+        return
+    assert rec["reclassed"] == len(rec["reclass"]), (
+        f"{name}: the re-class probe did not reach every element: {rec}"
+    )
+    ok = _RECLASS_TOLERATED.get(name, ())
+    bad = [r for r in rec["reclass_running"] if r.rsplit(" :: ", 1)[1] not in ok]
+    assert not bad, (
+        f"{name}/{theme}: a re-class read would straddle a transition on a"
+        f" property it reads (add the transitions-off sheet): {sorted(set(bad))[:8]}"
+    )
+    # The detector is not blind: the border transitions it tolerates are seen.
+    seen = {r.rsplit(" :: ", 1)[1] for r in rec["reclass_running"]}
+    assert seen == set(ok), (
+        f"{name}/{theme}: the re-class transitions moved - re-audit {name}"
+        f" and update the verdict: {sorted(seen)}"
+    )
+
+
+def test_contrast_modules_hold_their_sheet_and_no_sleep():
+    # A fixed sleep in place of the sheet (or of a content wait) comes back
+    # here, and each sheeted opener adds this module's exact sheet.
+    import importlib
+
+    for name in sorted(_CONTRAST):
+        src = (_HERE / f"{name}.py").read_text(encoding="utf-8")
+        assert "wait_for_timeout" not in src, f"{name}: a fixed sleep is back"
+    for name in (*_CONTRAST_SHEETED, "test_historical_pgr_text_contrast"):
+        mod = importlib.import_module(f"tests.snapshot_panels.{name}")
+        src = (_HERE / f"{name}.py").read_text(encoding="utf-8")
+        assert mod._SHEET == _SHEET, name
+        assert "add_style_tag(content=_SHEET)" in src, name
+
+
+def test_contrast_probe_sees_a_dropped_sheet(mock_server, pw_browser):
+    # The page probe is not blind: with its sheet dropped, the Tonight's
+    # Pick name's hover colour transition is caught at the hover read.
+    rec = _contrast_run(mock_server, pw_browser,
+                        "test_home_pick_name_contrast", "hextech",
+                        drop_sheet=True)
+    assert rec["dropped"] == 1, rec
+    assert any(r.startswith("home-coach-pick-champ") and r.endswith(":: color")
+               for r in rec["running"]), rec["running"]
+
+
+def test_contrast_reclass_probe_sees_a_transition(mock_server, pw_browser):
+    # The re-class probe is not blind: given a colour transition on the
+    # footer pill, it is caught on the pill's re-class.
+    rec = _contrast_run(
+        mock_server, pw_browser, "test_footer_mode_pill_contrast", "hextech",
+        inject=("#mode-pill { transition: color 2s linear !important; }",),
+    )
+    assert rec["reclassed"] == 1, rec
+    assert any(r.startswith("mode-pill.") and r.endswith(":: color")
+               for r in rec["reclass_running"]), rec["reclass_running"]
 
 def test_positive_control_detects_a_real_transition(mock_server, pw_browser):
     # The detector is not blind: with the opener's sheet removed, the spell

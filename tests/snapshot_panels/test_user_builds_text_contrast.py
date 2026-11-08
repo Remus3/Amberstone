@@ -28,6 +28,7 @@ from tests.snapshot_panels.test_ds_cards_muted_text_contrast import _HELPERS
 from tests.snapshot_panels.test_ds_matchup_text_contrast import _ratio
 
 _THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
+_SHEET = "*, *::before, *::after { transition: none !important; }"
 _VIEWPORTS = [(1920, 920), (923, 1280)]
 _IDS = [f"{w}x{h}" for w, h in _VIEWPORTS]
 _AA = 4.5
@@ -122,6 +123,10 @@ def _measure(mock_server, pw_browser, theme, vp):
         assert page.evaluate(
             "document.documentElement.dataset.theme || 'hextech'"
         ) == theme, f"booted on the wrong theme, not {theme}"
+        # The champion input, the Delete and Add buttons transition colour,
+        # border and ring: with transitions off every read below is the
+        # settled value (RM-1132).
+        page.add_style_tag(content=_SHEET)
         # The editor opens only once a champion is picked (_UB.champion);
         # same pick as test_user_builds_rune_tabs._open.
         page.fill("#ub-champion-input", "Tristana")
@@ -130,10 +135,8 @@ def _measure(mock_server, pw_browser, theme, vp):
         btn = page.locator("#view-user-builds .ub-btn-danger").first
         btn.scroll_into_view_if_needed()
         btn.hover()
-        page.wait_for_timeout(250)  # the 0.1 s colour transition
         hover = page.evaluate(_HOVER)
         page.mouse.move(0, 0)
-        page.wait_for_timeout(250)
         shut = page.evaluate(_SHUT)
         page.click("#ub-add-btn")
         page.wait_for_function(

@@ -34,6 +34,7 @@ from tests.snapshot_panels.test_build_insights_chart_text_contrast import (
 from tests.snapshot_panels.test_ds_matchup_text_contrast import _ratio
 
 _THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
+_SHEET = "*, *::before, *::after { transition: none !important; }"
 _MODES = ["sr", "arena"]
 _VIEWPORTS = [(1920, 920), (923, 1280)]
 _IDS = [f"{w}x{h}" for w, h in _VIEWPORTS]
@@ -109,6 +110,9 @@ def _measure(mock_server, pw_browser, theme, mode, vp):
         assert page.evaluate(
             "document.documentElement.dataset.theme || 'hextech'"
         ) == theme, f"booted on the wrong theme, not {theme}"
+        # The tabs transition colour and border: with transitions off every
+        # read below is the settled value (RM-1132).
+        page.add_style_tag(content=_SHEET)
         land = {"build": "#lm-tc-ally-list .lm-tc-row"}
         if mode == "sr":
             # The win-probability chart is an SR-only card.
@@ -120,7 +124,6 @@ def _measure(mock_server, pw_browser, theme, mode, vp):
             page.wait_for_selector(
                 "#view-last-match .plc-delta" if tab == "build"
                 else "#lm-tabbed-section", timeout=10_000)
-            page.wait_for_timeout(400)  # tab and colour transitions
             got["tabs"][tab] = page.evaluate(_ALL)
             if tab == "build":
                 got["marks"] = page.evaluate(_MARKS)

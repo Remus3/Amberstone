@@ -33,6 +33,7 @@ from tests.snapshot_panels.test_ds_cards_muted_text_contrast import _HELPERS
 from tests.snapshot_panels.test_ds_matchup_text_contrast import _ratio
 
 _THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
+_SHEET = "*, *::before, *::after { transition: none !important; }"
 _VIEWPORTS = [(1920, 920), (923, 1280)]
 _IDS = [f"{w}x{h}" for w, h in _VIEWPORTS]
 _TABS = ["items", "skills", "runes", "spells", "duration", "snowball",
@@ -125,7 +126,17 @@ def _measure(mock_server, pw_browser, theme, vp):
         assert page.evaluate(
             "document.documentElement.dataset.theme || 'hextech'"
         ) == theme, f"booted on the wrong theme, not {theme}"
+        # The tabs and the clear button transition colour (0.15 s): with
+        # transitions off every read below is the settled value (RM-1132).
+        page.add_style_tag(content=_SHEET)
+        # Every tab paints from an async fetch: wait for its own content, not
+        # a fixed sleep (a read before it lands measures "loading...").
         land = {
+            "items": "#bi-table-mount table.bi-table",
+            "skills": "#bi-skill-table-mount table.bi-table",
+            "runes": "#bi-rune-table-mount table.bi-table",
+            "spells": "#bi-spell-table-mount table.bi-table",
+            "bench": "#bi-bench-mount table.cb-table",
             "duration": "#bi-duration-mount .dw-val",
             "snowball": "#bi-snowball-mount .se-val",
             "opscore": "#bi-opscore-mount .op-arc-side",
@@ -133,9 +144,7 @@ def _measure(mock_server, pw_browser, theme, vp):
         }
         for tab in _TABS:
             page.click(f"#bi-tabs .bi-tab[data-bi-tab='{tab}']")
-            if tab in land:
-                page.wait_for_selector(land[tab], timeout=10_000)
-            page.wait_for_timeout(400)  # 0.15 s tab and colour transitions
+            page.wait_for_selector(land[tab], timeout=10_000)
             got["tabs"][tab] = page.evaluate(_ALL)
             if tab in ("duration", "snowball"):
                 got[tab] = page.evaluate(
@@ -145,7 +154,6 @@ def _measure(mock_server, pw_browser, theme, vp):
                     _MARKS, "#bi-duration-mount .dw-champ-clear")
                 btn = page.locator("#bi-duration-mount .dw-champ-clear")
                 btn.hover()
-                page.wait_for_timeout(250)
                 got["clear_hover"] = page.evaluate(
                     _MARKS, "#bi-duration-mount .dw-champ-clear")
                 page.mouse.move(0, 0)
