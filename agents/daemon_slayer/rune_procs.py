@@ -41,6 +41,7 @@ rune set is passed. Registry expansions therefore DO bump ENGINE.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Optional
 
@@ -58,10 +59,20 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 def _clamp_level(level: float) -> int:
-    """Clamp an incoming level to the League 1..18 band, integer."""
+    """Clamp an incoming level to the League 1..18 band, integer.
+
+    +inf clamps to 18 and -inf to 1 (S144-D-115: ``int(inf)`` raised
+    OverflowError, which the public surface swallowed into a zeroed proc);
+    NaN and anything ``int()`` refuses read 1.
+    """
     try:
         lvl = int(level)
-    except (TypeError, ValueError):
+    except OverflowError:
+        try:
+            return 18 if level > 0 else 1
+        except Exception:
+            return 1
+    except Exception:
         return 1
     if lvl < 1:
         return 1
@@ -86,22 +97,38 @@ def _adaptive_coeff(ad: float, ap: float, ad_coeff: float, ap_coeff: float) -> f
     AD wins ties (League's adaptive force defaults to AD when AD bonus >= AP
     bonus). Returns the chosen coefficient multiplied by the matching stat.
     """
-    try:
-        ad_v = float(ad)
-        ap_v = float(ap)
-    except (TypeError, ValueError):
-        return 0.0
+    ad_v = _f(ad)
+    ap_v = _f(ap)
     if ad_v >= ap_v:
         return ad_coeff * ad_v
     return ap_coeff * ap_v
 
 
 def _f(v: float) -> float:
-    """Coerce to float, fail-soft to 0.0."""
+    """Coerce a stat to a finite float, fail-soft to 0.0.
+
+    NaN, +-inf and anything ``float()`` refuses (or raises on) read 0.0
+    (S144-D-116: NaN / inf used to flow into the proc damage, and a NaN bonus
+    AD lost the ``>=`` adaptive tie and flipped the grant to its AP side).
+    """
     try:
-        return float(v)
-    except (TypeError, ValueError):
+        out = float(v)
+    except Exception:
         return 0.0
+    return out if math.isfinite(out) else 0.0
+
+
+def _hp_frac_or_none(v) -> Optional[float]:
+    """A finite HP fraction, or None when it is NaN, +-inf or unconvertible.
+
+    Every HP gate reads None as "gate not met" (S144-D-117): reading it as 0.0
+    would credit the below-HP gates (Last Stand max amp, Coup de Grace) off junk.
+    """
+    try:
+        out = float(v)
+    except Exception:
+        return None
+    return out if math.isfinite(out) else None
 
 
 # ---------------------------------------------------------------------------
@@ -302,8 +329,8 @@ def _last_stand_amp(*, caster_hp_pct=1.0) -> float:
     # (8299 is a stacking_amp). At the DEFAULT caster_hp_pct=1.0 -> amp 1.0 ->
     # base unchanged -> BYTE-IDENTICAL to the item-231 exclusion (a burst-MAX
     # caller at full HP sees NO change).
-    hp = _f(caster_hp_pct)
-    if hp >= _LAST_STAND_HP_HIGH:
+    hp = _hp_frac_or_none(caster_hp_pct)
+    if hp is None or hp >= _LAST_STAND_HP_HIGH:
         return 1.0
     if hp <= _LAST_STAND_HP_LOW:
         return _LAST_STAND_AMP_MAX
@@ -331,7 +358,8 @@ def _absolute_focus(*, level=1.0, ad=0.0, ap=0.0, caster_hp_pct=1.0, **_kw) -> f
     # on the default ad>=ap tie) but since burst SKIPS adaptive the burst is
     # BYTE-IDENTICAL; a fight_report may surface the stat. caster_hp_pct <= 0.70
     # -> 0.0 (gate fails).
-    if _f(caster_hp_pct) <= 0.70:
+    hp = _hp_frac_or_none(caster_hp_pct)
+    if hp is None or hp <= 0.70:
         return 0.0
     return _adaptive_grant(ad, ap, _lerp_by_level(1.8, 18.0, level), _lerp_by_level(3.0, 30.0, level))
 
@@ -819,6 +847,15 @@ COMPLETION_RUNE_IDS: frozenset[int] = frozenset({8401})
 # Public functions.
 # ---------------------------------------------------------------------------
 
+def _lookup_proc(rune_id) -> Optional[RuneProc]:
+    """``RUNE_PROCS.get(rune_id)``, None for an unhashable id (S144-D-118: the
+    bare ``dict.get`` raised TypeError out of the fail-soft public surface)."""
+    try:
+        return RUNE_PROCS.get(rune_id)
+    except TypeError:
+        return None
+
+
 def compute_rune_proc_damage(
     rune_id: int,
     level: float,
@@ -855,7 +892,7 @@ def compute_rune_proc_damage(
     returns the PER-STACK adaptive force or the gated stat grant; the burst
     consumer SKIPS proc_type=="adaptive" so it never enters the burst total.
     """
-    proc = RUNE_PROCS.get(rune_id)
+    proc = _lookup_proc(rune_id)
     if proc is None:
         return 0.0
     try:
@@ -946,9 +983,9 @@ def keystone_amp(
     """
     try:
         base = float(base_damage)
-    except (TypeError, ValueError):
+    except Exception:
         return 0.0
-    proc = RUNE_PROCS.get(rune_id)
+    proc = _lookup_proc(rune_id)
     if proc is None:
         return base
     if proc.proc_type != "stacking_amp":
@@ -965,8 +1002,10 @@ def keystone_amp(
     if gate_target_hp and proc.condition in ("target_hp_above", "target_hp_below"):
         # R51 seam: honestly gate Cut Down (>60% target HP) / Coup de Grace
         # (<40% target HP) on target_hp_pct. Gate not met -> no amp (base).
-        thp = _f(target_hp_pct)
-        if proc.condition == "target_hp_above":
+        thp = _hp_frac_or_none(target_hp_pct)
+        if thp is None:
+            gate_met = False
+        elif proc.condition == "target_hp_above":
             gate_met = thp > _CUT_DOWN_HP_GATE
         else:
             gate_met = thp < _COUP_DE_GRACE_HP_GATE
