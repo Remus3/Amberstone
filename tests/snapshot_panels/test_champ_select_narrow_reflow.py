@@ -54,6 +54,26 @@ _PNG = base64.b64decode(
     "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
 _WIDE = ((722, 900), (1920, 920))
 _MODES = ("sr", "aram", "arena")
+
+# RM-2041 (s154): the champion, item and rune icons live in the gitignored
+# DDragon mirror, absent on the CI runner and in a fresh checkout, so the mock
+# server answers them 404. Each <img> then hides itself (onerror; an item first
+# retries the public CDN) at an unknown time, and in between Chromium lays the
+# broken image out as its alt text: CI run 42427673121 read an 80 px alt box at
+# 373-453 in the ARAM my-pick card (frame 37-443) at 480, where the bench's
+# 46 px icon sits at 373-419; run 42427610342 on the same sha missed that
+# window. Served a real image, every icon is drawn as on the live page, at its
+# authored size, and no request leaves the box. (Each glob is a literal: the
+# RM-1506 guard reads a bare-name matcher as a possible callable.)
+def _png(route):
+    route.fulfill(status=200, content_type="image/png", body=_PNG)
+
+
+def _route_missing_icons(page):
+    page.route("**/data/ddragon/*/img/champion/**", _png)
+    page.route("**/data/ddragon/*/img/item/**", _png)
+    page.route("**/icons/runes/**", _png)
+    page.route("https://ddragon.leagueoflegends.com/**", _png)
 _IDS = [str(s[0]) for s in _NARROW]
 
 # Row selector -> (cell selector, N columns wanted, cell floor px, gap px).
@@ -189,6 +209,7 @@ def _read(pw_browser, url, mode, size):
     # image so the spells column is drawn, as on the live page.
     page.route("**/icons/spells/**", lambda route: route.fulfill(
         status=200, content_type="image/png", body=_PNG))
+    _route_missing_icons(page)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     rows = {k: _ROWS[k][:2] for k in _ROWS_BY_MODE[mode]}

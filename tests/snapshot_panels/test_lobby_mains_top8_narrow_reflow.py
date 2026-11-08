@@ -41,8 +41,11 @@ card's duo-synergy block (RM-881, the queue lane's) still scrolls it, so
 those two are strict xfails that turn red when that fix lands.
 Above the line (722x900) both cards keep the desktop templates.
 """
+import json
+
 import pytest
 
+from tests.snapshot_panels import _webfont_stub
 from tests.snapshot_panels.conftest import _WS_STUB
 
 _NARROW = ((640, 900), (480, 800), (360, 740), (320, 640))
@@ -204,6 +207,87 @@ _READ = """() => {
 }"""
 
 
+# RM-2041 (s154), two host facts this module used to read.
+#
+# 1. The YOUR MAINS rows have two sources: the fixture's lcu.main_champs and
+# the /api/mains hydrate (dashboard/routes_lobby_aux.py). When the champion
+# index lands before the first state envelope, _renderMains (web/js/main.js)
+# finds no lcu.main_champs and fires the hydrate; the plain mock answers it {},
+# and if that reply lands after the lcu-fed render, its callback draws the
+# empty placeholder over the four rows until the next state poll, seconds
+# later. On Windows the state lands first and the hydrate never fires; on the
+# hosted Linux runner it raced: run 42427610342 read no rows at 480 and 320,
+# run 42427673121 none at 480 (delaying the state 400 ms and the hydrate
+# 1200 ms on Windows wipes the rows for about 5 s). The live server answers
+# /api/mains with the mains themselves, so here it answers with the same four:
+# whichever source lands last draws the same rows.
+#
+# 2. The RECENT KDA and the OVERALL W - L are set in "SF Mono", Consolas,
+# monospace, which the RM-1078 stub does not cover: Consolas on Windows,
+# DejaVu Sans Mono (0.05em a glyph wider) on the runner, where run
+# 42427673121 read the "10/2/11" RECENT cell 69 px wide in its 66 px box at
+# 320 (a 0.6em mono face on Windows reads the same 66 / 69). So every host
+# gets a stub face as "SF Mono" with Consolas's advance (1126 / 2048 em, 550
+# units): the glyph widths Windows draws, from a font the test serves.
+_MAINS_REPLY = json.dumps({"ok": True, "puuid": "",
+                           "main_champs": _MAINS["champions"]})
+_MONO_ADVANCE = 550
+_MONO_URL = "/__rm2041__/mono-stub.ttf"
+
+
+def _mono_stub_ttf():
+    saved = _webfont_stub.ADVANCE
+    _webfont_stub.ADVANCE = _MONO_ADVANCE
+    try:
+        return _webfont_stub.build_stub_ttf()
+    finally:
+        _webfont_stub.ADVANCE = saved
+
+
+_MONO_TTF = _mono_stub_ttf()
+_MONO_FACE = """(() => {
+  const add = () => {
+    const s = document.createElement("style");
+    s.textContent = '@font-face { font-family: "SF Mono"; font-style: normal;'
+      + ' font-weight: 100 900; src: url("URL") format("truetype"); }';
+    (document.head || document.documentElement).appendChild(s);
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", add);
+  } else {
+    add();
+  }
+})();""".replace("URL", _MONO_URL)
+# Anchor: the stand-in is the face that drew the mains. Every KDA and W - L
+# cell names "SF Mono" first, and that face is loaded and draws (a 40 px probe
+# reads the same width over a serif and a sans-serif fallback); a stylesheet
+# that stops naming "SF Mono" would hand the cells back to the host's face.
+_MONO_USED = """() => {
+  const cells = Array.from(document.querySelectorAll(
+    "#lv-mainchamps-list .lv-mc-kda, #lv-mainchamps-list .lv-mc-wl"));
+  const first = (e) => getComputedStyle(e).fontFamily.split(",")[0].trim()
+    .replace(/"/g, "");
+  const width = (fam) => {
+    const s = document.createElement("span");
+    s.style.cssText = "position: absolute; white-space: pre; font: 400 40px "
+      + fam;
+    s.textContent = "iiiiMMMM";
+    document.body.appendChild(s);
+    const w = s.getBoundingClientRect().width;
+    s.remove();
+    return w;
+  };
+  return {
+    cells: cells.length,
+    named: cells.every((e) => first(e) === "SF Mono"),
+    loaded: Array.from(document.fonts).some((f) =>
+      f.family.replace(/"/g, "") === "SF Mono" && f.status === "loaded"),
+    draws: Math.abs(width('"SF Mono", serif')
+      - width('"SF Mono", sans-serif')) < 0.5,
+  };
+}"""
+
+
 def _read(pw_browser, url, size):
     ctx = pw_browser.new_context(
         ignore_https_errors=True,
@@ -211,6 +295,11 @@ def _read(pw_browser, url, size):
     )
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
+    page.add_init_script(_MONO_FACE)
+    page.route("**" + _MONO_URL, lambda route: route.fulfill(
+        status=200, body=_MONO_TTF, content_type="font/ttf"))
+    page.route("**/api/mains*", lambda route: route.fulfill(
+        status=200, body=_MAINS_REPLY, content_type="application/json"))
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     try:
@@ -228,9 +317,13 @@ def _read(pw_browser, url, size):
         )
         page.evaluate(_SETTLE)
         got = page.evaluate(_READ)
+        mono = page.evaluate(_MONO_USED)
     finally:
         ctx.close()
     assert not errors, f"page errors at {size}: {errors[:3]}"
+    assert mono == {"cells": 8, "named": True, "loaded": True,
+                    "draws": True}, (
+        f"{size}: the SF Mono stand-in did not draw the mains: {mono}")
     return got
 
 
@@ -386,6 +479,8 @@ def test_mains_headers_sit_over_their_cells(narrow, size):
 
 @pytest.mark.parametrize("size", _NARROW, ids=_IDS)
 def test_mains_copy_button_stacks_only_at_400_and_under(narrow, size):
+    # An empty row list would pass the loop below vacuously.
+    assert len(narrow[size]["mainsRows"]) == 4, narrow[size]["mainsRows"]
     for row in narrow[size]["mainsRows"]:
         want = "column" if size[0] <= 400 else "row"
         assert row["champDir"] == want, (size, row["champDir"])
@@ -394,6 +489,8 @@ def test_mains_copy_button_stacks_only_at_400_and_under(narrow, size):
 
 
 def test_desktop_templates_are_unchanged_above_the_line(wide):
+    # Empty lists would pass the loops below vacuously.
+    assert len(wide["top8"]) == 8 and len(wide["mainsRows"]) == 4, wide
     for row in wide["top8"]:
         assert row["display"] == "grid", row
         tracks = row["tracks"].split()

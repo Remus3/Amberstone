@@ -46,6 +46,7 @@ which scrolls on y. At the baseline the Timeline keeps its four tracks.
 """
 import copy
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -124,12 +125,19 @@ _READ = """() => {
   const evRows = Array.from(sec.querySelectorAll(
     "#replay-events-list .replay-events-row")).filter(shown).map((row) => {
       const part = (c) => box(row.querySelector(c));
+      const rcs = getComputedStyle(row);
+      const rr = row.getBoundingClientRect();
       return {row: box(row), clock: part(".replay-events-clock"),
               label: part(".replay-events-label"),
               actor: part(".replay-events-actor"),
               victim: part(".replay-events-victim"),
-              tracks: getComputedStyle(row).gridTemplateColumns,
-              disp: getComputedStyle(row).display};
+              tracks: rcs.gridTemplateColumns,
+              disp: rcs.display,
+              inner: {l: rr.left + parseFloat(rcs.borderLeftWidth)
+                        + parseFloat(rcs.paddingLeft),
+                      r: rr.right - parseFloat(rcs.borderRightWidth)
+                        - parseFloat(rcs.paddingRight)},
+              colGap: parseFloat(rcs.columnGap) || 0};
     });
   const evSec = document.getElementById("replay-events-section");
   const evHead = evSec ? evSec.querySelector(".replay-events-head") : null;
@@ -289,6 +297,25 @@ def _check_wrapped_row(where, row, ev_w, rem):
         assert actor["w"] >= rb["w"] * 0.8, (where, row)
 
 
+# RM-2041 (s154): the label's width is the row's first line minus the clock,
+# and the clock is set in --font-mono, which the RM-1078 stub does not cover:
+# Consolas on Windows, DejaVu Sans Mono on the hosted Linux runner, 0.05em a
+# glyph wider. At 320 a five-character mm:ss clock reads 50.8 px on
+# Windows and leaves the label 73.2; CI runs 42427610342 and 42427673121 both
+# read the clock 94-149.546875 (55.5 px) and the label 68.453125. The row's
+# content box is the same on both (134 px at 320: Windows 40.7 + 10 + 83.3,
+# Linux 55.5 + 10 + 68.5), so the compact padding is checked on every host as
+# that content width (measured on Windows) with the label taking the whole
+# rest of the clock's line; the 72 px label floor, a text-width fact of the
+# clock's face, is pinned on Windows, where it was measured.
+_ROW_INNER_W = {(640, 900): 454, (480, 800): 294, (360, 740): 174,
+                (320, 640): 134}
+
+
+def _label_floor_is_pinned():
+    return sys.platform == "win32"
+
+
 @pytest.mark.parametrize("size", _NARROW, ids=_IDS)
 def test_timeline_rows_hold_their_parts_on_two_lines(narrow, size):
     r = narrow[(size, True)]
@@ -297,9 +324,19 @@ def test_timeline_rows_hold_their_parts_on_two_lines(narrow, size):
     assert r["evW"] < 34 * r["rem"], (size, r["evW"])
     for row in rows:
         _check_wrapped_row(size, row, r["evW"], r["rem"])
-        # The compact main-pane padding leaves the label at least 72 px
-        # (83 at 320; with the desktop 20 / 24 px padding it was 63).
-        assert row["label"]["w"] >= 72, (size, row)
+        inner, clock, label = row["inner"], row["clock"], row["label"]
+        # The compact main-pane padding gives the row its content width (with
+        # the desktop 20 / 24 px padding the label was 63 px at 320) ...
+        assert abs((inner["r"] - inner["l"]) - _ROW_INNER_W[size]) < 0.5, (
+            size, inner)
+        # ... and the label takes all of it that the clock leaves.
+        assert abs(label["l"] - (clock["r"] + row["colGap"])) < 0.5, (
+            size, row)
+        assert abs(label["r"] - inner["r"]) < 0.5, (size, row)
+        # So the label keeps at least 72 px (83 beside a four-character clock
+        # at 320) - in the clock face Windows draws.
+        if _label_floor_is_pinned():
+            assert row["label"]["w"] >= 72, (size, row)
     assert r["elSw"] <= r["elCw"] + 1, (size, r["elSw"], r["elCw"])
 
 
