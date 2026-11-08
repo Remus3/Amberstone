@@ -77,7 +77,7 @@ _REQUIRED_FIELDS = (
 
 def _registry() -> dict:
     root = Path(__file__).resolve().parents[3]
-    patch = (root / "data" / "daemon_slayer" / "current.txt").read_text().strip()
+    patch = (root / "data" / "daemon_slayer" / "current.txt").read_text(encoding="utf-8").strip()
     path = root / "data" / "daemon_slayer" / patch / "enchanter_items.json"
     return json.loads(path.read_text(encoding="utf-8"))["items"]
 

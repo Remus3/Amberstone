@@ -112,7 +112,7 @@ def test_source_is_ascii():
 def test_write_progress_carries_checklist(tmp_path):
     rows = [{"id": "R1", "task": "Pick the note", "state": None, "eta_s": None}]
     sc.write_progress(tmp_path, "inbox-responder", 10, "fire start", 60, "running", checklist=rows)
-    doc = json.loads((tmp_path / "ops/loop/control/progress/inbox-responder.json").read_text())
+    doc = json.loads((tmp_path / "ops/loop/control/progress/inbox-responder.json").read_text(encoding="utf-8"))
     assert doc["status"] == "running"
     assert [r["id"] for r in doc["checklist"]] == ["R1"]
     assert {"task", "pct", "step", "eta_s", "status", "updated", "checklist"} <= set(doc)

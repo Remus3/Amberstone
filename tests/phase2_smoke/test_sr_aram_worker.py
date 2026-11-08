@@ -133,7 +133,7 @@ class TestSrAramWorkerContract(unittest.TestCase):
         import json
         with tempfile.TemporaryDirectory() as td:
             cfg = Path(td) / "feature_flags.json"
-            cfg.write_text(json.dumps({"sr": {"live_coaching": "disabled"}}))
+            cfg.write_text(json.dumps({"sr": {"live_coaching": "disabled"}}), encoding="utf-8")
             fp._reload(cfg)
 
             from tests.fixtures.state_dicts import SR_STATE

@@ -13,8 +13,13 @@ test_rm484_offline_tools_rate_limit, test_ddragon_script_icon_names_rm379, test_
 test_disk_guard_true_audit_s144, test_lane_run_ledger, test_rofl_stats_backfill); S144-P-435 fixed nine more (14 sites:
 test_archetype_picks, test_cache_ddragon_assets_version_rm372, test_ds_feed_watch, test_gated_g423_base_capture,
 test_inbox_responder_runner, test_obs_recorder, test_operator_push, test_rm510_ingest_exit_codes,
-test_scraper_foreign_host_rm374); 18 sites in 15 files are the baseline below (three launcher / PKG files and
-test_repo_review_driver, which another lane branch changed, are not this lane's to edit). The baseline only shrinks: a file that no longer offends fails ``test_baseline_is_exact`` until its row is dropped.
+test_scraper_foreign_host_rm374); S144-P-436 fixed the twelve one-site files (12 sites: the two DS tests
+test_enchanter_pool_hsp_rm90 and test_r144_mirror_slice_a, phase2_smoke test_sr_aram_worker / test_tft_worker,
+snapshot_panels test_home_view, test_log_scrub_secret_redaction_s144t108, test_rm236_snapshot_normalizer_defects,
+test_seraphine_beat_drop_wording_s144d78, test_seraphine_encore_charm_rm1151, test_session_checklist_item13,
+test_supervisor_common_l02, test_tft_cv_accuracy_harness); 6 sites in 3 files are the baseline below (two launcher /
+PKG files, which the main session owns, and test_repo_review_driver, which another lane branch changed, are not this
+lane's to edit). The baseline only shrinks: a file that no longer offends fails ``test_baseline_is_exact`` until its row is dropped.
 
 The scanner is ``scan_source`` of the production census (same shapes, same ``**kwargs`` skip), imported, never copied.
 """
@@ -27,21 +32,9 @@ _SCOPE = ("tests/", "agents/daemon_slayer/tests/")
 
 # rel path -> bare call count. Only shrinks.
 _BASELINE: dict[str, int] = {
-    "agents/daemon_slayer/tests/test_enchanter_pool_hsp_rm90.py": 1,
-    "agents/daemon_slayer/tests/test_r144_mirror_slice_a.py": 1,
-    "tests/phase2_smoke/test_sr_aram_worker.py": 1,
-    "tests/phase2_smoke/test_tft_worker.py": 1,
-    "tests/snapshot_panels/test_home_view.py": 1,
     "tests/test_launcher_service_host.py": 1,
     "tests/test_launcher_update_hardening_pkg6b.py": 3,
-    "tests/test_log_scrub_secret_redaction_s144t108.py": 1,
     "tests/test_repo_review_driver.py": 2,
-    "tests/test_rm236_snapshot_normalizer_defects.py": 1,
-    "tests/test_seraphine_beat_drop_wording_s144d78.py": 1,
-    "tests/test_seraphine_encore_charm_rm1151.py": 1,
-    "tests/test_session_checklist_item13.py": 1,
-    "tests/test_supervisor_common_l02.py": 1,
-    "tests/test_tft_cv_accuracy_harness.py": 1,
 }
 
 # Files this slice converted: each must stay at zero (a regression here is a re-introduced bare call).
@@ -65,6 +58,19 @@ _FIXED_THIS_SLICE = (
     "tests/test_operator_push.py",
     "tests/test_rm510_ingest_exit_codes.py",
     "tests/test_scraper_foreign_host_rm374.py",
+    # S144-P-436: twelve more (12 sites).
+    "agents/daemon_slayer/tests/test_enchanter_pool_hsp_rm90.py",
+    "agents/daemon_slayer/tests/test_r144_mirror_slice_a.py",
+    "tests/phase2_smoke/test_sr_aram_worker.py",
+    "tests/phase2_smoke/test_tft_worker.py",
+    "tests/snapshot_panels/test_home_view.py",
+    "tests/test_log_scrub_secret_redaction_s144t108.py",
+    "tests/test_rm236_snapshot_normalizer_defects.py",
+    "tests/test_seraphine_beat_drop_wording_s144d78.py",
+    "tests/test_seraphine_encore_charm_rm1151.py",
+    "tests/test_session_checklist_item13.py",
+    "tests/test_supervisor_common_l02.py",
+    "tests/test_tft_cv_accuracy_harness.py",
 )
 
 

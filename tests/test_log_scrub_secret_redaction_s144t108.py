@@ -316,7 +316,7 @@ def test_scrub_traceback_redacts_a_frame_source_line(tmp_path):
     src.write_bytes(f"def boom():\n    raise ValueError('x')  # {KEY}\n"
                     .encode("ascii"))
     ns = {}
-    exec(compile(src.read_text(), str(src), "exec"), ns)
+    exec(compile(src.read_text(encoding="utf-8"), str(src), "exec"), ns)
     try:
         ns["boom"]()
     except ValueError as exc:

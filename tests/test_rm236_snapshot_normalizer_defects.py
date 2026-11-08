@@ -103,7 +103,7 @@ def _tier3_from_ddragon(path):
 @pytest.mark.parametrize("patch", ["16.15.1", "current"])
 def test_a_tier3_set_matches_ddragon_recipe_tree(patch):
     if patch == "current":
-        patch = (ROOT / "data/daemon_slayer/current.txt").read_text().strip()
+        patch = (ROOT / "data/daemon_slayer/current.txt").read_text(encoding="utf-8").strip()
     path = ROOT / f"data/daemon_slayer/{patch}/items.json"
     if not path.exists():
         pytest.skip(f"no items.json for {patch}")
