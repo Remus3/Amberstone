@@ -78,7 +78,7 @@ def _run(body, fetch, opening=None):
     """POST ``body`` with get_summoner_rank -> ``fetch`` (a callable)."""
     if opening is None:
         def opening(puuids, **_kw):
-            return {p: None for p in puuids}
+            return dict.fromkeys(puuids)
     with mock.patch.object(rs.riot_api, "is_configured", return_value=True), \
          mock.patch.object(rs.riot_api, "get_summoner_rank",
                            side_effect=fetch) as fetched, \

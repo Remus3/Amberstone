@@ -35,7 +35,7 @@ import json
 
 import pytest
 
-import lib.modes as modes
+from lib import modes
 
 LIVE = ("sr_draft", "sr_ranked", "aram", "arena", "brawl")
 
