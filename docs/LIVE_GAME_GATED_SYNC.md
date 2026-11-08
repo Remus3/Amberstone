@@ -5572,6 +5572,70 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   while the champ-select shaper has one (`lcu/champ_select_shape.py`: the session "frequently
   omits gameData" during BAN_PICK). So a genuine draft can store `queue_id=0`; the grader then
   skips the queue comparison in the join.
+  (5)/(6) RE-CHECK (s144 gated c109, S144-G-97; 2026-11-08 at idle, read-only, source read at
+  `f6473123e`; NOT a tick). Every cite holds by symbol: `note_game_id` is defined in
+  `lcu/draft_log.py` and its only production call is in `lcu/snapshot_shape.py`;
+  `INTERVAL = 1.0` in `tools/lcu_agent.py`; `dashboard/_liveclient.py` GETs
+  `http://127.0.0.1:8889/latest-lcu`; `lcu/draft_log.session_queue_id` reads only
+  `gameData.queue.id` (no gameflow read); `lcu/champ_select_shape.py` still carries the
+  "frequently omits gameData" comment and its `/lol-gameflow/v1/session` fallback;
+  `dashboard/_state_builder.py` `_read_lcu_snapshot` gates the in-process read on
+  `RC_LCU_INPROCESS == "1"`. The newest commit on these seven files is `9153cea44`
+  (2026-11-06), behaviour-preserving as (iv) above says.
+  STALE: "the evidence records the flag's value" named no way to read it, and since the
+  2026-10-31 cutover the RC process is no longer started by a task. The flag now reaches
+  `main.py` by inheritance only: rc-shell passes its own `process.env` to the service host,
+  the service host applies `ops/launcher/services.json` `env` plus the profile's `env`
+  (`child_environment`; neither names `RC_LCU_INPROCESS`: top-level `{}`, dev and packaged
+  set only `RC_DASH_BIND`), and the supervisor's `subprocess.Popen` passes no `env=`. The
+  in-process path logs nothing on success (`dashboard/_lcu_inprocess.py` logs only
+  `_log_degrade`), so no log line can witness it either. Measured today: the variable is in
+  NEITHER read-only `reg query "HKCU\Environment"` NOR the HKLM `Session Manager\Environment`
+  key. RULE: record the flag as `unset (relay path)` only when ALL of these hold, else
+  record `unknown (process env)` and treat the witness rows as possibly mixed:
+  (a) the three sources lack it: services.json (top-level `env` plus the active profile's
+  `env`), HKCU `Environment`, HKLM `Session Manager\Environment`, each read at the drain;
+  (b) the operator launched rc-shell from its normal shortcut, not from a terminal;
+  (c) every RC that ran from the launch through the drain descends from it, checked over
+  the WHOLE window, not at the drain only: take the host's launch time as the
+  CreationDate of `launcher_status.json` `host_pid` (read-only `Get-CimInstance
+  Win32_Process -Filter "ProcessId=<host_pid>"`, CommandLine naming `service_host.py`, in
+  UTC); from then through the drain `ops/runtime/logs/supervisor.log` (read with `grep -a`;
+  the file holds binary bytes) holds NO `adopted existing app pid=` line; at the drain
+  `ops/runtime/status.json` (rewritten every 1 s poll by `write_status`) has `updated_at`
+  within 10 s of now and `process_running` true; exactly one live process has a CommandLine
+  containing `main.py`; `launcher_status.json` `mode` is `owned` (NOT `attach`: an attach
+  host starts nothing and only watches a supervisor started elsewhere, e.g. by
+  `ops/start_ops.bat` from a terminal, `probe_existing`); and the parent chain holds: that
+  `main.py` process's ParentProcessId is the `supervisor` service pid in
+  `launcher_status.json`, whose own ParentProcessId is `host_pid` (read-only
+  `Get-CimInstance Win32_Process`; a stub or any other parent reads `unknown`, which fails
+  safe). Over the GAME window too: that `main.py` process's CreationDate is before the tape
+  start, and from the tape start through the drain supervisor.log holds no `started app
+  pid=` line and no `heartbeat_wrong_pid` line (`main.py` has no single-instance guard and
+  the dashboard socket allows address reuse, so a terminal `main.py` can serve `/api/state`
+  beside the owned one and exit before the drain; its heartbeat is what the supervisor
+  logs as a wrong pid, if a poll reads it). Why the whole window: `_adopt_existing_app` takes over a
+  fresh, alive `main.py` started elsewhere (env unknown), and a later spawn overwrites
+  `last_restart_reason` (`start_app`), so status.json at the drain cannot show an adoption
+  that served the game. `scripts/restart.bat` reaches the same place: its `taskkill /F /IM
+  pythonw.exe` kills the pythonw supervisor but not the `python.exe` host, the host
+  respawns the supervisor (`restart: on-failure`), and the new supervisor adopts the lone
+  `main.py` the script started (or, if that one is not yet healthy, spawns a second; hence
+  the one-process check). A supervisor-spawned child after an adoption inherits the
+  supervisor's env, which is fine, but the adoption line already fails the window. Do not
+  tie on the `health.json` pid: under a pythonw stub it can differ from `expected_pid`.
+  Measured today, RC down: the newest start line is `started app ...
+  reason='restart_trigger'` at 2026-11-01T01:33:09Z, then `stopping owned app` and
+  `supervisor exiting (SystemExit)` at 02:17:21Z; status.json was last written then with
+  `process_running` false, so (c) cannot hold until the app is launched again. Residual
+  limit: the registry is read at the drain, not at launch, so a variable set before the
+  launch and removed before the read is invisible; record both times (registry read,
+  launcher `started`). Second residual: a short-lived second `main.py` whose `health.json`
+  writes the supervisor never reads (it never writes one, or the owned app's 1 s write
+  overwrites each before the 1 s poll) leaves no trace in any source above. Never record a
+  value read from the probing shell's own environment: that is a fact about the probe, not
+  about RC.
   PROBE (from the main checkout; queue a ranked or normal DRAFT game, SR):
   (a) BEFORE entering the queue, start the tape:
   `mkdir -p ops/runtime/lx01; python tools/gated_lx01_draft_check.py tape --out
