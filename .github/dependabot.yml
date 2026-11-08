@@ -75,10 +75,17 @@ updates:
       # (2.2.0, declined 2026-10-26, its certifi bump applied; 2.x is also
       # relicensed MIT -> Apache-2.0 from 2.0.0) and PR #28 (2.3.0, declined
       # 2026-10-26; offline client-side checks green under 2.3.0, but every
-      # request moves from anthropic-version 2023-06-01 to 2026-10-21):
-      # held until RM-681 (live call per path + truststore) closes.
+      # request moves from anthropic-version 2023-06-01 to 2026-10-21) and
+      # PR #31 (2.5.0, declined 2026-11-07, its websockets and pytest-asyncio
+      # bumps applied): held until RM-681 (live call per path + truststore)
+      # closes and ANTHROPIC-2X migrates. Unlike the ranges below, this one
+      # covers the WHOLE 2.x line, not just the declined target: the hold is
+      # on what 2.0.0 changed (API version header, opentelemetry-api), which
+      # every 2.x carries, and four PRs in under two weeks (2.1.0, 2.2.0,
+      # 2.3.0, 2.5.0) re-offered it and were declined. A 3.0.0 still opens
+      # one. Drop the entry when ANTHROPIC-2X lands.
       - dependency-name: "anthropic"
-        versions: [">1.11.0,<=2.3.0"]
+        versions: [">1.11.0,<3.0.0"]
       # PR #11: wait for a change that also upgrades the RC runtime. (Its
       # pydantic ">2.13.5,<=2.14.1" entry was dropped when PR #29 moved the
       # pin to 2.14.2, a security release; the range sat below the pin.)
