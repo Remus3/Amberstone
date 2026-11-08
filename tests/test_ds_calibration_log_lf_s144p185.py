@@ -16,31 +16,25 @@ sink: an appender whose file a sibling writer rewrites with LF emits LF too.
 
 CI is Linux, where the text layer does not translate, so the assertion would
 be vacuous without the harness below; a positive control proves the harness
-turns a bare text-mode append into CRLF before the writer is trusted.
+turns a bare text-mode append into CRLF before the writer is trusted. The
+harness is the shared tests/_crlf_text_layer.py (s154 C1b): the private copy
+patched ``builtins.open`` only, so a ``Path.open`` writer was never reached.
 """
 from __future__ import annotations
 
-import builtins
 import json
 from pathlib import Path
 
 import pytest
 
 from core import ds_calibration
+from tests._crlf_text_layer import install_crlf_text_layer
 
 
 @pytest.fixture
 def crlf_text_layer(monkeypatch):
     """Reproduce the Windows LF -> CRLF text translation on every OS."""
-    orig_open = builtins.open
-
-    def _open(file, mode="r", *args, **kwargs):
-        if ("b" not in mode and any(c in mode for c in "wax+")
-                and len(args) < 3 and kwargs.get("newline") is None):
-            kwargs["newline"] = "\r\n"
-        return orig_open(file, mode, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "open", _open)
+    return install_crlf_text_layer(monkeypatch)
 
 
 def test_positive_control_a_bare_text_append_produces_crlf(tmp_path,
@@ -48,6 +42,7 @@ def test_positive_control_a_bare_text_append_produces_crlf(tmp_path,
     target = tmp_path / "control.jsonl"
     with open(target, "a", encoding="utf-8") as fh:
         fh.write("a\nb\n")
+    assert crlf_text_layer.forced_for(target), "harness missed open"
     assert target.read_bytes() == b"a\r\nb\r\n", "harness failed to force CRLF"
 
 

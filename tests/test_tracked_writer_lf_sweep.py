@@ -24,7 +24,6 @@ to end. This module covers the wider sweep without a test per tool:
 from __future__ import annotations
 
 import ast
-import builtins
 import json
 import pathlib
 
@@ -32,6 +31,7 @@ import pytest
 
 import scripts.data_pipeline as dp
 from core import polled_json
+from tests._crlf_text_layer import install_crlf_text_layer
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -125,22 +125,14 @@ _PAYLOAD = json.dumps({"a": 1, "b": [1, 2], "c": {"d": None}}, indent=2) + "\n"
 
 @pytest.fixture
 def force_crlf(monkeypatch):
-    """Reproduce the Windows LF -> CRLF text-mode translation on every OS."""
-    orig_write_text = pathlib.Path.write_text
-    orig_open = builtins.open
+    """Reproduce the Windows LF -> CRLF text-mode translation on every OS.
 
-    def _write_text(self, data, encoding=None, errors=None, newline=None):
-        return orig_write_text(self, data, encoding=encoding, errors=errors,
-                               newline="\r\n" if newline is None else newline)
-
-    def _open(file, mode="r", *args, **kwargs):
-        if ("b" not in mode and any(c in mode for c in "wax+")
-                and len(args) < 3 and kwargs.get("newline") is None):
-            kwargs["newline"] = "\r\n"
-        return orig_open(file, mode, *args, **kwargs)
-
-    monkeypatch.setattr(pathlib.Path, "write_text", _write_text)
-    monkeypatch.setattr(builtins, "open", _open)
+    The shared tests/_crlf_text_layer.py (s154 C1b). ``Path.write_text`` calls
+    ``Path.open``, which calls ``io.open`` with ``newline`` positional, so the
+    one ``io.open`` patch covers both shapes the control drives; the private
+    copy patched ``Path.write_text`` and ``builtins.open`` and so never saw a
+    ``Path.open`` writer."""
+    return install_crlf_text_layer(monkeypatch)
 
 
 def _crlf_count(path: pathlib.Path) -> int:
@@ -163,6 +155,7 @@ def _via_open_w(p: pathlib.Path) -> None:
 def test_positive_control_text_mode_writes_produce_crlf(tmp_path, force_crlf, writer):
     target = tmp_path / "control.json"
     writer(target)
+    assert force_crlf.forced_for(target), f"harness missed {writer.__name__}"
     assert _crlf_count(target) > 0, "harness failed to force CRLF - LF checks would be vacuous"
 
 

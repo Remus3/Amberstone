@@ -22,22 +22,22 @@ pin liveclient_relay's current handler line.
 
 CI is Linux, where the text layer does not translate, so the behaviour tests
 run under a harness that forces CRLF on any text-mode open that passes no
-``newline=``; RM-1707's positive control proves the stdlib handler bites
-under it. The source scan also requires an LF handler to be PRESENT, so
+``newline=``; this module's own positive control proves the stdlib handler
+bites under it (s154 C1b: it used to lean on RM-1707's control in another
+module). The source scan also requires an LF handler to be PRESENT, so
 deleting the handler outright cannot pass it.
 """
 from __future__ import annotations
 
-import builtins
 import contextlib
 import importlib
-import io
 import logging
 
 import pytest
 
+from tests._crlf_text_layer import install_crlf_text_layer
 from tests._repo_walk import REPO_ROOT
-from tests.test_log_handlers_lf_s144p196 import _stdlib_handler_calls
+from tests.test_log_handlers_lf_s144p196 import _emit_two, _stdlib_handler_calls
 
 _CONVERTED = (
     "agents/agent2_backend/ws_server.py",
@@ -65,17 +65,16 @@ def test_converted_module_builds_an_lf_handler_and_no_stdlib_one(rel):
 
 @pytest.fixture
 def crlf_text_layer(monkeypatch):
-    """Reproduce the Windows LF -> CRLF text translation on every OS."""
-    orig_open = builtins.open
+    """Reproduce the Windows LF -> CRLF text translation on every OS (the shared
+    harness, tests/_crlf_text_layer.py; a handler built under it binds it)."""
+    return install_crlf_text_layer(monkeypatch)
 
-    def _open(file, mode="r", *args, **kwargs):
-        if ("b" not in mode and any(c in mode for c in "wax+")
-                and len(args) < 3 and kwargs.get("newline") is None):
-            kwargs["newline"] = "\r\n"
-        return orig_open(file, mode, *args, **kwargs)
 
-    monkeypatch.setattr(builtins, "open", _open)
-    monkeypatch.setattr(io, "open", _open)
+def test_positive_control_stdlib_file_handler_writes_crlf(tmp_path, crlf_text_layer):
+    target = tmp_path / "control.log"
+    _emit_two(logging.FileHandler(target, encoding="utf-8"), "s144p197.control")
+    assert crlf_text_layer.forced_for(target), "harness missed the FileHandler open"
+    assert target.read_bytes().count(b"\r\n") == 2, "harness failed to force CRLF"
 
 
 def test_ws_server_build_logger_writes_lf(tmp_path, crlf_text_layer):

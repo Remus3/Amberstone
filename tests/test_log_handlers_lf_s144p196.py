@@ -22,14 +22,13 @@ launcher / supervisor files.
 from __future__ import annotations
 
 import ast
-import builtins
-import io
 import logging
 import logging.handlers
 
 import pytest
 
 from core import log_rotation
+from tests._crlf_text_layer import install_crlf_text_layer
 from tests._repo_walk import REPO_ROOT
 
 _CONVERTED = (
@@ -75,17 +74,9 @@ def test_converted_module_builds_no_stdlib_file_handler(rel):
 
 @pytest.fixture
 def crlf_text_layer(monkeypatch):
-    """Reproduce the Windows LF -> CRLF text translation on every OS."""
-    orig_open = builtins.open
-
-    def _open(file, mode="r", *args, **kwargs):
-        if ("b" not in mode and any(c in mode for c in "wax+")
-                and len(args) < 3 and kwargs.get("newline") is None):
-            kwargs["newline"] = "\r\n"
-        return orig_open(file, mode, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "open", _open)
-    monkeypatch.setattr(io, "open", _open)
+    """Reproduce the Windows LF -> CRLF text translation on every OS (the shared
+    harness, tests/_crlf_text_layer.py; a handler built under it binds it)."""
+    return install_crlf_text_layer(monkeypatch)
 
 
 def _emit_two(handler: logging.Handler, name: str) -> None:
@@ -104,6 +95,7 @@ def _emit_two(handler: logging.Handler, name: str) -> None:
 def test_positive_control_stdlib_file_handler_writes_crlf(tmp_path, crlf_text_layer):
     target = tmp_path / "control.log"
     _emit_two(logging.FileHandler(target, encoding="utf-8"), "s144p196.control")
+    assert crlf_text_layer.forced_for(target), "harness missed the FileHandler open"
     assert target.read_bytes().count(b"\r\n") == 2, "harness failed to force CRLF"
 
 

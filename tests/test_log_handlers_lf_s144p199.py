@@ -16,12 +16,11 @@ the harness bites.
 from __future__ import annotations
 
 import ast
-import builtins
-import io
 import logging
 
 import pytest
 
+from tests._crlf_text_layer import install_crlf_text_layer
 from tests._repo_walk import REPO_ROOT
 from tests.test_log_handlers_lf_s144p196 import _stdlib_handler_calls
 
@@ -66,17 +65,9 @@ def test_three_copies_are_identical():
 
 @pytest.fixture
 def crlf_text_layer(monkeypatch):
-    """Reproduce the Windows LF -> CRLF text translation on every OS."""
-    orig_open = builtins.open
-
-    def _open(file, mode="r", *args, **kwargs):
-        if ("b" not in mode and any(c in mode for c in "wax+")
-                and len(args) < 3 and kwargs.get("newline") is None):
-            kwargs["newline"] = "\r\n"
-        return orig_open(file, mode, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "open", _open)
-    monkeypatch.setattr(io, "open", _open)
+    """Reproduce the Windows LF -> CRLF text translation on every OS (the shared
+    harness, tests/_crlf_text_layer.py; a handler built under it binds it)."""
+    return install_crlf_text_layer(monkeypatch)
 
 
 def _emit_two(handler: logging.Handler) -> None:
@@ -94,7 +85,8 @@ def _emit_two(handler: logging.Handler) -> None:
 def test_positive_control_stdlib_handler_writes_crlf(tmp_path, crlf_text_layer):
     target = tmp_path / "stdlib.log"
     _emit_two(logging.FileHandler(str(target), encoding="utf-8"))
-    assert target.read_bytes().count(b"\r\n") == 2
+    assert crlf_text_layer.forced_for(target), "harness missed the FileHandler open"
+    assert target.read_bytes().count(b"\r\n") == 2, "harness failed to force CRLF"
 
 
 @pytest.mark.parametrize("rel", _FILES)

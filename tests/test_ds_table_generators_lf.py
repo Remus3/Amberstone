@@ -11,8 +11,11 @@ a corrupt blob - but the writer was still wrong.
 CI is Linux, where text mode does not translate, so a plain LF assertion
 would be vacuous there. ``force_crlf_fdopen`` reproduces the Windows
 translation on any OS by injecting ``newline="\\r\\n"`` into every text-mode
-``os.fdopen`` write that does not pin its own ``newline=``; the positive
-control proves the harness bites.
+write that does not pin its own ``newline=``; the positive control proves the
+harness bites on ``os.fdopen``. It is the shared tests/_crlf_text_layer.py
+(s154 C1b): ``os.fdopen`` reaches it through ``io.open``, and so does a writer
+that moves off ``os.fdopen`` to ``open`` / ``Path.open``, which the private
+``os.fdopen``-only copy would not have seen.
 """
 from __future__ import annotations
 
@@ -22,6 +25,7 @@ import tempfile
 
 import pytest
 
+from tests._crlf_text_layer import install_crlf_text_layer
 from tests.test_tracked_writer_lf_sweep import _violations
 from tools import daemon_slayer_build_orders_generate as build_gen
 from tools import daemon_slayer_pickban_targets_generate as pickban_gen
@@ -38,16 +42,9 @@ _PAYLOAD = {"b": [1, 2], "a": {"c": None, "d": "x"}}
 
 @pytest.fixture
 def force_crlf_fdopen(monkeypatch):
-    """Make text-mode ``os.fdopen`` writes translate LF -> CRLF on any OS."""
-    orig = os.fdopen
-
-    def _fdopen(fd, mode="r", *args, **kwargs):
-        if ("b" not in mode and any(c in mode for c in "wax+")
-                and len(args) < 3 and kwargs.get("newline") is None):
-            kwargs["newline"] = "\r\n"
-        return orig(fd, mode, *args, **kwargs)
-
-    monkeypatch.setattr(os, "fdopen", _fdopen)
+    """Make text-mode writes (``os.fdopen`` included) translate LF -> CRLF on
+    any OS."""
+    return install_crlf_text_layer(monkeypatch)
 
 
 def _crlf_count(path: pathlib.Path) -> int:
@@ -60,6 +57,7 @@ def test_positive_control_text_mode_fdopen_produces_crlf(tmp_path, force_crlf_fd
     fd, name = tempfile.mkstemp(dir=str(tmp_path))
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write("a\nb\nc\n")
+    assert force_crlf_fdopen.forced_for(fd), "harness missed os.fdopen"
     assert _crlf_count(pathlib.Path(name)) == 3
 
 

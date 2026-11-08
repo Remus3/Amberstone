@@ -25,6 +25,15 @@ This harness reads ``newline`` from wherever the caller put it (keyword, or the
 sixth positional of ``open()``) and records every write it forced, so a positive
 control asserts the patch was HIT for its own file instead of inferring it from
 bytes the host's text layer might have produced on its own.
+
+The sibling sweep (s154 C1b) moved seven more private copies onto it: s144p185
+(which patched ``builtins.open`` only, so ``Path.open`` was not reached at all),
+s144p195, s144p196, s144p197, s144p199, test_ds_table_generators_lf (which
+patched ``os.fdopen`` only) and test_tracked_writer_lf_sweep (``Path.write_text``
+plus ``builtins.open``). Patching ``io.open`` covers each of those routes on the
+interpreters measured: bare ``open`` is ``builtins.open``; ``Path.open`` calls
+``io.open``; ``Path.write_text`` calls ``Path.open``; ``os.fdopen`` calls
+``io.open``; ``logging.FileHandler`` binds ``open`` when it is built.
 """
 from __future__ import annotations
 
@@ -45,15 +54,20 @@ class CrlfTextLayer:
         self.forced: list[str] = []
 
     def forced_for(self, path) -> bool:
-        """True when a text-mode write to ``path`` was forced to CRLF."""
-        return os.fspath(path) in self.forced
+        """True when a text-mode write to ``path`` (a path, or the descriptor
+        handed to ``os.fdopen``) was forced to CRLF."""
+        return _label(path) in self.forced
 
 
 def _label(file) -> str:
     if isinstance(file, (str, bytes, os.PathLike)):
         name = os.fspath(file)
-        return name.decode("utf-8", "replace") if isinstance(name, bytes) else name
-    return repr(file)  # a file descriptor (os.fdopen) has no path
+        if isinstance(name, bytes):
+            name = name.decode("utf-8", "replace")
+        # logging.FileHandler opens os.path.abspath(filename): normalise both
+        # sides so the record and the query agree on spelling.
+        return os.path.normcase(os.path.abspath(name))
+    return f"<fd {file!r}>"  # os.fdopen hands io.open a descriptor, not a path
 
 
 def _is_text_write(mode) -> bool:
@@ -65,7 +79,9 @@ def install_crlf_text_layer(monkeypatch) -> CrlfTextLayer:
     """Reproduce the Windows LF -> CRLF text translation on every OS.
 
     Patches ``builtins.open`` (bare ``open``) and ``io.open`` (the route
-    ``pathlib.Path.open`` and ``os.fdopen`` take); a write-capable text-mode open
+    ``pathlib.Path.open``, ``Path.write_text`` and ``os.fdopen`` take; a
+    ``logging.FileHandler`` built while it is active binds it too); a
+    write-capable text-mode open
     whose ``newline`` is None - by keyword, by omission, or positionally - gets
     ``newline="\\r\\n"``. An explicit ``newline=`` ("\\n", "") is left alone,
     exactly as Windows leaves it alone. Returns the record of forced writes.
