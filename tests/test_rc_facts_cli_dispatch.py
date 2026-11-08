@@ -9,8 +9,9 @@ nor the session-id hand-off was asserted anywhere.
 
 The dispatch now lives in `_cli(argv)` and the `__main__` block only calls it.
 Every arm stubs the branch targets (`main`, `report_inbox_only`,
-`mark_inbox_seen`, `record_invocation`, the stdin reader), so no port, HTTP,
-LCU or inbox probe runs and no store is written.
+`mark_inbox_seen`, `record_invocation`, the stdin reader, and the RM-718 (e)
+`sweep_stale_scratch`), so no port, HTTP, LCU or inbox probe runs, no store is
+written and no runtime file is removed.
 
 MUTATION ARMS ARE DURABLE. Each mutant is applied to the module SOURCE in
 memory, executed into a fresh module object, and the named arm must FAIL
@@ -64,11 +65,16 @@ class _Stubs:
             self.calls.append(("mark",))
             return 7
 
+        def fake_sweep(now=None):
+            self.calls.append(("sweep",))
+            return 0
+
         mod._read_hook_payload_with_reason = reader
         mod.record_invocation = record
         mod.main = fake_main
         mod.report_inbox_only = fake_report
         mod.mark_inbox_seen = fake_mark
+        mod.sweep_stale_scratch = fake_sweep
 
     def names(self) -> list[str]:
         return [c[0] for c in self.calls]
@@ -111,6 +117,7 @@ def arm_default_sessionstart(mod):
     assert rc == 3
     assert s.calls == [
         ("read",),
+        ("sweep",),
         ("record", "SessionStart", s.payload, "empty"),
         ("main", _VALID_SID),
     ], s.calls
@@ -137,7 +144,7 @@ def test_branch_against_the_real_module(name, monkeypatch):
     # monkeypatch every attribute the stubs replace so the real module is
     # restored for the rest of the session.
     for attr in ("_read_hook_payload_with_reason", "record_invocation", "main",
-                 "report_inbox_only", "mark_inbox_seen"):
+                 "report_inbox_only", "mark_inbox_seen", "sweep_stale_scratch"):
         monkeypatch.setattr(rc_facts, attr, getattr(rc_facts, attr))
     _ARMS[name](rc_facts)
 
@@ -193,6 +200,9 @@ _CLI_MUTANTS = [
      'record_invocation("SessionStart", payload, stdin_state=why)\n    return main(',
      "return main(", "default"),
     ("default-drops-sid", "return main(session=sid)", "return main(session=None)", "default"),
+    ("default-no-sweep", "    sweep_stale_scratch()\n", "", "default"),
+    ("inbox-sweeps", "        return report_inbox_only(session=sid)",
+     "        sweep_stale_scratch()\n        return report_inbox_only(session=sid)", "inbox-only"),
     ("sid-unvalidated", "sid = _session_id(payload)", "sid = payload.get('session_id')",
      "invalid-sid"),
 ]
