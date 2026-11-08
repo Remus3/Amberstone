@@ -124,6 +124,20 @@ def test_class_prompt_carries_facts_and_sample(rr, tmp_path):
     assert text.count("pkg/__pycache__/") >= rr.SAMPLE_N
 
 
+def test_a_pyw_source_keeps_its_bytecode_out_of_the_orphan_count(rr, tmp_path):
+    """S144-Q-121 sibling: Python on Windows imports ``<name>.pyw`` and caches
+    it in ``__pycache__``, so its .pyc is not an orphan; a ``.pyi`` stub is
+    not an importable source and does not keep one."""
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "gui.pyw").write_text("x = 1\n", encoding="utf-8")
+    (tmp_path / "pkg" / "stub.pyi").write_text("x: int\n", encoding="utf-8")
+    rows = [_row(f"pkg/__pycache__/{m}.cpython-314.pyc", "I", "pycache")
+            for m in ("gui", "stub", "gone")]
+    facts = "\n".join(rr.class_facts("pycache", rows, root=tmp_path))
+    assert "computed: 2 orphan .pyc" in facts
+    assert "pkg/__pycache__/gui.cpython-314.pyc" not in facts.split("sample:", 1)[1]
+
+
 # ---------------------------------------------------------------- parse
 
 def _answer(bid="B01", n=2, findings=None):

@@ -5,8 +5,9 @@ Dry run by default; ``--apply`` removes what the dry run lists. Four classes:
 - ``pyc_temp``: ``__pycache__`` names ending ``.pyc.<digits>`` - the
   write-temp files the bytecode cache leaves when its rename does not happen
   (seen under concurrent xdist imports on Windows; not proven, BACKLOG RM-705);
-- ``orphan_pyc``: a ``__pycache__/<name>.<tag>.pyc`` whose ``<name>.py`` is
-  gone - the rule ``ops/loop/repo_review.py`` already counts;
+- ``orphan_pyc``: a ``__pycache__/<name>.<tag>.pyc`` whose ``<name>.py`` and
+  ``<name>.pyw`` are both gone - the rule ``ops/loop/repo_review.py`` already
+  counts (Windows imports ``.pyw`` too, S144-Q-121);
 - ``inbox_pyc``: any .pyc under ``moon_sync_inbox/`` - sibling payloads are
   never imported here (RM-732), so bytecode there is an incident leftover;
 - ``nested_pytest_cache``: every ``.pytest_cache`` directory except the root
@@ -42,6 +43,10 @@ _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win3
 _TEMP_RE = re.compile(r"\.pyc\.\d+$")
 _INBOX = "moon_sync_inbox"
 _CACHE = ".pytest_cache"
+# Every suffix the import system compiles into __pycache__. Windows imports
+# .pyw too (importlib.machinery.SOURCE_SUFFIXES); both are kept on every OS,
+# because calling a live module's bytecode an orphan is the costly direction.
+_SOURCE_SUFFIXES = (".py", ".pyw")
 _PRUNE_REL = frozenset({".git", ".claude/worktrees"})
 _GIT_ENV_DROP = frozenset({"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
                            "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY",
@@ -156,8 +161,10 @@ def _classify_pyc(rel: str, name: str, dirpath: str) -> str | None:
         return None
     if in_inbox:
         return "inbox_pyc"
-    source = os.path.join(os.path.dirname(dirpath), name.split(".", 1)[0] + ".py")
-    return None if os.path.exists(source) else "orphan_pyc"
+    stem = os.path.join(os.path.dirname(dirpath), name.split(".", 1)[0])
+    if any(os.path.exists(stem + suffix) for suffix in _SOURCE_SUFFIXES):
+        return None
+    return "orphan_pyc"
 
 
 def find_candidates(root: Path, tracked: set[str] | None = None) -> list[Candidate]:

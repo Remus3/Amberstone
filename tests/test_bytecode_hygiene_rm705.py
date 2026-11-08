@@ -3,7 +3,7 @@ regenerable bytecode and cache residue that no tracked step prunes.
 
 Classes (BACKLOG.md RM-705, REFRESHED 2026-10-24 acceptance):
 - ``pyc_temp``: ``*.pyc.<digits>`` write-temp leftovers;
-- ``orphan_pyc``: a ``__pycache__`` .pyc whose source .py is gone (the rule
+- ``orphan_pyc``: a ``__pycache__`` .pyc whose source .py / .pyw is gone (the rule
   ``ops/loop/repo_review.py`` already counts);
 - ``inbox_pyc``: any .pyc under ``moon_sync_inbox/`` (sibling payloads must
   never be imported here, RM-732);
@@ -154,6 +154,22 @@ def test_an_optimized_orphan_is_still_an_orphan(tmp_path: Path) -> None:
     _touch(tmp_path, "other/__pycache__/m.cpython-314.opt-2.pyc")
     got = _by_class(bh.find_candidates(tmp_path, tracked=set()))
     assert got == {"orphan_pyc": ["other/__pycache__/m.cpython-314.opt-2.pyc"]}
+
+
+def test_a_pyw_module_keeps_its_bytecode(tmp_path: Path) -> None:
+    """S144-Q-121: Python on Windows imports ``<name>.pyw`` and caches it to
+    ``__pycache__/<name>.<tag>.pyc`` (importlib SOURCE_SUFFIXES), so that .pyc
+    has a live source and is not an orphan. A ``.pyi`` stub or any other
+    suffix is not an importable source and does not keep one."""
+    _touch(tmp_path, "app/gui.pyw")
+    _touch(tmp_path, "app/__pycache__/gui.cpython-314.pyc")
+    _touch(tmp_path, "app/stub.pyi")
+    _touch(tmp_path, "app/__pycache__/stub.cpython-314.pyc")
+    _touch(tmp_path, "app/notes.txt")
+    _touch(tmp_path, "app/__pycache__/notes.cpython-314.pyc")
+    got = _by_class(bh.find_candidates(tmp_path, tracked=set()))
+    assert got == {"orphan_pyc": ["app/__pycache__/notes.cpython-314.pyc",
+                                  "app/__pycache__/stub.cpython-314.pyc"]}
 
 
 def test_a_digit_suffix_on_a_non_pyc_name_is_not_a_temp(tmp_path: Path) -> None:

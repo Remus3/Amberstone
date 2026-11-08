@@ -596,11 +596,11 @@ def class_facts(cid: str, rows: list[dict], root: Path = ROOT) -> list[str]:
             if "__pycache__" not in parts or not p.endswith(".pyc"):
                 continue
             i = parts.index("__pycache__")
-            src_name = parts[-1].split(".")[0] + ".py"
-            src = "/".join(parts[:i] + [src_name])
-            if not (root / src).exists():
+            # Windows imports .pyw too, and caches it here (S144-Q-121).
+            stem = "/".join(parts[:i] + [parts[-1].split(".")[0]])
+            if not any((root / (stem + sfx)).exists() for sfx in (".py", ".pyw")):
                 orphans.append(p)
-        lines.append(f"computed: {len(orphans)} orphan .pyc whose source .py is gone; "
+        lines.append(f"computed: {len(orphans)} orphan .pyc whose source .py / .pyw is gone; "
                      f"sample: {', '.join(_sample(orphans, 25))}")
     elif cid == "worktrees":
         for r in rows:
