@@ -63,7 +63,24 @@ import urllib.error
 import urllib.request
 
 LEGION_HOST = os.environ.get("RC_LEGION_HOST", "127.0.0.1")
-LEGION_PORT = int(os.environ.get("RC_LEGION_PORT", "8888"))
+
+
+def _legion_port_from_env(raw=None):
+    """``RC_LEGION_PORT`` as a TCP port (1-65535), else the dashboard's 8888.
+
+    S144-P-366: this was ``int(os.environ.get(...))`` at import, so a typo
+    crashed the listener before it could bind a single key.
+    """
+    if raw is None:
+        raw = os.environ.get("RC_LEGION_PORT")
+    try:
+        port = int(raw) if raw is not None else 8888
+    except (TypeError, ValueError):
+        return 8888
+    return port if 1 <= port <= 65535 else 8888
+
+
+LEGION_PORT = _legion_port_from_env()
 RESPOND_URL = f"https://{LEGION_HOST}:{LEGION_PORT}/api/decisions/respond_active"
 
 # Default keybinds - use `keyboard` library names. Left Alt + number row
