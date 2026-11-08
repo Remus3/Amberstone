@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-06b - session 151: all open lane work merged onto local main (178 commits, id-mapped, verifier CONFIRMED); RM-1974 reds left; the gated suite not launched (24800 MB line not met); NOT PUSHED at /done; hand-off is open items only
+
+- **Operator (chat):** "merge all open tree work and process /done for clear; so that next session is just open items".
+- **M1 landed (local only):** the five s144 lane snapshots of 19:07:35 as id-mapped rebuilds `c97af2dd2..4504f04c2` (gated 16, repo 81, uiux 27, queue 18, true-audit 36; RM-1660..RM-1973; LEDGER 2059-2063) plus merger folds `f96df46b2` `70dc246d1` `46bc34736` and the record (LEDGER 2064). Verifier CONFIRMED: 178/178 on main in order, 997/1001 path checks byte-identical (other 4 = two 3-way files, nothing lost); cited files 926 passed / 3 failed (RM-1974 a/b only).
+- **RM-1974 OPEN:** (a) local ruff 0.15.12 -> 0.17.3 breaks the two RM-1657 version-pinned ratchets on any tree; (b) the uiux 720 px reflow put CSS anchors outside their RM-726 slices ([HS-2], [CV-2]); (c) the Build Insights hover test hangs under xdist.
+- **Not launched:** the gated suite (C10 watch closed 19:45 "line not met"; merger read 23633 MB vs 24800). So no push: origin `52266153f` (ci RED on 6 Linux-only pins), local 193 ahead.
+- **/done:** hand-off rebuilt as open items only, the whole s150 hand-off VERBATIM in `docs/handoff-archive/RC-2026-11-06.txt` block 3; ORDER 1547 found done since 2026-11-04 (inbox_work.jsonl) and retired; reap 0 removed, 7 kept (LEDGER 2065).
+- **Do NOT redo:** the landing (LEDGER 2059-2064), the 47 older branches + 12 stashes are the KEEP / NEVER PUSH set (not merged on purpose).
+- **Next:** RM-1974 a/b/c, then the gated dual suite on HEAD at the launch line, then push that exact sha + bot_merge_check + ci; the LEDGER 2064 owed filings; PR #29 by the BOT-PR recipe.
+
+---
+
 # 2026-11-06 - session 150: all driver lanes headless; L9 + the s150 landings pushed to 52266153f (gated rc 0); ci RED on 6 Linux-only pins, the fixes local only; the landing suite held by the 24800 MB launch line; NOT PUSHED at /done
 
 - **Operator (chat):** "continue headlessly - all driver lanes - operator away ; full access approved"; "run the landing suite" (twice); "No, keep lanes running" (to pausing the lanes for the suite); "1 and 2. do it free them" (close Chrome, free the leftovers); "finish this up so done can process for clear".

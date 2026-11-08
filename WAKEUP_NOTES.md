@@ -6,6 +6,19 @@
 
 ---
 
+# 2026-11-07c - session 154: all 27 reds of ci 42427610342 folded locally (C1a/b/c), C6 rune-tabs focus product fix, PRs #30 / #31 re-applied locally (anthropic 2.5.0 declined), STASH-GC decided; gated suite NOT run (RAM line out of reach), NOTHING PUSHED
+
+- **Folds (each CONFIRMED by an independent verifier; LEDGER 2075):** C1a `e09c9860a` `5b344557b` `15d15b253` (snapshot layout, icon stand-in, badge token, mains mock, SF Mono); C1b `af90020e2` `3c2eb9446` (shared `tests/_crlf_text_layer.py`, 13 LF modules); C1c `caa22a035` `9cc7065d3` (RM-2037 xdist subprocess cases, self-scan of 14 spellings).
+- **C6 product fix `6f3c68716`:** `_userBuildsOpenForm` focuses synchronously; Playwright clock regression test; js_main digest re-captured.
+- **C3 `c0c7ee78d`:** websockets 17.4, pytest-asyncio 1.4.1.post1, codeql v4.39.3; anthropic 2.x declined (dependabot ignore ">1.11.0,<3.0.0"). PRs close when the push lands.
+- **STASH-GC:** local `gc.refs/stash.reflogExpire never` + `...ExpireUnreachable never`; 12 stashes.
+- **C7:** lanes parked because the headless account behind the proxy has a payment past due (every call 403); rotator stopped; RM-2048 filed (classifier).
+- **C4 NOT DONE:** gated suite blocked by RAM admission (line 25135 MB; 90 rounds read 24879-25074 MB; kernel pools ~2.8 GB). Adjudicator ruling (a): keep the line, close nothing; suite + push = s155 first act. Pre-checks on `5835bf6f7`: 8 batches 6271 passed 0 failed.
+- **Do NOT redo:** the 27 folds, C6, the C3 re-apply, the stash config, the C7 diagnosis.
+- **Next:** read RAM; if >= 25135 MB run the TIER TABLE gated suite (`--exclusive`) on HEAD; else ONE operator ask (close an app, or order -n 6). Green -> pre-push dry runs -> ask the operator for one push.
+
+---
+
 # 2026-11-07b - session 153: six slices landed (RM-2036 ceilings, RM-2037 RC-FAIL names, NA3 PR #29 re-applied, NA4 ORDER 2215 residue, NA5, NA6 landing sampler); gated run 3 GREEN on 64951a903, PUSHED on the operator's "yes" with a one-time sweep bypass; RM-2033 box half shipped
 
 - **Landed (M1 merger, LEDGER 2067-2073):** RM-2036 `608452f17` (step 110 -> 160, job 125 -> 175, pytest stops at 150 min), RM-2037 `06f1a4521` + `7d4999a16`, NA3 `a2023948b`, NA4 `c9d25376f`, NA5 RM-2030..2032 + 2034..2035, NA6 `tools/landing_sampler.py`; folds `dcaa45684`, `2c926a917`; RM-2038..RM-2043 filed.
@@ -27,15 +40,3 @@
 - **/done:** NOT pushed (halt boundary: the operator's yes covered `e37f0d1b4` only); `ab963e3de` + the /done docs commit stay local.
 - **Do NOT redo:** RM-1974 a-e, RM-1270 residue, F1-F4, the CLI re-pin, the NA4 filings, the `e37f0d1b4` push.
 - **Next:** ci red first: RM-2036 (raise or shard the step, end pytest before the ceiling), RM-2037 (name every nodeid), the 6 RM-1657 nodeids; a fix push needs a new gated suite and the operator's yes. Then PR #29.
-
----
-
-# 2026-11-06b - session 151: all open lane work merged onto local main (178 commits, id-mapped, verifier CONFIRMED); RM-1974 reds left; the gated suite not launched (24800 MB line not met); NOT PUSHED at /done; hand-off is open items only
-
-- **Operator (chat):** "merge all open tree work and process /done for clear; so that next session is just open items".
-- **M1 landed (local only):** the five s144 lane snapshots of 19:07:35 as id-mapped rebuilds `c97af2dd2..4504f04c2` (gated 16, repo 81, uiux 27, queue 18, true-audit 36; RM-1660..RM-1973; LEDGER 2059-2063) plus merger folds `f96df46b2` `70dc246d1` `46bc34736` and the record (LEDGER 2064). Verifier CONFIRMED: 178/178 on main in order, 997/1001 path checks byte-identical (other 4 = two 3-way files, nothing lost); cited files 926 passed / 3 failed (RM-1974 a/b only).
-- **RM-1974 OPEN:** (a) local ruff 0.15.12 -> 0.17.3 breaks the two RM-1657 version-pinned ratchets on any tree; (b) the uiux 720 px reflow put CSS anchors outside their RM-726 slices ([HS-2], [CV-2]); (c) the Build Insights hover test hangs under xdist.
-- **Not launched:** the gated suite (C10 watch closed 19:45 "line not met"; merger read 23633 MB vs 24800). So no push: origin `52266153f` (ci RED on 6 Linux-only pins), local 193 ahead.
-- **/done:** hand-off rebuilt as open items only, the whole s150 hand-off VERBATIM in `docs/handoff-archive/RC-2026-11-06.txt` block 3; ORDER 1547 found done since 2026-11-04 (inbox_work.jsonl) and retired; reap 0 removed, 7 kept (LEDGER 2065).
-- **Do NOT redo:** the landing (LEDGER 2059-2064), the 47 older branches + 12 stashes are the KEEP / NEVER PUSH set (not merged on purpose).
-- **Next:** RM-1974 a/b/c, then the gated dual suite on HEAD at the launch line, then push that exact sha + bot_merge_check + ci; the LEDGER 2064 owed filings; PR #29 by the BOT-PR recipe.
