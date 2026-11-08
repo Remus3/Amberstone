@@ -133,6 +133,44 @@ function _champNumericKey(nameOrSlug) {
   return _SPK_NAME_TO_KEY.map[norm] || 0;
 }
 
+// S144-U-217: the Live Client serves `rawChampionName` as a LOCALIZATION KEY,
+// "game_character_displayname_Kaisa", not a champion id (measured live
+// 2026-07-20; web/js/panels/aram_balance.js _AB_RAW_PREFIX and
+// core/focus_board_live.py _RAW_PREFIX strip the same prefix). Unstripped it
+// normalizes to "gamecharacterdisplaynamekaisa" and resolves to nothing. The
+// stripped key is the DDragon id, so it is tried FIRST: it also carries the id
+// for the champions whose display name differs ("Wukong" -> MonkeyKing,
+// "Nunu & Willump" -> Nunu), which championName alone never resolves.
+const _AM_RAW_CHAMP_PREFIX = /^game_character_displayname_/i;
+
+function _amStrOr(v) {
+  return (typeof v === "string") ? v : "";
+}
+
+function _amStripRawChamp(raw) {
+  return _amStrOr(raw).replace(_AM_RAW_CHAMP_PREFIX, "");
+}
+
+// Numeric champion key of one Live Client allPlayers row, or 0.
+function _amLiveChampKey(pl) {
+  if (!pl || typeof pl !== "object") return 0;
+  return _champNumericKey(_amStripRawChamp(pl.rawChampionName))
+      || _champNumericKey(_amStrOr(pl.championName));
+}
+
+// DDragon id ("MonkeyKing") of one allPlayers row, for icon paths and the
+// damage-mix route. From the champion index when it has loaded, else the
+// stripped key (itself the DDragon id), else the display name stripped to
+// ASCII letters and digits. "" when the row names nobody.
+function _amLiveChampSlug(pl) {
+  if (!pl || typeof pl !== "object") return "";
+  const key = _amLiveChampKey(pl);
+  const slug = key ? (CHAMPS.byId || {})[String(key)] : "";
+  if (typeof slug === "string" && slug) return slug;
+  const alnum = (s) => s.replace(/[^a-zA-Z0-9]/g, "");
+  return alnum(_amStripRawChamp(pl.rawChampionName)) || alnum(_amStrOr(pl.championName));
+}
+
 // s170 (step 2): per-tick DS rerank cache. Keyed by a coarse "input
 // fingerprint" so we don't refetch on every state envelope (~1 Hz)
 // when nothing meaningful changed. Cooldown floors the refetch rate
@@ -1804,8 +1842,9 @@ function _amDsSyntheticCs(p, ctx) {
       const meta = aligned ? (roster[i] || null) : null;
       if (meta && meta.is_active) myPosition = String(meta.position || "");
       if (myTeam && pl.team === myTeam) continue;
-      const slug = pl.rawChampionName || pl.championName || "";
-      const eid = _champNumericKey(slug);
+      // S144-U-217: rawChampionName is a localization key live; the helper
+      // strips it (it used to resolve every live enemy to 0 here).
+      const eid = _amLiveChampKey(pl);
       if (eid > 0) {
         theirTeam.push({
           championId: eid,
@@ -2612,9 +2651,9 @@ function _renderSpikeCurveFromCtx(ctx) {
   const enemyIds = [];
   for (const pl of lc.allPlayers) {
     if (!pl || typeof pl !== "object") continue;
-    const champ = pl.championName || pl.rawChampionName || "";
-    if (!champ) continue;
-    const numKey = _champNumericKey(champ);
+    // S144-U-217: championName alone misses Wukong / Nunu & Willump, and this
+    // strip needs all ten champions; the helper tries the stripped key first.
+    const numKey = _amLiveChampKey(pl);
     if (!numKey) continue;
     if (pl.team === myTeam) {
       allyIds.push(numKey);
@@ -2758,9 +2797,9 @@ function _renderDraftEloFromCtx(ctx) {
   const enemyIds = [];
   for (const pl of lc.allPlayers) {
     if (!pl || typeof pl !== "object") continue;
-    const champ = pl.championName || pl.rawChampionName || "";
-    if (!champ) continue;
-    const numKey = _champNumericKey(champ);
+    // S144-U-217: championName alone misses Wukong / Nunu & Willump, and this
+    // strip needs all ten champions; the helper tries the stripped key first.
+    const numKey = _amLiveChampKey(pl);
     if (!numKey) continue;
     if (pl.team === myTeam) allyIds.push(numKey);
     else                    enemyIds.push(numKey);
@@ -2818,15 +2857,16 @@ function _threatRow(pl, mode, level) {
   row.className = "threat-row";
   row.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
 
-  const champ = pl.championName || pl.rawChampionName || "?";
+  // S144-U-217: the label is the game's display name; the DDragon id comes from
+  // _amLiveChampSlug, which strips the live localization key. Preferring the raw
+  // key here made every live portrait 404 (hidden) and every donut "?".
+  const champId = _amLiveChampSlug(pl);
+  const champ = _amStrOr(pl.championName) || _amStripRawChamp(pl.rawChampionName) || champId || "?";
   const portrait = document.createElement("img");
   portrait.className = "threat-portrait";
   portrait.alt = champ;
   portrait.title = champ;
   const ver = (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
-  // DDragon champion-square id is the championName (no spaces / apostrophes
-  // for most; rawChampionName has the canonical id form when present).
-  const champId = (pl.rawChampionName || champ).replace(/[^a-zA-Z0-9]/g, "");
   portrait.src = `/data/ddragon/${ver}/img/champion/${champId}.png`;
   portrait.style.cssText = "width:28px;height:28px;border-radius:50%;border:1px solid #303040;display:inline-block;vertical-align:middle;";
   portrait.onerror = () => {
@@ -3196,6 +3236,8 @@ function _dsIconFallback(name, id, delta) {
 // (web/js/panels/active_match_dscluster.test.mjs). Not part of the page API.
 export const __test = {
   _champNumericKey,
+  _amLiveChampKey,
+  _amLiveChampSlug,
   _amDsSyntheticCs,
   _amDsComboMode,
   _amThreatMode,
