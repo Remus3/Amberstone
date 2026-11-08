@@ -49,11 +49,15 @@ files under ops/loop/control/. Two rules close it:
     IN_GAME_PHASES), the restart is held as PENDING and fired once, when
     both signals say the game is over. The game check runs only while a
     restart is pending, never on an idle tick.
-  - Daemon Slayer :8860 is unchanged: it is its own scheduled-task process
-    (RC-DaemonSlayer) and this watcher never restarted it; an RC restart
-    never touched it either (core/daemon_slayer_client.ensure_running is a
-    no-op while :8860 answers). DS modules RC imports in-process still
+  - Daemon Slayer :8860 is unchanged: this watcher never restarted it; an RC
+    restart never touched it either (core/daemon_slayer_client.ensure_running
+    is a no-op while :8860 answers). DS modules RC imports in-process still
     restart RC when edited, exactly as before.
+    Status (2026-10-31 launcher cutover): the RC-DaemonSlayer scheduled task
+    that used to own DS is unregistered (docs/OPERATIONS.md, "Moved to the
+    app"); on this host RC's DsWatchdog starts DS as its own child, so the
+    "own process" above means a separate :8860 process, not a Task Scheduler
+    entry.
 
 Caveats:
   - Polling interval is 2s (not inotify - cross-platform). Each poll is a
