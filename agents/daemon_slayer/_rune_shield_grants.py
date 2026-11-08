@@ -170,6 +170,7 @@ integer ids are coerced on lookup, and a repeated id is credited at most once.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
@@ -363,8 +364,13 @@ def _entry_shield(
     """
     total = _lerp_by_level(entry.shield_at_level_1, entry.shield_at_level_18, level)
     if entry.bonus_hp_pct:
-        bonus_hp = max(0.0, float(total_hp) - float(base_hp))
-        total += bonus_hp * (entry.bonus_hp_pct / 100.0)
+        total_pool = float(total_hp)
+        base_pool = float(base_hp)
+        # A non-finite pool makes the bonus term unusable, as NaN already was
+        # through the clamp: inf would credit an infinite shield (S144-D-96).
+        if math.isfinite(total_pool) and math.isfinite(base_pool):
+            bonus_hp = max(0.0, total_pool - base_pool)
+            total += bonus_hp * (entry.bonus_hp_pct / 100.0)
     return max(0.0, total)
 
 
@@ -425,11 +431,15 @@ def rune_shield_grants(
     FAIL-SOFT: an empty / None / non-iterable rune list, a garbage entry, or a
     non-numeric pool argument returns 0.0 rather than raising.
     """
-    if not apply_rune_shield_grants or not rune_ids:
+    if not apply_rune_shield_grants:
         return 0.0
+    # The emptiness check runs inside the guard: a page whose truthiness raises
+    # (a multi-element array) must stay inert, not escape (S144-D-96).
     try:
+        if not rune_ids:
+            return 0.0
         iterator = iter(rune_ids)
-    except TypeError:
+    except Exception:
         return 0.0
     total = 0.0
     seen_families: set[str] = set()
@@ -445,9 +455,10 @@ def rune_shield_grants(
         seen_families.add(entry.family)
         try:
             magnitude = _entry_shield(entry, level, total_hp, base_hp)
-        except (TypeError, ValueError):
-            # A non-numeric pool or level argument - stay inert rather than
-            # propagating into the EHP numerator.
+        except (TypeError, ValueError, OverflowError):
+            # A non-numeric pool or level argument, or an infinite level
+            # (``int(inf)`` raises OverflowError, S144-D-96) - stay inert rather
+            # than propagating into the EHP numerator.
             return 0.0
         total += magnitude * entry.conditional_probability
     return total

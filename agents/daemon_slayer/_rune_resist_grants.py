@@ -78,6 +78,7 @@ throughout); integer ids are coerced on lookup.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
@@ -212,6 +213,17 @@ _RUNE_RESIST_GRANTS: dict[str, RuneResistEntry] = {
 }
 
 
+def _finite_or_zero(resist: float) -> float:
+    """A clamped percent-term resist, or 0.0 when it is infinite.
+
+    An infinite resist input is unusable, as NaN already was through the
+    ``max(0.0, ...)`` clamp: +inf total or -inf base would otherwise credit an
+    infinite percent term (S144-D-97). Every non-finite input reaches this point
+    as 0.0 or +inf, so zeroing +inf here covers them all.
+    """
+    return resist if math.isfinite(resist) else 0.0
+
+
 def rune_resist_grants(
     rune_ids: Iterable[str | int],
     *,
@@ -251,6 +263,10 @@ def rune_resist_grants(
     is True).
     """
     minute = _ASSUMED_GAME_MINUTE if game_minute is None else float(game_minute)
+    if math.isnan(minute):
+        # NaN is "no clock", so it takes the documented default like None
+        # rather than passing the time gate by a failed comparison (S144-D-97).
+        minute = _ASSUMED_GAME_MINUTE
     bonus_armor = 0.0
     bonus_mr = 0.0
     seen_families: set[str] = set()
@@ -275,6 +291,8 @@ def rune_resist_grants(
             else:
                 res_a = max(0.0, total_armor)
                 res_m = max(0.0, total_mr)
+            res_a = _finite_or_zero(res_a)
+            res_m = _finite_or_zero(res_m)
             raw_a += res_a * (entry.armor_pct / 100.0)
             raw_m += res_m * (entry.mr_pct / 100.0)
         # Level-scaled cap (Aftershock 80-150), BEFORE amortization.
