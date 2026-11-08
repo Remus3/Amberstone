@@ -13,8 +13,10 @@ the latest snapshot):
 1-PC self-heal (post-2026-05 Legion consolidation, ADR-011): when League runs
 on this host (``core.game_host.GAME_HOST`` local) and the relayed liveclient
 snapshot is stale/missing, ``get_latest_liveclient`` reads :2999 in-process so
-the RC-LiveClientRelay agent is an optimization (it pre-warms the cache), NOT a
-hard dependency. If the agent dies, the self-read keeps coaching alive. In the
+the relay agent (tools/liveclient_relay.py, run by the rc-shell service host
+since the 2026-10-31 launcher cutover unregistered its task) is an optimization
+(it pre-warms the cache), NOT a hard dependency. If the agent dies, the
+self-read keeps coaching alive. In the
 legacy remote-host config (RC_GAME_HOST set to a remote box) the self-read is
 disabled - Riot's :2999 binds localhost-only on the remote host - and the
 agent push stays the only feed.
@@ -224,7 +226,7 @@ def _maybe_self_read():
 
 
 def handle_upload_liveclient(body: bytes) -> dict:
-    """The RC-LiveClientRelay agent POSTs /liveclientdata/allgamedata JSON.
+    """The relay agent (tools/liveclient_relay.py) POSTs /liveclientdata/allgamedata JSON.
     On 1-PC this pre-warms the cache; get_latest_liveclient self-reads :2999
     if it goes stale.
 
