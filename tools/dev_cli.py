@@ -78,6 +78,8 @@ def _run(args, *, cwd=None, capture=False):
             cwd=cwd or str(_PROJECT_ROOT),
             capture_output=capture,
             text=True,
+            # git, py and cmd children write different pages; an undecodable byte must not raise
+            errors="replace",
         )
     except FileNotFoundError as exc:
         print(f"ERROR: command not found: {exc}")

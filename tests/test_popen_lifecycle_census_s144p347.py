@@ -60,6 +60,8 @@ _ROWS: dict[str, tuple[tuple[str, ...], str]] = {
         ("DETACHED",), "start.bat launch: the CLI returns immediately, nothing piped"),
     "tools/inbox_responder_procs.py": (
         ("WAITED",), "communicate(timeout), kill tree on timeout; piped streams drained by communicate"),
+    "tools/landing_sampler.py": (
+        ("DETACHED",), "launch_child appends both streams to a log file, nothing piped; PopenChild.wait()/stop() own the handle"),
     "tools/perseus_recall.py": (
         ("TERMINATED",), "one-shot MCP stdio client; finally closes stdin and terminates, the CLI exits next"),
     "tools/perseus_sync.py": (
@@ -68,7 +70,7 @@ _ROWS: dict[str, tuple[tuple[str, ...], str]] = {
         ("WAITED", "TERMINATED"), "PKG-owned smoke harness; waits for the host exit, kills on overrun"),
 }
 
-_SPAWN_ROW_COUNT = 13
+_SPAWN_ROW_COUNT = 14
 
 # file -> number of bare ``subprocess.Popen`` references that are not a direct call (an injected
 # constructor). Counted, not lifecycle-checked. Measured 2026-11-07.
