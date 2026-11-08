@@ -62,7 +62,9 @@ class CoachIntegration:
 
         self._wave = WaveTracker()
         self._lock = threading.Lock()
-        self._last_coach_time = 0.0
+        # In-process interval stamp: time.monotonic(), so a clock step cannot move the debounce
+        # (S144-P-370). -inf = never coached; 0.0 would debounce a call made seconds after boot.
+        self._last_coach_time = float("-inf")
         self._last_state: dict = {}
         self._last_submitted_state: dict = {}
         self._pending = False
@@ -83,7 +85,7 @@ class CoachIntegration:
         if not self._should_coach(game_state):
             return
         self._last_submitted_state = game_state
-        self._last_coach_time = time.time()
+        self._last_coach_time = time.monotonic()
         t = threading.Thread(target=self._run_safe, args=(game_state,),
                              daemon=True, name="CoachCall")
         t.start()
@@ -92,7 +94,7 @@ class CoachIntegration:
         """Force immediate coaching call - from context menu."""
         if not self._client or not game_state:
             return
-        self._last_coach_time = time.time()
+        self._last_coach_time = time.monotonic()
         t = threading.Thread(target=self._run_safe, args=(game_state,),
                              daemon=True, name="CoachForced")
         t.start()
@@ -105,7 +107,7 @@ class CoachIntegration:
     def reset_state(self) -> None:
         self._last_submitted_state = {}
         self._last_state = {}
-        self._last_coach_time = 0.0
+        self._last_coach_time = float("-inf")
         self._pending = False
         self._wave = WaveTracker()
         try:
@@ -167,7 +169,7 @@ class CoachIntegration:
             return ""
 
     def _should_coach(self, state: dict) -> bool:
-        now = time.time()
+        now = time.monotonic()
 
         dead_count = state.get("dead_count", 0)
         last_dead  = self._last_submitted_state.get("dead_count", 0)
@@ -427,7 +429,7 @@ class CoachIntegration:
             self._last_sig = sig
         except _APITimeoutError:
             logger.warning("Claude API timeout after %ds - will retry at next trigger", self._timeout_s)
-            self._last_coach_time = time.time() - self._debounce_s + 2.0
+            self._last_coach_time = time.monotonic() - self._debounce_s + 2.0
             self._write_status_field("Timeout - retrying next trigger")
             return
         except _APIConnectionError:

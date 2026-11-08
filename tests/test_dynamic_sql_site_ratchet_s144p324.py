@@ -138,7 +138,7 @@ def scan(source: str) -> tuple[int, set[tuple[str, str]]]:
 
 
 def _is_test_code(rel: str) -> bool:
-    return (rel.startswith("tests/") or "/tests/" in rel or rel.startswith("agents/agent3_testing/")
+    return (rel.startswith(("tests/", "agents/agent3_testing/")) or "/tests/" in rel
             or rel.rsplit("/", 1)[-1].startswith("test_"))
 
 
