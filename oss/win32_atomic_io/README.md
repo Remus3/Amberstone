@@ -117,7 +117,7 @@ inert data.
 
 | Function | Behaviour |
 | --- | --- |
-| `atomic_write_json(path, payload, *, indent=2)` | `json.dumps` then atomic byte write. `ensure_ascii=False`. |
+| `atomic_write_json(path, payload, *, indent=2)` | `json.dumps` then atomic byte write. `ensure_ascii=False`, except a payload with no UTF-8 encoding (a lone surrogate), which is written with `ensure_ascii=True`. |
 | `atomic_write_bytes(path, data)` | Atomic byte write. Use this whenever the byte count matters. |
 | `atomic_write_text(path, content)` | UTF-8 encode then atomic byte write. |
 | `read_json_dict(path, default=None) -> dict` | Always returns a `dict`; a deep copy of `default` (or `{}`) on any degraded input. |

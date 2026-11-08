@@ -194,9 +194,18 @@ def atomic_write_json(path: Path, payload: Any, *, indent: int = 2) -> None:
     Windows write_text rewrites LF as CRLF, so an indented payload put more
     bytes on disk than the caller serialized
     (reference_windows_write_text_crlf_byte_count).
+
+    A str holding a lone surrogate - what json.loads yields for an escaped
+    "\\ud800" - has no UTF-8 encoding, so the raw-UTF-8 dump cannot be encoded.
+    That payload alone is re-serialized with ensure_ascii=True: valid JSON,
+    pure ASCII, and it reads back to the same str. Every payload that encodes
+    writes exactly the bytes it always did (lane 8 s144 cycle 223, B).
     """
-    body = json.dumps(payload, indent=indent, ensure_ascii=False)
-    _write_then_replace(Path(path), body.encode("utf-8"))
+    try:
+        data = json.dumps(payload, indent=indent, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError:
+        data = json.dumps(payload, indent=indent, ensure_ascii=True).encode("ascii")
+    _write_then_replace(Path(path), data)
 
 
 def atomic_write_bytes(path: Path, data: bytes) -> None:
@@ -260,7 +269,12 @@ def read_json_dict(path: Path, default: Optional[dict] = None) -> dict:
         return fallback
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError as exc:
+    except (ValueError, RecursionError) as exc:
+        # Lane 8 s144 cycle 223 (A): JSONDecodeError is only one of the ways
+        # the stdlib decoder rejects a file. Nesting past the interpreter
+        # stack raises RecursionError, and an integer literal longer than
+        # sys.get_int_max_str_digits() raises a plain ValueError (the parent
+        # of JSONDecodeError, not it). Both used to escape to the caller.
         _log.warning("polled_json: %s decode failed: %s", path, exc)
         return fallback
     if not isinstance(data, dict):
