@@ -68,3 +68,30 @@ def test_the_premise_the_architecture_table_still_says_so():
     }
     assert rows["screen_agent.py"].startswith("DISABLED")
     assert rows["keybind_listener.py"].startswith("OPTIONAL")
+
+
+def test_phase_watcher_says_retired_before_its_deploy_recipe():
+    """S144-P-448: phase_watcher is DISABLED (ARCHITECTURE) and no service-host
+    service starts it, but its docstring opened "Runs Legion-local alongside the
+    LCU polling agent" and went straight to a one-time deploy recipe. Its
+    installer and its test still deploy to the RC-Agent folder by design (a kept
+    reference, TLS-floor test cites it), so that folder stays named: only the
+    retired status is pinned, ahead of the recipe."""
+    doc = ast.get_docstring(ast.parse(_text("tools/phase_watcher.py"))) or ""
+    low = doc.lower()
+    status = low.find("status: retired")
+    assert status >= 0, "docstring has no 'Status: RETIRED' line"
+    recipe = low.find("deploy (one-time)")
+    assert recipe >= 0, "the deploy recipe moved; re-read this guard"
+    assert status < recipe
+    assert "service host" in low[status:recipe], "status must say who does NOT start it"
+
+
+def test_phase_watcher_premise_no_service_starts_it_and_architecture_says_disabled():
+    rows = {
+        m.group(1): m.group(2)
+        for m in re.finditer(r"^\| `(\w+\.py)` \| ([^|]+) \|",
+                             _text("docs/ARCHITECTURE.md"), re.M)
+    }
+    assert rows["phase_watcher.py"].startswith("DISABLED")
+    assert "phase_watcher" not in _text("ops/launcher/services.json")
