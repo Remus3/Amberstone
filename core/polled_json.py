@@ -37,6 +37,7 @@ import copy
 import json
 import logging
 import os
+import re
 import secrets
 import time
 from pathlib import Path
@@ -110,6 +111,50 @@ def _scratch_path(path: Path) -> Path:
     `_save` onto atomic_write_json here.
     """
     return path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+
+
+# The suffix `_scratch_path` appends: `.<pid>.<secrets.token_hex(4)>.tmp`.
+_SCRATCH_SUFFIX_RE = r"\.\d+\.[0-9a-f]{8}\.tmp"
+
+
+def sweep_stale_scratch(
+    dest: Path, max_age_s: float, *, now: Optional[float] = None
+) -> int:
+    """S144-Q-126: remove the scratch a HARD KILL orphaned for `dest`; return
+    how many files went.
+
+    `_write_then_replace` unlinks its scratch on any Python-visible failure,
+    but `taskkill /F` between the scratch write and the rename runs no Python,
+    so the scratch stays for ever. A writer that owns `dest` calls this once
+    at start. Only regular files named `dest.name` plus exactly the
+    `_scratch_path` suffix are candidates (another destination's scratch is
+    that writer's to sweep), and only those STRICTLY older than `max_age_s`,
+    so a concurrent writer's in-flight scratch is never pulled from under its
+    rename. Scratch is regenerable by construction, so it is unlinked, not
+    recycled. Never raises: a sweep must not stop the writer that calls it.
+    """
+    removed = 0
+    try:
+        dest = Path(dest)
+        cutoff = (time.time() if now is None else now) - max_age_s
+        pat = re.compile(re.escape(dest.name) + _SCRATCH_SUFFIX_RE)
+        try:
+            entries = list(dest.parent.iterdir())
+        except OSError:
+            return 0
+        for entry in entries:
+            if not pat.fullmatch(entry.name):
+                continue
+            try:
+                if not entry.is_file() or entry.stat().st_mtime >= cutoff:
+                    continue
+                entry.unlink()
+            except OSError:
+                continue
+            removed += 1
+    except Exception:  # noqa: BLE001 - a sweep never fails its caller
+        _log.debug("sweep_stale_scratch(%s) failed", dest, exc_info=True)
+    return removed
 
 
 def _write_then_replace(path: Path, data: bytes) -> None:

@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from core.polled_json import atomic_write_json
+from core.polled_json import atomic_write_json, sweep_stale_scratch
 
 _LADDER = [
     "health_check",
@@ -263,6 +263,7 @@ class SelfMonitor:
         # status transitions from "tolerated" to "unhealthy" even if
         # _seen_current_supervisor_status has never been set.
         self._bootstrap_deadline_mono = time.monotonic() + self._BOOTSTRAP_GRACE_S
+        self._sweep_stale_scratch()
         t1 = threading.Thread(target=self._monitor_loop,
                                name="SelfMonitor-Main", daemon=True)
         t2 = threading.Thread(target=self._command_loop,
@@ -275,6 +276,20 @@ class SelfMonitor:
             action="monitor_on", result="ok",
             detail=f"SelfMonitor started armed={self._armed}",
         )
+
+    # S144-Q-126: scratch older than this is a hard kill's orphan, not a write
+    # in flight (a write holds its scratch for milliseconds).
+    _SCRATCH_MAX_AGE_S = 3600.0
+
+    def _sweep_stale_scratch(self) -> None:
+        """S144-Q-126: remove the polled_json scratch a hard kill orphaned for
+        the two fixed files this monitor writes. Request / command / result
+        files are per-id and are not swept here. Never raises."""
+        for dest in (self._state_path, self._profile_path):
+            try:
+                sweep_stale_scratch(dest, self._SCRATCH_MAX_AGE_S)
+            except Exception:  # noqa: BLE001 - a sweep never blocks start()
+                pass
 
     def stop(self) -> None:
         self._stop_event.set()
