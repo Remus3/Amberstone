@@ -367,3 +367,22 @@ def test_cli_abort_exits_nonzero(live, archive, monkeypatch, capsys):
     assert rc == 2
     assert "game_live" in capsys.readouterr().out
     assert not archive.exists()
+
+
+@pytest.mark.parametrize("positions", [
+    [1, 1],      # duplicate: one slot is claimed twice, a kept row has no home
+    [0, 9],      # past the end of the rebuilt file (3 rows)
+    [-1, 0],     # negative: never a valid row index
+])
+def test_reinterleave_rejects_bad_positions_with_value_error(positions):
+    """S144-P-440: a manifest whose positions are not distinct row indexes
+    inside the rebuilt file used to leak a bare StopIteration out of
+    next(it) (an exception no `except ValueError` caller catches, and one
+    that silently ends any generator that calls this). It is a ValueError
+    like the length mismatch beside it."""
+    with pytest.raises(ValueError):
+        sas.reinterleave([b"k\n"], [b"a\n", b"b\n"], positions)
+
+
+def test_reinterleave_still_accepts_valid_positions():
+    assert sas.reinterleave([b"k\n"], [b"a\n", b"b\n"], [0, 2]) == b"a\nk\nb\n"

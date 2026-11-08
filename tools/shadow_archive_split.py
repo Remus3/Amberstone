@@ -137,6 +137,11 @@ def reinterleave(kept: list[bytes], archived: list[bytes],
     out: list[bytes] = []
     total = len(kept) + len(archived)
     slots = dict(zip(positions, archived))
+    # Distinct, in-range positions are the only shape that leaves exactly
+    # len(kept) free slots; anything else would run next(it) dry and leak a
+    # bare StopIteration, so it is refused up front like the length mismatch.
+    if len(slots) != len(positions) or any(not 0 <= p < total for p in slots):
+        raise ValueError("archived positions are duplicated or outside the rebuilt file")
     it = iter(kept)
     for i in range(total):
         if i in slots:
