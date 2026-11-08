@@ -1,7 +1,7 @@
 # Live-half digests for web/js/panels/ - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-bc4849add129306900bbb713a08f6558ac1ce14f46da481704a58502f6489f9f  web/js/panels/active_match.js
+bac8bc53175a6741fb99d9acf2f1a305b4514abcc7dc5c841f81b5e73fdf4033  web/js/panels/active_match.js
 
 b6eb81ecc296b6388abb6481800ea54e7ad05b8bb5eb6918c9dd0e4654dab13d  web/js/panels/aram_balance.js
 

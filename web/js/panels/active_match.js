@@ -2269,6 +2269,9 @@ const _AM_SHARED_VISION = new Set(["ARAM", "KIWI"]);
 const _AM_MIA_THRESHOLD = 12;
 // Gank-warning threshold (s) for enemy JG missing outside their jungle.
 const _AM_GANK_THRESHOLD = 20;
+// The faintest a canvas dot gets: a ghost long missing, and (S144-U-228)
+// every last-known dot while the feed is stalled.
+const _AM_GHOST_MIN_ALPHA = 0.25;
 // Cadence: how often we re-poll /api/vision-state. 500ms matches the
 // home-view's VT_INTERVAL_MS so dot positions don't lag.
 const _AM_TICK_MS = 500;
@@ -2720,6 +2723,21 @@ function _amDrawDots(vs) {
     const [px, py] = project(pos.x, pos.z);
     const missing = e.missing_for_s || 0;
 
+    // S144-U-228: a stalled feed vouches for no position. Every enemy with a
+    // last position is drawn as a faint last-known dot - the ghost floor a
+    // long-missing enemy already gets - with no MIA badge, since its seconds
+    // stopped counting. A bright ringed dot reads as "seen right now".
+    if (stale) {
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(240, 126, 139, ${_AM_GHOST_MIN_ALPHA})`;
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${_AM_GHOST_MIN_ALPHA * 0.7})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      continue;
+    }
+
     if (e.visible) {
       // Bright current-position dot
       ctx.beginPath();
@@ -2731,7 +2749,7 @@ function _amDrawDots(vs) {
       ctx.stroke();
     } else {
       // Ghost dot fading with missing time
-      const alpha = Math.max(0.25, 1.0 - missing / 30);
+      const alpha = Math.max(_AM_GHOST_MIN_ALPHA, 1.0 - missing / 30);
       ctx.beginPath();
       ctx.arc(px, py, 6, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(240, 126, 139, ${alpha})`;
@@ -2752,7 +2770,7 @@ function _amDrawDots(vs) {
         ctx.fillText(tag, bx, by);
       }
       // Gank-watch: jungler-shaped missing pattern
-      if (!stale && missing > _AM_GANK_THRESHOLD
+      if (missing > _AM_GANK_THRESHOLD
           && (e.last_seen_zone === "ENEMY_JUNGLE"
               || e.last_seen_zone === "RIVER"
               || e.last_seen_zone === null)) {

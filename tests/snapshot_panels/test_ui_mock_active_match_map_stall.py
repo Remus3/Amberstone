@@ -25,6 +25,14 @@ ward / back off" up for the rest of the game. While the feed is stalled every
 roster row reads "no feed" in a neutral state and the gank band stands down;
 both come back with the feed.
 
+S144-U-228: the SR canvas under the roster kept drawing the frozen answer as
+live too. Ahri stayed a bright dot with a white ring at her last position, the
+mark of an enemy the feed sees right now, and Nidalee kept a red "Nidale 25s"
+MIA badge whose seconds never moved. While the feed is stalled every enemy
+with a last position is drawn as a faint last-known dot (the ghost floor a
+long-missing enemy already gets) and no MIA badge is drawn; both come back
+with the feed.
+
 Time moves with Playwright's clock (installed before navigation). Drive
 path: /?ui_mock=1&mode=<mayhem|sr>#active-match with an empty /api/state.
 """
@@ -282,6 +290,67 @@ def test_sr_gank_band_stands_down_while_the_feed_is_stalled(
         got = _advance(page, 1_000)
         assert got == _SR_FRESH, (kind, got)
         assert page.evaluate(_GANK_JS) == _SR_GANK, kind
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, errors[:3]
+
+
+# S144-U-228: the SR canvas layer. Ahri sits at the world centre and Nidalee
+# at (9800, 4400) on the 14800 CLASSIC map; a dot's centre pixel alpha says
+# how it was drawn (0.95 live, 0.25 the ghost floor), and the MIA badge is the
+# only rgba(220, 38, 38, 0.85) fill on the layer.
+_CANVAS_JS = """() => {
+  const cv = document.getElementById('am-map-overlay');
+  if (!cv || getComputedStyle(cv).display === 'none'
+      || cv.width < 4 || cv.height < 4) return null;
+  const ctx = cv.getContext('2d');
+  const w = cv.width, h = cv.height;
+  const at = (x, z) => ctx.getImageData(
+    Math.round(x / 14800 * w), Math.round(h - z / 14800 * h), 1, 1).data[3];
+  const d = ctx.getImageData(0, 0, w, h).data;
+  let badge = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] >= 200 && d[i + 1] <= 70 && d[i + 2] <= 70
+        && d[i + 3] >= 180) badge++;
+  }
+  return {ahri: at(7400, 7400), nidalee: at(9800, 4400), badge};
+}"""
+_LIVE_ALPHA = 200     # 0.95 -> 242
+_GHOST_ALPHA = 80     # the 0.25 ghost floor -> 64
+
+
+@pytest.mark.parametrize("kind", ["frozen", "dead"])
+def test_sr_canvas_draws_last_known_dots_while_the_feed_is_stalled(
+    kind, mock_server, pw_browser
+):
+    """Live (the positive control): Ahri is a bright dot and Nidalee a ghost
+    with a red MIA badge. Stalled: both are faint last-known dots, still at
+    their last positions, and no badge is drawn. The feed's return brings the
+    live dot and the badge back."""
+    feed = _Feed("live", _vs_sr)
+    ctx, page, errors = _open(pw_browser, mock_server, feed, mode="sr",
+                              fresh=_SR_FRESH)
+    try:
+        page.wait_for_function(
+            f"(({_CANVAS_JS})() || {{}}).badge > 0", timeout=10_000)
+        live = page.evaluate(_CANVAS_JS)
+        assert live["ahri"] >= _LIVE_ALPHA, live
+        assert 0 < live["nidalee"] <= _GHOST_ALPHA, live
+        feed.kind = kind
+        got = _advance(page, 15_000)
+        assert _STALLED.match(got), (kind, got)
+        stale = page.evaluate(_CANVAS_JS)
+        assert stale is not None, kind
+        assert 0 < stale["ahri"] <= _GHOST_ALPHA, (kind, stale)
+        assert 0 < stale["nidalee"] <= _GHOST_ALPHA, (kind, stale)
+        assert stale["badge"] == 0, (kind, stale)
+        feed.kind = "live"
+        got = _advance(page, 1_000)
+        assert got == _SR_FRESH, (kind, got)
+        back = page.evaluate(_CANVAS_JS)
+        assert back["ahri"] >= _LIVE_ALPHA, (kind, back)
+        assert back["badge"] > 0, (kind, back)
     finally:
         page.close()
         ctx.close()
