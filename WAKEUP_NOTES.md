@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-11-07b - session 153: six slices landed (RM-2036 ceilings, RM-2037 RC-FAIL names, NA3 PR #29 re-applied, NA4 ORDER 2215 residue, NA5, NA6 landing sampler); gated run 3 GREEN on 64951a903, PUSHED on the operator's "yes" with a one-time sweep bypass; RM-2033 box half shipped
+
+- **Landed (M1 merger, LEDGER 2067-2073):** RM-2036 `608452f17` (step 110 -> 160, job 125 -> 175, pytest stops at 150 min), RM-2037 `06f1a4521` + `7d4999a16`, NA3 `a2023948b`, NA4 `c9d25376f`, NA5 RM-2030..2032 + 2034..2035, NA6 `tools/landing_sampler.py`; folds `dcaa45684`, `2c926a917`; RM-2038..RM-2043 filed.
+- **Gated runs:** 1 on `1b1460c4a` 1 failed (raw wait bounds, folded); 2 on `a442c3243` 1 failed (leaked sqlite garbage, check hardened, leaker RM-2043); 3 on `64951a903` GREEN, 69352 passed, exit 0.
+- **Pushed (operator "yes"):** `e37f0d1b4..64951a903` (31 commits); the sweep halted act 1 on a drive-rooted fixture line `7d4999a16` added and `4d4a52511` removed (per-commit scan, RM-2044); operator bypass ONCE for that sha; ls-remote `64951a903`, bot_merge_check clean (31), contributors 1.
+- **RM-2033 box half:** Python314 pydantic 2.14.2 / pydantic-core 2.50.2 / portalocker 4.4.2 / pytest-asyncio 1.4.1 / mypy 2.4.1; nothing stopped. ORDER 2215 ONE ANSWER delivered 1/1 (14:36), row closed.
+- **/done:** docs commit LOCAL (a push would cancel full ci 42427610342 via cancel-in-progress; LEDGER 2047 rule). Reap 7 removed, 9 kept.
+- **Do NOT redo:** the landing, run 3, the push, the bypass (never set it again), the MAIN 2215 reply (do not re-run deliver.py), the RM-2033 upgrade.
+- **Next:** read ci 42427610342 (RM-2037 RC-FAIL names; RM-1657; RM-2036 run time), then the RM-2041 fixes on a gated sha; PRs #30 / #31 (#29 closed itself).
+
+---
+
 # 2026-11-07 - session 152: RM-1974 reds fixed, the gated dual suite GREEN on e37f0d1b4, that sha PUSHED on the operator's word; ci RED by its 110-min step timeout (RM-2036 / RM-2037)
 
 - **RM-1974 SHIPPED:** a `36ba25a07` (MEASURED_RUFF (0, 17)), docstring `d6144375b`, b `39c6ab4f0`, c `b36e3c095` (Playwright loop marker, the xdist hang), d `346ff0d79`, e `cc53df7ae`; RM-1270 residue `765ab2d77`.
@@ -27,17 +39,3 @@
 - **/done:** hand-off rebuilt as open items only, the whole s150 hand-off VERBATIM in `docs/handoff-archive/RC-2026-11-06.txt` block 3; ORDER 1547 found done since 2026-11-04 (inbox_work.jsonl) and retired; reap 0 removed, 7 kept (LEDGER 2065).
 - **Do NOT redo:** the landing (LEDGER 2059-2064), the 47 older branches + 12 stashes are the KEEP / NEVER PUSH set (not merged on purpose).
 - **Next:** RM-1974 a/b/c, then the gated dual suite on HEAD at the launch line, then push that exact sha + bot_merge_check + ci; the LEDGER 2064 owed filings; PR #29 by the BOT-PR recipe.
-
----
-
-# 2026-11-06 - session 150: all driver lanes headless; L9 + the s150 landings pushed to 52266153f (gated rc 0); ci RED on 6 Linux-only pins, the fixes local only; the landing suite held by the 24800 MB launch line; NOT PUSHED at /done
-
-- **Operator (chat):** "continue headlessly - all driver lanes - operator away ; full access approved"; "run the landing suite" (twice); "No, keep lanes running" (to pausing the lanes for the suite); "1 and 2. do it free them" (close Chrome, free the leftovers); "finish this up so done can process for clear".
-- **Landed + pushed:** L9 `43f6d2e9d` (LEDGER 2014-2022); the s150 landings to `52266153f`, gated whole suite rc 0 there (LEDGER 2025-2053); RM-1506 shipped.
-- **CI on `52266153f`:** codeql + docs-guards green; ci RED on 6 Linux-only tests (5 Home pick layout pins, 1 redirect [head] pin): push 42136608451, schedule 42245599424 (read back at /done).
-- **Local only (8 commits ahead of origin, HEAD `d917bcf6e`):** RM-1657 fold 2 `df5c1fdab` (the 6 fixes) + RM-1427 split `2661168d9` (LEDGER 2055); no whole suite has run on them.
-- **Landing suite NOT launched:** LEDGER 2056 (lanes up, 22043-22493 MB against the 24800 MB line); LEDGER 2057 ruled C (the line stands; read-only watch to 19:45).
-- **Free-RAM act (operator order; main-session reads):** Chrome already closed; windows-mcp 23520 + 28160 and pythonw `-m server.ew` 15156 ended with taskkill; `wsl --shutdown` (no distro running), vmmem 15900 (~531 MB) persists; PhysicalAvailable 23752 -> 24030 MB with the lanes in their budget pause, ~770 MB short (LEDGER 2058).
-- **/done:** no push (no green gated suite on any local sha); reap removed agent-a91fe9b86f8a72ca1 (unlocked: clean, every commit on main) + s150-land3; cron a5bf84b1 deleted, no ticks remain.
-- **Do NOT redo:** the 2057 ruling, the free-RAM kills, the reap.
-- **Next:** C10 - the batched operator ask (free vmmem, keep Chrome closed, all in a rotator budget pause), then the gated suite on local HEAD, a verifier, push the exact sha, read ci; RM-1657 done only on green ci.

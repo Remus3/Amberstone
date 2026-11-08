@@ -41,6 +41,20 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-06 - session 150: all driver lanes headless; L9 + the s150 landings pushed to 52266153f (gated rc 0); ci RED on 6 Linux-only pins, the fixes local only; the landing suite held by the 24800 MB launch line; NOT PUSHED at /done
+
+- **Operator (chat):** "continue headlessly - all driver lanes - operator away ; full access approved"; "run the landing suite" (twice); "No, keep lanes running" (to pausing the lanes for the suite); "1 and 2. do it free them" (close Chrome, free the leftovers); "finish this up so done can process for clear".
+- **Landed + pushed:** L9 `43f6d2e9d` (LEDGER 2014-2022); the s150 landings to `52266153f`, gated whole suite rc 0 there (LEDGER 2025-2053); RM-1506 shipped.
+- **CI on `52266153f`:** codeql + docs-guards green; ci RED on 6 Linux-only tests (5 Home pick layout pins, 1 redirect [head] pin): push 42136608451, schedule 42245599424 (read back at /done).
+- **Local only (8 commits ahead of origin, HEAD `d917bcf6e`):** RM-1657 fold 2 `df5c1fdab` (the 6 fixes) + RM-1427 split `2661168d9` (LEDGER 2055); no whole suite has run on them.
+- **Landing suite NOT launched:** LEDGER 2056 (lanes up, 22043-22493 MB against the 24800 MB line); LEDGER 2057 ruled C (the line stands; read-only watch to 19:45).
+- **Free-RAM act (operator order; main-session reads):** Chrome already closed; windows-mcp 23520 + 28160 and pythonw `-m server.ew` 15156 ended with taskkill; `wsl --shutdown` (no distro running), vmmem 15900 (~531 MB) persists; PhysicalAvailable 23752 -> 24030 MB with the lanes in their budget pause, ~770 MB short (LEDGER 2058).
+- **/done:** no push (no green gated suite on any local sha); reap removed agent-a91fe9b86f8a72ca1 (unlocked: clean, every commit on main) + s150-land3; cron a5bf84b1 deleted, no ticks remain.
+- **Do NOT redo:** the 2057 ruling, the free-RAM kills, the reap.
+- **Next:** C10 - the batched operator ask (free vmmem, keep Chrome closed, all in a rotator budget pause), then the gated suite on local HEAD, a verifier, push the exact sha, read ci; RM-1657 done only on green ci.
+
+---
+
 # 2026-11-01b - session 149: inbox only; MAIN ORDER 1547 reboot hold read back, L9 NOT run, C1 verified 9 of 9; PUSHED
 
 - **Operator (chat):** "just the inbox- not roadmap work at this time."; typed /done. No lane landed, no roadmap item started, no channel note sent.
