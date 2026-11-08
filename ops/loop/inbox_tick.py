@@ -38,6 +38,10 @@ further unclassifiable notes stay UNSEEN for the next fire. Free classification
 has no bound - it is a file read. Two fires at once cannot both process one
 note: the pass holds ops/loop/control/inbox_tick.lock (O_EXCL; a lock older
 than LOCK_STALE_S is reclaimed), and a fire that finds it held skips the pass.
+RM-691: the reclaim removes the stale lock only while it still holds the bytes
+the fire read (rename aside, compare, delete or put back), and a fire drops
+only the lock carrying its own claim (pid, ts and a random token), so two fires
+breaking one stale lock cannot both hold it, nor delete each other's.
 
 ARMING. Classification, acks and work rows are local ledger lines and always
 run - the inbox may never wait for a human (0310 section 0). A SPAWN and an
@@ -284,7 +288,14 @@ def load_agreement(root, *, participants, retired, now) -> tuple:
 
 # ---- the lock --------------------------------------------------------------
 
-def _take_lock(root: Path, clock=time.time) -> bool:
+def _take_lock(root: Path, clock=time.time) -> bytes | None:
+    """Take the tick lock. Returns this fire's CLAIM (the exact bytes written;
+    `_drop_lock` wants it back) or None when another fire holds it.
+
+    RM-691: a lock older than LOCK_STALE_S is broken only through
+    `_remove_if`, which removes the file only while it still holds the bytes
+    this fire READ when it judged it stale. A fire that broke the same stale
+    lock first and re-created it in between keeps its fresh lock."""
     lock = root / LOCK_REL
     lock.parent.mkdir(parents=True, exist_ok=True)
     for _ in range(2):
@@ -292,41 +303,97 @@ def _take_lock(root: Path, clock=time.time) -> bool:
             fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
             try:
-                ts = float(json.loads(lock.read_text(encoding="ascii")).get("ts", 0))
-            except (OSError, ValueError, TypeError, AttributeError):
+                seen = lock.read_bytes()
+            except OSError:
+                continue  # gone (another fire dropped or broke it): retry O_EXCL
+            try:
+                ts = float(json.loads(seen.decode("ascii")).get("ts", 0))
+            except (ValueError, TypeError, AttributeError):
                 try:
                     ts = lock.stat().st_mtime
                 except OSError:
                     ts = 0.0
             if clock() - ts < LOCK_STALE_S:
-                return False
-            with contextlib.suppress(OSError):
-                lock.unlink()
+                return None
+            if not _remove_if(lock, seen):
+                return None  # changed since it was read: a live fire holds it
             continue
-        with os.fdopen(fd, "w", encoding="ascii", newline="\n") as fh:
-            fh.write(json.dumps({"pid": os.getpid(), "ts": clock()}))
+        # pid + ts + a random token: two takes in one process at one clock
+        # value still write different claims, so a drop can tell them apart.
+        claim = json.dumps({"pid": os.getpid(), "ts": clock(),
+                            "tok": os.urandom(8).hex()}).encode("ascii")
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(claim)
+        return claim
+    return None
+
+
+def _remove_if(lock: Path, expected: bytes) -> bool:
+    """Remove `lock` only if it still holds `expected`. True when it is gone
+    (removed here, or already gone); False when it holds anything else or
+    cannot be moved (left in place, or put back).
+
+    The file is first renamed to a unique side name, so the bytes compared are
+    the bytes removed; a mismatch is put back with a no-overwrite link. The
+    side name ends in `.lock`, which the test guard's IGNORE already covers.
+
+    Residual (accepted, needs three fires inside one rename window, after a
+    crash left a stale lock): while B holds A's fresh lock aside, a third fire
+    C can create the lock; B's put-back then loses to C and A's lock is gone,
+    so A and C both run. Two fires can no longer do it."""
+    side = lock.with_name(
+        f"{lock.stem}.break-{os.getpid()}-{os.urandom(4).hex()}{lock.suffix}")
+    try:
+        os.rename(lock, side)
+    except FileNotFoundError:
         return True
+    except OSError:
+        return False
+    try:
+        held = side.read_bytes()
+    except OSError:
+        held = None
+    if held == expected:
+        with contextlib.suppress(OSError):
+            side.unlink()
+        return True
+    try:
+        os.link(side, lock)
+    except FileExistsError:
+        pass  # a lock created since the rename is newer still; it stays
+    except OSError:
+        # No hard links here: a plain rename back (the side file is never
+        # deleted on this path, so the moved lock is not lost).
+        with contextlib.suppress(OSError):
+            os.rename(side, lock)
+        return False
+    with contextlib.suppress(OSError):
+        side.unlink()
     return False
 
 
-def _drop_lock(root: Path) -> None:
-    with contextlib.suppress(OSError):
-        (root / LOCK_REL).unlink()
+def _drop_lock(root: Path, claim: bytes | None) -> None:
+    """Release the tick lock only while it still carries this fire's claim
+    (RM-691); a lock another fire took meanwhile is left alone."""
+    if claim:
+        _remove_if(root / LOCK_REL, claim)
 
 
 class LockHeld(RuntimeError):
     """The tick lock stayed held by another fire for the whole bounded wait."""
 
 
-def _wait_lock(root: Path, wait_s: float, sleep) -> bool:
+def _wait_lock(root: Path, wait_s: float, sleep) -> bytes | None:
     """_take_lock, retried every LOCK_POLL_S until it succeeds or the summed
-    poll intervals reach wait_s (deterministic under an injected sleep)."""
+    poll intervals reach wait_s (deterministic under an injected sleep).
+    Returns the claim, or None when the lock stayed held."""
     waited, budget = 0.0, max(0.0, float(wait_s))
     while True:
-        if _take_lock(root):
-            return True
+        claim = _take_lock(root)
+        if claim:
+            return claim
         if waited >= budget:
-            return False
+            return None
         step = min(LOCK_POLL_S, budget - waited)
         sleep(step)
         waited += step
@@ -424,7 +491,8 @@ def tick(root, *, inbox=None, code=CODE, agreement=_UNSET, participants=None,
     s = _empty_summary(dry)
     s["armed"], s["agreement"] = agreement is not None, detail
 
-    if not dry and not _take_lock(root):
+    claim = None if dry else _take_lock(root)
+    if not dry and not claim:
         s["locked"] = True
         return s
     try:
@@ -446,7 +514,7 @@ def tick(root, *, inbox=None, code=CODE, agreement=_UNSET, participants=None,
     finally:
         if not dry:
             _end_status(root, code, s, next_tick_s)
-            _drop_lock(root)
+            _drop_lock(root, claim)
     return s
 
 
@@ -615,13 +683,14 @@ def close(root, note, outcome="done", clock=time.time, *, wait_s=CLOSE_WAIT_S,
     name = Path(str(note or "")).name
     if not name:
         return []
-    if not _wait_lock(root, wait_s, sleep):
+    claim = _wait_lock(root, wait_s, sleep)
+    if not claim:
         raise LockHeld(f"{LOCK_REL.as_posix()} held by another fire for {wait_s} s")
     try:
         return [fleet_inbox.mark_work_done(root, row, outcome=outcome, clock=clock)
                 for row in fleet_inbox.pending_work(root) if row.get("note") == name]
     finally:
-        _drop_lock(root)
+        _drop_lock(root, claim)
 
 
 def _note_sha(inbox: Path, note):
@@ -689,12 +758,13 @@ def migrate_legacy(root, *, inbox=None) -> dict:
     finds no legacy row."""
     root = Path(root)
     inbox = root / INBOX_DIR if inbox is None else Path(inbox)
-    if not _take_lock(root):
+    claim = _take_lock(root)
+    if not claim:
         return {"locked": True, "legacy": 0, "undecodable": []}
     try:
         return _migrate(root / WORK_REL, inbox)
     finally:
-        _drop_lock(root)
+        _drop_lock(root, claim)
 
 
 def _migrate(path: Path, inbox: Path) -> dict:
