@@ -83,9 +83,9 @@ def test_routed_spawn_goes_through_the_real_kit(rec, tmp_path):
     assert kw["creationflags"] == getattr(subprocess, "CREATE_NO_WINDOW", 0)
     assert line["code"] == "RC" and line["result"] == "done" and line["rc"] == 0
     assert proc.stdout == rec.stdout
-    budget = json.loads((tmp_path / "ops/loop/control/headless_budget.json").read_text())
+    budget = json.loads((tmp_path / "ops/loop/control/headless_budget.json").read_text(encoding="utf-8"))
     assert len(budget["starts"]) == 1
-    usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text().splitlines()
+    usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(usage) == 1 and json.loads(usage[0])["input_tokens"] == 3
     assert _status(tmp_path)["state"] == "idle"
 
@@ -174,7 +174,7 @@ def test_timeout_is_recorded_by_the_kit_before_the_reraise(tmp_path, monkeypatch
     _bind_chain(monkeypatch, run=r)
     with pytest.raises(subprocess.TimeoutExpired):
         fleet_route.spawn("T", caller="t", note="n", root=tmp_path)
-    usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text().splitlines()
+    usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(usage) == 1
     rec_line = json.loads(usage[0])
     assert rec_line["error"] == "timeout" and rec_line["rc"] is None
@@ -318,7 +318,7 @@ def test_timeout_kills_the_process_tree_through_the_kit(kit_launch, kit_platform
         fleet_route.spawn("T", caller="t", note="n", timeout=1, root=tmp_path)
     (p,) = _FakePopen.instances
     assert_kit_killed(kit_platform, kit_launch, p.killed, 4242)
-    usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text().splitlines()
+    usage = (tmp_path / "ops/loop/control/headless_usage.jsonl").read_text(encoding="utf-8").splitlines()
     rec_line = json.loads(usage[-1])
     assert rec_line["error"] == "timeout" and rec_line["rc"] is None
     assert _status(tmp_path)["state"] == "idle"

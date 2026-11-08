@@ -101,11 +101,11 @@ def test_rc_recorded_bytes_counts_only_rc_sidecar_paths(tmp_path):
     b.write_bytes(b"x" * 50)
     stray = vids / "stray.mp4"  # in the folder but no sidecar: never counted
     stray.write_bytes(b"x" * 999)
-    (rec / "1.json").write_text(json.dumps({"owner": "rc", "obs_output_path": str(a)}))
-    (rec / "2.json").write_text(json.dumps({"owner": "operator", "obs_output_path": str(b)}))
-    (rec / "3.json").write_text(json.dumps({"owner": "rc", "obs_output_path": str(a)}))
-    (rec / "4.json").write_text("{not json")
-    (rec / "5.json").write_text(json.dumps({"owner": "rc", "obs_output_path": str(vids / "gone.mp4")}))
+    (rec / "1.json").write_text(json.dumps({"owner": "rc", "obs_output_path": str(a)}), encoding="utf-8")
+    (rec / "2.json").write_text(json.dumps({"owner": "operator", "obs_output_path": str(b)}), encoding="utf-8")
+    (rec / "3.json").write_text(json.dumps({"owner": "rc", "obs_output_path": str(a)}), encoding="utf-8")
+    (rec / "4.json").write_text("{not json", encoding="utf-8")
+    (rec / "5.json").write_text(json.dumps({"owner": "rc", "obs_output_path": str(vids / "gone.mp4")}), encoding="utf-8")
     assert dg.rc_recorded_bytes(rec) == 100
 
 
@@ -145,7 +145,7 @@ def test_producer_trip_stops_only_rc_owned(tmp_path):
     assert res["tripped"] is True
     assert p.stops == 1
     assert g.banner_state()["active"] is True
-    assert json.loads((tmp_path / "disk_guard.json").read_text())["active"] is True
+    assert json.loads((tmp_path / "disk_guard.json").read_text(encoding="utf-8"))["active"] is True
 
 
 def test_producer_trip_operator_owned_banner_only(tmp_path):

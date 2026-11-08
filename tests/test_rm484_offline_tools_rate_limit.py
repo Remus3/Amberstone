@@ -124,19 +124,19 @@ def test_a_real_missing_timeline_is_still_partial(tmp_path, monkeypatch):
     monkeypatch.setattr(RA, "get_match", lambda mid: {"info": {}})
     monkeypatch.setattr(RA, "get_match_timeline", _not_found)
     assert ti.ingest_match("NA1_3", tmp_path) == "partial"
-    assert json.loads((tmp_path / "NA1_3.json").read_text())["timeline"] is None
+    assert json.loads((tmp_path / "NA1_3.json").read_text(encoding="utf-8"))["timeline"] is None
 
 
 def test_retry_partial_backfills_a_polluted_file(tmp_path, monkeypatch):
     """Recovery for files already written by the old code."""
     dest = tmp_path / "NA1_4.json"
-    dest.write_text(json.dumps({"match": {"m": 1}, "timeline": None}))
+    dest.write_text(json.dumps({"match": {"m": 1}, "timeline": None}), encoding="utf-8")
     monkeypatch.setattr(RA, "get_match",
                         lambda mid: pytest.fail("match half must be reused"))
     monkeypatch.setattr(RA, "get_match_timeline", lambda mid: {"frames": [1]})
     assert ti.ingest_match("NA1_4", tmp_path) == "have"     # default: cheap
     assert ti.ingest_match("NA1_4", tmp_path, retry_partial=True) == "ok"
-    blob = json.loads(dest.read_text())
+    blob = json.loads(dest.read_text(encoding="utf-8"))
     assert blob == {"match": {"m": 1}, "timeline": {"frames": [1]}}
 
 
@@ -170,12 +170,12 @@ _SCOUT_MATCH = {"info": {"participants": [
 def test_throttled_ladder_does_not_overwrite_the_role_file(tmp_path, monkeypatch):
     """Old: None -> [] -> '0 entries' -> an EMPTY role file replaced the good one."""
     out = tmp_path / "ladder_role_mains.json"
-    out.write_text('{"keep": true}')
+    out.write_text('{"keep": true}', encoding="utf-8")
     monkeypatch.setattr(RA, "_call", _ladder_call_stub(ladder_throttles=99))
     with redirect_stdout(io.StringIO()):
         code = lrs.main(["--out", str(out)])
     assert code != 0
-    assert out.read_text() == '{"keep": true}'
+    assert out.read_text(encoding="utf-8") == '{"keep": true}'
 
 
 def test_scout_retries_throttled_ids_and_matches(tmp_path, monkeypatch):
@@ -185,7 +185,7 @@ def test_scout_retries_throttled_ids_and_matches(tmp_path, monkeypatch):
     monkeypatch.setattr(RA, "get_match", _throttled_then(_SCOUT_MATCH))
     with redirect_stdout(io.StringIO()):
         code = lrs.main(["--out", str(out), "--min-share", "0.5"])
-    blob = json.loads(out.read_text())
+    blob = json.loads(out.read_text(encoding="utf-8"))
     assert code == 0
     assert blob["accounts_dropped"] == 0
     assert blob["match_failures"] == 0
@@ -257,7 +257,7 @@ def test_fully_throttled_cohort_does_not_overwrite_a_good_one(tmp_path, monkeypa
     out = tmp_path / "rank_baselines.json"
     good = {"tier": "MASTER", "division": None, "matches": 40,
             "player_rows": 400, "roles": {}, "marker": 1}
-    out.write_text(json.dumps({"tiers": {"MASTER": good}}))
+    out.write_text(json.dumps({"tiers": {"MASTER": good}}), encoding="utf-8")
     monkeypatch.setattr(brb, "accounts_for_cohort", lambda t, d, w: ["P1"])
 
     def _ids(endpoint, url, rate_limit_timeout_s=5.0):
@@ -265,7 +265,7 @@ def test_fully_throttled_cohort_does_not_overwrite_a_good_one(tmp_path, monkeypa
     monkeypatch.setattr(RA, "_call", _ids)
     with redirect_stdout(io.StringIO()):
         code = brb.main(["--out", str(out), "--tiers", "MASTER"])
-    blob = json.loads(out.read_text())
+    blob = json.loads(out.read_text(encoding="utf-8"))
     assert code != 0
     assert blob["tiers"]["MASTER"] == good
     assert "MASTER" in blob["skipped"]

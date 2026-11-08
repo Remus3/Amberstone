@@ -158,13 +158,13 @@ class TestScanPyFiles:
             (root / "__pycache__").mkdir()
             (root / "web").mkdir()
 
-            (root / "core" / "test_module.py").write_text("# test")
-            (root / "tools" / "tool.py").write_text("# tool")
-            (root / "tests" / "test_thing.py").write_text("# test")
+            (root / "core" / "test_module.py").write_text("# test", encoding="utf-8")
+            (root / "tools" / "tool.py").write_text("# tool", encoding="utf-8")
+            (root / "tests" / "test_thing.py").write_text("# test", encoding="utf-8")
             # Should be skipped.
-            (root / ".git" / "ignored.py").write_text("# git")
-            (root / "__pycache__" / "cached.py").write_text("# cache")
-            (root / "web" / "panel.js").write_text("// js")
+            (root / ".git" / "ignored.py").write_text("# git", encoding="utf-8")
+            (root / "__pycache__" / "cached.py").write_text("# cache", encoding="utf-8")
+            (root / "web" / "panel.js").write_text("// js", encoding="utf-8")
 
             files = _scan_py_files(root)
             # Keys use forward-slashed relative paths.
@@ -181,7 +181,7 @@ class TestScanPyFiles:
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             (root / "core").mkdir()
-            (root / "core" / "mod.py").write_text("# test")
+            (root / "core" / "mod.py").write_text("# test", encoding="utf-8")
             files = _scan_py_files(root)
             # Keys are forward-slashed relative paths even on Windows.
             assert "core/mod.py" in files
@@ -612,7 +612,7 @@ class TestWatcherTriggers:
         _touch(root, "core/live.py")
         with caplog.at_level(logging.INFO, logger=_LOG):
             assert w.tick() == "triggered"
-        assert (root / "restart_trigger.txt").read_text() == "auto-hot-reload"
+        assert (root / "restart_trigger.txt").read_text(encoding="utf-8") == "auto-hot-reload"
         lines = _records(caplog, "core/live.py")
         assert len(lines) == 1 and "trigger" in lines[0]
 
@@ -699,7 +699,7 @@ class TestWatcherDefersDuringGame:
 
             game.reason = None
             assert w.tick() == "triggered"
-            assert trig.read_text() == "auto-hot-reload"
+            assert trig.read_text(encoding="utf-8") == "auto-hot-reload"
             fired = _records(caplog, "triggered")
             assert len(fired) == 1
             assert "core/live.py" in fired[0]
@@ -753,7 +753,7 @@ class TestWatcherDefersDuringGame:
         # The write works again: the kept pending set fires on the next tick.
         monkeypatch.undo()
         assert w.tick() == "triggered"
-        assert (root / "restart_trigger.txt").read_text() == "auto-hot-reload"
+        assert (root / "restart_trigger.txt").read_text(encoding="utf-8") == "auto-hot-reload"
 
 
 class TestGameActivity:
