@@ -21,13 +21,16 @@ Default keymap:
 Override via env vars RC_KEY_A / RC_KEY_B / RC_KEY_DISMISS (use `keyboard`
 names - see https://github.com/boppreh/keyboard).
 
-Deploy (one time):
-    1. Install dependency:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m pip install keyboard
-    2. Copy this file to:   C:\\RC-Agent\\keybind_listener.py
-    3. Run:                 $env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\keybind_listener.py
+Status: optional and unscheduled (docs/ARCHITECTURE.md agent table); the
+rc-shell service host does not start it. It runs straight from the repo, so
+there is no separate deploy folder to copy it to.
 
-Scheduled task (PowerShell; runs as the current user, ONLOGON - same
-elevation tier as other RC-* Legion agents). RM-404: this was a caret-
+Run (one time), from the repo root:
+    1. Install dependency:  $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m pip install keyboard
+    2. Run:                 $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/keybind_listener.py
+
+Scheduled task, only if you want it at every logon (PowerShell; runs as the
+current user, ONLOGON; <repo> is this checkout's root). RM-404: this was a caret-
 continued `schtasks /Create`, and a caret does NOT continue a line in
 PowerShell - it parsed as two commands with zero errors and dropped the
 /TR payload. Register-ScheduledTask takes the executable and its
@@ -36,7 +39,7 @@ tests/test_scheduled_task_docstring_commands.py.
 
     Register-ScheduledTask -TaskName "RC-KeybindListener" -Force -RunLevel Highest `
         -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
-        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument 'C:\\RC-Agent\\keybind_listener.py')
+        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument '<repo>\\tools\\keybind_listener.py')
 
 Note on permissions: the `keyboard` library hooks the Win32 low-level
 keyboard event API. On Windows it works without admin for most users;

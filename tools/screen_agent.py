@@ -6,9 +6,15 @@ Post 1-PC consolidation (ADR-011) League runs on Legion; the in-process
 vision server (127.0.0.1:8889) caches the latest frame and coaches read it
 via /latest-frame, passing to /vision, /ocr, /coach.
 
-Run (one time):
+Status: RETIRED. No task is registered and the rc-shell service host does not
+start it (docs/ARCHITECTURE.md agent table: DISABLED); the vision process
+self-grabs its own frames, so a second capture agent streaming the same
+monitor is redundant. Kept as a reference and a deploy-allowlisted script;
+the recipes below are for a deliberate manual run only.
+
+Run (one time), from the repo root:
     1. Install deps:    $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m pip install Pillow bettercam numpy comtypes
-    2. Run:             $env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 0
+    2. Run:             $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/screen_agent.py --monitor 0
 
 Capture backend: DXGI Desktop Duplication via `bettercam`, bound to the
 single real GPU adapter. The legacy PIL ImageGrab(all_screens=True)
@@ -51,7 +57,8 @@ frame. Fetch the secondary stream via `/latest-frame?source=<channel>`.
     # UI debug (secondary): monitor 1, NOT primary, addressable by channel
     $env:LOCALAPPDATA/Programs/Python/Python314/python.exe screen_agent.py --monitor 1 --channel legion-ui --no-primary
 
-Scheduled tasks (PowerShell; run as the current user, ONLOGON). RM-404:
+Scheduled tasks, NOT registered (PowerShell; <repo> is this checkout's root;
+run as the current user, ONLOGON). RM-404:
 these were caret-continued `schtasks /Create` blocks, and a caret does
 NOT continue a line in PowerShell - each parsed as two commands with zero
 errors and dropped its /TR payload. Register-ScheduledTask takes the
@@ -60,11 +67,11 @@ Pinned by tests/test_scheduled_task_docstring_commands.py.
 
     Register-ScheduledTask -TaskName "RC-ScreenAgent-League" -Force -RunLevel Highest `
         -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
-        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument 'C:\\RC-Agent\\screen_agent.py --monitor 0 --channel legion-league')
+        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument '<repo>\\tools\\screen_agent.py --monitor 0 --channel legion-league')
 
     Register-ScheduledTask -TaskName "RC-ScreenAgent-UI" -Force -RunLevel Highest `
         -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
-        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument 'C:\\RC-Agent\\screen_agent.py --monitor 1 --channel legion-ui --no-primary')
+        -Action (New-ScheduledTaskAction -Execute "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe" -Argument '<repo>\\tools\\screen_agent.py --monitor 1 --channel legion-ui --no-primary')
 """
 import argparse
 import base64
@@ -104,7 +111,7 @@ def _resolve_auth_token() -> str:
     # used to be searched, so an in-repo run resolved "" even with a valid
     # token on disk - which the new tokenless guard below would then read as
     # a genuine misconfiguration. The sibling stays first-class because the
-    # deployed copy at C:\RC-Agent\ has no repo above it.
+    # standalone copy (no repo above it) has no config/ to find.
     _here = _Path_tok(__file__).resolve().parent
     for cfg in (_here.parent / "config" / "vision_token.txt",
                 _here / "vision_token.txt"):
