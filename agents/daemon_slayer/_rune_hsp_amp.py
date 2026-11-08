@@ -88,9 +88,11 @@ def sum_rune_hsp_pct(rune_ids: Optional[Iterable[str | int]]) -> float:
     empty / None / non-iterable argument or any lookup failure - the seam caller
     gates on its DEFAULT-OFF flag, so a 0.0 return is byte-identical.
     """
-    if not rune_ids:
-        return 0.0
     try:
+        # Inside the try (S144-D-102): a page whose truthiness raises must not
+        # escape the fail-soft contract.
+        if not rune_ids:
+            return 0.0
         seen: set[str] = set()
         total = 0.0
         for rid in rune_ids:
