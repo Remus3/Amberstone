@@ -564,6 +564,13 @@ Idle baseline 2026-10-27 08:2x local: every context was `refused` at 2023 .. 206
 NOT-YET, exit 1, `relay_parity` true. The relay's own log reads the same way. `fetch_live` keeps
 only the LAST scheme's error, so every failure line is `http://1 -> ...`, refused or timed out (808
 of them: 385 refused, 423 timed out).
+Re-run idle 2026-11-08 11:48 local (s144 gated c107): the same - all four contexts `refused` at
+2008 .. 2013 ms, `listener` empty, `past_loading` false, verdict NOT-YET, exit 1, Python 3.14.4,
+OpenSSL 3.0.19 27 Jan 2026. `relay_parity` still reads true after the two relay commits since the
+pin, both non-TLS: `a9fb7c7c5` (RM-828 (b)) and `71a51eee5` (RM-1710, LF log handler).
+`TLS_MIN_VERSION` is unmoved at `core/tls_policy.py:27`, and `client_context_noverify` is
+unchanged. `8373d2571` (RM-1175) only adds `client_context_verified`. The relay log now holds 902
+`http://1` failure lines (387 refused, 475 timed out), its last line 2026-10-31 20:25.
 What each verdict licenses (the merger's act, not the lane's; nothing is changed on a probe):
 - RAISE meets the `Reverses if:` as written. Raise the relay inline to TLSv1_2, because it is
   served standalone and cannot import `core/`. Drop SECLEVEL=0. Then, in the next League game,
@@ -588,8 +595,30 @@ relay's context, not the relay's object.
   printed): the RC-LiveClientRelay task runs this repo's `tools/liveclient_relay.py`, byte-equal
   to the main checkout. It runs under `pythonw.exe` from the same install directory as the
   probe's `python.exe` (3.14.4, OpenSSL 3.0.19 27 Jan 2026). So the probe's OpenSSL is the
-  relay's.
-- The tick line records `openssl` and repeats that comparison on the day.
+  relay's. STALE since the 2026-10-31 launcher cutover (s144 gated c107, S144-G-95): read-only
+  `schtasks /Query /TN RC-LiveClientRelay` on 2026-11-08 answers "cannot find the file", and no task
+  starts the relay. The rc-shell service host spawns it: `ops/launcher/services.json:48`
+  (`liveclient_relay`, argv `tools/liveclient_relay.py`, both profiles), started as
+  `[service_python()] + [<root>/tools/liveclient_relay.py]` (`ops/launcher/service_host.py:1391`
+  `_resolve_argv`). `service_python()` (`ops/launcher/service_host.py:485`) is the `pythonw.exe`
+  beside the host's own `python.exe`. The shell picks the host's interpreter
+  (`rc-shell/src/launcher.js:254` `resolvePython`) as `RC_PYTHON`, then the canonical Python314
+  (checkout launch only), then `<root>/python-embed` (packaged, or a checkout without the canonical
+  one). So the probe's OpenSSL is the relay's ONLY for a checkout launch on the canonical
+  interpreter with `RC_PYTHON` unset, and the relay's copy is the resolved backend root's, not
+  necessarily the main checkout's.
+- The day-of comparison (replaces the task read; read-only; paths compared in-process and never
+  printed): `ops/runtime/launcher_status.json` reads `profile` `dev` and `mode` `owned`, and its
+  `services` entry `liveclient_relay` reads `state` `running` with a `pid`. That pid's process
+  (read-only `Get-CimInstance Win32_Process -Filter "ProcessId=<pid>"`) has `ExecutablePath` in
+  the probe's `sys.executable` directory, and the file its `CommandLine` script path names has
+  the same bytes as the main checkout's `tools/liveclient_relay.py`. Any other answer - `mode` `attach` or `blocked`,
+  the relay entry not `running`, another directory (`RC_PYTHON` or `python-embed`), another copy -
+  and the verdict is NOT-YET for the relay question. The probe still ran its handshakes, but
+  under an OpenSSL the relay may not load. Record which leg failed. Idle 2026-11-08: `state`
+  `halted` (updated 2026-11-01T02:17:21Z), relay entry `halted`, `pid` null, so there is
+  nothing to compare.
+- The tick line records `openssl` and the day-of comparison.
 - `relay_parity` pins the relay's TLS-relevant code, which the rebuild was checked against.
 - Who owns the port: `listener` and `listener_after` must each name League of Legends.exe alone,
   so a portproxy self-loop (memory `project_iphlpsvc_portproxy_2999`) or any other `:2999` listener
@@ -605,14 +634,17 @@ Prior evidence on disk, not a drain:
 - The relay log `logs/liveclient_relay.log` (first line 2026-08-03) holds 0 `fetch recovered`
   lines. That is silent, not negative: `data/match_history.db` holds no League game after its
   ARAM row of 2026-08-02 (every later row is TFT), so the relay has not faced a live `:2999`
-  since logging began.
+  since logging began. Re-read 2026-11-08 (read-only): still 0 `fetch recovered` in 1181 lines,
+  and still no League row after 2026-08-02. The newest row is TFT, 2026-10-25.
 - The in-process readers (`vision_server/_relay.py` `_fetch_liveclient_direct`, using
   `ssl._create_unverified_context()`, which has a TLSv1_2 floor on 3.14; and `game_reader`
   `_get`) swallow every exception. So their existence still proves nothing.
 Reverses if: the relay's TLS-relevant code changes (`relay_parity` then reads false, and
 `tests/test_gated_tls_2999_probe.py` names the re-pin),
-`core/tls_policy.py` `TLS_MIN_VERSION` moves, or the relay task starts running another interpreter
-or another copy of the relay.
+`core/tls_policy.py` `TLS_MIN_VERSION` moves, or the relay starts under another interpreter or from
+another copy of the relay (since the 2026-10-31 cutover: the service host's `service_python()` or
+backend root changes, `RC_PYTHON` is set, or a launch falls to `python-embed`; the day-of
+comparison above catches each).
 
 **AUTO-RELOAD SWEEP (s144 gated c21, RM-1055, PREP; NOT a tick).** The dashboard reloads itself
 when a watched web asset changes (`web/js/main.js`: the `/api/ui-version` poller and the
