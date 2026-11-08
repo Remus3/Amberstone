@@ -2387,15 +2387,25 @@ function _amStartMapPolling() {
     // burn CPU + bandwidth on hidden surfaces.
     const view = document.body.dataset.view;
     if (view !== "active-match") return;
+    // S144-U-220: a poll that fails with nothing cached says so instead of
+    // leaving "loading vision..." up; with an answer cached the last good
+    // line stands (the next tick retries either way).
+    const failed = () => {
+      if (_AM_MAP.vsCache) return;
+      const status = document.getElementById("am-map-status");
+      if (status) status.textContent = _AM_MAP_FEED_FAILED;
+    };
     fetch("/api/vision-state", { cache: "no-store" })
       .then((r) => r.ok ? r.json() : null)
       .then((vs) => {
         if (vs) {
           _AM_MAP.vsCache = vs;
           _amDrawOverlay(vs);
+        } else {
+          failed();
         }
       })
-      .catch(() => { /* swallow - next tick retries */ });
+      .catch(failed);
   };
   tick();   // fire immediately so the first draw isn't 500ms late
   _AM_MAP.pollHandle = setInterval(tick, _AM_TICK_MS);
@@ -2408,6 +2418,35 @@ function _amClock(t) {
   return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
 }
 
+// S144-U-220: the status line for one /api/vision-state answer. The counts
+// only when the tracker knows at least one enemy: the server sends {} when no
+// vision state exists (dashboard/routes_diag.py _serve_vision_state) and
+// core/vision_tracker.py reports an all-zero summary until it resolves the
+// active player's team, and "0 visible - 0 MIA - 0 dead" for either claimed
+// every enemy was accounted for. The clock stays when the feed carries one.
+const _AM_MAP_NO_ENEMIES = "no enemy vision yet";
+// The line for a poll that failed with no answer cached (it said
+// "loading vision..." for the rest of the game).
+const _AM_MAP_FEED_FAILED = "vision feed did not load";
+
+function _amMapStatusText(vs) {
+  const ok = vs && typeof vs === "object" && !Array.isArray(vs);
+  const clock = (ok && vs.game_time != null)
+    ? _amClock(vs.game_time) + " - " : "";
+  const summary = ok ? vs.summary : null;
+  if (!summary || typeof summary !== "object" || Array.isArray(summary)) {
+    return clock + _AM_MAP_NO_ENEMIES;
+  }
+  const visible = summary.visible_count | 0;
+  const missing = summary.missing_count | 0;
+  const dead    = summary.dead_count | 0;
+  if (visible + missing + dead <= 0) return clock + _AM_MAP_NO_ENEMIES;
+  const shared = _AM_SHARED_VISION.has(String(vs.game_mode || "").toUpperCase());
+  return shared
+    ? `${clock}${visible} on bridge - ${dead} dead`
+    : `${clock}${visible} visible - ${missing} MIA - ${dead} dead`;
+}
+
 // Text layers (status line + per-enemy roster). Deliberately independent
 // of the base image: the old draw bailed on !img.naturalWidth, so a
 // missing map PNG froze the whole panel on "loading vision..." even
@@ -2416,20 +2455,8 @@ function _amUpdateMapText(vs) {
   const status = document.getElementById("am-map-status");
   const roster = document.getElementById("am-map-roster");
   const enemies = (vs && vs.enemies) || {};
-  const summary = (vs && vs.summary) || {};
-  const gameModeUp = String((vs && vs.game_mode) || "").toUpperCase();
-  const shared = _AM_SHARED_VISION.has(gameModeUp);
 
-  if (status) {
-    const visible = summary.visible_count | 0;
-    const missing = summary.missing_count | 0;
-    const dead    = summary.dead_count | 0;
-    const clock   = (vs && vs.game_time != null)
-      ? _amClock(vs.game_time) + " - " : "";
-    status.textContent = shared
-      ? `${clock}${visible} on bridge - ${dead} dead`
-      : `${clock}${visible} visible - ${missing} MIA - ${dead} dead`;
-  }
+  if (status) status.textContent = _amMapStatusText(vs);
 
   if (roster) {
     const frag = document.createDocumentFragment();
@@ -3272,6 +3299,8 @@ export const __test = {
   _amThreatMode,
   _amThreatEnemies,
   _amCapgapEnemyNames,
+  _amMapStatusText,
+  _AM_MAP_FEED_FAILED,
   _resolveMyTeam,
   _threatRow,
   _renderSpikeMarkersFromCtx,
