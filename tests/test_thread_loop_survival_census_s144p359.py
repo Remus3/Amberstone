@@ -21,10 +21,16 @@ A target that does not resolve in the same file (a lambda, ``serve_forever``, a 
 module) is counted and pinned by ``_UNRESOLVED``; it is a limit of this census, listed so a new one is a
 decision.
 
-Stated limits: only ``while`` loops are seen (a ``for`` over a queue, or a Timer that re-arms itself, is not);
-a ``try`` anywhere inside the loop counts, even one that guards only part of the body or whose handler
-re-raises; a target that merely
-calls a looping helper is ``oneshot`` here; a name that resolves to two same-file defs is checked as both.
+One hop (S144-P-360): a target with no ``while`` of its own that calls a function defined in the SAME file
+(a bare name or ``self.<name>`` / ``cls.<name>``, never ``<other>.<name>``) whose body has an outermost ``while`` takes that callee's
+kind, so ``Thread(target=self._run)`` where ``_run`` is ``asyncio.run(self._async_loop())`` is checked through
+``_async_loop``. Only the target's direct callees are followed (one hop, same file); the call is matched on the
+callee's NAME (bare or on self / cls), so two same-file defs of one name are all checked. A Timer whose target creates another Timer
+(self re-arming, a loop in disguise) is counted by ``_scan_timer_rearms`` and pinned at zero.
+
+Stated limits: only ``while`` loops are seen (a ``for`` over a queue is not); a ``try`` anywhere inside the
+loop counts, even one that guards only part of the body or whose handler re-raises; a callee in another
+module, or two hops away, is not followed; a name that resolves to two same-file defs is checked as both.
 """
 from __future__ import annotations
 
@@ -111,6 +117,43 @@ def _loop_var_names(tree: ast.AST, call: ast.Call, var: str) -> list[str]:
     return []
 
 
+def _loop_kinds(fn: ast.AST) -> list[str]:
+    loops = _outermost_whiles(fn)
+    if not loops:
+        return []
+    return ["guarded" if all(_loop_has_broad_try(w) for w in loops) else "unguarded"]
+
+
+def _same_file_callee(func: ast.expr) -> str | None:
+    """The name of a call to a bare function or to ``self.<name>`` / ``cls.<name>``, else None.
+
+    An attribute call on any other object (``asyncio.run(...)``, ``rec.run()``) is not matched by name: it
+    would pair the call with an unrelated same-file def of the same name.
+    """
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.value.id in ("self", "cls"):
+        return func.attr
+    return None
+
+
+def _delegate_kinds(fn: ast.AST, defs: dict[str, list[ast.AST]]) -> list[str]:
+    """Kinds of the looping same-file functions ``fn`` calls directly (one hop; ``fn`` itself excluded)."""
+    kinds: list[str] = []
+    seen: set[str] = set()
+    for node in _own_nodes(fn):
+        if not isinstance(node, ast.Call):
+            continue
+        callee = _same_file_callee(node.func)
+        if not callee or callee in seen or callee not in defs:
+            continue
+        seen.add(callee)
+        for cf in defs[callee]:
+            if cf is not fn:
+                kinds.extend(_loop_kinds(cf))
+    return kinds
+
+
 def _scan_source(rel: str, source: str) -> list[Site]:
     tree = ast.parse(source)
     defs: dict[str, list[ast.AST]] = {}
@@ -141,15 +184,29 @@ def _scan_source(rel: str, source: str) -> list[Site]:
                 continue
             kinds = []
             for fn in funcs:
-                loops = _outermost_whiles(fn)
-                if not loops:
-                    kinds.append("oneshot")
-                elif all(_loop_has_broad_try(w) for w in loops):
-                    kinds.append("guarded")
-                else:
-                    kinds.append("unguarded")
+                own = _loop_kinds(fn)
+                kinds.extend(own or _delegate_kinds(fn, defs) or ["oneshot"])
             kind = "unguarded" if "unguarded" in kinds else ("guarded" if "guarded" in kinds else "oneshot")
             out.append(Site(rel, call.lineno, n, kind))
+    return out
+
+
+def _scan_timer_rearms(source: str) -> list[tuple[int, str]]:
+    """(line, target) of each Timer whose same-file target body creates another Timer."""
+    tree = ast.parse(source)
+    defs: dict[str, list[ast.AST]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            defs.setdefault(node.name, []).append(node)
+    out: list[tuple[int, str]] = []
+    for call in ast.walk(tree):
+        if not (isinstance(call, ast.Call) and _call_name(call) == "Timer"):
+            continue
+        expr = _target_expr(call, "Timer")
+        tname = _name_of(expr) if expr is not None else None
+        for fn in defs.get(tname or "", []):
+            if any(isinstance(n, ast.Call) and _call_name(n) == "Timer" for n in _own_nodes(fn)):
+                out.append((call.lineno, tname or ""))
     return out
 
 
@@ -276,6 +333,8 @@ def test_the_scan_sees_the_guarded_population():
     assert ("core/metrics_cache.py", "_loop") in guarded
     assert ("tools/lcu_agent.py", "_state_push_loop") in guarded  # reached through a for-loop over names
     assert ("tools/hotkey_listener.py", "_refresh_loop") in guarded
+    # S144-P-360: reached through one same-file delegate (target runs asyncio.run(<looping coroutine>)).
+    assert ("core/obs_publisher.py", "_run") in guarded
     assert len(guarded) >= 25 and len(sites) >= 60
 
 
@@ -318,3 +377,92 @@ def outer():
     got = {(s.target, s.kind) for s in _scan_source("x.py", src)}
     assert got == {("good", "guarded"), ("bare", "unguarded"), ("narrow", "unguarded"), ("once", "oneshot"),
                    ("nested", "guarded"), ("Lambda", "unresolved")}
+
+
+def test_a_one_hop_delegate_takes_the_callees_kind():
+    """S144-P-360: a target with no while of its own is classified by the looping same-file function it calls."""
+    src = """
+import threading
+class A:
+    def _loop_bad(self):
+        while True:
+            x()
+    def _loop_ok(self):
+        while True:
+            try:
+                x()
+            except Exception:
+                pass
+    def run_bad(self):
+        asyncio.run(self._loop_bad())
+    def run_ok(self):
+        self._loop_ok()
+    def run_flat(self):
+        helper()
+    def recur(self):
+        self.recur()
+    def run(self):
+        while True:
+            x()
+    def via_other_object(self):
+        asyncio.run(main())
+        rec.run()
+    def start(self):
+        threading.Thread(target=self.run_bad).start()
+        threading.Thread(target=self.run_ok).start()
+        threading.Thread(target=self.run_flat).start()
+        threading.Thread(target=self.recur).start()
+        threading.Thread(target=self.via_other_object).start()
+"""
+    got = {(s.target, s.kind) for s in _scan_source("x.py", src)}
+    assert got == {("run_bad", "unguarded"), ("run_ok", "guarded"), ("run_flat", "oneshot"), ("recur", "oneshot"),
+                   ("via_other_object", "oneshot")}
+
+
+def test_the_delegate_hop_does_not_follow_two_hops_or_other_files():
+    src = """
+import threading
+def deep():
+    while True:
+        x()
+def mid():
+    deep()
+def top():
+    mid()
+def other():
+    imported_module.looping_helper()
+def start():
+    threading.Thread(target=top).start()
+    threading.Thread(target=other).start()
+"""
+    got = {(s.target, s.kind) for s in _scan_source("x.py", src)}
+    assert got == {("top", "oneshot"), ("other", "oneshot")}  # documented limit: one hop, same file
+
+
+def test_no_timer_target_re_arms_itself():
+    """A Timer whose target starts another Timer is a loop with no while; none exists today (measured)."""
+    found = []
+    for path in repo_files():
+        rel = relative_posix(path)
+        if not rel.endswith(".py") or rel.startswith(_SKIP_PREFIXES) or "/tests/" in rel:
+            continue
+        found.extend((rel, line, tgt) for line, tgt in _scan_timer_rearms(path.read_text(encoding="utf-8")))
+    assert found == [], (
+        f"a self re-arming Timer is an unguarded loop the while-based census cannot see: {found}. "
+        "Guard the re-arm in a try/finally or convert it to a thread loop with a broad try."
+    )
+
+
+def test_timer_rearm_detector_classifies_synthetic_sources():
+    src = """
+import threading
+def tick():
+    work()
+    threading.Timer(5, tick).start()
+def once():
+    work()
+def go():
+    threading.Timer(1, tick).start()
+    threading.Timer(1, once).start()
+"""
+    assert [t for _l, t in _scan_timer_rearms(src)] == ["tick", "tick"]
