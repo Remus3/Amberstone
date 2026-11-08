@@ -6,6 +6,7 @@ and uses `h._send(code, body, ctype)` to write the response. Module-
 level GET_ROUTES is consumed by `dashboard._dispatch`.
 """
 import logging
+from urllib.parse import parse_qs
 
 from dashboard._context import APP_DIR
 from dashboard._dispatch import equals, prefix
@@ -20,11 +21,29 @@ from dashboard._static import (
 log = logging.getLogger("rc.web_dashboard")
 
 
+def _target_path(h, prefix_str: str = "") -> str:
+    """The request target with its query string cut off, then `prefix_str`.
+
+    The /icons/* and /agent/* handlers used to slice the RAW target, so a
+    cache-buster (`?v=3`) became part of the file name and an existing file
+    answered 404 (true-audit s144 F1); `_serve_web_asset` already cut it.
+    """
+    return h.path.split("?", 1)[0][len(prefix_str):]
+
+
+def _wants_legacy(path: str) -> bool:
+    # The `ui` query PARAMETER only. A substring test over the whole target
+    # let `/?xui=legacy`, `/?next=ui=legacy` and `/?ui=legacy2` pick the
+    # legacy page too (true-audit s144 F4).
+    query = path.split("?", 1)[1] if "?" in path else ""
+    return "legacy" in parse_qs(query).get("ui", [])
+
+
 def _serve_index(h) -> None:
     # 2026-04-23: serve the new modern UI from web/ by default; keep
     # the legacy inline dashboard reachable at ?ui=legacy in case the
     # new one misbehaves during a live match.
-    use_legacy = ("ui=legacy" in h.path)
+    use_legacy = _wants_legacy(h.path)
     if not use_legacy:
         try:
             new_index = (APP_DIR / "web" / "index.html").read_bytes()
@@ -101,7 +120,7 @@ def _make_icon_handler(subdir: str):
 
     def _handler(h):
         try:
-            rel = h.path[len(prefix_str):]
+            rel = _target_path(h, prefix_str)
             p = resolve_safe_icon(root, rel)
             if p is None:
                 h._send(404, b"not found", "text/plain"); return
@@ -116,7 +135,7 @@ def _make_icon_handler(subdir: str):
 # the slug-naming convention in web/legacy_index.html itemSlug.
 def _serve_icon_items_route(h):
     try:
-        rel = h.path[len("/icons/items/"):]
+        rel = _target_path(h, "/icons/items/")
         p = resolve_safe_icon(APP_DIR / "data" / "icons" / "aram_items", rel)
         if p is None:
             h._send(404, b"not found", "text/plain"); return
@@ -138,21 +157,27 @@ _AGENT_ALLOWED = {
 }
 
 
+# Bounded read for an agent file - same defensive pattern as the MCP
+# `tool_read_file` fix from cycle 2. The largest allowlisted file is under
+# 100 KB (a test pins every one under the cap). A file OVER the cap is
+# refused, never served truncated: the old `read(cap)` answered 200 with the
+# first 4 MiB, a broken script presented as a whole one (true-audit s144 F3).
+_AGENT_FILE_CAP = 1 << 22
+
+
 def _serve_agent_file(h) -> None:
     # Serve agent files (e.g. screen_agent.py) for Legion agent deploy.
     # Strict allowlist: only files in tools/, no path traversal.
-    name = h.path[len("/agent/"):]
+    name = _target_path(h, "/agent/")
     if name not in _AGENT_ALLOWED:
         h._send(404, b"not found", "text/plain"); return
     try:
-        # Stream-read with 4 MiB cap - same defensive pattern as
-        # the MCP `tool_read_file` fix from cycle 2. Allowlisted
-        # files today are <50 KB so the cap doesn't truncate, but
-        # it future-proofs if logs/larger artifacts ever land in
-        # the allowlist.
-        _AGENT_FILE_CAP = 1 << 22
         with open(APP_DIR / "tools" / name, "rb") as _f:
-            body = _f.read(_AGENT_FILE_CAP)
+            body = _f.read(_AGENT_FILE_CAP + 1)
+        if len(body) > _AGENT_FILE_CAP:
+            log.warning("agent serve %s: over the %d-byte cap, refused",
+                        name, _AGENT_FILE_CAP)
+            h._send(500, b"agent_file_too_large", "text/plain"); return
         if name.endswith(".md"):
             ctype = "text/markdown; charset=utf-8"
         elif name.endswith((".pem", ".crt")):
@@ -164,6 +189,11 @@ def _serve_agent_file(h) -> None:
         else:
             ctype = "text/x-python; charset=utf-8"
         h._send(200, body, ctype)
+    except FileNotFoundError:
+        # Allowlisted but absent on this host (rc_rootCA.pem is gitignored,
+        # so a fresh clone or a worktree has none): a plain 404, not a 500
+        # plus a WARNING line any client could farm (true-audit s144 F2).
+        h._send(404, b"not found", "text/plain")
     except Exception as exc:  # noqa: BLE001
         log.warning("agent serve %s: %s", name, exc)
         h._send(500, b"agent_read_failed", "text/plain")
