@@ -2686,6 +2686,36 @@ function _amMapBadgeFs(canvas) {
   return fs > 0 ? fs : 16;
 }
 
+// S144-U-231: the MIA badge text. The /api/vision-state `enemies` keys are
+// Live Client display names (core/vision_tracker.py), so the badge draws
+// the whole name - "Nidalee 25s", "Tahm Kench 25s" - the same name the
+// gank band prints. Only when the tag is wider than maxW (measure = the
+// canvas measureText width) is the name cut and ended with "...", keeping
+// at least one letter; the seconds are never cut.
+function _amMapBadgeTag(name, secs, maxW, measure) {
+  const nm = String(name || "") || "?";
+  const tail = ` ${Math.round(secs)}s`;
+  const whole = nm + tail;
+  if (measure(whole) <= maxW) return whole;
+  for (let n = nm.length - 1; n > 1; n--) {
+    const cut = nm.slice(0, n).trimEnd() + "..." + tail;
+    if (measure(cut) <= maxW) return cut;
+  }
+  return nm.slice(0, 1) + "..." + tail;
+}
+
+// S144-U-231: where the MIA badge goes - {bx: the text's left x, top: the
+// red box's top y}. Right of the dot with the box's bottom on the dot's
+// centre line, pulled inside the far edges, and then (applied last, so it
+// wins on a canvas too small for the box) never left of 4 px or above
+// 2 px. The old order let the far-edge bound win and start the box at a
+// negative coordinate on a canvas under about 26 px tall.
+function _amMapBadgeBox(px, py, txtW, boxH, w, h) {
+  const bx = Math.max(4, Math.min(w - txtW - 8, px + 8));
+  const top = Math.max(2, Math.min(h - boxH - 2, py - boxH));
+  return { bx, top };
+}
+
 // Dot / MIA-badge / gank-band layer. Called by every vision tick (through
 // _amDrawOverlay) and by the fit observer on a resize, with the cached
 // state (null before the first answer: fit only, nothing to draw).
@@ -2777,14 +2807,16 @@ function _amDrawDots(vs) {
       // MIA badge. S144-U-229: the tag reads at --fs-xs (it was bold
       // 10px, under the floor); the red box is sized to that font, its
       // bottom at the dot's centre line, and clamped inside the canvas.
+      // S144-U-231: the whole name, cut with "..." only when the tag is
+      // wider than the canvas (it was cut to 6 chars: "Nidale", "Tahm K").
       if (missing > _AM_MIA_THRESHOLD) {
-        const tag = `${name.slice(0, 6)} ${Math.round(missing)}s`;
         ctx.font = `bold ${badgeFs}px sans-serif`;
         ctx.textBaseline = "top";
+        const tag = _amMapBadgeTag(name, missing, w - 12,
+          (s) => ctx.measureText(s).width);
         const txtW = ctx.measureText(tag).width;
         const boxH = badgeFs + 6;
-        const bx = Math.min(w - txtW - 8, Math.max(4, px + 8));
-        const top = Math.min(h - boxH - 2, Math.max(2, py - boxH));
+        const { bx, top } = _amMapBadgeBox(px, py, txtW, boxH, w, h);
         ctx.fillStyle = _AM_MAP_ALERT_BG;
         ctx.fillRect(bx - 3, top, txtW + 6, boxH);
         ctx.fillStyle = "#fff";
@@ -3480,6 +3512,8 @@ export const __test = {
   _amCapgapEnemyNames,
   _amMapStatusText,
   _amMapIsStale,
+  _amMapBadgeTag,
+  _amMapBadgeBox,
   _amMapRosterState,
   _AM_MAP_FEED_FAILED,
   _AM_MAP_STALE_S,
