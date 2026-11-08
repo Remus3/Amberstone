@@ -88,6 +88,7 @@ another module's top level is cycle-free - the ``_hsp_amp`` precedent.
 """
 from __future__ import annotations
 
+import math
 from typing import Iterable, Optional
 
 # Item ids whose ally-facing value is real but deliberately unpriced in v1. See
@@ -135,6 +136,22 @@ _ALLY_GRANT_MIRROR_SOURCE: dict[str, str] = {
 }
 
 
+def _coerce_ap(ap: object) -> float:
+    """``max(0.0, float(ap))``, with an unusable AP read as 0.0 AP.
+
+    NaN already read 0.0 through the bare clamp (``max`` keeps its first
+    argument); +-inf, None and a non-numeric value now do the same instead of
+    crediting an infinite AP-scaled grant or raising (S144-D-109).
+    """
+    try:
+        value = float(ap)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(value):
+        return 0.0
+    return max(0.0, value)
+
+
 def ally_grant_hp(
     item_id: str | int,
     level: int,
@@ -160,6 +177,9 @@ def ally_grant_hp(
 
     Fail-soft: unknown id, excluded id, empty inventory or any load failure ->
     0.0; never raises. ``patch`` defaults to the current-patch cached formulas.
+    A level ``int()`` cannot convert (NaN, +-inf, None, garbage) -> 0.0; an
+    unusable ``ap`` reads as 0.0 AP; a non-finite total -> 0.0 (S144-D-109).
+    The level clamp itself is the formula's and is untouched (RM-848 family).
     """
     iid = str(item_id or "")
     if not iid or iid in _ALLY_GRANT_EXCLUDED_ITEM_IDS:
@@ -178,13 +198,17 @@ def ally_grant_hp(
     formula = snap.formulas.get(iid)
     if formula is None:
         return 0.0
-    lvl = int(level)
-    amp = max(0.0, float(ap))
+    try:
+        lvl = int(level)
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+    amp = _coerce_ap(ap)
     shield = max(0.0, formula.shield_per_proc_at(lvl, amp))
     heal = max(0.0, formula.heal_per_proc_at(lvl, amp))
     shield_targets = max(0.0, float(formula.shield_targets_per_proc))
     heal_targets = max(0.0, float(formula.heal_targets_per_proc))
-    return shield * shield_targets + heal * heal_targets
+    total = shield * shield_targets + heal * heal_targets
+    return total if math.isfinite(total) else 0.0
 
 
 def total_item_ally_grant_hp(
