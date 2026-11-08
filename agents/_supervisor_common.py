@@ -33,10 +33,16 @@ def _env_port(name: str, default: int) -> int:
 
     RM-170 (2026-08-06): the ports and the state dir are env-overridable so a
     test can spawn a supervisor on FREE ports with a throwaway state dir while
-    the live RC-Phase3-Supervisor still holds :8890/:8891. The DEFAULTS are
+    a live Phase 3 supervisor still holds :8890/:8891. The DEFAULTS are
     unchanged, so the live supervisor (which sets none of these) behaves
     exactly as before. A malformed value falls back to the default rather than
     crashing the daemon at import time.
+
+    Status (2026-10-31 launcher cutover): the RC-Phase3-Supervisor task that
+    held those ports when RM-170 was written is unregistered (docs/OPERATIONS.md,
+    "Moved to the app"); the rc-shell service host runs ``-m agents.supervisor``
+    now, dev profile only (ops/launcher/services.json, ``phase3_supervisor``).
+    The ports and the reason to override them are unchanged.
     """
     raw = os.environ.get(name)
     if not raw:
