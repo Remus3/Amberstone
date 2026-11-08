@@ -47,7 +47,7 @@ _NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 def _ps(cmd: str) -> str:
     try:
         out = subprocess.run(["powershell", "-NoProfile", "-Command", cmd],
-                             capture_output=True, text=True, timeout=60,
+                             capture_output=True, text=True, errors="replace", timeout=60,
                              creationflags=_NO_WINDOW)
         return (out.stdout or "").strip()
     except Exception as exc:  # noqa: BLE001 - a probe must never abort the watch
@@ -116,7 +116,7 @@ def main(argv=None) -> int:
         res = subprocess.run(
             [sys.executable, str(ROOT / "tools" / "mine_event_patterns.py"),
              "--out", str(RATES)],
-            capture_output=True, text=True, cwd=str(ROOT), timeout=3600,
+            capture_output=True, text=True, errors="replace", cwd=str(ROOT), timeout=3600,
             creationflags=_NO_WINDOW)
         tail = (res.stdout or "").strip().splitlines()[-12:]
         print("\n".join(tail) or (res.stderr or "").strip()[-500:])

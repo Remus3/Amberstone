@@ -313,7 +313,7 @@ def _pid_alive(pid: int) -> bool:
         if sys.platform.startswith("win"):
             try:
                 out = subprocess.check_output(
-                    ["tasklist", "/FI", f"PID eq {pid}"], text=True, timeout=5,
+                    ["tasklist", "/FI", f"PID eq {pid}"], text=True, errors="replace", timeout=5,
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
                 return str(pid) in out
@@ -706,7 +706,7 @@ def smb_credential_present(target: str = SMB_TARGET) -> bool:
         return False
     try:
         out = subprocess.check_output(
-            ["cmdkey", f"/list:{target}"], text=True, timeout=5, stderr=subprocess.STDOUT,
+            ["cmdkey", f"/list:{target}"], text=True, errors="replace", timeout=5, stderr=subprocess.STDOUT,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except (subprocess.SubprocessError, OSError) as e:

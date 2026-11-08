@@ -174,7 +174,8 @@ class WinToastNotifier(Notifier):
                 ["powershell.exe", "-NoProfile", "-NonInteractive",
                  "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden",
                  "-EncodedCommand", enc],
-                capture_output=True, text=True, timeout=self.timeout_s,
+                capture_output=True, text=True, errors="replace",
+                timeout=self.timeout_s,
                 creationflags=CREATE_NO_WINDOW,
             )
         except (OSError, subprocess.SubprocessError) as exc:

@@ -120,7 +120,7 @@ def is_available() -> bool:
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
              "Add-Type -AssemblyName System.Speech;"
              "(New-Object System.Speech.Synthesis.SpeechSynthesizer).GetInstalledVoices().Count"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True, text=True, errors="replace", timeout=5,
             creationflags=0x08000000,
         )
         n = int((r.stdout or "0").strip() or "0")

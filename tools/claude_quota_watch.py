@@ -69,7 +69,7 @@ def main() -> None:
         return
     try:
         out = subprocess.run([TC, "status", "--json"], capture_output=True,
-                             text=True, timeout=30,
+                             text=True, errors="replace", timeout=30,
                              creationflags=CREATE_NO_WINDOW).stdout
         data = json.loads(out)
     except (OSError, ValueError, subprocess.SubprocessError):

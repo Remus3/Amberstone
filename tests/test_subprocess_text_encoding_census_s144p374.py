@@ -36,24 +36,16 @@ _OUT_OF_SCOPE = ("tests/", "ops/fleet_kit/", "agents/agent3_testing/suite/", "do
 # file -> number of text-mode spawns with no decode policy. Only shrinks. Reasons per group:
 #   frozen (ASKS 24, never edited from a lane): ops/rc_supervisor.py, ops/rc_dev_runtime.py
 #   PKG, owned by the main session: tools/run_packaged_smoke.py
-#   native Windows tools (OEM / ANSI output, wants errors="replace" only) and the remaining
-#   git / gh / python children, converted one coherent group per cycle.
+#   tools/dev_cli.py and tools/sibling_sweep_ci.py: pytest / python / git children whose
+#   decode page is the caller's choice, converted in a later cycle.
+#   (S144-P-431 converted the ten native-Windows-tool and python-child rows: errors="replace" only,
+#   because a Python child writing to a pipe uses the ANSI page, not UTF-8.)
 _BASELINE = {
-    "agents/_supervisor_common.py": 2,
-    "coaches/voice_coach.py": 1,
-    "core/operator_notify.py": 1,
-    "game_reader/poller.py": 1,
     "ops/rc_dev_runtime.py": 1,
     "ops/rc_supervisor.py": 3,
-    "tools/build_rank_baselines.py": 1,
-    "tools/claude_quota_watch.py": 1,
     "tools/dev_cli.py": 1,
-    "tools/replay_chain_watch.py": 2,
     "tools/run_packaged_smoke.py": 5,
-    "tools/scheduled_boot_verify.py": 1,
     "tools/sibling_sweep_ci.py": 1,
-    "tools/timeline_ingest.py": 1,
-    "tools/upstream_drift_check.py": 1,
 }
 
 
