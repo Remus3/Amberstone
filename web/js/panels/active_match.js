@@ -1060,9 +1060,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   }
   // UX-2: THREATS strip - per-enemy portrait + inline damage-mix donut. Skips
   // when liveclient/enemies are absent or in shared-vision modes.
+  // S144-U-218: the roster comes from _amThreatEnemies, which lists nobody when
+  // my team is unresolved (it used to list the whole lobby, me and my duo too).
   if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
-    const myTeam = _resolveMyTeam(lc);
-    const enemies = lc.allPlayers.filter((pl) => pl && pl.team && pl.team !== myTeam);
+    const enemies = _amThreatEnemies(lc);
     if (enemies.length) {
       build.appendChild(_line("THREATS", ""));
       const strip = document.createElement("div");
@@ -2839,6 +2840,24 @@ function _resolveMyTeam(lc) {
   return null;
 }
 
+// S144-U-218: the THREATS strip roster - players on a known team other than
+// mine. When my team is unresolved (no allPlayers row carries the activePlayer
+// name, or that row has no team) it is EMPTY: the old filter
+// `pl.team && pl.team !== myTeam` passed every player against a null team, so
+// a 12-player Arena lobby drew 12 threats led by the operator's own champion
+// (docs/qa/UI_UX_QUEUE_2026-07-21.md, In-game overlay). Nobody can be told
+// apart from the operator then, so the strip is left out rather than wrong.
+// The build-plan extractors keep their pinned fail-open (every player when the
+// team is unknown); those feed counter hints, not a list drawn as threats.
+function _amThreatEnemies(lc) {
+  if (!lc || typeof lc !== "object" || !Array.isArray(lc.allPlayers)) return [];
+  const myTeam = _resolveMyTeam(lc);
+  if (!myTeam) return [];
+  return lc.allPlayers.filter(
+    (pl) => pl && typeof pl === "object" && pl.team && pl.team !== myTeam,
+  );
+}
+
 // RM-1330: /api/damage-mix answers 400 to any mode but SR / ARAM / ARENA / BRAWL
 // and the donut draws a "?" tile for that. Those four pass through unchanged. This
 // fold is a guard for any other value _threatRow is handed: it asks for the mapped
@@ -3241,6 +3260,8 @@ export const __test = {
   _amDsSyntheticCs,
   _amDsComboMode,
   _amThreatMode,
+  _amThreatEnemies,
+  _resolveMyTeam,
   _threatRow,
   _renderSpikeMarkersFromCtx,
 };
