@@ -223,3 +223,14 @@ test("map roster: a stalled feed claims no live state on any row", () => {
       { state: "stale", text: "no feed" }, JSON.stringify(e));
   }
 });
+
+// S144-U-224: a poll request is given up on after _AM_MAP_FETCH_TIMEOUT_MS.
+// Longer than a tick (a slow answer is not cut off by the next tick) and
+// under the stale cut (a hang before the first answer says "did not load"
+// before a live feed could read as stalled).
+test("map poll: the request timeout sits between one tick and the stale cut", () => {
+  const ms = am._AM_MAP_FETCH_TIMEOUT_MS;
+  assert.strictEqual(typeof ms, "number");
+  assert.ok(ms > 500, ms);
+  assert.ok(ms < am._AM_MAP_STALE_S * 1000, ms);
+});

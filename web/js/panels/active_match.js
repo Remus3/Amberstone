@@ -1396,6 +1396,7 @@ function _amRenderLiveFallback(fb, p, ctx) {
       clearInterval(_AM_MAP.pollHandle);
       _AM_MAP.pollHandle = null;
     }
+    _amMapDropInflight();
     _AM_MAP.vsCache = null;
     _AM_MAP.feed = _amMapFeedTrack();
     // RM-1769: no canvas to fit either - release the fit observer.
@@ -2271,6 +2272,11 @@ const _AM_GANK_THRESHOLD = 20;
 // Cadence: how often we re-poll /api/vision-state. 500ms matches the
 // home-view's VT_INTERVAL_MS so dot positions don't lag.
 const _AM_TICK_MS = 500;
+// S144-U-224: a poll request still unanswered after this is aborted and
+// settles as a failure. Under the 10 s stale cut (_AM_MAP_STALE_S), so a
+// hang before the first answer says "vision feed did not load" well before
+// a live feed could be called stalled.
+const _AM_MAP_FETCH_TIMEOUT_MS = 5000;
 
 const _AM_MAP = {
   attachedMode: null,    // last mode we rendered the shell for
@@ -2278,6 +2284,7 @@ const _AM_MAP = {
   vsCache:      null,    // last successful /api/vision-state response
   fitObserver:  null,    // ResizeObserver re-fitting the canvas (RM-1769)
   feed:         _amMapFeedTrack(),  // feed-age track (S144-U-221)
+  inflight:     null,    // the one open poll request (S144-U-224)
 };
 
 function _renderAmMap(host, mode, payload) {
@@ -2404,9 +2411,45 @@ function _amStartMapPolling() {
       const status = document.getElementById("am-map-status");
       if (status) status.textContent = _AM_MAP_FEED_FAILED;
     };
-    fetch("/api/vision-state", { cache: "no-store" })
+    // S144-U-224: one request open at a time. The poll used to send one
+    // every tick with no timeout, so a server that stopped answering
+    // collected an open request per tick (34 to 35 after 15 s) and a hang before
+    // the first answer left "loading vision..." up for good. A tick that
+    // finds a request still open repaints the cached answer against the
+    // feed's age and sends nothing; a request unanswered after
+    // _AM_MAP_FETCH_TIMEOUT_MS is aborted and settles as a failure, so the
+    // next tick asks again. A request dropped by _amMapDropInflight (the
+    // poll stopped) never paints.
+    if (_AM_MAP.inflight) {
+      if (_AM_MAP.vsCache) _amDrawOverlay(_AM_MAP.vsCache);
+      return;
+    }
+    const ctl = (typeof AbortController === "function")
+      ? new AbortController() : null;
+    const req = { ctl: ctl, timer: null };
+    _AM_MAP.inflight = req;
+    // True once, for the request that is still the open one.
+    const settle = () => {
+      if (_AM_MAP.inflight !== req) return false;
+      _AM_MAP.inflight = null;
+      if (req.timer !== null) {
+        clearTimeout(req.timer);
+        req.timer = null;
+      }
+      return true;
+    };
+    req.timer = setTimeout(() => {
+      req.timer = null;
+      if (!settle()) return;
+      if (ctl) ctl.abort();
+      failed();
+    }, _AM_MAP_FETCH_TIMEOUT_MS);
+    const opts = { cache: "no-store" };
+    if (ctl) opts.signal = ctl.signal;
+    fetch("/api/vision-state", opts)
       .then((r) => r.ok ? r.json() : null)
       .then((vs) => {
+        if (!settle()) return;
         if (vs) {
           _amMapNoteFeed(_AM_MAP.feed, vs, Date.now());
           _AM_MAP.vsCache = vs;
@@ -2415,10 +2458,25 @@ function _amStartMapPolling() {
           failed();
         }
       })
-      .catch(failed);
+      .catch(() => {
+        if (settle()) failed();
+      });
   };
   tick();   // fire immediately so the first draw isn't 500ms late
   _AM_MAP.pollHandle = setInterval(tick, _AM_TICK_MS);
+}
+
+// S144-U-224: abort and forget the open poll request, so an answer that
+// lands after the poll stopped neither fills the reset cache nor paints.
+function _amMapDropInflight() {
+  const req = _AM_MAP.inflight;
+  _AM_MAP.inflight = null;
+  if (!req) return;
+  if (req.timer !== null) {
+    clearTimeout(req.timer);
+    req.timer = null;
+  }
+  if (req.ctl) req.ctl.abort();
 }
 
 // mm:ss from the vision-state game clock - the visibly-ticking heartbeat
@@ -3386,6 +3444,7 @@ export const __test = {
   _amMapRosterState,
   _AM_MAP_FEED_FAILED,
   _AM_MAP_STALE_S,
+  _AM_MAP_FETCH_TIMEOUT_MS,
   _amMapFeedTrack,
   _amMapNoteFeed,
   _amMapStaleS,
