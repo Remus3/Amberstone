@@ -205,9 +205,11 @@ def iter_day_ledgers(spend_dir: Path) -> list[Path]:
                        3.11+: it also accepts the ISO week date
                        `2026-W01-1` (measured on 3.14.4 -> 2025-12-29), which
                        is likewise 10 chars, so a length check does not
-                       exclude it. `cost_tracker._today_str()` (:183-184,
-                       used at :237) only ever emits `date.today()
-                       .isoformat()`, so anything else is a foreign file.
+                       exclude it. `cost_tracker._ledger_day()` (the day
+                       `CostTracker._spend_path` names) only ever emits
+                       `date.today().isoformat()`, and nothing before
+                       `SPEND_LEDGER_MIN_DATE` (RM-718 (d)), so anything
+                       else is a foreign file.
       fromisoformat    calendar validity, which the regex cannot judge
                        (`2026-02-30`, `2026-13-45`).
     """

@@ -196,6 +196,37 @@ def _empty_ledger() -> dict:
     }
 
 
+# RM-718 (d): the earliest day a spend ledger may be named after. A clock
+# reading before it is not a day RC ran, so no file is written for it.
+# Measured trigger (2026-08-06): a test patched `time.time` to 1_000_000,
+# `date.today()` reads the clock through `time.time`, and the tracker
+# minted `data/spend/1970-01-12.json`. A CMOS reset reads the same way.
+# The floor sits below the first real ledger (2026-04-28); the retention
+# class for a ledger that already slipped through is
+# `core.data_retention.CLASS_MISDATED_SPEND`, which reads this constant.
+# While the clock reads before the floor, daily_spend() is empty, so the
+# daily_budget_usd cap sees $0 - the same as the first call of any new day
+# under the old behaviour, which also started a fresh (1970) ledger.
+SPEND_LEDGER_MIN_DATE = date(2025, 1, 1)
+_misdated_warned = False
+
+
+def _ledger_day() -> Optional[str]:
+    """Today's ledger day as YYYY-MM-DD, or None when the clock reads a
+    day before SPEND_LEDGER_MIN_DATE (then nothing is booked to disk)."""
+    global _misdated_warned
+    today = date.today()
+    if today >= SPEND_LEDGER_MIN_DATE:
+        return today.isoformat()
+    if not _misdated_warned:
+        _misdated_warned = True
+        _log.warning(
+            "cost_tracker: clock reads %s, before the %s spend-ledger floor;"
+            " spend is not booked to disk until the clock is sane",
+            today.isoformat(), SPEND_LEDGER_MIN_DATE.isoformat())
+    return None
+
+
 def _read_config() -> dict:
     """Merge rc_config.json (operational) + coach_settings.json (per-mode)."""
     merged: dict = {}
@@ -227,8 +258,12 @@ class CostTracker:
             _log.debug("cost_tracker config load: %s", exc)
             return {}
 
-    def _spend_path(self) -> Path:
-        return self._spend_dir / f"{_today_str()}.json"
+    def _spend_path(self, day: Optional[str] = None) -> Optional[Path]:
+        """Today's ledger path; None when the clock is before the floor."""
+        day = day or _ledger_day()
+        if day is None:
+            return None
+        return self._spend_dir / f"{day}.json"
 
     # --- Recording (5.8) --------------------------------------------------
 
@@ -271,9 +306,18 @@ class CostTracker:
         except Exception as exc:  # noqa: BLE001
             _log.debug("prom_metrics record_call: %s", exc)
         with self._lock:
-            cur = read_json_dict(self._spend_path(), default=_empty_ledger())
-            if cur.get("date") != _today_str():
+            # One day for the read, the check and the write, so a call
+            # straddling midnight cannot read one day and write another.
+            day = _ledger_day()
+            if day is None:
+                # RM-718 (d): a clock before the floor books nothing to
+                # disk; the caller still gets this call's own cost.
+                return {"usd": round(total_usd, 6), "total_usd": 0.0}
+            path = self._spend_path(day)
+            cur = read_json_dict(path, default=_empty_ledger())
+            if cur.get("date") != day:
                 cur = _empty_ledger()
+                cur["date"] = day
             cur["total_usd"]   = round(cur.get("total_usd", 0.0) + total_usd, 6)
             cur["calls"]       = cur.get("calls", 0) + 1
             cur["tokens_in"]   = cur.get("tokens_in", 0) + input_tokens
@@ -299,11 +343,14 @@ class CostTracker:
                 pb["usd"]    = round(pb.get("usd", 0.0) + total_usd, 6)
                 pb["tokens"] = (pb.get("tokens", 0) + input_tokens
                                 + output_tokens + cache_read + cache_write)
-            atomic_write_json(self._spend_path(), cur)
+            atomic_write_json(path, cur)
         return {"usd": round(total_usd, 6), "total_usd": cur["total_usd"]}
 
     def daily_spend(self) -> dict:
-        return read_json_dict(self._spend_path(), default=_empty_ledger())
+        path = self._spend_path()
+        if path is None:
+            return _empty_ledger()
+        return read_json_dict(path, default=_empty_ledger())
 
     # --- Spend cap (5.4) --------------------------------------------------
 
