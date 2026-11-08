@@ -6896,18 +6896,59 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // Mirror of core/vision_tracker._SHARED_VISION_MODES - modes where the
   // whole map is visible to both teams and Live Client emits no positions.
   const VT_SHARED_VISION = new Set(["ARAM", "KIWI"]);
+  // S144-U-225: a poll request still unanswered after this is aborted and
+  // settles as a failure. Above one tick, so a slow answer is not cut off
+  // by the next tick (the Active Match MAP poll uses the same 5 s,
+  // active_match.js _AM_MAP_FETCH_TIMEOUT_MS).
+  const VT_FETCH_TIMEOUT_MS = 5000;
+  // The one open /api/vision-state request of this poll, or null.
+  let vtInflight = null;
 
   async function refreshVisionOverlay() {
     if (!VT_OVERLAY) return;
     if (document.hidden) return;
+    // S144-U-225: one request open at a time. This poll used to send one
+    // every 500 ms tick, on every view, with no timeout, so a server that
+    // stopped answering collected an open request per tick and a late
+    // answer could paint over a newer one. A tick that finds a request
+    // still open sends nothing; one unanswered after VT_FETCH_TIMEOUT_MS
+    // is aborted (body read included) and settles as a failure, so the
+    // next tick asks again. An answer that lands after its request was
+    // given up on never paints.
+    if (vtInflight) return;
+    const ctl = (typeof AbortController === "function")
+      ? new AbortController() : null;
+    const req = { timer: null };
+    vtInflight = req;
+    // True once, for the request that is still the open one.
+    const settle = () => {
+      if (vtInflight !== req) return false;
+      vtInflight = null;
+      if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
+      return true;
+    };
+    req.timer = setTimeout(() => {
+      req.timer = null;
+      if (!settle()) return;
+      if (ctl) ctl.abort();
+      VT_OVERLAY.style.display = "none";
+    }, VT_FETCH_TIMEOUT_MS);
     // Fetch first so the shared-vision pill can update even when the
     // minimap PNG isn't currently visible (image still loading, etc.).
     let vs;
     try {
-      const r = await fetch("/api/vision-state");
-      if (!r.ok) { VT_OVERLAY.style.display = "none"; return; }
+      const r = await fetch("/api/vision-state",
+        ctl ? { signal: ctl.signal } : undefined);
+      if (!r.ok) {
+        if (settle()) VT_OVERLAY.style.display = "none";
+        return;
+      }
       vs = await r.json();
-    } catch (_) { VT_OVERLAY.style.display = "none"; return; }
+    } catch (_) {
+      if (settle()) VT_OVERLAY.style.display = "none";
+      return;
+    }
+    if (!settle()) return;
     if (!vs || !vs.enemies || Object.keys(vs.enemies).length === 0) {
       VT_OVERLAY.style.display = "none";
       return;
