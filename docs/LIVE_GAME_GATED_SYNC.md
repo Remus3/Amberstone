@@ -5523,6 +5523,43 @@ Ids `LX-nn` map to the RM rows in `BACKLOG.md` "External-lift intake".
   Reconnect keeps the pending draft, a refused write is retried at most 5 times). Restarting
   RC-LCUAgent before the game is a main-session / operator act, never a lane's. Either way the
   evidence names the agent start time against `5b880630a`, so the graded code is known.
+  STALE since the 2026-10-31 launcher cutover (s144 gated c108, S144-G-96; re-measured 2026-11-08
+  at idle, read-only). (i) Read-only `schtasks /Query /TN RC-LCUAgent` answers "cannot find the
+  file": no task starts the agent and none can be restarted. The rc-shell service host spawns it
+  (`ops/launcher/services.json` `lcu_agent`, argv `tools/lcu_agent.py`, profiles packaged + dev,
+  restart `always`) at every app launch, and stops it when the app quits. (ii) `5b880630a` is a
+  pre-rewrite twin: the filter-repo commit-map gives `ab584e986` (same subject and committer
+  time), which is itself on main's first-parent chain (2026-10-28 01:03:05 -05:00). (iii) Every
+  agent start after that already imported RM-1033: the `lcu agent ->` start lines read 2026-10-30
+  09:53:49, 2026-10-31 13:32:17, 16:49:15 and 19:13:04, the last one matching
+  `ops/runtime/launcher_status.json` `services.lcu_agent.started` 2026-11-01T00:13:04Z. The
+  launcher has been `halted` since 2026-11-01T02:17:21Z (`reason` stdin_stop, `lcu_agent.pid`
+  null), so no agent runs now and the next launch starts a fresh one on the checkout's HEAD.
+  (iv) The commits since `ab584e986` on `lcu/draft_log.py` and `lcu/snapshot_shape.py` are
+  behaviour-preserving: cite-by-symbol comments (`c58458946`, `6d2d1a0d4`), `gid if gid > 0 else
+  0` -> `max(0, gid)` (`1bbe6a9b4`), `sorted(list(x))` -> `sorted(x)` (`d2019d48f`), unread
+  `err` -> `_err` (`275e43c73`), two if/else assignments -> conditional expressions
+  (`9153cea44`). (v) (1) and (2) still hold (`mode=ro`): no `draft_log` table (7 tables), the
+  newest `matches.game_creation_ts` is 2026-07-20 local (07-21 UTC). The (4) and (5) cites
+  hold by symbol: `attach_draft_log` has no production caller (only the grader and tests),
+  `note_game_id` is called from `lcu/snapshot_shape.py`, `INTERVAL = 1.0` in
+  `tools/lcu_agent.py`. REPLACEMENT RULE: before the pop, read `launcher_status.json` (`state`
+  running; in the `services` LIST, the entry named `lcu_agent` has `state` running, a `pid`,
+  and `started` after `ab584e986`'s time), then tie that pid to the agent itself: the live
+  process's CommandLine contains `tools` + a separator + `lcu_agent.py` (it may be quoted),
+  matched separator-agnostic (the service host passes `<root>\tools\lcu_agent.py` with backslashes,
+  `_resolve_argv`), AND its CreationDate is within 5 s of `started` with BOTH in UTC
+  (CreationDate comes back in local time, `started` is UTC `+00:00` cut to whole seconds). Read
+  it with read-only `Get-CimInstance Win32_Process -Filter "ProcessId=<pid>"`; `started` is
+  stamped right after the spawn and job adopt (`ops/launcher/service_host.py` `started_wall`).
+  The file can still say running after a host crash, and Windows can hand the pid to an
+  unrelated process (the G7-17 stale-file trap); with no agent every count reads 0, so without
+  this tie the COEXIST half could PASS on nothing. Record `started` in the evidence beside the
+  main checkout's `git rev-parse --short HEAD` and `git log -1 --format=%h -- lcu/draft_log.py
+  lcu/snapshot_shape.py tools/lcu_agent.py`; a HEAD commit newer than `started` means the
+  agent may run older code, so name both. The launcher not running, a dead pid, or a pid whose
+  CommandLine or CreationDate does not match = NOT-YET (no agent, no rows), never a PASS and
+  never a FAIL.
   (4) `attach_draft_log` has NO production caller (only `tests/test_draft_log_*.py`). Nothing
   renders a draft, so LX-01 asks whether the rows are WRITTEN and JOIN right, never whether
   anything renders. The grader calls the real `attach_draft_log` on a read-only connection.
