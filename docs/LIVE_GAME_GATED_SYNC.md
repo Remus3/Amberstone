@@ -2675,6 +2675,37 @@ survivability flips below cannot roll otherwise.
   `bench_after`), and every cell shows a champion icon, not `?`. With an empty bench, PASS iff the
   "no bench champs yet" line shows. FAIL = a missing, extra or reordered cell, or no strip at all while
   `champ_select.is_aram` is true.
+  **RE-CHECK (lane 9 PREP s144 cycle 111, 2026-11-08, source read at `1385be75b`; NOT a tick;
+  S144-G-99).** Still a PRUNE candidate for a human. The predicate holds with one gap closed and
+  one precondition added. (i) Cites drifted; read them by symbol. The residual's text now lives
+  in `docs/ROADMAP_HISTORY.md` ("Residual: none functional"); `ROADMAP.md` no longer carries it.
+  The fix is `docs/history_notes.md` item 87 (2026-05-17 late), and the triage line is row 14
+  "KEYSTONE residual" with mark `?`, disposition PRUNE. Its fix commits (`3eb2e2d`, `a5405ee`)
+  do not resolve in this clone or in the filter-repo commit-map (a pre-2026-07 cite; Settled).
+  The fix is read by symbol instead: `ARAM_QUEUE_IDS` in `lcu/champ_select_shape.py` holds 2400,
+  and the shape's `"is_aram"` key reads `queue_id in ARAM_QUEUE_IDS`. (ii) Render gate: the panel
+  builds the strip only when `_csvDetectMode(cs)` is `"aram"`. That is `is_aram` or queue
+  450 / 920 / 2400, with the Arena queues tested first, and no Arena queue is in the ARAM set. So
+  "no strip at all while `is_aram` is true" stays a valid FAIL. (iii) GAP CLOSED. In
+  `_csvBenchHtml` a cell shows `?` only when the id is empty or missing from `CHAMPS.byId`
+  (`/data/champions_index.json`). The icon is an `<img>` with `onerror` that sets
+  `display:none`, so a 404 icon renders as a BLANK cell, not `?`. Read every cell as: one `<img>`
+  with `naturalWidth > 0` and a computed `display` other than `none`. A blank cell is a FAIL like
+  `?`. (iv) NEW PRECONDITION, the icon mirror. `/data/` is served from `web/` (`routes_static.py`
+  `_serve_web_asset`), and `web/data/ddragon/` is a gitignored local mirror. A patch bump that
+  moves the tracked index `version` without a mirror refresh blanks EVERY bench icon. Read-only
+  2026-11-08 in the main checkout: index version 16.22.1, 173 ids, 0 without a
+  `web/data/ddragon/16.22.1/img/champion/<slug>.png`. Re-run that join before the champ select.
+  A miss is a setup fault: refresh the mirror (`tools/ddragon_mirror_refresh.py`), do not grade.
+  (v) Bench source: the G3-01 probe's `bench_after` is the FULL bench, so compare its first 10.
+  It exists only when a dashboard swap reached a new capture. With no swap, read
+  `GET :8889/latest-lcu` -> `data.champ_select.bench`, and its `data.ts` must be within 2 s of
+  the DOM read. (vi) Evidence source and SUBSTITUTION. Allowed: the operator's own look at the
+  rc-shell pane, or a headless Chromium DOM read of `https://127.0.0.1:8888/` during the live
+  champ select. Record which, since the second is another client of the same page and state, not
+  the operator's pane. NOT evidence: rendering `_csvBenchHtml` against a fixture or a replayed
+  relay payload (the compute half). The precondition carried from G3-01 (vi) also binds: the
+  launcher has been `halted` since 2026-11-01T02:17:21Z, so no agent and no bench data today.
 - **G3-03** `[CS-SCENARIO - UNBLOCKED 2026-10-24 by RM-850; was BLOCKED ON WIRING the same day]` (was C2) Comp-verdict VARIANT
   branch still unobserved (SWAP + STAY validated at LGS2; never surfaced in-game 2026-07-04). Soundness
   discharged headless (OQ22). **WHY IT NEVER ROLLED (lane 9 PREP s133, source read at `373c693bb`,
