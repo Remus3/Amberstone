@@ -9,10 +9,11 @@ call is not a security use, where a bare ``hashlib.md5()`` raises ``ValueError``
 SSE stream, the asset-hash route or the comp-id builder down on such a host.
 
 The finding that stays: ``core/moon_proxy.py`` (a FROZEN file, CLAUDE.md "Frozen files"; an edit needs
-explicit operator approval). A baseline row that stops offending fails ``test_baseline_is_exact`` until
+explicit operator approval). S144-P-441 brought ``agents/daemon_slayer`` into scope: its one
+finding (``abilities.artifact_body_fingerprint``) is fixed the same way. A baseline row that stops offending fails ``test_baseline_is_exact`` until
 it is dropped; a new finding anywhere else fails ``test_no_new_findings``.
 
-Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the vendored
+Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, the vendored
 ``ops/fleet_kit`` and the ``agents/agent3_testing/suite`` suite are out of scope. The run uses NO config
 (``--isolated``) so a per-file-ignore cannot hide a finding.
 """
@@ -38,7 +39,6 @@ _RULE = "S324"
 _OUT_OF_SCOPE = (
     "tests/",
     "tools/tests/",
-    "agents/daemon_slayer/",
     "agents/agent3_testing/suite/",
     "ops/fleet_kit/",
 )
@@ -51,6 +51,7 @@ _FIXED = (
     "coaches/rune_pages.py",
     "dashboard/_static.py",
     "dashboard/routes_spike_curve.py",
+    "agents/daemon_slayer/abilities.py",
     "dashboard/routes_state.py",
     "tft/engine/comps.py",
     "tools/ds_feed_index.py",
@@ -106,3 +107,15 @@ def test_probe_is_live():
     probe = "import hashlib\nhashlib.md5(b'x')\n"
     found = _ruff(["--select", _RULE, "--stdin-filename", "probe_mod.py", "-"], stdin=probe)
     assert _RULE in {d["code"] for d in found}
+
+
+def test_ds_artifact_fingerprint_digest_is_unchanged():
+    """S144-P-441: agents/daemon_slayer/abilities.py was the one S324 finding left once
+    agents/daemon_slayer left the out-of-scope list. The flag changes no byte of the
+    digest: the 8-hex fingerprint stays comparable with tools/ds_feed_index.body_md5."""
+    from agents.daemon_slayer import abilities
+    from tools import ds_feed_index
+
+    doc = {"a": 1, "b": [1, 2], "c": {"d": "x"}}
+    assert abilities.artifact_body_fingerprint(doc) == "9d8a5f95"  # measured before the flag
+    assert abilities.artifact_body_fingerprint(doc) == ds_feed_index.body_md5(doc)
