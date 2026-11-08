@@ -2272,6 +2272,11 @@ const _AM_GANK_THRESHOLD = 20;
 // The faintest a canvas dot gets: a ghost long missing, and (S144-U-228)
 // every last-known dot while the feed is stalled.
 const _AM_GHOST_MIN_ALPHA = 0.25;
+// S144-U-230: the one red behind the white bold text of the gank band and
+// the MIA badge. Translucent, so 15 percent of the map shows through; the
+// old rgba(220, 38, 38, 0.85) fell to 4.05:1 over a near-white patch. This
+// red holds 5.13:1 over white and 8.14:1 over black (AA is 4.5:1).
+const _AM_MAP_ALERT_BG = "rgba(185, 28, 28, 0.85)";
 // Cadence: how often we re-poll /api/vision-state. 500ms matches the
 // home-view's VT_INTERVAL_MS so dot positions don't lag.
 const _AM_TICK_MS = 500;
@@ -2369,7 +2374,7 @@ function _renderAmMap(host, mode, payload) {
     figure.appendChild(canvas);
     const ganker = document.createElement("div");
     ganker.id = "am-map-gank";
-    ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:var(--fs-xs);color:#fff;background:rgba(220,38,38,0.85);font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
+    ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:var(--fs-xs);color:#fff;background:" + _AM_MAP_ALERT_BG + ";font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
     figure.appendChild(ganker);
     shell.appendChild(figure);
     host.appendChild(shell);
@@ -2780,7 +2785,7 @@ function _amDrawDots(vs) {
         const boxH = badgeFs + 6;
         const bx = Math.min(w - txtW - 8, Math.max(4, px + 8));
         const top = Math.min(h - boxH - 2, Math.max(2, py - boxH));
-        ctx.fillStyle = "rgba(220, 38, 38, 0.85)";
+        ctx.fillStyle = _AM_MAP_ALERT_BG;
         ctx.fillRect(bx - 3, top, txtW + 6, boxH);
         ctx.fillStyle = "#fff";
         ctx.fillText(tag, bx, top + 3);

@@ -48,8 +48,9 @@ _RECORD_TEXT = """(() => {
 _FS_XS_JS = """() => parseFloat(getComputedStyle(document.documentElement)
   .getPropertyValue('--fs-xs'))"""
 
-# The badge is the only rgba(220, 38, 38, 0.85) fill on the layer; its
-# white tag text is drawn inside that box.
+# The badge is the only rgba(185, 28, 28, 0.85) fill on the layer (S144-U-230;
+# it was rgba(220, 38, 38, 0.85)); its white tag text is drawn inside that
+# box. Pink dots carry a green channel of 126, so they never match.
 _BADGE_BOX_JS = """() => {
   const cv = document.getElementById('am-map-overlay');
   if (!cv || getComputedStyle(cv).display === 'none'
@@ -60,7 +61,7 @@ _BADGE_BOX_JS = """() => {
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
-      if (d[i] >= 200 && d[i + 1] <= 70 && d[i + 2] <= 70
+      if (d[i] >= 170 && d[i + 1] <= 60 && d[i + 2] <= 60
           && d[i + 3] >= 180) {
         red++;
         if (x < x0) x0 = x;

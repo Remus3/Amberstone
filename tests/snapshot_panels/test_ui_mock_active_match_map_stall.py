@@ -299,7 +299,8 @@ def test_sr_gank_band_stands_down_while_the_feed_is_stalled(
 # S144-U-228: the SR canvas layer. Ahri sits at the world centre and Nidalee
 # at (9800, 4400) on the 14800 CLASSIC map; a dot's centre pixel alpha says
 # how it was drawn (0.95 live, 0.25 the ghost floor), and the MIA badge is the
-# only rgba(220, 38, 38, 0.85) fill on the layer.
+# only rgba(185, 28, 28, 0.85) fill on the layer (S144-U-230; it was
+# rgba(220, 38, 38, 0.85)).
 _CANVAS_JS = """() => {
   const cv = document.getElementById('am-map-overlay');
   if (!cv || getComputedStyle(cv).display === 'none'
@@ -311,7 +312,7 @@ _CANVAS_JS = """() => {
   const d = ctx.getImageData(0, 0, w, h).data;
   let badge = 0;
   for (let i = 0; i < d.length; i += 4) {
-    if (d[i] >= 200 && d[i + 1] <= 70 && d[i + 2] <= 70
+    if (d[i] >= 170 && d[i + 1] <= 60 && d[i + 2] <= 60
         && d[i + 3] >= 180) badge++;
   }
   return {ahri: at(7400, 7400), nidalee: at(9800, 4400), badge};
