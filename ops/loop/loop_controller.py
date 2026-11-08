@@ -945,8 +945,10 @@ def bridge_stale_message(age, limit=AHK_HEARTBEAT_STALE_SEC):
 
 # ---- main loop ---------------------------------------------------------
 def wait_for(path, deadline_ts, watch_bridge=False):
+    # deadline_ts is a time.monotonic() value (executor.py builds it): a wall-clock step
+    # must not cut a 90-minute cycle wait short or stretch the 120 s typed-handshake one.
     warned = False
-    while time.time() < deadline_ts:
+    while time.monotonic() < deadline_ts:
         if (CTL / "STOP").exists():
             log("external STOP seen"); sys.exit(0)
         halt_if_disarmed("wait_for")
@@ -961,7 +963,8 @@ def wait_for(path, deadline_ts, watch_bridge=False):
     return False
 
 def wait_gone(path, deadline_ts):
-    while time.time() < deadline_ts:
+    # same monotonic deadline seam as wait_for
+    while time.monotonic() < deadline_ts:
         if (CTL / "STOP").exists():
             log("external STOP seen"); sys.exit(0)
         halt_if_disarmed("wait_gone")

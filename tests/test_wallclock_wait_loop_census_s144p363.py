@@ -8,14 +8,13 @@ test calls ``time.time()`` is a timeout and not one of those.
 
 This census reads every tracked non-test ``.py`` and finds each ``while`` whose test contains a
 ``time.time()`` call (``time.time() < deadline``, ``time.time() - start < seconds``,
-``deadline > time.time()``). Measured 2026-11-08 over the git index: SIX sites, four converted to
-``time.monotonic()`` in this slice (``lcu/lcu_postgame_collector.py`` ``_capture_after_trigger``,
+``deadline > time.time()``). Measured 2026-11-08 over the git index: SIX sites. Four were converted to
+``time.monotonic()`` in S144-P-363 (``lcu/lcu_postgame_collector.py`` ``_capture_after_trigger``,
 ``tools/gated_bench_swap_probe.py`` ``watch``, ``tools/overlay_legibility_preview.py`` and
-``tools/pseudo_screen_overlay.py`` ``_wait_for_ready``) and two left as named rows:
-``ops/loop/loop_controller.py`` ``wait_for`` and ``wait_gone`` take an EPOCH ``deadline_ts`` that the
-caller (``ops/loop/executor.py`` ``cycle``) builds with ``time.time() + n`` and reuses across a stall
-recovery, so the clock is part of the seam's signature; converting it means changing both ends together,
-filed rather than done here.
+``tools/pseudo_screen_overlay.py`` ``_wait_for_ready``). The other two, ``ops/loop/loop_controller.py``
+``wait_for`` and ``wait_gone``, take a ``deadline_ts`` that ``ops/loop/executor.py`` builds, so the clock was
+part of the seam's signature; S144-P-364 converted both ends together
+(tests/test_loop_wait_deadline_monotonic_s144p364.py) and the census now has no named row.
 
 Stated limits: only a ``while`` test is read (an ``if time.time() - t0 > limit`` after a blocking call is not
 a wait loop and is out of scope); ``from time import time`` is not seen (the call is matched as the dotted
@@ -34,14 +33,9 @@ from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
 
 _OUT_OF_SCOPE = ("tests/", "ops/fleet_kit/", "ops/launcher/", "agents/agent3_testing/suite/", "docs/_archive/")
 
-# (file, enclosing function) -> why the wall-clock deadline is the design.
-_ROWS = {
-    ("ops/loop/loop_controller.py", "wait_for"):
-        "deadline_ts is an epoch timestamp built by executor.py with time.time() and reused across a stall "
-        "recovery; the clock is part of the signature",
-    ("ops/loop/loop_controller.py", "wait_gone"):
-        "same epoch deadline_ts seam as wait_for",
-}
+# (file, enclosing function) -> why the wall-clock deadline is the design. Empty since S144-P-364 converted
+# the two epoch-deadline rows (loop_controller wait_for / wait_gone and the executor that builds their deadline).
+_ROWS: dict[tuple[str, str], str] = {}
 
 
 def _in_scope(rel: str) -> bool:
@@ -105,14 +99,16 @@ def test_no_row_is_stale(scan):
     assert stale == [], f"named rows that no longer time a loop on time.time() - drop them: {stale}"
 
 
-def test_epoch_deadline_rows_match_the_source():
-    """The loop_controller rows are held to their fact on the source: the deadline is a parameter."""
+def test_the_loop_wait_seam_is_monotonic_at_both_ends():
+    """S144-P-364: wait_for / wait_gone and the executor that builds their deadline share one clock."""
     tree = ast.parse((REPO_ROOT / "ops/loop/loop_controller.py").read_bytes().decode("utf-8"))
     for name in ("wait_for", "wait_gone"):
         fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
         assert "deadline_ts" in [a.arg for a in fn.args.args], name
+        assert "time.monotonic" in {ast.unparse(c.func) for c in ast.walk(fn) if isinstance(c, ast.Call)}, name
     executor = (REPO_ROOT / "ops/loop/executor.py").read_bytes().decode("utf-8")
-    assert "deadline = time.time() + self.cfg[\"cycle_deadline_sec\"]" in executor
+    assert "deadline = time.monotonic() + self.cfg[\"cycle_deadline_sec\"]" in executor
+    assert "time.time()" not in executor
 
 
 @pytest.mark.parametrize("snippet, expected", [

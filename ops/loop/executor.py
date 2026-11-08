@@ -1113,9 +1113,11 @@ class AhkExecutor:
         self.log(f"cycle {cycle}: directive written ({len(body)} chars), gemini.ready set")
 
         # AHK/stub deletes gemini.ready after typing; its disappearance IS the typed signal
-        if not self.wait_gone(ctl / "gemini.ready", time.time() + 120):
+        # Deadlines are time.monotonic() values (wait_for / wait_gone read the same clock), so a
+        # wall-clock step cannot cut the 90-minute cycle wait short (S144-P-364).
+        if not self.wait_gone(ctl / "gemini.ready", time.monotonic() + 120):
             self.stop(f"cycle {cycle}: AHK never typed (gemini.ready not consumed in 120s)")
-        deadline = time.time() + self.cfg["cycle_deadline_sec"]
+        deadline = time.monotonic() + self.cfg["cycle_deadline_sec"]
         self.log(f"cycle {cycle}: typed (ready consumed); deadline in {self.cfg['cycle_deadline_sec']}s")
 
         # WP-I3: one-shot stall recovery before a hard STOP. On the FIRST cycle-deadline
@@ -1131,9 +1133,9 @@ class AhkExecutor:
                 self.stop(f"cycle {cycle}: claude.done not seen after stall recovery (hard hang)")
             self.log(f"cycle {cycle}: deadline breach {breach} - injecting stall recovery, extending once")
             self.awrite(ctl / "gemini.ready", self.stall_recovery_directive(cycle))
-            if not self.wait_gone(ctl / "gemini.ready", time.time() + 120):
+            if not self.wait_gone(ctl / "gemini.ready", time.monotonic() + 120):
                 self.stop(f"cycle {cycle}: AHK never typed the stall-recovery directive")
-            deadline = time.time() + self.cfg["cycle_deadline_sec"]
+            deadline = time.monotonic() + self.cfg["cycle_deadline_sec"]
 
         done = self.rjson(ctl / "claude.done", {})
         (ctl / "claude.done").unlink(missing_ok=True)
