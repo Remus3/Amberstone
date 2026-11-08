@@ -2726,6 +2726,43 @@ survivability flips below cannot roll otherwise.
   it in the next ARAM / Mayhem champ select. **CHECK (any ARAM / Mayhem champ-select with an all-AD / all-AP or no-sustain
   ally comp):** PASS iff the rendered `.csv-bench-verdict--variant` banner shows `VARIANT -> <key>` with a
   `<key>` from that champion's posted variants; a POST of our own payload is the COMPUTE half only.
+  **RE-CHECK (lane 9 PREP s144 cycle 112, 2026-11-08, source read at `dd74f8632`; NOT a tick;
+  S144-G-100). RE-BLOCKED: no GENUINE VARIANT is reachable on this box today, and the only
+  reachable VARIANT is a keyword false positive.** Line cites above drifted; read by symbol:
+  `_csvFetchCompVerdict` POSTs `variants` (the `_csvCompVerdictVariants` rows of
+  `_csvBuildVariantsFor`) and `current_variant` (the active chooser key);
+  `_serve_aram_comp_verdict_post` (`dashboard/routes_coach.py`) passes the body verbatim to
+  `comp_verdict`; the banner class `csv-bench-verdict--${rec}` and `VARIANT -> ${variant_to}` are
+  built in `_csvCompVerdictHtml`. Three new facts. (i) ROW SOURCE: `_csvBuildVariantsFor` returns
+  only the `POST /api/loadout/list` rows: `list_variants(champ, "aram")` (ONE curated row per
+  champion, key `aram-collapsed`, label "Builds for <champ>", 172/172) plus the
+  `coaches/sr_user_builds.py` rows (key `userbuild_<id>`, merged for every mode). No producer
+  serves `summary`, so the engine matches key + label only. The main checkout's gitignored user
+  build store (read-only, 2026-11-08) holds builds for 2 champions (Caitlyn, Vayne; 2 crit rows
+  each). (ii) SELF LEAN: `my_team` carries the local cell (`_team_picks` over myTeam in
+  `lcu/champ_select_shape.py`), so a damage gap of the type the champion itself leans cannot open.
+  Caitlyn and Vayne both lean AD, so their "crit" rows (AD keyword set) never meet a "lacks AD"
+  gap. Genuine reachable: 0 of 172. (iii) KEYWORD FALSE POSITIVE: `_variant_addresses` is a
+  SUBSTRING test, and "ap" is inside "collapsed", so `aram-collapsed` matches `_AP_VARIANT_KW` for
+  all 172. With a userbuild row active on Caitlyn / Vayne and an all-AD ally comp (damage gap
+  "ap", no earlier bench-fixable gap), the banner reads `VARIANT -> aram-collapsed`, reason "All-AD
+  comp - the Builds for <champ> variant adds magic damage." That is a mis-fire, and the PASS rule
+  above would accept it. PROBE (repo root, before the lobby; read-only):
+  `python tools/gated_g303_variant_reach.py <champ> [--current <active key>]`; `genuine_gaps`
+  non-empty = that champion can roll a genuine VARIANT; `--all --reachable-only` lists them.
+  AMENDED PREDICATE (stated before any game): PASS iff the banner shows `VARIANT -> <key>`, `<key>`
+  is in the posted keys, AND the probe for that champion and active key reports the gap named by
+  the reason with `kind == "genuine"` and `self_closes == false`, and the reason matches the comp
+  (all-AD -> magic, all-AP -> physical, no sustain -> healing). A VARIANT on a `kind ==
+  "substring"` gap (today `-> aram-collapsed`) is a FAIL (keyword mis-fire), recorded with the
+  reason string. EVIDENCE: banner text + reason (operator pane or a headless Chromium DOM read of
+  :8888; say which), the live POST response (`variant_to`, `reason`, `gaps_before`), the ISO time,
+  queue, and the probe line. SUBSTITUTION: our own POST, the probe, or the engine on a fixture is
+  the compute half only. UNBLOCKS when (a) a whole-word keyword match lands in
+  `_variant_addresses` (headless code fix; merger follow-up, needs an id) AND (b) the operator saves
+  an ARAM build whose label names a damage type the champion does not lean, or sustain (e.g. an
+  "AP" row on an AD champion, a "crit" row on an AP one). Precondition carried: launcher
+  `halted` since 2026-11-01T02:17:21Z.
 
 ### In-game
 
