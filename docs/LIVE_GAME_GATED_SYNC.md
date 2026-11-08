@@ -2795,6 +2795,37 @@ survivability flips below cannot roll otherwise.
   plus the same-game check: every row since the game's first `ts` shares one `game_run_id`. A row
   only lands on a live tick with `lc.champion` set and mode `sr` / `aram` / `arena`
   (`dashboard/_deterministic_coaching.py:1623-1634`).
+  **RE-CHECK (lane 9 PREP s144 c113, S144-G-101; NOT a tick).** Line cites drifted; read by symbol:
+  the id is set in `lcu/snapshot_shape.py` `shape_snapshot` (`state["game_id"] = gid`), the
+  fallback is `core/hz_choice_shadow.py` `_run_id_for`, the live gate is
+  `dashboard/_deterministic_coaching.py` `shadow_log_precomputed_choices` (`lc.get("champion")`,
+  `_MODE_KEY_TO_LOWER`; `client` maps to sr).
+  (1) `shape_snapshot` now reads the gameflow id on `Reconnect` too (S134 P0), matching
+  `dashboard/_state_builder.py` `_IN_GAME_PHASES`; the FAIL clause reads "InProgress" as any of
+  `GameStart` / `InProgress` / `Reconnect`. (2) SCOPE WIDER THAN FILED: a leading `local-` run
+  then the real id is BY DESIGN (`tests/test_b4_shadow_match_id.py`
+  `test_game_id_appearing_mid_game_takes_over`), so "every row of the same game shares one
+  `game_run_id`" is false for a correct game. Amended glance: one numeric `game_id` per game, and
+  no `local-` row AFTER the first real-id row (that is the LCU id dropping mid-game, which splits
+  the B4-e series). (3) A `local-` row also means a STALE relay: `dashboard/_liveclient.py`
+  `lcu_summary` returns `{}` when the `:8889/latest-lcu` push is over 5 s old, so record the
+  `/api/state` LCU phase on the same pass. (4) A tick `unidentified_live_game` flags (mode
+  `client`, empty liveclient, in-game phase) skips the shadow log entirely: no row = NO_RESULT.
+  AGE (read-only, main checkout): 58806 rows, last `ts` 2026-08-02T22:34:15Z, ZERO carry a
+  `game_run_id` key (all pre-B4-d); none of the in-game shadow logs written on the same tick
+  (`det_coach`, `hz_build`, `aram_coach`, `macro_response`, `objective_playbook`) has a row after
+  the same second (the vision-tier `fusion` / `ocr` / `vision_merge` logs end 3 s later, same
+  game; later files are `champ_select_shadow.jsonl` 2026-09-30, a champ-select log, and four
+  `*_test_leak_*` files 2026-09-11), and `data/coach_tick_trace.jsonl`'s 340 rows after it all have
+  `game_time` None, `n_events` 0 (idle, last 2026-09-11).
+  PROBE (repo root, mid-game; prints counts, never an id):
+  `python tools/gated_g316_shadow_game_id.py --since <game start, UTC ISO> --phase <LCU phase>`.
+  PASS = one numeric `game_id`, `game_run_id == game_id` on every real row, no `local-` row after
+  the first real one. FAIL = mismatch, non-numeric id, `local-` after real, or all `local-` with an
+  in-game `--phase`. NO_RESULT = empty window, every row pre-B4-d, two real ids (narrow `--since`).
+  Measured today: `--since 2026-08-02T00:00:00Z` -> NO_RESULT (1138 pre-B4-d rows). SUBSTITUTION:
+  the tool over a fixture or our own writer call is the compute half; only a live game's rows count.
+  Precondition carried: launcher `halted` since 2026-11-01T02:17:21Z (RC down, no rows can land).
 
 - **G3-04** (was C3) DSP3 ARAM archetype-override (`prefer_aram_win_axis=True`) - **MIS-FILED, NOT
   VALIDATED. RE-FILE source: GATE 3; destination: headless CODE work, off the live-gated list.**
