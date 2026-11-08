@@ -304,6 +304,7 @@ throughout); integer ids are coerced on lookup.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
@@ -402,11 +403,47 @@ _JACK_HIGH_TIER_STACKS: float = 10.0
 _JACK_MAX_STACKS: float = 10.0
 
 
+def _finite_or_none(value) -> Optional[float]:
+    """``float(value)`` when that converts to a finite number, else None.
+
+    The shared S144-D-112..114 coercer: NaN, +-inf and anything ``float()``
+    refuses (or raises on) read as "no usable value", so each caller applies its
+    own documented fail-soft default instead of letting NaN slip past a ``<=`` /
+    ``>=`` gate or a ``min`` / ``max`` clamp (both are False-on-NaN, and
+    ``min(cap, nan)`` returns the cap).
+    """
+    try:
+        out = float(value)
+    except Exception:
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _stack_count_or_none(value) -> Optional[float]:
+    """``float(value)`` unless it is NaN or ``float()`` refuses (or raises) - None.
+
+    +-inf passes through so the caller's 0..cap clamp keeps its HEAD reading
+    (+inf -> cap, -inf -> 0); only the unorderable NaN and junk are "no count"
+    (S144-D-113).
+    """
+    try:
+        out = float(value)
+    except Exception:
+        return None
+    return None if math.isnan(out) else out
+
+
 def _clamp_level(level: float) -> float:
-    """Clamp to the 1-18 champion level range, fail-soft to 1.0."""
+    """Clamp to the 1-18 champion level range, fail-soft to 1.0.
+
+    NaN reads 1.0 like any unconvertible level (S144-D-112: it used to pass both
+    comparisons and return NaN); +inf still clamps to 18.0 and -inf to 1.0.
+    """
     try:
         lvl = float(level)
-    except (TypeError, ValueError):
+    except Exception:
+        return 1.0
+    if math.isnan(lvl):
         return 1.0
     if lvl < 1.0:
         return 1.0
@@ -432,7 +469,7 @@ def gathering_storm_step(game_minute: float) -> tuple[float, float]:
     """
     try:
         minute = float(game_minute)
-    except (TypeError, ValueError):
+    except Exception:
         return (0.0, 0.0)
     ad = 0.0
     ap = 0.0
@@ -450,12 +487,12 @@ def absolute_focus_grant(level: float, caster_hp_pct: float) -> tuple[float, flo
     Gated STRICTLY above 70% caster health per the verbatim longDesc; at or below
     the gate this returns ``(0.0, 0.0)``. Above it, the magnitude is the feed's
     own level-1 to level-18 walk.
+
+    A caster health that is not a finite number (NaN, +-inf, unconvertible)
+    never meets the gate (S144-D-112: NaN used to slip past ``<=`` and credit).
     """
-    try:
-        hp_pct = float(caster_hp_pct)
-    except (TypeError, ValueError):
-        return (0.0, 0.0)
-    if hp_pct <= _ABSOLUTE_FOCUS_HP_GATE:
+    hp_pct = _finite_or_none(caster_hp_pct)
+    if hp_pct is None or hp_pct <= _ABSOLUTE_FOCUS_HP_GATE:
         return (0.0, 0.0)
     return (
         _lerp_by_level(
@@ -501,10 +538,11 @@ def conqueror_grant(
     sustain quantity on a different axis, not an offensive stat. See the module
     docstring's DELIBERATE EXCLUSIONS.
     """
-    count = _ASSUMED_CONQUEROR_STACKS if stacks is None else stacks
-    try:
-        count = float(count)
-    except (TypeError, ValueError):
+    # S144-D-113: a NaN or unconvertible count reads the assumed default like
+    # any junk count (NaN used to clamp to the cap via min(cap, nan)); +-inf
+    # keeps clamping to the cap / to 0, as before.
+    count = None if stacks is None else _stack_count_or_none(stacks)
+    if count is None:
         count = _ASSUMED_CONQUEROR_STACKS
     count = max(0.0, min(_CONQUEROR_MAX_STACKS, count))
     adaptive_force = count * _lerp_by_level(
@@ -544,10 +582,9 @@ def legend_alacrity_grant(stacks: Optional[float] = None) -> float:
     time-to-max model is derivable from it. That is why the count is an
     assumption with a knob and not a computed quantity.
     """
-    count = _ASSUMED_LEGEND_STACKS if stacks is None else stacks
-    try:
-        count = float(count)
-    except (TypeError, ValueError):
+    # S144-D-113: a NaN or unconvertible count reads the assumed default.
+    count = None if stacks is None else _stack_count_or_none(stacks)
+    if count is None:
         count = _ASSUMED_LEGEND_STACKS
     count = max(0.0, min(_LEGEND_MAX_STACKS, count))
     return _LEGEND_ALACRITY_BASE_AS + count * _LEGEND_ALACRITY_AS_PER_STACK
@@ -613,9 +650,10 @@ def jack_of_all_trades_grant(stacks) -> tuple[float, float]:
     The ability-haste half is deliberately NOT credited: Ability Haste as a DS
     axis was measured inert and is settled. See the module docstring.
     """
-    try:
-        count = float(stacks)
-    except (TypeError, ValueError):
+    # S144-D-113: NaN / +-inf / unconvertible is junk and pays nothing (NaN and
+    # inf used to clamp to the cap and pay the 25 AF top tier).
+    count = _finite_or_none(stacks)
+    if count is None:
         return (0.0, 0.0)
     count = max(0.0, min(_JACK_MAX_STACKS, count))
     if count >= _JACK_HIGH_TIER_STACKS:
@@ -1122,24 +1160,35 @@ def rune_offense_grants(
     gating lives in ``compute_dps`` (this function is only called when
     ``apply_rune_offense_grants`` is True).
     """
-    minute = _ASSUMED_GAME_MINUTE if game_minute is None else float(game_minute)
-    try:
-        build_ad = float(bonus_ad)
-    except (TypeError, ValueError):
+    # S144-D-114: an unconvertible or NaN game_minute reads the assumed minute
+    # (it used to raise ValueError out of this seam); +inf keeps the documented
+    # 60-minute-row clamp. A non-finite bonus_ad / ap reads 0.0 like junk (NaN
+    # used to flip the adaptive side), and a non-finite jack_stacks reads "no
+    # census" (NaN / inf used to clamp to the cap and pay the top tier).
+    minute = _ASSUMED_GAME_MINUTE
+    if game_minute is not None:
+        try:
+            minute = float(game_minute)
+        except Exception:
+            minute = _ASSUMED_GAME_MINUTE
+        if math.isnan(minute):
+            minute = _ASSUMED_GAME_MINUTE
+    build_ad = _finite_or_none(bonus_ad)
+    if build_ad is None:
         build_ad = 0.0
-    try:
-        build_ap = float(ap)
-    except (TypeError, ValueError):
+    build_ap = _finite_or_none(ap)
+    if build_ap is None:
         build_ap = 0.0
     prefer_ad = build_ad >= build_ap
     # None stays None so the Jack entry can tell "no census supplied" (contribute
     # nothing) apart from "censused zero"; both pay 0.0, but only the clamp is
     # this function's business.
     if jack_stacks is not None:
-        try:
-            jack_stacks = max(0.0, min(_JACK_MAX_STACKS, float(jack_stacks)))
-        except (TypeError, ValueError):
-            jack_stacks = None
+        jack_count = _finite_or_none(jack_stacks)
+        jack_stacks = (
+            None if jack_count is None
+            else max(0.0, min(_JACK_MAX_STACKS, jack_count))
+        )
 
     grant_ad = 0.0
     grant_ap = 0.0
