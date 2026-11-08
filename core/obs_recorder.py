@@ -989,16 +989,32 @@ async def _lcu_supervisor(rec: ObsRecorder) -> None:
     task = None
     creds = None
     while not rec._stop.is_set():
-        cur = _lcu_credentials()
-        if cur != creds or (task is not None and task.done()):
+        # A raise here would leave this coroutine, and _main's gather would
+        # then end the recorder and its disk guard with it (S144-P-365): a
+        # lockfile with a non-numeric port makes LcuEventBus() raise
+        # ValueError. Log the pass and try again at the next rescan.
+        try:
+            cur = _lcu_credentials()
+            if cur != creds or (task is not None and task.done()):
+                if bus is not None:
+                    bus.stop()
+                bus, task, creds = None, None, cur
+                if cur is not None:
+                    bus = LcuEventBus(GAME_HOST, cur[0], cur[1])
+                    bus.subscribe(_LCU_URIS[0], rec.on_gameflow_phase)
+                    bus.subscribe(_LCU_URIS[1], rec.on_gameflow_session)
+                    task = asyncio.ensure_future(bus.run())
+        except Exception as exc:  # noqa: BLE001
+            _log.warning(
+                "OBS recorder: LCU supervisor pass failed (%s); retrying",
+                type(exc).__name__,
+            )
             if bus is not None:
-                bus.stop()
-            bus, task, creds = None, None, cur
-            if cur is not None:
-                bus = LcuEventBus(GAME_HOST, cur[0], cur[1])
-                bus.subscribe(_LCU_URIS[0], rec.on_gameflow_phase)
-                bus.subscribe(_LCU_URIS[1], rec.on_gameflow_session)
-                task = asyncio.ensure_future(bus.run())
+                try:
+                    bus.stop()
+                except Exception:  # noqa: BLE001
+                    pass
+            bus, task, creds = None, None, None
         try:
             await asyncio.wait_for(rec._stop.wait(), timeout=_LCU_RESCAN_S)
         except (asyncio.TimeoutError, TimeoutError):
