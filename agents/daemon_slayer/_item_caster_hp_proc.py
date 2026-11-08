@@ -108,6 +108,7 @@ so the default path is byte-identical.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from functools import cache, lru_cache
 
@@ -301,6 +302,12 @@ def proc_converted_points(
     """
     total = max(0.0, float(pool_max_hp))
     bonus = max(0.0, float(pool_bonus_hp))
+    # S144-D-106: an infinite pool reads 0.0, as NaN / -inf already did; it
+    # returned inf, and NaN (0.0 * inf) when the entry did not read that pool.
+    if not math.isfinite(total):
+        total = 0.0
+    if not math.isfinite(bonus):
+        bonus = 0.0
     return (entry.max_hp_pct / 100.0) * total + (entry.bonus_hp_pct / 100.0) * bonus
 
 
