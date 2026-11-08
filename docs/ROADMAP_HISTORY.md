@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-11-08 - size-budget relocation (session 155 C5), 1 line
+
+`ROADMAP.md` stood at 73615 of 81920 bytes on `1f0e71966` (the `tools/drift_guard.py` warn line is 73728). The line below moves here VERBATIM as it stood at `1f0e71966`: the s146 .. s152 shipped-rows pointer line (`[x]`), replaced in `ROADMAP.md` by a shorter pointer naming this block. Rule (s155 C5): a line moves only when its own text marks it closed (CLOSED / DONE / SHIPPED / REFUTED / superseded) and it names no open, partial, gated, owed or ready residual of its own; every other `ROADMAP.md` line on that tree failed it (each line that says SHIPPED or CLOSED also names an open, partial, gated or owed part, or is a fence kept inline on purpose). Open rows were not moved, and no row was split.
+
+- **[x] SHIPPED / CLOSED ROWS relocated VERBATIM to `docs/ROADMAP_HISTORY.md`, blocks `## 2026-10-23` .. `## 2026-11-07`; the newest, `## 2026-11-07` (s152), holds the RM-734 row (SHIPPED); `## 2026-11-05` holds the RM-985.. index row as of s150; `## 2026-10-31c` (s147 L8) holds the RM-1227 row (SHIPPED); `## 2026-10-31b` (s146 /done) holds the RM-750 live half (SUPERSEDED); `## 2026-10-31` (s146) holds the previous pointer line (it names the `## 2026-10-23` .. `## 2026-10-26c` blocks and their ids), the WAVE1 DRAIN pointer (its open residue keeps its own rows; RM-135 PARTIAL is in `BACKLOG.md`) and the SHIPPED rows RM-861, RM-876, RM-880 and RM-886. READ the archived row before re-opening an id or citing a sha.**
+
 ## 2026-11-07 - size-budget relocation (session 152 NA4), 1 line
 
 `ROADMAP.md` stood at 73668 of 81920 bytes on `765ab2d77` (the `tools/drift_guard.py` warn line is 73728), and the session 152 filings (`BACKLOG.md` "S152 filings") would cross it. The line below moves here VERBATIM as it stood at `765ab2d77`: the RM-734 row, SHIPPED 2026-10-30 by the s144 queue lane (`31f50e210`, landed s144 L5, LEDGER 1965; its `BACKLOG.md` head reads SHIPPED). Rule: a line moves only when every RM id it names reads SHIPPED / CLOSED in its `BACKLOG.md` head and the line names no open residual; no other `ROADMAP.md` line met it on that tree. Open rows were not moved.
