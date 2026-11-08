@@ -97,13 +97,14 @@ def test_every_production_thread_pool_is_bounded_and_scoped_or_owned():
             continue
         for lineno, problem, name in found:
             pools += 1
+            flagged = problem
             if name is not None:
                 if (rel, name) in _OWNED_POOLS:
                     owned_found.add((rel, name))
                 else:
-                    problem = "; ".join(x for x in (problem, "module pool not in _OWNED_POOLS") if x)
-            if problem:
-                hits.append(f"{rel}:{lineno} {problem}")
+                    flagged = "; ".join(x for x in (problem, "module pool not in _OWNED_POOLS") if x)
+            if flagged:
+                hits.append(f"{rel}:{lineno} {flagged}")
     assert pools >= 7, "the walk saw almost no pool, so an empty hit list proves nothing"
     assert not hits, f"unbounded or unscoped ThreadPoolExecutor (use `with`, or own it here): {hits}"
     assert owned_found == _OWNED_POOLS, f"stale _OWNED_POOLS entry (drop it): {_OWNED_POOLS - owned_found}"

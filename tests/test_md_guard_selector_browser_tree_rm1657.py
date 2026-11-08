@@ -55,8 +55,8 @@ def _outcomes(stdout: str) -> dict[str, int]:
     if not found:
         return {}
     counts: dict[str, int] = {}
-    for num, label in re.findall(r"(\d+) ([a-z]+)", found[-1]):
-        label = _PLURAL.get(label, label)
+    for num, raw_label in re.findall(r"(\d+) ([a-z]+)", found[-1]):
+        label = _PLURAL.get(raw_label, raw_label)
         counts[label] = counts.get(label, 0) + int(num)
     counts.pop("warnings", None)
     return counts
