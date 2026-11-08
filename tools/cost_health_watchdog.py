@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import statistics
 import sys
@@ -51,7 +52,13 @@ _APP = Path(__file__).parent.parent
 _HEALTH = _APP / "ops" / "runtime" / "health.json"
 _SPEND_DIR = _APP / "data" / "spend"
 _STATE = _APP / "ops" / "runtime" / "cost_health_watchdog_state.json"
-_LOG = _APP / "logs" / "cost_health_watchdog.log"
+# S144-Q-124: a non-blank RC_COST_HEALTH_WATCHDOG_LOG replaces the default when
+# this module EXECUTES, so every copy of it (one spec-loaded inside a test body
+# included, which no attribute scan can reach) logs where the env says.
+# tests/conftest.py sets it at import; production never does.
+LOG_ENV = "RC_COST_HEALTH_WATCHDOG_LOG"
+_LOG = Path((os.environ.get(LOG_ENV) or "").strip()
+            or _APP / "logs" / "cost_health_watchdog.log")
 # RM-718 (b). `_log_line` appended to this file forever (5.6 MB measured
 # 2026-10-26). One process per fire makes this a one-shot writer, so it takes
 # RM-718 (a)'s rotate-at-open shape (tools/replay_roster_pull.py

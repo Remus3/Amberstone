@@ -103,6 +103,14 @@ os.environ["RC_HOOK_LOG"] = str(_SUITE_LOG_DIR / "hook_invocations.jsonl")
 # as RC_HOOK_LOG. Guarded by tests/test_sibling_sweep_run_record_rm688.py.
 os.environ["RC_SIBLING_SWEEP_RUN_LOG"] = str(_SUITE_LOG_DIR / "sibling_sweep_runs.jsonl")
 
+# S144-Q-124: tools/cost_health_watchdog.py `_log_line` appends to logs/ unless
+# this redirects it. The session-scoped redirect_spec_loaded_tool_logs_to_tmp
+# below runs ONCE, so a copy made later (a lazy import or a spec-load inside a
+# test body) kept the checkout path; the tool reads this when it executes, so
+# every copy lands here. Same file the session redirect names. Guarded by
+# tests/test_cost_health_watchdog_log_env_s144q124.py.
+os.environ["RC_COST_HEALTH_WATCHDOG_LOG"] = str(_SUITE_LOG_DIR / "cost_health_watchdog.log")
+
 # Y-02: core/operator_notify holds every notifier that reaches a person (the
 # desktop toast, a later phone push) while RC_NOTIFY_HOLD=1, so no test - in
 # process or in a child that inherits this env - can pop a toast on the
