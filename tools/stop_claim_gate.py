@@ -2788,7 +2788,7 @@ def _bypass_in_text(text):
 def _head_name(word):
     """WORD as a command name: basename, lower case, no `.exe`."""
     head = re.split(r"[\\/]", word)[-1].lower()
-    return head[:-4] if head.endswith(".exe") else head
+    return head.removesuffix(".exe")
 
 
 def _launcher_script(words):
