@@ -22,6 +22,11 @@ and a live pid; only the request found it). Three differences from RC's copy:
 * it idles while ``ops/runtime/DS_KEEPALIVE_STOP`` exists (legion_off.ps1
   writes it so "off" stays off; legion_on.ps1 removes it).
 
+Status (2026-10-31 launcher cutover): RC-DaemonSlayer is unregistered and
+RC-DSKeepalive was never registered (docs/OPERATIONS.md, "Moved to the app"),
+so on this host a relaunch here finds no task to run and raises; it only acts
+on a host that still registers both.
+
 Host: the RC-DSKeepalive scheduled task (``tools/install_ds_keepalive_task.ps1``:
 SYSTEM, at startup plus a 1-minute indefinite repeat with IgnoreNew, so Task
 Scheduler restarts the keepalive itself if it dies). Log:
