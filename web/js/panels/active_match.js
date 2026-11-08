@@ -2369,7 +2369,7 @@ function _renderAmMap(host, mode, payload) {
     figure.appendChild(canvas);
     const ganker = document.createElement("div");
     ganker.id = "am-map-gank";
-    ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#fff;background:rgba(220,38,38,0.85);font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
+    ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:var(--fs-xs);color:#fff;background:rgba(220,38,38,0.85);font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
     figure.appendChild(ganker);
     shell.appendChild(figure);
     host.appendChild(shell);
@@ -2670,6 +2670,17 @@ function _amFitOverlay() {
   return { w, h };
 }
 
+// S144-U-229: the MIA badge's font size in canvas px - the resolved
+// --fs-xs floor (web/css/tokens.css), read off the canvas so a theme or a
+// scale that moves the token moves the badge with it. The overlay canvas
+// is sized 1:1 to CSS px (_amFitOverlay), so a CSS px is a canvas px.
+// Falls back to 16 when the token does not resolve to a positive number.
+function _amMapBadgeFs(canvas) {
+  const fs = parseFloat(
+    getComputedStyle(canvas).getPropertyValue("--fs-xs"));
+  return fs > 0 ? fs : 16;
+}
+
 // Dot / MIA-badge / gank-band layer. Called by every vision tick (through
 // _amDrawOverlay) and by the fit observer on a resize, with the cached
 // state (null before the first answer: fit only, nothing to draw).
@@ -2704,6 +2715,7 @@ function _amDrawDots(vs) {
   }
 
   const mapSize = _AM_MAP_WORLD[gameModeUp] || 14800;
+  const badgeFs = _amMapBadgeFs(canvas);
   function project(x, z) {
     // Game origin = bottom-left, z grows up. Canvas y grows down -> flip.
     return [(x / mapSize) * w, h - (z / mapSize) * h];
@@ -2757,17 +2769,21 @@ function _amDrawDots(vs) {
       ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
       ctx.lineWidth = 1;
       ctx.stroke();
-      // MIA badge
+      // MIA badge. S144-U-229: the tag reads at --fs-xs (it was bold
+      // 10px, under the floor); the red box is sized to that font, its
+      // bottom at the dot's centre line, and clamped inside the canvas.
       if (missing > _AM_MIA_THRESHOLD) {
         const tag = `${name.slice(0, 6)} ${Math.round(missing)}s`;
-        ctx.font = "bold 10px sans-serif";
+        ctx.font = `bold ${badgeFs}px sans-serif`;
+        ctx.textBaseline = "top";
         const txtW = ctx.measureText(tag).width;
+        const boxH = badgeFs + 6;
         const bx = Math.min(w - txtW - 8, Math.max(4, px + 8));
-        const by = Math.min(h - 14, Math.max(12, py - 4));
+        const top = Math.min(h - boxH - 2, Math.max(2, py - boxH));
         ctx.fillStyle = "rgba(220, 38, 38, 0.85)";
-        ctx.fillRect(bx - 3, by - 10, txtW + 6, 14);
+        ctx.fillRect(bx - 3, top, txtW + 6, boxH);
         ctx.fillStyle = "#fff";
-        ctx.fillText(tag, bx, by);
+        ctx.fillText(tag, bx, top + 3);
       }
       // Gank-watch: jungler-shaped missing pattern
       if (missing > _AM_GANK_THRESHOLD
