@@ -176,7 +176,7 @@ class StatePayloadCacheTests(unittest.TestCase):
         with mock.patch.object(self.rs, "_timed_build_state",
                                side_effect=lambda: calls.append(1) or {"k": len(calls)}):
             self.rs._state_payload_cached()
-            self.rs._STATE_CACHE_TS = time.time() - 2.0  # force expiry
+            self.rs._STATE_CACHE_TS = time.monotonic() - 2.0  # force expiry
             self.rs._state_payload_cached()
         self.assertEqual(len(calls), 2)
 

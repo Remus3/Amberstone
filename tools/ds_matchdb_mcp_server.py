@@ -197,7 +197,7 @@ log = logging.getLogger("ds-matchdb-mcp")
 # text, CR/LF and escapes included, into the log verbatim.
 install_scrub_filter(log)
 
-_START = time.time()
+_START = time.monotonic()
 
 
 # -- Safe JSON serialization ------------------------------------------------
@@ -757,7 +757,7 @@ class _Handler(HostAllowlistMixin, http.server.BaseHTTPRequestHandler):
             if not self._check_auth():
                 return
             body = json.dumps({"alive": True,
-                               "uptime_s": int(time.time() - _START),
+                               "uptime_s": int(time.monotonic() - _START),
                                "tools": list(TOOL_FUNCS.keys())}).encode()
             self._send(200, body)
             return
