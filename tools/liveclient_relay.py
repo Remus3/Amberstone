@@ -8,10 +8,13 @@ dashboard / coaches. Post 1-PC consolidation everything runs on Legion, so
 the relay reads :2999 in-process and self-heals when the cached snapshot
 goes stale.
 
-Run (one time):
-  1. $env:LOCALAPPDATA/Programs/Python/Python314/python.exe -m pip install requests urllib3
-  2. $env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\liveclient_relay.py
-  3. (optional task) schtasks /Create /TN "RC-LiveClientRelay" /SC ONLOGON /F /TR "$env:LOCALAPPDATA/Programs/Python/Python314/python.exe C:\\RC-Agent\\liveclient_relay.py"
+Started by the rc-shell service host (ops/launcher/service_host.py, manifest
+ops/launcher/services.json, service `liveclient_relay`), which restarts it if
+it exits. The old RC-LiveClientRelay ONLOGON task was unregistered by the
+2026-10-31 launcher cutover (docs/OPERATIONS.md, "Moved to the app"): do not
+register it again, a second relay would race the host's. Nothing starts it at
+boot. To run it by hand (the host's copy stopped), from the repo root:
+  python tools/liveclient_relay.py
 
 When in champ select / not in game, /liveclientdata returns 404 - relay
 backs off and retries.
@@ -32,11 +35,13 @@ LIVE_URLS = [
 
 _ROOT = Path(__file__).resolve().parent.parent
 
-# Lane 8 audit 2026-08-03. The scheduled task runs this under pythonw.exe
-# (read from the RC-LiveClientRelay task XML), which has NO CONSOLE, so every
-# print() this module used to emit went nowhere - including the errors. The
-# module even documented that exact failure ("401s ... silently (pythonw, no
-# console) -> coach dead") and then reported through print() anyway. Log to a
+# Lane 8 audit 2026-08-03. The service host runs this under pythonw.exe
+# (originally read from the RC-LiveClientRelay task XML; the host keeps that
+# windowless interpreter and sends service stdout to DEVNULL), which has NO
+# CONSOLE, so every print() this module used to emit went nowhere - including
+# the errors. The module even documented that exact failure ("401s ...
+# silently (pythonw, no console) -> coach dead") and then reported through
+# print() anyway. Log to a
 # file, on the in-tree precedent in tools/daemon_slayer_extract.py
 # `_configure_logging`.
 # RM-812: a non-empty RC_LIVECLIENT_RELAY_LOG replaces the default file. It is
@@ -248,8 +253,9 @@ def loop() -> None:
 
 if __name__ == "__main__":
     if not TOKEN:
-        # Exit non-zero so the scheduled task's Last Result is not a
-        # reassuring 0 while the relay does nothing.
+        # Exit non-zero so the service host records a failed exit (its
+        # launcher_status.json last_error) instead of a reassuring 0 while the
+        # relay does nothing.
         log.error("no vision token: set RC_VISION_TOKEN or create %s",
                   _token_candidates()[0])
         sys.exit(2)
