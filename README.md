@@ -235,7 +235,7 @@ approved Riot product; see the disclaimer at the end of this page.
 
 ## Status
 
-As of 2026-11-01. This is a summary; [`ROADMAP.md`](./ROADMAP.md) is the live
+As of 2026-11-08. This is a summary; [`ROADMAP.md`](./ROADMAP.md) is the live
 list of open work.
 
 **Working now.** The full loop runs end to end: the live reader, the build

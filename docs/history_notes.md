@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-07 - session 152: RM-1974 reds fixed, the gated dual suite GREEN on e37f0d1b4, that sha PUSHED on the operator's word; ci RED by its 110-min step timeout (RM-2036 / RM-2037)
+
+- **RM-1974 SHIPPED:** a `36ba25a07` (MEASURED_RUFF (0, 17)), docstring `d6144375b`, b `39c6ab4f0`, c `b36e3c095` (Playwright loop marker, the xdist hang), d `346ff0d79`, e `cc53df7ae`; RM-1270 residue `765ab2d77`.
+- **Gated suite:** round 1 on `d6144375b` RED, 9 failed; folds F1 `dd9a95f83` + `6e697c7ab`, F2 `c222b5dbf` + `d8125d524` (CLI re-pin 2.1.319), F3 `136b9a5b7`, F4 `d44ee672a`; round 2 on `e37f0d1b4` GREEN: 69292 passed, 207 skipped, 3 xfailed, 0 failed, 759.48 s.
+- **Pushed (operator "PUSH", that sha only):** `52266153f..e37f0d1b4` (212 commits); bot_merge_check clean; contributors operator only; codeql + docs-guards green; ci push 42383196203 RED: the full suite step killed at 110 min, about 72 `F`, no names.
+- **Filed:** NA4 `4c516ebae` (RM-1975..RM-2035, RM-734 to ROADMAP_HISTORY); NA6 `ab963e3de` local (RM-2036 step ceiling, RM-2037 the 72 CI-only reds). Nightly 42382896730 on `52266153f` read 6 failed = the 6 RM-1657 nodeids.
+- **/done:** NOT pushed (halt boundary: the operator's yes covered `e37f0d1b4` only); `ab963e3de` + the /done docs commit stay local.
+- **Do NOT redo:** RM-1974 a-e, RM-1270 residue, F1-F4, the CLI re-pin, the NA4 filings, the `e37f0d1b4` push.
+- **Next:** ci red first: RM-2036 (raise or shard the step, end pytest before the ceiling), RM-2037 (name every nodeid), the 6 RM-1657 nodeids; a fix push needs a new gated suite and the operator's yes. Then PR #29.
+
+---
+
 # 2026-11-06b - session 151: all open lane work merged onto local main (178 commits, id-mapped, verifier CONFIRMED); RM-1974 reds left; the gated suite not launched (24800 MB line not met); NOT PUSHED at /done; hand-off is open items only
 
 - **Operator (chat):** "merge all open tree work and process /done for clear; so that next session is just open items".

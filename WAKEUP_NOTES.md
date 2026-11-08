@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-11-08 - session 155: gated suite GREEN twice (-n 6 on 47075c685, -n 4 on d86c2e2f5, both operator-ordered), PUSHED 64951a903..d86c2e2f5 in two operator-approved pushes, hosted ci GREEN with the full dual suite (RM-2037 / RM-2041 / RM-1657 / RM-2036 CLOSED), lanes resumed after the billing renewal, RM-1267 CLOSED
+
+- **Suites (LEDGER 2077):** C1 on `47075c685` at -n 6: 69420 passed, exit 0; C10 -n 6 on `d86c2e2f5` killed at 79 percent by Claude Code's low-memory background-shell reaper (4.3 GB free, 5 lanes live), C11 found no failure; C12 -n 4 on `d86c2e2f5`: 69420 passed in 0:22:15, exit 0.
+- **Pushes (operator yes, each):** `64951a903..47075c685` then `47075c685..d86c2e2f5`; pre-push dry runs clean (sweep ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO); bot_merge_check exit 0; contributors clean; PRs #30 / #31 self-closed; refs c3-pr30 / c3-pr31 deleted.
+- **Hosted:** ci 42510026781 on `47075c685` green incl. the full dual suite (68988 passed, 0 failed, step 41m05s); nightly 42491619408 on the pre-fold `64951a903` read the 27 folded reds by name; ci 42513898158 on `d86c2e2f5` green (slice).
+- **Lanes:** billing renewed (operator); probe rc 0; rotator pid 34304 restarted, lanes live. RM-1267 CLOSED `f1954a39d` (repo sonnet to 2026-12-08; ds / research opus); RM-2049, RM-2050 filed; RM-1269 OPEN (RM-1266 DST reds); note to MAIN 1/1 (`a438f16e1`).
+- **/done:** commits LOCAL by operator ruling (exactly two pushes approved). New Dependabot PR #32 (pip group) open.
+- **Do NOT redo:** the two suites, the two pushes, the four row closes, RM-1267, the billing probe / rotator restart, the MAIN note.
+- **Next:** the operator's yes for the push of /done's commits (a gated suite on that sha first, LEDGER 2047); a standing -n ruling while lanes run; the lane landing (repo 104, true-audit 50, uiux 49, gated 21, queue 19, research 5).
+
+---
+
 # 2026-11-07c - session 154: all 27 reds of ci 42427610342 folded locally (C1a/b/c), C6 rune-tabs focus product fix, PRs #30 / #31 re-applied locally (anthropic 2.5.0 declined), STASH-GC decided; gated suite NOT run (RAM line out of reach), NOTHING PUSHED
 
 - **Folds (each CONFIRMED by an independent verifier; LEDGER 2075):** C1a `e09c9860a` `5b344557b` `15d15b253` (snapshot layout, icon stand-in, badge token, mains mock, SF Mono); C1b `af90020e2` `3c2eb9446` (shared `tests/_crlf_text_layer.py`, 13 LF modules); C1c `caa22a035` `9cc7065d3` (RM-2037 xdist subprocess cases, self-scan of 14 spellings).
@@ -28,15 +40,3 @@
 - **/done:** docs commit LOCAL (a push would cancel full ci 42427610342 via cancel-in-progress; LEDGER 2047 rule). Reap 7 removed, 9 kept.
 - **Do NOT redo:** the landing, run 3, the push, the bypass (never set it again), the MAIN 2215 reply (do not re-run deliver.py), the RM-2033 upgrade.
 - **Next:** read ci 42427610342 (RM-2037 RC-FAIL names; RM-1657; RM-2036 run time), then the RM-2041 fixes on a gated sha; PRs #30 / #31 (#29 closed itself).
-
----
-
-# 2026-11-07 - session 152: RM-1974 reds fixed, the gated dual suite GREEN on e37f0d1b4, that sha PUSHED on the operator's word; ci RED by its 110-min step timeout (RM-2036 / RM-2037)
-
-- **RM-1974 SHIPPED:** a `36ba25a07` (MEASURED_RUFF (0, 17)), docstring `d6144375b`, b `39c6ab4f0`, c `b36e3c095` (Playwright loop marker, the xdist hang), d `346ff0d79`, e `cc53df7ae`; RM-1270 residue `765ab2d77`.
-- **Gated suite:** round 1 on `d6144375b` RED, 9 failed; folds F1 `dd9a95f83` + `6e697c7ab`, F2 `c222b5dbf` + `d8125d524` (CLI re-pin 2.1.319), F3 `136b9a5b7`, F4 `d44ee672a`; round 2 on `e37f0d1b4` GREEN: 69292 passed, 207 skipped, 3 xfailed, 0 failed, 759.48 s.
-- **Pushed (operator "PUSH", that sha only):** `52266153f..e37f0d1b4` (212 commits); bot_merge_check clean; contributors operator only; codeql + docs-guards green; ci push 42383196203 RED: the full suite step killed at 110 min, about 72 `F`, no names.
-- **Filed:** NA4 `4c516ebae` (RM-1975..RM-2035, RM-734 to ROADMAP_HISTORY); NA6 `ab963e3de` local (RM-2036 step ceiling, RM-2037 the 72 CI-only reds). Nightly 42382896730 on `52266153f` read 6 failed = the 6 RM-1657 nodeids.
-- **/done:** NOT pushed (halt boundary: the operator's yes covered `e37f0d1b4` only); `ab963e3de` + the /done docs commit stay local.
-- **Do NOT redo:** RM-1974 a-e, RM-1270 residue, F1-F4, the CLI re-pin, the NA4 filings, the `e37f0d1b4` push.
-- **Next:** ci red first: RM-2036 (raise or shard the step, end pytest before the ceiling), RM-2037 (name every nodeid), the 6 RM-1657 nodeids; a fix push needs a new gated suite and the operator's yes. Then PR #29.
