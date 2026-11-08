@@ -1842,7 +1842,12 @@ function _amDsSyntheticCs(p, ctx) {
       if (!pl || typeof pl !== "object") continue;
       const meta = aligned ? (roster[i] || null) : null;
       if (meta && meta.is_active) myPosition = String(meta.position || "");
-      if (myTeam && pl.team === myTeam) continue;
+      // S144-U-219: an enemy is a row on a KNOWN team other than mine. The old
+      // `myTeam && pl.team === myTeam` passed every row when my team did not
+      // resolve, so the card took the operator's own team and headlined the
+      // operator's own champion as the lane opponent; now the roster is empty
+      // and the matchup card hides (as the THREATS strip does, S144-U-218).
+      if (!myTeam || !pl.team || pl.team === myTeam) continue;
       // S144-U-217: rawChampionName is a localization key live; the helper
       // strips it (it used to resolve every live enemy to 0 here).
       const eid = _amLiveChampKey(pl);
@@ -2146,6 +2151,20 @@ export function renderCapabilityGapChip(block, payload) {
     <div class="capability-gap-verdict">${escHtml(verdict)}</div>`;
 }
 
+// S144-U-219: the capability gap's enemy NAME roster - the THREATS strip's
+// roster (_amThreatEnemies: players on a known team other than mine, none when
+// my team is unresolved), championName first. The old inline filter
+// `myTeam && pl.team === myTeam` passed every player against a null team, so
+// the gap was asked about all ten champions, the operator's own included.
+function _amCapgapEnemyNames(lc) {
+  const out = [];
+  for (const pl of _amThreatEnemies(lc)) {
+    const name = pl.championName || pl.rawChampionName || "";
+    if (name) out.push(name);
+  }
+  return out;
+}
+
 // Host: resolve the operator's champion + the live enemy NAME roster + mode,
 // then fetch (cache-guarded) + render. Idempotent (innerHTML rebuild each
 // tick). Guards hide the chip when the mount, my champion, or the enemy
@@ -2157,16 +2176,7 @@ function _amRenderCapabilityGap(p, ctx, isLive) {
   if (!isLive) { block.hidden = true; return; }
   const myChamp = (p && p.champion) || "";
   const lc = (ctx && ctx.liveclient) || null;
-  const enemyNames = [];
-  if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
-    const myTeam = _resolveMyTeam(lc);
-    for (const pl of lc.allPlayers) {
-      if (!pl || typeof pl !== "object") continue;
-      if (myTeam && pl.team === myTeam) continue;
-      const name = pl.championName || pl.rawChampionName || "";
-      if (name) enemyNames.push(name);
-    }
-  }
+  const enemyNames = _amCapgapEnemyNames(lc);
   if (!myChamp || !enemyNames.length) { block.hidden = true; return; }
   const mode = String((ctx && ctx.mode) || "sr").toUpperCase();
   _amFetchCapabilityGap(myChamp, enemyNames, mode,
@@ -3261,6 +3271,7 @@ export const __test = {
   _amDsComboMode,
   _amThreatMode,
   _amThreatEnemies,
+  _amCapgapEnemyNames,
   _resolveMyTeam,
   _threatRow,
   _renderSpikeMarkersFromCtx,
