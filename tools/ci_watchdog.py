@@ -54,7 +54,10 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # is loaded lazily by path, so importing this module stays side-effect free.
 # The headless fixer child still commits with a plain `git commit` inside the
 # dedicated watchdog worktree: its tool allowlist is the execution gate and it
-# carries no project hooks there; routing that commit is the follow-up RM-692.
+# carries no project hooks there. That commit lands only on the throwaway fix
+# branch; main gets the watchdog's own locked squash (land_commit). RM-692
+# narrowed the child's git allow to explicit verbs (_CLAUDE_GIT_VERBS) instead
+# of routing its branch commit through the lock.
 _GITLOCK_OWNER = "ci-watchdog"
 _KIT_DIR = _PROJECT_ROOT / "ops" / "fleet_kit"
 
@@ -123,10 +126,16 @@ _STEP_TIMEOUTS = {"claude_fix": 600, "wait_checks": 900}
 # any tool NOT on --allowedTools is denied silently (no prompt, no hang), so this
 # whitelist - not a flag - is the hard execution gate. Write is disallowed (fixes
 # are Edits to existing files) and git push is reserved for the watchdog itself.
+# RM-692: git is allowed per VERB, never as `Bash(git:*)`. The prefix deny
+# `Bash(git push:*)` does not textually match `git -C <wt> push` or
+# `git -c k=v push`, so a blanket git allow left the push guard resting on how
+# the CLI normalises a command; with explicit verbs no allow covers a push.
+_CLAUDE_GIT_VERBS = ("status", "diff", "log", "show", "add", "commit")
 CI_FIX_PROMPT = _PROJECT_ROOT / "tools" / "ci_watchdog_fix.md"
 _CLAUDE_ALLOWED_TOOLS = (
     "Edit", "Read",
-    "Bash(ruff:*)", "Bash(git:*)",
+    "Bash(ruff:*)",
+    *(f"Bash(git {verb}:*)" for verb in _CLAUDE_GIT_VERBS),
     "Bash(python -m py_compile:*)", "Bash(pytest:*)",
 )
 _CLAUDE_DISALLOWED_TOOLS = ("Write", "Bash(git push:*)")

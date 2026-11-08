@@ -190,7 +190,7 @@ def test_plan_dispatch_claude_step_whitelist_and_no_skip_perms():
     claude = steps["claude_fix"]
     assert claude[0] == "claude" and "-p" in claude
     assert "--allowedTools" in claude
-    for tool in ("Edit", "Read", "Bash(ruff:*)", "Bash(git:*)",
+    for tool in ("Edit", "Read", "Bash(ruff:*)",
                  "Bash(python -m py_compile:*)", "Bash(pytest:*)"):
         assert tool in claude
     assert "--append-system-prompt-file" in claude
@@ -199,6 +199,52 @@ def test_plan_dispatch_claude_step_whitelist_and_no_skip_perms():
     assert "--dangerously-skip-permissions" not in claude
     assert "--disallowedTools" in claude
     assert "Bash(git push:*)" in claude
+
+
+# RM-692: the git verbs the fixer child needs to read the diff and commit on
+# its throwaway branch. Nothing else; a push stays the watchdog's.
+_CHILD_GIT_VERBS = ("status", "diff", "log", "show", "add", "commit")
+
+
+def _allowed_tools(claude):
+    start = claude.index("--allowedTools") + 1
+    end = claude.index("--disallowedTools")
+    return claude[start:end]
+
+
+def test_plan_dispatch_claude_git_allowlist_is_explicit_verbs_rm692():
+    """RM-692, changed on purpose (not loosened): the blanket `Bash(git:*)`
+    allow is gone. Beside it the only push guard was the prefix deny
+    `Bash(git push:*)`, which does not textually match `git -C <wt> push` or
+    `git -c k=v push`; with explicit verb rules no allow covers a push at all,
+    so the deny no longer depends on how the CLI normalises a git command."""
+    claude = dict(cw.plan_dispatch(1, "h"))["claude_fix"]
+    allowed = _allowed_tools(claude)
+    assert "Bash(git:*)" not in allowed
+    for verb in _CHILD_GIT_VERBS:
+        assert f"Bash(git {verb}:*)" in allowed, verb
+    git_rules = [t for t in allowed if t.startswith("Bash(git")]
+    assert sorted(git_rules) == sorted(f"Bash(git {v}:*)" for v in _CHILD_GIT_VERBS)
+    # the push deny stays, and Write stays denied
+    disallowed = claude[claude.index("--disallowedTools") + 1:]
+    assert "Bash(git push:*)" in disallowed and "Write" in disallowed
+
+
+@pytest.mark.parametrize("command", [
+    "git push origin ci-fix/1",
+    "git -C wt push origin ci-fix/1",
+    "git -c core.askPass=x push origin ci-fix/1",
+    "git remote add x y",
+    "git config remote.origin.pushurl x",
+])
+def test_no_allowed_git_rule_prefixes_a_push_or_config_rm692(command):
+    """No allowed `Bash(<prefix>:*)` rule is a prefix of a push, a `-C` / `-c`
+    form or a remote / config write (the CLI prefix-matches such rules)."""
+    claude = dict(cw.plan_dispatch(1, "h"))["claude_fix"]
+    for tool in _allowed_tools(claude):
+        if tool.startswith("Bash(") and tool.endswith(":*)"):
+            prefix = tool[len("Bash("):-len(":*)")]
+            assert not command.startswith(prefix), (tool, command)
 
 
 def test_plan_dispatch_lands_locally_never_merges_on_github():
