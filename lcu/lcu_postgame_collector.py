@@ -886,10 +886,10 @@ class PostgameCollector:
         """One trigger cycle: poll for EOG phase, capture when seen, fall
         back to match history if timeout. Shared by sync + async paths."""
         _log.info("PostgameCollector: waiting for EndOfGame phase (mode=%s)", game_mode)
-        deadline = time.time() + self._EOG_TIMEOUT_S
+        deadline = time.monotonic() + self._EOG_TIMEOUT_S
         captured = False
         seen_postgame = False
-        while time.time() < deadline and not self._stop.is_set():
+        while time.monotonic() < deadline and not self._stop.is_set():
             phase = self._get_gameflow_phase()
             # Substring on purpose: PreEndOfGame counts (the TFT document is
             # served there, measured s134). Until D5 this never matched at all.
