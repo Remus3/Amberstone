@@ -706,14 +706,20 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     # measured. BACKLOG.md is the research lane's in s144, so the RM-713 row
     # refresh is a merger follow-up; when it is re-worded the guard reports
     # the entry as no longer broken and it is deleted here.
+    # 2026-11-08, RM-713 (a) remainder (session 144 queue lane, cycle 179):
+    # tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md moved with git mv to
+    # docs/_archive/2026-05/ (pinned by tests/test_rm713_a_remainder_archive.py);
+    # its one guarded cite left broken is the same RM-713 row body. The living
+    # plan doc's two cites were re-pointed to the archived path instead.
     (doc, raw, "HISTORICAL",
-     "Points into an artifact archived by RM-713 (a) on 2026-11-06, from the "
+     "Points into an artifact archived by RM-713 (a) (2026-11-06 / 2026-11-08), from the "
      "retained RM-713 row body or a dated findings doc - see the block "
      "comment above for why it is not re-pointed.")
     for doc, raw in (
         ("BACKLOG.md", "ops/loop/CDRAGON_FLIP_FINDINGS.md:1"),
         ("BACKLOG.md", "ops/loop/CDRAGON_FLIP_FINDINGS.md:7"),
         ("BACKLOG.md", "ops/tls/_bridge_msg.txt:1-3"),
+        ("BACKLOG.md", "tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md:1-3"),
         ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:3"),
         ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:7"),
         ("docs/audits/2026-10-09-repo-review-findings.md", "ops/tls/_bridge_msg.txt:12"),
