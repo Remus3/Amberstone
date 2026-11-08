@@ -174,3 +174,52 @@ test("map stale: a clock that steps back never yields a negative age", () => {
   am._amMapNoteFeed(tr, { t_now: 1 }, 50000);
   assert.strictEqual(am._amMapStaleS(tr, 40000), 0);
 });
+
+// S144-U-222: with the status line saying the feed stalled, the per-enemy
+// roster still read the frozen answer as live: "on bridge" in green, "MIA 12s"
+// and a "DEAD 18s" respawn countdown that never ticked, and in SR the gank
+// band kept "WARN <name> missing 25s - ward / back off" up for the rest of the
+// game. _amMapIsStale(staleS) is the one cut every layer reads;
+// _amMapRosterState(e, stale) is a roster row's state and text, "no feed" in a
+// neutral state while the feed is stalled.
+
+test("map stale cut: _amMapIsStale is the status line's own threshold", () => {
+  assert.strictEqual(am._amMapIsStale(10), true);
+  assert.strictEqual(am._amMapIsStale(125.8), true);
+  for (const s of [undefined, null, 0, 9.99, "30", NaN, Infinity, -5, true, {}]) {
+    assert.strictEqual(am._amMapIsStale(s), false, String(s));
+  }
+});
+
+test("map roster: a fresh feed keeps each row's live state and text", () => {
+  assert.deepStrictEqual(
+    am._amMapRosterState({ is_dead: true, respawn_in_s: 17.2 }, false),
+    { state: "dead", text: "DEAD 18s" });
+  assert.deepStrictEqual(
+    am._amMapRosterState({ is_dead: true }, false),
+    { state: "dead", text: "DEAD" });
+  assert.deepStrictEqual(
+    am._amMapRosterState({ visible: true, last_seen_zone: "on_bridge" }, false),
+    { state: "ok", text: "on bridge" });
+  assert.deepStrictEqual(
+    am._amMapRosterState({ visible: true }, false),
+    { state: "ok", text: "visible" });
+  assert.deepStrictEqual(
+    am._amMapRosterState({ visible: false, missing_for_s: 12.4 }, false),
+    { state: "mia", text: "MIA 12s" });
+  assert.deepStrictEqual(
+    am._amMapRosterState({ visible: false }, false),
+    { state: "mia", text: "MIA" });
+});
+
+test("map roster: a stalled feed claims no live state on any row", () => {
+  for (const e of [
+    { is_dead: true, respawn_in_s: 17.2 },
+    { visible: true, last_seen_zone: "on_bridge" },
+    { visible: false, missing_for_s: 25 },
+    {},
+  ]) {
+    assert.deepStrictEqual(am._amMapRosterState(e, true),
+      { state: "stale", text: "no feed" }, JSON.stringify(e));
+  }
+});

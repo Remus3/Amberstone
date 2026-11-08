@@ -632,6 +632,13 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   color: var(--signal-warn, #f1b04a);
   font-weight: 700;
 }
+/* S144-U-222: a row the stalled vision feed no longer vouches for ("no
+ * feed") paints in the secondary text colour at normal weight, not the live
+ * green / red / amber of a state the feed is still reporting. */
+#view-active-match .am-map-roster .am-mr-row[data-state="stale"] .am-mr-state {
+  color: var(--text-dim);
+  font-weight: 400;
+}
 
 /* UX-2 (2026-05-20): per-enemy threat donut. The donut module
  * (web/js/panels/threat_donut.js) renders a 28x28 inline SVG showing

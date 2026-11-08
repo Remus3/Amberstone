@@ -2394,12 +2394,15 @@ function _amStartMapPolling() {
     // last line is repainted against the feed's age, so a feed that keeps
     // failing reads as stalled instead of repeating its counts (the next
     // tick retries either way).
+    // S144-U-222: the cached repaint covers every layer (roster, dots,
+    // gank band), so a dead feed's rows and band stand down with the line.
     const failed = () => {
+      if (_AM_MAP.vsCache) {
+        _amDrawOverlay(_AM_MAP.vsCache);
+        return;
+      }
       const status = document.getElementById("am-map-status");
-      if (!status) return;
-      status.textContent = _AM_MAP.vsCache
-        ? _amMapStatusText(_AM_MAP.vsCache, _amMapStaleS(_AM_MAP.feed, Date.now()))
-        : _AM_MAP_FEED_FAILED;
+      if (status) status.textContent = _AM_MAP_FEED_FAILED;
     };
     fetch("/api/vision-state", { cache: "no-store" })
       .then((r) => r.ok ? r.json() : null)
@@ -2474,6 +2477,38 @@ function _amMapStaleS(track, nowMs) {
   return Math.max(0, (nowMs - track.at) / 1000);
 }
 
+// S144-U-222: the one stale cut every MAP layer reads - the status line,
+// the roster rows and the gank band. A non-number or non-finite age is not a
+// stall.
+function _amMapIsStale(staleS) {
+  return typeof staleS === "number" && Number.isFinite(staleS)
+    && staleS >= _AM_MAP_STALE_S;
+}
+
+// S144-U-222: one roster row's state and text. While the feed is stalled the
+// row claims nothing live - "on bridge" in green, an "MIA 12s" that stopped
+// counting and a "DEAD 18s" respawn countdown that never ticked all read a
+// frozen answer as live - so it reads "no feed" in a neutral state; the status
+// line above names the game time the feed stalled at.
+function _amMapRosterState(e, stale) {
+  if (stale) return { state: "stale", text: "no feed" };
+  e = (e && typeof e === "object") ? e : {};
+  if (e.is_dead) {
+    const rs = (e.respawn_in_s != null)
+      ? " " + Math.ceil(e.respawn_in_s) + "s" : "";
+    return { state: "dead", text: "DEAD" + rs };
+  }
+  if (e.visible) {
+    return {
+      state: "ok",
+      text: String(e.last_seen_zone || "visible").replace(/_/g, " "),
+    };
+  }
+  const ms = (e.missing_for_s != null)
+    ? " " + Math.round(e.missing_for_s) + "s" : "";
+  return { state: "mia", text: "MIA" + ms };
+}
+
 function _amMapStatusText(vs, staleS) {
   const ok = vs && typeof vs === "object" && !Array.isArray(vs);
   const clock = (ok && vs.game_time != null)
@@ -2486,8 +2521,7 @@ function _amMapStatusText(vs, staleS) {
   const missing = summary.missing_count | 0;
   const dead    = summary.dead_count | 0;
   if (visible + missing + dead <= 0) return clock + _AM_MAP_NO_ENEMIES;
-  if (typeof staleS === "number" && Number.isFinite(staleS)
-      && staleS >= _AM_MAP_STALE_S) {
+  if (_amMapIsStale(staleS)) {
     const at = (vs.game_time != null) ? " at " + _amClock(vs.game_time) : "";
     return `vision feed stalled${at} - ${Math.floor(staleS)}s ago`;
   }
@@ -2505,9 +2539,11 @@ function _amUpdateMapText(vs) {
   const status = document.getElementById("am-map-status");
   const roster = document.getElementById("am-map-roster");
   const enemies = (vs && vs.enemies) || {};
+  const staleS = _amMapStaleS(_AM_MAP.feed, Date.now());
+  const stale = _amMapIsStale(staleS);
 
   if (status) {
-    status.textContent = _amMapStatusText(vs, _amMapStaleS(_AM_MAP.feed, Date.now()));
+    status.textContent = _amMapStatusText(vs, staleS);
   }
 
   if (roster) {
@@ -2516,21 +2552,9 @@ function _amUpdateMapText(vs) {
       if (!e || typeof e !== "object") continue;
       const row = document.createElement("div");
       row.className = "am-mr-row";
-      let stateTxt;
-      if (e.is_dead) {
-        row.dataset.state = "dead";
-        const rs = (e.respawn_in_s != null)
-          ? " " + Math.ceil(e.respawn_in_s) + "s" : "";
-        stateTxt = "DEAD" + rs;
-      } else if (e.visible) {
-        row.dataset.state = "ok";
-        stateTxt = String(e.last_seen_zone || "visible").replace(/_/g, " ");
-      } else {
-        row.dataset.state = "mia";
-        const ms = (e.missing_for_s != null)
-          ? " " + Math.round(e.missing_for_s) + "s" : "";
-        stateTxt = "MIA" + ms;
-      }
+      const rowState = _amMapRosterState(e, stale);
+      row.dataset.state = rowState.state;
+      const stateTxt = rowState.text;
       const nm = document.createElement("span");
       nm.className = "am-mr-name";
       nm.textContent = String(name).slice(0, 10);
@@ -2591,6 +2615,12 @@ function _amFitOverlay() {
 function _amDrawDots(vs) {
   const canvas = document.getElementById("am-map-overlay");
   const ganker = document.getElementById("am-map-gank");
+  // S144-U-222: a stalled feed raises no gank warning - "missing 25s" off a
+  // frozen answer is a number that stopped counting, not a jungler on the
+  // way. Taken down before the fit, so a figure with no image to lie over
+  // cannot leave a stale band up either.
+  const stale = !!vs && _amMapIsStale(_amMapStaleS(_AM_MAP.feed, Date.now()));
+  if (stale && ganker) ganker.style.display = "none";
   const fit = _amFitOverlay();
   if (!fit) return;
   const { w, h } = fit;
@@ -2664,7 +2694,7 @@ function _amDrawDots(vs) {
         ctx.fillText(tag, bx, by);
       }
       // Gank-watch: jungler-shaped missing pattern
-      if (missing > _AM_GANK_THRESHOLD
+      if (!stale && missing > _AM_GANK_THRESHOLD
           && (e.last_seen_zone === "ENEMY_JUNGLE"
               || e.last_seen_zone === "RIVER"
               || e.last_seen_zone === null)) {
@@ -3352,6 +3382,8 @@ export const __test = {
   _amThreatEnemies,
   _amCapgapEnemyNames,
   _amMapStatusText,
+  _amMapIsStale,
+  _amMapRosterState,
   _AM_MAP_FEED_FAILED,
   _AM_MAP_STALE_S,
   _amMapFeedTrack,
