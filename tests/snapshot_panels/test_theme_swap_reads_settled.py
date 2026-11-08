@@ -149,7 +149,15 @@ makes), the s144 uiux module of S144-U-215:
     land and reads the Daemon Slayer row's "All six item slots full" line
     and the pane surface under it. Nothing runs anywhere in the page at
     that read, so none is needed.
-This module pins all forty-five verdicts at runtime with each test's own opener,
+Audit (2026-11-08, s144 uiux cycle 216, S144-U-223, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-223:
+  - test_am_map_roster_state_contrast: boot-stamped (?theme=), never swaps
+    in-page, no sheet and no sleep; it reads the MAP roster's state words
+    and the row under them on a live feed, then again after the page clock
+    runs the feed past its stale cut and the rows re-class to "no feed".
+    Nothing runs anywhere in the page at either read, so none is needed.
+This module pins all forty-six verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -238,9 +246,10 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The forty-five modules audited above, keyed by file name.
+# The forty-six modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
+    "test_am_map_roster_state_contrast.py",
     "test_build_insights_chart_text_contrast.py",
     "test_build_insights_sort_header_hover.py",
     "test_champ_select_arena_augment_options.py",
@@ -1079,6 +1088,7 @@ def test_lobby_mains_recent_cell_reads_are_settled(
 # extra arguments after (mock_server, pw_browser, theme), taken from its own
 # constants (its first viewport, its first mode, the TFT footer state).
 _CONTRAST = {
+    "test_am_map_roster_state_contrast": (),
     "test_build_insights_chart_text_contrast": ("vp",),
     "test_footer_mode_pill_contrast": ("fixture",),
     "test_historical_pgr_text_contrast": ("mode", "vp"),
