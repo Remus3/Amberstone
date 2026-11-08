@@ -141,7 +141,15 @@ the theme at BOOT (?theme=) and never swap in-page:
     transition with every sleep in place (no sleep sat before it), so it
     measured a mid-transition fill (hextech 201,172,115 for the settled
     205,181,132) until the sheet.
-This module pins all forty-four verdicts at runtime with each test's own opener,
+Audit (2026-11-08, s144 uiux cycle 208, S144-U-215, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-215:
+  - test_ui_mock_active_match_complete: boot-stamped (?theme=), never
+    swaps in-page, no sheet and no sleep; it waits for the BUILD module to
+    land and reads the Daemon Slayer row's "All six item slots full" line
+    and the pane surface under it. Nothing runs anywhere in the page at
+    that read, so none is needed.
+This module pins all forty-five verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -230,7 +238,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The forty-four modules audited above, keyed by file name.
+# The forty-five modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_build_insights_chart_text_contrast.py",
@@ -269,6 +277,7 @@ _COVERED = {
     "test_tab_bars_selected_state.py",
     "test_theme_signal_prim_hue.py",
     "test_theme_soft_token_hue.py",
+    "test_ui_mock_active_match_complete.py",
     "test_user_builds_rune_cells_focus_ring.py",
     "test_user_builds_rune_tabs.py",
     "test_user_builds_spell_chooser_keyboard.py",
@@ -1066,9 +1075,9 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The nine S144-U-214 contrast modules: each one's _measure extra arguments
-# after (mock_server, pw_browser, theme), taken from its own constants (its
-# first viewport, its first mode, the TFT footer state).
+# The nine S144-U-214 contrast modules and S144-U-215's: each one's _measure
+# extra arguments after (mock_server, pw_browser, theme), taken from its own
+# constants (its first viewport, its first mode, the TFT footer state).
 _CONTRAST = {
     "test_build_insights_chart_text_contrast": ("vp",),
     "test_footer_mode_pill_contrast": ("fixture",),
@@ -1078,6 +1087,7 @@ _CONTRAST = {
     "test_lobby_text_contrast": ("vp",),
     "test_pgr_text_contrast": ("mode", "vp"),
     "test_session_text_contrast": ("vp",),
+    "test_ui_mock_active_match_complete": (),
     "test_user_builds_text_contrast": ("vp",),
 }
 # The four whose opener adds the sheet before its first interaction.

@@ -37,9 +37,14 @@
   align-items: flex-start;
 }
 
+/* S144-U-215: --text-dim, not --text-faint. This 16 px / 400 line's floor is
+   4.5:1, and --text-faint measured 4.31:1 on the BUILD pane's surface on
+   arcane (4.39 ember, 4.46 hextech, 4.48 moonlit); --text-dim measures 6.37
+   (hextech) to 8.18 (terminal). Pinned in every theme by
+   tests/snapshot_panels/test_ui_mock_active_match_complete.py. */
 .bm-strip.bm-empty {
   font-size: var(--fs-xs, 16px);
-  color: var(--text-faint, #9aa0b5);
+  color: var(--text-dim, #9ab0cc);
   font-style: italic;
 }
 
@@ -48,6 +53,14 @@
    a held-open slot (no-reflow-on-absence). */
 .bm-row .bm-strip:empty {
   min-height: 46px;
+}
+
+/* S144-U-215: a row's one-line empty-state text (the Daemon Slayer row's "All
+   six item slots full") holds the same reserved height and sits on its
+   centre line, so the text replacing a blank strip moves nothing below it. */
+.bm-row .bm-strip.bm-empty {
+  min-height: 46px;
+  align-items: center;
 }
 
 /* BATCH A: the Daemon Slayer (live) row is the headline - its label reads in the

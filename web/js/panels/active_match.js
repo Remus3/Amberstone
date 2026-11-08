@@ -693,6 +693,30 @@ export function _shouldRetainBuild(champion, picksLen, metaLen, hasContent) {
   return nothingToPaint && !!hasContent;
 }
 
+// S144-U-215 (queue defect B#3): the hasContent the guard above takes. Only a
+// paint _renderAmBuildBody itself made (it stamps data-am-build-sig) is a "good
+// render" worth keeping. The index.html scaffold line ("DS engine ranks + owned
+// items list will render here mid-game.") is content too, and counting it kept
+// that line on screen for the whole game whenever the DS rerank, the Meta order
+// and the Ultimate order were all empty - measured on the ?ui_mock=1&mode=complete
+// finished build at 31:20, dashboard and overlay. Exported for the test.
+export function _amBuildPainted(el) {
+  return !!(el && el.innerHTML && el.dataset && el.dataset.amBuildSig !== undefined);
+}
+
+// S144-U-215: the Daemon Slayer row's text when it has no pick to show. Six
+// inventory items is the finished build the coach stops ranking for
+// (active_match_complete.json: daemon_slayer_picks [] at six items), so the row
+// says so instead of a bare label over a blank strip. Fewer items: "" - the
+// strip stays blank and holds its height (a fetch may still land; never a stuck
+// "loading..." string). The caller passes 0 when no liveclient block is
+// present: the server owned_item_ids drop trinkets and consumables (an
+// undercount shows no line), the raw allPlayers path drops slot >= 6, but the
+// coach items_display fallback can carry the trinket (5 items + trinket = 6).
+export function _bmLiveEmptyText(ownedCount) {
+  return (Number(ownedCount) || 0) >= 6 ? "All six item slots full" : "";
+}
+
 // BATCH A (2026-07-06): the in-game BUILD module reshaped to three NAMED,
 // family-safe build rows - "Daemon Slayer" (live adaptive DS order), "Meta
 // Build" (archetype / popular order) and "Ultimate Build" (DS-optimal, family-
@@ -816,7 +840,7 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // holds a good render, keep it - game-end hides the whole active-match surface
   // upstream, so this never wedges a stale pane after the match.
   if (_shouldRetainBuild(champion, picks.length,
-        metaOrder.length || ultimateOrder.length, !!build.innerHTML)) {
+        metaOrder.length || ultimateOrder.length, _amBuildPainted(build))) {
     return;
   }
 
@@ -934,7 +958,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
       } else {
         // Reserve the strip height so the row does not reflow when its fetch
         // lands (no-reflow-on-absence); blank, NOT a stuck "loading..." string.
-        rowEl.appendChild(_bmStrip());
+        // S144-U-215: an empty LIVE row beside a full inventory says so
+        // (_bmLiveEmptyText) in the same reserved height (build_module.css).
+        const emptyText = isLive ? _bmLiveEmptyText(lc ? ownedIds.length : 0) : "";
+        rowEl.appendChild(emptyText ? _bmEmptyStrip(emptyText) : _bmStrip());
       }
       mod.appendChild(rowEl);
     });
