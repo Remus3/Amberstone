@@ -1594,11 +1594,30 @@ def _needs_whole_remote(line: str, have: Optional[Callable[[str], bool]]) -> boo
     return bool(_ZERO.match(parts[3])) or (have is not None and not have(parts[3]))
 
 
+def _is_rewrite(
+    line: str,
+    have: Optional[Callable[[str], bool]],
+    is_ancestor: Optional[Callable[[str, str], Optional[bool]]],
+) -> bool:
+    """True for an update whose old remote sha is NOT an ancestor of the new one.
+
+    RM-697: a ref force-updated across a history rewrite. Only a definite
+    "not an ancestor" counts; an unknown answer (None) keeps the exact range.
+    """
+    parts = (line or "").split()
+    if len(parts) < 4 or is_ancestor is None or _needs_whole_remote(line, have):
+        return False
+    if _ZERO.match(parts[1]):
+        return False
+    return is_ancestor(parts[3], parts[1]) is False
+
+
 def resolve_push_range(
     line: str,
     remote_name: str,
     have: Optional[Callable[[str], bool]] = None,
     advertised: Optional[Sequence[str]] = None,
+    is_ancestor: Optional[Callable[[str, str], Optional[bool]]] = None,
 ) -> Optional[RangeSpec]:
     """One pre-push stdin line -> the rev-list arguments for what it publishes.
 
@@ -1623,6 +1642,13 @@ def resolve_push_range(
     ``--not --remotes`` let a new branch built on one publish it unscanned.
     ``advertised=None`` keeps that legacy form for callers that cannot reach
     the remote; every push gate passes it via ``resolve_push_ranges``.
+
+    RM-697: a forced update across a history rewrite (``is_ancestor(old, new)``
+    is False) also excludes the advertised set, ``<new> ^<old> ^a ^b ...``:
+    ``<new> --not <old>`` alone is the whole rewritten lineage, already public
+    under other refs (rw2: 4517 commits rescanned, a false HALT). A
+    fast-forward, an unknown ancestry (None) or ``advertised=None`` keeps the
+    exact ``--not <old>`` range (scan more, never less).
     """
     parts = (line or "").split()
     if len(parts) < 4:
@@ -1634,6 +1660,11 @@ def resolve_push_range(
         if advertised is not None:
             return RangeSpec(local_ref, [local_sha, *("^" + s for s in advertised)])
         return RangeSpec(local_ref, [local_sha, "--not", f"--remotes={remote_name}"])
+    if advertised is not None and _is_rewrite(line, have, is_ancestor):
+        return RangeSpec(
+            local_ref,
+            [local_sha, "^" + remote_sha, *("^" + s for s in advertised if s != remote_sha)],
+        )
     return RangeSpec(local_ref, [local_sha, "--not", remote_sha])
 
 
@@ -1674,22 +1705,43 @@ def resolve_push_ranges(
     ref_lines: Sequence[str],
     remote_name: str,
     have: Optional[Callable[[str], bool]] = None,
+    is_ancestor: Optional[Callable[[str, str], Optional[bool]]] = None,
 ) -> list:
     """Every pre-push stdin line -> its RangeSpec (deletions dropped).
 
     The ONE range resolver for every push gate (this sweep and
     ``tools/credential_history_scan.py``). ls-remote is read once, and only
-    when some line needs the whole-remote exclusion; GitFault propagates.
+    when some line needs the whole-remote exclusion (GitFault propagates) or
+    is a forced update across a rewrite (RM-697). A rewrite-only push whose
+    ls-remote fails keeps the exact ``--not <old>`` range: that scans MORE,
+    so it is not a fault, unlike falling back to the tracking refs.
     """
     if have is None:
         def have(sha: str) -> bool:
             return _has_object(root, sha)
+    if is_ancestor is None:
+        def is_ancestor(old: str, new: str) -> Optional[bool]:
+            return _is_ancestor(root, old, new)
+    seen: dict = {}
+
+    def ancestor(old: str, new: str) -> Optional[bool]:
+        if (old, new) not in seen:
+            seen[(old, new)] = is_ancestor(old, new)
+        return seen[(old, new)]
+
     advertised = None
     if any(_needs_whole_remote(ln, have) for ln in ref_lines):
         advertised = remote_advertised(root, remote_name)
+    elif any(_is_rewrite(ln, have, ancestor) for ln in ref_lines):
+        try:
+            advertised = remote_advertised(root, remote_name)
+        except GitFault:
+            advertised = None
     specs = []
     for line in ref_lines:
-        spec = resolve_push_range(line, remote_name, have=have, advertised=advertised)
+        spec = resolve_push_range(
+            line, remote_name, have=have, advertised=advertised, is_ancestor=ancestor
+        )
         if spec is not None:
             specs.append(spec)
     return specs
@@ -1762,6 +1814,27 @@ def _has_object(root: Path, sha: str) -> bool:
     except OSError:
         return False
     return proc.returncode == 0
+
+
+def _is_ancestor(root: Path, old: str, new: str) -> Optional[bool]:
+    """``git merge-base --is-ancestor old new``: True / False, None if unknown.
+
+    Exit 0 = ancestor, 1 = not; anything else (a missing object, git absent)
+    is None, which keeps the exact push range (RM-697: scan more, never less).
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "merge-base", "--is-ancestor", old, new],
+            capture_output=True,
+            creationflags=_NO_WINDOW,
+        )
+    except OSError:
+        return None
+    if proc.returncode == 0:
+        return True
+    if proc.returncode == 1:
+        return False
+    return None
 
 
 @dataclass
