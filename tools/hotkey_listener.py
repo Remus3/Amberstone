@@ -42,9 +42,10 @@ alt-tabbing out of League. The Edge dashboard updates from its own poll loop
 within a second of the POST landing, so the banner clears whether the player
 glances over or not.
 
-Deploy: the RC-HotkeyListener ONLOGON scheduled task runs THIS in-repo file
-(docs/OPERATIONS.md, scheduled tasks). Run it from the checkout, never as a
-copy: it imports core.* at module top level, so a copy outside the repo dies
+Deploy: the rc-shell service host (ops/launcher/service_host.py) runs THIS
+in-repo file since the 2026-10-31 launcher cutover, which unregistered the old
+RC-HotkeyListener ONLOGON task (docs/OPERATIONS.md, "Moved to the app"). Run
+it from the checkout, never as a copy: it imports core.* at module top level, so a copy outside the repo dies
 at import (the retired copy-out boot script did exactly that).
 
 Stops on Ctrl+C (when run interactively) or when the process is killed
@@ -65,8 +66,8 @@ import urllib.request
 from ctypes import wintypes
 from pathlib import Path
 
-# Launched as ``pythonw tools/hotkey_listener.py`` (RC-HotkeyListener ONLOGON
-# task), so sys.path[0] is tools/ and the repo's own packages are invisible.
+# Launched as ``pythonw tools/hotkey_listener.py`` (by the service host), so
+# sys.path[0] is tools/ and the repo's own packages are invisible.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.log_rotation import LFRotatingFileHandler  # noqa: E402
@@ -104,7 +105,7 @@ VISIBLE_TOGGLE_SIGNAL_FILE = str(_REPO_ROOT / "ops" / "runtime" / "overlay_visib
 def _setup_logging() -> logging.Logger:
     """Log to a durable file (always) plus the console when one exists.
 
-    Under pythonw.exe (how the RC-HotkeyListener logon task launches us)
+    Under pythonw.exe (how the service host launches us)
     sys.stderr is None, so a stderr-only logger silently drops every line and an
     unhandled exception's traceback vanishes - which is exactly why a boot-time
     failure here was historically invisible. The rotating file handler
@@ -247,7 +248,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _ensure_repo_on_path() -> None:
-    """The logon task runs this file as a script (sys.path[0] = tools/), so the
+    """The service host runs this file as a script (sys.path[0] = tools/), so the
     repo root must be importable before the core helpers are."""
     root = str(_REPO_ROOT)
     if root not in sys.path:
