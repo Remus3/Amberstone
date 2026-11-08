@@ -38,8 +38,15 @@ $agents = @(
 foreach ($a in $agents) {
   $alive = Get-CimInstance Win32_Process -Filter "Name='pythonw.exe' OR Name='python.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -and $_.CommandLine -match $a.Match }
+  # Status (2026-10-31 launcher cutover): these three tasks are unregistered and the
+  # rc-shell service host runs the agents (docs/OPERATIONS.md, "Moved to the app").
+  # Start-ScheduledTask on an absent task fails silently here, so "started" is printed
+  # only after a lookup found the task, as step 1 does for its own list.
+  $agentTask = Get-ScheduledTask -TaskName $a.Task -ErrorAction SilentlyContinue
   if ($alive) {
     Write-Host "[on] $($a.Task) : already running (pid $($alive[0].ProcessId))"
+  } elseif ($null -eq $agentTask) {
+    Write-Host "[on] $($a.Task) : not registered (the rc-shell service host runs this agent; start the app)"
   } else {
     Start-ScheduledTask -TaskName $a.Task -ErrorAction SilentlyContinue
     Write-Host "[on] $($a.Task) : started"
