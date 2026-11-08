@@ -38,10 +38,9 @@ import pytest
 
 from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_champ_select_narrow_reflow import (
-    _PNG,
     _SETTLE,
     _apart,
-    _route_missing_icons,
+    _icons_not_drawn,
     _same_line,
 )
 
@@ -99,12 +98,6 @@ def _read(pw_browser, url, size):
     )
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
-    # The ui_mock server has no /icons/spells/ route; serve a real image so
-    # the spells column is drawn, as on the live page.
-    page.route("**/icons/spells/**", lambda route: route.fulfill(
-        status=200, content_type="image/png", body=_PNG))
-    # The other icons too, so none is caught mid-404 as an alt-text box.
-    _route_missing_icons(page)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     try:
@@ -116,17 +109,15 @@ def _read(pw_browser, url, size):
             " .csv-build-row:not(.csv-build-row-collapsed) .csv-build-item')",
             timeout=15_000,
         )
-        page.wait_for_function(
-            "Array.from(document.querySelectorAll('#view-champ-select"
-            " img.csv-build-spell')).every((i) => i.complete"
-            " && i.naturalWidth > 0)",
-            timeout=10_000,
-        )
+        # The spell, item and champion icons are drawn (the snapshot mock's
+        # icon stand-in, conftest.py _is_missing_icon) before the read.
+        broken = _icons_not_drawn(page)
         page.evaluate(_SETTLE)
         got = page.evaluate(_READ)
     finally:
         ctx.close()
     assert not errors, f"page errors at {size}: {errors[:3]}"
+    assert not broken, f"icons not drawn at {size}: {broken}"
     assert got, size
     return got
 

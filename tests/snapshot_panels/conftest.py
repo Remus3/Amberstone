@@ -9,6 +9,7 @@ Architecture:
   fallback (which kicks in only after 4 s).
 """
 import asyncio
+import base64
 import json
 import os
 import socket
@@ -17,6 +18,7 @@ import threading
 import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import unquote
 
 import pytest
 
@@ -122,6 +124,42 @@ DRAFT_ELO_GOOD_BAND = {
 }
 
 
+# RM-2041 (s154): the icon stand-in. The champion / item / rune / spell /
+# profile / map icons under /data/ddragon/ and /icons/ live in the gitignored
+# DDragon mirror (and the dashboard's own icon routes), so on the CI runner and
+# in any fresh checkout this server answered them 404. Each <img> then hid
+# itself in its onerror handler, after first retrying the public ddragon CDN,
+# at an unknown time; in between, Chromium laid the broken image out as its alt
+# text. CI run 42427673121 caught an 80 px alt box past the ARAM my-pick card
+# at 480 (test_champ_select_narrow_reflow) where run 42427610342 on the same
+# sha did not, and one Active Match module made 87 icon 404s and 80 CDN
+# requests per run. A missing icon file is answered with this 1x1 PNG, so every
+# icon is drawn at its authored size, its onerror never fires, and no request
+# leaves the box. Every ddragon CDN URL in web/js is such an onerror fallback.
+# A file that exists (the mirror on a dev box, the tracked web/icons/) is
+# still served as itself.
+_ICON_STAND_IN = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+    "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+_ICON_PREFIXES = ("/data/ddragon/", "/icons/")
+_ICON_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+_WEB_ROOT = WEB_DIR.resolve()
+
+
+def _is_missing_icon(path: str) -> bool:
+    """True for an icon image path under _ICON_PREFIXES whose file is not
+    under web/. A path that climbs out of web/ is left to the static
+    handler, which refuses it."""
+    if not path.startswith(_ICON_PREFIXES):
+        return False
+    if not path.lower().endswith(_ICON_SUFFIXES):
+        return False
+    target = (_WEB_ROOT / unquote(path).lstrip("/")).resolve()
+    if not target.is_relative_to(_WEB_ROOT):
+        return False
+    return not target.is_file()
+
+
 def _make_handler(store: dict, closing: threading.Event) -> type:
     """Return an HTTP handler class bound to the shared fixture store.
 
@@ -193,8 +231,20 @@ def _make_handler(store: dict, closing: threading.Event) -> type:
                 )
             elif p.startswith("/api/"):
                 self._send_json({})
+            elif _is_missing_icon(p):
+                self._send_icon_stand_in()
             else:
                 super().do_GET()
+
+        def _send_icon_stand_in(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(len(_ICON_STAND_IN)))
+            self.end_headers()
+            try:
+                self.wfile.write(_ICON_STAND_IN)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
         def _send_json(self, obj: object) -> None:
             body = json.dumps(obj).encode()

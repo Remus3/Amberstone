@@ -40,7 +40,6 @@ the rune rail beside the build list. (RM-1781 made the build row a
 wrapping flex row at every width; test_champ_select_build_row_mid_width.py
 pins it above 720, with the grid's geometry wherever one line holds it.)
 """
-import base64
 import math
 
 import pytest
@@ -48,32 +47,33 @@ import pytest
 from tests.snapshot_panels.conftest import _WS_STUB
 
 _NARROW = ((640, 900), (560, 860), (480, 800), (360, 740), (320, 640))
-# A 1x1 PNG for the stubbed spell icons.
-_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
-    "YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
 _WIDE = ((722, 900), (1920, 920))
 _MODES = ("sr", "aram", "arena")
 
-# RM-2041 (s154): the champion, item and rune icons live in the gitignored
-# DDragon mirror, absent on the CI runner and in a fresh checkout, so the mock
-# server answers them 404. Each <img> then hides itself (onerror; an item first
-# retries the public CDN) at an unknown time, and in between Chromium lays the
-# broken image out as its alt text: CI run 42427673121 read an 80 px alt box at
-# 373-453 in the ARAM my-pick card (frame 37-443) at 480, where the bench's
-# 46 px icon sits at 373-419; run 42427610342 on the same sha missed that
-# window. Served a real image, every icon is drawn as on the live page, at its
-# authored size, and no request leaves the box. (Each glob is a literal: the
-# RM-1506 guard reads a bare-name matcher as a possible callable.)
-def _png(route):
-    route.fulfill(status=200, content_type="image/png", body=_PNG)
+# RM-2041 (s154): every icon in the view is drawn before anything is read.
+# The snapshot mock answers a missing icon file with a stand-in image
+# (conftest.py _is_missing_icon), so no <img> sits mid-404 as an alt-text
+# box (CI run 42427673121 read an 80 px one past the ARAM my-pick card at
+# 480) and none falls back to the public ddragon CDN. An icon that did not
+# load, or that left for the CDN, fails the read by name. Lazy images load
+# on scroll and are left out. One evaluation: null while any icon is still
+# loading (the view re-renders on the state poll), else the list of icons
+# that failed, so the wait and the check read the same elements.
+_ICONS_DRAWN = """() => {
+  const icons = Array.from(document.querySelectorAll(
+    '#view-champ-select img[src]')).filter((i) => i.loading !== 'lazy');
+  if (!icons.every((i) => i.complete)) return null;
+  return icons.filter((i) => i.naturalWidth === 0
+      || i.dataset.cdn || i.dataset.cdnRetry
+      || (/^https?:/.test(i.getAttribute('src'))
+          && !i.src.startsWith(location.origin)))
+    .map((i) => i.getAttribute('src')).slice(0, 6);
+}"""
 
 
-def _route_missing_icons(page):
-    page.route("**/data/ddragon/*/img/champion/**", _png)
-    page.route("**/data/ddragon/*/img/item/**", _png)
-    page.route("**/icons/runes/**", _png)
-    page.route("https://ddragon.leagueoflegends.com/**", _png)
+def _icons_not_drawn(page):
+    """The icons of the view that did not load, once every one is done."""
+    return page.wait_for_function(_ICONS_DRAWN, timeout=10_000).json_value()
 _IDS = [str(s[0]) for s in _NARROW]
 
 # Row selector -> (cell selector, N columns wanted, cell floor px, gap px).
@@ -204,12 +204,6 @@ def _read(pw_browser, url, mode, size):
     )
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
-    # The ui_mock server has no /icons/spells/ route, so a spell <img>
-    # errors and hides itself (onerror) at an unknown time; serve a real
-    # image so the spells column is drawn, as on the live page.
-    page.route("**/icons/spells/**", lambda route: route.fulfill(
-        status=200, content_type="image/png", body=_PNG))
-    _route_missing_icons(page)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     rows = {k: _ROWS[k][:2] for k in _ROWS_BY_MODE[mode]}
@@ -223,17 +217,13 @@ def _read(pw_browser, url, mode, size):
             arg=_READY[mode],
             timeout=15_000,
         )
-        page.wait_for_function(
-            "Array.from(document.querySelectorAll('#view-champ-select"
-            " img.csv-build-spell')).every((i) => i.complete"
-            " && i.naturalWidth > 0)",
-            timeout=10_000,
-        )
+        broken = _icons_not_drawn(page)
         page.evaluate(_SETTLE)
         got = page.evaluate(_READ, rows)
     finally:
         ctx.close()
     assert not errors, f"page errors at {mode} {size}: {errors[:3]}"
+    assert not broken, f"icons not drawn at {mode} {size}: {broken}"
     assert got is not None, (mode, size)
     return got
 
