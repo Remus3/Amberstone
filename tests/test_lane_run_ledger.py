@@ -237,21 +237,24 @@ def test_runs_reserve_is_twenty_percent_of_the_live_cap():
 
 # ------------------------------------------------------------------ FLEET-1b
 
-def test_model_trial_lanes_are_exactly_the_ordered_three():
-    assert set(RL.MODEL_TRIAL) == {"ds", "repo", "research"}
-    assert set(RL.MODEL_TRIAL.values()) == {"claude-sonnet-5-5"}
-    assert RL.MODEL_TRIAL_END == "2026-11-08"
+def test_model_trial_keeps_only_the_repo_lane_to_the_extended_end():
+    # RM-1267 (s155): repo's USD per lane commit fell, ds and research rose, so only
+    # repo stays on sonnet, re-read on the new end date.
+    assert RL.MODEL_TRIAL == {"repo": "claude-sonnet-5-5"}
+    assert RL.MODEL_TRIAL_END == "2026-12-08"
 
 
 def test_lane_model_holds_through_the_end_date_then_falls_back():
-    assert RL.lane_model("ds", "2026-11-01") == "claude-sonnet-5-5"
-    assert RL.lane_model("repo", "2026-11-08") == "claude-sonnet-5-5"
-    assert RL.lane_model("research", "2026-11-09") is None
+    assert RL.lane_model("repo", "2026-11-01") == "claude-sonnet-5-5"
+    assert RL.lane_model("repo", "2026-11-09") == "claude-sonnet-5-5"
+    assert RL.lane_model("repo", "2026-12-08") == "claude-sonnet-5-5"
+    assert RL.lane_model("repo", "2026-12-09") is None
 
 
 def test_opus_lanes_get_no_override():
-    for lane in ("true-audit", "queue", "uiux", "gated"):
+    for lane in ("ds", "research", "true-audit", "queue", "uiux", "gated"):
         assert RL.lane_model(lane, "2026-11-02") is None
+        assert RL.lane_model(lane, "2026-11-09") is None
 
 
 def test_trial_ids_are_in_the_current_model_guard_set():
@@ -260,20 +263,24 @@ def test_trial_ids_are_in_the_current_model_guard_set():
 
 
 def test_trial_measure_splits_before_during_and_ignores_the_default_model_during():
-    usage = [_row(cost=4.0, ts="2026-10-30T01:00:00-05:00"),
-             _row(cost=8.0, ts=f"{DAY}T01:00:00-06:00"),  # first day, still on opus
-             _row(cost=1.0, ts=f"{DAY}T05:00:00-06:00", model="claude-sonnet-5-5"),
-             _row(cost=1.0, ts="2026-11-09T05:00:00-06:00", model="claude-sonnet-5-5"),
+    repo, sonnet = "lane-s144-repo", "claude-sonnet-5-5"
+    usage = [_row(note=repo, cost=4.0, ts="2026-10-30T01:00:00-05:00"),
+             _row(note=repo, cost=8.0, ts=f"{DAY}T01:00:00-06:00"),  # first day, still on opus
+             _row(note=repo, cost=1.0, ts=f"{DAY}T05:00:00-06:00", model=sonnet),
+             _row(note=repo, cost=1.0, ts="2026-12-08T05:00:00-06:00", model=sonnet),  # last day
+             _row(note=repo, cost=1.0, ts="2026-12-09T05:00:00-06:00", model=sonnet),  # past it
              _row(note="lane-s144-queue", cost=6.0, ts=f"{DAY}T05:00:00-06:00")]
-    cycles = [{"lane": "ds", "ended": "2026-10-30T01:00:00-05:00", "own_commits": 2},
-              {"lane": "ds", "ended": f"{DAY}T01:00:00-06:00", "own_commits": 9},
-              {"lane": "ds", "ended": f"{DAY}T05:00:00-06:00", "own_commits": 1,
-               "model": "claude-sonnet-5-5"}]
+    cycles = [{"lane": "repo", "ended": "2026-10-30T01:00:00-05:00", "own_commits": 2},
+              {"lane": "repo", "ended": f"{DAY}T01:00:00-06:00", "own_commits": 9},
+              {"lane": "repo", "ended": f"{DAY}T05:00:00-06:00", "own_commits": 1,
+               "model": sonnet},
+              {"lane": "repo", "ended": "2026-12-08T05:00:00-06:00", "own_commits": 1,
+               "model": sonnet}]
     out = RL.trial_measure(usage, cycles)
-    assert out["ds"]["before"]["usd_per_lane_commit"] == 2.0
-    assert out["ds"]["during"]["runs"] == 1 and out["ds"]["during"]["usd"] == 1.0
-    assert out["ds"]["during"]["lane_commits"] == 1
-    assert out["ds"]["during"]["models"] == ["claude-sonnet-5-5"]
+    assert out["repo"]["before"]["usd_per_lane_commit"] == 2.0
+    assert out["repo"]["during"]["runs"] == 2 and out["repo"]["during"]["usd"] == 2.0
+    assert out["repo"]["during"]["lane_commits"] == 2
+    assert out["repo"]["during"]["models"] == [sonnet]
     assert out["queue"]["during"]["runs"] == 1  # a non-trial lane is not model-filtered
 
 

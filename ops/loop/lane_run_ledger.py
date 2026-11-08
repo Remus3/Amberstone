@@ -63,9 +63,11 @@ LANE_NOTE_PREFIX = "lane-s144-"
 USAGE_TAIL_BYTES = 16 << 20
 
 SONNET_ID = "claude-sonnet-5-5"
-MODEL_TRIAL = {"ds": SONNET_ID, "repo": SONNET_ID, "research": SONNET_ID}
+# RM-1267 (s155): repo's USD per lane commit fell 2.86 -> 0.95 on sonnet, so repo keeps
+# it to the new end date; ds and research rose and are back on the config default.
+MODEL_TRIAL = {"repo": SONNET_ID}
 MODEL_TRIAL_START = "2026-11-01"
-MODEL_TRIAL_END = "2026-11-08"
+MODEL_TRIAL_END = "2026-12-08"
 MODEL_TRIAL_MEASURE = (
     "per lane, before vs during: USD per run, lane commits per run and USD per lane "
     "commit (trial_measure), plus zero-commit runs; and from the merger's records, "
