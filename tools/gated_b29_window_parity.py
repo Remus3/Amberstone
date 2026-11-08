@@ -100,7 +100,8 @@ def build_gate(repo: Path, git: str = "git") -> dict:
         try:
             proc = subprocess.run(
                 [git, "grep", "-l", "-E", pattern, "--", *BUILD_PATHSPEC],
-                cwd=str(repo), capture_output=True, text=True, timeout=60,
+                cwd=str(repo), capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=60,
                 creationflags=_flags())
         except (OSError, subprocess.SubprocessError):
             out[key] = {"state": "UNKNOWN", "files": []}

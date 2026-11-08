@@ -49,7 +49,7 @@ def main() -> int:
     )
     active = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "config", "core.hooksPath"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
     ).stdout.strip()
 
     print(f"core.hooksPath = {active}")

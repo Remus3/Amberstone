@@ -235,7 +235,7 @@ def main() -> int:
             import subprocess as _sp_emb
             r_emb = _sp_emb.run(
                 [str(embed_py), "-c", "import anthropic, PIL"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True, text=True, errors="replace", timeout=10,
             )
             if r_emb.returncode == 0:
                 _ok("embedded runtime: anthropic + Pillow importable")
@@ -290,7 +290,7 @@ def main() -> int:
                 import subprocess as _sp
                 r = _sp.run(
                     [python_on_path, "-m", "pip", "--version"],
-                    capture_output=True, text=True, timeout=10,
+                    capture_output=True, text=True, errors="replace", timeout=10,
                 )
                 if r.returncode == 0:
                     pip_ver = r.stdout.strip().split()[1] if r.stdout.strip() else "unknown"

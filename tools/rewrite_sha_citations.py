@@ -155,7 +155,7 @@ def resolvable_in_repo(tokens: set[str], repo: Path) -> set[str]:
     out = subprocess.run(
         ["git", "-C", str(repo), "cat-file", "--batch-check"],
         input="".join(f"{t}^{{commit}}\n" for t in toks),
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
     ).stdout.splitlines()
     # One output line per input line; "missing" / "ambiguous" do not resolve.
     return {t for t, line in zip(toks, out)

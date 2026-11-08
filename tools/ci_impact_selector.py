@@ -356,7 +356,8 @@ def changed_paths(root: Path, base: str, head: str) -> Optional[List[str]]:
     git = _git()
     for ref in (base, head):
         probe = subprocess.run([git, "cat-file", "-e", f"{ref}^{{commit}}"], cwd=str(root),
-                               capture_output=True, text=True, timeout=60,
+                               capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=60,
                                creationflags=_NO_WINDOW)
         if probe.returncode != 0:
             return None

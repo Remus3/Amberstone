@@ -413,7 +413,7 @@ def check_git_hooks_path(root: pathlib.Path) -> list[Finding]:
     try:
         out = subprocess.run(
             ["git", "-C", str(root), "config", "core.hooksPath"],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
         )
     except (OSError, subprocess.SubprocessError):
         return []
