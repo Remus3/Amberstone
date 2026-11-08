@@ -40,16 +40,18 @@ from dashboard.routes_team_context import get_team_context
 
 log = logging.getLogger("rc.web_dashboard")
 
-# RC2 6.5 - state-pipeline latency reduction. build_state() opens two
-# independent localhost relay round-trips: lcu_summary() (champ-select /
-# lobby, needed immediately) and liveclient_summary() (in-game fields,
-# not needed until the overlay merge well below). Running them back-to-
-# back stacked two ~1s-timeout waits on the /api/state critical path. We
-# overlap the liveclient round-trip with the lcu + coach-file work via a
-# tiny shared thread pool. Small bounded worker count: the build is gated
-# to ~2/s by the routes_state TTL, with a handful of SSE subscribers +
-# pollers at worst - never a fan-out. Port-safe: same two connections,
-# briefly overlapped, never multiplied.
+# RC2 6.5 - state-pipeline latency reduction. build_state() needs the lcu
+# snapshot immediately and the liveclient summary (in-game fields) only at
+# the overlay merge well below. Originally both were localhost relay
+# round-trips with a ~1s timeout each, stacked on the /api/state critical
+# path, so the liveclient one was overlapped with the lcu + coach-file work
+# via a tiny shared thread pool. Since HOT-02 liveclient_summary() reads the
+# in-process core.liveclient_cache snapshot (no socket of its own), so the
+# pooled call cannot hang and the untimed .result() below is safe (guarded
+# by tests/test_unbounded_blocking_wait_census_s144p437.py). The pool stays:
+# the tests and the RC2 6.6 footprint guard pin its shape. Small bounded
+# worker count: the build is gated to ~2/s by the routes_state TTL, with a
+# handful of SSE subscribers + pollers at worst - never a fan-out.
 _RELAY_POOL = concurrent.futures.ThreadPoolExecutor(
     max_workers=4, thread_name_prefix="rc-state-relay")
 
@@ -667,14 +669,12 @@ def build_state() -> dict:
         _stages.append((name, now - _t))
         _t = now
 
-    # RC2 6.5: kick off the independent liveclient relay round-trip
-    # concurrently with the lcu snapshot + coach-file reads below. Its
-    # result (lc) isn't consumed until the overlay merge ~30 lines down,
-    # so overlapping removes that localhost round-trip from the serial
-    # critical path (and bounds a hung relay at max() of the two 1s
-    # timeouts, not their sum). Submitted via the module global so tests
-    # patching _state_builder.liveclient_summary still take effect. Falls
-    # back to an inline call if the pool can't accept the task.
+    # RC2 6.5: kick off the independent liveclient summary concurrently
+    # with the lcu snapshot + coach-file reads below. Its result (lc) isn't
+    # consumed until the overlay merge ~30 lines down, so overlapping keeps
+    # it off the serial critical path. Submitted via the module global so
+    # tests patching _state_builder.liveclient_summary still take effect.
+    # Falls back to an inline call if the pool can't accept the task.
     try:
         _lc_future = _RELAY_POOL.submit(liveclient_summary)
     except Exception:  # noqa: BLE001
@@ -705,7 +705,7 @@ def build_state() -> dict:
     # Overlay live API fields onto coach data so the dashboard placeholders
     # (game_time, kda, level, gold, hp, mana, cs) populate immediately.
     # Coach values win when present (e.g. coach computes win_pct from comp).
-    # Join the liveclient round-trip started up top (RC2 6.5). It almost
+    # Join the liveclient summary started up top (RC2 6.5). It almost
     # always completed during the lcu/coach work above, so this rarely
     # blocks. Any pool/future failure degrades to a fresh inline call so
     # behavior is identical to the pre-6.5 serial path.

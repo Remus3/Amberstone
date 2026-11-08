@@ -47,7 +47,8 @@ _ROWS = {
     ("tools/keybind_listener.py", "wait", "keyboard"):
         "foreground hotkey listener: blocking until Ctrl+C is the program",
     ("dashboard/_state_builder.py", "result", "_lc_future"):
-        "the liveclient round-trip has its own socket timeout; any failure falls back inline",
+        "liveclient_summary is an in-process cache read (HOT-02, no I/O; "
+        "test_liveclient_summary_does_no_blocking_io); any failure falls back inline",
     ("core/vision_tesseract.py", "result", "fut"):
         "as_completed loop: the future is already done",
     ("tools/ddragon_mirror_refresh.py", "result", "fut"):
@@ -145,3 +146,20 @@ def test_the_detector_ignores_bounded_awaited_and_unrelated_shapes():
         "    f = asyncio.ensure_future(ev.wait())\n"
     )
     assert _scan(clean) == []
+
+
+def test_liveclient_summary_does_no_blocking_io():
+    """The row for dashboard/_state_builder.py `_lc_future.result()` rests on this.
+
+    HOT-02 moved liveclient_summary onto the shared core.liveclient_cache
+    snapshot, so the pooled call has no socket of its own to time out. A
+    network, sleep or subprocess call put back in its body (directly) would
+    make the untimed .result() a real hang on the /api/state path.
+    """
+    tree = ast.parse((REPO_ROOT / "dashboard" / "_liveclient.py").read_text(encoding="utf-8"))
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "liveclient_summary")
+    calls = {ast.unparse(n.func) for n in ast.walk(fn) if isinstance(n, ast.Call)}
+    assert "liveclient_cache.get" in calls, "the summary no longer reads the shared cache"
+    blocking = {"urlopen", "urllib.request.urlopen", "socket.socket", "socket.create_connection",
+                "time.sleep", "sleep", "subprocess.run", "subprocess.Popen", "requests.get"}
+    assert not calls & blocking, f"liveclient_summary does blocking I/O now: {sorted(calls & blocking)}"
