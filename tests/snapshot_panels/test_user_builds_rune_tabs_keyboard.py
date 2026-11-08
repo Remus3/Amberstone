@@ -27,6 +27,7 @@ Drive path as in test_user_builds_rune_tabs.py: Tristana, + Add build, and
 ddragon_runes.json (its tree order: Domination, Inspiration, Precision,
 Resolve, Sorcery).
 """
+import datetime
 import json
 from pathlib import Path
 
@@ -74,8 +75,8 @@ _STATE = """() => {
 }"""
 
 
-@pytest.fixture
-def form(mock_server, pw_browser):
+def _tristana_page(mock_server, pw_browser):
+    """The User Builds view with Tristana picked, the form not yet open."""
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(ignore_https_errors=True, viewport=VIEWPORT)
     page = ctx.new_page()
@@ -97,13 +98,19 @@ def form(mock_server, pw_browser):
     page.fill("#ub-champion-input", "Tristana")
     page.dispatch_event("#ub-champion-input", "change")
     page.wait_for_selector(".ub-build-row", timeout=10_000)
-    page.click("#ub-add-btn")
-    page.wait_for_function(
-        f"document.querySelectorAll('{_PRI} > button').length === {len(_ORDER)}",
-        timeout=10_000,
-    )
     page._rc_errors = errors
+    return ctx, page
+
+
+@pytest.fixture
+def form(mock_server, pw_browser):
+    ctx, page = _tristana_page(mock_server, pw_browser)
     try:
+        page.click("#ub-add-btn")
+        page.wait_for_function(
+            f"document.querySelectorAll('{_PRI} > button').length === {len(_ORDER)}",
+            timeout=10_000,
+        )
         yield page
     finally:
         page.close()
@@ -284,3 +291,30 @@ def test_a_rebuild_never_steals_focus_from_outside_the_builder(form):
     s = _state(form)
     assert s["fields"]["primary"] == "Resolve", s["fields"]
     assert s["focused"] and s["focused"]["id"] == "ub-f-label", s["focused"]
+
+
+def test_opening_the_form_leaves_no_deferred_focus_steal(mock_server, pw_browser):
+    """C6 (s154): _userBuildsOpenForm focused #ub-f-label from a 50 ms
+    setTimeout. The rune trees often arrived inside those 50 ms, so this
+    module (and a fast keyboard user) had already moved focus into a tab
+    bar when the stale timer threw it to the label: the module failed 7 of
+    10 solo runs, a different test each time. Page time is paused here, so
+    no timer fires on its own; run_for() then fires every timer due in the
+    next second, deterministically. The fast-typing contract stays: the
+    label holds focus the moment the form opens."""
+    ctx, page = _tristana_page(mock_server, pw_browser)
+    try:
+        page.clock.install()
+        page.clock.pause_at(datetime.datetime.now() + datetime.timedelta(minutes=1))
+        page.click("#ub-add-btn")
+        # Utility-world wait: the paused clock also holds the main world's rAF.
+        page.wait_for_selector(f"{_PRI} > button:nth-child({len(_ORDER)})", timeout=10_000)
+        s = _state(page)
+        assert s["focused"] and s["focused"]["id"] == "ub-f-label", s["focused"]
+        _kb_focus(page, f"{_PRI} > button[data-tree='Domination']")
+        page.clock.run_for(1_000)
+        assert _focused_tree(page, _PRI) == "Domination"
+        assert not page._rc_errors, page._rc_errors[:3]
+    finally:
+        page.close()
+        ctx.close()

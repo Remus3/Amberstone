@@ -3193,8 +3193,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     // Re-highlight rows so the editing one gets the active border.
     _userBuildsFetchAndRender();
-    // Focus the label field for fast typing.
-    setTimeout(() => { const f = _ubEl("ub-f-label"); if (f) f.focus(); }, 50);
+    // Focus the label field for fast typing - now, not from a timer. The old
+    // 50 ms setTimeout fired after the rune trees could already be up and
+    // focus already moved into the builder, and threw it back to the label
+    // (C6, s154). The pane is unhidden above, so focus() lands at once.
+    const labelField = _ubEl("ub-f-label");
+    if (labelField) labelField.focus();
   }
   function _userBuildsCloseForm() {
     const pane = _ubEl("ub-form-pane");
