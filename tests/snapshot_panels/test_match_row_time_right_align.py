@@ -210,3 +210,60 @@ def test_match_row_time_holds_the_right_edge(
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+_WRAP_STATE = """(sel) => Array.from(document.querySelectorAll(sel)).map((li) => {
+  const dim = li.querySelector(":scope > .dim");
+  return {
+    wrap: getComputedStyle(li).flexWrap,
+    justify: getComputedStyle(li).justifyContent,
+    dimSpace: dim ? getComputedStyle(dim).whiteSpace : null,
+  };
+})"""
+
+
+@pytest.mark.parametrize("vp", ((1920, 920), (320, 640)),
+                         ids=lambda v: f"{v[0]}x{v[1]}")
+def test_the_wrap_reaches_match_rows_only(mock_server, pw_browser, vp):
+    # S144-U-213: the wrap rules moved into RM-726 slice HS-4 and are scoped
+    # by :has(> .hmr-name) instead of the two list selectors. The Session
+    # REPLAYED CHAMPIONS rows (#session-champs) share the history-match-row
+    # class but have no .hmr-name, so they keep the base row: no wrap, the
+    # flex-start packing, a .dim "Ng" cell that may wrap. The ui_mock Session
+    # carries one champion played twice (Jinx), so that card renders a row.
+    ctx, page, errors = _open(pw_browser, mock_server, "session", vp)
+    try:
+        page.wait_for_selector(
+            "#session-matches > .history-match-row", timeout=10_000
+        )
+        page.wait_for_selector(
+            "#session-champs > .history-match-row", timeout=10_000
+        )
+        page.evaluate(_SETTLE)
+        champs = page.evaluate(_WRAP_STATE, "#session-champs > .history-match-row")
+        matches = page.evaluate(
+            _WRAP_STATE, "#session-matches > .history-match-row"
+        )
+        page.goto(
+            mock_server.url + "/?ui_mock=1#history",
+            wait_until="domcontentloaded", timeout=15_000,
+        )
+        page.wait_for_selector(".history-session-row", timeout=10_000)
+        page.click(".history-session-row")
+        page.wait_for_selector(
+            "#history-match-list > .history-match-row", timeout=10_000
+        )
+        page.evaluate(_SETTLE)
+        history = page.evaluate(
+            _WRAP_STATE, "#history-match-list > .history-match-row"
+        )
+    finally:
+        ctx.close()
+    assert not errors, errors
+    assert champs and matches and history, (champs, matches, history)
+    for row in champs:
+        assert row == {"wrap": "nowrap", "justify": "normal",
+                       "dimSpace": "normal"}, f"champ row: {row}"
+    for row in matches + history:
+        assert row == {"wrap": "wrap", "justify": "flex-end",
+                       "dimSpace": "nowrap"}, f"match row: {row}"
