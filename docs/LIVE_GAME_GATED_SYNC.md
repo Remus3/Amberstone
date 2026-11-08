@@ -475,6 +475,48 @@ game of 2026-10-25 08:56 above decoded a `self_grab` frame in the PROBE under 13
 only, TFT, not League). Reverses if: the vision server stops importing Pillow lazily (then (a)
 proves nothing about use), `_maybe_obs_frame` stops gating `width` / `height` on a successful decode,
 or `/upload-frame` stops recording `frame_upload`.
+**S6 RE-CHECK (lane 9 PREP s144 cycle 106, 2026-11-08, source read at `7c6151f18`; NOT a tick;
+PASS, (a), (b), (d) and the SUBSTITUTION check above unchanged).** (1) **`393c7f512` is a pre-rewrite
+twin**, not reachable from HEAD or `main`: `.git/filter-repo/commit-map` maps it to `a1655b0c6`
+(same subject, same committer time 2026-10-28 01:03:28 -0500); read `a1655b0c6` wherever (b) says
+`393c7f512`. (2) **(f) is stale: RM-1108 HAS landed** (`692eec5fd`, 2026-10-30), so the "With the
+fix loaded" branch of (f) is the live one: `_downscaled` `vision_server/_frame.py:254`, full decode
+`Image.open` `:217` plus `img.load()` `:218` inside `_maybe_obs_frame` `:175`, and the (e) arm "an
+`obs` frame with `meta.width` null" can no longer occur. (3) **The RM-1054 gap (f) describes is
+CLOSED in code**: `095bc1820` (RM-1054) counts an OBS payload Pillow cannot decode as
+`obs_lane.undecodable` (`_frame.py:220`) and any other lane failure, the re-encode included, as
+`obs_lane.error` (`:243`); `5d84faab4` (RM-1214) and `b45f95028` (RM-1215) add the fetch reasons
+`ws_error`, `auth`, `timeout`, `no_reply`, `source_missing`, `request_failed`, `bad_payload`
+(`vision_server/_stats.py` `OBS_LANE_FAILURES` `:66-68`, via `_note_obs_fetch_failure`
+`_frame.py:248`) and `gdi_lane` (`unavailable`, `error`); `/stats` serves both blocks (`get_stats`
+`_stats.py:183`, keys `:195-196`). Each descends from the one before it (`692eec5fd` <
+`095bc1820` < `5d84faab4` < `b45f95028`, all ancestors of `main`). `tools/gated_vision_pillow.py`
+already passes them through in BOTH (a) runs (`stats_counters` `:146`, `obs_lane` `:159-170`, the
+fetch reasons only when the server has them; `gdi_lane` `:171-174`), so the (a) JSON now carries
+them with no tool change. CODE VERSION by symbol, read from the pinned listener's own `/stats` (not
+this checkout): `stats.obs_lane` present = RM-1054 or later (so RM-1108 too); `stats.obs_lane.bad_payload`
+present = RM-1215. (4) **Added predicate, stated before any game, for a listener whose
+`stats.obs_lane` carries `bad_payload`** (on an older listener (f) stands as written). Delta = the
+after-run's count minus the before-run's, same pinned pid. A `self_grab` (PARTIAL) game reads:
+PARTIAL / OBS-EMPTY iff any fetch reason rose (record which; OBS yielded no frame, not a Pillow
+signal); FAIL-SIGNAL (re-opens `cef8bfd22` for a measured re-check, closes and strikes nothing,
+since bad OBS bytes give the same count) iff `obs_lane.undecodable` rose; `obs_lane.error` rising is
+context only (it also counts non-Pillow failures such as the `core.obs_frame_source` import); every
+`obs_lane` counter flat means no counted OBS failure in the window (for example flag off, a frame
+from an earlier fetch, a blank OBS frame counted in `capture_skip.blank`, or an OBS fetch that names
+no reason): PARTIAL as before. Lifetime counts that did not move between the two runs are
+context, never a verdict input (the lane runs on every fetch, in game or not). A `gdi_lane` rise with no
+frame served is NOT-YET. None of this can reach PASS: only an `obs` frame does. (5) **Cites re-read at
+HEAD, all hold:** `handle_upload_frame` `_frame.py:455` (refusals `_record` `:472`, success `:579`),
+`_frame_dims` `:433` (header read `:446`, used `:522`); `_crop_to_primary`
+`vision_server/_inference.py:192` (header-only read and the 1920x1080 pass-through still forward the
+original); `_LOG_PATH` `vision_server/_config.py:26`, `RC_VISION_SERVER_LOG` `:31`, `basicConfig`
+INFO `:40-41`; OBS source default `Game Capture` `core/obs_frame_source.py:222`; `ocr_crops`
+`core/moon_proxy.py:191` still has no production caller. (6) **Idle run** (2026-11-08 11:18 local,
+`python -B tools/gated_vision_pillow.py --json`): exit 1, `nothing listens on :8889`; `:8888`,
+`:2999` and `:8889/health` all curl 000, `ops/runtime/launcher_status.json` `halted` (last updated
+2026-11-01T02:17:21Z). The 2026-10-27 listener and its baseline are gone; the next listener starts
+from code carrying all four commits above, provided its checkout is at or past `b45f95028`.
 
 **RM-752 follow-up READY (lane 9, s144 cycle 2, PREP only, no game up; NOT ticked): does Riot's
 `:2999` accept a TLSv1_2-floor, default-cipher handshake, so `tools/liveclient_relay.py` can drop its
