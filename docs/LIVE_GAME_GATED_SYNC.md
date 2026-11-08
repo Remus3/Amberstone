@@ -2627,6 +2627,39 @@ survivability flips below cannot roll otherwise.
   the click (a second writer or another wake), or sparse polls. Row PASS = at least one PASS and zero
   FAIL. Two independent verifier passes refuted the first two drafts of this predicate; both sets of
   corrections are in.
+  **RE-CHECK (lane 9 PREP s144 cycle 110, 2026-11-08, source read at `07c96e843`; NOT a tick;
+  S144-G-98).** The PREP holds, with one new precondition. (i) `f210f5cd9` is a pre-rewrite
+  twin: the filter-repo commit-map gives `83c0c2623` (same subject and committer time), on HEAD's
+  chain. (ii) The line cites above drifted; read them by symbol: `BENCH_CMD_FAST_INTERVAL = 0.1`
+  and `LATENCY_SENSITIVE_CMDS`, `drain_once`, `_signal_state_refresh`, `_swap_wake` in
+  `_state_push_loop`, `INTERVAL = 1.0` (all `tools/lcu_agent.py`), `state["ts"] = time.time()`
+  at the end of `lcu/snapshot_shape.py` `shape_snapshot`, `RC_STATE_CADENCE_SEC` default 0.5 in
+  `dashboard/routes_state.py`. (iii) The swap path is unchanged since `83c0c2623`: an AST compare
+  finds `drain_once`, `_signal_state_refresh`, `_cmd_poll_loop`, `capture_state` and the five
+  constants (`BENCH_CMD_FAST_INTERVAL`, `LATENCY_SENSITIVE_CMDS`, `_swap_wake`, `INTERVAL`,
+  `CMD_INTERVAL`) identical. `_state_push_loop` gains only `_note_live_queue(state)`
+  (`d9f082578`, in-memory, no LCU call, between the `ts` stamp and the post, the same on every
+  pass, so it cannot make or hide a WAKE). `execute_command` gains only `_loadout_refusal`
+  (`bench_swap` is not in `_LEAGUE_LOADOUT_CMDS`) and `r` -> `_r` on five unread LCU-call
+  results, the bench-swap POST among them (`275e43c73`). (iv) The
+  click path holds: `.csv-bench-cell.is-clickable` -> `lcuCmd` -> POST `/api/lcu-cmd`
+  (`dashboard/routes_loadout.py` `_serve_lcu_cmd_post`, allowlisted, `bench_swap` schema
+  `championId` int) -> `:8889/lcu-cmd` -> the agent's `drain_once`. (v) T_cmd still comes from
+  `logs/lcu_agent.log` (`SafeRotatingFileHandler`, `DEFAULT_BACKUP_COUNT` 2, format
+  `%(asctime)s %(levelname)s %(message)s`). Under the service host the agent's stdout goes to
+  DEVNULL, so the file is the only copy. Read-only on 2026-11-08: every line matches the probe's
+  stamp prefix, no `bench_swap` line yet. `config/vision_token.txt` is still absent from the lane
+  worktree, so the run-from-main-checkout rule stands. `tests/test_gated_bench_swap_probe.py`:
+  17 passed at `07c96e843`. (vi) NEW PRECONDITION. Since the 2026-10-31 launcher cutover no
+  task runs the agent: the rc-shell service host spawns it. Before the champ select, apply the
+  LX-01 precondition (3) REPLACEMENT RULE (EXTERNAL-LIFT INTAKE): `launcher_status.json`
+  running, and the `lcu_agent` pid tied to the agent by CommandLine and UTC CreationDate. A
+  `HEAD` newer than that `started` means older code may be running, so record both. Today the
+  launcher has been `halted` since 2026-11-01T02:17:21Z, so no agent runs. With no agent, the
+  watch sees no `[cmd]` line and no fresh capture, and reads NO_RESULT, never FAIL (exit 1
+  with the relay down too). The 2026-10-25 idle gaps were measured under the task-run agent.
+  They are informational only: each verdict takes `g_nat` from its own pre-click baseline
+  window, so no re-measure is needed.
 - **G3-02** (was A10) KEYSTONE residual: operator visual reassurance of the rendered bench (data path
   proven; no capture pursued). SOURCE: ROADMAP.md:100.
   **PREP 2026-10-25 (lane 9 s133 cycle 8; NOT a tick). PRUNE CANDIDATE for a human.** The KEYSTONE bug
