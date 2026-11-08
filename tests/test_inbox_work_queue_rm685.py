@@ -768,3 +768,44 @@ def test_cli_migrate_legacy_on_a_clean_file_prints_no_notice(tmp_path, monkeypat
     monkeypatch.setattr(tick_mod, "tick", _no_tick)
     assert tick_mod.main(["--root", str(tmp_path), "--migrate-legacy"]) == 0
     assert capsys.readouterr().err == ""
+
+
+# ---- RM-690: every leading BOM is dropped, not just one ----------------------
+#
+# Root cause: _decode_line removed exactly ONE leading UTF-8 BOM, so a line led
+# by two kept U+FEFF, json.loads raised, and _migrate kept the legacy row
+# verbatim: not converted, not counted under "legacy", not listed under
+# "undecodable" (that key is only for bytes that fail UTF-8). Silent.
+
+
+@pytest.mark.parametrize("boms", [2, 3])
+def test_a_multi_bom_legacy_line_converts_exactly_like_the_bare_line(tmp_path, boms):
+    outs = []
+    for sub, lead in (("bare", b""), ("boms", BOM * boms)):
+        root = tmp_path / sub
+        _notes(root)
+        raw = _raw_lines(root, [lead + _legacy_open(NOTE_A), lead + _legacy_done(NOTE_B)])
+        res = tick_mod.migrate_legacy(root)
+        assert (res["legacy"], res["queued"], res["done"]) == (2, 1, 1)
+        assert res["undecodable"] == []
+        assert Path(res["backup"]).read_bytes() == raw
+        outs.append(_work(root).read_bytes())
+    assert outs[0] == outs[1]
+    assert BOM not in outs[1]
+
+
+def test_a_multi_bom_non_legacy_line_stays_byte_for_byte(tmp_path):
+    _a, _b, c = _notes(tmp_path)
+    kit = BOM * 2 + _kit_queued(NOTE_C, _sha(c))
+    junk = BOM * 2 + b"not json at all\n"
+    bad = BOM * 2 + b"\xff\n"
+    _raw_lines(tmp_path, [kit, _legacy_open(NOTE_A), junk, bad])
+    res = tick_mod.migrate_legacy(tmp_path)
+    assert res["legacy"] == 1 and res["undecodable"] == [4]
+    chunks = _work(tmp_path).read_bytes().splitlines(keepends=True)
+    assert chunks[0] == kit and chunks[-2] == junk and chunks[-1] == bad
+
+
+def test_a_bom_inside_the_line_is_not_stripped():
+    # Only LEADING BOMs go: one after other text is content, kept as U+FEFF.
+    assert tick_mod._decode_line(BOM + BOM + b"a" + BOM + b"\n") == "a\ufeff\n"

@@ -704,9 +704,13 @@ def _note_sha(inbox: Path, note):
 
 
 def _decode_line(chunk: bytes):
-    """The line as text with ONE leading UTF-8 BOM dropped (PowerShell 5.1
-    writes one; RM-689); None when the bytes are not valid UTF-8."""
-    chunk = chunk.removeprefix(_BOM)
+    """The line as text with EVERY leading UTF-8 BOM dropped (PowerShell 5.1
+    writes one, RM-689; a re-encoded line can carry two, RM-690: a BOM is never
+    row content, so a second one left in front made json.loads raise and the
+    legacy row was kept silently); a BOM after other text stays. None when the
+    bytes are not valid UTF-8."""
+    while chunk.startswith(_BOM):
+        chunk = chunk[len(_BOM):]
     try:
         return chunk.decode("utf-8")
     except UnicodeDecodeError:
@@ -749,7 +753,8 @@ def migrate_legacy(root, *, inbox=None) -> dict:
     outcome kept whole plus " [by <by>]". sha256 = the note's bytes in the
     inbox, None when the note is gone. Every other line stays byte-for-byte.
     RM-689: a line led by a UTF-8 BOM converts exactly like the same line
-    without it (the BOM is not carried into the kit lines); a line that is
+    without it (the BOM is not carried into the kit lines; RM-690: any number
+    of leading BOMs, not just one); a line that is
     not valid UTF-8 is kept byte-for-byte and its 1-based number listed in
     "undecodable" (always present, [] when none). Holds the tick lock (held
     -> {"locked": True, "legacy": 0, "undecodable": []}, nothing written);
