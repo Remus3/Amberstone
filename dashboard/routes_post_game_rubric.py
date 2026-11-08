@@ -55,7 +55,7 @@ log = logging.getLogger("rc.web_dashboard")
 _REWIND_DB = _APP_DIR / "data" / "rewind_history.db"
 _STATE_JSON = _APP_DIR / "data" / "rewind_catchup.state.json"
 
-# Cache: {match_id: (timestamp, payload)}
+# Cache: {match_id: (time.monotonic() stamp, payload)} - in-process only, immune to a wall-clock step (S144-P-368).
 _CACHE: dict[str, tuple[float, dict]] = {}
 _CACHE_TTL_S = 300.0
 
@@ -65,14 +65,14 @@ def _cache_get(key: str) -> dict | None:
     if not entry:
         return None
     ts, payload = entry
-    if (time.time() - ts) > _CACHE_TTL_S:
+    if (time.monotonic() - ts) > _CACHE_TTL_S:
         _CACHE.pop(key, None)
         return None
     return payload
 
 
 def _cache_put(key: str, payload: dict) -> None:
-    _CACHE[key] = (time.time(), payload)
+    _CACHE[key] = (time.monotonic(), payload)
     if len(_CACHE) > 256:
         victims = sorted(_CACHE.items(), key=lambda kv: kv[1][0])[:64]
         for k, _ in victims:

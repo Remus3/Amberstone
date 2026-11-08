@@ -68,6 +68,8 @@ _REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.d
 _DEFAULT_SR_QUEUES: tuple[int, ...] = (400, 420, 430, 440, 490)
 
 # Cache: {(puuid, champ_id, days, queue_sig): (timestamp, payload_dict)}
+# Entries are (time.monotonic() stamp, payload): the stamp never leaves the process, and a wall-clock step
+# must not expire or revive an entry (S144-P-368).
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_TTL_S = 60.0
 
@@ -214,7 +216,7 @@ def _cache_get(key: tuple) -> dict | None:
     if not entry:
         return None
     ts, payload = entry
-    if (time.time() - ts) > _CACHE_TTL_S:
+    if (time.monotonic() - ts) > _CACHE_TTL_S:
         # Stale - drop and miss.
         _CACHE.pop(key, None)
         return None
@@ -222,7 +224,7 @@ def _cache_get(key: tuple) -> dict | None:
 
 
 def _cache_put(key: tuple, payload: dict) -> None:
-    _CACHE[key] = (time.time(), payload)
+    _CACHE[key] = (time.monotonic(), payload)
     # Hard cap to keep the dict bounded across long sessions; LRU is
     # overkill here - the natural champion pool is ~172 and the TTL is
     # 60s, so capacity is the safety net not the policy.
