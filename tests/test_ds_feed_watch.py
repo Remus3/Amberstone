@@ -219,7 +219,7 @@ def test_cli_ack_advances_high_water_only(tmp_path):
     http = FakeHttp({})
     assert fw.run(["--ack", "2026-09-30"], http=http, manifest=mp,
                   watch_file=wp) == 0
-    assert json.loads(wp.read_text())["changelog_high_water"] == "2026-09-30"
+    assert json.loads(wp.read_text(encoding="utf-8"))["changelog_high_water"] == "2026-09-30"
     assert mp.read_bytes() == m_before
     assert http.calls == []
     with pytest.raises(SystemExit):
@@ -307,7 +307,7 @@ def test_record_keeps_prior_hash_for_unreachable_block_with_same_url(tmp_path):
              "gone_block": {"url": ORIGIN + "/old.js", "body_md5": "33333333"}}
     mp.write_text(json.dumps(_manifest(prior)), encoding="utf-8")
     fw.record(mp, {"aram_modifiers": {"url": U1, "body_md5": "11111111"}})
-    got = json.loads(mp.read_text())["sources"][fw.HASHES_KEY]
+    got = json.loads(mp.read_text(encoding="utf-8"))["sources"][fw.HASHES_KEY]
     assert set(got) == {"aram_modifiers", "skill_orders"}
     assert got["skill_orders"]["body_md5"] == "22222222"
 

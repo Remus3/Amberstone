@@ -45,7 +45,7 @@ def _dirs(root):
                                     "16.1.1\n", "", 16, None])
 def test_poisoned_index_creates_no_directory(tree, poison, monkeypatch):
     root, vdir = tree
-    (vdir / "_index.json").write_text(json.dumps({"latest_pulled": poison}))
+    (vdir / "_index.json").write_text(json.dumps({"latest_pulled": poison}), encoding="utf-8")
     before = _dirs(root)
     fetched = []
     monkeypatch.setattr(CDA, "fetch", lambda url, dest, **k: fetched.append(dest) or False)
@@ -57,7 +57,7 @@ def test_poisoned_index_creates_no_directory(tree, poison, monkeypatch):
 
 def test_valid_version_is_returned(tree):
     _, vdir = tree
-    (vdir / "_index.json").write_text(json.dumps({"latest_pulled": "16.14.1"}))
+    (vdir / "_index.json").write_text(json.dumps({"latest_pulled": "16.14.1"}), encoding="utf-8")
     assert CDA.latest_version() == "16.14.1"
 
 

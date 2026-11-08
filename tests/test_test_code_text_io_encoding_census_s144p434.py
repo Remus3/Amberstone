@@ -10,8 +10,11 @@ behaves differently under ``PYTHONUTF8=1``. Most of these are ASCII JSON fixture
 Measured 2026-11-08 over every tracked ``*.py`` under ``tests/`` and ``agents/daemon_slayer/tests/``: 84 sites in 33
 files. This slice fixed the nine densest files (52 sites: test_hot_reload, test_gated_lx07_recap_check,
 test_rm484_offline_tools_rate_limit, test_ddragon_script_icon_names_rm379, test_disk_guard, test_fleet_route,
-test_disk_guard_true_audit_s144, test_lane_run_ledger, test_rofl_stats_backfill); 32 sites in 24 files are the baseline
-below. The baseline only shrinks: a file that no longer offends fails ``test_baseline_is_exact`` until its row is dropped.
+test_disk_guard_true_audit_s144, test_lane_run_ledger, test_rofl_stats_backfill); S144-P-435 fixed nine more (14 sites:
+test_archetype_picks, test_cache_ddragon_assets_version_rm372, test_ds_feed_watch, test_gated_g423_base_capture,
+test_inbox_responder_runner, test_obs_recorder, test_operator_push, test_rm510_ingest_exit_codes,
+test_scraper_foreign_host_rm374); 18 sites in 15 files are the baseline below (three launcher / PKG files and
+test_repo_review_driver, which another lane branch changed, are not this lane's to edit). The baseline only shrinks: a file that no longer offends fails ``test_baseline_is_exact`` until its row is dropped.
 
 The scanner is ``scan_source`` of the production census (same shapes, same ``**kwargs`` skip), imported, never copied.
 """
@@ -29,20 +32,11 @@ _BASELINE: dict[str, int] = {
     "tests/phase2_smoke/test_sr_aram_worker.py": 1,
     "tests/phase2_smoke/test_tft_worker.py": 1,
     "tests/snapshot_panels/test_home_view.py": 1,
-    "tests/test_archetype_picks.py": 1,
-    "tests/test_cache_ddragon_assets_version_rm372.py": 2,
-    "tests/test_ds_feed_watch.py": 2,
-    "tests/test_gated_g423_base_capture.py": 2,
-    "tests/test_inbox_responder_runner.py": 2,
     "tests/test_launcher_service_host.py": 1,
     "tests/test_launcher_update_hardening_pkg6b.py": 3,
     "tests/test_log_scrub_secret_redaction_s144t108.py": 1,
-    "tests/test_obs_recorder.py": 1,
-    "tests/test_operator_push.py": 2,
     "tests/test_repo_review_driver.py": 2,
     "tests/test_rm236_snapshot_normalizer_defects.py": 1,
-    "tests/test_rm510_ingest_exit_codes.py": 1,
-    "tests/test_scraper_foreign_host_rm374.py": 1,
     "tests/test_seraphine_beat_drop_wording_s144d78.py": 1,
     "tests/test_seraphine_encore_charm_rm1151.py": 1,
     "tests/test_session_checklist_item13.py": 1,
@@ -61,6 +55,16 @@ _FIXED_THIS_SLICE = (
     "tests/test_disk_guard_true_audit_s144.py",
     "tests/test_lane_run_ledger.py",
     "tests/test_rofl_stats_backfill.py",
+    # S144-P-435: nine more (14 sites).
+    "tests/test_archetype_picks.py",
+    "tests/test_cache_ddragon_assets_version_rm372.py",
+    "tests/test_ds_feed_watch.py",
+    "tests/test_gated_g423_base_capture.py",
+    "tests/test_inbox_responder_runner.py",
+    "tests/test_obs_recorder.py",
+    "tests/test_operator_push.py",
+    "tests/test_rm510_ingest_exit_codes.py",
+    "tests/test_scraper_foreign_host_rm374.py",
 )
 
 

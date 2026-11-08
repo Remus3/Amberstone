@@ -175,7 +175,7 @@ def test_scout_throttled_match_exits_tempfail(tmp_path, monkeypatch):
         lambda mid: _throttle() if mid == "M2" else _ok(_SCOUT_MATCH)())
     assert _run_scout(out) == lrs.EX_TEMPFAIL
     # The partial result is still written; the exit code carries the gap.
-    assert json.loads(out.read_text())["match_failures"] == 1
+    assert json.loads(out.read_text(encoding="utf-8"))["match_failures"] == 1
 
 
 def test_scout_throttled_ids_exits_tempfail(tmp_path, monkeypatch):
