@@ -94,45 +94,6 @@ main {
   flex-direction: column;
   gap: 1px;
 }
-/* Gold diff bar - horizontal track, centered at 50%, fill extends right
- * (we're ahead / mint) or left (we're behind / coral). Clamped +/-10k. */
-.gold-diff {
-  margin-bottom: 10px;
-}
-.gold-diff.hidden { display: none; }
-.gold-diff-track {
-  position: relative;
-  height: 8px;
-  background: var(--surface-alt);
-  border-radius: 999px;
-  overflow: hidden;
-}
-.gold-diff-fill {
-  position: absolute;
-  top: 0; bottom: 0;
-  border-radius: inherit;
-  transition: left 400ms ease, right 400ms ease, background-color 200ms ease;
-}
-.gold-diff-fill.ahead  { background: linear-gradient(90deg, transparent 0%, var(--good) 100%); }
-.gold-diff-fill.behind { background: linear-gradient(90deg, var(--bad) 0%,  transparent 100%); }
-.gold-diff-center {
-  position: absolute;
-  left: 50%; top: -2px; bottom: -2px;
-  width: 2px;
-  background: var(--border);
-  transform: translateX(-50%);
-}
-.gold-diff-label {
-  margin-top: 4px;
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-.gold-diff-label #gold-diff-val.gd-ahead  { color: var(--good); font-weight: 900; font-size: 15px; }
-.gold-diff-label #gold-diff-val.gd-behind { color: var(--bad);  font-weight: 900; font-size: 15px; }
-
 .mm-chips {
   display: flex;
   gap: 8px;

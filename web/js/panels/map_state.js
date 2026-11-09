@@ -571,7 +571,11 @@ function renderItemValueDiff(p) {
   // item-value differential, the one economy lens computable from the public
   // allPlayers[].items roster. Honest user-facing label is "item value".
   const lc = (state.latest && state.latest.liveclient) || (p && p.liveclient) || null;
-  const diff = teamItemValueDiff(lc, ITEM_COSTS);
+  // S144-U-255: the bar now renders (Active Match MAP pane), so gate it to the
+  // two-team modes. Arena pits your duo against every other duo and TFT has no
+  // League items, so an ally-vs-rest sum there is not a team lead.
+  const mode = document.body.dataset.mode || "";
+  const diff = (mode === "arena" || mode === "tft") ? null : teamItemValueDiff(lc, ITEM_COSTS);
   if (diff == null) {
     wrap.classList.add("hidden");
     return;
@@ -821,4 +825,6 @@ export {
   _snapshotSpells, _fmtMMSS, _renderMmStateLine,
   // RM-1211: main.js calls both; unexported, each call threw a ReferenceError.
   _spellKey, renderMinimapCanvases,
+  // S144-U-255: test seam for the relocated item-value bar.
+  renderItemValueDiff,
 };

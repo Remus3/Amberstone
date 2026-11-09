@@ -259,6 +259,59 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
 }
 #view-active-match .zoi-debug.hidden { display: none; }
 
+/* S144-U-255: the R117 F1 team item-value bar (map_state.js
+ * renderItemValueDiff), moved here from grid.css with its node: the #minimap
+ * panel it sat in is inside the top-level <main>, hidden in every view, so the
+ * shipped lens never rendered. Track centred at 50%; the fill runs right when
+ * your team's on-board item value leads, left when it trails (clamped +/-10k).
+ * The label was a hard-coded 13 px --text-faint and the number 15 px; now
+ * --fs-xs --text-dim and --fs-sm. Guard:
+ * tests/snapshot_panels/test_item_value_bar_relocated.py. */
+#view-active-match .gold-diff {
+  flex: none;
+  margin: 0 14px 14px;
+}
+#view-active-match .gold-diff.hidden { display: none; }
+#view-active-match .gold-diff-track {
+  position: relative;
+  height: 8px;
+  background: var(--surface-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+#view-active-match .gold-diff-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  border-radius: inherit;
+  transition: left 400ms ease, right 400ms ease, background-color 200ms ease;
+}
+#view-active-match .gold-diff-fill.ahead  { background: linear-gradient(90deg, transparent 0%, var(--good) 100%); }
+#view-active-match .gold-diff-fill.behind { background: linear-gradient(90deg, var(--bad) 0%,  transparent 100%); }
+#view-active-match .gold-diff-center {
+  position: absolute;
+  left: 50%; top: -2px; bottom: -2px;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+#view-active-match .gold-diff-label {
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+#view-active-match .gold-diff-label #gold-diff-val.gd-ahead  { color: var(--good); font-weight: 900; font-size: var(--fs-sm); }
+/* Bare --bad on --surface-head read 3.89 - 4.45:1 in five of six themes; the
+ * RM-1550 red-text lift (as S144-U-234) keeps it red at AA. The fill keeps
+ * bare --bad, so the bar still reads red by hue. */
+#view-active-match .gold-diff-label #gold-diff-val.gd-behind {
+  color: color-mix(in oklab, var(--bad) 70%, var(--text));
+  font-weight: 900;
+  font-size: var(--fs-sm);
+}
+
 #view-active-match .am-empty {
   color: var(--text-faint);
   font-size: var(--fs-xs);

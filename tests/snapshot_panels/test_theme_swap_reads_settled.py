@@ -240,7 +240,16 @@ detector), the s144 uiux module of S144-U-253:
     keyboard Tab focuses. The queue items DO transition background and
     border colour on a hover, so its opener adds the transitions-off sheet
     before the first click. It joins the contrast pin below.
-This module pins all sixty verdicts at runtime with each test's own opener,
+Audit (2026-11-09, s144 uiux cycle 250, S144-U-255, the same
+detector), the s144 uiux module of S144-U-255:
+  - test_item_value_bar_relocated: boot-stamped (?theme=), never swaps
+    in-page; it adds the transitions-off sheet, then drives map_state.js
+    renderItemValueDiff() under the Active Match map and reads the label
+    and the signed number in the same evaluate. The bar's fill DOES
+    transition left / right / background-color on a render, but no read
+    is on the fill or an ancestor of it, and the sheet is on before the
+    first render. It joins the contrast pin below.
+This module pins all sixty-one verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -329,7 +338,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The sixty modules audited above, keyed by file name.
+# The sixty-one modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_empty_line_contrast.py",
@@ -357,6 +366,7 @@ _COVERED = {
     "test_home_history_nav_focus_ring.py",
     "test_home_muted_text_contrast.py",
     "test_home_pick_name_contrast.py",
+    "test_item_value_bar_relocated.py",
     "test_last_match_build_wpa_contrast.py",
     "test_last_match_review_nav_hover.py",
     "test_lm_hero_stats_disclosure.py",
@@ -1181,8 +1191,8 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The twenty-five contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
-# U-242, U-243, U-245, U-250, U-251, U-253):
+# The twenty-six contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# U-242, U-243, U-245, U-250, U-251, U-253, U-255):
 # each one's _measure extra arguments after (mock_server, pw_browser, theme),
 # taken from its own constants (its first viewport, its first mode, the TFT
 # footer state, the mixed Session scenario, its first surface).
@@ -1198,6 +1208,7 @@ _CONTRAST = {
     "test_home_find_match_picker_contrast": (),
     "test_home_muted_text_contrast": ("vp",),
     "test_home_pick_name_contrast": ("vp",),
+    "test_item_value_bar_relocated": ("vp",),
     "test_last_match_build_wpa_contrast": (),
     "test_lobby_mains_placeholder_contrast": (),
     "test_lobby_mode_menu_current_contrast": (),
@@ -1213,7 +1224,7 @@ _CONTRAST = {
     "test_user_builds_text_contrast": ("vp",),
     "test_zoi_debug_readout": ("vp",),
 }
-# The seventeen whose opener adds the sheet before its first interaction.
+# The eighteen whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
@@ -1222,6 +1233,7 @@ _CONTRAST_SHEETED = (
     "test_header_placeholder_pill_contrast",
     "test_home_find_match_picker_contrast",
     "test_home_pick_name_contrast",
+    "test_item_value_bar_relocated",
     "test_last_match_build_wpa_contrast",
     "test_lobby_mains_placeholder_contrast",
     "test_lobby_mode_menu_current_contrast",
