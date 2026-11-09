@@ -1196,7 +1196,7 @@ def rank_items(
     _selected_phase = phase or _select_phase(level)
 
     # RM-42 (DEFAULT-OFF): the kit-passive damage registry finally reaches the
-    # CARRY ranker. ``_passive_damage_overrides`` holds 33 entries and
+    # CARRY ranker. ``_passive_damage_overrides`` held 33 entries at RM-42 and
     # ``apply_passive_damage`` already reached ``compute_dps`` (/dps) and
     # ``rank_items_by_onhit`` (/rank-onhit, default True) - but NOT here, which
     # is the route every marksman build table and coach tick passes through, so

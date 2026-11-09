@@ -1260,8 +1260,8 @@ def per_second_aura_entry(champion_id: str):
     Mordekaiser today - so the seam is byte-identical for the whole rest of the
     roster BY CONSTRUCTION, not by luck.
 
-    The cadence gate is the load-bearing part. The registry's other 32 entries
-    are ``on_hit`` (25), ``dot`` (4) and ``per_fight`` (3); NONE of them may be
+    The cadence gate is the load-bearing part. The registry's other 33 entries
+    are ``on_hit`` (26), ``dot`` (4) and ``per_fight`` (3); NONE of them may be
     credited on the per-second ability clock:
 
     * an ``on_hit`` entry's damage rides the AUTO-ATTACK cadence and
