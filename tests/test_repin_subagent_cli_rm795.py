@@ -80,7 +80,7 @@ def _events(version, *, spawn, answer, sub_tools=0, agent_input="", early=""):
 
 
 def _write(log_path, evs):
-    with open(log_path, "w", encoding="utf-8", newline="\n") as fh:
+    with Path(log_path).open("w", encoding="utf-8", newline="\n") as fh:
         fh.writelines(json.dumps(ev) + "\n" for ev in evs)
 
 
@@ -98,7 +98,7 @@ class FakeCli:
         extra = list(extra)
         if "--definitely-not-a-flag" in extra:
             rc = 0 if "unknown_accepted" in self.broken else 1
-            open(log_path, "w", encoding="utf-8").close()
+            Path(log_path).write_text("", encoding="utf-8")
             err = "" if rc == 0 else "error: unknown option '--definitely-not-a-flag'\n"
             return ({"rc": rc, "result": None, "error": None},
                     CompletedProcess(args=[], returncode=rc, stdout=None, stderr=err))

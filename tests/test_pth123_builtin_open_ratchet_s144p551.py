@@ -91,17 +91,12 @@ _BASELINE: dict[str, int] = {
     "ops/loop/slots.py": 1,
     "ops/loop/steer.py": 1,
     "tests/_basetemp_guard.py": 1,
-    "tests/test_atomic_write_guard_rm258_rm261.py": 1,
     "tests/test_coach_trace_lf_s144p186.py": 1,
     "tests/test_ds_calibration_log_lf_s144p185.py": 1,
-    "tests/test_fleet_test_guard_lane_driver_rm874.py": 2,
     "tests/test_inbox_responder_runner.py": 2,
     "tests/test_log_appenders_lf_s144p195.py": 1,
-    "tests/test_log_rotation_rm718a.py": 2,
-    "tests/test_queue_loop.py": 2,
-    "tests/test_repin_subagent_cli_rm795.py": 2,
     "tests/test_shadow_appenders_lf_s144p190.py": 1,
-    "tests/test_tft_sources_tft_log.py": 5,
+    "tests/test_tft_sources_tft_log.py": 1,
     "tests/test_tracked_writer_lf_sweep.py": 1,
     "tft/rounds/store.py": 1,
     "tft/sources/tft_log.py": 1,
@@ -214,6 +209,12 @@ _FIXED = (
     "tests/test_repin_designed_negative_rc5.py",
     "tests/test_silent_except_arena_augment_cache.py",
     "tests/test_stop_claim_gate_subagent_evidence_rm687.py",
+    # S144-P-562: thirteen sites in six root tests (five fully clean, tests/test_tft_sources_tft_log.py down to its one baselined plain-open positive control): held-handle and append opens via Path.open, two module-source reads via read_text, one empty-file write via write_text; the builtin-open positive controls of the LF harness tests stay
+    "tests/test_atomic_write_guard_rm258_rm261.py",
+    "tests/test_fleet_test_guard_lane_driver_rm874.py",
+    "tests/test_log_rotation_rm718a.py",
+    "tests/test_queue_loop.py",
+    "tests/test_repin_subagent_cli_rm795.py",
 )
 
 

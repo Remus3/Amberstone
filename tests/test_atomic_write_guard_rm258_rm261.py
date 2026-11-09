@@ -649,7 +649,7 @@ def test_shadow_archive_split_swap_meets_the_sanction_contract(tmp_path,
 
     def writer_appends(round_no):
         if round_no == 1:
-            with open(live3, "ab") as fh:
+            with live3.open("ab") as fh:
                 fh.write(late_row)
 
     monkeypatch.setattr(sas.os, "replace", flaky)

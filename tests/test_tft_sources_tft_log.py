@@ -169,7 +169,7 @@ def test_the_tail_reads_only_new_bytes(log_path):
     _write(log_path, data[:cut])
     tail = tl.TftLogTail(log_path)
     first = _drain(tail)
-    with open(log_path, "ab") as fh:
+    with log_path.open("ab") as fh:
         fh.write(data[cut:])
     second = _drain(tail)
     assert _events(first + second) == EXPECTED
@@ -182,10 +182,10 @@ def test_a_partial_line_waits_for_its_newline(log_path):
     _write(log_path, line[:40])
     tail = tl.TftLogTail(log_path)
     assert _drain(tail) == []
-    with open(log_path, "ab") as fh:
+    with log_path.open("ab") as fh:
         fh.write(line[40:])
     assert _drain(tail) == []  # still no newline: the writer may be mid-line
-    with open(log_path, "ab") as fh:
+    with log_path.open("ab") as fh:
         fh.write(b"\n")
     assert [e.payload["phase"] for e in _drain(tail)] == ["CombatDeparture"]
 
@@ -282,7 +282,7 @@ def test_start_at_end_skips_the_history(log_path):
     _write(log_path, data)
     tail = tl.TftLogTail(log_path, start="end")
     assert _drain(tail) == []
-    with open(log_path, "ab") as fh:
+    with log_path.open("ab") as fh:
         fh.write((STAMP + PHASE_BODY.format("Planning") + "\n").encode("ascii"))
     assert [e.payload["phase"] for e in _drain(tail)] == ["Planning"]
 
