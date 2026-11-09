@@ -1052,6 +1052,46 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   session. Cited `7ddada96` does not resolve in this repo (4 of GATE 1's 5 cited hashes do not - they
   are pre-cherry-pick worktree SHAs per the `docs/history_notes.md:4468` merge workflow: a systemic
   citation defect, not fabrication). SOURCE: docs/ORCHESTRATION_PLAN.md:82.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 136, 2026-11-09, S144-G-123; NOT a tick, NOT a re-open; still
+  BLOCKED on the same operator decision, so do not count it in a gate session).** Three facts in the
+  2026-07-18 re-tag no longer hold, and one rationale it inherited was never true. (1) THE 6 TESTS ARE
+  GONE, not skipping: `tests/test_pengu_plugin_skeleton.py` was deleted at `9a6160f06` (2026-08-06,
+  RM-119 B4 skip audit, finding 4 "PENGU REMEDY WITHDRAWN; MODULE RETIRED INSTEAD": pointing a live
+  guard at `docs/_archive/**` would un-retire quarantined content, and reviving `pengu/` is a product
+  decision that slice did not own). Per that commit's non-vacuity record, a re-injected `pengu/` skipif
+  fails `tests/test_skip_condition_hygiene.py` as `ROTTED: was-tracked-now-gone=pengu`, so whoever un-archives
+  must restore the module from git with the stub, not re-add the skip. (2) THE STUB IS UNCHANGED: the
+  archived blobs are 1728 / 4463 / 2137 B (README.md / index.js / panel.css), identical at HEAD and at
+  the rename `d0689e736` (2026-07-07, `pengu/ -> docs/_archive/2026-07-07-pengu-stub/`, 100 percent
+  rename), and the same at the build `43107004f`, so the stub has never changed. The 1775 / 4575 / 2204
+  recorded above are not a content change: they read as CRLF working-copy sizes (blob + one byte per
+  line, 45 / 110 / 67 lines, gives 1773 / 4573 / 2204 - exact for panel.css, 2 B short for the other
+  two, a gap not explained here). (3) CITE DRIFT: `7ddada96` does not resolve; the OVL2
+  build is `43107004f` (2026-06-15, "feat(pengu): OVL2 Pengu Surface-C plugin stub + client-origin-gated
+  CORS"; the archive table's `aab53e37` does not resolve either). `docs/ORCHESTRATION_PLAN.md:82` no
+  longer holds OVL2: it is `docs/ORCHESTRATION_FINDINGS_ARCHIVE.md:85` (DONE, "live validation OWED").
+  `ROADMAP.md:58` is now `ROADMAP.md:155`, RM-15 OPEN (c) "Phase 6 Pengu in-client panels, OPTIONAL" -
+  still open. (4) MIS-CITED RATIONALE: the rename commit `d0689e736` gives "settled dead-end per
+  CLAUDE.md", but the only Pengu line in CLAUDE.md, then (`d0689e736:CLAUDE.md` line 213) and now
+  (Settled, research-list CLOSED negatives), is "Pengu `league-client-mcp` = NO" - a different repo (an
+  MCP server judged thinner than RC's LCU client), not the Pengu Loader panel. No Settled line closes
+  this row; the operator decision stands as the only blocker. (5) THE SERVER HALF IS STILL SHIPPED and
+  is now an orphan consumer: `dashboard/_handler.py:175-176` (comment names `pengu/`, absent) and the
+  `_cors_allowed_origin` echo at `:589-596`, pinned by `tests/test_handler_cors.py`. Retiring the row
+  would leave that gate with no in-repo client; un-archiving would reuse it. Both are the decision.
+  **READY-WHEN-UNARCHIVED (stated before any client session; GATE 1, League client at home, no game).**
+  PRECONDITIONS: stub back at `pengu/` and installed into Pengu Loader by the operator; RC up (the
+  `/api/state` probe answers). PROBE: in the League client UX devtools console run
+  `(() => { const p = document.getElementById("rc-pengu-panel"); return p && [...p.querySelectorAll("[data-field]")].map(e => e.dataset.field + "=" + e.textContent); })()`
+  and, at the same minute, `curl -sk https://127.0.0.1:8888/api/state` -> `mode_key`.
+  PREDICATE: PASS iff the panel exists, `status=live`, and `mode=` equals the curl `mode_key`
+  (`client` at home); then a second read at least 4 s later (2 x `POLL_MS` 2000) still reads `live`.
+  FAIL iff the panel is absent, or `status=RC offline - retrying` while the curl answers (a CORS or
+  certificate refusal in the client's browser; record the console error - the mkcert root being trusted
+  by the client's embedded browser is UNMEASURED). EVIDENCE: the field list, the curl `mode_key`, ISO
+  time, `lcu.phase`. SUBSTITUTION CHECK: `tests/test_handler_cors.py` proves the server echoes a
+  loopback origin, and a desktop Chrome tab loading `index.js` proves the script runs in Chrome; neither
+  is the client UX. Only the panel read inside the League client ticks this.
 - **G1-06** `[NOT BUILT]` (was A12) Mode-specific overlay layout AUTO-SELECT-ARAM acceptance - queued
   for planning, not yet built. Once built the auto-select needs a live ARAM queue/lobby state and a
   per-map placement eyeball. SOURCE: BACKLOG.md:48.
