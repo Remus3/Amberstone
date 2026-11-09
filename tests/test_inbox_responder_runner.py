@@ -208,7 +208,7 @@ def _live_roots() -> dict:
     try:
         out = subprocess.run(["git", "rev-parse", "--git-common-dir"],
                              cwd=str(runner.ROOT), capture_output=True, text=True,
-                             timeout=30)
+                             timeout=30, check=False)
     except (OSError, subprocess.SubprocessError):
         return roots
     if out.returncode != 0:
@@ -1110,7 +1110,7 @@ def _foreign_process_records(log: Path) -> None:
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     done = subprocess.run([sys.executable, "-c", code, str(runner.ROOT), str(log)],
                           env=env, capture_output=True, text=True, timeout=120,
-                          creationflags=flags)
+                          creationflags=flags, check=False)
     assert done.returncode == 0, done.stderr
 
 
@@ -2457,7 +2457,7 @@ def _junction_note(world, tmp_path):
     target.mkdir()
     (target / "borrowed.txt").write_text("bytes from outside the inbox\n", encoding="ascii")
     made = subprocess.run(["cmd", "/c", "mklink", "/J", str(world.inbox / NOTE_NAME),
-                           str(target)], capture_output=True, text=True)
+                           str(target)], capture_output=True, text=True, check=False)
     if made.returncode != 0:
         pytest.skip("this account cannot create a junction here")
     return target
@@ -3583,7 +3583,7 @@ def test_a_junction_inbox_is_dropped_by_the_loader(tmp_path):
     target.mkdir()
     made = subprocess.run(["cmd", "/c", "mklink", "/J",
                            str(victim / "moon_sync_inbox"), str(target)],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, check=False)
     if made.returncode != 0:
         pytest.skip("this account cannot create a junction here")
     (repo / "ops" / "moon_sync_repos.json").write_text(

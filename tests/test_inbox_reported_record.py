@@ -158,7 +158,7 @@ def test_importing_a_copy_of_rc_facts_creates_no_file(tmp_path):
     )
     r = subprocess.run(
         [_PY, "-c", prog], capture_output=True, text=True, timeout=60,
-        stdin=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL, check=False,
     )
 
     assert r.returncode == 0, r.stderr
@@ -729,7 +729,7 @@ def test_payload_key_refuses_a_junction_and_moves_the_digest(tmp_path):
     r = subprocess.run(
         ["cmd.exe", "/c", "mklink", "/J", str(drop / "link"), str(outside)],
         capture_output=True, text=True, timeout=30,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
     )
     if r.returncode != 0:
         pytest.skip(f"mklink unavailable: {r.stdout} {r.stderr}")
@@ -785,7 +785,7 @@ def test_cli_with_a_session_id_creates_both_files(tmp_path):
     r = subprocess.run(
         [_PY, str(copied), "--inbox-only"],
         input=json.dumps({"session_id": "t", "hook_event_name": "UserPromptSubmit"}),
-        capture_output=True, text=True, timeout=60, env=env,
+        capture_output=True, text=True, timeout=60, env=env, check=False,
     )
 
     assert r.returncode == 0, r.stderr

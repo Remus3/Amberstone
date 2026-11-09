@@ -541,7 +541,7 @@ def test_every_consumer_finds_the_key_file_in_a_child_with_the_variable_deleted(
     proc = subprocess.run(
         [sys.executable, str(script), str(REPO), str(root)],
         cwd=str(tmp_path), env=env, capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=180, creationflags=flags)
+        encoding="utf-8", errors="replace", timeout=180, creationflags=flags, check=False)
     assert FILE_KEY not in proc.stdout and FILE_KEY not in proc.stderr, (
         "a consumer printed or logged the key value")
     lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("RESULT ")]
@@ -873,7 +873,7 @@ def _run_step3(tmp_path: Path, raw: bytes, option_b: bool,
     proc = subprocess.run(
         ["cmd.exe", "/d", "/c", str(bat)], cwd=str(tmp_path), env=env,
         capture_output=True, timeout=60,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False)
     out = proc.stdout.decode("ascii", "replace")
     key_out = tmp_path / "key.out"
     got = key_out.read_bytes().decode("latin-1").strip() if key_out.exists() else ""
@@ -1002,7 +1002,7 @@ def test_collection_never_resolves_the_real_key_file(tmp_path, target,
         [sys.executable, "-m", "pytest", "--collect-only", "-q",
          "-p", "no:cacheprovider", "-p", "rc_keyspy", target],
         cwd=str(REPO), env=env, capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=300, creationflags=flags)
+        encoding="utf-8", errors="replace", timeout=300, creationflags=flags, check=False)
     assert proc.returncode == 0, proc.stdout[-2000:] + proc.stderr[-2000:]
     lines = out.read_text(encoding="utf-8").splitlines() if out.exists() else []
     paths = [Path(ln[5:]) for ln in lines if ln.startswith("PATH ")]

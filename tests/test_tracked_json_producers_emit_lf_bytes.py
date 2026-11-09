@@ -181,11 +181,11 @@ def test_named_target_is_tracked_and_eol_pinned(row):
     _mod_name, _attr, _kind, target = row
     listed = subprocess.run(
         ["git", "ls-files", "--error-unmatch", target],
-        cwd=REPO_ROOT, capture_output=True, text=True)
+        cwd=REPO_ROOT, capture_output=True, text=True, check=False)
     assert listed.returncode == 0, f"{target} is not tracked by git"
     attrs = subprocess.run(
         ["git", "check-attr", "eol", "--", target],
-        cwd=REPO_ROOT, capture_output=True, text=True)
+        cwd=REPO_ROOT, capture_output=True, text=True, check=False)
     assert attrs.returncode == 0, attrs.stderr
     assert attrs.stdout.strip().endswith("eol: lf"), (
         f"{target} is no longer pinned eol=lf ({attrs.stdout.strip()!r}) - "
@@ -220,7 +220,7 @@ def test_no_tracked_eol_pinned_file_currently_carries_crlf():
             continue
         attrs = subprocess.run(
             ["git", "check-attr", "text", "--", rel],
-            cwd=REPO_ROOT, capture_output=True, text=True)
+            cwd=REPO_ROOT, capture_output=True, text=True, check=False)
         if attrs.stdout.strip().endswith("text: set"):
             offenders.append((rel, raw.count(b"\r\n")))
     assert not offenders, (

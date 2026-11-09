@@ -174,7 +174,7 @@ def test_installer_parses_under_windows_powershell_51() -> None:
         "Write-Output ('ERRORS=' + $e.Count)"
     )
     proc = subprocess.run([str(ps), "-NoProfile", "-Command", command],
-                          capture_output=True, text=True, timeout=90)
+                          capture_output=True, text=True, timeout=90, check=False)
     assert "ERRORS=0" in proc.stdout, f"{proc.stdout}\n{proc.stderr}"
 
 
@@ -201,7 +201,7 @@ def test_wrapper_waits_and_propagates_the_exit_code(tmp_path: Path) -> None:
         f"Set-Content -Path '{marker}' -Value 'ran' -Encoding ASCII\nexit 7\n",
         encoding="ascii", newline="\n")
     proc = subprocess.run([wscript, "//B", "//NoLogo", str(tmp_path / VBS.name)],
-                          capture_output=True, timeout=90)
+                          capture_output=True, timeout=90, check=False)
     assert proc.returncode == 7, f"exit code not propagated: {proc.returncode}"
     assert marker.read_text(encoding="ascii").strip() == "ran", "wrapper did not wait"
 
@@ -211,5 +211,5 @@ def test_wrapper_fails_closed_when_the_target_is_missing(tmp_path: Path) -> None
     wscript = _wscript()
     shutil.copyfile(VBS, tmp_path / VBS.name)
     proc = subprocess.run([wscript, "//B", "//NoLogo", str(tmp_path / VBS.name)],
-                          capture_output=True, timeout=90)
+                          capture_output=True, timeout=90, check=False)
     assert proc.returncode == 90, f"missing target must exit 90, got {proc.returncode}"

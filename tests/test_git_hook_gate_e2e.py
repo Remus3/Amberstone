@@ -135,7 +135,7 @@ class TrackedHookModeTests(unittest.TestCase):
     def test_every_tracked_hook_is_executable_in_the_index(self) -> None:
         out = subprocess.run(
             ["git", "-C", str(REPO), "ls-files", "-s", ".githooks/"],
-            capture_output=True, text=True,
+            capture_output=True, text=True, check=False,
         )
         self.assertEqual(out.returncode, 0, out.stderr)
         rows = [ln for ln in out.stdout.splitlines() if ln.strip()]
@@ -160,7 +160,7 @@ class HookGateEndToEndTests(unittest.TestCase):
     def _git(self, *args: str, check: bool = True) -> subprocess.CompletedProcess:
         proc = subprocess.run(
             ["git", "-C", str(self.root), *args],
-            capture_output=True, text=True, env=self._env,
+            capture_output=True, text=True, env=self._env, check=False,
         )
         if check and proc.returncode != 0:
             self.fail(f"git {' '.join(args)} failed:\n{proc.stdout}\n{proc.stderr}")
@@ -180,7 +180,7 @@ class HookGateEndToEndTests(unittest.TestCase):
         self._env["PYTHON"] = sys.executable.replace("\\", "/")
 
         subprocess.run(
-            ["git", "init", "-q", str(self.root)], capture_output=True, env=self._env,
+            ["git", "init", "-q", str(self.root)], capture_output=True, env=self._env, check=False,
         )
         self._git("config", "user.name", "hook gate test")
         self._git("config", "user.email", "hookgate@example.invalid")

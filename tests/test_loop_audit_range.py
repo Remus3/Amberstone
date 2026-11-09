@@ -57,7 +57,7 @@ def _commit(root: Path, name: str, content: str = "x") -> str:
 def _log_count(root: Path, rng: str) -> int:
     out = subprocess.run(
         ["git", "-C", str(root), "log", "--oneline", rng],
-        capture_output=True, text=True).stdout.strip()
+        capture_output=True, text=True, check=False).stdout.strip()
     return len([ln for ln in out.splitlines() if ln.strip()])
 
 
@@ -99,7 +99,7 @@ def test_docs_after_fix_spans_multiple_commits(lc, tmp_path, monkeypatch):
     # the fix's file must be visible in the audited diff (not the lone docs commit)
     diff = subprocess.run(
         ["git", "-C", str(tmp_path), "diff", rng],
-        capture_output=True, text=True).stdout
+        capture_output=True, text=True, check=False).stdout
     assert "engine.py" in diff, "the fix the docs document must be inside the window"
 
 
@@ -163,11 +163,11 @@ def test_merge_second_parent_feature_in_window(lc, tmp_path, monkeypatch):
     rng = lc.audit_range(r["docs"], r["test"])
     log_shas = subprocess.run(
         ["git", "-C", str(tmp_path), "log", "--format=%H", rng],
-        capture_output=True, text=True).stdout
+        capture_output=True, text=True, check=False).stdout
     assert r["feat"] in log_shas, f"second-parent feature commit must be in {rng}"
     diff = subprocess.run(
         ["git", "-C", str(tmp_path), "diff", rng],
-        capture_output=True, text=True).stdout
+        capture_output=True, text=True, check=False).stdout
     assert "engine.py" in diff, f"the engine change the docs document must be in {rng}"
 
 
@@ -180,7 +180,7 @@ def test_merge_second_parent_in_window_no_clean_anchor(lc, tmp_path, monkeypatch
     rng = lc.audit_range(None, r["test"])
     diff = subprocess.run(
         ["git", "-C", str(tmp_path), "diff", rng],
-        capture_output=True, text=True).stdout
+        capture_output=True, text=True, check=False).stdout
     assert "engine.py" in diff, f"feature diff must be in {rng} even with no clean anchor"
 
 

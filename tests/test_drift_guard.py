@@ -45,7 +45,7 @@ def _is_configured_clone() -> bool:
     """
     r = subprocess.run(
         ["git", "-C", str(REPO), "config", "--get", "core.hooksPath"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, check=False,
     )
     return r.returncode == 0 and r.stdout.strip() != ""
 
@@ -105,7 +105,7 @@ class ModuleShapeTests(unittest.TestCase):
         self.assertTrue(GUARD.is_file(), f"{GUARD} missing")
         r = subprocess.run(
             [sys.executable, "-m", "py_compile", str(GUARD)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, check=False,
         )
         self.assertEqual(r.returncode, 0, r.stderr)
 
@@ -535,7 +535,7 @@ class GitHooksPathTests(unittest.TestCase):
         root = pathlib.Path(tempfile.mkdtemp())
         (root / ".githooks").mkdir()
         (root / ".githooks" / "pre-commit").write_text("x", encoding="utf-8")
-        subprocess.run(["git", "init", "-q", str(root)], capture_output=True)
+        subprocess.run(["git", "init", "-q", str(root)], capture_output=True, check=False)
         out = drift_guard.check_git_hooks_path(root)
         self.assertTrue(out, "an unset core.hooksPath with tracked hooks must breach")
         self.assertIn("unset", out[0].message.lower())
@@ -667,7 +667,7 @@ class LiveRepoTests(unittest.TestCase):
     def test_runs_against_the_real_repo(self) -> None:
         r = subprocess.run(
             [sys.executable, str(GUARD)],
-            capture_output=True, text=True, cwd=str(REPO),
+            capture_output=True, text=True, cwd=str(REPO), check=False,
         )
         self.assertIn(r.returncode, (0, 1), f"unexpected exit: {r.stderr[:400]}")
         self.assertIn("drift_guard:", r.stdout)
@@ -675,7 +675,7 @@ class LiveRepoTests(unittest.TestCase):
     def test_exit_code_is_one_when_a_breach_is_reported(self) -> None:
         r = subprocess.run(
             [sys.executable, str(GUARD)],
-            capture_output=True, text=True, cwd=str(REPO),
+            capture_output=True, text=True, cwd=str(REPO), check=False,
         )
         breaches = "BREACH" in r.stdout
         self.assertEqual(
