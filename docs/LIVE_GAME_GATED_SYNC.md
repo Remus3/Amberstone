@@ -5341,6 +5341,32 @@ waits on the RM-875 wiring.)
   printed INCOMPLETE (subteams, roster and shadow each NO_RESULT) and exited 1, the idle shape the
   drain expects. Predicate,
   drain steps and substitution check unchanged; nothing ticked; no count moved.
+  **RE-CHECK (lane 9 PREP s144 cycle 119, 2026-11-09, source read at `b44d494b5`; NOT a tick).**
+  `6b092a493` is NOT an ancestor of HEAD (the pre-rebase copy of S144-G-88, now `2b5a0b771`); the
+  drift was read per file with `git log 6b092a493..HEAD`, and the 11 off-line commits
+  (S144-G-78..88) touch none of the files below.
+  No commit touched `dashboard/_liveclient.py`, `lcu/champ_select_shape.py` or
+  `tools/gated_g5_focus_layout.py`. `core/arena_coach_shadow.py` (`36ba25a07`) and
+  `core/focus_board_live.py` (`36ba25a07`, `434ee0359`) changed only by dropped `# noqa: BLE001`
+  markers and `notes + [...]` respelled as `[*notes, ...]` (ruff ratchets; no behaviour change), so
+  every cycle-98 cite in them HOLDS: `_focus_board_column` `:140`, `_safe_focus_board_column` `:193`
+  (called `:289`, `:297`), `enemy_team` read `:266-269`; `roster_from_lc` `:283` (`my_team` `:298`,
+  split `:320`), `KILL_SWITCH_ENV` `:108`, `enabled()` defined `:150` (its return, the only-`0` test,
+  is `:152`). The TEAMS section heading is still `:32` and its text (`:33-37`) still says "my partner
+  the one ally" and "the 2v2 team TTK", so the docstring fix is STILL OWED. `dashboard/_liveclient.py`
+  `:388-390` and `lcu/champ_select_shape.py:181` / `:193` / `:62` hold. `coaches/arena_coach.py`
+  `is_partner` still `:1305` (`81c26322c` changed prompt text only). MOVED: `core/queue_modes.py:82`
+  is now `:107` (`7d627b453` grew the module docstring and hardened the id coercion); the 1750 entry
+  still maps to `arena` and still reads "Arena 3x6". BASELINE (idle, read-only): :8888 and :2999 did
+  not answer (no game; RC down, `health.json` last written 2026-10-31 local, its `started_at`
+  2026-11-01T01:33Z unchanged, so no restart since RM-854 is owed);
+  `data/arena_coach_shadow.jsonl` in the main checkout still 617 rows, 2026-07-05..07-21, 0 with a
+  `focus_board` column (file last written 2026-07-20 local), so still no Arena game since RM-844;
+  `RC_FOCUS_BOARD_SHADOW` is unset at User and Machine scope, so after the launcher cutover the
+  shadow column stays ON by default with no env route needed. The tool with no capture again printed
+  INCOMPLETE (subteams, roster and shadow each NO_RESULT) and exited 1;
+  `tests/test_gated_g5_focus_layout.py` 23 passed. Predicate, drain steps and substitution check
+  unchanged; nothing ticked; no count moved.
 
 ---
 
