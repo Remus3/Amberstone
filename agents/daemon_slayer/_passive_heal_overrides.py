@@ -403,23 +403,25 @@ _PASSIVE_HEAL_OVERRIDES: dict[tuple[str, str, int], PassiveHealEntry] = {
         note="Determination: heal 3% / 3.5% / 4% (based on level) of caster max HP (+ 65% AP) on the 3rd-stack on-hit; even-thirds level boundaries (step estimate)",
         attribute="Determination",
     ),
-    # Yuumi P Bop 'n' Block: the periodic empowered hit "heal her for 20 : 110
+    # Yuumi P Feline Friendship: the periodic empowered hit "heal her for 20 : 110
     # (based on level) (+ 25% AP)". flat per-level + 25% AP. per_cast (periodic).
+    # S144-D-255: was labelled "Bop 'n' Block", a name the live kit no longer uses.
     ("Yuumi", "P", 0): PassiveHealEntry(
         linear_terms=((_lerp_per_level(20.0, 110.0), ""), (25.0, "% ap")),
         cadence="per_cast",
-        note="Bop 'n' Block: heal 20 : 110 (based on level) (+ 25% AP) on the periodic empowered hit; the same-amount ally heal omitted (different target)",
-        attribute="Bop 'n' Block",
+        note="Feline Friendship: heal 20 : 110 (based on level) (+ 25% AP) on the periodic empowered hit; the same-amount ally heal omitted (different target)",
+        attribute="Feline Friendship",
     ),
-    # Rakan Q Boisterous Bravado: "Rakan heals himself and nearby allied
+    # Rakan Q Gleaming Quill: "Rakan heals himself and nearby allied
     # champions for 40 : 210 (based on level) (+ 55% AP)". SPELL-slot heal that
     # scales by LEVEL (not Q rank) -> level_scaled=True so the 18-element tuple
     # is indexed by level. flat per-level + 55% AP. per_cast.
+    # S144-D-255: was labelled "Boisterous Bravado", a name no live Rakan text uses.
     ("Rakan", "Q", 0): PassiveHealEntry(
         linear_terms=((_lerp_per_level(40.0, 210.0), ""), (55.0, "% ap")),
         cadence="per_cast",
-        note="Boisterous Bravado: heal 40 : 210 (based on level) (+ 55% AP) after the Q radius delay; SPELL-slot level-scaled (level_scaled indexes by level not Q rank)",
-        attribute="Boisterous Bravado",
+        note="Gleaming Quill: heal 40 : 210 (based on level) (+ 55% AP) after the Q radius delay; SPELL-slot level-scaled (level_scaled indexes by level not Q rank)",
+        attribute="Gleaming Quill",
         level_scaled=True,
     ),
     # Talon Q Noxian Diplomacy: "If Noxian Diplomacy kills the target, Talon
