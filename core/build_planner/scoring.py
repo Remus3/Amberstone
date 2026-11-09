@@ -100,10 +100,10 @@ _UNIQUE_COLLISION_PENALTY = 5.0
 # Normalization divisors (keep each term ~0..1.x so StageWeights are the true
 # relative emphasis). WHY: a 6-item build sums ~6 rows of delta_dps (~80 each)
 # -> ~480; /500 lands it near 1.0. Cohesion sums ~6 synergy_scores (~1-2 each);
-# /6 lands the average near unity. Gold normalizes against a full ~18k build.
+# /6 lands the average near unity. The gold term normalizes inside
+# ``_gold_term`` (mean dps-per-1k-gold over a literal 30), not here.
 _DPS_NORM = 500.0
 _COHESION_NORM = 6.0
-_GOLD_NORM = 18000.0
 
 
 def stage_for(clock_s: float, owned_count: int) -> str:

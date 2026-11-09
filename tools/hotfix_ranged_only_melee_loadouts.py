@@ -43,10 +43,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from agents.daemon_slayer._melee_ranged import (  # noqa: E402
-    MELEE_RANGED_ATTACKRANGE_SPLIT,
-    attackrange_is_ranged,
-)
+from agents.daemon_slayer._melee_ranged import attackrange_is_ranged  # noqa: E402
 from core import polled_json  # noqa: E402
 from core.daemon_slayer_client import champion_attackrange  # noqa: E402
 from tools.champion_loadout_align import _detect_archetype  # noqa: E402
@@ -55,10 +52,6 @@ _LOADOUTS = _ROOT / "data" / "champion_loadouts.json"
 
 # Runaan's Hurricane display name(s) as they appear in the loadout lists.
 _RUNAAN = "Runaan's Hurricane"
-
-# Melee = base attackrange BELOW the shared canonical split (350, RM-123 -
-# mirrors rank.MELEE_ATTACKRANGE_CEILING + loadout_resolver + _melee_ranged).
-_MELEE_CEILING = MELEE_RANGED_ATTACKRANGE_SPLIT
 
 # Archetype-aware, melee-legal replacement chains. Every entry is outside the 7
 # unique-passive families and is NOT a heal/shield item, so the axis + clash

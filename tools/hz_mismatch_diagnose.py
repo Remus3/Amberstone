@@ -94,7 +94,6 @@ SCHEMA = "hz_mismatch_diagnose/v2"
 # from rewind_history.db, per mismatch CLASS. It is REPORTED ONLY - never fed
 # back into any precompute threshold (anti-circularity).
 _REWIND_SR_MODE = "sr"
-_REWIND_EXCLUDED_MODES = frozenset({"aram", "client"})
 _REWIND_GOLD_FRAME_MIN = 10
 _REWIND_MIN_SAMPLES = 3
 

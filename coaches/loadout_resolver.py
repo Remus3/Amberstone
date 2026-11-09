@@ -23,10 +23,7 @@ import logging
 import re
 from pathlib import Path
 
-from agents.daemon_slayer._melee_ranged import (
-    MELEE_RANGED_ATTACKRANGE_SPLIT,
-    attackrange_is_ranged,
-)
+from agents.daemon_slayer._melee_ranged import attackrange_is_ranged
 
 # Rune-writer helpers, needed to translate variant rune names into LCU perk
 # IDs.
@@ -63,13 +60,6 @@ _RANGED_ONLY_ITEM_IDS: frozenset[str] = frozenset({
     "3085",     # Runaan's Hurricane - canonical (SR / ARAM / Brawl)
     "223085",   # Runaan's Hurricane - Arena-mirror alias (map 30)
 })
-
-# Melee = base attackrange BELOW the shared canonical split (350, RM-123 -
-# mirrors rank.MELEE_ATTACKRANGE_CEILING / ehp._is_ranged / _melee_ranged).
-# The split is STRICT: Urgot (350) is ranged (keeps Runaan's); Rakan (300) and
-# Lillia (325) are melee (Runaan's stripped); Graves (425) / Kindred (500) stay
-# ranged. Classify via ``attackrange_is_ranged`` so the boundary matches.
-_MELEE_ATTACKRANGE_CEILING: float = MELEE_RANGED_ATTACKRANGE_SPLIT
 
 
 def _norm(name: str) -> str:
@@ -177,8 +167,12 @@ def _load_champ_range_by_name() -> dict[str, float]:
 
 def _champion_is_melee(champion: str) -> bool:
     """True iff the champion's base attackrange is below the canonical split
-    (melee iff ar < 350, RM-123). Unknown champion -> False (fail-open: never
-    over-filter a champ we cannot classify)."""
+    (melee iff ar < 350, RM-123; mirrors rank.MELEE_ATTACKRANGE_CEILING /
+    ehp._is_ranged / _melee_ranged). The split is STRICT: Urgot (350) is
+    ranged (keeps Runaan's); Rakan (300) and Lillia (325) are melee (Runaan's
+    stripped); Graves (425) / Kindred (500) stay ranged. Classified via
+    ``attackrange_is_ranged`` so the boundary matches. Unknown champion ->
+    False (fail-open: never over-filter a champ we cannot classify)."""
     ranges = _load_champ_range_by_name()
     rng = ranges.get(champion)
     if rng is None:

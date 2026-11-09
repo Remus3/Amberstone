@@ -65,7 +65,6 @@ _SR_ARTIFACT  = _PROJECT_DIR / "coaching_data.json"
 # -- Constants -------------------------------------------------------------
 
 _VALID_DECISIONS = {"allow", "disabled"}
-_SAFE_DEFAULT    = "allow"
 
 # Known modes and their known features
 _KNOWN_FEATURES: Dict[str, set] = {

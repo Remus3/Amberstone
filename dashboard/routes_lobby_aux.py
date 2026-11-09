@@ -75,7 +75,6 @@ log = logging.getLogger("rc.web_dashboard")
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _TOP8_PATH = _DATA_DIR / "top8_list.json"
-_MATCH_DB = _DATA_DIR / "match_history.db"
 _REWIND_DB = _DATA_DIR / "rewind_history.db"
 
 _TOP8_MAX = 8
