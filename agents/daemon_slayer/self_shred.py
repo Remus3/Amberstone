@@ -45,6 +45,7 @@ string distinguishes percent ("% of target's armor", "%") from flat
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Optional
 
@@ -248,6 +249,20 @@ def _candidate_shreds(
     return out
 
 
+def _finite_float(value) -> Optional[float]:
+    """``float(value)`` when that is a finite number, else None.
+
+    S144-D-172..174: a NaN / +-inf resist or channel DPS made the result
+    NaN or infinite, and a non-numeric one raised out of this NEVER-raises
+    surface. A numeric string keeps its old float reading.
+    """
+    try:
+        out = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return out if math.isfinite(out) else None
+
+
 def _no_shred_result(
     champion: str,
     level: int,
@@ -298,7 +313,9 @@ def compute_self_shred_uplift(
 
     Fail-soft: a champion with no modeled shred (or an unknown champion, or
     a parse-degenerate snapshot) returns a 0.0-uplift result with a note
-    and NEVER raises.
+    and NEVER raises. A source whose resist is not a finite number is
+    skipped (none left: the same zero result); a channel DPS that is not a
+    finite non-negative number reads as 0.0.
 
     Selection: when a champion ships multiple shred sources (Corki E
     per-stack + total; Rumble E base + enhanced) the source with the
@@ -357,10 +374,18 @@ def compute_self_shred_uplift(
         )
 
     best: Optional[SelfShredUplift] = None
+    unusable: list[str] = []
     for key, flat_shred, pct_shred, resist_kind in candidates:
-        base_resist = float(
+        # Only the resist this source shreds is read, so a bad MR never
+        # touches an armor shred (and the reverse).
+        base_resist = _finite_float(
             target_armor if resist_kind == RESIST_ARMOR else target_mr
         )
+        if base_resist is None:
+            name = "target_armor" if resist_kind == RESIST_ARMOR else "target_mr"
+            if name not in unusable:
+                unusable.append(name)
+            continue
         shredded = base_resist - flat_shred - base_resist * pct_shred
         if shredded < 0.0:
             shredded = 0.0  # floor: never push the mit path into neg-armor amp
@@ -372,11 +397,15 @@ def compute_self_shred_uplift(
             uplift_ratio = (new_mit / old_mit) - 1.0
         if uplift_ratio < 0.0:
             uplift_ratio = 0.0
-        channel_dps = float(
+        # A channel DPS that is not a finite non-negative number reads as the
+        # parameter's own 0.0 default: the uplift is documented ">= 0".
+        channel_dps = _finite_float(
             champion_physical_dps
             if resist_kind == RESIST_ARMOR
             else champion_magic_dps
         )
+        if channel_dps is None or channel_dps < 0.0:
+            channel_dps = 0.0
         result = SelfShredUplift(
             champion=champ,
             level=lvl,
@@ -398,5 +427,11 @@ def compute_self_shred_uplift(
         if best is None or result.dps_uplift_pct > best.dps_uplift_pct:
             best = result
 
-    assert best is not None  # candidates non-empty guarantees a best
+    if best is None:
+        return _no_shred_result(
+            champ, lvl, target_armor, target_mr,
+            f"{' / '.join(unusable)} is not a finite number - "
+            f"no shred resolved for {champ!r}",
+        )
+    assert best is not None  # the early return above rules out None
     return best
