@@ -5,9 +5,12 @@ measured it and left it unscanned). A ``subprocess.run`` without ``check=`` leav
 guess whether a non-zero exit was meant to be ignored or was forgotten. ``check=False`` is the
 Python default, so the bytes run and the behaviour are identical; the keyword only records the
 intent. Measured 2026-11-08 with ``ruff check --isolated`` (target py39) over the tracked
-production tree: 78 findings in 50 files. This slice states ``check=False`` at the 20 sites in
-eight modules whose code reads ``returncode`` (or deliberately ignores it) itself; the rest sit in
-the baseline below, which only shrinks. A baseline row that stops offending fails
+production tree: 78 findings in 50 files. Slice 1 states ``check=False`` at the 20 sites in
+eight modules whose code reads ``returncode`` (or deliberately ignores it) itself; slice 2
+(S144-P-477) does the same for eleven more tools/ modules; the rest sit in the baseline below,
+which only shrinks. Held back on purpose: ``tools/credential_history_scan.py`` and
+``tools/sibling_name_sweep.py`` (another lane branch changed them), the packaging files, and the
+gated one-shot probes not yet audited. A baseline row that stops offending fails
 ``test_baseline_is_exact`` until it is dropped; a new finding anywhere else fails
 ``test_no_new_findings``.
 
@@ -67,38 +70,38 @@ _BASELINE = {
     "ops/rc_supervisor.py": 3,
     "scripts/audit_api_surface.py": 1,
     "scripts/install_hooks.py": 1,
-    "tools/bot_merge_check.py": 1,
     "tools/build_installer.py": 1,
     "tools/build_portable.py": 1,
-    "tools/build_rank_baselines.py": 1,
-    "tools/ci_watchdog.py": 1,
-    "tools/claude_quota_watch.py": 1,
     "tools/credential_history_scan.py": 1,
-    "tools/dev_cli.py": 1,
     "tools/gated_b29_window_parity.py": 1,
     "tools/gated_lx11_minimap_check.py": 1,
-    "tools/gen_archmap.py": 1,
-    "tools/inbox_responder_procs.py": 1,
     "tools/p3_ascii_census.py": 1,
     "tools/package_portable.py": 1,
-    "tools/perseus_sync.py": 1,
-    "tools/repo_insights.py": 1,
     "tools/run_packaged_smoke.py": 6,
     "tools/scheduled_boot_verify.py": 1,
     "tools/sibling_name_sweep.py": 2,
     "tools/sibling_sweep_ci.py": 1,
-    "tools/timeline_ingest.py": 1,
-    "tools/upstream_drift_check.py": 1,
 }
 _FIXED = (
     "dashboard/_vision_watchdog.py",
     "tools/bootstrap_env_check.py",
+    "tools/bot_merge_check.py",
+    "tools/build_rank_baselines.py",
     "tools/ci_impact_selector.py",
+    "tools/ci_watchdog.py",
+    "tools/claude_quota_watch.py",
+    "tools/dev_cli.py",
     "tools/drift_guard.py",
+    "tools/gen_archmap.py",
+    "tools/inbox_responder_procs.py",
+    "tools/perseus_sync.py",
     "tools/precommit_gate.py",
     "tools/rc_facts.py",
     "tools/replay_chain_watch.py",
+    "tools/repo_insights.py",
+    "tools/timeline_ingest.py",
     "tools/truth_gate.py",
+    "tools/upstream_drift_check.py",
 )
 
 

@@ -124,6 +124,7 @@ def kill_tree(pid: int) -> None:
                 creationflags=CREATION_FLAGS,
                 timeout=KILL_CMD_TIMEOUT_S,
                 capture_output=True,
+                check=False,
             )
         except _SPAWN_ERRORS:
             pass

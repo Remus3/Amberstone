@@ -238,7 +238,7 @@ def sync(vault: Vault) -> dict:
                 "--importance", "0.98", "--entity-type", "decision", "--always-on",
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-            creationflags=CREATE_NO_WINDOW,
+            creationflags=CREATE_NO_WINDOW, check=False,
         )
         if proc.returncode == 0:
             counts["settled"] += 1

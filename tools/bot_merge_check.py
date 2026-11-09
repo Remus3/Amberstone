@@ -89,7 +89,7 @@ def _git(root, *args, timeout=120):
     env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
     try:
         r = subprocess.run(["git", "-C", str(root), *args], capture_output=True,
-                           timeout=timeout, env=env, creationflags=_NO_WINDOW)
+                           timeout=timeout, env=env, creationflags=_NO_WINDOW, check=False)
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout.decode("utf-8", "replace") if r.returncode == 0 else None
