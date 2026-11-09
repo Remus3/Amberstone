@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures as cf
+import contextlib
 import hashlib
 import importlib.util
 import json
@@ -91,6 +92,10 @@ DRAIN_DIR = CONTROL / "drain"
 STOP_FILE = CONTROL / "DRAIN_STOP"
 RESULT = ROOT / "ops" / "runtime" / "drain_waves_2_3_result.json"
 LOCK = ROOT / "ops" / "runtime" / "drain_waves_2_3.lock"
+# S144-Q-131: an EMPTY (or unparseable) lock younger than this is another
+# launcher's claim between its O_EXCL create and its write, not a stale one.
+# Older, its writer crashed in that gap and the lock is reclaimed.
+EMPTY_LOCK_GRACE_S = 10.0
 LOG = ROOT / "logs" / "drain_waves_2_3.log"
 WT_BASE = ROOT / ".claude" / "worktrees"
 
@@ -537,28 +542,112 @@ def _pid_alive(pid: int) -> bool:
         return True
 
 
-def _take_lock() -> bool:
+def _lock_pid(raw: bytes | None) -> int:
+    """The pid a lock's bytes name (first field), 0 when empty or unparseable.
+    Reads both the current `<pid> <token>` claim and the older pid-only one."""
+    try:
+        return int((raw or b"").decode("ascii").split()[0])
+    except (UnicodeDecodeError, ValueError, IndexError):
+        return 0
+
+
+def _take_lock(clock=time.time) -> bytes | None:
+    """Take the launcher lock. Returns this launcher's CLAIM (the exact bytes
+    written; `_drop_lock` wants it back) or None when another launcher holds it.
+
+    S144-Q-131 (RM-691's root cause): the lock is judged from ONE read of its
+    bytes and broken only through `_remove_if`, which removes it only while it
+    still holds those bytes, so a fresh lock another launcher made since the
+    read is never deleted. A young empty lock is a claim in flight: refused.
+
+    Residual (POSIX only, accepted): two launchers breaking one OLD empty lock
+    both read b""; if C renames B's re-created lock before B writes its claim,
+    the bytes still match and both run. On Windows the rename of a file B
+    still holds open fails, so `_remove_if` leaves it."""
     LOCK.parent.mkdir(parents=True, exist_ok=True)
     for _ in range(2):
+        # pid + a random token: two takes by one pid still differ, so a release
+        # can tell this launcher's claim from a later one.
+        claim = f"{os.getpid()} {os.urandom(8).hex()}".encode("ascii")
         try:
             fd = os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            try:
-                os.write(fd, str(os.getpid()).encode("ascii"))
-            finally:
-                os.close(fd)
-            return True
         except FileExistsError:
             try:
-                pid = int(LOCK.read_text(encoding="ascii").strip() or 0)
-            except (OSError, ValueError):
-                pid = 0
-            if pid and _pid_alive(pid):
-                return False
-            try:
-                LOCK.unlink()  # stale lock of a dead launcher: a pid record, not data
+                seen = LOCK.read_bytes()
             except OSError:
-                return False
+                continue  # gone (released or broken meanwhile): retry O_EXCL
+            pid = _lock_pid(seen)
+            if pid and _pid_alive(pid):
+                return None
+            if not pid:
+                try:
+                    age = clock() - LOCK.stat().st_mtime
+                except OSError:
+                    age = EMPTY_LOCK_GRACE_S  # gone: not in flight
+                # abs(): a clock stepped back must not hold a crashed claim.
+                if abs(age) < EMPTY_LOCK_GRACE_S:
+                    return None
+            if not _remove_if(LOCK, seen):
+                return None  # changed since it was read: another launcher holds it
+            continue
+        try:
+            os.write(fd, claim)
+        finally:
+            os.close(fd)
+        return claim
+    return None
+
+
+def _remove_if(lock: Path, expected: bytes) -> bool:
+    """Remove `lock` only if it still holds `expected`. True when it is gone
+    (removed here, or already gone); False when it holds anything else or
+    cannot be moved (left in place, or put back).
+
+    Same mechanism as RM-691's `_remove_if` in ops/loop/inbox_tick.py: the file
+    is renamed to a unique side name first, so the bytes compared are the bytes
+    removed; a mismatch is put back with a no-overwrite link. The side name
+    ends in `.lock`.
+
+    Residual (accepted, as for RM-691; needs three launchers inside one rename
+    window after a crash left a stale lock): while B holds A's fresh lock
+    aside, C can create the lock; B's put-back then loses to C and A's lock is
+    gone, so A and C both run. Two launchers can no longer do it."""
+    side = lock.with_name(
+        f"{lock.stem}.break-{os.getpid()}-{os.urandom(4).hex()}{lock.suffix}")
+    try:
+        os.rename(lock, side)
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    try:
+        held = side.read_bytes()
+    except OSError:
+        held = None
+    if held == expected:
+        with contextlib.suppress(OSError):
+            side.unlink()
+        return True
+    try:
+        os.link(side, lock)
+    except FileExistsError:
+        pass  # a lock created since the rename is newer still; it stays
+    except OSError:
+        # No hard links here: a plain rename back (the side file is never
+        # deleted on this path, so the moved lock is not lost).
+        with contextlib.suppress(OSError):
+            os.rename(side, lock)
+        return False
+    with contextlib.suppress(OSError):
+        side.unlink()
     return False
+
+
+def _drop_lock(claim) -> None:
+    """Release the launcher lock only while it still carries this launcher's
+    claim (S144-Q-131); a lock another launcher took meanwhile is left alone."""
+    if isinstance(claim, bytes) and claim:
+        _remove_if(LOCK, claim)
 
 
 # ---------------------------------------------------------------- main
@@ -579,7 +668,8 @@ def _finish(state: dict, status: str, code: int) -> int:
 def run(waves=None) -> int:
     waves = list(WAVES) if waves is None else list(waves)
     needed = runs_needed(waves)
-    if not _take_lock():
+    claim = _take_lock()
+    if not claim:
         _say("another drain_waves_2_3 launcher holds the lock - exiting")
         return 3
     os.environ["CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"] = BG_WAIT_MS  # this process + children only
@@ -626,10 +716,7 @@ def run(waves=None) -> int:
         _say(f"FAILED {state['error']}")
         return _finish(state, "failed", 1)
     finally:
-        try:
-            LOCK.unlink()
-        except OSError:
-            pass
+        _drop_lock(claim)
 
 
 def dry_run(waves=None) -> int:
