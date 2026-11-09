@@ -24,8 +24,9 @@ import json
 import os
 import sqlite3
 import statistics
+from pathlib import Path
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ROOT = str(Path(__file__).absolute().parents[2])
 _ITEMS = os.path.join(_ROOT, "data", "meta", "ddragon_items.json")
 _DB = os.path.join(_ROOT, "data", "rewind_history.db")
 _MIN_ROWS = 30

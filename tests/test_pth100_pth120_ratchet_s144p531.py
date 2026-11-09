@@ -6,7 +6,7 @@ modules spelled their repo root ``os.path.dirname(os.path.dirname(os.path.abspat
 symlink or subst-drive resolution, unlike ``Path.resolve()``, which ruff's fix suggests and which would change the
 string on a junctioned checkout), and the ``str()`` keeps every ``os.path.join`` consumer working on the same type.
 
-The rest sits in ``_BASELINE`` (49 findings in 21 files): hand-written paths (``live_write_tracer``, the lane
+The rest sits in ``_BASELINE`` (41 findings in 19 files): hand-written paths (``live_write_tracer``, the lane
 launcher, the conftest helpers, the DS geometry tests) each need their own look, not a mechanical rewrite. The
 baseline only shrinks: ANY new finding, or one above a baselined file's count, fails ``test_no_file_exceeds_its_baseline``.
 The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding, and ``--preview`` because both
@@ -44,8 +44,6 @@ _BASELINE: dict[str, int] = {
     "core/vod_retention.py": 2,
     "dashboard/routes_recordings.py": 2,
     "dashboard/routes_vision_calibrator.py": 2,
-    "ops/audit/ds_latency_probe.py": 4,
-    "ops/audit/opponent_prior_gonogo.py": 4,
     "ops/loop/lane_launcher.py": 2,
     "ops/loop/lanes.py": 2,
     "ops/migrate/e_move_helpers.py": 1,
@@ -72,6 +70,9 @@ _FIXED = (
     "tools/logger_leak_census.py",
     "tools/p3_ascii_census.py",
     "tools/perseus_sync.py",
+    # S144-P-532: the three-level spelling, str(Path(__file__).absolute().parents[2]).
+    "ops/audit/ds_latency_probe.py",
+    "ops/audit/opponent_prior_gonogo.py",
 )
 
 
@@ -152,3 +153,21 @@ def test_converted_tool_roots_keep_the_old_value(rel, attr):
     spec.loader.exec_module(module)
     old = _OLD_DIRNAME(_OLD_DIRNAME(_OLD_ABSPATH(REPO_ROOT / rel)))
     assert getattr(module, attr) == old
+
+
+def test_the_three_level_spelling_is_the_old_string():
+    """S144-P-532: ops/audit/ reaches the repo root with parents[2]; same string as the old three-dirname form,
+    for this file and for a relative path."""
+    here = str(Path(__file__).absolute().parents[1] / "ops" / "audit" / "x.py")
+    assert str(Path(here).absolute().parents[2]) == _OLD_DIRNAME(_OLD_DIRNAME(_OLD_DIRNAME(_OLD_ABSPATH(here))))
+    rel = os.path.join("ops", "audit", "x.py")
+    assert str(Path(rel).absolute().parents[2]) == _OLD_DIRNAME(_OLD_DIRNAME(_OLD_DIRNAME(_OLD_ABSPATH(rel))))
+
+
+def test_the_audit_probe_root_is_the_repo_root():
+    spec = importlib.util.spec_from_file_location("_s144p532_gonogo", REPO_ROOT / "ops/audit/opponent_prior_gonogo.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert os.path.normcase(module._ROOT) == os.path.normcase(str(REPO_ROOT.absolute()))
+    source = (REPO_ROOT / "ops/audit/ds_latency_probe.py").read_text(encoding="utf-8")
+    assert "str(Path(__file__).absolute().parents[2])" in source
