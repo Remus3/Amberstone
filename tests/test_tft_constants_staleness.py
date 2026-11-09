@@ -168,15 +168,18 @@ def test_measured_set14_and_set17_modules_ship_identical_tables():
     """Evidence the Set 17 module was COPIED, not re-derived.
 
     The Set 17 module's TIER_ODDS is byte-identical to the Set 14 table (kept
-    in tft_data.py as TIER_ODDS_SET14 since LT-02), and both modules still
-    ship the same POOL_SIZES. This test breaks as soon as either is corrected.
+    in tft_data.py as TIER_ODDS_SET14 since LT-02), and the Set 17 module's
+    POOL_SIZES is the Set 14 copy (kept in tft_data.py as POOL_SIZES_SET14
+    since S156, when Set 18 got its own pools from the game's shop data).
+    This test breaks as soon as the Set 17 module is corrected.
     """
     from tft import tft_data, tft_pbe_data
 
     assert tft_data.CONSTANTS_SET != tft_pbe_data.CONSTANTS_SET
     assert tft_data.TIER_ODDS_SET14 == tft_pbe_data.TIER_ODDS
     assert tft_data.TIER_ODDS != tft_pbe_data.TIER_ODDS
-    assert tft_data.POOL_SIZES == tft_pbe_data.POOL_SIZES
+    assert tft_data.POOL_SIZES_SET14 == tft_pbe_data.POOL_SIZES
+    assert tft_data.POOL_SIZES != tft_pbe_data.POOL_SIZES
 
 
 def test_measured_set17_module_cannot_answer_pool_questions():
@@ -231,9 +234,11 @@ def test_constants_health_reports_every_known_problem():
     assert "STALE" in blob
     assert "not in-client verified" in blob
     assert "UNITS_PER_COST" in blob
-    # LT-02: TIER_ODDS differ now (Set 18 vs the Set 14 copy); pools do not.
+    # LT-02: TIER_ODDS differ now (Set 18 vs the Set 14 copy). S156: the pools
+    # differ too (Set 18 from the game's shop data); only the Set 17 module
+    # still carries the Set 14 copy.
     assert "IDENTICAL TIER_ODDS" not in blob
-    assert "IDENTICAL POOL_SIZES" in blob
+    assert "IDENTICAL POOL_SIZES" not in blob
 
 
 def test_constants_health_accepts_an_explicit_lane_set():

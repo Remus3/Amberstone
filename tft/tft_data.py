@@ -5,8 +5,10 @@ Set-agnostic structure: update UNITS / TRAITS / ITEMS dicts each set patch.
 Roll odds: Set 18 (LT-02, in-client measured at L4-L9), the Set 14 table kept
 beside it and routed by set key (tier_odds_for_set). XP to the next level:
 Set 18 (S134, in-client measured at L4-L9) beside the Set 14 table, routed by
-xp_to_next_level. The other tables below (pool sizes, rounds, items) are
-still the Set 14 transcription.
+xp_to_next_level. Pool sizes and units per cost: Set 18 from the game's own
+shop data (S156, POOL_SIZES_SOURCE), the Set 14 transcription kept beside
+them. The other tables below (rounds, items) are still the Set 14
+transcription and no module reads them (see the dead-table note below).
 """
 
 # -- Set declaration ----------------------------------------------------------
@@ -90,14 +92,37 @@ def tier_odds_for_set(set_number=None):
     return None
 
 
-# Pool sizes per cost. NOT Set 18 values: carried over from the Set 14
-# transcription (POOL_SIZES_FROM_SET). The HUD does not show pool sizes and no
-# measured Set 18 source exists yet, so they stay unpinned (LT-02).
-POOL_SIZES_FROM_SET = 14
-POOL_SIZES = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
+def odds_level_verified(level, set_number=None) -> bool:
+    """True when the set's TIER_ODDS row for ``level`` was read off the live
+    client HUD. Only Set 18 has such levels (TIER_ODDS_VERIFIED_LEVELS); every
+    other set's table, and Set 18's L1-L3 / L10-L11, is unverified."""
+    if isinstance(level, bool) or not isinstance(level, int):
+        return False
+    if set_number is None:
+        from tft import tft_set
+        set_number = tft_set.resolve_set()
+    return set_number == CONSTANTS_SET and level in TIER_ODDS_VERIFIED_LEVELS
 
-# Units in pool per cost tier (Set 14 carry-over, as POOL_SIZES)
-UNITS_PER_COST = {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
+
+# Pool sizes per cost and units in the pool per cost, Set 18 (S156): the game's
+# own shop data, CommunityDragon map22 `ShopContentData` TierBags (one bag per
+# cost, each entry a shop unit with its `Count` of copies), identical at 16.21
+# and 16.22. 14 / 13 / 14 / 14 / 10 units with 30 / 25 / 18 / 10 / 9 copies
+# each; every bag unit is in data/meta/tft_set18_cdragon.json at the same cost.
+# This is a game-data file, NOT the in-client display (at L7 the game data
+# disagrees with the live HUD, LT-02), so these are "game data, not read in
+# client": CONSTANTS_SET_VERIFIED stays False. Guard:
+# tests/test_tft_set18_pools_s156.py. The Set 14 transcription is kept beside
+# them and never borrowed for Set 18.
+POOL_SIZES_FROM_SET = 18
+POOL_SIZES_SOURCE = ("CommunityDragon map22 ShopContentData TierBags, patch 16.22 "
+                     "(equal at 16.21); game data, not read in client")
+POOL_SIZES = {1: 30, 2: 25, 3: 18, 4: 10, 5: 9}
+UNITS_PER_COST = {1: 14, 2: 13, 3: 14, 4: 14, 5: 10}
+
+# Set 14 transcription (never in-client verified), kept intact.
+POOL_SIZES_SET14 = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
+UNITS_PER_COST_SET14 = {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
 
 # -- Econ thresholds ----------------------------------------------------------
 INTEREST_BRACKETS = [10, 20, 30, 40, 50]   # gold thresholds for interest
@@ -132,6 +157,12 @@ XP_TO_NEXT_SET18 = {3: 6, 4: 10, 5: 20, 6: 36, 7: 56, 8: 68, 9: 68}
 # XP tables by set key. Set 17 has no table of its own; it keeps the table it
 # was always served (as its roll odds keep the Set 14 copy).
 XP_TO_NEXT_BY_SET = {14: XP_TO_LEVEL, 17: XP_TO_LEVEL, 18: XP_TO_NEXT_SET18}
+
+
+def xp_table_verified(set_number) -> bool:
+    """True only for a set whose XP table was read off the HUD level box
+    (Set 18, S134). Set 14 / 17 keep the transcription, never client-read."""
+    return set_number == CONSTANTS_SET
 
 
 def xp_to_next_level(level, set_number=None):

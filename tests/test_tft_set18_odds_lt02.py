@@ -106,10 +106,13 @@ def test_module_declares_set18_the_lane_set():
     assert tft_set.resolve_set() == 18  # committed tree: newest ingested
 
 
-def test_pool_sizes_are_a_set14_carryover_not_set18():
-    assert tft_data.POOL_SIZES_FROM_SET == 14 != tft_data.CONSTANTS_SET
-    assert tft_data.POOL_SIZES == {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
-    assert tft_data.UNITS_PER_COST == {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
+def test_pool_sizes_are_set18_game_data_not_the_set14_carryover():
+    """S156 superseded the LT-02 carry-over: the pools are Set 18's own, from
+    the game's shop data (tests/test_tft_set18_pools_s156.py holds the pins)."""
+    assert tft_data.POOL_SIZES_FROM_SET == tft_data.CONSTANTS_SET == 18
+    assert tft_data.POOL_SIZES == {1: 30, 2: 25, 3: 18, 4: 10, 5: 9}
+    assert tft_data.UNITS_PER_COST == {1: 14, 2: 13, 3: 14, 4: 14, 5: 10}
+    assert tft_data.POOL_SIZES_SET14 == {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
 
 
 def test_set14_table_is_kept_intact():

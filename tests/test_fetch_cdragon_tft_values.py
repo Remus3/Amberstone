@@ -113,6 +113,19 @@ def test_unit_rows_keep_stats_and_ability_variables():
                                "variables": {"Damage": [100.0, 300.0, 480.0]}}
 
 
+def test_unit_ability_values_are_marked_carried_or_absent_never_guessed():
+    """RM-891 (b): Set 18 rows mostly carry no ability variables; the unit says so."""
+    raw = _raw()
+    bare = dict(raw["sets"]["18"]["champions"][0], apiName="DA_18_Bare", name="Bare",
+                ability={"name": "n", "desc": "Hit for @PhysicalDamageCalc1@.", "variables": []})
+    raw["sets"]["18"]["champions"].append(bare)
+    units = _by_api(fct.build_extract(raw, 18, branch="latest", content_version=None,
+                                      fetched="2026-11-08")["units"])
+    assert units["DA_18_Golem"]["ability_values"] == "carried"
+    assert units["DA_18_Bare"]["ability_values"] == "absent"
+    assert units["DA_18_Bare"]["ability"]["variables"] == {}
+
+
 def test_trait_values_kept_per_breakpoint_with_hashed_keys_named_from_the_desc():
     trait = _by_api(_extract()["traits"])["DA_18_Elderwood"]
     assert trait["breakpoints"] == [3, 5]

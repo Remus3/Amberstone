@@ -112,7 +112,8 @@ def test_extract_keeps_raw_counts_and_drops_non_playables_from_the_roster():
                               "cost": 1, "traits": ["Sprykin", "Brawler"],
                               "role": "APTank", "stats": {"hp": 600.0},
                               "ability": {"name": "y", "desc": "x",
-                                          "variables": {}}}
+                                          "variables": {}},
+                              "ability_values": "absent"}
 
 
 def test_extract_traits_carry_breakpoints():
