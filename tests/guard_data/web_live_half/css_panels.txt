@@ -55,7 +55,7 @@ c821d26812fc587f8f7552032be97a5bcbf8341fa412db19659ef80c5d8f07e2  web/css/panels
 
 d9d3565c5af511fa7260b82b684af5a8d85d15a66ceb9a62995670010075a2b5  web/css/panels/duration_winrate.css
 
-d0d75dad011eb5478395e0e3926212797be4b46386d7526cf65ab644e62b6700  web/css/panels/grid.css
+dc81989ed9cff5c02666deb81b368059a3d997c385c70b8ccc8629a94ca67a25  web/css/panels/grid.css
 
 8b17234b566b78c7bec8a5b0f369cf171b471d6f5a75c2a8443b8b756af659b0  web/css/panels/home.css
 
@@ -65,7 +65,7 @@ ea7fba8356634592871a528a572a3e9cfa5197cc874c9d661bbd79f074174379  web/css/panels
 
 af0ddbca08ae5bfa096546c59c86d809f385efab058ad9556fbd4718984fc218  web/css/panels/last_match.css
 
-680c11a5ef0bcfbc37dd9f9624bfd0f0c5a3070f9fa91fdf8e8401fce622ea38  web/css/panels/map_state.css
+ce19005a60dada6c4541e8f3daf2c8fed8decddafc369c10d13bcd4a8af2a0c9  web/css/panels/map_state.css
 
 5b2ac2ccaf32b94c2616a9034118e8cded2c8dce8c250f71fbbc7efbb735dbb5  web/css/panels/next.css
 

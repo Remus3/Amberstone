@@ -757,6 +757,34 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         ("docs/specs/leap/LEAP-07-build-coherence-calibration-r2.md",
          "docs/ORCHESTRATION_PLAN.md:362"),
     )
+) + (
+    # 2026-11-09, S144-U-258 (session 144 uiux lane). The never-rendered
+    # minimap canvas stack and its painters were retired, so map_state.js
+    # shrank from 752 lines to 464 and main.js from 8419 to 8400, and the two
+    # citations below now run past the end of their file. Both are dated
+    # reads, not live pointers: the RM-125 table is the glyph census "measured
+    # at commit 35c6730f" (that map_state.js glyph is gone - the module left
+    # the ASCII baseline at S144-U-256), and the BACKLOG.md RM-1658 row says
+    # "file:line as read at b0eb6698b". Re-pointing either would make it
+    # claim a line it never read. BACKLOG.md is the research lane's in s144;
+    # when that row is re-worded the guard reports the entry as no longer
+    # broken and it is deleted here.
+    (
+        "docs/RM125_web_live_glyph_adjudication.md",
+        "web/js/panels/map_state.js:699",
+        "HISTORICAL",
+        "The RM-125 live-glyph census row for a map_state.js separator, as "
+        "measured at 35c6730f; the module is 464 lines after S144-U-258 and "
+        "carries no live glyph since S144-U-256.",
+    ),
+    (
+        "BACKLOG.md",
+        "main.js:8390-8405",
+        "HISTORICAL",
+        "The RM-1658 row's main.js cite is 'file:line as read at b0eb6698b'; "
+        "main.js is 8400 lines after S144-U-258 removed two dead blocks, so "
+        "the sha-qualified range runs past the end of today's file.",
+    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

@@ -21,8 +21,9 @@ by breaking a live neighbour:
 - the Active Match MAP pane's own use of /api/minimap-crop as a base-image
   fallback (web/js/panels/active_match.js), which is an <img> src and not
   this poll;
-- the canvas stack and the header zone pill (map_state.js
-  renderMinimapCanvases -> _updateZone);
+- the header zone pill (map_state.js renderMinimapCanvases ->
+  _updateZone; S144-U-258 later retired the canvas stack, so the panel
+  shell and its objective rows are the served positive control);
 - the overlay's /api/state minimap poller (main.js setupMinimapPoller),
   which feeds the overlay minimap rect and ZOI, not this image.
 The backend route /api/minimap-crop is not touched.
@@ -72,7 +73,7 @@ def test_anchor_the_scans_read_real_files():
     # files by finding the live neighbours of the retired parts.
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
-    assert 'id="mm-canvas-stack"' in files["web/index.html"]
+    assert 'id="mm-objectives-view"' in files["web/index.html"]
     assert 'id="zone-pill"' in files["web/index.html"]
     assert "function renderMinimapCanvases(" in files[
         "web/js/panels/map_state.js"]
@@ -80,14 +81,14 @@ def test_anchor_the_scans_read_real_files():
     assert "(function setupMinimapPoller()" in files["web/js/main.js"]
     assert '"/api/minimap-crop?mode=' in files[
         "web/js/panels/active_match.js"]
-    assert ".mm-canvas-stack {" in files["web/css/panels/grid.css"]
+    assert ".mm-zoi-canvas {" in files["web/css/panels/grid.css"]
 
 
 _DOM = r"""() => {
   const p = document.getElementById('minimap');
   return {
     panel: !!p,
-    canvasStack: !!document.getElementById('mm-canvas-stack'),
+    objectives: !!document.getElementById('mm-objectives-view'),
     retired: document.querySelectorAll(
       '#mm-img-wrap, #mm-img, #mm-img-caption, .minimap-img-wrap, '
       + '.minimap-img-caption, #minimap img').length,
@@ -114,6 +115,6 @@ def test_the_served_page_has_no_crop_image(mock_server, pw_browser, mode):
         page.close()
         ctx.close()
     assert not errors, errors[:3]
-    # Positive control: the panel and its kept canvas stack are served.
-    assert got["panel"] and got["canvasStack"], got
+    # Positive control: the panel and its kept objective rows are served.
+    assert got["panel"] and got["objectives"], got
     assert got["retired"] == 0, got

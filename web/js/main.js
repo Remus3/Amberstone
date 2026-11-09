@@ -32,10 +32,11 @@ import { startPersonalContextPolling } from './panels/personal_context.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS } from './panels/map_state.js';
-// RM-1211 siblings: both are called below (the self-spell cooldown key and the
-// foreground ZOI redraw) but were never exported or imported - each call threw
-// a ReferenceError. Guard: tests/test_web_js_unimported_calls_s144q43.py.
-import { _spellKey, renderMinimapCanvases } from './panels/map_state.js';
+// RM-1211: the self-spell cooldown key is called below but was never exported
+// or imported - each call threw a ReferenceError. (Its sibling, the tab-return
+// ZOI redraw, left with the retired minimap canvases, S144-U-258.)
+// Guard: tests/test_web_js_unimported_calls_s144q43.py.
+import { _spellKey } from './panels/map_state.js';
 import { renderAugmentReco } from './panels/augment_reco.js';
 import { handleChampSelect, renderChampSelectCoach, renderChampSelectView, csMockFixtureUrl } from './panels/champ_select.js';
 import { csAdaptationRequest } from './lib/cs_adaptation.js';
@@ -7305,17 +7306,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     radar.hidden = false;
     showPlayerGpi(btn.dataset.mode || "sr", radar.id);
   });
-  // Map underlay brightness override: ?map-br=0.55&map-sat=0.6
-  (function mapFilterOverride() {
-    const q = new URLSearchParams(location.search);
-    const br = parseFloat(q.get("map-br"));
-    const sat = parseFloat(q.get("map-sat"));
-    if (!isNaN(br) || !isNaN(sat)) {
-      const style = document.createElement("style");
-      style.textContent = `.mm-canvas-stack::before { filter: saturate(${isNaN(sat)?0.55:sat}) brightness(${isNaN(br)?0.7:br}) !important; }`;
-      document.head.appendChild(style);
-    }
-  })();
 
   // -- Keyboard shortcuts -------------------------------------------
   // RM-1323: a letter shortcut belongs to the page, never to a control that
@@ -7488,15 +7478,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     clearTimeout(toast._t);
     toast._t = setTimeout(() => toast.classList.remove("show"), 3500);
   }
-
-  // When the tab returns to foreground, flush a pending ZOI redraw.
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && state.pendingZoi) {
-      const p = state.pendingZoi;
-      state.pendingZoi = null;
-      renderMinimapCanvases(p);
-    }
-  });
 
   // -- Auto-hide cursor after idle ---------------------------------
   // For monitor-2 fullscreen display the cursor is distracting. Hide it

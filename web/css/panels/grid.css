@@ -72,73 +72,12 @@ main {
   color: var(--text-faint);
 }
 
-.mm-canvas-stack {
-  position: relative;
-  width: 100%;
-  /* 2026-04-24: bumped 320 -> 460 so the minimap fills more of the left
-   * column (~415px inner at iPad 1536, ~530px at 1920). The map asset is
-   * 512x512 so upscaling to 460 is still within source resolution. */
-  max-width: 460px;
-  margin: 0 auto;
-  aspect-ratio: 1;
-  background: var(--surface-alt);
-  border-radius: var(--radius-sm);
-}
-/* Backdrop map - uses ::before so the filter doesn't cascade to the ZOI
- * canvas or position-dot canvas layered on top. */
-.mm-canvas-stack::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: url("/data/ddragon/16.10.1/img/map/map11.png") center/100% 100% no-repeat;
-  filter: saturate(0.55) brightness(0.7);
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  animation: mapFadeIn 500ms ease-out 100ms forwards;
-}
-@keyframes mapFadeIn {
-  to { opacity: 1; }
-}
-.panel-minimap.mode-arena .mm-canvas-stack::before,
-.panel-minimap.mode-tft .mm-canvas-stack::before {
-  display: none;
-}
-.panel-minimap.mode-aram .mm-canvas-stack::before {
-  background-image: url("/data/ddragon/16.10.1/img/map/map12.png");
-}
-.mm-canvas-stack.hidden { display: none; }
-
-.mm-canvas-stack > * {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  border-radius: var(--radius-sm);
-}
+/* S144-U-258: the #minimap panel's ZOI / position canvas stack (its map
+ * backdrop, fade-in, vignette and the dot layer) is retired; the panel
+ * renders in no view. This class rule stays: the overlay ZOI canvas
+ * #am-zoi-canvas carries the class, and panels/minimap_zoi.js sets its
+ * opacity inline when it paints. */
 .mm-zoi-canvas { pointer-events: none; z-index: 2; opacity: 0; transition: opacity 300ms ease; }
-.mm-canvas-stack:not(.hidden) .mm-zoi-canvas { opacity: 1; }
-.mm-canvas-stack::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  border-radius: inherit;
-  /* Very subtle vignette - just enough to frame the corners without
-   * dimming the near-edge region where Dragon / Baron markers sit.
-   * (2026-04-24: softened with the map size bump so the larger minimap
-   * reads cleaner and closer to the live in-game minimap aesthetic.) */
-  background: radial-gradient(
-    ellipse at center,
-    transparent 80%,
-    rgba(23, 24, 33, 0.10) 95%,
-    rgba(23, 24, 33, 0.18) 100%
-  );
-}
-.mm-pos-canvas { pointer-events: none; z-index: 3; }
 /* S144-U-257: the live minimap crop image (its wrap, caption and STALE
  * caption suffix) is retired with the main.js poll that fed it; #minimap
  * renders in no view. */

@@ -409,9 +409,8 @@ SITES = (
      (r"\[\s*80,\s*150,\s*255\s*\]", r"\[\s*255,\s*80,\s*80\s*\]")),
     ("web/css/panels/ward_heat.css", ("--data-ally", "--data-enemy"),
      (r"#80b8ff", r"#ff8080")),
-    ("web/js/panels/map_state.js", ("--data-ally", "--data-enemy"),
-     (r"(?:myRGB|enemyRGB)\s*=.*\[\s*\d", r"(?:myColor|enemyColor)\s*=.*#[0-9A-Fa-f]{6}",
-      r"getComputedStyle\(\s*document\.documentElement")),
+    # web/js/panels/map_state.js left this list with its minimap canvas
+    # painters (S144-U-258); it paints nothing and reads no --data-* token.
     ("web/js/panels/threat_donut.js",
      ("--data-dmg-physical", "--data-dmg-magic", "--data-dmg-true", "--data-dmg-onhit"),
      (r'"#ff5050"', r'"#5070ff"', r'"#eeeeee"', r'"#ffaa00"', r'setAttribute\(\s*"stroke",\s*_PALETTE')),

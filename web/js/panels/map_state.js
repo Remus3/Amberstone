@@ -1,4 +1,4 @@
-// Map State panel - minimap canvas, game clock, spell CDs, gold diff,
+// Map State panel - zone pill, game clock, spell CDs, gold diff,
 // objective countdowns.
 import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
@@ -107,24 +107,18 @@ function _kindOf(elm) {
   if (elm.id === "mm-atakhan") return "atakhan";
   return null;
 }
-// Minimap canvas renderer - Zone of Influence (ZOI) + position dots.
+// Zone of Influence (ZOI) pressure at your own position - drives the header
+// zone pill and body[data-zone]. S144-U-258 retired the minimap canvas stack
+// this math also painted (it rendered in no view), so only the one-point
+// read below is left.
 //
-// ZOI: for each pixel, compute net "pressure" = sum ally_pressure - sum enemy_pressure.
-// Each champion contributes a compact-support "bubble" of influence - peaks
-// at 1 at the champ, falls smoothly to exactly 0 at radius R. Beyond R the
-// champion contributes nothing, so the DMZ (the low-|net| band) visibly
-// fills gaps between bubbles and bulges where opposing bubbles press into
-// each other. Positive pressure renders in my-team color, negative in
-// enemy color.
-//
-// Pressure math (Wendland-style, quadratic compact support):
+// Net pressure = sum ally_pressure - sum enemy_pressure, plus a weak
+// diagonal baseline. Each champion contributes a compact-support "bubble"
+// of influence - 1 at the champ, falling smoothly to exactly 0 at radius R:
 //   d^2 = (dist / RADIUS)^2
 //   contribution = (1 - d^2)^2   when d < R,   else 0
-//   Multiple same-team champs in proximity stack (sum).
-//   Opposing team subtracts.
-//
-// Performance: render at 80x80 then upscale to canvas intrinsic size.
-// Re-runs on every state envelope (~3s in sim, whenever coach emits live).
+// Same-team champs in proximity stack (sum); the opposing team subtracts.
+// Re-runs on every state envelope.
 const ZOI = (() => {
   const q = new URLSearchParams(location.search);
   const pf = (k, d) => {
@@ -132,10 +126,9 @@ const ZOI = (() => {
     return isNaN(v) ? d : v;
   };
   return {
-    loRes: 80,
     // Each champion influences within ~0.35 of map width. Tunable.
     radius: pf("zoi-R", 0.32),
-    // Small deadband around net=0 stays transparent (the "DMZ").
+    // Deadband around net=0 reads as the DMZ on the zone pill.
     deadband: pf("zoi-DB", 0.10),
     // Baseline diagonal bias - top-left to bottom-right split (SR map).
     // Blue base is bot-left, red base is top-right. Champion pressure
@@ -162,128 +155,6 @@ function _bubbleKernel(d2) {
   return t * t;
 }
 
-// Y-07 data-viz tier read for the canvas painters. A canvas cannot resolve
-// var(), so the --data-* rgb parts are read off document.body - NOT
-// documentElement: overlay re-points are body-scoped (RM-139 shape). Minimal
-// on purpose (one getComputedStyle per paint); the cached, theme-invalidated
-// resolver is a separate row (Y-31). An unresolved token paints a loud debug
-// magenta plus one console line, never a silent black.
-const _DATA_SENTINEL = [255, 0, 255];
-const _dataWarned = new Set();
-function _dataRGB(token) {
-  const raw = getComputedStyle(document.body).getPropertyValue(token);
-  const parts = String(raw || "").split(",").map((x) => Number(x.trim()));
-  if (parts.length === 3 && parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
-    return parts;
-  }
-  if (!_dataWarned.has(token)) {
-    _dataWarned.add(token);
-    console.warn(`[map_state] ${token} did not resolve on body - painting debug magenta`);
-  }
-  return _DATA_SENTINEL;
-}
-function _rgbCss(rgb) {
-  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
-}
-
-function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
-  const lo = ZOI.loRes;
-  const off = document.createElement("canvas");
-  off.width = lo; off.height = lo;
-  const offCtx = off.getContext("2d");
-  const img = offCtx.createImageData(lo, lo);
-  const myIsRed = myTeam === "red";
-  // Team color RGB - Y-07 tier, by PERSPECTIVE (ally is always the ally hue,
-  // whichever map side we spawn on); was a side-keyed coral/lavender pair.
-  const myRGB    = _dataRGB("--data-ally");
-  const enemyRGB = _dataRGB("--data-enemy");
-  // Keep weights flat but summable. Radius in normalized units -
-  // scales with game phase so late-game teamfights read wider.
-  const R = _zoiRadius(gtS);
-  const DB = ZOI.deadband;
-
-  // Pre-flatten position arrays for tight inner loop.
-  const A = Object.values(allies || {}).filter(Boolean);
-  const E = Object.values(enemies || {}).filter(Boolean);
-
-  // Baseline diagonal bias: SR blue base = bottom-left, red = top-right.
-  // Diagonal from top-left (0,0) to bottom-right (1,1) is the neutral
-  // line. For blue team, positive baseline on points BELOW the diagonal
-  // (y > x). For red team, invert. Champion contributions add/subtract
-  // from this, producing a warped curve.
-  const BL = ZOI.baselineStrength;
-  const baselineSign = myIsRed ? -1 : 1;
-  // First pass: compute net-pressure at each low-res pixel into a temp
-  // Float32 buffer so pass 2 can emit color with edge-line highlight.
-  const netBuf = new Float32Array(lo * lo);
-  for (let py = 0; py < lo; py++) {
-    const ny = (py + 0.5) / lo;
-    for (let px = 0; px < lo; px++) {
-      const nx = (px + 0.5) / lo;
-      // Baseline: (ny - nx) in [-1, 1]; times sign+strength.
-      let baseline = (ny - nx) * BL * baselineSign;
-      let allyP = 0, enemyP = 0;
-      for (let i = 0; i < A.length; i++) {
-        const dx = nx - A[i].x, dy = ny - A[i].y;
-        const d2 = (dx*dx + dy*dy) / (R*R);
-        if (d2 < 1) { const t = 1 - d2; allyP += t * t; }
-      }
-      for (let i = 0; i < E.length; i++) {
-        const dx = nx - E[i].x, dy = ny - E[i].y;
-        const d2 = (dx*dx + dy*dy) / (R*R);
-        if (d2 < 1) { const t = 1 - d2; enemyP += t * t; }
-      }
-      netBuf[py * lo + px] = baseline + allyP - enemyP;
-    }
-  }
-  // Second pass: color + boundary line (edge where sign flips).
-  for (let py = 0; py < lo; py++) {
-    for (let px = 0; px < lo; px++) {
-      const idx = py * lo + px;
-      const net = netBuf[idx];
-      const mag = Math.abs(net);
-      // Detect sign-change neighbors for the boundary-line hint.
-      let edge = false;
-      if (mag < DB * 2) {
-        const s = Math.sign(net);
-        if (px+1 < lo && Math.sign(netBuf[idx+1]) !== s) edge = true;
-        else if (py+1 < lo && Math.sign(netBuf[idx+lo]) !== s) edge = true;
-      }
-      let r, g, b, a;
-      // Smooth exponential ramp: light pressure = subtle tint, heavy
-      // concentration (3+ champs stacked) = near-cap saturation.
-      // Scale chosen so 1 champion at influence radius ~ half-cap.
-      // Opacity caps tuned for SR underlay - 0.42/0.22 lets the map
-      // read through the tint while still clearly team-coded.
-      if (net > DB) {
-        r = myRGB[0]; g = myRGB[1]; b = myRGB[2];
-        a = 0.42 * (1 - Math.exp(-(mag - DB) / 0.7));
-      } else if (net < -DB) {
-        r = enemyRGB[0]; g = enemyRGB[1]; b = enemyRGB[2];
-        a = 0.22 * (1 - Math.exp(-(mag - DB) / 0.7));
-      } else {
-        r = g = b = 0; a = 0;
-      }
-      if (edge) {
-        // Boundary line between ally/enemy pressure - a soft gold stripe
-        // that reads against both tinted zones without blend-mode tricks.
-        r = 245; g = 184; b = 124; a = 0.75;
-      }
-      const p = idx * 4;
-      img.data[p]   = r;
-      img.data[p+1] = g;
-      img.data[p+2] = b;
-      img.data[p+3] = Math.round(a * 255);
-    }
-  }
-  offCtx.putImageData(img, 0, 0);
-  // Upscale with soft interpolation - looks like a gradient, not pixels.
-  ctx.clearRect(0, 0, W, H);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(off, 0, 0, W, H);
-}
-
 // S144-U-244: no position for you (dead, missing from the allies, or no
 // positions at all) resets the header zone pill to its "-" placeholder and
 // drops body[data-zone]. Adding .hidden alone kept the last call ("DEEP
@@ -302,21 +173,15 @@ function _clearZone() {
   }
 }
 
+// S144-U-258: the name is kept for its callers and pins, but this no longer
+// paints anything. The minimap canvas stack it drew into rendered in no view
+// and is retired; what is left is the header zone pill (via _updateZone),
+// computed at once even in a hidden tab - a few champions' worth of math,
+// with no paint to defer behind document.hidden any more.
+// Guard: tests/snapshot_panels/test_minimap_canvas_stack_retired.py.
 function renderMinimapCanvases(p) {
-  const stack = el("mm-canvas-stack");
-  const zoiCanvas = el("mm-zoi-canvas");
-  const posCanvas = el("mm-pos-canvas");
-  if (!stack || !posCanvas || !zoiCanvas) return;
   if (!p.positions || (!p.positions.allies && !p.positions.enemies)) {
-    stack.classList.add("hidden");
     _clearZone();
-    return;
-  }
-  stack.classList.remove("hidden");
-  // Skip the 64k-pixel math + paint when the tab is not visible.
-  // Latest state is still captured; next visibilitychange will redraw.
-  if (document.hidden) {
-    state.pendingZoi = p;
     return;
   }
   const myTeam = (p.my_team || "blue").toLowerCase();
@@ -341,15 +206,6 @@ function renderMinimapCanvases(p) {
     if (allies[name] && _champKey(name) === selfKey) selfPos = allies[name];
   }
   _updateZone(p, allies, enemies, myTeam, selfKey, selfPos);
-  // S144-U-246: the stack sits in the #minimap panel inside the top-level
-  // <main>, which every view hides (header.css) and the overlay shell
-  // hides (overlay.css), so these 720x720 canvases are never on screen.
-  // The zone pill above is this function's one visible output; the paint
-  // below runs only while the stack has a layout box (the S144-U-227 poll
-  // gate), and comes back by itself on the next tick if a view renders it.
-  // Guard: tests/snapshot_panels/test_minimap_hidden_canvas_paint.py.
-  if (stack.getClientRects().length === 0) return;
-  _paintMinimapCanvases(p, zoiCanvas, posCanvas, allies, enemies, myTeam, selfKey);
 }
 
 function _champKey(name) {
@@ -409,150 +265,6 @@ function _updateZone(p, allies, enemies, myTeam, selfKey, selfPos) {
       zoneLabel.textContent = "- DMZ";
       zonePill.className = "zone-pill zone-dmz";
       document.body.dataset.zone = "dmz";
-    }
-  }
-}
-
-function _paintMinimapCanvases(p, zoiCanvas, posCanvas, allies, enemies, myTeam, selfKey) {
-  // Y-07 tier, by perspective (matches the ZOI tint above).
-  const myColor = _rgbCss(_dataRGB("--data-ally"));
-  const enemyColor = _rgbCss(_dataRGB("--data-enemy"));
-
-  // Paint ZOI layer first, dots on top.
-  const zctx = zoiCanvas.getContext("2d");
-  _drawZoi(zctx, zoiCanvas.width, zoiCanvas.height, allies, enemies, myTeam, p.game_time_s);
-
-  const ctx = posCanvas.getContext("2d");
-  const W = posCanvas.width, H = posCanvas.height;
-  ctx.clearRect(0, 0, W, H);
-  // Objective spawn markers - approximate SR positions. Draws a small
-  // translucent icon glyph so the user has map landmarks without the
-  // live PNG. ARAM doesn't have these; skip if mode differs.
-  if (state.mode === "sr") {
-    const marks = [
-      { x: 0.68, y: 0.70, label: "D", color: "rgba(240,126,139,0.55)" },  // Dragon - bot-right river
-      { x: 0.32, y: 0.30, label: "B", color: "rgba(192,139,150,0.55)" },  // Baron - top-left river
-      { x: 0.32, y: 0.30, label: "H", color: "rgba(245,184,124,0.45)", offset: true },  // Herald - same pit pre-20
-    ];
-    ctx.save();
-    // operator-exception: sub-floor 11px canvas label (NOT DOM text, cannot
-    // consume a CSS --fs-* token). These D/B/H objective glyphs sit inside
-    // 9px-radius dots on a ~312px-rendered minimap; the 16px floor would
-    // overflow the marker - sized to fit the spatial annotation by design.
-    ctx.font = "bold 11px Lato, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    for (const m of marks) {
-      const cx = Math.round(m.x * W), cy = Math.round(m.y * H) + (m.offset ? 16 : 0);
-      ctx.fillStyle = "rgba(23,24,33,0.5)";
-      ctx.beginPath();
-      ctx.arc(cx, cy, 9, 0, Math.PI*2);
-      ctx.fill();
-      ctx.fillStyle = m.color;
-      ctx.fillText(m.label, cx, cy);
-    }
-    ctx.restore();
-  }
-  function drawDot(x, y, color, isSelf) {
-    const cx = Math.round(x * W), cy = Math.round(y * H);
-    if (isSelf) {
-      // Champion sight-range halo - ~1200 units on a 15000-unit SR map
-      // ~ 0.08 normalized. Thin gold stroke + soft glow. Gives the user
-      // a "what can I actually see" read without flipping to the minimap.
-      const vR = 0.085 * W;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, vR, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(245,184,124,0.55)";
-      ctx.lineWidth = 1.5;
-      ctx.shadowColor = "rgba(245,184,124,0.5)";
-      ctx.shadowBlur = 8;
-      ctx.stroke();
-      ctx.restore();
-    }
-    ctx.beginPath();
-    ctx.arc(cx, cy, isSelf ? 8 : 6, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    if (isSelf) {
-      ctx.strokeStyle = "#F5B87C";
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-      // "YOU" label above the dot (or below if too close to top).
-      // operator-exception: sub-floor 13px canvas label (NOT DOM text; no CSS
-      // --fs-* token possible). Fits the 40px YOU badge on the minimap canvas;
-      // the 16px floor would overflow the rounded backing - by-design spatial.
-      ctx.font = "bold 13px Lato, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const labelY = cy < 30 ? cy + 20 : cy - 18;
-      const inDeep = document.body.dataset.zone === "deep";
-      const labelBg = inDeep ? "rgba(74,42,49,0.95)" : "rgba(23,24,33,0.9)";
-      const labelFg = inDeep ? "#F07E8B" : "#F5B87C";
-      // Rounded backing when available (Chromium 99+), else fallback rect.
-      if (ctx.roundRect) {
-        ctx.fillStyle = labelBg;
-        ctx.beginPath();
-        ctx.roundRect(cx - 20, labelY - 9, 40, 18, 6);
-        ctx.fill();
-        ctx.strokeStyle = labelFg;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(cx - 20, labelY - 9, 40, 18, 6);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = labelBg;
-        ctx.fillRect(cx - 20, labelY - 9, 40, 18);
-      }
-      ctx.fillStyle = labelFg;
-      ctx.fillText("YOU", cx, labelY);
-    } else {
-      ctx.strokeStyle = "rgba(0,0,0,0.65)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-  }
-  for (const name of Object.keys(allies)) {
-    const pos = allies[name]; if (!pos) continue;
-    drawDot(pos.x, pos.y, myColor, _champKey(name) === selfKey);
-  }
-  // Ghost-marker bookkeeping (2026-04-26 user request): when an enemy
-  // dot hasn't moved in a few seconds, fade it and ring it with a
-  // clock-face age sweep so the user can read at-a-glance "this enemy
-  // is roaming / missing, not actually here." Positions are floats
-  // 0-1; we treat <0.005 movement (~3.6px on the 720-canvas) as
-  // "stationary." Entries are dropped when the enemy leaves the frame.
-  state.lastEnemyPos ||= {};
-  for (const k of Object.keys(state.lastEnemyPos)) {
-    if (!(k in enemies)) delete state.lastEnemyPos[k];
-  }
-  const _ghostNow   = Date.now();
-  const _ghostStart = 4000;   // ms before fade begins
-  const _ghostEnd   = 12000;  // ms after which dot is hidden entirely
-  for (const name of Object.keys(enemies)) {
-    const pos = enemies[name]; if (!pos) continue;
-    const prev = state.lastEnemyPos[name];
-    const dx = prev ? Math.abs(pos.x - prev.x) : 1;
-    const dy = prev ? Math.abs(pos.y - prev.y) : 1;
-    if (!prev || dx > 0.005 || dy > 0.005) {
-      state.lastEnemyPos[name] = { x: pos.x, y: pos.y, t: _ghostNow };
-    }
-    const age = _ghostNow - state.lastEnemyPos[name].t;
-    if (age >= _ghostEnd) continue;  // too stale to draw
-    if (age > _ghostStart) {
-      const fadeT = (age - _ghostStart) / (_ghostEnd - _ghostStart);
-      ctx.save();
-      ctx.globalAlpha = 1 - fadeT * 0.7;  // 1.0 -> 0.3
-      drawDot(pos.x, pos.y, enemyColor, false);
-      const cx = Math.round(pos.x * W), cy = Math.round(pos.y * H);
-      ctx.beginPath();
-      ctx.arc(cx, cy, 11, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * fadeT);
-      ctx.strokeStyle = enemyColor;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      drawDot(pos.x, pos.y, enemyColor, false);
     }
   }
 }

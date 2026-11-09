@@ -155,18 +155,6 @@ body[data-zen="1"] #input-bar {
 body[data-zen="1"] .panel-right-now  { grid-column: 1; grid-row: 1; }
 body[data-zen="1"] .panel-item-build { grid-column: 1; grid-row: 2; }
 body[data-zen="1"] .panel-minimap    { grid-column: 2; grid-row: 1 / span 2; }
-/* In zen mode the Map State panel inherits the freed-up height from the
- * dropped Next + Adaptation + activity-strip + input-bar siblings. Lift
- * the minimap cap (zen only) so the canvas (aspect-ratio: 1) grows and
- * the panel reads as filled. Cap history (2026-04-24): 720 pushed all
- * objectives off-screen, 600 clipped Baron + Herald, 540 clipped only
- * Herald, 510 left Herald partially clipped at the panel's bottom edge.
- * 480 gives Herald comfortable clearance while still ~4 % bigger than
- * the non-zen 460 cap. The non-zen cap stays at 460 so the 3-col grid
- * layout doesn't get a too-tall left column. */
-body[data-zen="1"] .mm-canvas-stack {
-  max-width: 480px;
-}
 /* Zen headline can go to 90px; 2 lines at 90 x 1.1 ~ 198. */
 body[data-zen="1"] .panel-right-now .action { max-height: 210px; }
 /* (2026-04-24) DEV PREVIEW banner keeps identical dimensions across zen
@@ -187,16 +175,13 @@ body[data-zen="1"] .panel-right-now .panel-head::after {
   text-transform: uppercase;
 }
 
-/* Spatial danger mode - when user's dot sits in enemy-colored ZOI, the
- * Right Now panel and the canvas-stack get a subtle coral outline so
- * the warning is peripheral-readable, not just a pill in the header. */
+/* Spatial danger mode - when your position sits in enemy-colored ZOI, the
+ * Right Now panel gets a subtle coral outline so the warning is
+ * peripheral-readable, not just a pill in the header. */
 body[data-zone="enemy"] .panel-right-now {
   box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
               0 3px 10px rgba(0,0,0,0.4),
               inset 0 0 0 2px var(--bad);
-}
-body[data-zone="enemy"] .mm-canvas-stack {
-  box-shadow: 0 0 0 2px var(--bad), 0 0 16px rgba(240,126,139,0.3);
 }
 /* Deep-enemy - pulsing thicker ring for the existential-threat case. */
 body[data-zone="deep"] .panel-right-now {
@@ -204,9 +189,6 @@ body[data-zone="deep"] .panel-right-now {
               0 3px 10px rgba(0,0,0,0.4),
               inset 0 0 0 3px var(--bad);
   animation: deepZoneWarn 1.6s ease-in-out infinite;
-}
-body[data-zone="deep"] .mm-canvas-stack {
-  box-shadow: 0 0 0 3px var(--bad), 0 0 24px rgba(240,126,139,0.55);
 }
 .zone-pill.zone-deep {
   animation: zoneWarn 0.9s ease-in-out infinite;
@@ -380,14 +362,8 @@ body[data-mode="tft"] #adapt-view   { display: none; }
  * the whole block in those modes. (2026-04-26 user request mid-game.) */
 body[data-mode="aram"]  #mm-objectives-view,
 body[data-mode="brawl"] #mm-objectives-view { display: none; }
-/* Reclaim the freed-up vertical space: bump the minimap canvas cap
- * in ARAM/Brawl since the objectives row is gone. Non-zen 460->580,
- * zen 480->640. The canvas keeps aspect-ratio: 1 so width drives height
- * - the panel-minimap container already provides the column space. */
-body[data-mode="aram"]  .mm-canvas-stack,
-body[data-mode="brawl"] .mm-canvas-stack { max-width: 580px; }
-body[data-zen="1"][data-mode="aram"]  .mm-canvas-stack,
-body[data-zen="1"][data-mode="brawl"] .mm-canvas-stack { max-width: 640px; }
+/* S144-U-258: the minimap canvas caps (zen, ARAM / Brawl) and the
+ * danger-zone ring on the canvas left with the retired canvas stack. */
 
 /* STATS field groups - a title row + stacked label/value rows per group.
  * Tabular-nums keep numbers from jittering as values update. Font sizes
