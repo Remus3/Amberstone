@@ -260,7 +260,7 @@ def _game_time(snapshot: Any) -> Optional[float]:
 
 
 def _open_append(path: Path):
-    return open(path, "a", encoding="utf-8", newline="\n")
+    return path.open("a", encoding="utf-8", newline="\n")
 
 
 def _repair_torn_tail(path: Path) -> int:
@@ -271,7 +271,7 @@ def _repair_torn_tail(path: Path) -> int:
     zero so the caller writes a fresh header.
     """
     try:
-        fh = open(path, "r+b")
+        fh = path.open("r+b")
     except FileNotFoundError:
         return 0
     with fh:

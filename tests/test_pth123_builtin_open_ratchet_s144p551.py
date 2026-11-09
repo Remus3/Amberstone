@@ -71,7 +71,6 @@ _BASELINE: dict[str, int] = {
     "tools/stop_claim_gate.py": 2,
     # unconverted: binary / exclusive-create / handle-held opens and writers that other ratchets (RM-481 LF, RM-258 atomic) read by shape, plus plain reads not yet swept
     "core/hud_settings.py": 1,
-    "core/live_session_recorder.py": 2,
     "dashboard/routes_diag.py": 1,
     "dashboard/routes_recordings.py": 1,
     "lib/ingest_receipt.py": 1,
@@ -84,8 +83,6 @@ _BASELINE: dict[str, int] = {
     "tests/test_shadow_appenders_lf_s144p190.py": 1,
     "tests/test_tft_sources_tft_log.py": 1,
     "tests/test_tracked_writer_lf_sweep.py": 1,
-    "tft/rounds/store.py": 1,
-    "tft/sources/tft_log.py": 1,
     "tools/build_portable.py": 1,
     "tools/inbox_responder_runner.py": 2,
     "tools/moon_sync_poller.py": 3,
@@ -219,6 +216,10 @@ _FIXED = (
     "ops/loop/steer.py",
     "tools/landing_sampler.py",
     "tools/shadow_archive_split.py",
+    # S144-P-567: three files fully clean (the session recorder's LF append handle and r+b torn-tail repair, the TFT log POSIX shared reader, the exclusive-create salt write): every receiver is a Path and no test patches the module-level open name of any of them; dashboard/routes_diag.py stays baselined because tests/test_decisions_log_tail_rm238.py counts opens through builtins.open, which Path.open bypasses
+    "core/live_session_recorder.py",
+    "tft/rounds/store.py",
+    "tft/sources/tft_log.py",
 )
 
 

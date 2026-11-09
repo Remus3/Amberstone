@@ -103,7 +103,7 @@ def _open_shared(path: Path):
     tools/lcu_push_watcher.py `_win_open_shared_delete`). POSIX needs nothing.
     Raises OSError (the message carries no path: it can hold a user name)."""
     if sys.platform != "win32":
-        return open(path, "rb")
+        return Path(path).open("rb")
     import ctypes  # noqa: PLC0415 - Windows-only, imported lazily
     import msvcrt  # noqa: PLC0415
     from ctypes import wintypes  # noqa: PLC0415

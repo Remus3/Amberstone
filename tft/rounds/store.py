@@ -127,7 +127,7 @@ def load_salt(path=None) -> bytes:
         salt = secrets.token_bytes(32)
         try:
             p.parent.mkdir(parents=True, exist_ok=True)
-            with open(p, "xb") as fh:  # exclusive create: a concurrent creator wins
+            with p.open("xb") as fh:  # exclusive create: a concurrent creator wins
                 fh.write(salt)
             return salt
         except FileExistsError:
