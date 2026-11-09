@@ -507,7 +507,7 @@ def test_status_md_size_cap_5x250(state: Path, tmp_path: Path):
     codes = ("AAA", "BBB", "CCC", "DDD", "EEE")
     long_name = "z" * 130
     roots = []
-    for i, _code in enumerate(codes):
+    for i in range(len(codes)):
         root = tmp_path / f"sibling-{chr(ord('a') + i)}"
         (root / "moon_sync_inbox").mkdir(parents=True)
         for n in range(250):

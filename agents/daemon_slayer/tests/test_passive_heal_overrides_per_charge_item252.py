@@ -199,7 +199,7 @@ class AsciiHygieneTests(unittest.TestCase):
         import agents.daemon_slayer._passive_heal_overrides as m
 
         with open(m.__file__, encoding="utf-8") as fh:
-            for i, line in enumerate(fh, 1):
+            for line in fh:
                 line.encode("ascii")  # raises on any non-ASCII byte
 
     def test_test_file_ascii(self) -> None:

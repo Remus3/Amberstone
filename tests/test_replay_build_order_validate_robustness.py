@@ -212,7 +212,7 @@ def test_classify_actual_lean_order_insensitive():
     verdict = gate.classify_actual_lean(base, at, as_)
     assert verdict == "anti_tank"
     for _ in range(20):
-        shuf = base[:]
+        shuf = base.copy()
         random.shuffle(shuf)
         assert gate.classify_actual_lean(shuf, at, as_) == verdict
 
