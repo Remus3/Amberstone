@@ -121,7 +121,7 @@ def _cmd(probe: Path, *args: str, rc: bool = True):
 def _run(probe: Path, env: dict, *args: str, rc: bool = True):
     return subprocess.run(_cmd(probe, *args, rc=rc), cwd=str(REPO), env=env,
                           capture_output=True, text=True, timeout=180,
-                          creationflags=CF)
+                          creationflags=CF, check=False)
 
 
 def _hold_while(tmp_path: Path, probe: Path, env: dict, during, a_args=()):

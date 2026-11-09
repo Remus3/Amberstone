@@ -63,7 +63,7 @@ def _run_hook(payload: dict, cwd: Path, extra_env: dict | None = None):
     return subprocess.run(
         [sys.executable, str(GUARD)], input=json.dumps(payload),
         capture_output=True, text=True, timeout=60, env=env, cwd=str(cwd),
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
     )
 
 

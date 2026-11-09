@@ -130,7 +130,7 @@ def _git_show(spec: str) -> str:
 def _have_parent() -> bool:
     probe = subprocess.run(
         ["git", "cat-file", "-e", f"{WRITING_PARENT}{{commit}}"],
-        cwd=ROOT, capture_output=True)
+        cwd=ROOT, capture_output=True, check=False)
     return probe.returncode == 0
 
 

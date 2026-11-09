@@ -346,6 +346,7 @@ def test_cli_docs_only_real_subprocess(tmp_path):
         capture_output=True,
         text=True,
         timeout=10,
+        check=False,
     )
     assert proc.returncode == 0
     assert proc.stdout == "", "docs-only edit -> silent"

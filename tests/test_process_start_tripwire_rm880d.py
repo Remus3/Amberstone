@@ -28,7 +28,8 @@ _HARMLESS = [sys.executable, "-c", "pass"]
 
 
 def _real_run():
-    return subprocess.run(_HARMLESS, capture_output=True, timeout=60, **_NO_WINDOW)
+    return subprocess.run(
+        _HARMLESS, capture_output=True, timeout=60, check=False, **_NO_WINDOW)
 
 
 def test_a_start_through_an_unbound_module_trips():

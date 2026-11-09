@@ -23,6 +23,10 @@ gated-lane files between them); slice 7 (S144-P-607) does the same for the next 
 files between them); slice 8 (S144-P-608) does the same for the next twelve (liveclient_shape_audit
 through overlay_priority_rc2, bar the ratchet modules, the launcher files, the loop_concurrency byte
 pin and the four md_guard_selector files, whose ``subprocess.run`` is fixture text, between them);
+slice 9 (S144-P-609) does the same for the next twelve (overlay_pulse_flip_rc2 through
+pytest_per_run_temproot_rm878, bar the ratchet modules, the launcher files, package_portable,
+phase3_setup_rerun, the precommit_gate files that carry two sites and the other multi-site files
+between them);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -127,35 +131,23 @@ _BASELINE = {
     "tests/test_naive_datetime_prod_ratchet_s144p340.py": 1,
     "tests/test_nan_selfcompare_prod_ratchet_s144p173.py": 1,
     "tests/test_noqa_concat_ratchet_s144p156.py": 1,
-    "tests/test_overlay_pulse_flip_rc2.py": 1,
-    "tests/test_overlay_settings_rc2.py": 1,
     "tests/test_package_portable_atomic_write_rm258.py": 1,
     "tests/test_perf102_ratchet_s144p178.py": 1,
-    "tests/test_phase3_bind_loopback_rm231.py": 1,
     "tests/test_phase3_setup_rerun_bytes_rm820.py": 1,
     "tests/test_pie810_startswith_tuple_ratchet_s144p150.py": 1,
     "tests/test_plr1730_minmax_ratchet_s144p127.py": 1,
     "tests/test_plr5501_collapsible_else_if_ratchet_s144p128.py": 1,
     "tests/test_plw2901_loop_var_overwrite_ratchet_s144p259.py": 1,
-    "tests/test_polled_json_lane8_cycle24.py": 1,
-    "tests/test_polled_json_resolver_cites_s144p51.py": 1,
     "tests/test_precedence_and_dead_branch_ratchet_s144p112.py": 1,
     "tests/test_precommit_gate_cp1252_rm818.py": 2,
     "tests/test_precommit_gate_message_file.py": 2,
-    "tests/test_precommit_gate_stdin_fault_rm783.py": 1,
     "tests/test_private_exception_name_ratchet_s144p512.py": 1,
-    "tests/test_probe_missing_codes_writer_polled_json_s144p20.py": 1,
-    "tests/test_process_start_tripwire_rm880d.py": 1,
     "tests/test_pt001_fixture_parens_ratchet_s144p234.py": 1,
     "tests/test_pt012_raises_block_ratchet_s144p184.py": 1,
     "tests/test_pt018_ruf036_prod_ratchet_s144p175.py": 1,
     "tests/test_pt019_fixture_param_ratchet_s144p493.py": 1,
     "tests/test_pyi_fly_prod_ratchet_s144p216.py": 1,
-    "tests/test_pytest_basetemp_scratchpad_temp1.py": 1,
-    "tests/test_pytest_guard.py": 1,
-    "tests/test_pytest_guard_true_audit_s144t176.py": 1,
     "tests/test_pytest_idiom_ratchet_s144p171.py": 2,
-    "tests/test_pytest_per_run_temproot_rm878.py": 1,
     "tests/test_q001_multiline_quote_ratchet_s144p236.py": 1,
     "tests/test_q003_escaped_quote_ratchet_s144p235.py": 1,
     "tests/test_raise_comprehension_ratchet_s144p157.py": 1,
@@ -355,6 +347,18 @@ _FIXED = (
     "tests/test_overlay_drag_listener_leak_behavior.py",
     "tests/test_overlay_idle_rc2.py",
     "tests/test_overlay_priority_rc2.py",
+    "tests/test_overlay_pulse_flip_rc2.py",
+    "tests/test_overlay_settings_rc2.py",
+    "tests/test_phase3_bind_loopback_rm231.py",
+    "tests/test_polled_json_lane8_cycle24.py",
+    "tests/test_polled_json_resolver_cites_s144p51.py",
+    "tests/test_precommit_gate_stdin_fault_rm783.py",
+    "tests/test_probe_missing_codes_writer_polled_json_s144p20.py",
+    "tests/test_process_start_tripwire_rm880d.py",
+    "tests/test_pytest_basetemp_scratchpad_temp1.py",
+    "tests/test_pytest_guard.py",
+    "tests/test_pytest_guard_true_audit_s144t176.py",
+    "tests/test_pytest_per_run_temproot_rm878.py",
 )
 
 
