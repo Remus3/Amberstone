@@ -269,6 +269,19 @@ def test_stale_log_cannot_say_in_game(logs):
     assert ts.lcu_tft_verdict({"phase": "None"}) is False
 
 
+def test_stale_log_is_not_read_until_it_moves(logs):
+    """A closed client's last log is not read at all (RC start must not
+    chew through ~24 MB of a dead log); once written again it is."""
+    logs.write(_match_lines())
+    old = time.time() - ts.CLIENT_LOG_MAX_AGE_S - 60
+    os.utime(logs.path, (old, old))
+    assert _state()["verdict"] is None
+    assert ts._client_log["offset"] == 0
+    logs.append([NOISE])
+    assert _state()["verdict"] is True
+    assert ts._client_log["offset"] == logs.path.stat().st_size
+
+
 def test_bounded_catch_up(logs, monkeypatch):
     """A big log is read at most CLIENT_LOG_READ_CAP per call and is
     'unknown' until caught up - never a verdict from half a file."""

@@ -311,7 +311,11 @@ def _client_log_read(now: float) -> None:
             _client_log_reset(head)
         elif len(head) > len(hdr):
             st["header"] = head
-        if size > st["offset"]:
+        st["fresh"] = (0.0 <= now - fs.st_mtime <= CLIENT_LOG_MAX_AGE_S
+                       or fs.st_mtime > now)
+        # A log nobody writes cannot say "in a match": a closed client's
+        # last log (up to ~24 MB) is not read at all until it moves again.
+        if st["fresh"] and size > st["offset"]:
             fh.seek(st["offset"])
             data = fh.read(min(int(CLIENT_LOG_READ_CAP), size - st["offset"]))
             st["offset"] += len(data)
@@ -322,8 +326,6 @@ def _client_log_read(now: float) -> None:
                 buf = buf[cut + 1:]
             st["carry"] = buf if len(buf) <= _CLIENT_LOG_MAX_CARRY else b""
     st["caught_up"] = st["offset"] >= size
-    st["fresh"] = 0.0 <= now - fs.st_mtime <= CLIENT_LOG_MAX_AGE_S or (
-        fs.st_mtime > now)
 
 
 def _client_log_view() -> dict:
