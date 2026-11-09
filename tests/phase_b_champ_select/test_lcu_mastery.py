@@ -12,7 +12,6 @@ to avoid hammering LCU during the lobby loop.
 from __future__ import annotations
 
 import sys
-import time
 import unittest
 from pathlib import Path
 from unittest import mock

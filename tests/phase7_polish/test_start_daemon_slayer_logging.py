@@ -83,7 +83,6 @@ class TestLogStartup(unittest.TestCase):
 
     def test_line_format_preserved(self):
         # Exact legacy shape: "YYYY-MM-DD HH:MM:SS  msg\n" (two spaces).
-        import re
         with _CaptureStderr():
             SDS._log_startup("boot msg")
         line = SDS._LOG_FILE.read_text(encoding="utf-8")
