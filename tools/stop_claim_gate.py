@@ -2825,6 +2825,11 @@ def _git_target(here, words):
 # S144-Q-151 (EXTRA only, _long_abbrev_bypass): git takes an unambiguous
 # prefix of a long option, so `git commit --no-veri` counts, from the
 # shortest prefix git 2.53 accepted per subcommand (_BYPASS_LONG_MIN).
+# S144-Q-154 (EXTRA only): more prefix commands, read from each tool's
+# getopt string: ionice, chrt, taskset, flock (`file -c string` too),
+# watch (its words joined for `sh -c` unless `-x`), unbuffer, su and
+# util-linux script (a permuted `-c string`; a login su is placed None;
+# BSD script runs the words after its file), and BSD xargs -J / -R / -S.
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -3371,6 +3376,27 @@ _PREFIX_COMMANDS = {
         "process-slot-var"})),
     "doas": ("auC", frozenset()),
     "builtin": ("", frozenset()),
+    # S144-Q-154, read from each tool's getopt string (none is installed on
+    # this box): util-linux ionice `+n:c:p:P:u:tVh`, chrt
+    # `+abdD:fiphmoP:T:rRvV` (then a numeric priority), taskset `+apchV`
+    # (then a mask), flock `+sexnoFuw:E:hV?` (then a lock file, and an exact
+    # `-c string` or the command), su `c:fg:G:lmpPs:hVw:` and script
+    # `ac:B:eE:fI:O:o:qm:T:t::Vh` (both permute; `-c` runs a string through
+    # a shell), procps-ng watch `+bCced::ghq:n:prs:tvwx` (joins its words
+    # for `sh -c` unless `-x`), and expect's `unbuffer [-p]`.
+    "ionice": ("ncpPu", frozenset({"class", "classdata", "pid", "pgid", "uid"})),
+    "chrt": ("DPT", frozenset({"sched-runtime", "sched-period",
+                               "sched-deadline"})),
+    "taskset": ("", frozenset()),
+    "flock": ("wE", frozenset({"timeout", "wait", "conflict-exit-code"})),
+    "watch": ("nqs", frozenset({"interval", "equexit", "shotsdir"})),
+    "unbuffer": ("", frozenset()),
+    "su": ("cCgGsw", frozenset({
+        "command", "session-command", "group", "supp-group", "shell",
+        "whitelist-environment"})),
+    "script": ("cEIOBTmo", frozenset({
+        "command", "echo", "log-in", "log-out", "log-io", "log-timing",
+        "logging-format", "output-limit"})),
 }
 # Options after which the prefix runs no command (`command -v` prints a
 # path, `sudo -l` lists, `sudo -e` edits files, `sudo -v` / `-K` / `-V`,
@@ -3381,12 +3407,26 @@ _PREFIX_NO_RUN = {
                        "remove-timestamp", "version", "help"}),
     "xargs": frozenset({"help", "version"}),
     "doas": frozenset({"C", "L"}),
+    # S144-Q-154: ionice / chrt / taskset `-p` (and ionice `-P` / `-u`)
+    # act on running processes; chrt `-m` prints the priority limits.
+    "ionice": frozenset({"p", "P", "u", "pid", "pgid", "uid", "h", "V",
+                         "help", "version"}),
+    "chrt": frozenset({"p", "pid", "m", "max", "h", "V", "help", "version"}),
+    "taskset": frozenset({"p", "pid", "h", "V", "help", "version"}),
+    "flock": frozenset({"h", "V", "help", "version"}),
+    "watch": frozenset({"h", "v", "help", "version"}),
+    "su": frozenset({"h", "V", "help", "version"}),
+    "script": frozenset({"h", "V", "help", "version"}),
 }
 # Options that run the command somewhere else (`sudo -D dir`, `sudo -i`
 # starts in the target user's home, `sudo -R` a chroot; S144-Q-150: `sudo
 # -h host` / `--host` on a remote host).
 _PREFIX_MOVES = {"sudo": frozenset({"D", "chdir", "R", "chroot", "i", "login",
-                                    "h", "host"})}
+                                    "h", "host"}),
+                 # S144-Q-154: a login su (`-l`, `--login`, or a bare `-`,
+                 # read in _script_prefix_unwrapped) starts in the target
+                 # user's home.
+                 "su": frozenset({"l", "login"})}
 # Prefixes that take bash `NAME=VALUE` words before the command (`time` is
 # a keyword in front of a simple command; sudo reads them as environment).
 _PREFIX_ASSIGNS = frozenset({"time", "sudo"})
@@ -3396,12 +3436,31 @@ _PREFIX_ASSIGNS = frozenset({"time", "sudo"})
 # is no option as a remote host (`-h host`; a NAME=VALUE word read as the
 # host is dropped by _PREFIX_ASSIGNS anyway).
 _PREFIX_LONG_MORE = {"sudo": frozenset({"auth-type", "login-class"})}
+# S144-Q-154, read only in a THIRD reading (FULL_BSD: the full reading plus
+# these letters): BSD xargs `-J replstr` / `-R replacements` / `-S
+# replsize` take a value (GNU xargs has none of the three). Read in the
+# plain reading they stopped counting `xargs -R bash -c '...'` (verifier
+# round 1), and read in the full one `xargs -R nice --adj 5 bash -c '...'`
+# (round 2), so both keep them flags and FULL_BSD is walked beside them.
+_PREFIX_SHORT_MORE = {"xargs": "JRS"}
+FULL_BSD = 2
 _PREFIX_HOST_SHORT = {"sudo": "h"}
 # Short options declared with an OPTIONAL value (getopt `x::`): the rest of
 # the cluster is the value (`xargs -en`, `xargs -id`, `sudo -hhost`), so the
 # letter ends the cluster; only sudo's `-h` also takes a next word. xargs
 # `-l` is optional too, but its value is a number, which holds no letter.
-_PREFIX_OPTIONAL_SHORTS = {"sudo": "h", "xargs": "ei"}
+_PREFIX_OPTIONAL_SHORTS = {"sudo": "h", "xargs": "ei", "watch": "d",
+                           "script": "t"}
+# S144-Q-154: the options that hand a prefix a STRING a shell runs (su `-c`
+# / `-C`, util-linux script `-c`), read wherever they stand (both tools
+# permute their arguments); getopt keeps the last one.
+_PREFIX_SCRIPT_OPTS = {
+    "su": (frozenset("cC"), frozenset({"command", "session-command"})),
+    "script": (frozenset("c"), frozenset({"command"})),
+}
+# The BSD `script [-adkpqr] [-t time] [file [command ...]]` value options.
+_SCRIPT_BSD_VALUES = "tT"
+_PRIORITY = re.compile(r"[+-]?\d+")
 
 
 def _long_names(name, option, long_values):
@@ -3424,11 +3483,15 @@ def _prefix_unwrapped(name, rest, full=False):
     walked BESIDE the plain reading, never instead of it) reads the options
     as getopt_long does: an abbreviated long option (`nice --adj 5`,
     `timeout --sig KILL`), _PREFIX_LONG_MORE, and `sudo -h host`."""
+    if name in _PREFIX_SCRIPT_OPTS:
+        return _script_prefix_unwrapped(name, rest, full)
     short_values, long_values = _PREFIX_COMMANDS[name]
     host = _PREFIX_HOST_SHORT.get(name, "") if full else ""
     optional = _PREFIX_OPTIONAL_SHORTS.get(name, "") if full else ""
     if full:
         long_values = long_values | _PREFIX_LONG_MORE.get(name, frozenset())
+    if full == FULL_BSD:
+        short_values = short_values + _PREFIX_SHORT_MORE.get(name, "")
     seen, i = set(), 0
     while i < len(rest) and rest[i].startswith("-") and rest[i] != "-":
         word = rest[i]
@@ -3460,12 +3523,99 @@ def _prefix_unwrapped(name, rest, full=False):
     if seen & _PREFIX_NO_RUN.get(name, frozenset()):
         return [], False
     rest = rest[i:]
-    if name == "timeout":
-        rest = rest[1:]  # its DURATION
+    if name in ("timeout", "taskset"):
+        rest = rest[1:]  # its DURATION / its mask or cpu list
+    elif name == "chrt" and rest and _PRIORITY.fullmatch(rest[0]):
+        rest = rest[1:]  # its priority (optional for some policies)
+    elif name == "flock":
+        rest = rest[1:]  # its lock file or descriptor
+        if rest and rest[0] in ("-c", "--command"):
+            # flock runs the one word after an exact -c through $SHELL -c
+            return (["sh", "-c", rest[1]] if len(rest) > 1 else []), False
+    elif name == "watch" and not ("x" in seen or any(
+            len(o) > 1 and "exec".startswith(o) for o in seen)):
+        # without -x, watch joins its words and runs them through sh -c
+        return (["sh", "-c", " ".join(rest)] if rest else []), False
     if name in _PREFIX_ASSIGNS:
         while len(rest) > 1 and _BASH_ASSIGN.fullmatch(rest[0]):
             rest = rest[1:]
     return rest, bool(seen & _PREFIX_MOVES.get(name, frozenset()))
+
+
+def _script_options(name, rest, full):
+    """S144-Q-154: the options of permuting prefix NAME (su, script) read
+    wherever they stand: (the last script string, the letters / names seen,
+    the words that are no option, in order)."""
+    short_values, long_values = _PREFIX_COMMANDS[name]
+    script_short, script_long = _PREFIX_SCRIPT_OPTS[name]
+    optional = _PREFIX_OPTIONAL_SHORTS.get(name, "")
+    script, seen, positional, i = None, set(), [], 0
+    while i < len(rest):
+        word = rest[i]
+        if word == "--":
+            positional.extend(rest[i + 1:])
+            break
+        if word == "-" or not word.startswith("-"):
+            positional.append(word)
+        elif word.startswith("--"):
+            option, eq, value = word[2:].partition("=")
+            names = _long_names(name, option, long_values) if full else {option}
+            seen |= names
+            if names & long_values and not eq:
+                value = rest[i + 1] if i + 1 < len(rest) else None
+                i += 1
+            if names & script_long and value is not None:
+                script = value
+        else:
+            for k, letter in enumerate(word[1:], 1):
+                seen.add(letter)
+                if letter in short_values:
+                    value = word[k + 1:]
+                    if not value:
+                        value = rest[i + 1] if i + 1 < len(rest) else None
+                        i += 1
+                    if letter in script_short and value is not None:
+                        script = value
+                    break
+                if letter in optional:
+                    break
+        i += 1
+    return script, seen, positional
+
+
+def _script_prefix_unwrapped(name, rest, full):
+    """S144-Q-154: _prefix_unwrapped for su and script. su runs its `-c`
+    string through the target user's shell (a login su - `-`, `-l`,
+    `--login` - in that user's home: moved) and no visible command without
+    one (a `-c string` handed on to that shell after the user counts too);
+    util-linux script runs its `-c` string through `sh -c`, the BSD script
+    the words after its file."""
+    script, seen, positional = _script_options(name, rest, full)
+    if seen & _PREFIX_NO_RUN.get(name, frozenset()):
+        return [], False
+    if name == "su":
+        moved = bool(seen & _PREFIX_MOVES["su"]) or "-" in positional
+        if script is None:
+            # the words after the user go to the shell: a short cluster
+            # holding `c` (`-c`, `-lc`) hands it the next word as a script
+            script = next((positional[j + 1] for j in range(1, len(positional) - 1)
+                           if positional[j][:1] == "-" and positional[j][1:2] != "-"
+                           and "c" in positional[j][1:]), None)
+        return (["sh", "-c", script] if script is not None else []), moved
+    if script is not None:
+        return ["sh", "-c", script], False
+    i = 0
+    while i < len(rest) and rest[i].startswith("-") and rest[i] != "-":
+        word = rest[i]
+        i += 1
+        if word == "--":
+            break
+        if not word.startswith("--"):
+            for k, letter in enumerate(word[1:], 1):
+                if letter in _SCRIPT_BSD_VALUES:
+                    i += k == len(word) - 1  # `-t 0`; `-t0` carries it
+                    break
+    return rest[i + 1:], False
 
 
 # S144-Q-153 (read only when EXTRA is on): reserved words that open a
@@ -3623,7 +3773,9 @@ def _launcher_scripts(words, extra=True):
     never replaced)."""
     scripts = [_launcher_script(words, extra)]
     if extra:
-        for escapes, full in ((True, False), (False, True), (True, True)):
+        # S144-Q-154: FULL_BSD is a third reading, walked beside both
+        for escapes, full in ((True, False), (False, True), (True, True),
+                              (False, FULL_BSD), (True, FULL_BSD)):
             more = _launcher_script(words, extra, escapes=escapes, full=full)
             if more not in scripts:
                 scripts.append(more)
