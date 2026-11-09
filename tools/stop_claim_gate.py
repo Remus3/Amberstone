@@ -2797,7 +2797,10 @@ def _git_target(here, words):
 # `x="$(git push --no-verify)"` - and a bash `NAME=x` prefix before a
 # launcher. S144-Q-143 (EXTRA only, _env_split_bypass) reads a git command
 # inside an `env -S` / `--split-string` string (`env -S "git commit -n"`),
-# which the stripper blanked; such a statement is placed None.
+# which the stripper blanked; such a statement is placed None. S144-Q-145
+# (EXTRA only) also reads that string the way env splits it
+# (_env_split_string: `\_` separates, quotes, escapes, `#`, `\c`), beside
+# the plain reading, for a git command and for a launcher behind env -S.
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -2810,6 +2813,9 @@ _WSL_VALUE_OPTS = frozenset({"-d", "--distribution", "-u", "--user",
 _IEX_HEADS = frozenset({"iex", "invoke-expression"})
 _CONTINUATION = re.compile(r"[\\`]\r?\n")
 _BYPASS_GIT_WORD = re.compile(r"\bgit\b")
+# S144-Q-145 (EXTRA only): a git word behind an `env -S` separator escape
+# (`env\_-S\_git\\_commit`, `FOO=1\_git`), where `\b` sees no boundary.
+_ENV_SPLIT_GIT_WORD = re.compile(r"(?<=\\_)git\b")
 
 
 def _bypass_in_text(text):
@@ -2827,7 +2833,9 @@ def _head_name(word):
 # S144-Q-127. A raw-text hint that a short option cluster holding `n`, or a
 # quote-split `'core.hooksPath'=x`, is present, so _has_bypass parses a
 # command whose raw text EV_BYPASS does not match.
-_PARSE_HINT = re.compile(r"(?<![\w-])-[A-Za-z]*n|core\.hooksPath", re.IGNORECASE)
+# S144-Q-145: or one behind an `env -S` separator escape (`git\_commit\_-n`).
+_PARSE_HINT = re.compile(r"(?:(?<![\w-])|(?<=\\_))-[A-Za-z]*n|core\.hooksPath",
+                         re.IGNORECASE)
 _BYPASS_FLAG_WORD = re.compile(r"--no-verify|--no-gpg-sign|core\.hooksPath\s*=.*",
                                re.IGNORECASE | re.DOTALL)
 # Options whose next word is a VALUE (a message, a search string, a file), so
@@ -2915,12 +2923,95 @@ def _env_long_name(name):
     return found[0] if name and len(found) == 1 else None
 
 
-def _env_options(rest):
+# S144-Q-145: the backslash escapes env's `-S` string reads outside single
+# quotes (measured on env 8.32; any other escape is refused, exit 125).
+_ENV_SPLIT_ESCAPES = {"f": "\f", "n": "\n", "r": "\r", "t": "\t", "v": "\v",
+                      "#": "#", "$": "$", '"': '"', "'": "'", "\\": "\\"}
+_ENV_SPLIT_SPACE = " \t\n\r\v\f"
+_ENV_SPLIT_VAR = re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*\}")
+
+
+def _env_split_string(text):
+    """S144-Q-145: the arguments GNU env's `-S` / `--split-string` makes of
+    TEXT, or None for a string env refuses (exit 125). Measured on env 8.32:
+    whitespace separates; outside quotes `\\_` separates too (a run of
+    separators is one) and inside double quotes it is a space; `\\t` and
+    the other _ENV_SPLIT_ESCAPES are that character inside an argument; a
+    single-quoted string reads only `\\\\` and `\\'` and keeps the other
+    known escapes as written (`'\\_'`); `#` starting a word
+    and `\\c` (outside double quotes) end the string; `${NAME}` is kept as
+    written (env expands it). Refused: any other escape (in single quotes
+    too, verifier round 1: `'\\q'`, `'\\ '`), a trailing
+    backslash, an unterminated quote, `\\c` in double quotes and a `$`
+    that does not start `${NAME}`."""
+    words, word, quote, i = [], None, None, 0
+    while i < len(text):
+        ch = text[i]
+        if quote == "'":
+            if ch == "'":
+                quote = None
+            elif ch == "\\" and text[i + 1:i + 2] in ("\\", "'"):
+                i += 1
+                word += text[i]
+            elif ch == "\\" and text[i + 1:i + 2] not in (*_ENV_SPLIT_ESCAPES, "_", "c"):
+                return None  # env refuses `'\q'` / `'\ '` even in single quotes
+            else:
+                word += ch
+            i += 1
+            continue
+        if ch == "\\":
+            escape = text[i + 1:i + 2]
+            i += 2
+            if escape == "_" and not quote:
+                if word is not None:
+                    words.append(word)
+                    word = None
+            elif escape == "_":
+                word += " "
+            elif escape == "c" and not quote:
+                return words if word is None else [*words, word]
+            elif escape and escape in _ENV_SPLIT_ESCAPES:
+                word = (word or "") + _ENV_SPLIT_ESCAPES[escape]
+            else:
+                return None
+            continue
+        if ch == "$":
+            var = _ENV_SPLIT_VAR.match(text, i)
+            if var is None:
+                return None
+            word = (word or "") + var.group(0)
+            i = var.end()
+            continue
+        if quote == '"':
+            if ch == '"':
+                quote = None
+            else:
+                word += ch
+        elif ch in _ENV_SPLIT_SPACE:
+            if word is not None:
+                words.append(word)
+                word = None
+        elif ch == "#" and word is None:
+            return words
+        elif ch in "'\"":
+            quote, word = ch, word or ""
+        else:
+            word = (word or "") + ch
+        i += 1
+    if quote:
+        return None
+    return words if word is None else [*words, word]
+
+
+def _env_options(rest, escapes=False):
     """S144-Q-136: GNU `env`'s options and NAME=VALUE words in REST, read as
     getopt reads them (a short cluster `-iC dir` / `-iCdir`, a long
     abbreviation `--ch dir`): (its command words, the `-C` / `--chdir`
     values in order, whether `-S` / `--split-string` split a string). A
-    split string's words are read as more of env's arguments, as env does."""
+    split string's words are read as more of env's arguments, as env does:
+    with the plain tokenizer, or with ESCAPES (S144-Q-145) the way env
+    splits it (_env_split_string; a string env refuses keeps the plain
+    reading), a bash `\\ ` gluing the string's next word back on."""
     rest, dirs, split, i = list(rest), [], False, 0
     while i < len(rest) and rest[i].startswith("-"):
         word = rest[i]
@@ -2946,7 +3037,14 @@ def _env_options(rest):
             dirs.append(value)
         if option in ("split-string", "S"):
             split = True
-            rest[i:i + step] = _tokens(value)
+            # S144-Q-145: bash reads `env -S git\ commit` as one argument;
+            # the gate's tokenizer split it at the escaped space.
+            while (escapes and i + step < len(rest)
+                   and (len(value) - len(value.rstrip("\\"))) % 2):
+                value = f"{value[:-1]} {rest[i + step]}"
+                step += 1
+            words = _env_split_string(value) if escapes else None
+            rest[i:i + step] = _tokens(value) if words is None else words
             continue
         i += step
     while i < len(rest) and _BASH_ASSIGN.fullmatch(rest[i]):
@@ -2954,10 +3052,11 @@ def _env_options(rest):
     return rest[i:], dirs, split
 
 
-def _env_unwrapped(rest):
+def _env_unwrapped(rest, escapes=False):
     """`env`'s command words after its options and NAME=VALUE words (a
-    `-S` string split into them), and whether `-C` / `--chdir` moved it."""
-    command, dirs, _split = _env_options(rest)
+    `-S` string split into them, with env's escapes when ESCAPES), and
+    whether `-C` / `--chdir` moved it."""
+    command, dirs, _split = _env_options(rest, escapes)
     return command, bool(dirs)
 
 
@@ -3010,18 +3109,24 @@ def _env_split_words(words):
     """S144-Q-143: env's command words for each `env` word in WORDS (every
     one, as in _wrapper_moves) whose `-S` / `--split-string` string env
     splits into more arguments, with a nested `env -S` string spliced in
-    too. One left-to-right pass: each splice drops the `-S` word and the
-    string's quotes, so it ends, and a run of `env -S` words costs a list
-    copy each, not a walk per suffix."""
-    words, starts, i = list(words), [], 0
-    while i < len(words):
-        if _WRAPPER_WORD.split(words[i])[-1].lower().removesuffix(".exe") == "env":
-            command, _dirs, split = _env_options(words[i + 1:])
-            if split:
-                words[i + 1:] = command
-                starts.append(i + 1)
-        i += 1
-    return [words[start:] for start in starts]
+    too. S144-Q-145: read twice, with the plain tokenizer and with env's
+    own escapes (_env_options ESCAPES), and both kept (count-only,
+    monotone by construction: the S144-Q-143 reading is never replaced).
+    One left-to-right pass per reading: each splice drops the `-S` word
+    and the string's quotes, so it ends, and a run of `env -S` words costs
+    a list copy each, not a walk per suffix."""
+    found = []
+    for escapes in (False, True):
+        spliced, starts, i = list(words), [], 0
+        while i < len(spliced):
+            if _WRAPPER_WORD.split(spliced[i])[-1].lower().removesuffix(".exe") == "env":
+                command, _dirs, split = _env_options(spliced[i + 1:], escapes)
+                if split:
+                    spliced[i + 1:] = command
+                    starts.append(i + 1)
+            i += 1
+        found.extend(c for c in (spliced[start:] for start in starts) if c not in found)
+    return found
 
 
 def _env_split_bypass(words):
@@ -3052,16 +3157,19 @@ def _wsl_unwrapped(rest):
     return rest[i:], moved
 
 
-def _unwrapped(words):
+def _unwrapped(words, escapes=False):
     """WORDS without leading `env` / `wsl` wrappers or bash `NAME=VALUE`
     environment prefixes (S144-Q-135), and whether a wrapper changed
-    directory; WORDS is None when a wrapper cannot be read."""
+    directory; WORDS is None when a wrapper cannot be read. ESCAPES
+    (S144-Q-145) reads an `env -S` string with env's own escapes."""
     moved = False
     while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
         words = words[1:]
     while words and _head_name(words[0]) in _WRAPPERS:
-        unwrap = _env_unwrapped if _head_name(words[0]) == "env" else _wsl_unwrapped
-        words, step = unwrap(words[1:])
+        if _head_name(words[0]) == "env":
+            words, step = _env_unwrapped(words[1:], escapes)
+        else:
+            words, step = _wsl_unwrapped(words[1:])
         moved = moved or step
     return words, moved
 
@@ -3136,22 +3244,35 @@ def _cmd_script(rest):
     return None
 
 
-def _launcher_script(words, extra=True):
+def _launcher_script(words, extra=True, escapes=False):
     """The quoted script of a `bash -c` / `sh -c` / `pwsh -Command` statement
     (WORDS, quotes removed), or None for any other statement. With EXTRA
     (S144-Q-127 part 2) also behind `env` / `wsl` wrappers, after a bash
     `--rcfile x` / `--init-file x`, and for `cmd /c` and `iex`; a script
     a wrapper moved (`env -C`, `wsl --cd`, `wsl ~`) starts with a `cd` to
-    an unknown directory, so its statements are placed None (fail closed)."""
+    an unknown directory, so its statements are placed None (fail closed).
+    ESCAPES reads an `env -S` string with env's escapes (S144-Q-145)."""
     moved = False
     if extra:
-        words, moved = _unwrapped(words)
+        words, moved = _unwrapped(words, escapes)
         if not words:
             return None
     script = _launcher_head_script(words, extra)
     if script is not None and moved:
         script = f"cd {_UNSET} && {script}"
     return script
+
+
+def _launcher_scripts(words, extra=True):
+    """S144-Q-145: _launcher_script's script, plus with EXTRA the one read
+    with env's `-S` escapes (`env -S 'bash\\_-c\\_"..."'`) when it differs:
+    both are walked (count-only, the plain reading is never replaced)."""
+    scripts = [_launcher_script(words, extra)]
+    if extra:
+        escaped = _launcher_script(words, extra, escapes=True)
+        if escaped != scripts[0]:
+            scripts.append(escaped)
+    return [script for script in scripts if script is not None]
 
 
 def _launcher_head_script(words, extra):
@@ -3229,8 +3350,9 @@ def _has_bypass(command, depth=0, extra=True):
         return True
     flagged = bool(EV_BYPASS.search(command))
     hinted = flagged or (extra and bool(_PARSE_HINT.search(command)))
-    if len(command) > COMMAND_PARSE_MAX or not (
-            hinted and _BYPASS_GIT_WORD.search(command)):
+    git_word = _BYPASS_GIT_WORD.search(command) or (
+        extra and _ENV_SPLIT_GIT_WORD.search(command))
+    if len(command) > COMMAND_PARSE_MAX or not (hinted and git_word):
         return False
     if depth > BYPASS_NEST_MAX:
         return flagged  # fail closed: the raw script holds a flag and a git word
@@ -3240,9 +3362,9 @@ def _has_bypass(command, depth=0, extra=True):
             if extra and words and (_git_words_bypass(words)
                                     or _env_split_bypass(words)):
                 return True
-            script = _launcher_script(words, extra) if words else None
-            if script is not None and _has_bypass(script, depth + 1, extra):
-                return True
+            for script in _launcher_scripts(words, extra) if words else ():
+                if _has_bypass(script, depth + 1, extra):
+                    return True
             body = _assignment_command(statement) if extra else None
             if body is not None and _has_bypass(body, depth + 1, extra):
                 return True
@@ -3302,8 +3424,7 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
         elif head in ("popd", "pop-location"):
             here = None
         else:
-            script = None if legacy else _launcher_script(words, extra)
-            if script is not None:
+            for script in () if legacy else _launcher_scripts(words, extra):
                 targets.extend(_placed(script, here, variables, depth + 1, extra=extra))
             if hit:
                 # An absolute `git -C` places the statement even when HERE
