@@ -5378,6 +5378,38 @@ Rides on top of whatever gate is already running. No separate game needed.
   (disappear-fix / pinned behavior + the P4.x window logic; the renderer half auto-reloads via ADR-008
   but MAIN does not). Plus the post-W5 interaction-layer live verify pass (the 2026-06-29 F1-01 confirm
   covered render surfaces only). SOURCE: ROADMAP.md:23; OVERLAY_BUILD_MASTER_PLAN.md:666/828.
+  **AGE RE-CHECK + PROBE (lane 9 PREP s144 cycle 120, 2026-11-09, S144-G-107; NOT a tick).**
+  (1) Both SOURCE cites are dead. `docs/OVERLAY_BUILD_MASTER_PLAN.md` is now 351 lines; its live-game
+  verify set reads at `:349` ("GATED-on-live-game (verify-pass after W1 + W5, not a cycle): F1-04,
+  F1-05, F1-06", F1-01 LIVE-CONFIRMED 2026-06-29). `ROADMAP.md:23` no longer carries it (line 23 is
+  blank, `:20-22` are the subplan list); the "rc-shell Electron relaunch owed (live
+  disappear-fix/pinned)" clause lives in RM-03 (search that phrase). (2) The interaction-layer half is no longer G6-01's: F1-05 (ACTIVE-knob physical press) is
+  G6-02, which PASSED in the DRAIN SESSION 2026-07-20 at the top of this file (the G6-02 row text
+  below still reads PARTIAL; the drain-session record is the later one); F1-04 (capability gap,
+  `RC_CAPGAP_SURFACE`) is G4-12; F1-06 (packaging) is release-gated, already proposed out of the set
+  in "Doc hygiene follow-ups" (a). What remains is the PRECONDITION alone. (3) It was met once on
+  record (G6-04, 2026-08-02: rc-shell pid 4140 relaunched 11:26 on the fixed code) and is met again
+  by every app start since the 2026-10-31 launcher cutover, so it RECURS and is never ticked closed.
+  (4) Three traps: `rc-shell\launch_overlay.bat` names no profile and starts no service
+  (`docs/OPERATIONS.md`, launcher section); a packaged `Amberstone Shell.exe` loads the app it was
+  built from, not `rc-shell/src`, so its start time proves nothing; and a lane commit's committer time
+  can predate the merge that wrote its bytes into the checkout, so the bound also takes file mtime.
+  PROBE (one command, read-only, run against the checkout the shell was launched from):
+  `python tools/gated_g601_shell_fresh.py --repo <repo>` (from a lane worktree it reads
+  WRONG_CHECKOUT). PREDICATE (stated before any game): PASS iff exactly one Electron MAIN process
+  (a shell image with no `--type=` switch), its executable is
+  `<repo>/rc-shell/node_modules/electron/dist/electron.exe`, its argv names `--profile dev`, and its
+  creation time is AFTER max(committer time of the newest commit touching `rc-shell/src`, newest
+  mtime of a file under `rc-shell/src`). Exit 0 PASS; 1 INCOMPLETE (NO_SHELL, PROFILE_UNNAMED -
+  `RC_LAUNCHER_PROFILE` can name it, read `ops/runtime/launcher_status.json` - or UNKNOWN); 2 FAIL
+  (MULTIPLE_MAIN, PACKAGED, WRONG_CHECKOUT, STALE). EVIDENCE: the verdict line, MAIN pid, creation
+  time and source bound, with the timestamp, recorded beside the overlay row it gates.
+  SUBSTITUTION CHECK: PASS proves only that MAIN runs the current code; it is not evidence that any
+  overlay surface rendered, and it never ticks G6-02, G6-04 or an `[OVERLAY-*]` row. BASELINE (idle,
+  this cycle): :8888 and :2999 did not answer, no `electron.exe` process, `health.json` `started_at`
+  2026-11-01T01:33Z (stale); the tool printed NO_SHELL, exit 1, source bound 2026-11-05T06:13:30Z
+  (newest commit `bdb583474`, 2026-11-05T06:12:31Z; newest mtime `rc-shell/src/overlay_toggle_page.js`),
+  so the next app start meets the time half.
 - **G6-02** `[UPGRADED LIVE-ONLY -> PARTIAL 2026-07-18]` (was E5) item-598 R25 ACTIVE-knob interaction
   round-trip. **ROW DEFECT FIXED - as previously written this row would have produced a FALSE
   NEGATIVE.** The key is **Ctrl+Shift+A** (Win32 `tools/hotkey_listener.py` slot 3, the ONLY path that
