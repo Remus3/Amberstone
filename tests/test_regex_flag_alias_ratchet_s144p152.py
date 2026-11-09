@@ -145,4 +145,4 @@ def test_alias_and_long_name_are_the_same_flag():
     assert re.A is re.ASCII
     assert re.X is re.VERBOSE
     assert re.U is re.UNICODE
-    assert re.compile("a", re.I | re.M) == re.compile("a", re.IGNORECASE | re.MULTILINE)
+    assert re.compile(r"a", re.I | re.M) == re.compile(r"a", re.IGNORECASE | re.MULTILINE)

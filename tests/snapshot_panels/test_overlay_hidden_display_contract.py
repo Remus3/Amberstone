@@ -230,7 +230,7 @@ def test_forced_sites_are_real():
     assert re.search(r'_el\(doc, "div", "ovt-panel"\);\s*el\.id = id;\s*el\.hidden = true;', tft)
     assert re.search(r"pip\.hidden = true;", tft)
     assert ".ovt-stars > i[hidden] { display: none; }" in tft
-    assert re.search(r"export const BOARD_SLOTS = 12;", tft)
+    assert "export const BOARD_SLOTS = 12;" in tft
     assert re.search(r'getElementById\("am-pane-ovds"\)', ovds) and "pane.hidden = true;" in ovds
     for rid in ("rn-lead", "rn-choices", "rn-callouts"):
         assert f'#{rid}:not([hidden])' in css, rid

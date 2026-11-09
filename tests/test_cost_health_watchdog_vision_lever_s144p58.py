@@ -215,7 +215,7 @@ def test_every_coach_reader_opts_out_of_the_relay():
 
 def test_the_tft_sender_uses_its_haiku_default():
     live = _src("tft/tft_live_analysis.py")
-    assert re.search(r'model: str = "claude-haiku', live)
+    assert 'model: str = "claude-haiku' in live
     assert "TftVisionReader(api_key,model)" in live
     calls = [n for n in ast.walk(ast.parse(_src("core/tft_worker.py")))
              if isinstance(n, ast.Call)
@@ -223,8 +223,7 @@ def test_the_tft_sender_uses_its_haiku_default():
     assert len(calls) == 1
     assert len(calls[0].args) < 3
     assert all(kw.arg != "model" for kw in calls[0].keywords)
-    assert re.search(r'VISION_MODEL = "claude-haiku',
-                     _src("vision_server/_config.py"))
+    assert 'VISION_MODEL = "claude-haiku' in _src("vision_server/_config.py")
 
 
 def test_a_hot_relay_is_not_called_sonnet():

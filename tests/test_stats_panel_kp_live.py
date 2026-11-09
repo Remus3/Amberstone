@@ -158,7 +158,7 @@ class AsciiHygieneTests(unittest.TestCase):
 
     def test_no_dash_glyph_drift(self) -> None:
         # Repo hard rule: no em/en dashes, no smart quotes in authored text.
-        banned = re.compile("[\\u2013\\u2014\\u2018\\u2019\\u201c\\u201d]")
+        banned = re.compile(r"[\u2013\u2014\u2018\u2019\u201c\u201d]")
         self.assertIsNone(banned.search(_read_source()))
 
 
