@@ -1294,7 +1294,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   background: var(--gold-soft); border-radius: 999px;
 }
 
-/* ---- s162 v4: Friends / Recently Played panel ---- */
+/* ---- s162 v4: Friends / Recently Played panel, now the My Top 8 heading ---- */
+/* S144-U-248: the retired friends-row rules (lv-friends-list, lv-fr-*)
+ * had no render site in web/ after the 2026-07-04 repurpose and are gone. */
 /* s162 v8 -> 2026-07-06: the My Top 8 title was grid-anchored over
  * the rank column (col 4). Operator wants it truly panel-centered -
  * plain block + text-align center. */
@@ -1312,11 +1314,6 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lv-friends-title-text {
   text-align: center;
 }
-.lv-friends-list {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 3px;
-}
-.lv-fr-row.is-placeholder { opacity: 0.5; }
 
 /* ---- s162 v5: My Top 8 panel ---- */
 .lv-top8-list {
@@ -1567,71 +1564,6 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lv-top8-spacer-reorder { width: 26px; }
 .lv-top8-spacer-remove  { width: 26px; }
 .lv-top8-spacer-dot     { width: 14px; }   /* s162 v10: replaces removed online dot in search row */
-.lv-fr-row {
-  display: grid;
-  /* 8 sections: name | icon | games | role | rank | team+kda | copy | invite */
-  grid-template-columns: 1.2fr 32px 0.8fr 0.5fr 1.3fr 1fr 28px 28px;
-  gap: 6px;
-  align-items: center;
-  padding: 3px 6px;
-  background: var(--surface-alt);
-  border-radius: 6px;
-  font-size: var(--fs-xs);  /* E11 audit: 13 -> --fs-xs (16) floor */
-}
-.lv-fr-name {
-  font-weight: 800; color: var(--text); font-size: var(--fs-xs);  /* E11 R4: 14 -> 16 floor */
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.lv-fr-icon {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--canvas);
-  display: flex; align-items: center; justify-content: center;
-}
-.lv-fr-icon img { width: 100%; height: 100%; object-fit: cover; }
-.lv-fr-games {
-  font-size: var(--fs-xs); color: var(--text); text-align: right;  /* E11 R4: 12 -> 16 floor */
-  font-weight: 700;
-}
-.lv-fr-role {
-  font-size: var(--fs-xs); color: var(--text-dim); text-align: center;  /* E11 R4: 11 -> 16 floor */
-  font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
-}
-.lv-fr-rank {
-  display: flex; align-items: center; justify-content: flex-start;
-}
-.lv-fr-team {
-  display: flex; align-items: center; justify-content: flex-start;
-  gap: 4px; cursor: help;
-}
-.lv-fr-team-mark {
-  font-size: var(--fs-xs); font-weight: 900; letter-spacing: 0.08em;  /* E11 R4: 13 -> 16 floor */
-}
-.lv-fr-team-enemy .lv-fr-team-mark { color: var(--bad); }
-.lv-fr-team-ally  .lv-fr-team-mark { color: var(--good); }
-.lv-fr-team-kda {
-  font-size: var(--fs-xs); color: var(--text-dim);  /* E11 R4: 12 -> 16 floor */
-  font-family: "SF Mono", Consolas, monospace;
-}
-.lv-fr-copy,
-.lv-fr-invite {
-  /* E11 V2: keep the compact 24x24 visible button but add a transparent
-   * 44x44 centered ::before so the click target hits the fingertip floor
-   * (mirrors .lv-member-action / .lv-mc-copy). E11 R4: 12px -> --fs-xs. */
-  position: relative;
-  width: 24px; height: 24px;
-  font-size: var(--fs-xs);
-}
-.lv-fr-copy::before,
-.lv-fr-invite::before {
-  content: "";
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 44px; height: 44px;
-  transform: translate(-50%, -50%);
-}
-.lv-fr-invite:hover { color: var(--good); border-color: var(--good); }
 
 /* ---- s162 v4: Party panel ---- */
 .lv-party-title {
