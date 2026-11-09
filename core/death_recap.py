@@ -388,7 +388,7 @@ def format_line(row: Optional[Mapping]) -> str:
     shares = row.get("shares")
     if not shares:
         return f"Death recap (estimated): {champs or 'non-champion'} - no damage split"
-    pct = {k: int(round(100 * _num(shares.get(k)))) for k in ("physical", "magic", "true")}
+    pct = {k: round(100 * _num(shares.get(k))) for k in ("physical", "magic", "true")}
     return (f"Death recap (estimated): {champs} - "
             f"{pct['physical']}% physical / {pct['magic']}% magic / {pct['true']}% true")
 

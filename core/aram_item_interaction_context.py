@@ -94,7 +94,7 @@ def _fmt_cue(cell: dict) -> Optional[str]:
     back to ``CUE_SENTINEL``).
     """
     try:
-        pct = int(round(float(cell["winrate_smoothed"]) * 100))
+        pct = round(float(cell["winrate_smoothed"]) * 100)
         n = int(cell["n"])
     except (KeyError, TypeError, ValueError):
         return None
@@ -102,7 +102,7 @@ def _fmt_cue(cell: dict) -> Optional[str]:
     swing = cell.get("gold_swing")
     if swing is not None:
         try:
-            out += f" {int(round(float(swing))):+d}g"
+            out += f" {round(float(swing)):+d}g"
         except (TypeError, ValueError):
             pass
     return out

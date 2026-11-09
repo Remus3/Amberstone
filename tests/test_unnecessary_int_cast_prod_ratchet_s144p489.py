@@ -16,6 +16,11 @@ which only shrinks: a row that stops offending fails ``test_baseline_is_exact`` 
 dropped, and a new finding anywhere else fails ``test_no_new_findings``. ``agents/supervisor.py``
 stays in the baseline because another lane branch changed it.
 
+Slice 2 (S144-P-501) drops the cast at the 12 sites in ten core modules (aram_item_interaction_context,
+death_recap, decision_detector, laning_cv_overrides, live_item_tape_store, operator_push,
+precomputed_laning_coach, replay_seek, resolved_wr, self_cast_log); every site is ``int(round(x))`` over
+a float, so the value and the type are the same and the NaN / infinity failure mode is unchanged.
+
 Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the
 vendored ``ops/fleet_kit`` and the ``agents/agent3_testing/suite`` suite are out of scope. The run
 uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding.
@@ -50,17 +55,7 @@ _OUT_OF_SCOPE = (
 _BASELINE = {
     "agents/supervisor.py": 1,
     "coach_integration/archetype_dispatch.py": 1,
-    "core/aram_item_interaction_context.py": 2,
-    "core/death_recap.py": 1,
-    "core/decision_detector.py": 1,
-    "core/laning_cv_overrides.py": 2,
-    "core/live_item_tape_store.py": 1,
     "core/math_core.py": 1,
-    "core/operator_push.py": 1,
-    "core/precomputed_laning_coach.py": 1,
-    "core/replay_seek.py": 1,
-    "core/resolved_wr.py": 1,
-    "core/self_cast_log.py": 1,
     "core/vision_template_match.py": 1,
     "core/zoi_influence.py": 1,
     "dashboard/_wave_timing.py": 1,
@@ -84,9 +79,19 @@ _BASELINE = {
     "tools/run_phase2_perf.py": 1,
 }
 _FIXED = (
+    "core/aram_item_interaction_context.py",
+    "core/death_recap.py",
+    "core/decision_detector.py",
+    "core/laning_cv_overrides.py",
+    "core/live_item_tape_store.py",
     "core/minimap_blob_detect.py",
     "core/minimap_geometry.py",
     "core/minimap_identity.py",
+    "core/operator_push.py",
+    "core/precomputed_laning_coach.py",
+    "core/replay_seek.py",
+    "core/resolved_wr.py",
+    "core/self_cast_log.py",
     "core/vision_region_atlas.py",
     "core/vision_tesseract.py",
     "tft/tft_ocr_reader.py",

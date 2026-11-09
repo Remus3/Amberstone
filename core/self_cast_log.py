@@ -623,7 +623,7 @@ def per_slot_totals(evs: Iterable[Mapping[str, Any]],
 
 def match_tolerance(truth: int) -> int:
     """Allowed |log - truth| per slot. Our own postulate; see constants."""
-    return max(MATCH_ABS_TOL, int(round(MATCH_REL_TOL * max(0, int(truth)))))
+    return max(MATCH_ABS_TOL, round(MATCH_REL_TOL * max(0, int(truth))))
 
 
 # Match-V5 participant fields; `parse_participant` in scripts/rewind_scraper.py

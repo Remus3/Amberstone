@@ -327,7 +327,7 @@ def _opener():
 def since_hours_from_days(days: float) -> str:
     """ntfy's ``since`` takes durations; RC thinks in days. At least 1h."""
     try:
-        h = int(round(float(days) * 24))
+        h = round(float(days) * 24)
     except (TypeError, ValueError):
         h = 24
     return f"{max(1, h)}h"
