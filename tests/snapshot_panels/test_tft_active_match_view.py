@@ -233,63 +233,11 @@ def test_real_client_row_paints_no_sr_imperative_anywhere(mock_server, pw_browse
     assert not errors, f"JS errors: {errors[:3]}"
 
 
-def _next_text(page) -> dict:
-    """#next subtree text via textContent (the DOM, hidden or not) plus the
-    #nx-next headline alone."""
-    return page.evaluate(
-        "() => ({all: document.getElementById('next').textContent,"
-        " head: document.getElementById('nx-next').textContent})"
-    )
-
-
-def test_real_client_row_next_panel_holds_no_sr_imperative(
-    mock_server, pw_browser
-):
-    """RM-896 (next.js half). The live view pin hides #next, so the visible
-    page was clean while #nx-next still HELD "Drake spawns 5:00 - set up
-    vision" (next.js aftergame branch: advice_headline || next || action).
-    textContent, not innerText: the guarantee must not rest on view routing.
-    next.js now runs the coach payload through the B4 client mirror
-    (live_directive_gate.withoutLiveDirectives) while a game is live."""
-    ctx, page, errors = _open(
-        mock_server, pw_browser, _load("tft_live_s134_client")
-    )
-    try:
-        _wait_fallback(page, "game")
-        _wait_state_ticks(page, 1)
-        nx = _next_text(page)
-        for needle in _SR_IMPERATIVES:
-            assert needle not in nx["all"], (
-                f"SR imperative {needle!r} held in #next mid-game"
-            )
-        assert nx["head"] == "-"
-    finally:
-        page.close()
-        ctx.close()
-    assert not errors, f"JS errors: {errors[:3]}"
-
-
-def test_client_row_after_the_game_keeps_the_next_headline(
-    mock_server, pw_browser
-):
-    """Positive control: the same row with the LCU at EndOfGame is not a live
-    game, so the post-game NEXT surface still paints coach.action - the gate
-    is phase-driven, not a blanket strip."""
-    row = _load("tft_live_s134_client")
-    row["lcu"]["phase"] = "EndOfGame"
-    ctx, page, errors = _open(mock_server, pw_browser, row)
-    try:
-        page.wait_for_function(
-            "() => (document.getElementById('nx-next')?.textContent || '')"
-            ".includes('Drake spawns')",
-            timeout=_LIVE_TICK_MS,
-        )
-        _wait_state_ticks(page, 2)
-        assert _next_text(page)["head"] == "Drake spawns 5:00 - set up vision"
-    finally:
-        page.close()
-        ctx.close()
-    assert not errors, f"JS errors: {errors[:3]}"
+# S144-U-265: the RM-896 NEXT-panel pair (the live row held no SR imperative
+# in the hidden NEXT headline; the EndOfGame row kept it) is retired with the
+# never-rendered NEXT panel and its module. The RIGHT NOW pair below pins the
+# same B4 mirror on the kept sink; tests/snapshot_panels/
+# test_next_panel_retired.py pins that the panel is not served.
 
 
 def _right_now_text(page) -> dict:
@@ -311,7 +259,7 @@ _RN_SUPPRESSED = _SR_IMPERATIVES + ("FAIR FIGHT", "coinflips")
 def test_real_client_row_right_now_holds_no_sr_imperative(
     mock_server, pw_browser
 ):
-    """RM-896 (right_now.js half). Same real row as the NEXT test above: the
+    """RM-896 (right_now.js half). Same real row the retired NEXT test used: the
     live view pin hides #right-now, but #rn-action and #rn-immediate held
     "Drake spawns 5:00 - set up vision" and #rn-fight-rule the FAIR FIGHT
     rule in the DOM. textContent, not innerText: the guarantee must not rest
@@ -412,20 +360,23 @@ def test_lcu_phase_blink_holds_then_sr_game_rebuilds_league_panes(
     assert not errors, f"JS errors: {errors[:3]}"
 
 
-# RM-898: every value #nx-next ever holds, from the first DOM paint on.
-_NX_WRITE_LOG = """
-window.__nxLog = [];
+# RM-898: every value #rn-immediate ever holds, from the first DOM paint on.
+# (S144-U-265: the probe read the retired NEXT headline; RIGHT NOW reads the
+# coach through the same B4 mirror, so the ordering fix is pinned there.)
+_RN_WRITE_LOG = """
+window.__rnLog = [];
 document.addEventListener('DOMContentLoaded', () => {
-  const el = document.getElementById('nx-next');
+  const el = document.getElementById('rn-immediate');
   if (!el) return;
-  window.__nxLog.push(el.textContent);
-  new MutationObserver(() => window.__nxLog.push(el.textContent))
+  window.__rnLog.push(el.textContent);
+  new MutationObserver(() => window.__rnLog.push(el.textContent))
     .observe(el, {childList: true, characterData: true, subtree: true});
 });
 """
 
 # RM-898: make the HTTP fallback (pollIfStale) the ONLY state.latest.lcu
-# writer, then log what #nx-next holds right after each fallback tick renders.
+# writer, then log what #rn-immediate holds right after each fallback tick
+# renders.
 #   - No EventSource: setupStateStream returns, so no SSE tick.
 #   - pollLcu (the independent LCU poller) gets "{}" back, so it never calls
 #     handleLcuEnvelope and cannot refresh the cache between fallback ticks;
@@ -452,7 +403,7 @@ _FALLBACK_ONLY_TICK_LOG = """
       const json = resp.json.bind(resp);
       resp.json = () => json().then((d) => {
         setTimeout(() => {
-          const el = document.getElementById('nx-next');
+          const el = document.getElementById('rn-immediate');
           window.__ticks.push({
             phase: (d && d.lcu && d.lcu.phase) || '',
             head: el ? el.textContent : null,
@@ -516,14 +467,15 @@ def test_first_sse_tick_of_a_live_page_paints_no_sr_imperative(
     """RM-898, SSE site. The page loads straight into the live client row
     (lcu.phase InProgress, no :2999 feed). The first render is the SSE event;
     before the fix onState ran before handleLcuEnvelope cached state.latest.lcu,
-    so the B4 mirror in next.js saw no live game and #nx-next held "Drake
+    so the B4 mirror saw no live game and the coach sinks held "Drake
     spawns 5:00 - set up vision" until the next tick. A MutationObserver
-    records every value #nx-next ever holds; none may be an SR imperative.
+    records every value #rn-immediate ever holds; none may be an SR
+    imperative.
     pollLcu is neutralised and the SSE event is checked to land before any
     HTTP /api/state fetch (RM-940), so no poller can pre-cache lcu."""
     ctx, page, errors = _open(
         mock_server, pw_browser, _load("tft_live_s134_client"),
-        init_scripts=(_NX_WRITE_LOG, _SSE_FIRST_POLL_LCU_OFF),
+        init_scripts=(_RN_WRITE_LOG, _SSE_FIRST_POLL_LCU_OFF),
     )
     try:
         _wait_fallback(page, "game")
@@ -533,12 +485,13 @@ def test_first_sse_tick_of_a_live_page_paints_no_sr_imperative(
         assert order[1] is None or order[0] < order[1], (
             f"an HTTP /api/state fetch preceded the first SSE event: {order}"
         )
-        log = page.evaluate("window.__nxLog")
-        assert log and log[0] == "-", f"observer not installed: {log[:3]}"
+        log = page.evaluate("window.__rnLog")
+        assert log and log[0] == "awaiting coach output...", (
+            f"observer not installed: {log[:3]}")
         for value in log:
             for needle in _SR_IMPERATIVES:
                 assert needle not in value, (
-                    f"#nx-next held {value!r} on a live page: {log}"
+                    f"#rn-immediate held {value!r} on a live page: {log}"
                 )
     finally:
         page.close()
@@ -553,7 +506,8 @@ def test_first_fallback_tick_after_champ_select_paints_no_sr_imperative(
     headline paints there (the positive control below the flip). On the
     FIRST fallback tick that serves lcu.phase InProgress the B4 mirror must
     already see the live game: before the fix state.latest.lcu still held
-    the ChampSelect snapshot when onState ran, and #nx-next kept "Drake
+    the ChampSelect snapshot when onState ran, and the coach sinks (then
+    the NEXT headline, retired S144-U-265; now #rn-immediate) kept "Drake
     spawns 5:00 - set up vision" for one more tick."""
     pre = _load("tft_live_s134_client")
     pre["lcu"]["phase"] = "ChampSelect"
@@ -578,7 +532,11 @@ def test_first_fallback_tick_after_champ_select_paints_no_sr_imperative(
             assert needle not in live[0]["head"], (
                 f"first InProgress tick held {live[0]['head']!r}"
             )
-        assert [t["head"] for t in live[:2]] == ["-", "-"]
+        # #rn-immediate falls back to coach.pregame, which the B4 mirror
+        # does not blank (it is not a live imperative): both live ticks
+        # paint it, so the render ran with the live game already seen.
+        pregame = _load("tft_live_s134_client")["coach"]["pregame"]
+        assert [t["head"] for t in live[:2]] == [pregame, pregame]
     finally:
         page.close()
         ctx.close()

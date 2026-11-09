@@ -126,7 +126,8 @@ body[data-view="home"] header .vis-pill.hidden {
               inset 0 0 0 2px var(--gold);
 }
 
-/* Zen mode - Z keybind (default-off 2026-04-24) hides Next + Adaptation
+/* Zen mode - Z keybind (default-off 2026-04-24) hides Adaptation (the NEXT
+ * panel it also hid is retired, S144-U-265)
  * and re-composes the grid so Minimap (col 1, both rows), Right Now
  * (col 2 row 1), and Item Build (col 2 row 2) own the full real estate.
  * Also hides the below-grid QUEUE strip and the Ask-Agent input bar -
@@ -141,7 +142,6 @@ body[data-view="home"] header .vis-pill.hidden {
 body[data-zen="1"] main {
   grid-template-columns: 1fr 1.2fr;
 }
-body[data-zen="1"] .panel-next,
 body[data-zen="1"] .panel-adaptation,
 body[data-zen="1"] #activity-strip,
 body[data-zen="1"] #input-bar {
@@ -231,7 +231,6 @@ body[data-zone="deep"] .panel-right-now {
   font-weight: 700;
 }
 .panel-right-now  .panel-title { color: var(--gold); font-size: 17px; letter-spacing: 0.22em; }
-.panel-next       .panel-title { color: var(--info); }
 .panel-item-build .panel-title { color: var(--text-dim); }
 .panel-adaptation .panel-title { color: var(--text-faint); }
 /* Compact empty state - don't eat vertical space for placeholder em-dashes. */

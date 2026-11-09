@@ -49,8 +49,10 @@ class IndexHtmlTests(unittest.TestCase):
 
     def test_lives_in_right_now_panel(self) -> None:
         rn = self.t.index('id="right-now"')
-        nxt = self.t.index('id="next"')
-        self.assertTrue(rn < self.t.index('id="rn-sr-btn"') < nxt)
+        # The next sibling section closes RIGHT NOW (it was the NEXT panel
+        # until S144-U-265 retired it; ITEM BUILD follows now).
+        after = self.t.index('id="item-build"')
+        self.assertTrue(rn < self.t.index('id="rn-sr-btn"') < after)
 
 
 class PanelJsTests(unittest.TestCase):

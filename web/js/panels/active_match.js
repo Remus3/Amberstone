@@ -1697,9 +1697,10 @@ export function renderActiveMatch(payload, ctx) {
     // [a]ally[/a], [e]enemy[/e]) - an internal authoring convention, not display
     // text (the BARON/DRAKE/HERALD chips carry the real timers). Without this the
     // raw [T]...[/T] markup leaked into the overlay coach card (operator-reported
-    // 2026-06-29). Matches right_now.js / next.js, which already route through it.
-    // B4 defence in depth (RM-1093, the same gate line as right_now.js and
-    // next.js): while a game is live, read the coach with the server's
+    // 2026-06-29). Matches right_now.js, which already routes through it.
+    // B4 defence in depth (RM-1093, the same gate line as right_now.js; the
+    // NEXT panel that carried it too is retired, S144-U-265): while a game
+    // is live, read the coach with the server's
     // live-suppressed imperatives blanked. MEASURED: in the no-draft champ
     // select -> game window the server serves a pre-flip (mode_key aram,
     // preflip_active) with the coach unblanked, while the :2999 relay may

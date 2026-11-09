@@ -89,7 +89,8 @@ _BASELINE: dict[str, tuple[str, ...]] = {
     "web/js/panels/last_match.js": ("U+00B7",),
     # web/js/panels/map_state.js left the baseline (S144-U-256): its last
     # two middle dots went with the retired MAP STATE heartbeat line.
-    "web/js/panels/next.js": ("U+00B7", "U+2192", "U+25B6", "U+2713", "U+2717"),
+    # web/js/panels/next.js left the baseline (S144-U-265): the module was
+    # deleted with the never-rendered NEXT panel.
     "web/js/panels/right_now.js": (
         "U+00B7", "U+1F6A8", "U+2022", "U+2192", "U+2212", "U+25B6", "U+25BA",
         "U+25C9", "U+26A0", "U+26A1", "U+26D4", "U+2713", "U+2733"),

@@ -7,12 +7,14 @@ Two acceptance halves:
      single-lowercase-letter bracket tags (timer tags like [t]14s[/t] and
      siblings [x]...[/x]). They must never reach the rendered text or the
      clipboard. The strip lives in helpers.stripCoachTags and is folded into
-     helpers.safe() so right_now.js + next.js inherit it (both route every
-     coach field through safe()); coach_choices.js applies it explicitly
+     helpers.safe() so right_now.js inherits it (it routes every coach
+     field through safe(); the NEXT panel module that also did is retired,
+     S144-U-265); coach_choices.js applies it explicitly
      because it slices raw fields without safe().
-  2. TRUNCATION - the .action / .immediate (Right Now) and .action-mid /
-     kv-body (Next) rows no longer hard-clamp + ellipsize coach prose
-     mid-sentence. The Arena .immediate.is-pregame dense card KEEPS its
+  2. TRUNCATION - the .action / .immediate and kv-body (Right Now) rows no
+     longer hard-clamp + ellipsize coach prose mid-sentence (the Next panel
+     rows this also covered are retired with that panel, S144-U-265).
+     The Arena .immediate.is-pregame dense card KEEPS its
      deliberate "clipped not scrolled" box (round-44 design) - a regression
      guard, since it used to inherit the now-removed base .immediate clamp.
 
@@ -153,18 +155,12 @@ class RightNowTruncationRemoved(unittest.TestCase):
 
 
 class NextTruncationRemoved(unittest.TestCase):
-    """Next headline + body rows no longer hard-clamp coach prose."""
+    """The RIGHT NOW kv body rows (whose rule lives in next.css) no longer
+    hard-clamp coach prose. S144-U-265 retired the NEXT panel, its headline
+    and kv rules, and the two tests that pinned them."""
 
     def setUp(self):
         self.css = NEXT_CSS.read_text(encoding="utf-8")
-
-    def test_action_mid_no_line_clamp(self):
-        body = _rule(self.css, ".action-mid {")
-        self.assertNotIn("-webkit-line-clamp", body)
-
-    def test_next_kv_body_no_line_clamp(self):
-        body = _rule(self.css, ".panel-next .kv > span:last-child {")
-        self.assertNotIn("-webkit-line-clamp", body)
 
     def test_right_now_kv_body_no_line_clamp(self):
         body = _rule(self.css, ".panel-right-now .kv > span:last-child {")

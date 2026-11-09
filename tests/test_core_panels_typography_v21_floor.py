@@ -14,9 +14,10 @@ This pins, per panel:
 (c) The clickable A/B choice chip (.rc-chip) keeps its var(--hit-min) target.
 (d) No new non-ASCII bytes (em/en-dash, smart quotes) introduced.
 
-SCOPE NOTE: item_build.css also houses the cross-panel .kv / #nx-wave /
-.minimap-grid / .obj-* rules that style the Right Now / Next / Active-Match /
-minimap surfaces (already audited under C2). Those are OUT of R4 scope and are
+SCOPE NOTE: item_build.css also houses the cross-panel .kv / .minimap-grid /
+.obj-* rules that style the Right Now / Active-Match / minimap surfaces
+(already audited under C2; the Next panel's #nx-wave rules that sat here
+were retired with that panel, S144-U-265). Those are OUT of R4 scope and are
 NOT swept here; this test only targets the Item-Build-proper selectors, so it
 deliberately does NOT run a blanket sub-floor scan over item_build.css.
 """
@@ -148,7 +149,7 @@ def test_coach_choice_chip_keeps_hit_min() -> None:
 def test_no_blanket_sub_floor_in_single_panel_files() -> None:
     """team_context.css + coach_choices.css are single-panel files (no
     cross-panel rules), so a blanket scan is safe: every text font-size must be
-    >= 16px. item_build.css is intentionally excluded (cross-panel .kv/#nx-wave
+    >= 16px. item_build.css is intentionally excluded (cross-panel .kv
     rules live there, out of R4 scope)."""
     for path in (TEAM_CONTEXT, COACH_CHOICES):
         text = _strip_comments(path.read_text(encoding="utf-8"))

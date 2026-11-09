@@ -495,24 +495,12 @@
       </div>
     </section>
 
-    <section id="next" class="panel panel-next">
-      <div class="panel-head">
-        <span class="panel-title" id="nx-panel-title">NEXT</span>
-        <span class="staleness" data-for="next">-</span>
-      </div>
-      <div class="panel-body">
-        <div class="action-mid" id="nx-next">-</div>
-        <div class="kv">
-          <span>Objective</span><span id="nx-objective">-</span>
-        </div>
-        <div class="kv">
-          <span>Positioning</span><span id="nx-positioning">-</span>
-        </div>
-        <div class="kv">
-          <span>Waves</span><span id="nx-wave">-</span>
-        </div>
-      </div>
-    </section>
+    <!-- S144-U-265: the NEXT panel (title, staleness tag, headline and
+         its Objective / Positioning / Waves rows) is retired with the
+         module that painted it. It sat here in <main>, which renders in
+         no view and not in the overlay shell, so it had 0 client rects
+         while every state envelope still repainted it. Guard:
+         tests/snapshot_panels/test_next_panel_retired.py. -->
 
     <section id="item-build" class="panel panel-item-build">
       <div class="panel-head">

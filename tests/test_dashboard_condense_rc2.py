@@ -11,7 +11,8 @@ glance lands on the rows that carry a value.
 Mirrors tests/test_overlay_priority_rc2.py: node require()s the CJS export and
 pins the pure decision contract; condenseKvRows is exercised against a tiny
 hand-rolled DOM stub (jsdom/playwright are absent on CI). A second grep-style
-class confirms right_now.js / next.js import and call the helper.
+class confirms right_now.js imports and calls the helper (the NEXT panel
+module that also did is retired, S144-U-265).
 
 Skips cleanly when node is unavailable so it never hard-fails CI on a runner
 without a JS toolchain (the helper ships as static JS).
@@ -27,7 +28,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONDENSE_JS = REPO_ROOT / "web" / "js" / "lib" / "condense.js"
 RIGHT_NOW_JS = REPO_ROOT / "web" / "js" / "panels" / "right_now.js"
-NEXT_JS = REPO_ROOT / "web" / "js" / "panels" / "next.js"
 NODE = shutil.which("node")
 
 # A tiny hand-rolled DOM stub so condenseKvRows can be exercised in node with
@@ -193,10 +193,9 @@ class CondenseWiringTest(unittest.TestCase):
         self.assertIn("condense.js", js)
         self.assertIn("condenseKvRows", js)
 
-    def test_next_wires_condense(self):
-        js = NEXT_JS.read_text(encoding="utf-8")
-        self.assertIn("condense.js", js)
-        self.assertIn("condenseKvRows", js)
+    # S144-U-265: the NEXT panel module (web/js/panels/next.js) is retired
+    # with that never-rendered panel, so its wiring pin is gone; RIGHT NOW
+    # is the one primary panel left on the helper.
 
     def test_condense_js_is_ascii(self):
         raw = CONDENSE_JS.read_bytes()

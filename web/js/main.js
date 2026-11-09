@@ -29,7 +29,7 @@ import { RN, renderRightNow, renderDigest, renderGameSense, renderStats } from '
 import { renderCoachChoices } from './panels/coach_choices.js';
 import { renderCallouts, renderLead } from './panels/callouts.js';
 import { startPersonalContextPolling } from './panels/personal_context.js';
-import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
+// S144-U-265: the never-rendered NEXT panel module is retired.
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { renderMinimap, _tickSpellCooldowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS } from './panels/map_state.js';
 // RM-1211: the self-spell cooldown key is called below but was never exported
@@ -622,17 +622,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     document.body.dataset.mode = tag;
     // Panel title swaps per mode (queue #3 aftergame reassignment).
     //   in-game (sr/aram/arena/brawl/tft):
-    //     RIGHT NOW / NEXT / STATS
+    //     RIGHT NOW / STATS
     //   client (lobby + aftergame):
-    //     SESSION SUMMARY / ADVICE / GAME SENSE
+    //     SESSION SUMMARY / GAME SENSE
     // S144-U-264: the Map State title (MAP STATE / WHAT WENT) is retired
-    // with its never-rendered panel shell.
+    // with its never-rendered panel shell; S144-U-265 retired the NEXT /
+    // ADVICE title with the never-rendered NEXT panel.
     const inGame = ["sr","aram","arena","brawl","tft"].includes(tag);
     const titles = inGame
-      ? { rn: "RIGHT NOW", nx: "NEXT", adapt: "STATS" }
-      : { rn: "SESSION SUMMARY", nx: "ADVICE", adapt: "GAME SENSE" };
+      ? { rn: "RIGHT NOW", adapt: "STATS" }
+      : { rn: "SESSION SUMMARY", adapt: "GAME SENSE" };
     const rnT    = el("rn-panel-title");    if (rnT)    rnT.textContent    = titles.rn;
-    const nxT    = el("nx-panel-title");    if (nxT)    nxT.textContent    = titles.nx;
     const adaptT = el("adapt-panel-title"); if (adaptT) adaptT.textContent = titles.adapt;
     // RC2 E1: the in-game <-> out-game context just flipped (mode changed), so
     // re-resolve the per-panel visibility for the new context. Self-guards on
@@ -1593,7 +1593,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     renderCoachChoices(state.latest || p);
     renderLead(state.latest || p);
     renderCallouts(state.latest || p);
-    renderNext(p);
     renderItemBuild(p);
     renderAugmentReco(p);
     renderMinimap(p);
@@ -1758,9 +1757,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const now = Date.now() / 1000;
     for (const [panelKey, elm, rootElm] of [
       ["right_now",  RN.staleness, RN.root],
-      ["next",       NX.staleness, NX.root],
       ["item_build", IB.staleness, IB.root],
-      // S144-U-264: the never-rendered Map State shell's row is retired.
+      // S144-U-264 / S144-U-265: the never-rendered Map State shell's and
+      // NEXT panel's rows are retired.
     ]) {
       const touched = state.lastTouch[panelKey];
       if (!touched) {
@@ -7396,8 +7395,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       e.preventDefault();
       return;
     }
-    // Z toggles "zen" mode - hides Next + Adaptation panels so the grid
-    // re-composes around Minimap + Right Now + Item Build. Uses body data
+    // Z toggles "zen" mode - hides the Adaptation panel (the Next panel and
+    // the Map State shell are retired, S144-U-264 / S144-U-265) so the grid
+    // re-composes around Right Now + Item Build. Uses body data
     // attribute so CSS does the rest. Zen is the default view, so we
     // persist "0" on opt-out (not "" - restorePrefs treats null as on).
     if ((e.key === "z" || e.key === "Z") && !e.ctrlKey && !e.metaKey && !e.altKey) {

@@ -866,6 +866,38 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "item_build.css is 454 lines after S144-U-262 retired the objective "
         "countdown cues and progress fill (two of the cited halos).",
     ),
+) + tuple(
+    # 2026-11-09, S144-U-265 (session 144 uiux lane). The never-rendered
+    # NEXT panel was retired and its module web/js/panels/next.js deleted.
+    # These RM-125 census rows are the same dated read as the S144-U-258
+    # entry above ("measured at 35c6730f"); the glyphs they name left the
+    # tree with the module, so there is no line to re-point them to.
+    (doc, raw, "DELETED",
+     "An RM-125 live-glyph census cite into web/js/panels/next.js as "
+     "measured at 35c6730f; S144-U-265 deleted the module with the "
+     "never-rendered NEXT panel.")
+    for doc, raw in (
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:36"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:62"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:66"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:150"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:151"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:173"),
+    )
+) + (
+    # Same cut: web/index.html shrank from 2481 lines to 2469, so the
+    # BACKLOG.md RM-1658 row's badge cite ("file:line as read at
+    # b0eb6698b") now runs past the end. It is a sha-qualified read like
+    # the main.js:8390-8405 entry above; BACKLOG.md is the research
+    # lane's in s144, so a lane does not re-word it.
+    (
+        "BACKLOG.md",
+        "web/index.html:2475",
+        "HISTORICAL",
+        "The RM-1658 row's #advisory-badge cite is 'file:line as read at "
+        "b0eb6698b'; web/index.html is 2469 lines after S144-U-265 retired "
+        "the NEXT panel markup, so the sha-qualified line runs past the end.",
+    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

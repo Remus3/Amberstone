@@ -359,7 +359,8 @@ function renderStats(p) {
 }
 
 function renderRightNow(payload) {
-  // B4 defence in depth (RM-896, the right_now.js half of the next.js fix):
+  // B4 defence in depth (RM-896; its NEXT panel half retired with that
+  // never-rendered panel, S144-U-265):
   // while a game is live, read the payload with the server's live-suppressed
   // imperatives blanked. MEASURED on the real session-134 TFT row (mode_key
   // client, lcu InProgress, no :2999 feed): the server did not see a live

@@ -3,7 +3,8 @@
 // Spec lineage: docs/_archive/2026-07-28-research-consolidation/RC2_OVERLAY_CONDENSATION_SPEC.md gave the OVERLAY
 // its slot budget + 2-row callout clamp. 3.6 is the DASHBOARD counterpart: the
 // full :8888 view keeps its density (it is NOT the 460px HUD), but the PRIMARY
-// coaching panels (RIGHT NOW, NEXT) render fixed supporting KV rows that paint
+// coaching panel (RIGHT NOW; the NEXT panel is retired, S144-U-265) renders
+// fixed supporting KV rows that paint
 // the "-" no-data sentinel in client / pregame / ARAM / aftergame states - a
 // dead-dash wall under the live headline. This module collapses those empty
 // rows so the glance lands on the rows that actually carry a value. It is the
@@ -50,7 +51,7 @@ function planKvCondense(values, sentinels) {
 /**
  * Collapse empty supporting KV rows under a dashboard panel root.
  *
- * Scans `.kv` rows in root (the RIGHT NOW / NEXT supporting rows), reads each
+ * Scans `.kv` rows in root (the RIGHT NOW supporting rows), reads each
  * row's value cell (the LAST span - the key label is the first span), and hides
  * the row when the value is a no-data sentinel; shows it otherwise. Idempotent
  * + null-safe. A no-op outside a DOM (the node test drives the pure fns).
@@ -60,7 +61,7 @@ function planKvCondense(values, sentinels) {
  * inline display write can never reveal them there - this stays a
  * dashboard-surface condensation by construction, no shell guard needed.
  *
- * @param {Element|null} root - the panel section (RN.root / NX.root).
+ * @param {Element|null} root - the panel section (RN.root).
  * @param {string[]} [sentinels]
  * @returns {{visible:number, hidden:number}} per-call row tallies.
  */

@@ -68,21 +68,8 @@ class TabularNumsSweepTests(unittest.TestCase):
         self.assertIn("tabular-nums", block,
                       ".panel-right-now .kv values must carry tabular-nums")
 
-    def test_next_panel_kv_values(self):
-        css = _read(CSS_NEXT)
-        block = css.split(".panel-next .kv > span:last-child", 1)[1]
-        block = block.split("}", 1)[0]
-        self.assertIn("tabular-nums", block,
-                      ".panel-next .kv values must carry tabular-nums")
-
-    def test_next_panel_wave_line_already_tabular(self):
-        """#nx-wave block already declares tabular-nums (pre-sweep);
-        the rule lives in item_build.css (shared .kv layout block).
-        Guard against a regression that drops it."""
-        css = _read(CSS_ITEM_BUILD)
-        # The block starts at "#nx-wave," and runs through .wave-verb
-        self.assertIn("#nx-wave", css)
-        self.assertIn("font-variant-numeric: tabular-nums", css)
+    # S144-U-265: the NEXT panel kv and wave-state tabular-nums pins are
+    # retired with the never-rendered NEXT panel and its rules.
 
     def test_item_build_value(self):
         css = _read(CSS_ITEM_BUILD)
@@ -155,11 +142,8 @@ class TextWrapBalanceTests(unittest.TestCase):
         self.assertIn("text-wrap: balance", block,
                       ".action must declare text-wrap: balance")
 
-    def test_action_mid_next(self):
-        css = _read(CSS_NEXT)
-        block = css.split(".action-mid {", 1)[1].split("}", 1)[0]
-        self.assertIn("text-wrap: balance", block,
-                      ".action-mid must declare text-wrap: balance")
+    # S144-U-265: the NEXT headline text-wrap pin is retired with the
+    # never-rendered NEXT panel and its rules.
 
     def test_mvp_name_last_match(self):
         css = _read(CSS_LAST_MATCH)

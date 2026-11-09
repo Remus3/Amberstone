@@ -89,9 +89,11 @@ def test_cadence_thresholds_unchanged():
     }
     # S144-U-264: the never-rendered Map State shell's minimap key is
     # retired with the shell (tests/snapshot_panels/
-    # test_minimap_panel_shell_retired.py); the kept three are unchanged.
+    # test_minimap_panel_shell_retired.py); S144-U-265 retired the NEXT
+    # panel's key with that never-rendered panel (tests/snapshot_panels/
+    # test_next_panel_retired.py). The kept two are unchanged.
     assert got == {
-        "right_now": (4, 12), "next": (16, 48),
+        "right_now": (4, 12),
         "item_build": (90, 300),
     }
 

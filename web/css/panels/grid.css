@@ -14,12 +14,12 @@ main {
   min-height: 0;    /* allow children to shrink below their content size */
 }
 /* Explicit grid placement (post-swap):
- *   col 1 (left)   : NEXT (row 1) + STATS (row 2)
+ *   col 1 (left)   : STATS (row 2); row 1 empty - S144-U-265 retired
+ *                    the never-rendered NEXT panel and its placement
  *   col 2 (center) : RIGHT NOW (row 1) + ITEM BUILD (row 2)
  *   col 3 (right)  : empty - S144-U-264 retired the never-rendered MAP
  *                    STATE panel shell (its placement, its body's flex
  *                    column and scrollbar rules) with its markup. */
-.panel-next       { grid-column: 1; grid-row: 1; }
 .panel-adaptation { grid-column: 1; grid-row: 2; }
 .panel-right-now  { grid-column: 2; grid-row: 1; }
 .panel-item-build { grid-column: 2; grid-row: 2; }

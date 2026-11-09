@@ -18,8 +18,9 @@ before the fix (/?ui_mock=1&mode=sr#active-match, 1920x920): the shell was
 served with 0 client rects, with its staleness tag and title node.
 
 THE FIX. The markup, the MM handle and export, the sweep row, the two
-state.js keys, both setMode writes and the dead rules go. The three kept
-CADENCE panels (right_now / next / item_build) keep their sweep;
+state.js keys, both setMode writes and the dead rules go. The kept
+CADENCE panels (right_now / item_build; S144-U-265 later retired next)
+keep their sweep;
 renderMinimap keeps its live half (body[data-phase], the header spell pill,
 the Active Match item-value bar, the header zone pill).
 
@@ -145,8 +146,9 @@ def test_the_shell_is_not_served(drive):
     assert drive["classNode"] is False, drive
 
 
-def test_main_keeps_the_four_other_panels_in_order(drive):
-    assert drive["mainIds"] == ["right-now", "next", "item-build",
+def test_main_keeps_the_other_panels_in_order(drive):
+    # S144-U-265 retired the never-rendered NEXT panel too.
+    assert drive["mainIds"] == ["right-now", "item-build",
                                 "adaptation"], drive
 
 
@@ -155,7 +157,8 @@ def test_map_state_exports_no_shell_handle(drive):
 
 
 def test_the_sweep_keys_drop_the_shell(drive):
-    kept = ["item_build", "next", "right_now"]
+    # S144-U-265 retired the NEXT panel's key too.
+    kept = ["item_build", "right_now"]
     assert drive["touchKeys"] == kept, drive
     assert drive["cadenceKeys"] == kept, drive
     # renderMinimap no longer stamps a key for the retired sweep row.
