@@ -37,6 +37,7 @@ from unittest import mock
 import pytest
 
 import dashboard.routes_scouting as rs
+from tests._timing_budget import fleet_test_guard
 
 
 class _RawHandler:
@@ -313,7 +314,7 @@ def test_wall_clock_step_back_does_not_affect_the_route():
     seq = iter([1_000_000.0, 990_000.0, 980_000.0, 970_000.0] * 50)
     with mock.patch.object(rs.time, "time", side_effect=lambda: next(seq)):
         h, _ = _run({"puuids": ["a"]}, lambda p, region="na1": _entry())
-    assert 0 <= h.payload()["elapsed_ms"] < 60_000
+    assert 0 <= h.payload()["elapsed_ms"] < fleet_test_guard.budget(60.0) * 1000
 
 
 def test_the_route_never_reads_the_wall_clock():

@@ -5,6 +5,7 @@ import json
 
 from core import skins
 from dashboard import routes_skins
+from tests._module_view import bind_urlopen
 
 
 def _detail(tmp_path, slug="Foo", skins_raw=None):
@@ -96,7 +97,7 @@ def test_refresh_writes_slim_cache(tmp_path, monkeypatch):
         def __exit__(self, *a):
             return False
 
-    monkeypatch.setattr(skins.urllib.request, "urlopen", lambda *a, **k: R(body))
+    bind_urlopen(monkeypatch, skins, lambda *a, **k: R(body))
     c = tmp_path / "sub" / "c.json"
     assert skins.refresh_cdragon_cache(cache=c) is True
     doc = json.loads(c.read_text(encoding="utf-8"))
@@ -120,7 +121,7 @@ def test_refresh_routes_the_write_through_polled_json(tmp_path, monkeypatch):
             return False
 
     body = json.dumps({"1001": {"id": 1001, "name": "A", "chromas": []}}).encode()
-    monkeypatch.setattr(skins.urllib.request, "urlopen", lambda *a, **k: R(body))
+    bind_urlopen(monkeypatch, skins, lambda *a, **k: R(body))
     calls = []
     real = polled_json.atomic_write_bytes
     monkeypatch.setattr(polled_json, "atomic_write_bytes",

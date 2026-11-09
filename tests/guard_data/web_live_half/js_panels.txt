@@ -73,7 +73,7 @@ f0b07a4950435d18f5ec5542512870c024a8deb231731b26617c83c2d9b7d8cc  web/js/panels/
 
 1beefa164e0ff1ea5c0c5316b35ce179358119c83b442abadb2930d892c87208  web/js/panels/objective_chips.js
 
-1135b94b175fa73fadf5b89c233f7f5b10eee26e29a4cd5eea0a6e06e959f6dc  web/js/panels/objective_gauges.js
+61e938c2d59f03f9f55b22036dcce182efb567e4b5df704d17c96683526cf055  web/js/panels/objective_gauges.js
 
 6a837f54d40776eadb7bc1ccb8864389dbc6ec0a7a6572cbdb24f119c5183c41  web/js/panels/op_score.js
 

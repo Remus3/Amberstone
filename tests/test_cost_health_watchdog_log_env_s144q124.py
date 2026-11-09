@@ -61,7 +61,8 @@ def _snapshot(path):
 
 def test_conftest_points_the_env_at_the_suite_log_dir():
     expected = str(rc_conftest._SUITE_LOG_DIR / "cost_health_watchdog.log")
-    assert os.environ.get(_ENV) == expected, (
+    actual = os.environ.get(_ENV)
+    assert actual == expected, (
         f"tests/conftest.py must set {_ENV} at import to the suite log dir, "
         "so a watchdog copy made inside a test body cannot reach logs/")
 

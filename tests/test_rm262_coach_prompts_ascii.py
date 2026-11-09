@@ -43,9 +43,12 @@ class CoachPromptsAscii(unittest.TestCase):
 
     def test_arena_augment_framing_kept(self):
         p = arena_coach._SYSTEM_PROMPT
-        self.assertIn("dash -> Sudden Impact; CC -> Glacial Augment", p)
-        self.assertIn("AD items -> Conqueror; AP -> Luden's", p)
+        # s156 S5 (`81c26322c`) dropped the SR rune names (Sudden Impact etc.)
+        # that are not Arena augments; the framework framing itself stays.
+        self.assertIn("(e.g. a CC kit -> Glacial Augment)", p)
+        self.assertIn("(AD items -> Conqueror)", p)
         self.assertIn("=== AUGMENT SELECTION FRAMEWORK ===", p)
+        self.assertNotIn("Sudden Impact", p)
 
 
 if __name__ == "__main__":

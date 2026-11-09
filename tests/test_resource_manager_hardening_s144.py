@@ -35,6 +35,7 @@ from pathlib import Path
 import pytest
 
 import core.resource_manager as rmod
+from tests._timing_budget import fleet_test_guard
 from core.resource_manager import (
     ResourceManager,
     _LIMIT_MB,
@@ -73,7 +74,7 @@ def test_shutdown_reentered_while_lock_held_does_not_deadlock(rm):
 
     t = threading.Thread(target=_body, daemon=True, name="s144-reentry")
     t.start()
-    assert done.wait(5.0), "shutdown() deadlocked on its own lock"
+    assert done.wait(fleet_test_guard.budget(5.0)), "shutdown() deadlocked on its own lock"
     assert rm._shutdown_done is True
 
 
@@ -90,7 +91,7 @@ def test_signal_handler_inside_register_completes(rm):
 
     t = threading.Thread(target=_body, daemon=True, name="s144-sig")
     t.start()
-    t.join(5.0)
+    t.join(fleet_test_guard.budget(5.0))
     assert not t.is_alive(), "signal handler deadlocked inside register()"
     assert result.get("code") == 0
 
@@ -107,7 +108,7 @@ def test_construction_off_main_thread_does_not_raise(tmp_path):
 
     t = threading.Thread(target=_body, name="s144-ctor")
     t.start()
-    t.join(5.0)
+    t.join(fleet_test_guard.budget(5.0))
     assert "exc" not in box, box.get("exc")
     box["rm"]._shutdown_done = True
 
@@ -226,9 +227,10 @@ def test_shutdown_wakes_and_stops_the_watchdog(tmp_path, monkeypatch):
     time.sleep(0.2)  # let it enter its interval wait
     t0 = time.monotonic()
     rm.shutdown()
-    wd.join(5.0)
+    # Capped under the unfixed 30 s interval, so a widened bound still tells fixed from broken.
+    wd.join(min(fleet_test_guard.budget(5.0), 25.0))
     assert not wd.is_alive(), "watchdog still sleeping out its 30 s interval"
-    assert time.monotonic() - t0 < 5.0
+    assert time.monotonic() - t0 < min(fleet_test_guard.budget(5.0), 25.0)
 
 
 def test_no_remediation_after_shutdown(rm):

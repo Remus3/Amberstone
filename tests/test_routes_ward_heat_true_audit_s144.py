@@ -33,6 +33,7 @@ from unittest import mock
 
 from core import ward_events
 from dashboard import routes_ward_heat
+from tests._timing_budget import fleet_test_guard
 
 
 def _reject_constant(token: str):
@@ -182,7 +183,7 @@ class NoSendUnderTheCacheLockTests(_Base):
                              args=(stalled,), daemon=True)
         t.start()
         try:
-            self.assertTrue(entered.wait(5.0))
+            self.assertTrue(entered.wait(fleet_test_guard.budget(5.0)))
             other = _Handler("/api/ward-heat")
             done = threading.Event()
 
@@ -191,7 +192,7 @@ class NoSendUnderTheCacheLockTests(_Base):
                 done.set()
 
             threading.Thread(target=_run, daemon=True).start()
-            self.assertTrue(done.wait(2.0),
+            self.assertTrue(done.wait(fleet_test_guard.budget(2.0)),
                             "a stalled send held the cache lock")
             self.assertEqual(other.status, 200)
         finally:

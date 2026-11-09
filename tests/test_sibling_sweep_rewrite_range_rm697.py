@@ -45,6 +45,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 # HARD imports, deliberately: an absent gate must not read as a green run.
+from tests._module_view import bind_subprocess  # noqa: E402
 from tools import credential_history_scan as chs  # noqa: E402
 from tools import sibling_name_sweep as sweep  # noqa: E402
 
@@ -322,7 +323,7 @@ def test_a_wedged_git_reads_absent_and_unknown_never_a_hang(monkeypatch, tmp_pat
         seen.append(kw.get("timeout"))
         raise subprocess.TimeoutExpired(cmd, kw.get("timeout"))
 
-    monkeypatch.setattr(sweep.subprocess, "run", wedged)
+    bind_subprocess(monkeypatch, sweep, run=wedged)
     assert sweep._has_object(tmp_path, "a" * 40) is False
     assert sweep._is_ancestor(tmp_path, "a" * 40, "b" * 40) is None
     assert seen == [sweep._SHORT_GIT_TIMEOUT_S] * 2

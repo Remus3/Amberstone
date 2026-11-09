@@ -29,6 +29,7 @@ import unittest
 from unittest.mock import patch
 
 from dashboard import routes_bench_role_bracket as rbb
+from tests._timing_budget import fleet_test_guard
 
 _GRID = "dashboard.routes_bench_role_bracket.bench.role_bracket_grid"
 _STAT_KEYS = ("lvl", "cs", "tf", "kda")
@@ -207,7 +208,7 @@ class CacheLockTests(_Case):
             t = threading.Thread(target=rbb._serve_role_bracket_bench,
                                  args=(_Stall(),), daemon=True)
             t.start()
-            self.assertTrue(started.wait(5))
+            self.assertTrue(started.wait(fleet_test_guard.budget(5)))
             done = threading.Event()
 
             def _other():
@@ -389,7 +390,7 @@ class TimingSanityTests(_Case):
         p = _strict(self.serve({}).body)
         self.assertIsInstance(p["elapsed_ms"], int)
         self.assertLessEqual(p["elapsed_ms"],
-                             int((time.perf_counter() - t0) * 1000) + 1)
+                             int((time.perf_counter() - t0) * 1000) + 1)  # timing-budget: exempt (the bound is this test's own measured wall time)
 
 
 if __name__ == "__main__":

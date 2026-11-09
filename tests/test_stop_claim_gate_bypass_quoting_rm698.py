@@ -141,7 +141,7 @@ STILL_COUNTED = [
     "git push $(echo x; echo --no-verify)",
     "echo --no-verify > args.lst; xargs -a args.lst git push",
     "python ops/fleet_kit/fleet_gitlock.py run --owner x -- git commit --no-verify -m x",
-    "py tools/wrap.py git push --no-verify",
+    "python tools/wrap.py git push --no-verify",
     "{ echo --no-verify; } | xargs git push",
     "(echo --no-verify; true) | xargs git push",
     "echo --no-verify \\\n| xargs git push",

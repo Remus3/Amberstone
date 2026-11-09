@@ -43,7 +43,6 @@ _TEST_ONLY_BASELINE = {
     "core/pro_match_index.py": "marked unwired in its own docstring (RM-1732)",
     "core/provider_cascade.py": "marked unwired in its own docstring (RM-1732)",
     "core/replay_seek.py": "second producer of replay_analysis.Timeline; no live caller yet",
-    "core/sgp_client.py": "SGP match-history client for event modes (RM-106); no shipped caller yet",
 }
 
 

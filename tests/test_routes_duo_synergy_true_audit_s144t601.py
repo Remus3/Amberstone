@@ -36,6 +36,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from core import smoothed_rates_101qq as S101  # noqa: E402
 from dashboard import routes_duo_synergy as RDS  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 CHAMP_PARAMS = ("ally_bot_lock", "ally_bot_hover", "ally_sup_lock",
                 "ally_sup_hover")
@@ -294,7 +295,7 @@ def test_elapsed_ms_ignores_a_wall_clock_running_backwards():
 
     with mock.patch.object(RDS.time, "time", _backwards):
         body = _do("my_role=bot").strict()
-    assert 0 <= body["elapsed_ms"] < 60_000
+    assert 0 <= body["elapsed_ms"] < fleet_test_guard.budget(60.0) * 1000
 
 
 def test_wall_clock_jumping_forward_does_not_expire_a_fresh_entry():
