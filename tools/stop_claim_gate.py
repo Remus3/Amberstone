@@ -2888,6 +2888,14 @@ _GIT_FLAG_ONLY_IN = {
                      "pull", "am", "commit-tree"}),
     "-e": frozenset({"commit", "merge", "cherry-pick", "revert", "tag"}),
     "-m": frozenset({"am", "rebase"}),
+    # S144-Q-155: `-t` is `--tags` in pull (a flag), `--template <file>` in
+    # commit (a value). fetch reads `-t` / `-m` as flags too but has no
+    # hook-bypass option, so it is not listed. `-F` is a value in every
+    # subcommand that has a hook-bypass option.
+    "-t": frozenset({"pull"}),
+    # Same root: `--squash` is a flag in merge / pull, `--squash <commit>`
+    # in commit (measured `git <sub> -h`, git 2.53).
+    "--squash": frozenset({"merge", "pull"}),
     "--message": frozenset({"am"}),
     "--committer": frozenset({"am", "rebase"}),
 }

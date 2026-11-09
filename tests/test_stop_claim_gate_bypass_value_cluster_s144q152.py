@@ -90,7 +90,10 @@ NOT_COUNTED = [
     "git log -Sm '--no-verify'",
     # integer-only shorts never take a letter value: unchanged (data)
     "git rebase -Ct '--no-verify'",
-    "git pull -jt '--no-verify'",
+    # S144-Q-155: was `-jt`, but pull -t is the --tags flag, so that pin
+    # held only through the bug; the gate reads a trailing `-m` as a data
+    # slot in pull (git has no pull -m; -j takes "m" and git refuses it).
+    "git pull -jm '--no-verify'",
     "git cherry-pick -mt '--no-gpg-sign'",
     # push -u is a flag (--set-upstream): the last letter decides (data)
     "git push -ut '--no-verify'",
@@ -199,7 +202,9 @@ def test_no_target_for_a_data_slot(command, tmp_path):
     ("-ot", "pull", False),
     ("-rt", "pull", False),
     ("-rm", "pull", False),
-    ("-jt", "pull", True),
+    ("-jm", "pull", True),
+    # S144-Q-155: t is pull's --tags flag, so -jt is not a data slot
+    ("-jt", "pull", False),
     ("-ot", "push", False),
     ("-ut", "push", True),
     ("-St", "am", False),
