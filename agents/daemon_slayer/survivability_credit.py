@@ -19,6 +19,12 @@ win evidence the damage-biased hybrid sort is blind to.
 Fail-soft: a missing / unreadable / malformed table yields an empty map so the
 seam degrades to a byte-identical no-op rather than raising. The live default-ON
 flip is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
+
+Only ``champions`` is read from each of the three tables. Their ``_meta`` block
+(``ds_patch``, ``min_rewind_n``, ``scorer_lane``, ``source``, ``anchored_to``) is
+build provenance: ``ds_patch`` is the DS snapshot the builder validated ids
+against, NOT a runtime patch gate (S144-D-239,
+``tests/test_item_credit_builders_s144d236.py``).
 """
 from __future__ import annotations
 

@@ -35,6 +35,14 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[3]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from ops.audit.ds_perm_swarm.credit_table_check import (  # noqa: E402
+    committed_matches,
+    render,
+)
+
 _REPORT = _ROOT / "ops" / "audit" / "ds_perm_swarm" / "report" / "dsp10_consolidated.json"
 _REWIND = _ROOT / "data" / "rewind_history.db"
 _DS_DIR = _ROOT / "data" / "daemon_slayer"
@@ -139,13 +147,29 @@ def _report_rows() -> dict[str, dict]:
     return {r["champion"]: r for r in raw.get("worst", [])}
 
 
+def _open_rewind() -> sqlite3.Connection:
+    """Open the rewind DB READ-ONLY; never create it (S144-D-237).
+
+    A plain ``sqlite3.connect`` on the gitignored, possibly absent DB created a
+    0-byte database and then failed with a raw ``no such table``. The read-only
+    URI is the ``run_consolidate`` / ``run_harness`` shape; ``as_uri`` escapes a
+    space in the checkout path.
+    """
+    if not _REWIND.is_file():
+        raise FileNotFoundError(
+            f"rewind DB not found at {_REWIND}; this build needs the local, "
+            "gitignored rewind_history.db"
+        )
+    return sqlite3.connect(_REWIND.resolve().as_uri() + "?mode=ro", uri=True)
+
+
 def _champ_wr_all_modes(champ: str) -> tuple[float, int, dict[str, tuple[int, float]]]:
     """Current all-mode (champ) baseline WR + per-item (n, wr) from rewind_history.db.
 
     All modes (not the report's SR-anchored window) so the gate reflects how the
     item actually performs across the operator's real games right now.
     """
-    db = sqlite3.connect(str(_REWIND))
+    db = _open_rewind()
     try:
         c = db.cursor()
         base = "FROM participants p WHERE p.champion_name=?"
@@ -195,7 +219,7 @@ def _survives_fresh_gate(
 
 def _ezreal_from_rewind(items: dict) -> list[dict]:
     """Direct rewind ARAM item win-rates for Ezreal (not in the worst-40)."""
-    db = sqlite3.connect(str(_REWIND))
+    db = _open_rewind()
     try:
         c = db.cursor()
         base = (
@@ -310,16 +334,20 @@ def main() -> int:
     ap.add_argument("--check", action="store_true",
                     help="verify the committed JSON matches a fresh build")
     args = ap.parse_args()
-    built = build()
-    text = json.dumps(built, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    try:
+        built = build()
+    except (FileNotFoundError, sqlite3.Error) as exc:
+        # S144-D-237: no rewind DB (or not a rewind DB) - one line, exit 3.
+        print(f"cannot build kit_axis_item_credit.json: {exc}", file=sys.stderr)
+        return 3
     if args.check:
-        cur = _OUT.read_text(encoding="utf-8") if _OUT.exists() else ""
-        if cur != text:
+        # S144-D-236: the committed _meta.ds_patch stamp is provenance, kept.
+        if not committed_matches(_OUT, built):
             print("DRIFT: kit_axis_item_credit.json != fresh build", file=sys.stderr)
             return 2
         print("kit_axis_item_credit.json in sync")
         return 0
-    _OUT.write_bytes(text.encode("utf-8"))
+    _OUT.write_bytes(render(built).encode("utf-8"))
     n_items = sum(len(v["items"]) for v in built["champions"].values())
     print(f"wrote {_OUT} - {len(built['champions'])} champs / {n_items} items")
     for champ, v in sorted(built["champions"].items()):
