@@ -175,7 +175,7 @@ def test_probe_is_live():
 @pytest.mark.parametrize("value", [2.5, 3.5, -2.5, 0.49999, 1e15])
 def test_round_alone_is_the_same_int(value):
     """The change is behaviour-neutral: one-argument round() is already an int."""
-    assert round(value) == int(round(value))
+    assert round(value) == int(round(value))  # noqa: RUF046 - the pre-fix form is the premise under test
     assert type(round(value)) is int
 
 
@@ -183,4 +183,4 @@ def test_round_of_numpy_scalar_is_an_int():
     np = pytest.importorskip("numpy")
     for scalar in (np.float32(2.5), np.float64(7.5)):
         assert type(round(scalar)) is int
-        assert round(scalar) == int(round(scalar))
+        assert round(scalar) == int(round(scalar))  # noqa: RUF046 - the pre-fix form is the premise under test

@@ -158,7 +158,7 @@ def _http_get(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> bytes:
                 continue
             raise
     # Unreachable: the loop returns or raises on the final attempt.
-    raise last_url_err if last_url_err else RuntimeError("unreachable")
+    raise last_url_err or RuntimeError("unreachable")
 
 
 # --------------------------------------------------------------------------- meraki helpers

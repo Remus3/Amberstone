@@ -8,8 +8,9 @@ so truthiness is tested once either way and no call is repeated).
 The baseline is the findings that stay, each for a named reason:
 
 - ``app/_overlay_manager.py``: a frozen file (CLAUDE.md), not edited without operator approval.
-- ``tools/ddragon_mirror_refresh.py``, ``tools/upstream_drift_check.py``: held by another lane branch
-  at the time of this slice; the next cycle that sees them landed drops the rows.
+- (``tools/ddragon_mirror_refresh.py`` and ``tools/upstream_drift_check.py`` were held by another lane
+  branch when this ratchet landed; S144-P-508 fixed both once no lane branch touched them, and they
+  moved from this baseline to ``_FIXED``.)
 - ``tools/ds_form_index_prefilter.py`` and ``docs/_rsc_score/calibrate.py``: ruff offers no fix because the
   tested expression is a call or has a side effect, so ``or`` would not be a pure rewrite.
 - ``docs/_rescore/tally.py``, ``docs/_rsc_score/tally_ab.py``: dated analysis scripts under docs/.
@@ -52,9 +53,7 @@ _BASELINE = {
     "docs/_rescore/tally.py": 1,
     "docs/_rsc_score/calibrate.py": 1,
     "docs/_rsc_score/tally_ab.py": 2,
-    "tools/ddragon_mirror_refresh.py": 1,
     "tools/ds_form_index_prefilter.py": 1,
-    "tools/upstream_drift_check.py": 1,
 }
 _FIXED = (
     "coaches/loadout_resolver.py",
@@ -73,7 +72,9 @@ _FIXED = (
     "tft/tft_live_analysis.py",
     "tft/tft_standalone.py",
     "tools/p3_ascii_census.py",
+    "tools/ddragon_mirror_refresh.py",
     "tools/stop_claim_gate.py",
+    "tools/upstream_drift_check.py",
 )
 
 
