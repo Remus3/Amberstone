@@ -463,31 +463,36 @@ def _restore_module():
     importlib.reload(m)
 
 
-def test_poll_interval_default_is_one_second(monkeypatch, _restore_module):
+@pytest.mark.usefixtures("_restore_module")
+def test_poll_interval_default_is_one_second(monkeypatch):
     assert _reload_with(monkeypatch, None).RuneWriter.POLL_INTERVAL == 1.0
 
 
-def test_poll_interval_honours_a_sane_override(monkeypatch, _restore_module):
+@pytest.mark.usefixtures("_restore_module")
+def test_poll_interval_honours_a_sane_override(monkeypatch):
     assert _reload_with(monkeypatch, "2.5").RuneWriter.POLL_INTERVAL == 2.5
 
 
 @pytest.mark.parametrize("value", ["0", "0.0", "-1", "-0.5", "0.0001"])
-def test_poll_interval_never_spins_the_lcu(monkeypatch, _restore_module, value):
+@pytest.mark.usefixtures("_restore_module")
+def test_poll_interval_never_spins_the_lcu(monkeypatch, value):
     """Zero, negative and absurdly small values must not produce a hot loop."""
     m = _reload_with(monkeypatch, value)
     assert m.RuneWriter.POLL_INTERVAL >= m._MIN_POLL_INTERVAL > 0
 
 
 @pytest.mark.parametrize("value", ["abc", "", "1.0.0", "nan-ish", "1,0"])
+@pytest.mark.usefixtures("_restore_module")
 def test_poll_interval_bad_value_does_not_break_module_import(
-        monkeypatch, _restore_module, value):
+        monkeypatch, value):
     """An unparseable value must fall back, not raise at import - the import
     failure took four other modules down with it."""
     m = _reload_with(monkeypatch, value)
     assert m.RuneWriter.POLL_INTERVAL == 1.0
 
 
-def test_poll_interval_rejects_nan_and_inf(monkeypatch, _restore_module):
+@pytest.mark.usefixtures("_restore_module")
+def test_poll_interval_rejects_nan_and_inf(monkeypatch):
     """float() accepts 'nan' and 'inf'. nan fails every comparison, so a naive
     floor check lets it through; inf would wedge the loop until process exit."""
     assert _reload_with(monkeypatch, "nan").RuneWriter.POLL_INTERVAL == 1.0

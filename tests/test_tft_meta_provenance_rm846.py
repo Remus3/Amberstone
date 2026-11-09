@@ -337,7 +337,8 @@ def test_a_removed_set_degrades_to_empty_never_to_another_set():
     assert tft_set.load_meta(16, pbe=True, root=REPO_ROOT) == {}
 
 
-def test_coach_engine_on_set17_skeleton_degrades_quietly(monkeypatch, _no_live_set_or_pin):
+@pytest.mark.usefixtures("_no_live_set_or_pin")
+def test_coach_engine_on_set17_skeleton_degrades_quietly(monkeypatch):
     from tft import tft_coach_engine as eng
 
     monkeypatch.setattr(eng, "_META_SECTION_CACHE", {})

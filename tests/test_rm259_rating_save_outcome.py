@@ -46,7 +46,8 @@ def _no_side_effects(monkeypatch):
     monkeypatch.setitem(sys.modules, "coaches.experimental_builder", fake_eb)
 
 
-def test_save_rating_reports_written(tmp_path, _no_side_effects):
+@pytest.mark.usefixtures("_no_side_effects")
+def test_save_rating_reports_written(tmp_path):
     rep = {}
     g, n = pt.save_rating(str(tmp_path), "Ahri", _valid_sr_state(), 15, report=rep)
     assert g
@@ -54,7 +55,8 @@ def test_save_rating_reports_written(tmp_path, _no_side_effects):
     assert rep == {"rated": True, "file_written": True, "db_written": False}
 
 
-def test_save_rating_reports_failed_write(tmp_path, monkeypatch, _no_side_effects):
+@pytest.mark.usefixtures("_no_side_effects")
+def test_save_rating_reports_failed_write(tmp_path, monkeypatch):
     def _boom(*a, **k):
         raise OSError("disk full")
     monkeypatch.setattr(pt, "_atomic_write_json", _boom)
@@ -81,7 +83,8 @@ class _FakeDb:
 
 @pytest.mark.parametrize("outcome,landed", [
     (True, True), (False, False), (RuntimeError("db locked"), False)])
-def test_rm904_save_rating_reports_the_db_write(tmp_path, monkeypatch, _no_side_effects,
+@pytest.mark.usefixtures("_no_side_effects")
+def test_rm904_save_rating_reports_the_db_write(tmp_path, monkeypatch,
                                                outcome, landed):
     """RM-904 SIBLING: save_rating dropped MatchDB.save_match's bool, so a
     lost row was indistinguishable from a saved one to its caller."""
@@ -93,7 +96,8 @@ def test_rm904_save_rating_reports_the_db_write(tmp_path, monkeypatch, _no_side_
     assert rep == {"rated": True, "file_written": True, "db_written": landed}
 
 
-def test_save_rating_reports_unrated(tmp_path, _no_side_effects):
+@pytest.mark.usefixtures("_no_side_effects")
+def test_save_rating_reports_unrated(tmp_path):
     rep = {}
     st = _valid_sr_state()
     st["game_seconds"] = 60  # below the 180 s validity floor
@@ -101,7 +105,8 @@ def test_save_rating_reports_unrated(tmp_path, _no_side_effects):
     assert rep == {"rated": False, "file_written": False}
 
 
-def test_save_rating_positional_contract_unchanged(tmp_path, _no_side_effects):
+@pytest.mark.usefixtures("_no_side_effects")
+def test_save_rating_positional_contract_unchanged(tmp_path):
     g, n = pt.save_rating(str(tmp_path), "Ahri", _valid_sr_state(), 15)
     assert g and isinstance(n, list)
 
