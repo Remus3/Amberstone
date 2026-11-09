@@ -27,13 +27,14 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 try:  # imported as tools.<mod> (tests) or run as a script from tools/
     from tools._perseus_rpc import read_json_reply
 except ImportError:  # pragma: no cover - script invocation
     from _perseus_rpc import read_json_reply
 
-PERSEUS_HOME = os.path.join(os.path.expanduser("~"), ".perseus-vault")
+PERSEUS_HOME = str(Path.home() / ".perseus-vault")
 PV = os.path.join(PERSEUS_HOME, "bin", "perseus-vault.exe")
 DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
 

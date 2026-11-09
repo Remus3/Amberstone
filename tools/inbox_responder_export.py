@@ -143,7 +143,7 @@ def ensure_export(repo_root, state_root, *, ref: str = "origin/main", runner, ti
         tmp_dir.mkdir(parents=True)
         with tarfile.open(fileobj=io.BytesIO(res.stdout), mode="r:") as tar:
             tar.extractall(tmp_dir, filter="data")
-        os.rename(tmp_dir, final)
+        tmp_dir.rename(final)
     except OSError as exc:
         # A sibling cycle finished the same sha first. Its rename was atomic,
         # so `final` is complete; drop our copy and use theirs.
