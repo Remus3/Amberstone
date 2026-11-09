@@ -516,7 +516,10 @@ def test_settings_reads_are_settled(mock_server, pw_browser):
         page.keyboard.press("Tab")  # keyboard modality, as both tests do
         _check(page, "#panel-visibility-card .pv-tab", True, "pv tabs")
         n = _check(page, "#view-settings input[type=checkbox]", True, "checkboxes")
-        assert n >= 20, f"only {n} settings checkboxes"
+        # Anchor against an empty read. S144-U-263 cut the PANEL VISIBILITY
+        # card to the eight panels a view can show, which left the view
+        # with 18 checkboxes; the old ">= 20" predated that cut.
+        assert n >= 18, f"only {n} settings checkboxes"
     finally:
         _close(ctx, page)
 
