@@ -5,13 +5,19 @@ Bloodmail (SR 2501 / Arena 447111) "Retribution" grants bonus attack damage equa
 to 0-12% of the wielder's total AD "from other sources", ramping linearly as the
 wielder's missing HP goes 0 -> 70% (Meraki 16.13.1 items.2501). It was flagged
 "not modeled" / "deferred" in _effects_data. R111 adds
-``ItemEffect.missing_hp_ad_amp_max_pct`` (0.12 on SR 2501, 0.175 on Arena 447111)
+``ItemEffect.missing_hp_ad_amp_max_pct`` (0.12 on SR 2501 then, 0.10 from 16.22.1;
+0.175 on Arena 447111)
 and folds it into ``compute_dps`` + ``compute_burst_damage`` behind a default-OFF
 ``assume_caster_lowhp`` kwarg. The consumer assumes a conservative caster
 missing-HP midpoint (``_ASSUMED_CASTER_MISSING_HP`` = 0.35 of the
 ``_RETRIBUTION_CAP_MISSING_HP`` = 0.70 ramp -> realizes half the max amp). Default
 OFF -> every existing item + caller byte-identical; the amp realizes only at an
 explicit assume_caster_lowhp=True on a build carrying the item.
+
+16.22.1 (RM-1338): Riot cut SR Retribution to "up to 10%" (DDragon prose). Meraki
+is frozen at 25.15 and still reads 0-12, so the SR pin follows live DDragon
+(RM-808); the vendored 16.13.1 Meraki text below stays as the provenance of the
+0.70 ramp and the "from other sources" scope only.
 """
 from __future__ import annotations
 
@@ -38,7 +44,7 @@ _MERAKI_PATH = _REPO_ROOT / "data" / "daemon_slayer" / _PATCH / "items_meraki.js
 _BLOODMAIL_SR = "2501"
 _BLOODMAIL_ARENA = "447111"
 _BLOODMAIL_ARAM = "322501"  # NOT registered (grep-confirmed) - guard its absence
-_SR_MAX_PCT = 0.12
+_SR_MAX_PCT = 0.10  # DDragon 16.22.1 "up to 10%" (was 0.12 through 16.21.1)
 _ARENA_MAX_PCT = 0.175
 # Realized share of the max amp at the assumed midpoint: 0.35 / 0.70 = 0.5.
 _REALIZED = 0.5
@@ -74,7 +80,7 @@ class SchemaField(unittest.TestCase):
 
 
 class MerakiTruth(unittest.TestCase):
-    """Registry pins derive from the vendored Meraki 16.13.1 'Retribution' text;
+    """The ramp + scope pins derive from the vendored Meraki 16.13.1 'Retribution' text;
     a patch changing the numbers fails HERE instead of silently drifting."""
 
     @classmethod
@@ -88,8 +94,10 @@ class MerakiTruth(unittest.TestCase):
         cls.text = entry["effects"]
 
     def test_source_numbers(self) -> None:
-        # 0 to 12(%) amp, ramping over 0 to 70(%) MISSING health -> the two
-        # numbers behind the 0.12 field + the 0.70 cap constant.
+        # 0 to 12(%) amp, ramping over 0 to 70(%) MISSING health -> the
+        # original R111 source of the field (12% through 16.21.1; the 16.22.1
+        # 10% cut is pinned against DDragon in test_patch_16_22_1_rm1338.py)
+        # + the 0.70 cap constant.
         self.assertIn("0 to 12", self.text)
         self.assertIn("0 to 70", self.text)
         self.assertIn("missing", self.text)
@@ -112,7 +120,7 @@ class Helper(unittest.TestCase):
         )
 
     def test_on_magnitude(self) -> None:
-        # 0.12 max * (0.35 / 0.70) realized * 200 total AD = 0.06 * 200 = 12.0.
+        # 0.10 max * (0.35 / 0.70) realized * 200 total AD = 0.05 * 200 = 10.0.
         self.assertAlmostEqual(
             total_missing_hp_bonus_ad(
                 [_BLOODMAIL_SR], 200.0, assume_caster_lowhp=True
@@ -123,7 +131,7 @@ class Helper(unittest.TestCase):
             total_missing_hp_bonus_ad(
                 [_BLOODMAIL_SR], 200.0, assume_caster_lowhp=True
             ),
-            12.0,
+            10.0,
         )
 
     def test_arena_variant_magnitude(self) -> None:
@@ -216,7 +224,7 @@ class ComputeBurstSeam(unittest.TestCase):
 
 class EngineVersionPin(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.290.0")
+        self.assertEqual(ENGINE_VERSION, "1.291.0")
 
 
 if __name__ == "__main__":

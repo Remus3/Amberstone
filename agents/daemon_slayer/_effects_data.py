@@ -1952,11 +1952,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="2501",
         name="Overlord's Bloodmail",
         bonus_ad_pct_bonus_hp=0.025,
-        missing_hp_ad_amp_max_pct=0.12,
+        # 16.22.1 (RM-1338): DDragon prose "up to 10%" (was 12%); Meraki is frozen
+        # at 25.15 and still reads 12, so live DDragon wins (RM-808).
+        missing_hp_ad_amp_max_pct=0.10,
         note=(
             "Overlord's Bloodmail: Tyranny 2.5% bonus HP as bonus AD "
             "(engine resolves at stat-build time via item_totals[hp_flat]). "
-            "Retribution missing-HP-scaled AD (0-12% of total AD, ramping to 70% "
+            "Retribution missing-HP-scaled AD (0-10% of total AD, ramping to 70% "
             "missing HP) modeled behind the R111 assume_caster_lowhp offense seam"
         ),
     ),
@@ -5853,7 +5855,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "1083": ItemEffect(item_id="1083", name="Cull",
         note="Cull (1083): 7 AD; Reap 3 HP on-hit (sustain, not DPS proc)"),
     "1086": ItemEffect(item_id="1086", name="Doran's Bow",
-        note="Doran's Bow (1086): 12 AD + AS - no DPS proc"),
+        note="Doran's Bow (1086): 7 AD + 15% AS + 1.5% omnivamp (16.22.1) - no DPS proc"),
 
     # --- defensive_only components ---
     "1001": ItemEffect(item_id="1001", name="Boots",

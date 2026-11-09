@@ -71,7 +71,26 @@ _STRIP = frozenset(_WALL_CLOCK + _PROSE + _STAMP)
 # its dir (tests/test_cherry_augments_patch_stamp.py), and 16.18.1 was
 # refetched. The 16.10.1 .. 16.15.1 copies still declare 16.10.1; that is
 # historical-dir lag, which this list does not track.
-KNOWN_STAMP_LAG: dict[str, str] = {}
+#
+# Re-added 2026-11-08 for the 16.21.1 -> 16.22.1 pair (RM-1338, s156), by a
+# distinct adjudicator's call (C+): ability_staleness.json is a CONSENT-BLOCKED
+# copy-forward, not an upstream fact. Its generator
+# (tools/ds_wiki_staleness_check.py --full --write) fetches the wiki, which
+# RM-1227 (ruling 51) refuses without a consent record, so it could not be
+# regenerated. Restamping its _patch with no run behind it is the founding
+# defect class (see KNOWN_STATIC_BODY's note), and dropping it would clear the
+# RM-81 stale flag for every champion (core/daemon_slayer_client.py
+# _champion_is_stale fails soft to "not stale" on an absent report), so it is
+# carried with its TRUE vintage: _patch 16.21.1, _generated_at 2026-10-23.
+# Reverses if: a wiki consent record lands - then regenerate with
+# ds_wiki_staleness_check.py --full --write, restamp to the live patch and
+# drop this row and its KNOWN_STATIC_BODY row.
+KNOWN_STAMP_LAG: dict[str, str] = {
+    "ability_staleness.json": (
+        "declares _patch 16.21.1 in the 16.22.1 dir: wiki consent absent "
+        "(RM-1227), carried forward unregenerated, regen pending"
+    ),
+}
 # mayhem_augment_stats.json was dropped 2026-09-07: the six snapshots were
 # untracked and purged from history ahead of the public flip (a vendor's dataset
 # this repo has no right to redistribute - the Share package's own licence had
@@ -181,7 +200,26 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     # pending-vintage remedy stays exercised by _HISTORICAL_STATIC_BODY in
     # tests/test_ds_feed_index.py. enchanter_items.json and wiki_stats.json are
     # untouched by that refresh and stay.
+    #
+    # Re-measured 2026-11-08 for the 16.21.1 -> 16.22.1 pair (RM-1338, s156;
+    # rows per a distinct adjudicator's call). FRESH runs that returned
+    # identical bytes: scenarios.json (daemon_slayer_extract, scenarios 173,
+    # chunks re-discovered by content after lolmath renamed them; the
+    # --lolmath-only re-run also matched) and cdragon_spell_stats.json
+    # (cdragon=16.22, 171 champs, errors 0). CONSENT-BLOCKED copy-forwards
+    # (RM-1227: no wiki request without a consent record), NOT fresh runs:
+    # wiki_stats.json and wiki_ability_stats.json (restamped per the sanctioned
+    # wiki ritual; neither generator stamps a vintage) and ability_staleness.json
+    # (kept at its true 16.21.1 vintage and listed in KNOWN_STAMP_LAG above;
+    # "upstream-static" is the only kind whose hygiene test fits a generator
+    # that DOES stamp _generated_at - here the frozen vintage is a consent
+    # block, not an upstream fact). enchanter_items.json stays: restamped
+    # only - DDragon 16.22.1 changed 1086 and 2501, neither one of its 34 rows.
+    "ability_staleness.json": ("upstream-static", "none"),
+    "cdragon_spell_stats.json": ("pending-vintage", "tools/daemon_slayer_cdragon_spell_extract.py"),
     "enchanter_items.json": ("authored", "none"),
+    "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
+    "wiki_ability_stats.json": ("pending-vintage", "tools/daemon_slayer_wiki_ability_extract.py"),
     "wiki_stats.json": ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
 }
 

@@ -21,7 +21,7 @@ c73a49612054f9299d45523e5605519d9e3d8ecfb42dad1e893f354d9473e06e  web/js/lib/ite
 
 6c24c0c0b723ee8572132ec95dfa67b8379cdfbdaf0e2df6a41df6d97fbfc6d1  web/js/lib/item_value.js
 
-c0f602f295208d9144e3e2863b2893bd9ceac75c48c590f4afab67818fe503b4  web/js/lib/items_index.js
+1267189fcc344a40201c5a74d6336191fd8ab3bf3128627d57a0ffa574bce8ad  web/js/lib/items_index.js
 
 bb22e7bbc4f32eac2405229a868ae3c5e5e85757799f3cbca58c9a4808b43246  web/js/lib/live_directive_gate.js
 
