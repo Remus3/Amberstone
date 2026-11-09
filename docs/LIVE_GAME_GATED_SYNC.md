@@ -1988,6 +1988,81 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   DISPOSITION NOTES from RM-05: build META row should stay STATIC; DMG/SURV/UTIL knob steppers dead;
   item right-click 5-choice radial dead; ward_cue teardown is a deliberate live-session job (live
   serializer + test + overlay DOM contract), never a blind headless delete.
+  **AGE CHECK (lane 9 PREP s144 c130, S144-G-117, source read at `8d7fe9b27`, 2026-11-09; NOT a
+  tick, no game involved).** The punch-list's primary source is the 2026-07-05 LIVE-RECON PUNCH-LIST
+  in `docs/ROADMAP_HISTORY.md` (operator eyeball of the real overlay in a practice SR game); the
+  RM-05 entry there (2026-07-17) is a later status write-up that restates it and names the tooltip
+  sub-item more narrowly than this row: "context-menu/radial tooltip cropped icon + far positioning
+  (plain hover tooltip is fine)". **"dead" in the disposition notes means "does not work", not
+  "remove":** the 07-05 recon files all three under BUGS - "build META row should stay STATIC (the
+  meta build does not shift per state tick); the DMG/SURV/UTIL knob +/- steppers do not work; the
+  item right-click 5-choice radial ... does not work". Eight subjects, re-measured one by one:
+  (1) build-META row STATIC - OWED A LIVE CHECK (CHECK M). Code read only: in
+  `web/js/panels/active_match.js` the Meta / Ultimate rows get `noDelta: true` and no `onOverride`
+  (no radial, no delta badge) and the `_cycleMeta` handler is gone from that file (stale comments in
+  `web/js/lib/overlay_item_radial.js` still name it). But the Meta row's CONTENT is
+  `_maybeRefreshBuildOrder` (POST `/api/build-order`), re-fetched whenever level or owned items change
+  and at least every `_BUILD_ORDER_COOLDOWN_MS` (8 s), and both static rows go through
+  `_bmPartitionOwned` (owned first). Whether it "does not shift per state tick" is not settled by
+  reading the code.
+  (2) DMG/SURV/UTIL knob steppers "do not work" - STILL SHIP, OWED A LIVE CHECK (CHECK S), and the
+  last live report after a fix is a FAILURE: `74416df5a` (2026-07-06, "dead DMG/SURV/UTIL counters:
+  the shaper strip now carries data-rc-zone") came the day after the recon, but LEDGER 859
+  (2026-07-11) re-reports "DMG/SURV/UTIL +/- + shaper knobs have no visible effect (root-cause)", and
+  LEDGER 860's panel-interactable map does not list them. `active_match.js` still appends the
+  `bm-shaper` row via `renderShaperStrip` (`web/js/panels/ds_shaper.js` sets `data-rc-zone`), and no
+  `body[data-shell="overlay"]` rule hides `.bm-shaper` (`web/css/overlay.css` hides only the FIGHT
+  MODEL `.bm-row.bm-knobs`). No later commit is named here as the fix for "no visible effect".
+  (3) item right-click radial "does not work" - STILL SHIPS, owed a live check under G2-31 (D2 / D3).
+  No click-zone fix was needed: that wiring PREDATES the recon (the LIVE strip and the ring were both
+  made `data-rc-zone` in `0a7ea058f`, 2026-06-29; `74416df5a` only carried the attribute into the
+  3-row redesign). Two radial fixes shipped after the recon: `320126f2d` (2026-07-11, LEDGER 860,
+  MUTE drops the item from LIVE rows + condensed ring) and `eccb6be29` (2026-07-12, LEDGER 870, the
+  center-wedge overlap, after the operator live-QA'd the overlay from screenshots). LEDGER 870
+  implies the ring OPENED live by then (an inference from the record, not new evidence); whether a
+  wedge click lands is G2-31 D2, and the likely remaining live defect is the position, sub-item (5). This REFUTES the premise of G2-31's "OPERATOR CALL FIRST" (it read
+  "dead" as a remove ruling); see the note added there.
+  (4) drag/move system - owned by G2-32 (AGE CHECK + READY, with `tools/gated_g232_layout_diff.py`).
+  (5) context-menu/radial "cropped icon + far positioning" - ROOT CAUSE ON DISK (Class 1), a code fix
+  owed before any live check is worth running: `overlay_item_radial.js` `_open` copies the body zoom
+  onto the ring (`r.style.zoom = String(_bodyZoom())`, ring mounted on `<html>`, `position:fixed`),
+  measures it post-zoom, clamps in SCREEN px, then writes `style.left/top` WITHOUT dividing by the
+  zoom. `web/js/lib/overlay_tooltip.js` `_place` has the identical mount and zoom, and divides by z
+  for exactly this symptom ("tooltip appeared far right/below the anchor at any overlay ovscale !=
+  1", fix `9f96ff3de`, 2026-06-29) - which is why "plain hover tooltip is fine" and the radial is not.
+  At body zoom z the ring renders z-times right/down of the cursor (far positioning) and past the
+  clamp near the right/bottom edge (cropped). At z = 1 (`--rc-overlay-scale` at the 1920 baseline,
+  `overlay.css` `body[data-shell="overlay"]` `zoom`) the defect is invisible.
+  (6) PR enemy-spell chip cooldown timer - DEAD (above, RM-1511).
+  (7) objective gauges 1-line layout - CLOSED, RULED HORIZONTAL 2026-07-20 (G2-34, struck).
+  (8) ward_cue teardown - the widget went 2026-07-05 (`d0ca9945`, recon-confirmed gone) and the
+  orphan `web/js/panels/ward_cue.js` headless in `8c9560951` (2026-07-09); the "live-session job"
+  wording is the 2026-07-12 correction in the same ROADMAP_HISTORY block. What remains reads by no client:
+  `dashboard/_liveclient.py` still sets `out["ward_cue"] = compute_ward_cue(...)` and
+  `web/index.html` keeps a `hidden` `#am-ward-cue` div that no script fills (git grep over `*.py`,
+  `*.js`, `*.mjs` outside `core/ward_cue.py`, `tests/` and `docs/` finds no reader). A
+  `Not actually live-gated` CANDIDATE for a HUMAN to move (a field nothing reads needs no game to
+  delete); a lane does not move it.
+  READY, the live-checkable rest (one overlay-up pass, operator present; a lane never clicks or
+  captures). Precondition: a live SR or ARAM game, rc-shell overlay up, `w-build` visible.
+  P1 `curl -sk https://127.0.0.1:8888/api/state` -> `mode_key`, `liveclient.gameData.gameTime`,
+  fetch time. P2 in the overlay page console: `getComputedStyle(document.body).zoom` (record z).
+  CHECK R (sub-item 5, only after the zoom fix lands): with z != 1,
+  right-click a LIVE-row icon near the widget's right edge; PASS iff `#rc-item-radial`'s
+  `getBoundingClientRect()` centre is within 12 px of the click point (or clamped 6 px inside the
+  viewport) and the whole ring is inside `innerWidth` x `innerHeight`; FAIL = ring offset by about
+  (z - 1) x the click coordinates, or clipped. With z = 1 record "not reproducible at z = 1"; that is
+  neither a pass nor a fail. CHECK M (sub-item 1): watch the Meta Build row for at least 30 s (three
+  refetch windows) with no level-up and no purchase; PASS iff its item order is identical at every
+  sighting; FAIL = the order changes while neither level nor owned items changed. After a purchase the
+  only allowed change is the bought item moving to the owned-first block. CHECK S (sub-item 2): click `+` on DMG; PASS iff the
+  `.bm-shaper-val` for DMG steps by 1 within about 1 s and the game did not take the click (no
+  move order); FAIL = no step, or the click went through to the game. EVIDENCE CONTRACT: P1 body with
+  fetch time, mode, game_time, z, and per check the click point, the ring rect or the value before /
+  after, and the sighting time. SUBSTITUTION: `tests/test_overlay_d2_item_radial.py` is grep-style
+  (it asserts the word `zoom` appears, not the arithmetic), and `ds_shaper.test.mjs` drives a DOM
+  shim; neither saw the click-through overlay, so neither answers whether the ring LANDED under the
+  cursor or the step LANDED in game. Nothing ticked; no count moved.
 
 ### `[BATCH OVERLAY-INTERACT]` - overlay up, one pass of click / drag / hover
 
@@ -2016,6 +2091,13 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   stands or falls with it. Live-verifying D2 / D3 would grade a surface the operator ruled dead. The
   operator picks: remove the radial (then D2 + D3 strike as a human edit) or keep it (then the checks
   below stand).
+  **CORRECTION (lane 9 PREP s144 c130, S144-G-117, 2026-11-09): the premise above is refuted.** The
+  primary source, the 2026-07-05 LIVE-RECON PUNCH-LIST in `docs/ROADMAP_HISTORY.md`, files the radial
+  under BUGS ("the item right-click 5-choice radial ... does not work"); RM-05's "dead" restates that
+  bug, it is not a remove ruling; no operator ruling to remove the radial was found, and LEDGER 870
+  (2026-07-12) shows the radial kept and fixed after an operator live QA (center-wedge overlap).
+  D2 / D3 are owed a live check, not an operator call; run CHECK D2/D3 below, after the radial zoom
+  fix named in G2-30 sub-item (5).
   (D3 Defer-Once re-entry) CANNOT PASS TODAY, by construction (Class 1, the answer is on disk): the
   client `deferItem` only sets `deferred` and `applyItemOverrides` sinks it with a fixed bias, with no
   owned-count baseline (`item_overrides.js`); the server route builds a fresh `ReplanLoop()` per
