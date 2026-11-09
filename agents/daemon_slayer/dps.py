@@ -899,6 +899,16 @@ def compute_dps(
     # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
     # through a non-ARAM multiplier path.
     mode = canonical_mode(mode)
+    # S144-D-157: the same contract compute_burst_damage and
+    # compute_ability_dps enforce. Unchecked, a negative fraction credited
+    # NEGATIVE %-current-HP proc damage and a fraction above 1.0 credited more
+    # than the target's whole current HP, through rank_items (/rank) and
+    # rank_items_by_hybrid (/rank-bruiser), which both call this first. NaN
+    # fails the chained comparison, so it is refused too.
+    if not 0.0 <= target_current_hp_pct <= 1.0:
+        raise ValueError(
+            f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
+        )
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
     if selected_phase not in PHASES:
