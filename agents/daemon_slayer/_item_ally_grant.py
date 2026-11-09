@@ -180,8 +180,14 @@ def ally_grant_hp(
     A level ``int()`` cannot convert (NaN, +-inf, None, garbage) -> 0.0; an
     unusable ``ap`` reads as 0.0 AP; a non-finite total -> 0.0 (S144-D-109).
     The level clamp itself is the formula's and is untouched (RM-848 family).
+    An ``item_id`` whose ``str()`` raises (an int past
+    ``sys.get_int_max_str_digits()``, a hostile ``__str__``) is unknown -> 0.0
+    (S144-D-131).
     """
-    iid = str(item_id or "")
+    try:
+        iid = str(item_id or "")
+    except Exception:  # noqa: BLE001 - documented never-raises contract
+        return 0.0
     if not iid or iid in _ALLY_GRANT_EXCLUDED_ITEM_IDS:
         return 0.0
     iid = _ALLY_GRANT_MIRROR_SOURCE.get(iid, iid)
@@ -221,8 +227,33 @@ def total_item_ally_grant_hp(
 
     Returns 0.0 on an empty / None inventory. The seam caller gates on
     ``score_by == "team_blended"`` so a 0.0 return is byte-identical.
+
+    Fail-soft on the inventory shape (S144-D-132): a bare ``str`` / ``int`` id
+    is ONE item (a bare ``"3107"`` was read character by character and lost
+    its grant); any other non-iterable, or an iterable that raises while
+    being read, -> 0.0; an entry whose ``str()`` raises is dropped and the
+    rest still count.
     """
-    ids = [str(i) for i in (item_ids or []) if i is not None and str(i)]
+    if item_ids is None:
+        return 0.0
+    if isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
+    try:
+        raw = list(item_ids)
+    except Exception:  # noqa: BLE001 - caller iterables are untrusted
+        return 0.0
+    ids: list[str] = []
+    for i in raw:
+        if i is None:
+            continue
+        try:
+            s = str(i)
+        except Exception:  # noqa: BLE001 - drop the entry, keep the rest
+            continue
+        if s:
+            ids.append(s)
     if not ids:
         return 0.0
     return sum(ally_grant_hp(iid, level, ap, patch) for iid in ids)

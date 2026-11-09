@@ -357,7 +357,11 @@ def ally_resist_grant(
     ally_armor = ally_mr = 0.0
     if not apply_ally_grant:
         return ally_armor, ally_mr
-    cid = str(champion_id)
+    # S144-D-133: a non-string champion matches no granter; ``str()`` of an
+    # int past the digit limit or a hostile ``__str__`` raised here.
+    if not isinstance(champion_id, str):
+        return ally_armor, ally_mr
+    cid = champion_id
     lvl = int(level)
     g_bonus_armor = max(0.0, float(granter_total_armor) - float(granter_base_armor))
     g_bonus_mr = max(0.0, float(granter_total_mr) - float(granter_base_mr))
@@ -419,7 +423,10 @@ def ally_revive_multiplier(
     """
     if not apply_ally_grant:
         return 1.0
-    cid = str(champion_id)
+    # S144-D-133: a non-string champion matches no granter (see above).
+    if not isinstance(champion_id, str):
+        return 1.0
+    cid = champion_id
     lvl = int(level)
     extra = 0.0
     for (entry_cid, _key, _form), entry in _PASSIVE_ALLY_GRANT_OVERRIDES.items():
@@ -455,7 +462,10 @@ def ally_flat_hp_grant(
     """
     if not apply_ally_grant:
         return 0.0
-    cid = str(champion_id)
+    # S144-D-133: a non-string champion is unknown -> 0.0 (see above).
+    if not isinstance(champion_id, str):
+        return 0.0
+    cid = champion_id
     if not cid:
         return 0.0
     lvl = int(level)

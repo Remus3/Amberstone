@@ -135,8 +135,14 @@ def _norm_key(champion: object) -> str:
     additionally absorbs a DISPLAY name (``"Tahm Kench"`` / ``"K'Sante"``) so a
     caller that hands over a live-game name cannot silently miss - the
     name-vs-id split that has bitten the Live Client readers before.
+
+    A non-string champion reads as blank (S144-D-130): ``str()`` of a list
+    ``["Janna"]`` folded to ``janna`` and matched, and ``str()`` of an int past
+    ``sys.get_int_max_str_digits()`` or a hostile ``__str__`` raised.
     """
-    return "".join(c for c in str(champion or "") if c.isalnum()).lower()
+    if not isinstance(champion, str):
+        return ""
+    return "".join(c for c in champion if c.isalnum()).lower()
 
 
 @lru_cache(maxsize=1)
@@ -196,9 +202,13 @@ def champion_ally_reach(champion: object, patch: Optional[str] = None) -> bool:
     """Return True when the champion's kit confers something on teammates.
 
     Fail-soft: blank / unknown champion, missing file or malformed data -> False,
-    which keeps the ``team_blended`` seam inert. Never raises.
+    which keeps the ``team_blended`` seam inert. Never raises: a non-string
+    ``patch`` (an unhashable list / dict / set raised TypeError at the cache
+    key) names no patch and reads False (S144-D-130).
     """
     key = _norm_key(champion)
     if not key:
+        return False
+    if patch is not None and not isinstance(patch, str):
         return False
     return key in _ally_reach_index(patch)
