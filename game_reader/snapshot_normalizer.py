@@ -26,13 +26,20 @@ from .poller import LIVE_API
 
 _log = logging.getLogger("game_reader.snapshot_normalizer")
 
-# Objective respawn timers (seconds)
-DRAGON_RESPAWN = 300
-BARON_RESPAWN = 360
-FIRST_DRAGON = 300       # 5:00
-FIRST_RIFT_HERALD = 480  # 8:00
-FIRST_BARON = 1200       # 20:00
-FIRST_ATAKHAN = 1200     # 20:00
+# Objective timers (seconds): ONE cited source, core/sr_schedule.py (s156 S5).
+# This block used to hold a private copy that disagreed with core/event_callouts
+# (Herald 8:00 here vs 14:00 there; Baron == Atakhan == 20:00). Both now read
+# the schedule. Atakhan was removed from the game in patch 26.1, so
+# FIRST_ATAKHAN is None (kept only because game_reader re-exports the name).
+from core import sr_schedule as _sched  # noqa: E402
+
+DRAGON_RESPAWN = _sched.DRAGON_RESPAWN_S
+BARON_RESPAWN = _sched.BARON_RESPAWN_S
+FIRST_DRAGON = _sched.DRAGON_FIRST_S       # 5:00
+FIRST_VOIDGRUBS = _sched.VOIDGRUBS_FIRST_S  # 8:00, spawns once
+FIRST_RIFT_HERALD = _sched.HERALD_FIRST_S  # 15:00
+FIRST_BARON = _sched.BARON_FIRST_S         # 20:00
+FIRST_ATAKHAN = _sched.ATAKHAN_FIRST_S     # None: removed in 26.1
 
 # RM-236(a): tier-3 boots (lowercased DDragon display names). Each is a leaf of
 # the Boots (1001) recipe tree at depth >= 2, reachable only through the lane

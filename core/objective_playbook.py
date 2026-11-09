@@ -3,8 +3,8 @@
 
 PURPOSE
     docs/_archive/2026-07-28-research-consolidation/RC2_COACHING_SPEC.md Workstream 3. RC already has the objective
-    SCHEDULE (``core.event_callouts.next_callouts`` - drake 5:00, herald 14:00,
-    baron 20:00, elder) and the macro lead read (``core.lead_projection.
+    SCHEDULE (``core.event_callouts.next_callouts``, from core/sr_schedule.py -
+    drake 5:00, voidgrubs 8:00, herald 15:00, baron 20:00, elder) and the macro lead read (``core.lead_projection.
     project_lead`` - ahead / even / behind). The GAP is the deterministic
     playbook that JOINS them into one directive: "given (objective spawning in T)
     x (you are ahead/even/behind) x phase, here is the setup + the fight/concede
@@ -29,9 +29,10 @@ from __future__ import annotations
 
 from typing import Optional
 
-# The neutral objectives this playbook coaches. ``plates`` (a gold/shove event,
-# no fight/concede decision) and every spike/recall/inhib row are deliberately
-# excluded - they have no (setup, fight rule) entry.
+# The neutral objectives this playbook coaches. ``grubs`` (no fight/concede
+# call yet - a spawn-once camp) and every spike/recall/inhib row are
+# deliberately excluded - they have no (setup, fight rule) entry. Plates have no
+# schedule row (permanent since 26.1) and Atakhan was removed in 26.1.
 _PLAYBOOK_OBJECTIVES: tuple[str, ...] = ("dragon", "baron", "herald", "elder")
 
 # Short display titles (the objective row above uses "Drake ..."; the playbook
@@ -84,7 +85,7 @@ OBJECTIVE_PLAYBOOK: dict[tuple[str, str], str] = {
 # soul-stakes (group-five territory). These escalations are consulted FIRST when
 # phase == "late" and fall back to OBJECTIVE_PLAYBOOK when absent. Only baron +
 # dragon escalate: elder is ALREADY a closing call (its base "*" line stands) and
-# herald is gone by late (one-shot 14:00), so neither earns a late entry - a late
+# herald is gone by late (one-shot 15:00, no respawn), so neither earns a late entry - a late
 # herald lookup correctly falls back to its base line. Same conventions: <= 12
 # words, ASCII, " - " clause break.
 LATE_OBJECTIVE_PLAYBOOK: dict[tuple[str, str], str] = {

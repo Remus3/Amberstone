@@ -5,7 +5,7 @@
 // Chromium harness (tests/snapshot_panels/test_objective_gauges_view.py);
 // these pin the schedule mirror of core/event_callouts.py (drake soul
 // suppression, kill-anchored respawns, the static cadence + active window,
-// the elder nominal one-shot) and the honest no-data gates - the same
+// the soul-driven Elder, s156 RM-518) and the honest no-data gates - the same
 // discipline as objective_chips.test.mjs.
 
 import test from "node:test";
@@ -26,7 +26,9 @@ test("OG_SCHED mirrors the core/event_callouts.py constants", () => {
   assert.strictEqual(OG_SCHED.drakeRespawnS, 300);
   assert.strictEqual(OG_SCHED.baronFirstS, 1200);
   assert.strictEqual(OG_SCHED.baronRespawnS, 360);
-  assert.strictEqual(OG_SCHED.elderNominalS, 2100);
+  assert.strictEqual(OG_SCHED.elderAfterSoulS, 360);
+  assert.strictEqual(OG_SCHED.elderRespawnS, 360);
+  assert.strictEqual(OG_SCHED.elderNominalS, undefined); // invented 35:00 marker gone
   assert.strictEqual(OG_SCHED.activeWindowS, 30);
   assert.strictEqual(OG_SCHED.soulSecuredStacks, 4);
 });
@@ -50,9 +52,9 @@ test("computeGauges: early SR game - static first-spawn countdowns", () => {
   const baron = byKey(dials, "baron");
   assert.strictEqual(baron.state, "eta");
   assert.strictEqual(baron.etaS, 1140); // 1200 - 60
+  // No soul yet -> Elder cannot exist -> "-" (s156: no invented 35:00 marker).
   const elder = byKey(dials, "elder");
-  assert.strictEqual(elder.state, "eta");
-  assert.strictEqual(elder.etaS, 2040); // 2100 - 60
+  assert.strictEqual(elder.state, "none");
 });
 
 test("drake: kill-anchored respawn = last elemental kill + 300", () => {
@@ -111,19 +113,47 @@ test("baron: kill-anchored respawn + static one-shot window", () => {
   assert.strictEqual(byKey(dropped, "baron").state, "none");
 });
 
-test("elder: nominal one-shot; post-kill has no canonical timer -> '-'", () => {
-  const nominal = computeGauges("sr", { game_time_s: 2000, objective_events: [] }, null);
-  assert.strictEqual(byKey(nominal, "elder").etaS, 100);
-  const ev = [{ name: "dragon", killer_team: "ally", down_at_s: 2200,
-                dragon_type: "Elder" }];
-  const after = computeGauges("sr", { game_time_s: 2300, objective_events: ev }, null);
-  assert.strictEqual(byKey(after, "elder").state, "none");
+const SOUL = [
+  { name: "dragon", killer_team: "ally", down_at_s: 300, dragon_type: "Fire" },
+  { name: "dragon", killer_team: "ally", down_at_s: 650, dragon_type: "Water" },
+  { name: "dragon", killer_team: "enemy", down_at_s: 1000, dragon_type: "Air" },
+  { name: "dragon", killer_team: "ally", down_at_s: 1300, dragon_type: "Earth" },
+  { name: "dragon", killer_team: "ally", down_at_s: 1600, dragon_type: "Hextech" },
+];
+
+test("elder: no soul -> '-'; soul secured -> soul_time + 360 countdown", () => {
+  const none = computeGauges("sr", { game_time_s: 2000, objective_events: [] }, null);
+  assert.strictEqual(byKey(none, "elder").state, "none");
+  // Ally takes the 4th elemental at 1600 -> soul secured -> Elder at 1960.
+  const pre = computeGauges("sr", { game_time_s: 1700, objective_events: SOUL }, null);
+  assert.strictEqual(byKey(pre, "elder").state, "eta");
+  assert.strictEqual(byKey(pre, "elder").etaS, 260); // 1600 + 360 - 1700
+  const up = computeGauges("sr", { game_time_s: 2000, objective_events: SOUL }, null);
+  assert.strictEqual(byKey(up, "elder").state, "up");
+});
+
+test("elder: after an Elder take the respawn anchors on the kill (+360)", () => {
+  const ev = SOUL.concat([{ name: "dragon", killer_team: "ally", down_at_s: 2000,
+                            dragon_type: "Elder" }]);
+  const after = computeGauges("sr", { game_time_s: 2100, objective_events: ev }, null);
+  assert.strictEqual(byKey(after, "elder").state, "eta");
+  assert.strictEqual(byKey(after, "elder").etaS, 260); // 2000 + 360 - 2100
+});
+
+test("_soulSecuredAt mirrors _soul_secured_at (sided 4th; unresolved fallback)", () => {
+  assert.strictEqual(__test._soulSecuredAt(SOUL), 1600);
+  assert.strictEqual(__test._soulSecuredAt([]), null);
+  // 3 ally + 1 enemy: nobody has 4 -> no soul.
+  assert.strictEqual(__test._soulSecuredAt(SOUL.slice(0, 4)), null);
+  // Unresolved killers: the 4th elemental overall counts (RM-307 fallback).
+  const unk = SOUL.slice(0, 4).map((e) => ({ ...e, killer_team: "unknown" }));
+  assert.strictEqual(__test._soulSecuredAt(unk), 1300);
 });
 
 test("drake dial suppressed to '-' once Elder is up or taken (redundant pit)", () => {
-  // Elder available (nominal 2100 marker reached) -> the drake pit is Elder, so
-  // the elemental dial is redundant (operator 2026-07-05).
-  const elderUp = computeGauges("sr", { game_time_s: 2100, objective_events: [] });
+  // Soul secured and Elder spawned -> the drake pit is Elder, so the
+  // elemental dial is redundant (operator 2026-07-05).
+  const elderUp = computeGauges("sr", { game_time_s: 2000, objective_events: SOUL });
   assert.strictEqual(byKey(elderUp, "elder").state, "up");
   assert.strictEqual(byKey(elderUp, "drake").state, "none");
   // Elder taken -> drake stays suppressed after the kill.

@@ -101,9 +101,14 @@ class ScheduleMirrorTests(unittest.TestCase):
         self.assertEqual(self._js_num("baronRespawnS"),
                          int(ec.SR_BARON_RESPAWN_S))
 
-    def test_elder_nominal(self):
-        self.assertEqual(self._js_num("elderNominalS"),
-                         int(ec._SR_ELDER_NOMINAL_S))
+    def test_elder_soul_driven(self):
+        # s156 RM-518: the invented 35:00 nominal marker is gone; Elder is
+        # soul-driven (core/sr_schedule.py ELDER_AFTER_SOUL_S / ELDER_RESPAWN_S).
+        self.assertEqual(self._js_num("elderAfterSoulS"),
+                         int(ec._SR_ELDER_AFTER_SOUL_S))
+        self.assertEqual(self._js_num("elderRespawnS"),
+                         int(ec._SR_ELDER_RESPAWN_S))
+        self.assertNotIn("elderNominalS", self.js)
 
     def test_active_window(self):
         self.assertEqual(self._js_num("activeWindowS"),

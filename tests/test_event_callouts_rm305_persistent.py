@@ -67,10 +67,26 @@ class HeraldPersistsUntilTakenOrDespawn(unittest.TestCase):
         self.assertIsNone(_row(_sr(ec._SR_HERALD_DESPAWN_S + 1.0, []), "herald"))
 
 
-class PlatesStayOneShot(unittest.TestCase):
+class PlatesRowGone(unittest.TestCase):
+    """Plates are permanent since patch 26.1: no 14:00 one-shot row at all."""
 
-    def test_plates_dropped_long_after(self):
-        self.assertIsNone(_row(_sr(1500.0, []), "plates"))
+    def test_no_plates_row_at_any_time(self):
+        for t in (0.0, 840.0, 850.0, 1500.0):
+            self.assertIsNone(_row(_sr(t, []), "plates"), t)
+
+
+class GrubsPersistWithEventData(unittest.TestCase):
+    """s156: grubs stand until taken (3 takes retire the row) only when event
+    data exists; with no data only the just-spawned window shows."""
+
+    def test_grubs_up_with_event_data(self):
+        row = _row(_sr(700.0, []), "grubs")
+        self.assertIsNotNone(row)
+        self.assertLessEqual(row["eta_s"], 0.0)
+
+    def test_grubs_silent_without_event_data_after_window(self):
+        self.assertIsNone(_row(_sr(700.0, None), "grubs"))
+        self.assertIsNotNone(_row(_sr(490.0, None), "grubs"))
 
 
 class DrakeWindowUnchanged(unittest.TestCase):

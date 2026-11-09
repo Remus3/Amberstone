@@ -53,12 +53,16 @@ class SrObjectiveScheduleTests(unittest.TestCase):
         self.assertIsNotNone(baron)
         self.assertAlmostEqual(baron["eta_s"], 1200.0, delta=0.01)
 
-    def test_herald_and_plates_eta_840_at_t0(self):
+    def test_herald_and_grubs_eta_at_t0(self):
+        # s156: Herald 15:00 (patch 25.09), Voidgrubs 8:00 (25.09); plates are
+        # permanent since 26.1 so there is no plates row (see
+        # tests/test_sr_schedule_s156.py).
         cs = _all_callouts_unbounded("sr", 0.0, 1, 0)
-        for tag in ("herald", "plates"):
+        for tag, want in (("herald", 900.0), ("grubs", 480.0)):
             obj = _by_tag(cs, tag)
             self.assertIsNotNone(obj, f"{tag} must be present at t=0")
-            self.assertAlmostEqual(obj["eta_s"], 840.0, delta=0.01)
+            self.assertAlmostEqual(obj["eta_s"], want, delta=0.01)
+        self.assertIsNone(_by_tag(cs, "plates"))
 
 
 class DragonActiveAndRespawnTests(unittest.TestCase):
@@ -358,8 +362,11 @@ class FailSoftTests(unittest.TestCase):
 
 class MilestoneLineTests(unittest.TestCase):
     def test_objective_tags_resolve(self):
-        for tag in ("dragon", "herald", "baron", "plates", "elder"):
+        for tag in ("dragon", "grubs", "herald", "baron", "elder"):
             self.assertTrue(milestone_line(tag), f"{tag} should resolve a line")
+        # Plates (permanent since 26.1) and Atakhan (removed) have no line.
+        self.assertEqual(milestone_line("plates"), "")
+        self.assertEqual(milestone_line("atakhan"), "")
 
     def test_level_spike_tags_resolve(self):
         for tag in ("lvl6", "lvl11", "lvl16"):

@@ -318,15 +318,20 @@ class EvaluateContractTests(unittest.TestCase):
 # the drake row past its first-spawn window is silent instead of the old
 # 5:00-grid guess ("Drake spawns" at eta 40 over a drake standing since 300s);
 # the drake playbook row it anchored goes with it. Decision-tree rows unchanged.
+# s156 S5 re-pin: Herald moved 14:00 -> 15:00 (core/sr_schedule.py, patch 25.09)
+# and the 14:00 plates row is gone (plates are permanent since 26.1); at 560s
+# with no event data the grubs row is silent (a guess, mostly wrong).
 _PINNED_NO_RULE = {
     "callouts": [
-        {"eta_s": 280.0, "kind": "objective",
-         "line": "Rift Herald 14:00 - ward river", "tag": "herald"},
-        {"eta_s": 280.0, "kind": "objective",
-         "line": "Plates fall 14:00 - shove for gold", "tag": "plates"},
-        {"eta_s": 280.0, "kind": "playbook",
+        {"eta_s": 340.0, "kind": "objective",
+         "line": "Rift Herald 15:00 - ward river", "tag": "herald"},
+        {"eta_s": 340.0, "kind": "playbook",
          "line": "Herald: give it, catch side waves - avoid the 50/50",
          "tag": "playbook_herald"},
+        # Baron now fits under the max_n=3 cap (the plates row no longer
+        # occupies a slot).
+        {"eta_s": 640.0, "kind": "objective",
+         "line": "Baron up 20:00 - ward river", "tag": "baron"},
     ],
     "choices": [],
     "lead_projection": {
