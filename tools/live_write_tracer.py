@@ -132,7 +132,7 @@ _SESSION_NODEID = "<collection-or-session>"
 _ATOMIC_TMP_SUFFIX = ".tmp"
 
 # Repo root, so the report writer can import core/ whatever the cwd.
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = str(Path(__file__).absolute().parents[1])
 
 _state = None
 
@@ -471,7 +471,7 @@ def pytest_configure(config):
     global _state
     root = os.environ.get("RC_TRACER_ROOT")
     if not root:
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        root = str(Path(__file__).absolute().parents[1])
     root = os.path.abspath(root)
     report = os.environ.get("RC_TRACER_REPORT") or _default_report_path()
     report = os.path.abspath(report)

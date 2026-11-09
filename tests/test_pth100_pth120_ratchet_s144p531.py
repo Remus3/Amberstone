@@ -6,7 +6,7 @@ modules spelled their repo root ``os.path.dirname(os.path.dirname(os.path.abspat
 symlink or subst-drive resolution, unlike ``Path.resolve()``, which ruff's fix suggests and which would change the
 string on a junctioned checkout), and the ``str()`` keeps every ``os.path.join`` consumer working on the same type.
 
-The rest sits in ``_BASELINE`` (33 findings in 13 files after S144-P-533): hand-written paths (``live_write_tracer``, the lane
+The rest sits in ``_BASELINE`` (25 findings in 13 files after S144-P-535): hand-written paths (``live_write_tracer``, the lane
 launcher, the conftest helpers, the DS geometry tests) each need their own look, not a mechanical rewrite. The
 baseline only shrinks: ANY new finding, or one above a baselined file's count, fails ``test_no_file_exceeds_its_baseline``.
 The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding, and ``--preview`` because both
@@ -48,8 +48,8 @@ _BASELINE: dict[str, int] = {
     "tests/_crlf_text_layer.py": 1,
     "tests/conftest.py": 2,
     "tests/test_guard_grading_rc_facts.py": 2,
-    "tests/test_inbox_responder_runner.py": 3,
-    "tools/live_write_tracer.py": 11,
+    "tests/test_inbox_responder_runner.py": 2,
+    "tools/live_write_tracer.py": 5,
     "tools/stop_claim_gate.py": 1,
 }
 # The OLD spelling, kept as bare references (an oracle for the behaviour pins below, not a call site ruff reads).
@@ -200,3 +200,17 @@ def test_the_remaining_abspath_sites_need_lexical_dotdot_collapse():
     assert _OLD_ABSPATH(hostile) != str(Path(hostile).absolute())
     assert ".." in str(Path(hostile).absolute())
     assert ".." not in _OLD_ABSPATH(hostile)
+
+
+def test_the_tracer_root_keeps_the_old_value_and_its_path_gates_stay_lexical():
+    """S144-P-535: tools/live_write_tracer.py reaches the repo root with parents[1] (same string as the old
+    dirname(dirname(abspath(__file__)))); its key_for / root normalisation keep os.path.abspath, because they
+    take arbitrary open() arguments and the '..' collapse decides whether a path is under a watched root."""
+    spec = importlib.util.spec_from_file_location("_s144p535_tracer", REPO_ROOT / "tools/live_write_tracer.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    old = _OLD_DIRNAME(_OLD_DIRNAME(_OLD_ABSPATH(REPO_ROOT / "tools/live_write_tracer.py")))
+    assert module._ROOT == old
+    source = (REPO_ROOT / "tools/live_write_tracer.py").read_text(encoding="utf-8")
+    assert source.count("str(Path(__file__).absolute().parents[1])") == 2
+    assert "disp = os.path.abspath(os.fsdecode(os.fspath(path)))" in source

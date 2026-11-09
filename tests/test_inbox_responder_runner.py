@@ -967,7 +967,7 @@ def test_surface_auditor_matches_a_write_through_an_8dot3_short_name(tmp_path):
 def test_surface_auditor_matches_a_write_through_a_verbatim_prefix(tmp_path):
     inbox = tmp_path / "Sibling ZZ" / "moon_sync_inbox"
     inbox.mkdir(parents=True)
-    via = "\\\\?\\" + os.path.abspath(str(inbox / "g.txt"))
+    via = "\\\\?\\" + str((inbox / "g.txt").absolute())
     assert _audit_hits_for_write(inbox, via), f"no hit for a verbatim-prefix write {via}"
 
 
