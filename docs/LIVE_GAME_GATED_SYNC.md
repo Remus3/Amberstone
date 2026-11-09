@@ -1705,6 +1705,71 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   lands fixed to the minimap) + the BATCH C gauge-row / enemy-chip-wrap render. STATUS: NOT drained
   2026-07-04 (frame endpoint probed http + X-RC-Token, game ended before a clean grab). SOURCE:
   LEDGER 662 + 735 + 799.
+
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 126, 2026-11-09, S144-G-113; NOT a tick, NOT a
+  re-open, nothing struck; no game, RC :8888 and :2999 not answering, read at `d2d4840f1` + this
+  lane).** The family is SMALLER than filed: of its 14 subjects, 6 can no longer be captured on the
+  overlay at all, and 8 are live. CITE DRIFT: `f621168d` is a pre-rewrite hash absent from
+  `.git/filter-repo/commit-map`; OVL1 is `7db1ebbe4` (git log --grep OVL1). (1) NO OVERLAY HALF
+  LEFT (a human moves these; this lane does not strike):
+  (a) **ward_cue**: no renderer. There is no `web/js/panels/ward_cue.js`; the widget was dropped
+  2026-07-05 because Live Client exposes no ward cooldown (`web/js/lib/overlay_layout.js:74-75`,
+  "w-trinket / Ward Cue removed"); `#am-ward-cue` in `web/index.html` is an orphan mount nothing fills.
+  (b) **spike_cue**: deleted for Riot compliance (`docs/OVERLAY_COMPLIANCE_PLAN.md` row B3;
+  `web/js/main.js` comment above `renderStatsPanel` in the live dispatch, "Do not reinstate").
+  (c) **W3E callouts + lead_projection**: CLASS 2. B4-b blanks both TOP-LEVEL keys while a game is
+  live (`dashboard/_state_builder.py:455-457` `LIVE_SUPPRESSED_ENVELOPE_FIELDS`, applied at `:1053`),
+  because both feeds are imperatives (spike lines, "Drake spawns 5:00 - set up vision", "Big lead:
+  dive or roam"). A POPULATED in-game capture would be the compliance regression; the in-game
+  check INVERTS (predicate (P1) below).
+  (d) **spike-markers live-clock cursor**: NOT BUILT (`web/js/panels/spike_markers.js:10-14` and
+  `:200-201`, "v1 omits it"), and `#am-spike-markers` is `display:none` on the overlay
+  (`web/css/overlay.css:197`).
+  (e) **ward_heat strip**: `display:none` on the overlay (`web/css/overlay.css:198`, the GPU-light
+  block); it paints only on the 1920 dashboard, so it is not an overlay subject.
+  (f) **BATCH C enemy-chip-wrap**: its subject is the enemy summoner-spell chip (LEDGER 799 BATCH C
+  item 3), deleted for Riot compliance (row B1); nothing named enemy-chip remains in `web/`.
+  (2) LIVE, with the render path at HEAD (all `body[data-shell="overlay"]`, rc-shell overlay ON):
+  (g) OVL1 settings strip `#ovset` in w-ovds (`web/js/panels/overlay_ds_controls.js:255-300`):
+  `#ovset-pulse` "Change pulse" and `#ovset-revert` "Auto-passive (s)" [3..120] are still there,
+  plus later rows (rank tier, role, keep, pin, separate, zones, opacity). The revert value is also
+  G6-02's knob; a G6-02 pass does not capture this strip, and this capture does not tick G6-02.
+  (h) objective_chips `#am-obj-chips` inside w-call, live dispatch `web/js/main.js:1688`, shows
+  only while a respawn is pending (`liveclient.objective_events`, `objective_chips.js:112-122`).
+  (i) minimap_rect `#am-mmrect` (w-mmrect, `main.js:1681`) with the BATCH B gold hairline
+  `web/css/overlay.css:804-816` (2px gold 0.85; its `::before` is off, `:817`), and (j) minimap_zoi
+  `#am-zoi-canvas` (`main.js:1685`). Both need top-level `minimap_rect`, built only for `mode_key`
+  sr / aram / brawl (`dashboard/_state_builder.py:845-851`), so never in Arena or TFT.
+  (k) objective gauges `#am-obj-gauges` (w-objgauges, `main.js:1692`): BATCH C's one-row 3-dial
+  layout; SR only (`objective_gauges.js:253-256`, null unless `mode == "sr"` and a game clock).
+  (l) draft_elo chip `#am-draft-elo` in w-build (`overlay.css:572-600`, fetch `/api/draft-elo`,
+  `draft_elo.js:54`). (m) SHAPER row `bm-shaper` in w-build (`web/js/panels/active_match.js:1019-1021`,
+  `renderShaperStrip`, fetch `/api/ds-shape`). (n) item-662 first-match no-flash: rc-shell
+  `shouldShowOverlayNow` (LEDGER 662); observed once at the FIRST match launch after an rc-shell
+  relaunch, by eye, not from a frame.
+  **CAPTURE-SOURCE TRAPS (state them before any game):** `:8889/latest-frame` is a GDI BitBlt of the
+  desktop, so it DOES include the overlay layer, but only while `obs.frame_source` is OFF: when that
+  flag is on, the OBS frame REPLACES it and never shows the overlay (`vision_server/_frame.py:183-191`).
+  The frame is also downscaled to 1280 wide (`_frame.py:93`), so the 2px minimap hairline is about
+  1.3px there; grade (i) on a full-resolution operator capture, not on the relay frame.
+  **PROBE (copy-paste, from a worktree, read-only; a practice SR game, overlay ON, after a dragon is
+  taken):** `curl -sk https://127.0.0.1:8888/api/state > _scratch/g225_state.json`, then
+  `curl -s -H "X-RC-Token: $TOK" http://127.0.0.1:8889/latest-frame/meta` (frame `ts`) and the
+  frame itself into `_scratch/` (never committed). Field paths: `mode_key`, `liveclient.game_time_s`,
+  `liveclient.objective_events`, `minimap_rect`, `zoi`, `callouts`, `lead_projection`.
+  **PREDICATES (stated before any game):** (P1) CLASS-2 inverse, a SENT check graded on
+  `/api/state` alone: PASS iff, with `liveclient` non-empty, `callouts == []` and
+  `lead_projection == {}`; FAIL on any non-empty value (the B4-b blanking leaked). (P2) per live
+  subject (g)-(m): PASS iff its precondition holds in the SAME state read (mode sr; for (h) a pending
+  respawn in `objective_events`; for (i)/(j) a non-null `minimap_rect`, and for (j) a non-null
+  `zoi`) AND the frame, whose `ts` is within 10 s of the state read, shows the widget's own text or
+  hairline at its registry anchor (`overlay_layout.js` WIDGETS `x`/`y`, or a dragged position)
+  with no clip at the viewport edge. A precondition that does not hold is NO-RESULT, never PASS.
+  (P3) for (n): PASS iff no full-screen flash before the widgets settle at the first match launch.
+  **SUBSTITUTION CHECK:** the `/api/state` read answers only whether the data was SENT; it is never
+  evidence that a widget RENDERED (except P1, whose subject IS the sent envelope). A ui_mock render,
+  a headless Chromium overlay render, a node test or a dashboard (non-overlay) screenshot is the
+  compute half and drains nothing.
 - **G2-26** (was the pixel half of C13) ~~R38 enemy_spells `stats_panel` RENDERED PIXEL capture. The
   DATA path is live-proven TWICE (LEDGER 769 + LEDGER 820 2026-07-08, 5 enemies x 2 spells); LEDGER
   820 explicitly records "CSS visual verify PENDING (overlay hidden)". Best read vs real enemies
