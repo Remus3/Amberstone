@@ -35,7 +35,7 @@ e45c455a7f7db8c7f9aa5b76a32e995ed96bde1df0ea5c6d836fd5344a8c0663  web/js/lib/ove
 
 35b5e792d021c2287f1834bb3ca84722601e5c30bc4af69d9b6095204bbdd195  web/js/lib/overlay_item_radial.js
 
-740fce2d674e2b90192c64bcd00970635f15ecfce755ef262585ad4d6efb1ad6  web/js/lib/overlay_layout.js
+a5fae584560d779032619aa2f73d5b4f4f5166cfc891fe9cca3e3981566d4ef9  web/js/lib/overlay_layout.js
 
 086bb9496d63c89d75089706c9b4960dc1b53a14a7f2b1ffc9db10711fae07d2  web/js/lib/overlay_phase.js
 

@@ -87,3 +87,26 @@ test("_tallFloorTop ignores a primary widget outside the column, below the ancho
   assert.strictEqual(_tallFloorTop(70, 482, 1064, []), null);
   assert.strictEqual(_tallFloorTop(70, 482, 1064, [null, undefined]), null);
 });
+
+// S144-U-284: the tall-widget watcher. Its observer behaviour is pinned in
+// headless Chromium (tests/snapshot_panels/test_overlay_build_refit_live.py);
+// here, the two pure parts.
+test("_tallTargets observes the widget, its rows and their rows, nothing deeper", () => {
+  const { _tallTargets } = _internals;
+  const leaf = { children: [] };
+  const row = { children: [leaf] };
+  const body = { children: [row, { children: [] }] };
+  const head = { children: [] };
+  const el = { children: [head, body] };
+  const got = _tallTargets(el);
+  assert.deepStrictEqual(got, [el, head, body, row, body.children[1]]);
+  assert.ok(!got.includes(leaf), "a third-level node is not a row");
+});
+
+test("_watchTall is a no-op without MutationObserver and ResizeObserver", () => {
+  const { _watchTall, _tallWatch } = _internals;
+  assert.strictEqual(typeof globalThis.MutationObserver, "undefined");
+  assert.strictEqual(typeof globalThis.ResizeObserver, "undefined");
+  _watchTall({ children: [] }, { id: "w-build" });
+  assert.strictEqual(_tallWatch.size, 0);
+});

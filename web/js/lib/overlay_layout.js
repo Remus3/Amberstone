@@ -313,8 +313,8 @@ function _overflows(el) {
 // the section <key>; sections are dropped (data-ovx-dropped, display:none in
 // overlay.css) from the LAST one in document order up, until the content fits
 // the clip. Unmarked content (the rerank module) is never dropped. Recomputed
-// from scratch on every _applyPos, which the layout observer re-runs 150 ms
-// after any re-render, so a section comes back as soon as it fits again.
+// from scratch on every _applyPos, which _watchTall (S144-U-284) re-runs on
+// any re-render or row resize, so a section comes back as soon as it fits.
 function _fitDropGroups(el) {
   for (const n of el.querySelectorAll("[data-ovx-dropped]")) n.removeAttribute("data-ovx-dropped");
   if (el.classList.contains("ovx-hidden") || !_overflows(el)) return 0;
@@ -334,6 +334,90 @@ function _fitDropGroups(el) {
     dropped += 1;
   }
   return dropped;
+}
+
+// S144-U-284: refit a tall widget the moment its fit inputs change, not only
+// through the body-wide observer's 150 ms _placeAll. Measured headless: a
+// rebuilt build body (innerHTML = "" plus fresh nodes without the dropped
+// mark) painted its trailing sections sliced for up to 150 ms; a row that grew
+// with no childList change (a late image, a font swap, a class toggle) and a
+// w-call that grew ran no fit at all. Two observers per tall widget:
+// - a MutationObserver on its own subtree (childList only - the fit writes
+//   attributes and styles, never children, so it cannot re-trigger itself),
+//   whose callback runs as a microtask, before the next frame paints;
+// - a ResizeObserver on the widget, its rows (children and grandchildren) and
+//   the primary widgets, whose refit is deferred to the next animation frame:
+//   refitting inside the callback would resize observed rows at the same
+//   depth and raise a ResizeObserver loop error. The fit is deterministic, so
+//   the size change it causes settles after one more frame.
+// A refit is skipped mid-drag (the drag owns top/left; the drop re-applies).
+const _tallWatch = new Map();
+
+function _tallTargets(el) {
+  const out = [el];
+  for (const k of el.children) {
+    out.push(k);
+    for (const g of k.children) out.push(g);
+  }
+  return out;
+}
+
+function _primaryNodes(el) {
+  const out = [];
+  for (const w of PRIMARY_WIDGETS) {
+    const n = document.querySelector(w.sel);
+    if (n && n !== el) out.push(n);
+  }
+  return out;
+}
+
+function _watchTall(el, w) {
+  const hasMO = typeof MutationObserver === "function";
+  const hasRO = typeof ResizeObserver === "function";
+  if (!hasMO && !hasRO) return; // headless stub: _placeAll still re-fits
+  let st = _tallWatch.get(w.id);
+  if (st && st.el === el) {
+    // Same widget node: re-sync only if a primary node was replaced.
+    const prim = _primaryNodes(el);
+    if (prim.length !== st.prim.length || prim.some((n, i) => n !== st.prim[i])) st.sync();
+    return;
+  }
+  if (st) {
+    if (st.mo) st.mo.disconnect();
+    if (st.ro) st.ro.disconnect();
+    if (st.raf) cancelAnimationFrame(st.raf);
+  }
+  st = { el, mo: null, ro: null, raf: 0, prim: [], sync: () => {} };
+  _tallWatch.set(w.id, st);
+  const refit = () => {
+    if (!el.isConnected || el.classList.contains("ovx-dragging")) return;
+    _applyPos(el, _posFor(w));
+  };
+  if (hasRO) {
+    st.ro = new ResizeObserver(() => {
+      if (st.raf) return;
+      st.raf = requestAnimationFrame(() => {
+        st.raf = 0;
+        refit();
+      });
+    });
+    st.sync = () => {
+      st.ro.disconnect();
+      st.prim = _primaryNodes(el);
+      // border-box: a padding or border change moves the painted edge but
+      // not the content box, which is all the default observation reports.
+      for (const t of _tallTargets(el)) st.ro.observe(t, { box: "border-box" });
+      for (const t of st.prim) st.ro.observe(t, { box: "border-box" });
+    };
+  }
+  if (hasMO) {
+    st.mo = new MutationObserver(() => {
+      refit();
+      st.sync(); // the rows were replaced: observe the new ones
+    });
+    st.mo.observe(el, { childList: true, subtree: true });
+  }
+  st.sync();
 }
 
 // Keep at least this many design-px of a widget's top-left corner (where the drag
@@ -865,6 +949,7 @@ function _placeAll() {
     _makeHandle(el, w);
     _makeHideMenu(el, w);
     _makeHotkeyHint(el, w);
+    if (TALL_IDS.has(w.id)) _watchTall(el, w);
   }
 }
 
@@ -1433,6 +1518,9 @@ export const _internals = {
   _tallFloorTop,
   _fitDropGroups,
   _overflows,
+  _watchTall,
+  _tallTargets,
+  _tallWatch,
   _clampXY,
   _effectiveXY,
   MIN_VISIBLE,
