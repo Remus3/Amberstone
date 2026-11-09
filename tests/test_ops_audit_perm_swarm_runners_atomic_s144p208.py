@@ -47,5 +47,6 @@ def test_goes_through_polled_json(mod, tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("mod", MODS, ids=IDS)
 def test_no_destination_derived_scratch_is_left_in_the_module(mod):
-    src = open(mod.__file__, "rb").read().decode("utf-8")
+    with open(mod.__file__, "rb") as fh:
+        src = fh.read().decode("utf-8")
     assert ".tmp" not in src and "os.replace" not in src

@@ -572,7 +572,8 @@ class TestExtract:
         json.dumps(out, ensure_ascii=True)  # must not raise
 
     def test_engine_independent_no_imports(self):
-        src = open(C.__file__, encoding="utf-8").read()
+        with open(C.__file__, encoding="utf-8") as fh:
+            src = fh.read()
         assert "import requests" not in src
         _assert_agents_imports_allowlisted(src, C.__file__)
 
@@ -610,7 +611,8 @@ class TestFetchWithRetry:
 # --------------------------------------------------------------------------- ASCII hygiene
 class TestAsciiHygiene:
     def test_source_is_ascii(self):
-        data = open(C.__file__, encoding="utf-8").read()
+        with open(C.__file__, encoding="utf-8") as fh:
+            data = fh.read()
         try:
             data.encode("ascii")
         except UnicodeEncodeError as e:

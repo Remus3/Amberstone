@@ -76,5 +76,6 @@ def test_corrupt_file_reads_as_empty_and_is_repaired(prefs_path):
 
 
 def test_module_does_not_hand_roll_a_scratch_name():
-    src = open(rw.__file__, encoding="utf-8").read()
+    with open(rw.__file__, encoding="utf-8") as fh:
+        src = fh.read()
     assert 'with_suffix(".tmp")' not in src and "with_suffix('.tmp')" not in src

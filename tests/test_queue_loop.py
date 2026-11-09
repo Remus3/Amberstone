@@ -1604,7 +1604,8 @@ def test_NO_test_in_this_module_shells_out_for_ci():
     the live repo from the suite, which is a 45-minute runner and a race with
     whatever the queue lane is doing at the time.
     """
-    tree = ast.parse(open(__file__, encoding="utf-8").read())
+    with open(__file__, encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
     offenders = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -1804,7 +1805,8 @@ def _code_strings(path):
     module's own prose about the rule - the comments-cite-the-bug trap that made
     an earlier guard red.
     """
-    tree = ast.parse(open(path, encoding="utf-8").read())
+    with open(path, encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
     docstrings = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,

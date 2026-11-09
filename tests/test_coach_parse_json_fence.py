@@ -86,7 +86,8 @@ class LineFormatUnchangedTests(unittest.TestCase):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_test_file_ascii(self):
-        raw = open(__file__, encoding="utf-8").read()
+        with open(__file__, encoding="utf-8") as fh:
+            raw = fh.read()
         self.assertEqual(raw, raw.encode("ascii", "replace").decode("ascii"))
 
 

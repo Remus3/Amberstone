@@ -259,7 +259,8 @@ def test_the_log_survives_a_drain(chan):
 # --------------------------------------------------------------------------- contract
 def test_the_module_executes_nothing():
     """A steer is guidance. Nothing in this module may run a process."""
-    src = open(steer.__file__, encoding="utf-8").read()
+    with open(steer.__file__, encoding="utf-8") as fh:
+        src = fh.read()
     for forbidden in ("subprocess", "os.system", "Popen", "taskkill"):
         assert forbidden not in src, (
             f"{forbidden} in the steer channel - a queued steer must never be "
@@ -273,6 +274,7 @@ def test_interrupt_is_not_a_tier():
 
 def test_it_consumes_winmutex_rather_than_reimplementing_it():
     """winmutex.py is byte-identical-by-contract with the sibling repo."""
-    src = open(steer.__file__, encoding="utf-8").read()
+    with open(steer.__file__, encoding="utf-8") as fh:
+        src = fh.read()
     assert "winmutex" in src
     assert "CreateMutex" not in src, "the primitive is consumed, not re-written"

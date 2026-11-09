@@ -293,7 +293,8 @@ def _code_strings(path):
     is the same comments-cite-the-bug trap that made an earlier guard red.
     """
     import ast
-    tree = ast.parse(open(path, encoding="utf-8").read())
+    with open(path, encoding="utf-8") as fh:
+        tree = ast.parse(fh.read())
     docstrings = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,

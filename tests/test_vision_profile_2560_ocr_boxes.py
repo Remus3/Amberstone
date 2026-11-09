@@ -46,7 +46,8 @@ def _require_local_profiles():
 
 def test_2560_profiles_carry_all_numeric_ocr_boxes():
     for path in _require_local_profiles():
-        d = json.loads(open(path, encoding="utf-8").read())
+        with open(path, encoding="utf-8") as fh:
+            d = json.loads(fh.read())
         assert d.get("base") == [2560, 1440], f"{os.path.basename(path)} wrong base"
         regions = d.get("regions", {})
         missing = sorted(_REQUIRED_OCR - set(regions))
@@ -55,7 +56,8 @@ def test_2560_profiles_carry_all_numeric_ocr_boxes():
 
 def test_2560_ocr_boxes_are_inside_frame_and_well_formed():
     for path in _require_local_profiles():
-        d = json.loads(open(path, encoding="utf-8").read())
+        with open(path, encoding="utf-8") as fh:
+            d = json.loads(fh.read())
         for name, box in d.get("regions", {}).items():
             assert isinstance(box, list) and len(box) == 4, f"{name} not a 4-tuple"
             left, t, r, b = box
