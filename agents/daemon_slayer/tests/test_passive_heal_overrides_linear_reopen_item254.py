@@ -26,6 +26,7 @@ empty damage_blocks). Verbatim 16.11.1 effects_descriptions back each value.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer.abilities import (
@@ -229,7 +230,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_and_test_ascii_clean(self) -> None:
         import agents.daemon_slayer._passive_heal_overrides as mod
         for path in (mod.__file__, __file__):
-            with open(path, "rb") as fh:
+            with Path(path).open("rb") as fh:
                 fh.read().decode("ascii")  # raises on any non-ASCII byte
 
 

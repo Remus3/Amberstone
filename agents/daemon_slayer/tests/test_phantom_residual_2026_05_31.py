@@ -18,6 +18,7 @@ These pins lock:
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer.abilities import AbilitiesSnapshot
@@ -65,7 +66,7 @@ class PhantomResidualTests(unittest.TestCase):
         self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.291.0")
 
     def test_module_is_ascii(self) -> None:
-        with open(__file__, "rb") as fh:
+        with Path(__file__).open("rb") as fh:
             fh.read().decode("ascii")
 
 

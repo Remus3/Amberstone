@@ -17,6 +17,7 @@ handles all four. ``apply_passive_resist`` defaults False -> byte-identical.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer.data_loader import DataSnapshot
@@ -150,7 +151,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_and_test_ascii(self):
         import agents.daemon_slayer._passive_resist_overrides as mod
         for path in (mod.__file__, __file__):
-            with open(path, "rb") as fh:
+            with Path(path).open("rb") as fh:
                 fh.read().decode("ascii")  # raises on any non-ASCII byte
 
 
