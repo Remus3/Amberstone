@@ -88,6 +88,10 @@ changed, one site each (range_start_startswith_tuple, range_startswith_dictcomp,
 redundant_collection_call, redundant_return_compare, regex_flag_alias,
 regex_match_and_implicit_optional, removeprefix_merged_branch, repeated_comparison,
 reraise_exc_info and ret503_test_code);
+slice 24 (S144-P-626) does the same for the next ten ratchet modules no other lane branch had
+changed, one site each (ret505_plr1714_plr0402, return_nan_idiom, return, ruf005_core,
+ruf012_classvar_prod, ruf050_ruf070, ruf056_falsy_dict_get, s324_hash_usedforsecurity_prod,
+sim102_nested_if and sim103), bar rm750_ds_keepalive, which lane/true-audit changed;
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -135,17 +139,7 @@ _BASELINE = {
     "tests/test_loop_concurrency.py": 1,
     "tests/test_naive_datetime_prod_ratchet_s144p340.py": 1,
     "tests/test_package_portable_atomic_write_rm258.py": 1,
-    "tests/test_ret505_plr1714_plr0402_ratchet_s144p130.py": 1,
-    "tests/test_return_nan_idiom_ratchet_s144p172.py": 1,
-    "tests/test_return_ratchet_s144p144.py": 1,
     "tests/test_rm750_ds_keepalive.py": 1,
-    "tests/test_ruf005_core_ratchet_s144p271.py": 1,
-    "tests/test_ruf012_classvar_prod_ratchet_s144p211.py": 1,
-    "tests/test_ruf050_ruf070_ratchet_s144p516.py": 1,
-    "tests/test_ruf056_falsy_dict_get_ratchet_s144p520.py": 1,
-    "tests/test_s324_hash_usedforsecurity_prod_ratchet_s144p212.py": 1,
-    "tests/test_sim102_nested_if_ratchet_s144p254.py": 1,
-    "tests/test_sim103_ratchet_s144p145.py": 1,
     "tests/test_sim108_ternary_ratchet_s144p252.py": 1,
     "tests/test_sim115_open_context_prod_ratchet_s144p210.py": 1,
     "tests/test_small_idiom_ratchet_s144p122.py": 1,
@@ -420,6 +414,16 @@ _FIXED = (
     "tests/test_repeated_comparison_ratchet_s144p121.py",
     "tests/test_reraise_exc_info_ratchet_s144p118.py",
     "tests/test_ret503_test_code_ratchet_s144p245.py",
+    "tests/test_ret505_plr1714_plr0402_ratchet_s144p130.py",
+    "tests/test_return_nan_idiom_ratchet_s144p172.py",
+    "tests/test_return_ratchet_s144p144.py",
+    "tests/test_ruf005_core_ratchet_s144p271.py",
+    "tests/test_ruf012_classvar_prod_ratchet_s144p211.py",
+    "tests/test_ruf050_ruf070_ratchet_s144p516.py",
+    "tests/test_ruf056_falsy_dict_get_ratchet_s144p520.py",
+    "tests/test_s324_hash_usedforsecurity_prod_ratchet_s144p212.py",
+    "tests/test_sim102_nested_if_ratchet_s144p254.py",
+    "tests/test_sim103_ratchet_s144p145.py",
 )
 
 
