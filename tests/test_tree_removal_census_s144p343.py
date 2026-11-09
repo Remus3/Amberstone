@@ -84,10 +84,10 @@ _TREE_SITES = {
 
 # file -> number of Path.unlink / os.remove / os.unlink calls. Lowered when a call goes; never raised silently.
 _UNLINK_CEILING = {
-    "agents/_supervisor_common.py": 2,
+    # 3 since S144-Q-132: the sentinel break-by-path unlink became _remove_if_holds' two side-file unlinks
+    "agents/_supervisor_common.py": 3,
     "agents/_supervisor_ephemeral.py": 1,
     "agents/agent4_coach_mentor/ui_applier.py": 1,
-    "agents/supervisor.py": 1,
     "coaches/experimental_builder.py": 2,
     "core/data_retention.py": 1,
     "core/highlight_reel.py": 1,
