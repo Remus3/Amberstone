@@ -85,7 +85,7 @@ def _set_holder_pid(root: Path, pid: int) -> None:
     rec["pid"] = pid
     tmp = lock.with_name(lock.name + ".tmp")
     tmp.write_text(json.dumps(rec), encoding="utf-8")
-    os.replace(tmp, lock)
+    tmp.replace(lock)
 
 
 def _write_lock(root: Path, payload: dict) -> Path:
@@ -94,7 +94,7 @@ def _write_lock(root: Path, payload: dict) -> Path:
     lock.parent.mkdir(parents=True, exist_ok=True)
     tmp = lock.with_name(lock.name + ".tmp")
     tmp.write_text(json.dumps(payload), encoding="utf-8")
-    os.replace(tmp, lock)
+    tmp.replace(lock)
     return lock
 
 

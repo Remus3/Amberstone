@@ -137,7 +137,7 @@ def test_a_dead_holder_at_index_0_is_reclaimed_in_place(root, tmp_path):
     rec["pid"] = DEAD_PID
     tmp = lock.with_name("x.tmp")
     tmp.write_text(json.dumps(rec), encoding="utf-8")
-    os.replace(tmp, lock)
+    tmp.replace(lock)
     assert lanes.lanes_state(root)[0]["state"] == "RECLAIMABLE"
     again = lanes.try_acquire_lane("upgrade", run_id="r2", worktree=_wt(tmp_path, "u"),
                                    root=root)
