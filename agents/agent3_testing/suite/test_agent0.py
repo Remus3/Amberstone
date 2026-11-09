@@ -12,13 +12,13 @@ def evaluator() -> Evaluator:
 
 
 def _valid_task(**overrides) -> Task:
-    base = dict(
-        op="push-web-ui",
-        originating_agent="5",
-        remote_path=r"\\192.0.2.237\RCClient\web\index.html",
-        payload_ext=".html",
-        tag="ui-update",
-    )
+    base = {
+        "op": "push-web-ui",
+        "originating_agent": "5",
+        "remote_path": r"\\192.0.2.237\RCClient\web\index.html",
+        "payload_ext": ".html",
+        "tag": "ui-update",
+    }
     base.update(overrides)
     return Task(**base)
 
