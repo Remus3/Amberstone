@@ -2500,8 +2500,9 @@ def test_lfs_oracle_comes_from_git_and_covers_only_lfs_paths():
 def test_first_party_resolution_is_case_exact_on_every_host():
     """`from agents.agent1_lead import Scheduler` names the PACKAGE, not scheduler.py.
 
-    A case-insensitive filesystem (Windows, the local gated suite) let
-    `agents/agent1_lead/Scheduler.py` resolve to `scheduler.py`, so the walk
+    A case-insensitive filesystem (Windows, the local gated suite) let the
+    capitalised module candidate for `Scheduler` match the lower-case
+    scheduler module file, so the walk
     entered a module CI (Linux) never reaches and picked up its unrelated
     `try: import msvcrt` as an optional-import capability. The verdict for
     tests/test_ui_feedback_true_audit_s144t182.py then differed by host: green
