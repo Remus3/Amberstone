@@ -15,9 +15,6 @@ const MM = {
   dragon: el("mm-dragon"),
   baron: el("mm-baron"),
   herald: el("mm-herald"),
-  towers: el("mm-towers"),
-  score: el("mm-score"),
-  gameTime: el("mm-gametime"),
 };
 
 function _updateGameClock(p) {
@@ -354,11 +351,6 @@ function _tickObjectiveCountdowns() {
 setInterval(() => {
   if (document.hidden) return;
   _tickObjectiveCountdowns();
-  const s = _currentGameTimeS();
-  if (s != null) {
-    const str = _fmtMMSS(s);
-    if (MM.gameTime) MM.gameTime.textContent = str;
-  }
 }, 1000);
 
 function renderMinimap(p) {
@@ -368,8 +360,6 @@ function renderMinimap(p) {
   //   p.dragon_state / p.dragon_stack / p.soul - if the coach computed them
   //   p.baron_alive / p.baron_timer
   //   p.herald_alive / p.atakhan_state
-  //   p.my_tower_hp / p.enemy_tower_hp (ARAM) or towers_us/towers_them (SR)
-  //   p.kda_aggregate (team score)
   //   p.game_time / p.game_time_s
   // Store the raw state text in data-raw so the countdown tick can
   // re-render from it without a fresh state envelope.
@@ -393,19 +383,11 @@ function renderMinimap(p) {
   _tickSpellCooldowns();
   renderItemValueDiff(p);
   renderMinimapCanvases(p);
-  // Tower count / team kills / game time chips were removed from the
-  // Map State panel 2026-04-23 - those signals live on the header row 2.
-  // Guarded writes so the removal doesn't require touching MM init.
-  if (MM.towers) {
-    const tUs = p.towers_us ?? p.my_tower_hp;
-    const tThem = p.towers_them ?? p.enemy_tower_hp;
-    MM.towers.textContent = (tUs != null && tThem != null) ? `${tUs} / ${tThem}` : "-";
-  }
-  if (MM.score) MM.score.textContent = p.score || p.team_score || p.kda_aggregate || "-";
-  if (MM.gameTime) {
-    MM.gameTime.textContent = (typeof p.game_time_s === "number")
-      ? _fmtMMSS(p.game_time_s) : (p.game_time || "-");
-  }
+  // S144-U-261: the tower / team score / game time chips left this panel
+  // 2026-04-23 (header row 2 carries those signals); their MM slots, the
+  // guarded writes here and in the 1 s tick, and their item_build.css
+  // icon tints are retired with them.
+  // Guard: tests/snapshot_panels/test_minimap_dead_chip_writes_retired.py.
 
   // S144-U-256: the MAP STATE heartbeat line under the minimap image is
   // retired. It sat in #minimap, which renders in no view, yet every

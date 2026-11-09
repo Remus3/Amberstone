@@ -820,6 +820,21 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "end); the plan is the main session's in s144, so a lane cannot "
         "re-point it.",
     ),
+) + tuple(
+    # 2026-11-09, S144-U-261 (session 144 uiux lane). The dead tower / team
+    # score / game time chip writes were retired, so map_state.js shrank
+    # from 464 lines to 446. These RM-125 census rows are the same dated
+    # read as the S144-U-258 entry above ("measured at 35c6730f"); the zone
+    # labels they name already sat elsewhere before this cut, so
+    # re-pointing them would make the census claim a line it never read.
+    (doc, raw, "HISTORICAL",
+     "An RM-125 live-glyph census cite into map_state.js as measured at "
+     "35c6730f; the module is 446 lines after S144-U-261 retired the dead "
+     "chip writes.")
+    for doc, raw in (
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/map_state.js:452"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/map_state.js:456"),
+    )
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

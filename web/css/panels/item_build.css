@@ -497,7 +497,4 @@
   background: var(--good);
   box-shadow: 0 0 8px rgba(127,209,154,0.7);
 }
-.kv:has(#mm-towers)  .obj-ico { color: var(--good); }
-.kv:has(#mm-score)   .obj-ico { color: var(--text-dim); }
-.kv:has(#mm-gametime) .obj-ico { color: var(--text-dim); }
 
