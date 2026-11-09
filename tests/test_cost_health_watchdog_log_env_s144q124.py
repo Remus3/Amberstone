@@ -102,10 +102,10 @@ def test_env_names_the_log_and_blank_or_unset_keeps_the_default(tmp_path,
                                                                 monkeypatch):
     target = tmp_path / "elsewhere" / "chw.log"
     monkeypatch.setenv(_ENV, str(target))
-    assert _fresh_copy()._LOG == target
+    assert target == _fresh_copy()._LOG
 
     default = _TOOL.parent.parent / "logs" / "cost_health_watchdog.log"
     monkeypatch.setenv(_ENV, "   ")
-    assert _fresh_copy()._LOG == default
+    assert default == _fresh_copy()._LOG
     monkeypatch.delenv(_ENV)
-    assert _fresh_copy()._LOG == default
+    assert default == _fresh_copy()._LOG

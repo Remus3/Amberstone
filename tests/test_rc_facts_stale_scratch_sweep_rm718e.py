@@ -41,7 +41,7 @@ from tools import rc_facts  # noqa: E402
 _OLD = 10 * 24 * 3600.0  # ten days: far past any sane cap
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(tmp_path, monkeypatch):
     monkeypatch.setattr(rc_facts, "_ROOT", tmp_path)
     monkeypatch.delenv("RC_HOOK_LOG", raising=False)

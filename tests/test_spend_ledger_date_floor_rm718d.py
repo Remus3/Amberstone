@@ -65,10 +65,10 @@ def _files(d: Path) -> list[str]:
 
 def test_floor_constant_is_a_date_and_after_the_epoch():
     assert isinstance(ct.SPEND_LEDGER_MIN_DATE, date)
-    assert ct.SPEND_LEDGER_MIN_DATE > date(1970, 1, 12)
+    assert date(1970, 1, 12) < ct.SPEND_LEDGER_MIN_DATE
     # Every real ledger on the live box is from 2026; the floor must sit
     # at or below the first real day so no genuine day is ever refused.
-    assert ct.SPEND_LEDGER_MIN_DATE <= date(2026, 4, 28)
+    assert date(2026, 4, 28) >= ct.SPEND_LEDGER_MIN_DATE
 
 
 def test_an_epoch_day_writes_no_ledger(tmp_path, monkeypatch):

@@ -150,7 +150,7 @@ def _wire_main(monkeypatch, tmp_path, sentinel_value):
     monkeypatch.setattr(cw, "ATTEMPTS_DIR", attempts)
     monkeypatch.setattr(cw, "SENTINEL", sentinel)
     monkeypatch.setattr(cw, "is_halted", lambda *a, **k: False)
-    monkeypatch.setattr(cw, "_list_runs", lambda: [])
+    monkeypatch.setattr(cw, "_list_runs", list)
     monkeypatch.setattr(cw.time, "time", lambda: _NOW)
     return attempts
 

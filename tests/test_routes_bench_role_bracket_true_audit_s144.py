@@ -178,7 +178,7 @@ class JunkShapeTests(_Case):
 
 class CacheLockTests(_Case):
     def test_cache_hit_is_not_sent_under_the_lock(self):
-        with patch(_GRID, side_effect=lambda: {}):
+        with patch(_GRID, side_effect=dict):
             rbb._serve_role_bracket_bench(_H())
             seen = []
 
@@ -202,7 +202,7 @@ class CacheLockTests(_Case):
                 release.wait(5)
                 super()._send(status, body, content_type)
 
-        with patch(_GRID, side_effect=lambda: {}):
+        with patch(_GRID, side_effect=dict):
             rbb._serve_role_bracket_bench(_H())
             t = threading.Thread(target=rbb._serve_role_bracket_bench,
                                  args=(_Stall(),), daemon=True)
@@ -225,7 +225,7 @@ class CacheLockTests(_Case):
 
 class MonotonicTtlTests(_Case):
     def test_wall_clock_step_back_does_not_keep_entry_fresh(self):
-        with patch(_GRID, side_effect=lambda: {}) as g:
+        with patch(_GRID, side_effect=dict) as g:
             with patch("time.time", return_value=1e9):
                 rbb._serve_role_bracket_bench(_H())
             with patch("time.time", return_value=1e9 - 10_000):
@@ -234,7 +234,7 @@ class MonotonicTtlTests(_Case):
         # TTL is measured on the monotonic clock: an entry older than the TTL
         # on that clock is a miss even if the wall clock went backwards.
         rbb._reset_caches()
-        with patch(_GRID, side_effect=lambda: {}) as g:
+        with patch(_GRID, side_effect=dict) as g:
             with patch("dashboard.routes_bench_role_bracket.time.monotonic",
                        return_value=1000.0):
                 rbb._serve_role_bracket_bench(_H())
@@ -246,7 +246,7 @@ class MonotonicTtlTests(_Case):
         self.assertFalse(_strict(h.body)["cached"])
 
     def test_entry_stamped_in_the_future_is_not_served(self):
-        with patch(_GRID, side_effect=lambda: {}) as g:
+        with patch(_GRID, side_effect=dict) as g:
             with patch("dashboard.routes_bench_role_bracket.time.monotonic",
                        return_value=5000.0):
                 rbb._serve_role_bracket_bench(_H())
@@ -257,7 +257,7 @@ class MonotonicTtlTests(_Case):
 
     def test_elapsed_ms_never_negative_on_wall_clock_step(self):
         ticks = iter([2e9, 1e9, 1e9, 1e9, 1e9])
-        with patch(_GRID, side_effect=lambda: {}), \
+        with patch(_GRID, side_effect=dict), \
                 patch("time.time", side_effect=lambda: next(ticks, 1e9)):
             h = _H()
             rbb._serve_role_bracket_bench(h)
@@ -331,7 +331,7 @@ class QueryShapeTests(_Case):
         self.assertNotIn(b"script", h.body)
 
     def test_refusal_does_not_read_the_grid(self):
-        with patch(_GRID, side_effect=lambda: {}) as g:
+        with patch(_GRID, side_effect=dict) as g:
             rbb._serve_role_bracket_bench(_H("role=wizard&bracket=mid"))
             rbb._serve_role_bracket_bench(_H("role=mid&bracket=late"))
         self.assertEqual(g.call_count, 0)

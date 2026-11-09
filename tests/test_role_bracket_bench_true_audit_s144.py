@@ -78,7 +78,7 @@ def _make_db(path: Path, rows, *, copies=None) -> Path:
     return path
 
 
-@pytest.fixture()
+@pytest.fixture
 def corpus(tmp_path, monkeypatch):
     """Factory: build a corpus at tmp_path/<name> and point the reader at it."""
     bench._reset_cache()

@@ -90,7 +90,7 @@ _BAD_NAMES = [
     "Jinx\u3000",                 # ideographic space (old strip() ate it)
     "A" * 33,                     # one past the cap
     "A" * 20000,
-    "Jinx\"}",
+    'Jinx"}',
     "../../etc",
     "Jinx;Senna",
     "'Jinx",                      # must start with a letter / digit
@@ -262,7 +262,7 @@ def test_finite_values_keep_their_exact_type_and_rounding():
         assert cell["iwinrate"] == round(rec.iwinrate, 4)
         assert cell["itemp"] == round(rec.itemp, 4)
         assert cell["smoothed_rate"] == round(rec.smoothed_rate, 4)
-        assert cell["rank"] == int(round(rec.rank))
+        assert cell["rank"] == round(rec.rank)
 
 
 # --------------------------------------------------------------------------

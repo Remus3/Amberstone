@@ -57,7 +57,7 @@ COMMIT_N = [
     "cd sub; git commit -n -m x",
     "$r = git commit -n -m x",
     "bash -c 'git commit -n -m x'",
-    "pwsh -Command \"git commit -n -m x\"",
+    'pwsh -Command "git commit -n -m x"',
     "git.exe commit -n -m x",
 ]
 NOT_COUNTED = [

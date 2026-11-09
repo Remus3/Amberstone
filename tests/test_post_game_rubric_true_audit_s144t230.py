@@ -314,7 +314,7 @@ def test_median_game_is_the_b_floor():
 
 def test_decimal_stat_still_counts():
     # float() always accepted a Decimal; the hardening keeps that.
-    as_dec = pgr.compute_role_grade(dict(_GOOD_STATS, cs=Decimal("210")), "MID")
+    as_dec = pgr.compute_role_grade(dict(_GOOD_STATS, cs=Decimal(210)), "MID")
     assert as_dec == pgr.compute_role_grade(_GOOD_STATS, "MID")
     junk = pgr.compute_role_grade(dict(_GOOD_STATS, cs=Decimal("NaN")), "MID")
     assert junk["components"]["cs_per_min"] == 0.0

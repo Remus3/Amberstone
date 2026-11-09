@@ -111,7 +111,7 @@ def test_f1_one_bad_stat_degrades_only_that_field(bad):
     d["participants"][0]["stats"]["item3"] = bad
     out = ble._enrich_from_lcu(d, _PUUID)
     assert out, "one bad stat must not blank the whole enrichment"
-    me = [r for r in out["roster"] if r["is_me"]][0]
+    me = next(r for r in out["roster"] if r["is_me"])
     assert me["kills"] == 0
     assert me["deaths"] == 2 and me["assists"] == 7
     assert me["cs"] == 160
@@ -126,7 +126,7 @@ def test_f1_numeric_strings_and_floats_still_coerce():
     d["participants"][0]["stats"]["goldEarned"] = 9000.9
     d["participants"][0]["stats"]["deaths"] = " 2 "
     out = ble._enrich_from_lcu(d, _PUUID)
-    me = [r for r in out["roster"] if r["is_me"]][0]
+    me = next(r for r in out["roster"] if r["is_me"])
     assert (me["kills"], me["gold"], me["deaths"]) == (5, 9000, 2)
 
 
@@ -168,7 +168,7 @@ def test_f1_non_string_names_and_bans_are_not_passed_through():
     d["participantIdentities"][0]["player"]["tagLine"] = 7
     d["teams"][1]["bans"] = "abc"
     out = ble._enrich_from_lcu(d, _PUUID)
-    me = [r for r in out["roster"] if r["is_me"]][0]
+    me = next(r for r in out["roster"] if r["is_me"])
     assert me["game_name"] == "" and me["tag_line"] == ""
     assert out["teams"][1]["bans"] == []
     assert out["teams"][0]["bans"] == [{"championId": 1}]

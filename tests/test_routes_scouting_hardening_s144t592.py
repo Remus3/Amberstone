@@ -131,6 +131,8 @@ def test_surrounding_whitespace_is_still_stripped():
 class _Boom(str):
     """A str whose strip() raises: proves the walk stopped before it."""
 
+    __slots__ = ()
+
     def strip(self, *a):  # noqa: D401
         raise RuntimeError("walked past the cap")
 
