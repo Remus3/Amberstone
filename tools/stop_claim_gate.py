@@ -2781,10 +2781,13 @@ def _git_target(here, words):
 # only) reads more launchers: `env` / `wsl` wrappers, bash `--rcfile x` /
 # `--init-file x`, `cmd /c` and `iex` / `Invoke-Expression`. Still missed,
 # filed under the same id: a flag from a QUOTED assignment, a git call inside
-# a quoted assignment, `Start-Process -ArgumentList`, `-EncodedCommand`, an
-# escaped quote in a launcher; and S144-Q-135 (a launcher on an assignment's
-# right side, `$r = bash -c '...'`), S144-Q-136 (`env -C dir git ...` is
-# placed at the caller's directory).
+# a quoted string that is not the whole value (`x="a $(git ...)"`),
+# `Start-Process -ArgumentList`, `-EncodedCommand`, an escaped quote in a
+# launcher; and S144-Q-136 (`env -C dir git ...` is placed at the caller's
+# directory). S144-Q-135 (EXTRA only, _assignment_command) reads the command
+# an assignment runs - `$r = bash -c '...'`, `r=$(bash -c '...')`,
+# `x="$(git push --no-verify)"` - and a bash `NAME=x` prefix before a
+# launcher.
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -2927,14 +2930,65 @@ def _wsl_unwrapped(rest):
 
 
 def _unwrapped(words):
-    """WORDS without leading `env` / `wsl` wrappers, and whether one of them
-    changed directory; WORDS is None when a wrapper cannot be read."""
+    """WORDS without leading `env` / `wsl` wrappers or bash `NAME=VALUE`
+    environment prefixes (S144-Q-135), and whether a wrapper changed
+    directory; WORDS is None when a wrapper cannot be read."""
     moved = False
+    while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
+        words = words[1:]
     while words and _head_name(words[0]) in _WRAPPERS:
         unwrap = _env_unwrapped if _head_name(words[0]) == "env" else _wsl_unwrapped
         words, step = unwrap(words[1:])
         moved = moved or step
     return words, moved
+
+
+# S144-Q-135 (read only when EXTRA is on). An assignment statement whose
+# value RUNS a command: PowerShell runs a bare command, `(...)`, `$(...)` or
+# `@(...)` on the right side; bash runs a value that is one `$(...)` or
+# `` `...` `` substitution; both run a substitution inside double quotes. A
+# single-quoted value is a literal in both shells, and bash `r=(...)` is an
+# array of words. Only a substitution that is the WHOLE value is read
+# (`x="a $(cmd) b"` is not, filed under S144-Q-127).
+_PS_ASSIGN_HEAD = re.compile(r"\$(?:env:)?\w+\s*\+?=(?!=)\s*", re.IGNORECASE)
+_SH_ASSIGN_HEAD = re.compile(
+    r"(?:(?:export|local|readonly|declare|typeset)(?:\s+-\w+)*\s+)?[A-Za-z_]\w*\+?=")
+
+
+def _substituted(value, powershell):
+    """The command of a VALUE that is one command substitution, or None."""
+    if value.startswith('"'):
+        value = value[1:-1] if len(value) > 1 and value.endswith('"') else value[1:]
+        # In double quotes `(...)` / `@(...)` are literal text, and a
+        # backtick is PowerShell's escape character, not a substitution.
+        if not value.startswith("$(" if powershell else ("$(", "`")):
+            return None
+    opens = ("$(", "(", "@(") if powershell else ("$(",)
+    for opener in opens:
+        if value.startswith(opener):
+            body = value[len(opener):]
+            return body[:-1] if body.endswith(")") else body
+    if not powershell and value.startswith("`"):
+        body = value[1:]
+        return body[:-1] if body.endswith("`") else body
+    return None
+
+
+def _assignment_command(statement):
+    """S144-Q-135: the command an assignment STATEMENT (raw text) runs, or
+    None when it is not an assignment or its value runs nothing."""
+    text = statement.strip()
+    ps = _PS_ASSIGN_HEAD.match(text)
+    if ps:
+        value = text[ps.end():].strip()
+        body = _substituted(value, powershell=True)
+        if body is None and value and value[0] not in "'\"$":
+            body = value  # `$r = bash -c '...'`: PowerShell runs it
+        return body or None
+    sh = _SH_ASSIGN_HEAD.match(text)
+    if sh:
+        return _substituted(text[sh.end():].strip(), powershell=False) or None
+    return None
 
 
 def _cmd_script(rest):
@@ -3053,6 +3107,9 @@ def _has_bypass(command, depth=0, extra=True):
             script = _launcher_script(words, extra) if words else None
             if script is not None and _has_bypass(script, depth + 1, extra):
                 return True
+            body = _assignment_command(statement) if extra else None
+            if body is not None and _has_bypass(body, depth + 1, extra):
+                return True
     return False
 
 
@@ -3082,6 +3139,12 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
         hit = bool(EV_BYPASS.search(stripped) and _BYPASS_GIT_WORD.search(stripped))
         if not hit and not legacy and extra:
             hit = _git_words_bypass(_tokens(statement))
+        body = None if legacy or not extra or hit else _assignment_command(text)
+        if body is not None:
+            # S144-Q-135: the command an assignment runs, walked like a
+            # launcher script (its own copy of HERE and VARIABLES). A HIT
+            # statement is already placed from its own words below.
+            targets.extend(_placed(body, here, variables, depth + 1, extra=extra))
         if _assigned(statement, variables):
             # `$out = git push --no-verify` (PowerShell) RUNS what it assigns.
             if hit and not legacy:
