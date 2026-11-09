@@ -55,7 +55,10 @@ DOCUMENTED CONSTANTS:
 
 Dead enemies get NO ring - respawn is API truth (respawnTimer ->
 ``respawn_in_s``); a track with no ``last_seen_pos`` gets NO ring (never
-guess an origin). Pure, no I/O, fail-soft: garbage rows are skipped,
+guess an origin), and neither does one whose position is the tracker's
+(0, 0) "no position" sentinel or lies more than ``_POS_MARGIN`` units off
+the map (S144-T-659). The tracker's "?" champion placeholder and a blank
+name publish as ``champion: None``; a padded name is stripped. Pure, no I/O, fail-soft: garbage rows are skipped,
 garbage containers / non-SR modes return ``None``. NEVER raises.
 """
 from __future__ import annotations
@@ -66,6 +69,19 @@ from core.champion_movespeed import distance_frac_per_s, est_ms
 
 #: SR map extent in game units (core/vision_tracker.py zone-labelling note).
 _SR_MAP_EXTENT = 14800.0
+
+#: Tolerance (game units) past each map edge before a last-seen origin is
+#: refused as garbage (S144-T-659). Real SR coordinates run a little past
+#: the nominal 14800 extent near the fountains; inside this margin the
+#: origin clamps onto the box, beyond it the row gets NO ring - clamping a
+#: far-off coordinate onto the edge would invent an origin that the
+#: frontend's off-box filter (web/js/panels/minimap_zoi.js ``_normMiaRing``)
+#: can no longer reject.
+_POS_MARGIN = 500.0
+
+#: The vision tracker's unknown-champion placeholder (core/vision_tracker.py
+#: ``_compute_enemies``: ``championName or "?"``) - published as None.
+_CHAMP_PLACEHOLDER = "?"
 
 #: Fog floor (s) before a ring appears - see module docstring.
 MIN_MISSING_S = 3.0
@@ -151,6 +167,13 @@ def _ring_for(track, game_time_s, flip):
     z = _num(pos.get("z"))
     if x is None or z is None:
         return None
+    if x == 0.0 and z == 0.0:
+        # The tracker's "no position" sentinel: Live Client position "NONE"
+        # parses to (0, 0) (core/vision_tracker.py ``_compute_enemies``).
+        return None
+    lo, hi = -_POS_MARGIN, _SR_MAP_EXTENT + _POS_MARGIN
+    if not (lo <= x <= hi and lo <= z <= hi):
+        return None  # far off the map -> garbage origin, never clamp it in
 
     # Map units -> box-fraction: x maps straight, z INVERTED to minimap y
     # (y-down frame, blue base bottom-left - see module docstring).
@@ -160,7 +183,9 @@ def _ring_for(track, game_time_s, flip):
         cx = 1.0 - cx  # flipped HUD mirrors the crop on X
 
     raw_champ = track.get("champion")
-    champion = raw_champ if isinstance(raw_champ, str) and raw_champ.strip() else None
+    champion = raw_champ.strip() if isinstance(raw_champ, str) else ""
+    if not champion or champion == _CHAMP_PLACEHOLDER:
+        champion = None
 
     # Radius: reachable distance since last seen, clamped. A zero speed
     # (unknown data) still yields the R_MIN_FRAC pin-prick - honest floor.
