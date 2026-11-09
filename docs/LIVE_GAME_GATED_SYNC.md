@@ -979,6 +979,36 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   from the real renderer's markup drawn under node with a stub element - neither saw the dashboard. A
   route GET (or the route body inside the bundle) is compute only; the tie just proves the rendered
   numbers are THIS roster's. Only a bundle from the real tab, origin and page age checked, ticks this.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 137, 2026-11-09, S144-G-124; source read at `918a0c916`; NOT a
+  tick, NOT a re-open; still READY for a draft lobby).** The READY predicate, the five traps and the probe
+  hold; only line cites moved. (1) THE PREDICATE HOLDS: the gate `_csvRenderCcConditionalPressure`
+  (`web/js/panels/champ_select.js:1925-1957`, was 1788-1819) still hides the chip when either side has no
+  `championId > 0` (`:1934-1937`, was 1796-1799) and maps the queue to the same SR / ARENA / KIWI / ARAM
+  modes (`:1947-1952`); it is reached from `_csvRenderTeamAnalysis` (`:2077`, call at `:2084`; that
+  function is called at `:877` and `:1123`, not the old `:1947`). The drawer default is unchanged
+  (`_csvTaOpen` `:1999`, sessionStorage key `csv-ta-open` `:1998`, `if (body) body.hidden = !open;`
+  `:2097`), and the whole `#csv-team-analysis` block is hidden when no chip in it is visible (`:2090-2091`),
+  which the snippet already captures. (2) TRAPS 1 AND 3 HOLD: `web/index.html:1142-1144` (was 1133-1135)
+  still ships `data-cc-cond-tier="warn" hidden`; `renderCcConditionalPressure`
+  (`web/js/panels/cc_conditional_pressure.js:147`, unchanged) still returns early on an equal
+  `_CCP_SIG` (`:151`) and the gate still sets `block.hidden = true` without clearing it, so the
+  reload-in-this-lobby rule stays. (3) THE PROBE STILL MATCHES THE DOM: every class the snippet reads
+  (`cc-conditional-pressure-row`, `-row-label`, `-row-value`, `-tier`, `-verdict`) is in the renderer
+  markup (`cc_conditional_pressure.js:183-196`), the route prefix `/api/cc-conditional-pressure?` is the
+  page's own fetch (`:82`), and `web/data/champions_index.json` exists; `tests/test_gated_g103_cc_pressure.py`
+  ran 97 passed at `918a0c916` (compute half only, see SUBSTITUTION CHECK). (4) CITE DRIFT, no
+  behaviour change: route `_side_conditional` is `dashboard/routes_cc_conditional_pressure.py:206-243`
+  (was 205-224; a failed per-champion compute is skipped, so "scored" still means "did not raise"),
+  zero conditional CC on both sides still answers ok in `warn` at `:268-270` (was 247-249), and both
+  sides unscored is `ok` false `no_champions` (`:257-262`), which hides the chip by design;
+  `lcu/champ_select_shape.py:438` (was 436) passes `theirTeam` through `_team_picks` (`:261`), which still
+  surfaces `championPickIntent` hovers (`:289`, trap 5). The B12 removal notes are `champ_select.js:49-53`
+  (unchanged) and `:2279-2280` (was 2113) and `web/index.html:1160-1162` (was 1151-1153); the absence
+  pins `tests/snapshot_panels/test_champ_select_view.py:56` and `tests/test_cs3_panel_relocation_dom.py:60`
+  hold. `a685a530` still does not resolve and is not in the commit map. (5) PREREQUISITE: the probe needs
+  the live dashboard on `https://127.0.0.1:8888`, which no task starts since the 2026-10-31 launcher
+  cutover (rc-shell `--profile dev` only); at 2026-11-09T09:13-06:00 the :8888 curl was empty and
+  `:2999` answered nothing, so no game and no lobby this window.
 - **G1-04** (was A4 + QA24) LOBBY1 top-8 friend-invite live verify (`b9cb0092`) + the QA24 non-friend
   invite path end-to-end + the operator-reported defect that inviting others does not send unless the
   confirm dialog is accepted. BLOCKED ON: a real invite target / second account. SOURCE:
