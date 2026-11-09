@@ -31,7 +31,6 @@ is no longer silent - it logs a WARNING.
 """
 from __future__ import annotations
 
-import logging
 import unittest
 
 from agents.daemon_slayer import ult_rates

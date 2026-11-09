@@ -53,7 +53,6 @@ in ENGINE 1.121.0 (2026-06-14) - the xfail is now a passing regression
 test (full coverage in ``test_ehp_sustain_contract.py``).
 """
 
-import math
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot

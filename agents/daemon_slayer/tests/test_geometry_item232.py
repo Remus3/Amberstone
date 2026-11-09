@@ -14,7 +14,6 @@ Pinned geometry shapes (16.11.1):
 """
 
 import sys
-import os
 import unittest
 from pathlib import Path
 

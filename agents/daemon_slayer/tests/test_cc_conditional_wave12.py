@@ -101,7 +101,6 @@ Coverage classes:
 
 from __future__ import annotations
 
-import inspect
 import unittest
 from typing import Tuple
 

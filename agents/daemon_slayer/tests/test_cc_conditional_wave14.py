@@ -85,7 +85,6 @@ Coverage classes:
 
 from __future__ import annotations
 
-import inspect
 import json
 import unittest
 from pathlib import Path
