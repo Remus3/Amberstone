@@ -73,6 +73,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `vision_server/__init__.py` | vision_server package facade + entrypoint |
 | `vision_server/_config.py` | vision server config + Anthropic client |
 | `vision_server/_frame.py` | latest-frame cache + upload handler |
+| `vision_server/_game_window.py` | game window rect + client-area crop plan for the self-grab |
 | `vision_server/_http.py` | BaseHTTPRequestHandler routing for :8889 |
 | `vision_server/_inference.py` | Anthropic vision/coach + Tesseract OCR handlers |
 | `vision_server/_pool.py` | pre-started worker-pool HTTP server for :8889 (RM-735) |

@@ -35,6 +35,14 @@ reason (vocabulary: vision_server._stats.CAPTURE_SKIP_REASONS), counted in
 The probes read only the foreground window's image name and whether the input
 desktop opens; nothing is injected (Vanguard).
 
+S156 S7 - WINDOWED clients: the GDI grab is cut to the game window's client
+area (``vision_server._game_window``; read-only Win32) when the League / TFT
+client runs windowed, so the frame is the game surface every OCR region is
+authored against and scaled to; a fullscreen client or no game window keeps
+the full primary-screen grab exactly as before (``last_capture_window()``).
+The foreground gate above is unchanged: a windowed client must still hold
+(or have just held) the foreground.
+
 s144 true-audit (RM-1046): in-process intervals (the self-grab throttle,
 the foreground grace window, upload latency) run on the MONOTONIC clock, so a
 backward wall-clock step can neither freeze the self-grab nor hold the grace
@@ -262,6 +270,64 @@ def _downscaled(img):
     return img.resize((_SELF_GRAB_MAX_WIDTH, max(1, int(img.height * ratio))))
 
 
+# S156 S7: the capture mode of the last GDI grab - "fullscreen", "windowed"
+# (cropped to the game's client area) or "screen" (no game window found: the
+# whole primary screen, as before) - with the client rect when windowed.
+_last_capture_window: dict = {"mode": None, "client": None, "visible": None,
+                              "ts": 0.0}
+
+
+def _game_window():
+    """Seam: the game window (vision_server._game_window.find_game_window),
+    or None. Read-only Win32; fail-soft."""
+    try:
+        from ._game_window import find_game_window
+        return find_game_window()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _crop_to_game_window(img):
+    """``img`` (a grab of the primary screen) cut to the game's client area
+    when the game runs WINDOWED, else ``img`` unchanged.
+
+    S156 S7: every OCR region is authored against a frame that IS the game
+    surface and scaled to the frame's size (tft/cv profile, core
+    vision_tesseract), so a windowed client grabbed with the whole desktop
+    read nothing. The cut is the client area at the window's own size; a
+    part past the screen edge is padded black so the geometry holds. A
+    fullscreen client, no game window, or a grab whose size is not the
+    screen the window was measured on (a DPI-virtualised grab, a stub)
+    keeps the full frame. Never raises."""
+    mode, client, visible = "screen", None, None
+    try:
+        win = _game_window()
+        if isinstance(win, dict):
+            from ._game_window import crop_to_plan, plan_crop
+            screen = win.get("screen")
+            plan = plan_crop(win.get("client"), screen)
+            if plan is not None and plan["mode"] == "fullscreen":
+                mode = "fullscreen"
+            elif (plan is not None and screen
+                    and tuple(img.size) == (screen[2] - screen[0], screen[3] - screen[1])):
+                img = crop_to_plan(img, plan)
+                mode, client, visible = "windowed", tuple(win["client"]), plan["visible"]
+    except Exception as exc:  # noqa: BLE001 - a crop failure keeps the full frame
+        log.debug("game window crop skipped: %s", exc)
+    prev = _last_capture_window.get("mode")
+    _last_capture_window.update({"mode": mode, "client": client,
+                                 "visible": visible, "ts": time.time()})
+    if mode != prev:
+        log.info("frame capture mode: %s%s", mode,
+                 f" client={client} visible={visible}" if client else "")
+    return img
+
+
+def last_capture_window() -> dict:
+    """The last GDI grab's capture mode (see ``_crop_to_game_window``)."""
+    return dict(_last_capture_window)
+
+
 def _fetch_frame_direct():
     """One in-process screen grab. Returns the cache-shaped frame dict (with a
     base64 JPEG ``b64``) or None on any failure (PIL absent, headless session,
@@ -303,6 +369,9 @@ def _fetch_frame_direct():
             _record_gdi_lane_failure("error")
             log.debug("frame self-grab returned no image")
             return None
+        # S156 S7: a WINDOWED game client is cut out of the desktop so the
+        # frame is the game surface the OCR regions are authored against.
+        img = _crop_to_game_window(img)
         # Y-03: a near-uniform frame (black / white / flat) carries no game
         # state; drop it BEFORE it can become a calibration still.
         if _frame_blank(img):
@@ -344,6 +413,8 @@ def _reset_self_read_state() -> None:
     with _self_grab_lock:
         _last_self_grab_attempt = None
         _league_fg_last_seen = None
+    _last_capture_window.update({"mode": None, "client": None,
+                                 "visible": None, "ts": 0.0})
     with _frame_lock:
         _latest_frame.update({"b64": None, "ts": 0.0, "size": 0,
                               "source": None, "width": None, "height": None,
