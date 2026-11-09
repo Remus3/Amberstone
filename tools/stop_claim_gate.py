@@ -54,6 +54,7 @@ unmeasured under pythonw, so the reasoning stands.)
 """
 import argparse
 import bisect
+import contextvars
 import hashlib
 import itertools
 import json
@@ -3767,6 +3768,25 @@ def _keyword_readings(words):
     return [plain] if braced == plain else [plain, braced]
 
 
+def _unwrap_lead(words, braces=False):
+    """_unwrapped's first steps: WORDS without keyword heads
+    (_keyword_unwrapped) and then bash `NAME=VALUE` prefixes."""
+    words = _keyword_unwrapped(words, braces)
+    while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
+        words = words[1:]
+    return words
+
+
+def _wrapped_head(words, braces=False):
+    """S144-Q-163: True when _unwrapped would read a wrapper or prefix
+    command at the head of WORDS. Only those read ESCAPES (`env`) and FULL
+    (a prefix command), so with False every option pair gives _unwrapped's
+    plain answer."""
+    lead = _unwrap_lead(words, braces)
+    return bool(lead) and ((head := _head_name(lead[0])) in _WRAPPERS
+                           or head in _PREFIX_COMMANDS)
+
+
 def _unwrapped(words, escapes=False, full=False, braces=False):
     """WORDS without leading `env` / `wsl` wrappers, bash `NAME=VALUE`
     environment prefixes (S144-Q-135) or prefix commands (S144-Q-146:
@@ -3778,9 +3798,7 @@ def _unwrapped(words, escapes=False, full=False, braces=False):
     the `!` bash allows after `time` (`time ! cmd`); BRACES reads them with
     _keyword_unwrapped's S144-Q-158 brace reading."""
     moved = False
-    words = _keyword_unwrapped(words, braces)
-    while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
-        words = words[1:]
+    words = _unwrap_lead(words, braces)
     while words and ((head := _head_name(words[0])) in _WRAPPERS
                      or head in _PREFIX_COMMANDS):
         if head == "env":
@@ -3903,21 +3921,29 @@ def _launcher_script(words, extra=True, escapes=False, full=False,
     return script
 
 
+# The (ESCAPES, FULL) pairs _launcher_scripts reads a wrapped statement
+# with. S144-Q-154: FULL_BSD is a third reading, walked beside both.
+_UNWRAP_OPTION_PAIRS = ((False, False), (True, False), (False, True),
+                        (True, True), (False, FULL_BSD), (True, FULL_BSD))
+
+
 def _launcher_scripts(words, extra=True):
     """S144-Q-145: _launcher_script's script, plus with EXTRA the one read
     with env's `-S` escapes (`env -S 'bash\\_-c\\_"..."'`) and (S144-Q-150)
     the ones read with prefix options in full (`nice --adj 5 bash -c ...`)
     when they differ: all are walked (count-only, the plain reading is
     never replaced). S144-Q-158: each again behind PowerShell brace heads
-    when WORDS open with one (`if ($x) { bash -c '...'`)."""
+    when WORDS open with one (`if ($x) { bash -c '...'`).
+    S144-Q-163: a reading with no wrapper or prefix command at its head
+    (_wrapped_head) is read once, not once per option pair: every pair
+    gives the same script there, so no script is lost."""
     scripts = [_launcher_script(words, extra)]
     if extra:
         braced = len(_keyword_readings(words)) > 1
-        # S144-Q-154: FULL_BSD is a third reading, walked beside both
         for braces in (False, True) if braced else (False,):
-            for escapes, full in ((False, False), (True, False), (False, True),
-                                  (True, True), (False, FULL_BSD),
-                                  (True, FULL_BSD)):
+            pairs = _UNWRAP_OPTION_PAIRS if _wrapped_head(words, braces) \
+                else ((False, False),)
+            for escapes, full in pairs:
                 more = _launcher_script(words, extra, escapes=escapes,
                                         full=full, braces=braces)
                 if more not in scripts:
@@ -4043,7 +4069,45 @@ def _has_bypass(command, depth=0, extra=True, expand=True):
     is walked again on the expanded words (`F=-n; git commit $F`). The raw
     walk is unchanged and runs exactly when it did, so this only adds. A
     launcher script is walked with no variables: a child shell does not
-    see the parent's unexported assignments (`bash -c '... $F'`)."""
+    see the parent's unexported assignments (`bash -c '... $F'`).
+
+    S144-Q-163: each (COMMAND, DEPTH, EXTRA, EXPAND) is walked once per
+    top-level call (_memo_scope); the walk is a pure function of the four,
+    so a repeat (a nested launcher's script, named by the raw walk and the
+    held walk at every level) returns what the walk would."""
+    return _memo_scope(_memo_has_bypass, command, depth, extra, expand)
+
+
+# S144-Q-163: the _has_bypass answers of the running top-level call (a
+# dict, keyed by its four arguments), or None between calls. A scope opens
+# at the outermost _has_bypass or _bypass_targets call and closes when it
+# returns or raises, so nothing is carried from one call to the next (a
+# test that patches a helper between two calls sees its patch).
+_BYPASS_MEMO = contextvars.ContextVar("stop_claim_gate_bypass_memo",
+                                      default=None)
+
+
+def _memo_scope(func, *args):
+    """FUNC(*ARGS) inside a _BYPASS_MEMO scope, opening one if none is open."""
+    if _BYPASS_MEMO.get() is not None:
+        return func(*args)
+    token = _BYPASS_MEMO.set({})
+    try:
+        return func(*args)
+    finally:
+        _BYPASS_MEMO.reset(token)
+
+
+def _memo_has_bypass(command, depth, extra, expand):
+    memo = _BYPASS_MEMO.get()
+    key = (command, depth, extra, expand)
+    if key not in memo:
+        memo[key] = _has_bypass_walk(command, depth, extra, expand)
+    return memo[key]
+
+
+def _has_bypass_walk(command, depth, extra, expand):
+    """_has_bypass's walk, unmemoised at this level (see _has_bypass)."""
     if _bypass_in_text(command):
         return True
     flagged = bool(EV_BYPASS.search(command))
@@ -4218,7 +4282,14 @@ def _bypass_targets(command, cwd):
     S144-Q-127 keeps the same promise one level up: when the RM-698
     predicate alone counts COMMAND and the RM-698 walk places nothing, its
     fail-closed None stays, so a quoted-flag statement placed outside RC
-    cannot hide a launcher-only bypass nothing could place."""
+    cannot hide a launcher-only bypass nothing could place.
+
+    S144-Q-163: its _has_bypass calls share one memo scope."""
+    return _memo_scope(_bypass_targets_walk, command, cwd)
+
+
+def _bypass_targets_walk(command, cwd):
+    """_bypass_targets inside its memo scope."""
     if len(command) > COMMAND_PARSE_MAX:
         return [None]
     if not _has_bypass(command):
