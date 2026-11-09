@@ -25,7 +25,7 @@ def _load_module():
     The module does `os.chdir(_PROJECT_ROOT)` at import time; save/restore
     cwd so importing it for a unit test doesn't pollute sibling tests.
     """
-    cwd = os.getcwd()
+    cwd = Path.cwd()
     try:
         spec = importlib.util.spec_from_file_location(
             "start_daemon_slayer",

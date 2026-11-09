@@ -211,7 +211,7 @@ class AllowListTests(_Base):
 
     def test_relative_path_refused(self):
         # Relative to the process cwd it WOULD exist; it is still refused.
-        here = os.getcwd()
+        here = Path.cwd()
         os.chdir(self.tmp)
         self.addCleanup(os.chdir, here)
         self.sidecar("123", "media/game.mp4")

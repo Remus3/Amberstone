@@ -693,8 +693,8 @@ def _gate_commit(command: str, claude: bool) -> int:
     advisories: list[str] = []
     root = (
         _root_from_command(command)
-        or _git(["rev-parse", "--show-toplevel"], os.getcwd()).strip()
-        or os.getcwd()
+        or _git(["rev-parse", "--show-toplevel"], str(pathlib.Path.cwd())).strip()
+        or str(pathlib.Path.cwd())
     )
     staged = _staged_added(root)
     # 0. RM-422: new tracked paths over the Windows clone cap.
