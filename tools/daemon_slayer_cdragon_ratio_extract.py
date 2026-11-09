@@ -333,7 +333,7 @@ def _stat_field_for(mstat: Any, data_value_name: Optional[str]) -> Optional[str]
 
 
 # --------------------------------------------------------------------------- flat-part evaluation
-class _Fallback(Exception):
+class _FallbackError(Exception):
     """Raised internally when a part cannot be represented in the percent schema."""
 
 
@@ -344,7 +344,7 @@ def _flat_part_value(part: dict[str, Any], data_vals: dict[str, list[float]],
     A ``NamedDataValueCalculationPart`` / ``NumberCalculationPart`` is a flat
     (non-ratio) amount: field is None (it is a base/multiplier magnitude). A
     ``StatBy...`` part is a ratio: field is the resolved schema field and the array
-    is the FRACTION (caller scales to percent). Raises ``_Fallback`` for any
+    is the FRACTION (caller scales to percent). Raises ``_FallbackError`` for any
     unrepresentable shape (unknown stat, missing data value, unknown type).
     """
     ptype = part.get("__type")
@@ -352,31 +352,31 @@ def _flat_part_value(part: dict[str, Any], data_vals: dict[str, list[float]],
         dv = part.get("mDataValue")
         arr = data_vals.get(dv) if isinstance(dv, str) else None
         if arr is None:
-            raise _Fallback(f"missing data value {dv!r}")
+            raise _FallbackError(f"missing data value {dv!r}")
         return None, list(arr)
     if ptype == "NumberCalculationPart":
         n = _num(part.get("mNumber"))
         if n is None:
-            raise _Fallback("non-numeric mNumber")
+            raise _FallbackError("non-numeric mNumber")
         return None, _broadcast(n, rank_len)
     if ptype == "StatByNamedDataValueCalculationPart":
         dv = part.get("mDataValue")
         arr = data_vals.get(dv) if isinstance(dv, str) else None
         if arr is None:
-            raise _Fallback(f"missing stat data value {dv!r}")
+            raise _FallbackError(f"missing stat data value {dv!r}")
         field = _stat_field_for(part.get("mStat"), dv if isinstance(dv, str) else None)
         if field is None:
-            raise _Fallback("unknown stat enum")
+            raise _FallbackError("unknown stat enum")
         return field, list(arr)
     if ptype == "StatByCoefficientCalculationPart":
         coef = _num(part.get("mCoefficient"))
         if coef is None:
-            raise _Fallback("non-numeric mCoefficient")
+            raise _FallbackError("non-numeric mCoefficient")
         field = _stat_field_for(part.get("mStat"), None)
         if field is None:
-            raise _Fallback("unknown stat enum")
+            raise _FallbackError("unknown stat enum")
         return field, _broadcast(coef, rank_len)
-    raise _Fallback(f"non-flat part type {ptype!r}")
+    raise _FallbackError(f"non-flat part type {ptype!r}")
 
 
 def _rank_length(parts: list[dict[str, Any]], data_vals: dict[str, list[float]]) -> int:
@@ -394,20 +394,20 @@ def _resolve_subpart_product(part: dict[str, Any], data_vals: dict[str, list[flo
     The product of a stat-ratio and a plain number is a scaled ratio; the product
     of two plain numbers is a scaled base (field None). Each subpart must reduce to
     a SINGLE contribution (a multi-term subpart, two ratios, or any non-flat
-    subpart) raise ``_Fallback``.
+    subpart) raise ``_FallbackError``.
     """
     p1 = part.get("mPart1")
     p2 = part.get("mPart2")
     if not isinstance(p1, dict) or not isinstance(p2, dict):
-        raise _Fallback("product missing mPart1/mPart2")
+        raise _FallbackError("product missing mPart1/mPart2")
     c1 = _resolve_flat_any(p1, data_vals, rank_len)
     c2 = _resolve_flat_any(p2, data_vals, rank_len)
     if len(c1) != 1 or len(c2) != 1:
-        raise _Fallback("product subpart is multi-term")
+        raise _FallbackError("product subpart is multi-term")
     (f1, a1), (f2, a2) = c1[0], c2[0]
     fields = [f for f in (f1, f2) if f is not None]
     if len(fields) > 1:
-        raise _Fallback("product of two ratios is not a single schema field")
+        raise _FallbackError("product of two ratios is not a single schema field")
     field = fields[0] if fields else None
     n = max(len(a1), len(a2), rank_len)
     out = [
@@ -421,21 +421,21 @@ def _resolve_subpart_sum(part: dict[str, Any], data_vals: dict[str, list[float]]
                          rank_len: int) -> tuple[Optional[str], list[float]]:
     """A SumOfSubParts -> (field, per-rank array) if every subpart is flat AND they
     share at most one ratio field (a sum of like terms). Mixed ratio fields, a
-    multi-term subpart, or a non-flat subpart raise ``_Fallback``."""
+    multi-term subpart, or a non-flat subpart raise ``_FallbackError``."""
     subs = part.get("mSubparts")
     if not isinstance(subs, list) or not subs:
-        raise _Fallback("sum missing mSubparts")
+        raise _FallbackError("sum missing mSubparts")
     resolved: list[tuple[Optional[str], list[float]]] = []
     for sp in subs:
         if not isinstance(sp, dict):
-            raise _Fallback("non-dict subpart")
+            raise _FallbackError("non-dict subpart")
         c = _resolve_flat_any(sp, data_vals, rank_len)
         if len(c) != 1:
-            raise _Fallback("sum subpart is multi-term")
+            raise _FallbackError("sum subpart is multi-term")
         resolved.append(c[0])
     fields = {f for f, _ in resolved if f is not None}
     if len(fields) > 1:
-        raise _Fallback("sum mixes multiple schema fields")
+        raise _FallbackError("sum mixes multiple schema fields")
     field = next(iter(fields)) if fields else None
     n = max([len(a) for _, a in resolved] + [rank_len])
     out = [0.0] * n
@@ -450,14 +450,14 @@ def _resolve_flat_any(part: dict[str, Any], data_vals: dict[str, list[float]],
     """Resolve any FLAT part (leaf or a product/sum of flat parts) -> a list of
     (field, array) contributions. A leaf or a product/sum collapses to a single
     contribution; the list shape lets a modified-ref carry multiple. Non-flat /
-    unknown shapes raise ``_Fallback``."""
+    unknown shapes raise ``_FallbackError``."""
     ptype = part.get("__type")
     if ptype == "ProductOfSubPartsCalculationPart":
         return [_resolve_subpart_product(part, data_vals, rank_len)]
     if ptype == "SumOfSubPartsCalculationPart":
         return [_resolve_subpart_sum(part, data_vals, rank_len)]
     if ptype in _HARD_FALLBACK_TYPES or ptype not in _FLAT_PART_TYPES:
-        raise _Fallback(f"non-flat nested part {ptype!r}")
+        raise _FallbackError(f"non-flat nested part {ptype!r}")
     return [_flat_part_value(part, data_vals, rank_len)]
 
 
@@ -474,7 +474,7 @@ def _calc_is_flat(calc: dict[str, Any], data_vals: dict[str, list[float]]) -> bo
             return False
         try:
             _resolve_flat_any(p, data_vals, rank_len)
-        except _Fallback:
+        except _FallbackError:
             return False
     return True
 
@@ -489,23 +489,23 @@ def _resolve_modified(part: dict[str, Any], calcs: dict[str, Any],
     ref preserves EVERY contribution of the referenced calc (a base magnitude AND
     any ratio fields), each multiplied through - so ``BladeDamage * 0.35`` keeps
     both the scaled base and the scaled total-AD ratio. Non-flat ref, missing ref,
-    or a non-flat multiplier raise ``_Fallback``.
+    or a non-flat multiplier raise ``_FallbackError``.
     """
     ref_name = part.get("mModifiedGameCalculation")
     ref = calcs.get(ref_name) if isinstance(ref_name, str) else None
     if not isinstance(ref, dict) or not _calc_is_flat(ref, data_vals):
-        raise _Fallback("modified ref missing or not flat")
+        raise _FallbackError("modified ref missing or not flat")
     # resolve the multiplier (a NumberCalculationPart wrapper or a bare number)
     mult_part = part.get("mMultiplier")
     if isinstance(mult_part, dict):
         mn = _num(mult_part.get("mNumber"))
         if mn is None:
-            raise _Fallback("non-flat multiplier")
+            raise _FallbackError("non-flat multiplier")
         mult = mn
     else:
         mn = _num(mult_part)
         if mn is None:
-            raise _Fallback("missing multiplier")
+            raise _FallbackError("missing multiplier")
         mult = mn
     # accumulate the referenced calc's contributions (keyed by field) then scale.
     ref_parts = ref.get("mFormulaParts") or []
@@ -590,13 +590,13 @@ def resolve_calc_block(calc_name: str, calc: dict[str, Any],
     try:
         for part in parts:
             if not isinstance(part, dict):
-                raise _Fallback("non-dict part")
+                raise _FallbackError("non-dict part")
             ptype = part.get("__type")
             # cross-ref into a conditional/buff calc -> hard fallback
             if "mSpellCalculationKey" in part:
-                raise _Fallback("cross-ref mSpellCalculationKey")
+                raise _FallbackError("cross-ref mSpellCalculationKey")
             if ptype in _HARD_FALLBACK_TYPES:
-                raise _Fallback(f"hard-fallback type {ptype!r}")
+                raise _FallbackError(f"hard-fallback type {ptype!r}")
             if ptype == "GameCalculationModified":
                 contribs = _resolve_modified(part, calcs, data_vals, rank_len)
             elif ptype == "ProductOfSubPartsCalculationPart":
@@ -606,13 +606,13 @@ def resolve_calc_block(calc_name: str, calc: dict[str, Any],
             elif ptype in _FLAT_PART_TYPES:
                 contribs = [_flat_part_value(part, data_vals, rank_len)]
             else:
-                raise _Fallback(f"unknown part type {ptype!r}")
+                raise _FallbackError(f"unknown part type {ptype!r}")
             for field, arr in contribs:
                 if field is None:
                     _add_base(arr)
                 else:
                     _add_ratio(field, arr)
-    except _Fallback:
+    except _FallbackError:
         return block  # resolution stays "fallback", no partial emission
 
     # explosion guard: any ratio fraction * 100 > _EXPLOSION_RATIO_PCT is a tooltip

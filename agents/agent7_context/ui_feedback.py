@@ -54,7 +54,7 @@ from agents.agent4_coach_mentor.ui_applier import (
 from agents.agent7_context.input_parser import (
     _envelope_text,
     _first_json_object,
-    _UnusableLLMReply,
+    _UnusableLLMReplyError,
 )
 from core.log_scrub import redact_secrets, scrub_log
 
@@ -543,7 +543,7 @@ class UIFeedbackParser:
         """
         try:
             text_out = _envelope_text(env)
-        except _UnusableLLMReply as exc:
+        except _UnusableLLMReplyError as exc:
             _log_warning("ui_feedback LLM reply unusable", exc)
             return None
         parsed = _first_json_object(text_out)

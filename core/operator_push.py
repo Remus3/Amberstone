@@ -124,7 +124,7 @@ def suffix_refusal(suffix: object) -> str | None:
     return None
 
 
-class _Refused(Exception):
+class _RefusedError(Exception):
     """Internal: a reason this push must not leave. Message names refs only."""
 
 
@@ -244,36 +244,36 @@ def _resolve(ref: object, label: str, allow_literal: bool) -> str:
     """A config value or secret reference -> its string. Errors name the REF."""
     if isinstance(ref, str):
         if not allow_literal:
-            raise _Refused(f"{label} must be a reference ({{'env': NAME}} or {{'file': path}}), "
+            raise _RefusedError(f"{label} must be a reference ({{'env': NAME}} or {{'file': path}}), "
                            "not a literal")
         if not ref.strip():
-            raise _Refused(f"{label} is empty")
+            raise _RefusedError(f"{label} is empty")
         return ref.strip()
     if not isinstance(ref, Mapping) or len(ref) != 1:
-        raise _Refused(f"{label} reference needs exactly one of env / file")
+        raise _RefusedError(f"{label} reference needs exactly one of env / file")
     (kind, val), = ref.items()
     if kind == "env":
         if not isinstance(val, str) or not _ENV_NAME.match(val):
-            raise _Refused(f"{label} env reference needs a variable name")
+            raise _RefusedError(f"{label} env reference needs a variable name")
         value = str(os.environ.get(val) or "").strip()
         if not value:
-            raise _Refused(f"{label} ref env:{val} is unset or empty")
+            raise _RefusedError(f"{label} ref env:{val} is unset or empty")
         return value
     if kind == "file":
         if not isinstance(val, str) or not val:
-            raise _Refused(f"{label} file reference needs a path")
+            raise _RefusedError(f"{label} file reference needs a path")
         p = Path(val)
         if not p.is_absolute():
             p = _ROOT / p
         try:
             text = p.read_bytes().decode("utf-8-sig", errors="replace")
         except OSError:
-            raise _Refused(f"{label} ref file:{p.name} is missing or unreadable") from None
+            raise _RefusedError(f"{label} ref file:{p.name} is missing or unreadable") from None
         for line in text.splitlines():
             if line.strip():
                 return line.strip()
-        raise _Refused(f"{label} ref file:{p.name} is empty")
-    raise _Refused(f"{label} reference kind must be env or file")
+        raise _RefusedError(f"{label} ref file:{p.name} is empty")
+    raise _RefusedError(f"{label} reference kind must be env or file")
 
 
 # ---------------------------------------------------------------- sweep
@@ -394,10 +394,10 @@ class NtfyNotifier(_on.Notifier):
         topic = _resolve(self._topic_ref, "topic", allow_literal=True)
         token = _resolve(self._token_ref, "token", allow_literal=False)
         if not _TOKEN_OK.match(token):
-            raise _Refused("token ref resolves to a value that is not header-safe")
+            raise _RefusedError("token ref resolves to a value that is not header-safe")
         why = server_refusal(server, self.tailnet_suffix)
         if why:
-            raise _Refused(why)
+            raise _RefusedError(why)
         return server, topic, token
 
     def build_payload(self, n: _on.Notification, *, attach: str | None = None,
@@ -504,7 +504,7 @@ class NtfyNotifier(_on.Notifier):
                 pass
             msg_id = re.sub(r"[^A-Za-z0-9]", "", msg_id)[:32]
             return True, f"published {status} id={msg_id or '?'}"
-        except _Refused as exc:
+        except _RefusedError as exc:
             return False, self._scrub(str(exc), secrets)
         except Exception as exc:  # noqa: BLE001 - contract: never raises, never leaks
             return False, self._scrub(f"{type(exc).__name__}", secrets)
@@ -540,7 +540,7 @@ class NtfyNotifier(_on.Notifier):
                                   ("id", "time", "title", "message", "priority",
                                    "tags", "click")})
             return True, items, f"polled {status}, {len(items)} message(s)"
-        except _Refused as exc:
+        except _RefusedError as exc:
             return False, [], self._scrub(str(exc), secrets)
         except Exception as exc:  # noqa: BLE001 - contract: never raises
             return False, [], self._scrub(f"{type(exc).__name__}", secrets)

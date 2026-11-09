@@ -67,7 +67,7 @@ def _get_hub() -> live_event_hub.LiveEventHub:
     return live_event_hub.get_hub()
 
 
-class _BadSince(ValueError):
+class _BadSinceError(ValueError):
     """?since= is present but not an id."""
 
 
@@ -88,7 +88,7 @@ def _parse_id(raw: object) -> Optional[int]:
 def _resume_from(h) -> Optional[int]:
     """?since= wins over Last-Event-ID; None means a fresh client.
 
-    Raises _BadSince for a ?since= that is present but not an id (an empty
+    Raises _BadSinceError for a ?since= that is present but not an id (an empty
     ``?since=`` is absent: parse_qs drops it; whitespace-only is not an id).
     """
     q = parse_qs(urlsplit(getattr(h, "path", "") or "").query)
@@ -96,7 +96,7 @@ def _resume_from(h) -> Optional[int]:
     if raw is not None:
         since = _parse_id(raw)
         if since is None:
-            raise _BadSince(raw[:32])
+            raise _BadSinceError(raw[:32])
         return since
     headers = getattr(h, "headers", None)
     try:
@@ -166,7 +166,7 @@ def _serve_events(h) -> None:
         return
     try:
         after = _resume_from(h)
-    except _BadSince:
+    except _BadSinceError:
         h._send(400, b'{"error":"bad_since"}', "application/json")
         return
     if not _wants_sse(h):

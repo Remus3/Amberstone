@@ -264,7 +264,7 @@ def apply_standalone_tft_mirror(health: dict, lcu_snapshot: dict | None) -> dict
     return {**health, "tft_mode": True}
 
 
-class _SkipDeterministic(Exception):
+class _SkipDeterministicError(Exception):
     """Internal: skip the deterministic fan-out for an unidentified live game."""
 
 
@@ -984,7 +984,7 @@ def build_state() -> dict:
     det = {"choices": [], "callouts": [], "lead_projection": {}}
     try:
         if unidentified_live:
-            raise _SkipDeterministic
+            raise _SkipDeterministicError
         from dashboard._deterministic_coaching import (
             compute_deterministic, resolve_choices, resolve_coach_fields,
             shadow_log_det,

@@ -163,7 +163,7 @@ _DEFAULT_TASK_REPLY = "Filed via LLM parse."
 _MAX_JSON_CANDIDATES = 64
 
 
-class _UnusableLLMReply(Exception):
+class _UnusableLLMReplyError(Exception):
     """The LLM envelope is an error or carries nothing usable; ``parse``
     logs the reason and files the input as ``user-unparsed``."""
 
@@ -214,20 +214,20 @@ def _llm_payload(value: Any) -> dict[str, Any]:
 
 
 def _envelope_text(envelope: Any) -> str:
-    """The model text out of a spawn envelope, or ``_UnusableLLMReply``.
+    """The model text out of a spawn envelope, or ``_UnusableLLMReplyError``.
 
     Shapes: ``{"ok": ..., "result": {"result": "<model text>", "is_error":
     ...}}`` from both the ephemeral CLI and the warm session; the ephemeral
     path substitutes ``{"raw_stdout": ...}`` when stdout was not JSON.
     """
     if not isinstance(envelope, dict):
-        raise _UnusableLLMReply(f"envelope is {type(envelope).__name__}")
+        raise _UnusableLLMReplyError(f"envelope is {type(envelope).__name__}")
     if envelope.get("ok") is False:
-        raise _UnusableLLMReply("envelope ok=false")
+        raise _UnusableLLMReplyError("envelope ok=false")
     raw = envelope.get("result")
     if isinstance(raw, dict):
         if raw.get("is_error") is True:
-            raise _UnusableLLMReply("envelope is_error=true")
+            raise _UnusableLLMReplyError("envelope is_error=true")
         if "result" in raw:
             text = raw["result"]
         elif "raw_stdout" in raw:
@@ -236,15 +236,15 @@ def _envelope_text(envelope: Any) -> str:
             # object inside it is used.
             text = raw["raw_stdout"]
             if not isinstance(text, str) or _first_json_object(text) is None:
-                raise _UnusableLLMReply("non-JSON stdout")
+                raise _UnusableLLMReplyError("non-JSON stdout")
         else:
-            raise _UnusableLLMReply("envelope result has no text")
+            raise _UnusableLLMReplyError("envelope result has no text")
     else:
         # A bare string result is the old pre-envelope shape: the model's
         # text could equally be the CLI's error line, so it is not shown.
-        raise _UnusableLLMReply(f"envelope result is {type(raw).__name__}")
+        raise _UnusableLLMReplyError(f"envelope result is {type(raw).__name__}")
     if not isinstance(text, str):
-        raise _UnusableLLMReply(f"model text is {type(text).__name__}")
+        raise _UnusableLLMReplyError(f"model text is {type(text).__name__}")
     return text
 
 
@@ -436,7 +436,7 @@ class InputParser:
                     },
                 )
                 return self._consume_llm_result(text, result)
-            except _UnusableLLMReply as e:
+            except _UnusableLLMReplyError as e:
                 logger.warning("LLM fallback unusable: %s", scrub_log(str(e)))
             except Exception as e:  # noqa: BLE001 - any spawn failure files the input
                 _log_cause("LLM fallback failed", e)
@@ -460,7 +460,7 @@ class InputParser:
     def _consume_llm_result(self, user_text: str, llm_envelope: Any) -> ParseResult:
         """Interpret the JSON envelope returned by an ephemeral Haiku call.
 
-        Raises ``_UnusableLLMReply`` for an error envelope or a reply with
+        Raises ``_UnusableLLMReplyError`` for an error envelope or a reply with
         nothing usable; ``parse`` then files the input as ``user-unparsed``.
         Validation happens before ``file_task``, so nothing is filed twice.
         """
@@ -471,7 +471,7 @@ class InputParser:
             # LLM gave prose - surface it as the reply.
             prose = text_out.strip()
             if not prose:
-                raise _UnusableLLMReply("empty model text")
+                raise _UnusableLLMReplyError("empty model text")
             return ParseResult(reply=prose, intent="chitchat", used_llm=True)
 
         task = parsed.get("task")
@@ -537,4 +537,4 @@ class InputParser:
 
         # A JSON object with neither a task object nor a usable reply: the
         # raw JSON is not prose for the operator; the input gets filed.
-        raise _UnusableLLMReply("JSON reply has no task object and no reply")
+        raise _UnusableLLMReplyError("JSON reply has no task object and no reply")
