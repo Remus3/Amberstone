@@ -69,9 +69,20 @@ def _serve_decisions(h) -> None:
     # threading machinery just to read the file. Decouples the API from
     # the loop's process location: a future move of the detector to
     # agents/supervisor.py won't break this endpoint.
+    #
+    # S144-U-270: the pending file is served only while the loop that owns
+    # it is alive. The loop is the ONLY thing that empties the file out of
+    # game, so with the Phase 3 supervisor down (crashed, or not started yet
+    # at boot) a left-over call kept painting the #coach-decisions banner in
+    # every view, and the hotkey listener could still answer it. The loop
+    # writes its heartbeat only while evaluating a live game (alive inside
+    # 5 s, recomputed at read time), so this also keeps the banner in-game
+    # only. Guard: tests/test_decisions_route_liveness_gate.py.
     try:
-        from core.decision_detector import DecisionStore
+        from core.decision_detector import DecisionStore, read_heartbeat
         pending = DecisionStore().list_pending()
+        if pending and read_heartbeat().get("alive") is not True:
+            pending = []
         h._send(200, json.dumps({"pending": pending}).encode("utf-8"),
                 "application/json")
     except Exception as exc:  # noqa: BLE001

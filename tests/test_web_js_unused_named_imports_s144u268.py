@@ -74,11 +74,11 @@ def _unused_named_imports(text: str) -> list[tuple[str, str]]:
     found: list[tuple[str, str]] = []
     for m in _NAMED_IMPORT.finditer(live):
         rest = live[:m.start()] + " " + live[m.end():]
-        for raw in m.group(1).split(","):
-            raw = raw.strip()
-            if not raw:
+        for part in m.group(1).split(","):
+            spec = part.strip()
+            if not spec:
                 continue
-            local = re.split(r"\s+as\s+", raw)[-1].strip()
+            local = re.split(r"\s+as\s+", spec)[-1].strip()
             pat = r"(?<![\w$])" + re.escape(local) + r"(?![\w$])"
             if not re.search(pat, rest):
                 found.append((m.group(3), local))
