@@ -1,5 +1,12 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-11-08c - session 156 C9 merger closes
+
+- **[x] RM-1158 SHIPPED (s156 slice S6 `6a9d04e45`, merge `6bb3152ab`):** `scripts/tft_patch_delta.py` no longer reports a CommunityDragon hash-to-name key resolution as a value change.
+- **[x] RM-518 SHIPPED (s156 slice S5 `52d58224e` + `81c26322c`, merge `ca65133c2`):** `web/js/panels/objective_gauges.js` mirrors `core/sr_schedule.py`; the soul-driven Elder replaces the invented 35:00 marker; rendered Chromium test of the Elder ring.
+- **[x] RM-1338 SHIPPED (s156 slice S2 `8e6657913` / `1c9fe28b4` / `a14fc853e`, merge `58bad7709`):** DS 16.21.1 -> 16.22.1, ENGINE 1.291.0; ability_staleness carried at 16.21.1 by adjudicator ruling (RM-2079). DS :8860 live ENGINE check owed at next app launch.
+- **[x] LT-02r pool half CLOSED (s156 slice S6 `3b4f0baba`, merge `6bb3152ab`):** Set 18 `POOL_SIZES` 30/25/18/10/9 over 14/13/14/14/10 units from the game shop data (CommunityDragon map22 TierBags, equal at 16.21 and 16.22). The L1-L3 / L10-L11 odds half stays OPEN in `ROADMAP.md`.
+
 ## 2026-11-08b - size-budget relocation (session 156 C1), closed halves of 27 mixed lines
 
 `ROADMAP.md` stood at 73210 of 81920 bytes on `a585214c6` (the `tools/drift_guard.py` warn line is 73728), and the s155 / s156 filings would cross it. Rule (s156 C1, the s155 hand-off NEXT ACTION 4): each mixed line below was SPLIT - its SHIPPED / CLOSED / REFUTED half (ids, shas, LEDGER refs, measurement narrative) is recorded here, and its OPEN / PARTIAL / gated / owed half stays in `ROADMAP.md` with a pointer to this block. Every line below is VERBATIM as it stood at `a585214c6`, so it still carries its then-open halves; the live disposition of an id is the `ROADMAP.md` row and its `BACKLOG.md` head. No RM id was deleted and no open work was dropped; fences governing future work stayed inline.

@@ -6564,7 +6564,9 @@ stays playable beside it, so record which set the game ran).
   (`tft/tft_data.py`, `tft/tft_pbe_data.py`; `CONSTANTS_SET_VERIFIED` stays False in both and
   `tft/tft_roll_odds.py` reports both STALE against the Set 18 lane until this closes). Close by pinning the measured table with a test, or recording
   that Set 18 kept the Set 17 values.
-- **LT-02r** (filed s134 M1b, the residual of LT-02) Two halves the session 134 QA game did not read:
+- **LT-02r** (filed s134 M1b, the residual of LT-02; half (1) CLOSED s156 by slice S6 `3b4f0baba`,
+  merge `6bb3152ab`: Set 18 `POOL_SIZES` 30/25/18/10/9 from the game shop data, Set 14 tables kept
+  as `POOL_SIZES_SET14`; half (2) stays open) Two halves the session 134 QA game did not read:
   (1) Set 18 champion pool sizes per cost - `tft/tft_data.py` `POOL_SIZES` is still a Set 14
   carry-over (`POOL_SIZES_FROM_SET` 14, unpinned) and the HUD does not show pool sizes; (2) the shop
   odds at L1-L3 and L10-L11, which come from the CommunityDragon map22 drop rates, not the client.
