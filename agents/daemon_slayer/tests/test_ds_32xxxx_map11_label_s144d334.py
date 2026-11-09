@@ -27,6 +27,10 @@ MEASURED 2026-11-09 (``data/daemon_slayer/current.txt`` = 16.22.1): 26 rows
 ``32xxxx``, all map 11 only; 3 rows ``12xxxx``, all map 12 only. Prose-only
 change; scorer output is byte-identical.
 
+S144-D-353 widened the 32xxxx token to the ``32-mirror`` / ``32-prefixed`` /
+``32-copy`` spellings after the 324005 vulnerability note slipped past it as
+"ARAM 32-mirror".
+
 Blind spot: the scan is line-based (plus a line and its successor for a label
 split across a line break). A label spread over three lines is not caught.
 """
@@ -43,7 +47,7 @@ _ROOT = Path(__file__).resolve().parents[3]
 _DS_PKG = _ROOT / "agents" / "daemon_slayer"
 _DS_DATA = _ROOT / "data" / "daemon_slayer"
 
-_ID32 = r"(?:\b32\d{4}\b|\b32xxxx\b|\b32\*)"
+_ID32 = r"(?:\b32\d{4}\b|\b32xxxx\b|\b32\*|\b32-(?:mirror|prefix|cop(?:y|ies)))"
 _ID12 = re.compile(r"\b12\d{4}\b")
 _ARAM = re.compile(r"\bARAM\b")
 _TOKEN32 = re.compile(_ID32)
@@ -131,9 +135,10 @@ def test_checker_flags_planted_labels() -> None:
         "    these ARAM mirrors ARE in the index",
         "    # Frozen Heart (SR 3110 / ARAM",
         "    # 323110 / Arena 223110)",
+        'note="Imperial Mandate ARAM 32-mirror of 4005; identical Command"',
     ]
     flagged = {lineno for lineno, _ in _line_problems(planted)}
-    assert flagged == {1, 2, 3, 4, 5}, flagged
+    assert flagged == {1, 2, 3, 4, 5, 7}, flagged
 
 
 def test_checker_passes_correct_labels() -> None:
@@ -143,5 +148,6 @@ def test_checker_passes_correct_labels() -> None:
         "    # ARAM/Arena mega-item Void Immolation (223069)",
         "    # Arena 22xxxx / map-11 32xxxx copies",
         "    ``None`` / empty -> False, so a non-Arena (SR/ARAM) call",
+        "    # 32-prefixed Thornmail mirror in the pool.",
     ]
     assert _line_problems(clean) == []

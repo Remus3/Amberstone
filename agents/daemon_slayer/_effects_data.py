@@ -1757,10 +1757,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="4005",
         name="Imperial Mandate",
         defensive_only=True,
-        # Coordinated Fire: ability-CC marks target; ALLIED champion attack
-        # on marked target deals bonus damage. Requires ally proc - not a
-        # self-basic-auto DPS contribution.
-        note="Imperial Mandate: Coordinated Fire (ally proc on CC'd target); no solo DPS contribution",
+        # 16.13.1 rework: Control (+AH for Immobilizing abilities) and Command
+        # (Immobilizing a champion marks it Vulnerable). The mark is an
+        # all-source amp, modeled only by _target_vulnerability_overrides
+        # behind apply_target_vuln - not a self-basic-auto DPS proc here.
+        note="Imperial Mandate: Command 7% Vulnerable mark on Immobilize (all-source amp, _target_vulnerability_overrides); no solo DPS proc",
     ),
     "6657": ItemEffect(
         item_id="6657",
@@ -4081,7 +4082,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="224005",
         name="Imperial Mandate",
         defensive_only=True,
-        note="Imperial Mandate (Arena 224005): Coordinated Fire mark - support proc, no self DPS",
+        note="Imperial Mandate (Arena 224005): Command 6% Vulnerable mark on Immobilize - all-source amp, no self DPS proc",
     ),
     "224401": ItemEffect(
         item_id="224401",
@@ -4223,7 +4224,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="324005",
         name="Imperial Mandate",
         defensive_only=True,
-        note="Imperial Mandate (map-11 copy 324005): Coordinated Fire - support proc, no self DPS",
+        note="Imperial Mandate (map-11 copy 324005): Command 7% Vulnerable mark on Immobilize - all-source amp, no self DPS proc",
     ),
     "326616": ItemEffect(
         item_id="326616",
