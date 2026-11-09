@@ -116,7 +116,7 @@ def test_script_run_writes_the_artifact(tmp_path):
         [sys.executable, str(script), "--db", str(db), "--targets",
          str(targets), "--out", str(out)],
         cwd=str(tmp_path), env=env, capture_output=True, text=True,
-        timeout=120, **kwargs)
+        timeout=120, check=False, **kwargs)
 
     assert proc.returncode == 0, proc.stderr
     on_disk = out.read_bytes()

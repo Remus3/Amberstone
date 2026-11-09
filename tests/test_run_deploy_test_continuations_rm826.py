@@ -111,7 +111,7 @@ def test_run_deploy_test_calls_receive_the_same_arguments(tmp_path: Path) -> Non
     proc = subprocess.run(
         ["cmd.exe", "/d", "/c", str(root / BATCH)],
         cwd=elsewhere, env=env, stdin=subprocess.DEVNULL,
-        capture_output=True, text=True, timeout=60,
+        capture_output=True, text=True, timeout=60, check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     assert log.is_file(), f"stub never ran: {proc.stdout!r} {proc.stderr!r}"

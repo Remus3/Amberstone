@@ -419,5 +419,6 @@ class TestMetricsPathIsCheap:
         """Guards against an import-time DB open sneaking in."""
         out = subprocess.run(
             [sys.executable, "-c", "import core.riot_api_cache"],
-            cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=120)
+            cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=120,
+            check=False)
         assert out.returncode == 0, out.stderr

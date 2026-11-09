@@ -99,7 +99,7 @@ def test_script_mode_resolves_core_from_any_cwd(tmp_path):
     env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
     proc = subprocess.run(
         [sys.executable, tool.__file__, "--check"],
-        capture_output=True, text=True, cwd=str(tmp_path), env=env,
+        capture_output=True, text=True, cwd=str(tmp_path), env=env, check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     assert "Traceback" not in proc.stderr, proc.stderr

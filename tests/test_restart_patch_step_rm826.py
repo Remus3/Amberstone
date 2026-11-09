@@ -117,7 +117,7 @@ def _run(root: Path, body: list[str]) -> subprocess.CompletedProcess:
     env = {k: v for k, v in os.environ.items()
            if k.upper() != "NODEFAULTCURRENTDIRECTORYINEXEPATH"}
     return subprocess.run(["cmd.exe", "/d", "/c", str(bat)], cwd=bat.parent, env=env,
-                          capture_output=True, timeout=60,
+                          capture_output=True, timeout=60, check=False,
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 

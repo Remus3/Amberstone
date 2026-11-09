@@ -44,7 +44,9 @@ pytestmark = pytest.mark.skipif(_GIT is None, reason="git not on PATH - cannot r
 
 
 def _git(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run([_GIT, *args], cwd=REPO_ROOT, capture_output=True, text=True, timeout=120)
+    return subprocess.run(
+        [_GIT, *args], cwd=REPO_ROOT, capture_output=True, text=True, timeout=120, check=False
+    )
 
 
 def test_none_of_the_runtime_outputs_is_tracked() -> None:

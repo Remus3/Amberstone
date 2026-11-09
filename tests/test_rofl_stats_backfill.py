@@ -721,7 +721,7 @@ def test_sidecars_are_decoded_as_utf8_under_a_non_utf8_codepage(tmp_path):
     env = dict(os.environ, PYTHONUTF8="0", PYTHONIOENCODING="utf-8")
     done = subprocess.run(
         [sys.executable, "-c", script],
-        capture_output=True, text=True, encoding="utf-8", env=env,
+        capture_output=True, text=True, encoding="utf-8", env=env, check=False,
     )
     assert done.returncode == 0, done.stderr
     assert done.stdout.strip() == name

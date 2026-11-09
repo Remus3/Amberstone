@@ -699,7 +699,7 @@ def test_the_inbox_is_git_ignored_which_is_why_the_corpus_is_frozen():
     def _ignored(pathspec: str) -> int:
         return subprocess.run(
             [_GIT, "check-ignore", "-q", "--no-index", pathspec],
-            cwd=str(REPO_ROOT), capture_output=True, timeout=30,
+            cwd=str(REPO_ROOT), capture_output=True, timeout=30, check=False,
         ).returncode
 
     under = _ignored("moon_sync_inbox/a-note.md")
