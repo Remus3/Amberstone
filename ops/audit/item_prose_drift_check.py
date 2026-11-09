@@ -68,6 +68,10 @@ REVIEWED: dict[str, dict[str, Optional[tuple[str, ...]]]] = {
         "447100": ("15", "5"),                  # Mirage Blade Blur 20% -> 15% (not modeled; note synced)
         "447110": ("90", "3", "0.3"),           # Moonflair Spellblade Relentless 2 -> 3, 0.5 -> 0.3 s (not modeled)
     },
+    # 16.21.1 -> 16.22.1: the RM-1338 description diff (s156).
+    "16.22.1": {
+        "2501": ("2.5", "10"),                  # Overlord's Bloodmail Retribution 12% -> 10% (modeled: missing_hp_ad_amp_max_pct 0.10)
+    },
 }
 
 _STATS_RE = re.compile(r"<stats>.*?</stats>", re.DOTALL | re.IGNORECASE)
