@@ -962,6 +962,60 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   invite path end-to-end + the operator-reported defect that inviting others does not send unless the
   confirm dialog is accepted. BLOCKED ON: a real invite target / second account. SOURCE:
   docs/ORCHESTRATION_PLAN.md:63.
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 133, 2026-11-09, S144-G-120; NOT a tick, NOT a
+  re-open; still BLOCKED on a second player).** The row bundles THREE halves and they no longer share a
+  status. (1) CITE DRIFT: `b9cb0092` does not resolve at HEAD, and neither does the 2026-07-01 resync's
+  `1f4f4118` (`git cat-file -t` fails on both); the LOBBY1 fix is `a890a5524` (2026-06-08, "fix(lobby):
+  LOBBY1 - resolve Top 8 / friends invites past dead by-name endpoint", same date + subject match as
+  G1-02's note). `docs/ORCHESTRATION_PLAN.md:63` no longer holds LOBBY1: the row now lives at
+  `docs/ORCHESTRATION_FINDINGS_ARCHIVE.md:66`. `tools/gamepc_lcu_agent.py` is gone; the code is
+  `tools/lcu_agent.py`. Current homes: resolver `_resolve_invitee_summoner_id` `tools/lcu_agent.py:454`
+  (order: summoner_id, puuid via `summoners-by-puuid-cached`, a `/lol-chat/v1/friends` scan, then the
+  legacy by-name GET at `:512-520`), handler `lobby.invite_player` `:1152-1171` (POST
+  `/lol-lobby/v2/lobby/invitations` body `[{"toSummonerId": <id>}]`, envelope `ok` / `err` / `riot_id`
+  / `summoner_id` / `resolved_via`), allowlist `dashboard/routes_loadout.py:107` and `:164`; UI click
+  `web/js/main.js:6491-6506` in the `_renderTop8` (`:6345`) wiring, result poll `lcuPollResult` `:191`
+  -> `/api/lcu-cmd-result?id=` (`dashboard/routes_loadout.py:776`, relayed from :8889); offline pins
+  `tests/test_lobby_invite_resolution.py` (stubbed `lcu_request`, live arm behind `RC_LIVE_LOBBY=1`).
+  (2) LOBBY1 FRIEND HALF - still owed live, predicate below. (3) QA24 NON-FRIEND HALF - PREDICTED TO
+  FAIL by code reading, so this is a code defect first and a live check second. The Top 8 add-flow
+  stores `riot_id` only (`web/js/main.js:6543-6545`, no summoner id, no puuid), and the click sends
+  `summoner_id: target.summoner_id || target.summonerId || 0` (`:6501`), so a non-friend entry reaches
+  only the legacy by-name GET, which the resolver's own docstring (`tools/lcu_agent.py:457-458`) says
+  404s on current clients: the result is `ok: false`, "could not resolve summoner". The offline test
+  `test_falls_back_to_by_name_when_not_a_friend` (`tests/test_lobby_invite_resolution.py:163`) stubs
+  that dead route as answering, so it is green while proving nothing about a current client. A
+  measured Riot ID route already exists in the repo: `/lol-summoner/v1/alias/lookup?gameName=&tagLine=`
+  (`tft/tft_scouting.py:39-40`, "verified on the local account 2026-10-25"; call at `:942`). Filed as a
+  MERGER FOLLOW-UP for a code lane, not built here (outside the gated write set). (4) CONFIRM-DIALOG
+  CLAUSE - CLASS-2 CANDIDATE (intended behaviour filed as a defect). `if (!window.confirm(...)) return;`
+  at `web/js/main.js:6495` is the designed gate before an outbound social action, present since the
+  invite was first wired (`eaafc97c7`, 2026-05-12, s171). The clause entered this row in the
+  2026-07-18 reorganisation (`7fc017450`) with no source; it is not in the A4 text of 2026-07-01 nor in
+  the archived LOBBY1 row. Only a dialog that never SHOWS would be a defect, and that is what the live
+  half checks; "does not send unless accepted" is the spec. PROPOSAL only: drop the clause or reword it
+  to "the confirm dialog shows and gates the POST"; a human edits the row.
+  PROBE (attended lobby with a second player who is a friend, plus one non-friend Riot ID in Top 8):
+  before clicking, read `curl -sk https://127.0.0.1:8888/api/state` -> `lcu.phase` (Lobby) and
+  `lcu.lobby.members[]` count; click Invite on the friend row; note whether the dialog shows; press OK;
+  read the envelope from `/api/lcu-cmd-result?id=<id>` (the id is the `/api/lcu-cmd` POST reply; a 404
+  `pending` is normal for the first poll); then a read-only LCU `GET /lol-lobby/v2/lobby/invitations`
+  (no RC route serving it was found this cycle; the attended session runs it), or the second player's
+  word that the invite arrived; repeat once with
+  Cancel and once on the non-friend row. FIELD PATHS: `result.ok`, `result.resolved_via`,
+  `result.summoner_id`; invitations list `toSummonerId` + `state`. PREDICATE, stated before any game:
+  friend PASS iff the dialog shows, OK yields `result.ok == true` with `resolved_via == "friends"`, and
+  the invitations list (or the invitee) shows that summoner id within 10 s; Cancel PASS iff no new
+  invitation row appears. Non-friend: the PREDICTED value is `ok == false`, "could not resolve
+  summoner"; recording that value CONFIRMS the defect in (3), it does not drain QA24. QA24 drains only
+  after the resolver gains a working non-friend route, with the same predicate and
+  `resolved_via` naming that route. EVIDENCE CONTRACT: the envelope JSON, the invitations read, an ISO
+  timestamp, queue id and lobby phase; no Riot ID, summoner id or puuid of a real player copied into
+  this file (RM-906): write "friend", "non-friend" and the `resolved_via` value only.
+  SUBSTITUTION CHECK: `tests/test_lobby_invite_resolution.py` reaches every envelope shape from stubs,
+  and `ok: true` from the agent only means the POST returned no error - it is compute plus transport,
+  not delivery. Only the invitee's client (the second player seeing the invite, or the invitations list
+  showing the row) answers SENT; an `ok: true` alone does not tick the friend half.
 - **G1-05** `[BLOCKED - RE-TAGGED 2026-07-18]` (was A11) OVL2 Pengu Surface C live validation
   (`7ddada96`). **RE-TAG source: this GATE 1 row; destination: BLOCKED - it is neither drainable by a
   game nor stale-and-closable.** SETTLED HEADLESS: repo-root `pengu/` is ABSENT and all 6 tests in
