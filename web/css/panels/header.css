@@ -24,8 +24,12 @@
 /* 2-row layout is permanent: row 1 = identity + instantaneous state, row 2
  * = bars + session-level info. Explicit rows (flex-column with row flex
  * containers) instead of flex-wrap overflow, so layout is deterministic
- * regardless of content width. */
-header {
+ * regardless of content width.
+ * S144-U-176: `body > header`, not a bare `header`: the bare type selector
+ * also matched the in-view heads (header.ub-form-head, the Replay
+ * header.replay-events-head pair), turning them into columns with the bar's
+ * padding and fill. Guard: tests/snapshot_panels/test_in_view_header_scope.py. */
+body > header {
   padding: 5px 18px;
   display: flex;
   flex-direction: column;
@@ -958,13 +962,19 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lq-auto-accept.is-on  { border-color: var(--good); }
 .lq-auto-accept.is-on  .lq-btn-line2 { color: var(--good); }
 .lq-auto-accept.is-off { border-color: var(--bad); }
-.lq-auto-accept.is-off .lq-btn-line2 { color: var(--bad); }
+/* S144-U-202: the Off / Closed word takes the RM-1550 red-text lift
+ * (--bad mixed 70% toward --text in oklab, as .lv-mc-result-loss): plain
+ * --bad on the button's --surface-alt measured 3.28:1 arcane, 3.31
+ * moonlit, 3.66 hextech, 3.79 ember and bloodmoon, under AA 4.5 for this
+ * 16 px / 700 line. The border keeps plain --bad. Pinned by
+ * tests/snapshot_panels/test_lobby_text_contrast.py. */
+.lq-auto-accept.is-off .lq-btn-line2 { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 
 /* ---- Party Open/Closed toggle ---- */
 .lq-party-toggle.is-open    { border-color: var(--good); }
 .lq-party-toggle.is-open    .lq-btn-line2 { color: var(--good); }
 .lq-party-toggle.is-closed  { border-color: var(--bad); }
-.lq-party-toggle.is-closed  .lq-btn-line2 { color: var(--bad); }
+.lq-party-toggle.is-closed  .lq-btn-line2 { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 
 /* ---- Primary / Secondary lane pair ---- */
 .lq-lane-pair {
@@ -1820,8 +1830,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   min-width: 0;
   justify-content: center;
 }
+/* S144-U-202: --text-dim, not --text-faint: the "-" and "LVL n :
+ * Unranked" marks (16 px / 400) measured 3.64:1 arcane to 3.94 hextech
+ * on the party row, under AA 4.5 in five of six themes. They stay
+ * dimmer than the --text member name beside them. */
 .lv-party-empty {
-  color: var(--text-faint);
+  color: var(--text-dim);
   /* UI scale v2.1: 12 -> --fs-xs (16). */
   font-size: var(--fs-xs);
 }
@@ -2033,9 +2047,15 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Champion column = icon + copy button stacked horizontally. */
+/* Champion column = icon + copy button stacked horizontally.
+ * S144-U-177: the 76px icon column holds 50 (icon) + 4 (gap) + 22 (button).
+ * A 6px column gap made 78px, so the button shrank to 20px wide at every
+ * width above 400, desktop included, on both tabs. The row gap stays 6px
+ * for the stacked YOUR MAINS cell at 400px and under (max-width 400px
+ * block below), and the button no longer shrinks. Pinned by
+ * tests/snapshot_panels/test_lobby_mains_copy_box.py. */
 .lv-mc-champ {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 6px 4px;
 }
 .lv-mc-icon {
   width: 50px; height: 50px;
@@ -2053,6 +2073,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
    * to the fingertip floor. */
   position: relative;
   width: 22px; height: 22px;
+  flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-head);
   color: var(--text-dim);
@@ -2106,8 +2127,17 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: var(--fs-xs); font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.08em;
 }
-.lv-mc-result-won  { color: var(--good); }
-.lv-mc-result-lost { color: var(--bad); }
+/* S144-U-194: web/js/main.js writes the result word lower-cased
+ * (dashboard/routes_lobby_aux.py emits "WIN" / "LOSS"), so the class is
+ * lv-mc-result-win / -loss. These rules named -won / -lost and never
+ * matched, so WIN and LOSS rendered in the inherited --text since s162.
+ * LOSS takes the RM-1550 lift (--bad mixed 30 percent toward --text in
+ * oklab): plain --bad measured 3.28 to 3.79:1 on the row's --surface-alt
+ * in five themes, under AA 4.5:1 for this 16px bold word. WIN keeps
+ * --good (AA in every theme).
+ * Guard: tests/snapshot_panels/test_lobby_mains_recent_cell.py. */
+.lv-mc-result-win  { color: var(--good); }
+.lv-mc-result-loss { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 .lv-mc-kda {
   /* UI scale v2.1: 13 -> --fs-xs (16). */
   font-size: var(--fs-xs); color: var(--text-dim);
@@ -2140,7 +2170,11 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-family: "SF Mono", Consolas, monospace;
 }
 .lv-mc-wl .lv-mc-w { color: var(--good); }
-.lv-mc-wl .lv-mc-l { color: var(--bad); }
+/* S144-U-194: the losses count takes the same RM-1550 lift as the RECENT
+ * LOSS word on its row (.lv-mc-result-loss): plain --bad measured 3.28:1
+ * (arcane) on the row's --surface-alt, under AA in five themes, and would
+ * be a second, darker red beside the lifted LOSS. */
+.lv-mc-wl .lv-mc-l { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 /* E11: .lv-mc-total-kda + .lv-mc-deaths removed - the raw K/D/A triplet
  * cell was dropped from the Overall column. */
 .lv-mc-kda-score {
@@ -2270,8 +2304,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * carries its own KP% / CS/m / Dmg label. At 400px and under the copy
  * button sits under the champion icon, so the icon column is 50px, not 76:
  * at 320 the 76px column left RECENT and OVERALL 53px each, which cut the
- * "12/4/8" KDA by a pixel and pushed the OVERALL header 10px past its row. */
-@media (max-width: 720px) {
+ * "12/4/8" KDA by a pixel and pushed the OVERALL header 10px past its row.
+ * S144-U-197: from 840px, the Lobby's line (see the RM-1775 block). */
+@media (max-width: 840px) {
   .lv-top8-row {
     display: flex; flex-wrap: wrap; align-items: center;
     row-gap: calc(var(--space-1) / 2);
@@ -2299,6 +2334,44 @@ body[data-view="lobby"]          #home-overlay { display: none; }
     grid-template-columns: 50px minmax(0, 1fr) minmax(0, 1fr);
   }
   .lv-mainchamps-list[data-tab="you"] .lv-mc-champ { flex-direction: column; }
+}
+/* S144-U-180: the PARTY MAINS tab reflows at 720px and under too. It kept
+ * its four desktop tracks (76px 1.4fr 1.2fr 1.0fr) at every width, so at
+ * 400 the word "Mastery" (66.6px, --fs-sm bold) overran its 59px cell and
+ * a "12/4/8" KDA its 49px cell, and at 360 and 320 the header row grew to
+ * its labels and ran 71px past the card (the card scrolled sideways),
+ * the names "BRAWLER" and "ALPHA" were cut to an ellipsis and the
+ * placeholder "- points" overran a 33px cell. Here a PARTY row is two
+ * lines, as a YOUR MAINS row is: MASTERY and RECENT on the first, under
+ * their headers, and the PLAYER cell (name over champion, it names
+ * itself, so its header is dropped) across both on the second; the icon
+ * spans both lines. MASTERY takes 1.15 of RECENT's share: at 320 the 130px
+ * the two get must hold "Mastery" (67px) and the RECENT header (57px).
+ * At 400px and under the copy button sits under the icon (50px column),
+ * as on YOUR MAINS. Pinned by
+ * tests/snapshot_panels/test_lobby_party_mains_narrow_reflow.py.
+ * S144-U-197: from 840px, the Lobby's line (see the RM-1775 block). */
+@media (max-width: 840px) {
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-row,
+  .lv-mainchamps-categories[data-tab="party"] .lv-mc-cats-party {
+    grid-template-columns: 76px minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-champ {
+    grid-column: 1; grid-row: 1 / span 2;
+  }
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-party-id {
+    grid-column: 2 / -1; grid-row: 2;
+  }
+  .lv-mainchamps-categories[data-tab="party"] .lv-mc-cat:nth-child(2) {
+    display: none;
+  }
+}
+@media (max-width: 400px) {
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-row,
+  .lv-mainchamps-categories[data-tab="party"] .lv-mc-cats-party {
+    grid-template-columns: 50px minmax(0, 1.15fr) minmax(0, 1fr);
+  }
+  .lv-mainchamps-list[data-tab="party"] .lv-mc-champ { flex-direction: column; }
 }
 
 /* Session view layout - v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #5,
@@ -2366,10 +2439,21 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 /* grade-tinted trajectory chips (mirrors the PGR/home grade ramp). */
 .session-trend-chip.S { color: var(--accent);   border-color: var(--accent); }
 .session-trend-chip.A { color: var(--good);     border-color: var(--good); }
-.session-trend-chip.B { color: var(--accent-2); border-color: var(--accent-2); }
 .session-trend-chip.C { color: var(--info);     border-color: var(--info); }
 .session-trend-chip.D { color: var(--warn);     border-color: var(--warn); }
-.session-trend-chip.F { color: var(--bad);      border-color: var(--bad); }
+/* S144-U-201: the bare --accent-2 / --bad text sat under AA 4.5 on the
+ * chip's --surface-3 (B 2.56:1 bloodmoon, F 3.28:1 arcane), so B and F mix
+ * their hue 60 percent into --text, as the Home RECENT grade cell does for
+ * D / F; the border keeps the bare hue, so the grade still reads by colour.
+ * Guard: tests/snapshot_panels/test_session_text_contrast.py. */
+.session-trend-chip.B {
+  color: color-mix(in oklab, var(--accent-2) 60%, var(--text));
+  border-color: var(--accent-2);
+}
+.session-trend-chip.F {
+  color: color-mix(in oklab, var(--bad) 60%, var(--text));
+  border-color: var(--bad);
+}
 
 .session-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--panel-gap);
@@ -2540,6 +2624,46 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 /* KDA + duration cells in a match row are the .dim spans; keep their
  * digits aligned down the column. */
 .history-match-row .dim { font-variant-numeric: tabular-nums; }
+/* S144-U-196: a Session MATCHES row wraps its KDA and time onto a second
+ * line when one line cannot hold them, and neither value breaks inside
+ * itself. Unwrapped, the row's min-content (grade + "RenataGlasc" + KDA +
+ * time, 272 px) set the single-column grid track, so at 320 px every
+ * Session card was 302 px wide and the view scrolled sideways; at 360 to
+ * 400 "3:58 PM" broke into "3:58" over "PM". Every ui_mock row is one
+ * line from 720 px up (at 480 only the longest wraps). Guard:
+ * tests/snapshot_panels/test_session_user_builds_narrow_fit.py. */
+/* S144-U-198: the same wrap now serves the History match list, and the
+ * row's parts are classes (web/js/main.js wrote them as inline styles, which
+ * no rule here could override). The name takes its one-line width before it
+ * grows (flex-basis auto), so when the row is too narrow the TIME wraps, not
+ * the name; justify-content: flex-end puts a wrapped KDA / time on the row's
+ * right edge, under the time column of the one-line rows. A line holding the
+ * growing name has no free space, so one-line rows are unchanged. The name
+ * is capped 4rem short of the row (the result glyph, grade pip and their
+ * gaps need 36 px) so a long name wraps INSIDE itself beside the grade
+ * instead of leaving the pip alone on a line, and its auto right margin
+ * keeps that capped line left-aligned. Measured before: Session 360 / 320
+ * dropped the time to the row's LEFT edge; History squeezed the name to
+ * 36 px from 480 to 400 and at 1201, and at 360 / 320 its timestamp broke
+ * over three lines and ran up to 56 px past the row.
+ * Guard: tests/snapshot_panels/test_match_row_time_right_align.py.
+ * S144-U-213: these rules sat in the Session block, but RM-726 slice HS-4
+ * owns every history-match-row rule (tests/test_web_css_split_plan_rm726.py),
+ * so they live here, after the base row rule they override. A Session
+ * MATCHES row and a History row are the rows with an .hmr-name part
+ * (web/js/main.js), so :has(> .hmr-name) keeps the reach of the old
+ * list-scoped selectors: the Session REPLAYED CHAMPIONS rows share the row
+ * class but have no .hmr-name, and stay one unwrapped line. */
+.history-match-row:has(> .hmr-name) {
+  flex-wrap: wrap; justify-content: flex-end;
+}
+.history-match-row:has(> .hmr-name) > .dim { white-space: nowrap; }
+.history-match-row > .hmr-name {
+  flex: 1 1 auto; min-width: 0; max-width: calc(100% - 4rem);
+  margin-left: var(--space-2); margin-right: auto;
+  overflow-wrap: anywhere;
+}
+.history-match-row > .hmr-time { margin-left: var(--space-2); }
 
 /* OQ8 (QA37): per-session W-L rollup chip in the session row. Wins read
  * --good, losses --bad (redundant-encoded by the W/L letters, not hue
@@ -2716,6 +2840,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   padding: var(--space-2) var(--space-3); /* was 6 10  -> 8 12             */
   font-size: var(--fs-md);                /* was 14px -> 22px              */
   min-height: var(--hit-min);             /* 42px fingertip floor          */
+  /* S144-U-196: may shrink below its intrinsic width (a flex item's
+   * min-width: auto held it at 294 px in a 246 px toolbar at 320). */
+  min-width: 0;
   /* RC2 Hextech reskin: input wells sit on the dark --surface-3 icon-well
    * tier (consumed via --surface-alt) with the gold-tinted --border. */
   background: var(--surface-alt); border: 1px solid var(--border);
@@ -2758,8 +2885,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   background: var(--surface-alt); color: var(--text-dim);
 }
 .ub-btn-ghost:hover { background: var(--surface-2); color: var(--text); border-color: var(--clock); }
+/* S144-U-203: the Delete word takes the RM-1550 red-text lift (--bad
+ * mixed 70% toward --text in oklab, as .lv-mc-result-loss): plain --bad
+ * on the row surface measured 3.28:1 arcane, 3.31 moonlit, 3.66 hextech,
+ * 3.79 ember and bloodmoon, under AA 4.5 for this 16 px / 700 label. The
+ * border keeps plain --bad, and hover still fills --bad under --canvas.
+ * Pinned by tests/snapshot_panels/test_user_builds_text_contrast.py. */
 .ub-btn-danger {
-  background: transparent; color: var(--bad);
+  background: transparent; color: color-mix(in oklab, var(--bad) 70%, var(--text));
   border-color: var(--bad);
 }
 .ub-btn-danger:hover { background: var(--bad); color: var(--canvas); }
@@ -2888,6 +3021,18 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   gap: var(--space-1);                    /* was 2px  -> 4px               */
   min-width: 0;
 }
+/* S144-U-196: at 480 px and under (400% zoom of the 1920 baseline) a build
+ * row puts its name, sub-line and item icons on a line of their own and its
+ * Edit and Delete buttons on a second line at the right edge. On one line
+ * the two buttons kept their width and the name column got the rest: 17 px
+ * at 320 (the name ellipsized to nothing, every 26 px icon ran past it) and
+ * 57 px at 360. Guard:
+ * tests/snapshot_panels/test_session_user_builds_narrow_fit.py. */
+@media (max-width: 480px) {
+  .ub-build-row > .ub-build-meta { grid-column: 1 / -1; }
+  .ub-build-row > :nth-child(2) { grid-column: 2; }
+  .ub-build-row > :nth-child(3) { grid-column: 3; }
+}
 .ub-build-label {
   font-size: var(--fs-md);                /* was 14px -> 22px              */
   font-weight: 800; color: var(--text);
@@ -2922,8 +3067,16 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   padding-bottom: var(--space-2);         /* was 5px  -> 8px               */
 }
 .ub-form-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
+  /* S144-U-196: minmax(0, 1fr), not 1fr - a bare 1fr track's minimum is
+   * its field's min-content, so two 264 px inputs held the form at 586 px
+   * and the view scrolled from 480 down. */
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3) var(--space-4);     /* was 10 12 -> 12 16            */
+}
+/* S144-U-196: at 720 px and under the editor is one field per line. Guard:
+ * tests/snapshot_panels/test_session_user_builds_narrow_fit.py. */
+@media (max-width: 720px) {
+  .ub-form-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .ub-field {
   display: flex; flex-direction: column;
@@ -2931,10 +3084,15 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: var(--fs-sm);                /* was 12px -> 18px              */
 }
 .ub-field-wide { grid-column: 1 / -1; }
+/* S144-U-203: the editor's field labels, the "(driven by builder)" note
+ * and the rune picker's empty hint paint --text-dim, not --text-faint:
+ * faint measured 4.31-4.48:1 (labels, note) and 3.64-3.94 (hint) on the
+ * form pane in five themes, under AA 4.5. Pinned by
+ * tests/snapshot_panels/test_user_builds_text_contrast.py. */
 .ub-field > span {
   font-size: var(--fs-xs);                /* was 11px -> 16px              */
   font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text-faint);
+  text-transform: uppercase; color: var(--text-dim);
 }
 .ub-field input, .ub-field select, .ub-field textarea {
   background: var(--surface-alt); border: 1px solid var(--border);
@@ -2970,7 +3128,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-left: 3px solid var(--clock);
 }
 .ub-form-status.ok    { border-left-color: var(--good); color: var(--good); }
-.ub-form-status.error { border-left-color: var(--bad); color: var(--bad); }
+/* S144-U-203: the error line takes the same lift (plain --bad measured
+ * 3.28-3.79:1 on --surface-alt); the left rule keeps plain --bad. */
+.ub-form-status.error { border-left-color: var(--bad); color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 .ub-form-actions {
   display: flex; gap: var(--space-3);     /* was 10px -> 12px              */
   justify-content: flex-end;
@@ -2988,7 +3148,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * existing save-shape stays intact. Token consumers: --fs-xs (caps),
  * --fs-sm (chip text), --space-1..4, --panel-radius-sm, --hit-min. */
 .ub-field-driven {
-  font-style: normal; font-weight: 600; color: var(--text-faint);
+  font-style: normal; font-weight: 600; color: var(--text-dim);
   text-transform: none; letter-spacing: 0.02em;
   font-size: var(--fs-xs);                /* matches `.ub-field > span` tier */
   margin-left: var(--space-1);
@@ -3043,6 +3203,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 @media (max-width: 1100px) {
   .ub-sp-grid { grid-template-columns: repeat(6, minmax(56px, 1fr)); }
+}
+/* S144-U-196: at 720 px and under the spell grid takes as many 56 px
+ * columns as fit instead of a fixed six (6 x 56 + gaps = 376 px, wider than
+ * the whole view at 320). Placed after the 1100 px rule so it wins there. */
+@media (max-width: 720px) {
+  .ub-sp-grid { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
 }
 .ub-sp-cell {
   display: flex; flex-direction: column; align-items: center;
@@ -3168,7 +3334,7 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .ub-rp-rune.selected span { color: var(--text); }
 .ub-rp-empty {
-  font-size: var(--fs-sm); color: var(--text-faint);
+  font-size: var(--fs-sm); color: var(--text-dim);
   padding: var(--space-3);
   text-align: center; font-style: italic;
 }
@@ -3253,8 +3419,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * holding the desktop columns, the actions still pushed right; the QUEUE
  * buttons wrap with the lane pair kept as one unit. MAINS and TOP 8 reflow
  * in the RM-1776 block that ends the Lobby panel rules (pinned by
- * tests/snapshot_panels/test_lobby_narrow_reflow.py). */
-@media (max-width: 720px) {
+ * tests/snapshot_panels/test_lobby_narrow_reflow.py).
+ * S144-U-197: the Lobby's line is 840px, not 720, in this block and in the
+ * RM-1776 and S144-U-180 blocks. Measured at 720: the desktop rows need 808px of window
+ * (a 734px card), so from 721 to 807 every card stayed 734 wide, 87px past
+ * the view's content box at 721 (the view scrolled sideways) and still in
+ * its right padding at 800. Pinned by
+ * tests/snapshot_panels/test_lobby_reflow_line_fit.py. */
+@media (max-width: 840px) {
   .lobby-view-grid { grid-template-columns: minmax(0, 1fr); }
   .lobby-view-queue-controls { flex-wrap: wrap; }
   .lobby-members-list .lobby-member-row {
@@ -3433,8 +3605,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * its visible-but-unchecked state stays the neutral well. The colored
  * meaning never stands on hue alone here - the adjacent <span> label
  * carries the setting name (WCAG 1.4.1). */
+/* S144-U-178: flex none, so the box keeps its 24px square beside a long
+ * label; with the default shrink it gave its width to the text from 720px
+ * down (13x24 at 480 and under). The text wraps instead. */
 .settings-row input[type="checkbox"] {
   width: 24px; height: 24px;       /* was 14x14 -> 24x24                */
+  flex: none;
   accent-color: var(--good);
   cursor: pointer;
 }
@@ -3514,9 +3690,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 /* Mode accent vocabulary - blue for modes that historically used
  * cyan (aram), pink for arena, gold for brawl, rust for tft. */
 .mode-pill.aram   { color: var(--info);      border-color: var(--info-soft); }
-.mode-pill.arena  { color: var(--advisory);  border-color: var(--advisory-soft); }
+/* S144-U-199: the two red pills take the RM-1550 lift (70% toward --text
+ * in oklab, as .lv-mc-result-loss): solid --bad / --advisory measured
+ * 4.44:1 (arcane, the default theme), 4.48 (moonlit) and ARENA 4.49 (ember)
+ * on the footer surface, under AA 4.5 for the 16 px / 700 footer pill.
+ * Guard: tests/snapshot_panels/test_footer_mode_pill_contrast.py. */
+.mode-pill.arena  { color: color-mix(in oklab, var(--advisory) 70%, var(--text)); border-color: var(--advisory-soft); }
 .mode-pill.brawl  { color: var(--gold);      border-color: var(--gold-soft); }
-.mode-pill.tft    { color: var(--bad);       border-color: var(--bad-soft); }
+.mode-pill.tft    { color: color-mix(in oklab, var(--bad) 70%, var(--text)); border-color: var(--bad-soft); }
 .mode-pill.sr     { color: var(--good);      border-color: var(--good-soft); }
 .mode-pill.client { color: var(--text-dim);  border-color: var(--border); }
 

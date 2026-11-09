@@ -214,8 +214,12 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   background: transparent;
   border: 1px solid var(--bad);
 }
+/* S144-U-200: --text-dim, not --text-faint. At 16 px / 600 the floor is
+ * 4.5:1, and --text-faint measured 4.31:1 on the hero surface on arcane
+ * (4.39 ember, 4.46 hextech, 4.48 moonlit). Pinned by
+ * tests/snapshot_panels/test_home_muted_text_contrast.py. */
 .home-wl-form {
-  font-size: var(--fs-xs); font-weight: 600; color: var(--text-faint);
+  font-size: var(--fs-xs); font-weight: 600; color: var(--text-dim);
   letter-spacing: 0.04em;
 }
 .home-hero-headline {
@@ -441,8 +445,11 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   display: block;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* S144-U-200: --text-dim, not --text-faint: on the card's --surface-3
+ * --text-faint measured 3.64:1 (arcane) to 4.59:1 (terminal), under AA
+ * 4.5 in five of six themes for this 18 px / 400 line. */
 .home-recent-meta {
-  font-size: var(--fs-sm); color: var(--text-faint);
+  font-size: var(--fs-sm); color: var(--text-dim);
   letter-spacing: 0.04em; text-transform: uppercase;
   margin-top: var(--space-1);
   display: block;
@@ -576,8 +583,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-coach-pick-meta {
   display: flex; flex-direction: column; min-width: 0; gap: var(--space-1);
 }
+/* S144-U-204: the name takes the RM-1550 lift (--accent-2 mixed 30 percent
+ * toward --text in oklab), not bare --accent-2: bare it was 3.00:1 on
+ * bloodmoon, 3.05 ember, 3.28 arcane on the card's --surface-2, on the
+ * large-text floor and under the --text-dim reason line it explains.
+ * After: 5.05 or more in every theme, hue kept. Hover stays --good.
+ * Guard: tests/snapshot_panels/test_home_pick_name_contrast.py. */
 .home-coach-pick-champ {
-  font-size: var(--fs-lg); font-weight: 800; color: var(--accent-2);
+  font-size: var(--fs-lg); font-weight: 800;
+  color: color-mix(in oklab, var(--accent-2) 70%, var(--text));
   letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   /* s218 v7: clickable - routes to History filtered by this champion. */
@@ -608,8 +622,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--good) 50%, transparent);
 }
+/* S144-U-200: --text-dim, not --text-faint (4.31:1 on arcane, 4.39 ember,
+ * 4.46 hextech, 4.48 moonlit on the Tonight's Pick card, under AA 4.5). */
 .home-coach-pick-reason {
-  font-size: var(--fs-sm); color: var(--text-faint);
+  font-size: var(--fs-sm); color: var(--text-dim);
   letter-spacing: 0.04em;
 }
 
@@ -693,7 +709,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .hpgr-back:focus-visible {
   background: var(--info-soft);
   border-color: var(--info);
-  outline: none;
+}
+/* S144-U-208: keyboard focus drew no ring (outline: none) and painted
+ * exactly the hover fill, so a focused Back read as a hovered one. The
+ * house ring (RM-1210): 2px solid --accent, offset 2px (the head has no
+ * neighbouring control). Pinned by
+ * tests/snapshot_panels/test_hpgr_back_focus_ring.py. */
+.hpgr-back:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .hpgr-tag {
   display: inline-block;

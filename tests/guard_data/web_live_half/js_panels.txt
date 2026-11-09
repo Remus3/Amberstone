@@ -1,7 +1,7 @@
 # Live-half digests for web/js/panels/ - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-4169ad48e13bebfbed07b52fe900ab77ca7cfcd799aadb9baaf65a939865bb14  web/js/panels/active_match.js
+767e77a148a7942a49476956769c71a5206c5e381ad14c8497e992d23c9614de  web/js/panels/active_match.js
 
 b6eb81ecc296b6388abb6481800ea54e7ad05b8bb5eb6918c9dd0e4654dab13d  web/js/panels/aram_balance.js
 
@@ -11,7 +11,7 @@ b6eb81ecc296b6388abb6481800ea54e7ad05b8bb5eb6918c9dd0e4654dab13d  web/js/panels/
 
 0a19074904b4c19e1d580c4cdcd369b427266453058ef5121a856541c52b008c  web/js/panels/branch_review.js
 
-f535af4a92c19dd11fb4e7ad1337a3e322a8ff757f8ab4cde7c62a44ddfb5c29  web/js/panels/build_insights.js
+1e4eadd05e0defffe5a56ec00151d68a6078a84a2394eb41e250bae3c6efd02e  web/js/panels/build_insights.js
 
 736286f8f5bdb3e5363a98972644eca2e60a8a6d0a913afc158e5a31cc30bd78  web/js/panels/build_order.js
 
@@ -27,7 +27,7 @@ f41861da536c4bf13ffca118dab04e833a61636c7d983029d41cbf1a019fc297  web/js/panels/
 
 1cdfc27f8e351e702d0b0b6188a5072bf7a1334325b00a66ab77e760defb3b4b  web/js/panels/coach_decisions.js
 
-440ff59a6dbd24f697ca6ee9f2c8f530b49c1abf4bf8255dec4e54b1fa3c3f79  web/js/panels/dev.js
+1e9865ac94653a1c91a3f7c80ddc61485cae787d368fa45eb947ad52c2c5211b  web/js/panels/dev.js
 
 7dd55b0dcf03acc31d15f108c2739067467d6626507e5d61e5f30909badb4f44  web/js/panels/draft_elo.js
 
@@ -107,7 +107,7 @@ cbf54d38530c10d1022b898ac3b059c0ee150b0a3432cf9eb41d33bec2d71a75  web/js/panels/
 
 228ee686c3f9f705c8342cec7ab351b11d31edb7beba00fe46f96a1dfb52cb38  web/js/panels/post_game_phases.js
 
-db3c3e54cb6d2c14df3ba782df896f19eeb12c8113ff439ff4548e6f78276f45  web/js/panels/replay_events.js
+cb3c5d0bf79dec79bff834e7f27b51ccd5b45edff58350360d4ae0b7ee28b4a6  web/js/panels/replay_events.js
 
 4376b53463ac26cafc489fb8fbffe350cbe015e985be0f1d9bddc9d0d51c57e4  web/js/panels/replay_minimap.js
 

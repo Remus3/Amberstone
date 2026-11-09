@@ -563,7 +563,9 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
 @media (max-width: 1600px) {
   .action     { font-size: 30px; }
   .action-mid { font-size: 22px; }
-  header       { gap: 10px; padding: 6px 16px; }
+  /* The top bar only (S144-U-176); `body > header` so it still beats
+   * header.css's `body > header` rule, which loads before this file. */
+  body > header { gap: 10px; padding: 6px 16px; }
   main         { gap: 14px; padding: 4px 14px 12px 14px; }
   .panel       { border-radius: 12px; }
   .panel-head  { padding: 8px 14px 4px 14px; }

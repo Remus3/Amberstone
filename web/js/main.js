@@ -2049,9 +2049,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             li.className = "history-match-row";
             const grade = String(m.grade || "-")[0];
             li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
-              `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
-              `<span class="dim">${escapeHtml(m.kda)}</span>` +
-              `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
+              `<span class="hmr-name">${escapeHtml(m.champion)} \u00B7 ${escapeHtml(m.mode)}</span>` +
+              `<span class="dim hmr-kda">${escapeHtml(m.kda)}</span>` +
+              `<span class="dim hmr-time">${escapeHtml(m.timestamp)}</span>`;
             // HIST1: clicking a Session match row opens its detached
             // historical PGR (keyed on the row timestamp).
             _wireMatchRowToHistoricalPgr(li, m.timestamp);
@@ -2158,10 +2158,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   let _historyMockPromise = null;
   function _historyMockLoad() {
     if (_historyMockPromise) return _historyMockPromise;
-    _historyMockPromise = fetch("/data/ui_mock/history.json", { cache: "no-store" })
+    // S144-U-211: a failed fixture load is not cached, so the next visit
+    // to the view fetches again (a cached null read as a failure for good).
+    const p = fetch("/data/ui_mock/history.json", { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
-      .catch(() => null);
-    return _historyMockPromise;
+      .catch(() => null)
+      .then((j) => {
+        if (!j && _historyMockPromise === p) _historyMockPromise = null;
+        return j;
+      });
+    _historyMockPromise = p;
+    return p;
   }
   function _historyIsMock() {
     return document.body && document.body.dataset.uiMock === "1";
@@ -2192,14 +2199,61 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const losses = ms.filter((m) => _historyResult(m) === "loss").length;
     return { wins, losses, label: (wins + losses) ? `${wins}W-${losses}L` : "" };
   }
+  // S144-U-211: a History fetch that fails (an HTTP error, a rejected
+  // fetch, a body that is not JSON, a reply with no sessions array) says
+  // the sessions did not load. An HTTP error used to return without
+  // painting and a rejected fetch was swallowed, so the list stayed on
+  // "loading..." for good; a reply with no sessions array read "no
+  // sessions in scope", a false statement about the store. The previous
+  // scope's sessions, matches and season stats are dropped so a failed
+  // scope pick never shows the old scope under the new tab. Entering the
+  // view, or picking a scope, fetches again.
+  // Guard: tests/snapshot_panels/test_history_list_fetch_failure.py.
+  function _historyFetchFailed() {
+    _HISTORY._sessions = [];
+    _HISTORY.allMatches = [];
+    _HISTORY.seasonStats = {};
+    _HISTORY.selectedSession = null;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set("history-session-count", "-");
+    const ul = document.getElementById("history-session-list");
+    if (ul) {
+      ul.innerHTML = "";
+      const li = document.createElement("li");
+      li.className = "home-empty";
+      li.textContent = "sessions did not load - reopen History to retry";
+      ul.appendChild(li);
+    }
+    _historySetSeasonStats({}, false);
+    _historyPopulateFilterOptions();
+    const matchUl = document.getElementById("history-match-list");
+    if (matchUl) {
+      matchUl.innerHTML = "";
+      const li = document.createElement("li");
+      li.className = "home-empty";
+      li.textContent = "no sessions loaded";
+      matchUl.appendChild(li);
+    }
+    set("history-detail-head", "SELECT A SESSION");
+    set("history-filter-count", "");
+  }
   function _historyFetchAndRender() {
+    // S144-U-211: only the newest request paints. A scope picked before
+    // the previous reply landed used to let the older reply replace the
+    // newer scope's sessions under the newer scope's tab.
+    const seq = (_HISTORY.fetchSeq = (_HISTORY.fetchSeq || 0) + 1);
     const promise = _historyIsMock()
       ? _historyMockLoad().then((p) => _historyMockSliceForScope(p, _HISTORY.scope))
       : fetch("/api/history?scope=" + encodeURIComponent(_HISTORY.scope), { cache: "no-store" })
           .then((r) => (r && r.ok ? r.json() : null));
+    // A rejected fetch reads as null here, so only a FETCH failure paints
+    // the did-not-load line; a throw while painting is swallowed below, as
+    // before, and never replaces sessions already painted.
     promise
+      .catch(() => null)
       .then((d) => {
-        if (!d) return;
+        if (seq !== _HISTORY.fetchSeq) return;
+        if (!d || !Array.isArray(d.sessions)) { _historyFetchFailed(); return; }
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
         set("history-session-count", (d.sessions || []).length + " session" + ((d.sessions||[]).length===1?"":"s"));
         const ul = document.getElementById("history-session-list");
@@ -2361,10 +2415,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     li.dataset.mode = m.mode || "";
     li.dataset.grade = grade;
     li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
-      `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
+      `<span class="hmr-name">${escapeHtml(m.champion)} \u00B7 ${escapeHtml(m.mode)}</span>` +
       badge +
-      `<span class="dim">${escapeHtml(m.kda)}</span>` +
-      `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
+      `<span class="dim hmr-kda">${escapeHtml(m.kda)}</span>` +
+      `<span class="dim hmr-time">${escapeHtml(m.timestamp)}</span>`;
     // HIST1: clicking a History match row opens its detached historical
     // PGR (keyed on the row timestamp).
     _wireMatchRowToHistoricalPgr(li, m.timestamp);
@@ -3694,10 +3748,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   let _homeMockPromise = null;
   function _homeMockLoad() {
     if (_homeMockPromise) return _homeMockPromise;
-    _homeMockPromise = fetch("/data/ui_mock/home.json", { cache: "no-store" })
+    // S144-U-212: a failed fixture load is not cached, so the next poll or
+    // visit fetches again (a cached null read as a failure for good).
+    const p = fetch("/data/ui_mock/home.json", { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
-      .catch(() => null);
-    return _homeMockPromise;
+      .catch(() => null)
+      .then((j) => {
+        if (!j && _homeMockPromise === p) _homeMockPromise = null;
+        return j;
+      });
+    _homeMockPromise = p;
+    return p;
   }
   function _homeIsMock() {
     return document.body && document.body.dataset.uiMock === "1";
@@ -3814,9 +3875,58 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         });
       });
   }
+  // S144-U-212: a Home summary fetch that fails (an HTTP error, a rejected
+  // fetch, a body that is not JSON, a reply with no recent array) says the
+  // summary did not load. An HTTP error used to return without painting and
+  // a rejected fetch was swallowed, so RECENT 3 and THIS WEEK stayed on
+  // "loading..." under a hero reading "no games yet today", and a reply
+  // with no recent array read "no matches yet" - both false statements
+  // about the match store. A tab that already painted from a good reply
+  // keeps that paint (a failed 20 s poll of the same scope); otherwise the
+  // previous tab's cards, pick and chips are dropped so a failed tab switch
+  // never shows the old tab under the new one. The 20 s poll, a view entry
+  // and a tab pick all fetch again, hence "retrying".
+  // Guard: tests/snapshot_panels/test_home_summary_fetch_failure.py.
+  function _homeFetchFailed() {
+    if (_HOME.paintedTab === _HOME.modeTab) return;
+    _HOME.paintedTab = null;
+    _HOME.streaks = {};
+    _HOME.trends = {};
+    _HOME.last20 = {};
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set("home-hero-sub", "summary did not load - retrying");
+    const headline = document.getElementById("home-hero-headline");
+    if (headline) {
+      headline.classList.remove("up", "down", "flat");
+      headline.textContent = "";
+    }
+    set("home-hero-kda", "-");
+    set("home-hero-cs", "-");
+    document.querySelectorAll(".home-hero-chip .home-hero-spark")
+      .forEach((svg) => { svg.innerHTML = ""; });
+    _homeRenderWlStrip(null);
+    const paint = (id, text) => {
+      const host = document.getElementById(id);
+      if (!host) return;
+      host.innerHTML = "";
+      const div = document.createElement("div");
+      div.className = "home-empty";
+      div.textContent = text;
+      host.appendChild(div);
+    };
+    paint("home-recent-list", "matches did not load - retrying");
+    paint("home-week-list", "week did not load - retrying");
+    const bg = document.getElementById("home-hero-bg");
+    if (bg) bg.style.backgroundImage = "";
+    _homeRenderCoach(null);
+    // The snapshot card is its own fetch; re-aim it at the active tab so a
+    // failed tab switch never leaves the previous tab's card (rank unknown).
+    _renderHomeSnapshot(_HOME.modeTab, null);
+  }
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
+    const tab = _HOME.modeTab;
     // RM-508: request generation. applyView("home") / a mode-tab switch clear
     // the in-flight guard and refetch, so two requests can be outstanding; an
     // OLDER response landing last (the startup tick's live /api/home/summary
@@ -3833,12 +3943,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
               + (_HOME.modeTab !== "ALL" ? "?mode=" + _HOME.modeTab : ""),
               { cache: "no-store" })
           .then((r) => (r && r.ok ? r.json() : null));
+    // S144-U-212: a rejected fetch reads as null here, so only a FETCH
+    // failure paints the did-not-load lines; a throw while painting is
+    // swallowed below, as before, and never replaces a good paint.
     promise
+      .catch(() => null)
       .then((data) => {
         if (gen !== _HOME.gen) return;  // superseded - never paint stale data
         _HOME.fetching = false;
-        if (!data) return;
+        if (!data || !Array.isArray(data.recent)) { _homeFetchFailed(); return; }
         _HOME.lastFetchAt = Date.now();
+        _HOME.paintedTab = tab;
         // Cache streaks for any later reader (the hero sub-line reads them
         // via the _homeRenderToday call below).
         _HOME.streaks = data.streaks || {};
@@ -4335,6 +4450,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       '<path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8ZM160 208H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/>' +
     '</svg>'
   );
+  // S144-U-194: a MAINS RECENT KDA ("24/14/20") may break after a slash.
+  // UAX 14 keeps a number/slash/number run unbreakable, so at a 320 px
+  // window an 8-character monospace KDA (72.5 px) ran 11 px past its
+  // 61 px RECENT cell (more than half of the rewind DB's KDAs are 7 or 8
+  // characters). A <wbr> after each slash only breaks where the KDA does
+  // not fit; from 360 px up it stays one line. Guard:
+  // tests/snapshot_panels/test_lobby_mains_recent_cell.py.
+  function _lvKdaHtml(kda) {
+    return escapeHtml(kda || "-").replace(/\//g, "/<wbr>");
+  }
   // s162 v2: full uppercase per operator spec ("TOP | JUNGLE | MIDDLE
   // | BOTTOM | SUPPORT | FILL"). UTILITY is the LCU's enum value for
   // the support role; "SUPPORT" is the operator-facing label.
@@ -4808,7 +4933,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         '</span>' +
         '<span class="lv-mc-recent">' +
           '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + escapeHtml(result || "-") + '</span>' +
-          '<span class="lv-mc-kda">' + escapeHtml(lm.kda || "-") + '</span>' +
+          '<span class="lv-mc-kda">' + _lvKdaHtml(lm.kda) + '</span>' +
         '</span>' +
         overallHtml +
         formHtml
@@ -5370,7 +5495,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           '</span>' +
           '<span class="lv-mc-recent">' +
             `<span class="lv-mc-result lv-mc-result-${resultLow}">${escapeHtml(result || "-")}</span>` +
-            `<span class="lv-mc-kda">${escapeHtml(lm.kda || "-")}</span>` +
+            `<span class="lv-mc-kda">${_lvKdaHtml(lm.kda)}</span>` +
           '</span>'
         );
         // Wire copy for this party member:
@@ -6701,10 +6826,38 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   let minimapTimer = null;
   let minimapInterval = MINIMAP_INTERVAL_SLOW;
   let lastMinimapMode = null;
+  // S144-U-227: the Map State panel (#minimap) sits in the top-level
+  // <main>, which every view hides (header.css, the body[data-view] main
+  // list, RM-1552) and the overlay shell hides too (overlay.css
+  // main > .panel), so it is never on screen. Its two polls (this one and
+  // refreshVisionOverlay below) still asked the server every 500 ms all
+  // game. Both now send nothing while the panel has no layout box; they
+  // resume by themselves if a view renders it again.
+  // Guard: tests/snapshot_panels/test_home_minimap_polls_need_rendered_panel.py.
+  function _minimapPanelShown() {
+    return !!MM.root && MM.root.getClientRects().length > 0;
+  }
+  // S144-U-226: a poll request still unanswered after this is aborted and
+  // settles as a failure (the image reads STALE). Above both cadences, so
+  // a slow answer is not cut off by the next tick (the same 5 s as the
+  // vision-state polls, VT_FETCH_TIMEOUT_MS below).
+  const MINIMAP_FETCH_TIMEOUT_MS = 5000;
+  // The one open /api/minimap-crop request of this poll, or null.
+  let minimapInflight = null;
+
+  // Give up on the open request, if any: its answer will never paint.
+  function _dropMinimapInflight() {
+    const req = minimapInflight;
+    if (!req) return;
+    minimapInflight = null;
+    if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
+    if (req.ctl) req.ctl.abort();
+  }
 
   async function refreshMinimap() {
     if (document.hidden) return;
     if (!MINIMAP_MODES.has(state.mode)) {
+      _dropMinimapInflight();
       MM.imgWrap.classList.add("hidden");
       lastMinimapMode = null;
       return;
@@ -6714,19 +6867,68 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // console every 2s in an idle ARAM lobby). Gate on a live game.
     const _lcMM = (state.latest && state.latest.liveclient) || null;
     if (!_lcMM || !Object.keys(_lcMM).length) {
+      _dropMinimapInflight();
       MM.imgWrap.classList.add("hidden");
       lastMinimapMode = null;
       return;
     }
+    // S144-U-227: nothing to show it in. Give up on the open request too,
+    // so its answer never paints.
+    if (!_minimapPanelShown()) {
+      _dropMinimapInflight();
+      return;
+    }
+    // S144-U-226: one request open at a time. This poll used to send one
+    // every tick (500 ms on the fast stream) with no timeout, so a server
+    // that stopped answering collected an open request per tick, the
+    // image never read STALE, and a request still open when the game
+    // ended could land later and show the minimap again. A tick that
+    // finds a request still open sends nothing; one unanswered after
+    // MINIMAP_FETCH_TIMEOUT_MS is aborted (body read included) and
+    // settles as a failure, so the next tick asks again; leaving the game
+    // or the minimap modes gives up on it (above). An answer that lands
+    // after its request was given up on never paints.
+    // A request sent for another minimap mode (SR -> ARAM) is given up on:
+    // its image is the old map.
+    if (minimapInflight && minimapInflight.mode !== state.mode) {
+      _dropMinimapInflight();
+    }
+    if (minimapInflight) return;
+    const ctl = (typeof AbortController === "function")
+      ? new AbortController() : null;
+    const req = { timer: null, ctl, mode: state.mode };
+    minimapInflight = req;
+    // True once, for the request that is still the open one.
+    const settle = () => {
+      if (minimapInflight !== req) return false;
+      minimapInflight = null;
+      if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
+      return true;
+    };
+    req.timer = setTimeout(() => {
+      req.timer = null;
+      if (!settle()) return;
+      if (ctl) ctl.abort();
+      MM.imgWrap.classList.add("stale");
+    }, MINIMAP_FETCH_TIMEOUT_MS);
     const tNow = Date.now();
     const bust = tNow - (tNow % minimapInterval);
+    let painting = false;
     try {
-      const resp = await fetch(`/api/minimap-crop?mode=${state.mode}&_=${bust}`);
+      const resp = await fetch(`/api/minimap-crop?mode=${state.mode}&_=${bust}`,
+        ctl ? { signal: ctl.signal } : undefined);
       if (!resp.ok) {
-        MM.imgWrap.classList.add("hidden");
+        if (settle()) MM.imgWrap.classList.add("hidden");
         return;
       }
       const blob = await resp.blob();
+      if (!settle()) return;
+      // The mode moved on while this answer was on its way: the next tick
+      // asks for the new map instead.
+      if (req.mode !== state.mode) return;
+      // From here on this answer is the current one; a throw while
+      // painting it still marks the image STALE (catch below).
+      painting = true;
       if (blob.type !== "image/png" && blob.type !== "image/jpeg") {
         MM.imgWrap.classList.add("hidden");
         return;
@@ -6751,7 +6953,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       MM.imgWrap.classList.remove("hidden", "stale");
       lastMinimapMode = state.mode;
     } catch (e) {
-      MM.imgWrap.classList.add("stale");
+      if (settle() || painting) MM.imgWrap.classList.add("stale");
     }
   }
   minimapTimer = setInterval(refreshMinimap, minimapInterval);
@@ -6771,18 +6973,62 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // Mirror of core/vision_tracker._SHARED_VISION_MODES - modes where the
   // whole map is visible to both teams and Live Client emits no positions.
   const VT_SHARED_VISION = new Set(["ARAM", "KIWI"]);
+  // S144-U-225: a poll request still unanswered after this is aborted and
+  // settles as a failure. Above one tick, so a slow answer is not cut off
+  // by the next tick (the Active Match MAP poll uses the same 5 s,
+  // active_match.js _AM_MAP_FETCH_TIMEOUT_MS).
+  const VT_FETCH_TIMEOUT_MS = 5000;
+  // The one open /api/vision-state request of this poll, or null.
+  let vtInflight = null;
 
   async function refreshVisionOverlay() {
     if (!VT_OVERLAY) return;
     if (document.hidden) return;
+    // S144-U-227: the dots and the #mm-state line it paints are both in
+    // the Map State panel; send nothing while it is not rendered.
+    if (!_minimapPanelShown()) return;
+    // S144-U-225: one request open at a time. This poll used to send one
+    // every 500 ms tick, on every view, with no timeout, so a server that
+    // stopped answering collected an open request per tick and a late
+    // answer could paint over a newer one. A tick that finds a request
+    // still open sends nothing; one unanswered after VT_FETCH_TIMEOUT_MS
+    // is aborted (body read included) and settles as a failure, so the
+    // next tick asks again. An answer that lands after its request was
+    // given up on never paints.
+    if (vtInflight) return;
+    const ctl = (typeof AbortController === "function")
+      ? new AbortController() : null;
+    const req = { timer: null };
+    vtInflight = req;
+    // True once, for the request that is still the open one.
+    const settle = () => {
+      if (vtInflight !== req) return false;
+      vtInflight = null;
+      if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
+      return true;
+    };
+    req.timer = setTimeout(() => {
+      req.timer = null;
+      if (!settle()) return;
+      if (ctl) ctl.abort();
+      VT_OVERLAY.style.display = "none";
+    }, VT_FETCH_TIMEOUT_MS);
     // Fetch first so the shared-vision pill can update even when the
     // minimap PNG isn't currently visible (image still loading, etc.).
     let vs;
     try {
-      const r = await fetch("/api/vision-state");
-      if (!r.ok) { VT_OVERLAY.style.display = "none"; return; }
+      const r = await fetch("/api/vision-state",
+        ctl ? { signal: ctl.signal } : undefined);
+      if (!r.ok) {
+        if (settle()) VT_OVERLAY.style.display = "none";
+        return;
+      }
       vs = await r.json();
-    } catch (_) { VT_OVERLAY.style.display = "none"; return; }
+    } catch (_) {
+      if (settle()) VT_OVERLAY.style.display = "none";
+      return;
+    }
+    if (!settle()) return;
     if (!vs || !vs.enemies || Object.keys(vs.enemies).length === 0) {
       VT_OVERLAY.style.display = "none";
       return;

@@ -1,19 +1,19 @@
 # Live-half digests for web/css/panels/ - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-8cb1aea88781dfb11b72f847f64284ac03a83dcb6e5faf8d5b3c4ad8027617e8  web/css/panels/active_match.css
+51f4f152b3c4de59035576221a11e72abdd4c6f2100d68860c348d3f715dc4d6  web/css/panels/active_match.css
 
 89be8265266738cf3e8278d837d52f31ea3f49fbd29ec0952a200264f3eec266  web/css/panels/aram_balance.css
 
 db2ec7fc3c57c747dfe492fff2f2906e54de2dc2dd5dc9d3823b8939af1b99ce  web/css/panels/augment_reco.css
 
-6a3330380565a99a8bfe6815fb948b3868d1217018852ef7728cd435b7834683  web/css/panels/base.css
+a0f056ec3c8017d3cd7e4e5d2dc3cb236b8d4512015c8cad9dd9f653b199e1c0  web/css/panels/base.css
 
 a923d6de4797af53e3e3cdc90d985269bbfe6244c9e677348ee32f54fdc67234  web/css/panels/branch_review.css
 
 3f840a2899e8e8f8779aa2d47d156419bfb55d80301364321f8b8d2602cd425d  web/css/panels/build_insights.css
 
-bd26d9196686efcec53dee244212e7b8e3176499981af94cfae268bcf745d607  web/css/panels/build_module.css
+5a1a54594475e49451af14d3012a8a903527997834fb8785d620b592a614e456  web/css/panels/build_module.css
 
 c76dada2f4f9d6d9b458adafe00575cd9b1a62f3999748f88fc7f416d23e7fee  web/css/panels/build_order.css
 
@@ -53,17 +53,17 @@ eba52bbd85e885940d71506b0d1495f46d1cf63a87bb976863e78944e8f36da0  web/css/panels
 
 c821d26812fc587f8f7552032be97a5bcbf8341fa412db19659ef80c5d8f07e2  web/css/panels/ds_sweep.css
 
-6691182fcf6b637548ff589113d7cadaef84c98f99eec2b17465ec786e91f497  web/css/panels/duration_winrate.css
+d9d3565c5af511fa7260b82b684af5a8d85d15a66ceb9a62995670010075a2b5  web/css/panels/duration_winrate.css
 
 b8c3d0090365363a16ae6fd974293a2fbc7c7755055cb48d80a987d400a39922  web/css/panels/grid.css
 
-8f22528959d5ff156a2bef2a90563100bc8754d35d58e806d6e2bbcb0498cba6  web/css/panels/home.css
+8b17234b566b78c7bec8a5b0f369cf171b471d6f5a75c2a8443b8b756af659b0  web/css/panels/home.css
 
-c1c7a3d48b8f2b92a78798a0be69adb6a7ae15b241966992251cb4b7306b82f5  web/css/panels/input_activity.css
+390c8807d61957d78e0b4750a4ea4439a812ab71b6c560f7fd138eb2e2e2dfb0  web/css/panels/input_activity.css
 
 ea7fba8356634592871a528a572a3e9cfa5197cc874c9d661bbd79f074174379  web/css/panels/item_build.css
 
-2abd5995060f5b010e45f17b758007a7e574afd45095c135cf6164519447be96  web/css/panels/last_match.css
+af0ddbca08ae5bfa096546c59c86d809f385efab058ad9556fbd4718984fc218  web/css/panels/last_match.css
 
 7f792391d7fdd7726e80ae988fb733d1c455f655fca606d2a4d7a46b7aec72d1  web/css/panels/map_state.css
 
@@ -75,7 +75,7 @@ ea7fba8356634592871a528a572a3e9cfa5197cc874c9d661bbd79f074174379  web/css/panels
 
 93d4512916f085a4f72fa9c4a71d39e37d3143eba8fd7d3585eaeb4b2937179d  web/css/panels/objective_gauges.css
 
-2065070bacd9225aff8ccee0d25932458cdaf3c6a01a5628591d34e5dd4a9f89  web/css/panels/op_score.css
+e57f721159c4f6a306582364e3b158a03b072973b6ee1d7dcf664172a9dfe994  web/css/panels/op_score.css
 
 d76c3062504d3d09a25a845373a5cf86b102e4bbf85d9405719a171706008271  web/css/panels/ops_panels.css
 
@@ -83,9 +83,9 @@ d76c3062504d3d09a25a845373a5cf86b102e4bbf85d9405719a171706008271  web/css/panels
 
 ad306d4a15fb282d9a9da006fb7ef0d9fede68fc44c5974c0c9a6fa7e004a948  web/css/panels/panel_visibility.css
 
-c75559a0d3af36d41849872deb4059c7b052631d0fb041cb4f0ce9960b6d9fc9  web/css/panels/patch_impact.css
+aa0c1e3260efd055e4630eb753752279946724d1db75436d83e2825bfcdb2fb9  web/css/panels/patch_impact.css
 
-52cfb92b32abb7e75a35057f72d343e87a18c968b7c26b9c3971f85ec9366179  web/css/panels/perf_curve.css
+6353eed346260e55e4c4ed4cbbbe64dbf8673716d3b4e53de39da208410df0b9  web/css/panels/perf_curve.css
 
 cf050723dde73c50e405ab84c0148fa91a86854169b82d7471cb2f074bcea5ef  web/css/panels/personal_build.css
 
@@ -93,7 +93,7 @@ cf050723dde73c50e405ab84c0148fa91a86854169b82d7471cb2f074bcea5ef  web/css/panels
 
 cba815085ce1ad071651f476620625ca6616a77b44b0e794a98af0015e49c31e  web/css/panels/pgr_build_wpa.css
 
-0e7b93c7e56a3edb2b6918dd60c7237361c9c2f3e7a2496810908d72e4e35775  web/css/panels/pgr_lane_compare.css
+331ecc99bba7871a5cc6e44646b5710c6eee7bf60c59940a6a97eecfe23e0a84  web/css/panels/pgr_lane_compare.css
 
 ff9e0bff9756ae5df716a7ed1aae5d85ccf69ffcb0514331571dd3563216da63  web/css/panels/pgr_loadout.css
 
@@ -105,17 +105,17 @@ c2300909f54b4394e5ba2c61d94042b8eb0833b70e11d533482abf675355cb2d  web/css/panels
 
 ef16d5e1d85d05da4f8d056b34b17cc2f8d161767f168921c5a685475c0eaae0  web/css/panels/playstyle_labels.css
 
-fd456eb5a8955ee820dcc5b1bf5777d9ebf89b8592a8f52b1f1a7d55549d2f62  web/css/panels/primitives.css
+221e6390912298df6e58a7e79b4d12dc3dc8aeaa7785625ebc9d411b22495c5b  web/css/panels/primitives.css
 
-4ed44cd6b373b2d84a52521464048cc0e9c04581273a0b3513be270751b0f668  web/css/panels/replay_events.css
+ece991bae676f1905ec0d60796217afbd24a97d2507a54766a188cd737561a58  web/css/panels/replay_events.css
 
 665fa34e49038e5cb1650046ed1061ba7b7bd2680f979ba5a99f0c8ed56153b4  web/css/panels/review_player.css
 
 be0085f4552fabac1f772b510ddf636a3b1b974b2ed52b3ac6fc3c309d0e19ea  web/css/panels/right_now.css
 
-c94f37c307efd26cc43c9fd0afc643eb69bb164fb550886dae3b5a1d33099ca9  web/css/panels/session_hygiene.css
+06f1940df944e7c95617855fdcdf40c1ed59164bc52aeb11d273a8c3fea79c57  web/css/panels/session_hygiene.css
 
-c531f35f29a652c066890340cb1744798968c1e2c8bc5597c6e8f7d95c8febbc  web/css/panels/snowball_elasticity.css
+e08f3828508476b86b28a4cf68b087bcb0c801d956fcb3a2be3f661c5d7e5bee  web/css/panels/snowball_elasticity.css
 
 67df835d80f7021bb0fde8ee9d44c91bcb11b1023533eb09ac7d2999b392ece1  web/css/panels/spike_curve.css
 

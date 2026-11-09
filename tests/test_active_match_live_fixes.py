@@ -190,11 +190,24 @@ class OwnedItemsExtractionTests(unittest.TestCase):
         # _amActivePlayerEntry needs, so the me.items path silently fell through
         # to lossy items_display name-resolution. _amOwnedItemIds must prefer the
         # server id list when present.
+        # S144-U-216: the liveclient read moved into _amLiveclientOwnedIds
+        # (the full-inventory line counts only that half), so _amOwnedItemIds
+        # must delegate to it FIRST, and it must read owned_item_ids before
+        # the roster row. Behaviour: active_match_build_complete.test.mjs.
         body = self.src.split("function _amOwnedItemIds(")[1].split("\n}")[0]
+        first = body.split("{", 1)[1].strip().splitlines()[0]
         self.assertIn(
-            "owned_item_ids", body,
-            "_amOwnedItemIds must read lc.owned_item_ids as the primary "
+            "_amLiveclientOwnedIds(lc)", first,
+            "_amOwnedItemIds must take the liveclient ids before any "
+            "items_display name fallback")
+        live = self.src.split("function _amLiveclientOwnedIds(")[1].split("\n}")[0]
+        self.assertIn(
+            "owned_item_ids", live,
+            "_amLiveclientOwnedIds must read lc.owned_item_ids as the primary "
             "owned-items source (the live envelope has no allPlayers[].items)")
+        self.assertLess(
+            live.index("owned_item_ids"), live.index("_amActivePlayerEntry("),
+            "the server id list must win over the roster row")
 
 
 # ---------------------------------------------------------------------------

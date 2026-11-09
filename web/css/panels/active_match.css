@@ -624,13 +624,24 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   letter-spacing: 0.04em;
   color: var(--signal-good, #6ec977);
 }
+/* S144-U-223: the DEAD word takes the RM-1550 red-text lift (70 percent
+ * red toward --text in oklab). Bare --signal-bad on the --surface-2 row read
+ * 3.89 (arcane) to 4.45 (ember) at 16 px / 700, under AA 4.5, on the one
+ * word whose respawn countdown says when that enemy is back. */
 #view-active-match .am-map-roster .am-mr-row[data-state="dead"] .am-mr-state {
-  color: var(--signal-bad, #ff5050);
+  color: color-mix(in oklab, var(--signal-bad, #ff5050) 70%, var(--text));
   font-weight: 700;
 }
 #view-active-match .am-map-roster .am-mr-row[data-state="mia"] .am-mr-state {
   color: var(--signal-warn, #f1b04a);
   font-weight: 700;
+}
+/* S144-U-222: a row the stalled vision feed no longer vouches for ("no
+ * feed") paints in the secondary text colour at normal weight, not the live
+ * green / red / amber of a state the feed is still reporting. */
+#view-active-match .am-map-roster .am-mr-row[data-state="stale"] .am-mr-state {
+  color: var(--text-dim);
+  font-weight: 400;
 }
 
 /* UX-2 (2026-05-20): per-enemy threat donut. The donut module

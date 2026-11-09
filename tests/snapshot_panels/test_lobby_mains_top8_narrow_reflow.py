@@ -39,7 +39,8 @@ Contract pinned here at 640x900, 480x800, 360x740 and 320x640:
 The view stops scrolling sideways at 640 and 480. At 360 and 320 the PARTY
 card's duo-synergy block (RM-881, the queue lane's) still scrolls it, so
 those two are strict xfails that turn red when that fix lands.
-Above the line (722x900) both cards keep the desktop templates.
+Above the line (842x900; the Lobby's line is 840 px since S144-U-197) both
+cards keep the desktop templates.
 """
 import json
 
@@ -49,7 +50,7 @@ from tests.snapshot_panels import _webfont_stub
 from tests.snapshot_panels.conftest import _WS_STUB
 
 _NARROW = ((640, 900), (480, 800), (360, 740), (320, 640))
-_WIDE = (722, 900)
+_WIDE = (842, 900)
 _IDS = [str(s[0]) for s in _NARROW]
 
 _TOP8 = [
@@ -453,12 +454,10 @@ def test_mains_rows_cut_and_break_nothing(narrow, size):
             assert c["r"] <= row["row"]["r"] + 0.5, (size, k, c, row["row"])
         assert row["form"]["t"] >= max(row["recent"]["b"],
                                        row["overall"]["b"]) - 0.5, (size, row)
-        # Stacked under the icon the copy button keeps its 22 px box. Beside
-        # it the 76 px column holds 50 + 6 + 22 = 78 px, so the button
-        # shrinks to 20 px there - at every width, desktop included (a QA
-        # ledger FUTURE row, not this slice).
-        want = 22 if size[0] <= 400 else 20
-        assert row["copy"]["w"] >= want - 0.5, (size, row["copy"])
+        # The copy button keeps its 22 px box, stacked or beside the icon
+        # (S144-U-177: the 76 px column now holds 50 + 4 + 22; pinned at
+        # every width on both tabs by test_lobby_mains_copy_box.py).
+        assert abs(row["copy"]["w"] - 22) < 0.5, (size, row["copy"])
         assert abs(row["copy"]["h"] - 22) < 0.5, (size, row["copy"])
 
 

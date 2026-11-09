@@ -300,15 +300,19 @@
   color: var(--accent);
   margin-top: 4px;
 }
-/* RC2: excellent stays gold (the default), the rest map to signal hues. */
+/* RC2: excellent stays gold (the default), the rest map to signal hues.
+ * S144-U-207: the 16 px tier word on --surface read 3.00-3.28:1 for OK
+ * (bare --accent-2; ember, bloodmoon, arcane) and 3.89-4.45 for Bad (bare
+ * --bad; five themes). OK takes the S144-U-206 SVP mix, Bad the RM-1550
+ * red-text lift; the value keeps its tier word's colour. */
 .lm-hero-score[data-tier="excellent"] .lm-hero-score-value,
 .lm-hero-score[data-tier="excellent"] .lm-hero-score-tier { color: var(--accent); }
 .lm-hero-score[data-tier="good"]      .lm-hero-score-value,
 .lm-hero-score[data-tier="good"]      .lm-hero-score-tier { color: var(--good); }
 .lm-hero-score[data-tier="ok"]        .lm-hero-score-value,
-.lm-hero-score[data-tier="ok"]        .lm-hero-score-tier { color: var(--accent-2); }
+.lm-hero-score[data-tier="ok"]        .lm-hero-score-tier { color: color-mix(in oklab, var(--accent-2) 55%, var(--text)); }
 .lm-hero-score[data-tier="bad"]       .lm-hero-score-value,
-.lm-hero-score[data-tier="bad"]       .lm-hero-score-tier { color: var(--bad); }
+.lm-hero-score[data-tier="bad"]       .lm-hero-score-tier { color: color-mix(in oklab, var(--bad) 70%, var(--text)); }
 
 /* Item 131 Slice A wire: per-role grading rubric block. Mirrors the
  * .lm-hero-score visual but with an S+/S/A/B/C/D tier and the role
@@ -598,7 +602,9 @@
  * and inherits --text-faint. Size inherits .lm-hero-stat-sub - no new
  * font sizes. */
 .lm-bench-high { color: var(--signal-good); }
-.lm-bench-low  { color: var(--signal-bad); }
+/* S144-U-207: bare --signal-bad was 4.44:1 arcane, 4.48 moonlit on
+ * --surface; LOW takes the RM-1550 red-text lift. */
+.lm-bench-low  { color: color-mix(in oklab, var(--signal-bad) 70%, var(--text)); }
 
 /* s219 v6: rank-tier comparison panel on the right end of the hero row.
  * 2 rows x 4 columns mirror section 2's stats grid:
@@ -947,7 +953,15 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 8px 0;
+  /* S144-U-181: 8 px (--space-2) side padding. At 0 the widest labels
+   * (AI Analysis, Review) sat flush on the active tab's 1 px accent
+   * border (0.0 px of clearance either side). Not 12 (--space-3): that
+   * makes the one-line strip 497 px, 1 px past the 496 px nav at a
+   * 640 px window, so Review would wrap there; at 8 every pinned width
+   * keeps its line structure. Guard:
+   * tests/snapshot_panels/test_last_match_tabs_narrow.py
+   * test_label_clears_its_border. */
+  padding: 8px var(--space-2);
   min-width: 96px;
   min-height: var(--hit-min);   /* item 182 v2.1: 42px hit-target floor */
   text-align: center;
@@ -1361,8 +1375,11 @@
   border-color: var(--good);
 }
 .lm-tc-group-result[data-result="win"]::before { content: "\25B2 "; }
+/* S144-U-206: the DEFEAT word took bare --bad, 4.44:1 arcane and 4.48
+ * moonlit on --surface. Text takes the RM-1550 red-text lift (70 percent
+ * toward --text in oklab); the frame keeps bare --bad. */
 .lm-tc-group-result[data-result="loss"] {
-  color: var(--bad);
+  color: color-mix(in oklab, var(--bad) 70%, var(--text));
   border-color: var(--bad);
 }
 .lm-tc-group-result[data-result="loss"]::before { content: "\25BC "; }
@@ -1391,8 +1408,12 @@
   border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);   /* item 182 v2.1: 19 -> 18 (participant row default) */
 }
+/* S144-U-206: the self row filled with the whole --hextech-border tint
+ * (a 16-34 percent border token), so its level, CS and #rank cells
+ * (--text-dim) read 3.67-4.36:1 in five themes. Half the tint keeps the
+ * row's hue and its --accent frame; every cell clears AA. */
 .lm-tc-row.lm-tc-row-me {
-  background: var(--hextech-border);
+  background: color-mix(in srgb, var(--hextech-border) 50%, transparent);
   border-color: var(--accent);
 }
 .lm-tc-portrait {
@@ -1414,7 +1435,8 @@
 }
 .lm-tc-tag {
   font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (player riot tag) */
-  color: var(--text-faint);
+  /* S144-U-206: --text-faint was 2.42-3.32:1 on the self row's tint. */
+  color: var(--text-dim);
   font-weight: 500;
 }
 /* s220: per-player score / MVP-SVP cell (left of level). MVP = best on
@@ -1437,7 +1459,11 @@
 }
 .lm-tc-score[data-kind="rank"] { color: var(--text-dim); }
 .lm-tc-score[data-kind="mvp"]  { color: var(--accent); }
-.lm-tc-score[data-kind="svp"]  { color: var(--accent-2); }
+/* S144-U-206: bare --accent-2 was 3.39-3.75:1 on --surface in ember,
+ * bloodmoon and arcane (1.75 on the self row). SVP text mixes 45 percent
+ * toward --text in oklab (70 left the self row's SVP at 3.93); the SVP
+ * card's crown and frame keep bare --accent-2. */
+.lm-tc-score[data-kind="svp"]  { color: color-mix(in oklab, var(--accent-2) 55%, var(--text)); }
 .lm-tc-score-badge {
   /* item 182 v2.1 OPERATOR EXCEPTION: 14px PRESERVED for 3-char MVP/SVP/#N
    * badge density in the per-row score cell (44px score column width must
@@ -1476,8 +1502,10 @@
   border-radius: var(--panel-radius-sm);
 }
 .lm-tc-mvp[hidden] { display: none; }
+/* S144-U-206: the same half tint as the self row; the full tint put the
+ * MVP word and its tier at 3.47:1 arcane and 4.35 terminal. */
 .lm-tc-mvp[data-kind="mvp"] {
-  background: var(--hextech-border);
+  background: color-mix(in srgb, var(--hextech-border) 50%, transparent);
   border-color: var(--accent);
   border-left-color: var(--accent);
 }
@@ -1518,7 +1546,7 @@
   line-height: 1;
 }
 .lm-tc-mvp[data-kind="svp"] .lm-tc-mvp-badge {
-  color: var(--accent-2);
+  color: color-mix(in oklab, var(--accent-2) 55%, var(--text));   /* S144-U-206 */
 }
 .lm-tc-mvp-name {
   font-size: var(--fs-sm);   /* item 182 v2.1: 18 -> 18 (token swap; MVP card name) */
@@ -1563,9 +1591,9 @@
 .lm-tc-mvp-score[data-tier="good"]      .lm-tc-mvp-score-value,
 .lm-tc-mvp-score[data-tier="good"]      .lm-tc-mvp-score-tier { color: var(--good); }
 .lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-value,
-.lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-tier { color: var(--accent-2); }
+.lm-tc-mvp-score[data-tier="ok"]        .lm-tc-mvp-score-tier { color: color-mix(in oklab, var(--accent-2) 55%, var(--text)); }   /* S144-U-206 */
 .lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-value,
-.lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-tier { color: var(--bad); }
+.lm-tc-mvp-score[data-tier="bad"]       .lm-tc-mvp-score-tier { color: color-mix(in oklab, var(--bad) 55%, var(--text)); }   /* S144-U-207: bare --bad 2.93-4.45 on the card's tint; 70 left 4.43 moonlit */
 
 .lm-tc-lvl,
 .lm-tc-kda,
@@ -1620,7 +1648,7 @@
 .lm-tc-augs {
   display: flex;
   gap: 2px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;   /* S144-U-190: wraps inside its auto track */
   align-items: center;
 }
 .lm-tc-aug {
@@ -1639,6 +1667,95 @@
 .lm-tc-aug[data-rarity="gold"]      { border-color: #f5b87c; }
 .lm-tc-aug[data-rarity="prismatic"] { border-color: #7cd5e0; }
 .lm-tc-aug[data-rarity="bronze"]    { border-color: #c08457; }
+
+/* S144-U-190: the rosters fit any width. A full row is the fixed grid
+ * above: 40 + 144 + 56 + 32 + 84 + 60 + 70 px tracks, a 200 px item
+ * strip, 7 gaps, padding and border = 778 px, so a group with its
+ * padding needs 800 px. Every group held that width whatever room it
+ * had: the view scrolled sideways from about 880 px down (853 in 282 at
+ * 320) and, with ALLY | ENEMY side by side, from 1201 to about 1720
+ * (1667 in 1163 at 1201), live Build tab and archive view alike.
+ * - ALLY | ENEMY sit side by side only while two whole 800 px groups
+ *   fit, and stack otherwise (1920 keeps its two halves).
+ * - The augment strip wraps inside its own track, so augment mode needs
+ *   one 20 px icon column and its gap more (808 px), not one column per
+ *   augment: 4 augments one-line (874 px) ran 15 px past each 859 px
+ *   1920 half.
+ * - Each group is a size container, so it takes the width it is given;
+ *   a row narrower than its full grid wraps its cells instead: portrait,
+ *   name and score on the first line, then level, KDA, summoners,
+ *   augments, CS and items, each at its desktop track width, so those
+ *   cells keep one left edge down the roster and still read as columns.
+ *   Under 212 px (a 320 window) the score leaves the name its line. The
+ *   flex values below only act in that wrapped (flex) row.
+ * Guard: tests/snapshot_panels/test_pgr_roster_reflow.py. */
+.lm-tc-table.lm-row-half {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 800px), 1fr));
+}
+.lm-tc-group { container: lm-tc-group / inline-size; }
+.lm-tc-portrait { flex: none; }
+.lm-tc-name { flex: 1 1 calc(100% - 109px); }
+.lm-tc-score { flex: 0 0 56px; }
+.lm-tc-lvl { flex: 0 0 32px; }
+.lm-tc-kda { flex: 0 0 84px; }
+.lm-tc-summs { flex: 0 0 60px; }
+.lm-tc-augs { flex: none; max-width: 100%; }
+.lm-tc-cs { flex: 0 0 70px; }
+.lm-tc-items { flex: 1 1 100%; }
+@container lm-tc-group (width < 778px) {
+  .lm-tc-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 7px 6px;
+  }
+  .lm-tc-items {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+@container lm-tc-group (width < 808px) {
+  #lm-tc-table[data-aug="1"] .lm-tc-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    padding: 7px 6px;
+  }
+  #lm-tc-table[data-aug="1"] .lm-tc-items {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+@container lm-tc-group (width < 212px) {
+  .lm-tc-name { flex-basis: calc(100% - 45px); }
+}
+/* S144-U-191: at 720 px and under the Post Game Review drops its doubled
+ * side padding. From the window edge to a roster row's content there were
+ * 90 px a side: the view's 18 px margin + 1 px border + 18 px padding,
+ * then #lm-body's own 18 px (a second copy of the view padding), the
+ * section card's 1 + 16, the ALLY / ENEMY group's 1 + 10 and the row's
+ * 1 + 6, so a 320 window left a row 140 px of content and a wrapped row
+ * ran 8 lines (9 in Arena). Here the view's padding is the one gutter
+ * (#lm-body, #hpgr-body and the TFT card #lm-tft go to 0 a side), the
+ * section cards take 10 and the groups 6: 196 px of row content at 320.
+ * Top and bottom padding stay; above 720 nothing moves. This block sits
+ * after the .lm-section and .lm-tc-group rules so it wins at equal
+ * specificity. Guard: tests/snapshot_panels/test_pgr_narrow_padding.py. */
+@media (max-width: 720px) {
+  .lm-body,
+  .lm-tft {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .lm-section {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .lm-tc-group {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
 
 .lm-tc-empty {
   font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; empty state) */

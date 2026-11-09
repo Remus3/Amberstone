@@ -30,15 +30,16 @@ Contract pinned here, ui_mock lobby, at 640x900, 480x800, 360x740 and
     at the row's right edge;
   - the QUEUE buttons keep their 110x64 box, and the two lane buttons stay
     side by side.
-Above the line (722x900) the rows keep the RM-975 desktop template: the
-six-track PARTY grid and a one-row QUEUE.
+Above the line (842x900; the Lobby's line is 840 px since S144-U-197, pinned
+by test_lobby_reflow_line_fit.py) the rows keep the RM-975 desktop template:
+the six-track PARTY grid and a one-row QUEUE.
 """
 import pytest
 
 from tests.snapshot_panels.conftest import _WS_STUB
 
 _NARROW = ((640, 900), (480, 800), (360, 740), (320, 640))
-_WIDE = (722, 900)
+_WIDE = (842, 900)
 _IDS = [str(s[0]) for s in _NARROW]
 
 _SETTLE = (

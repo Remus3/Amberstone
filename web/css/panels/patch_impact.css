@@ -9,7 +9,9 @@
   margin-left: var(--space-2);
   font-size: var(--fs-xs);
   font-weight: 400;
-  color: var(--text-faint);
+  /* S144-U-201: --text-faint sat under AA on the head's --surface-2
+   * (4.31:1 arcane); --text-dim clears it in every theme. */
+  color: var(--text-dim);
 }
 #patch-impact-card .pi-rows {
   display: flex;

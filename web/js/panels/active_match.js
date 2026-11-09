@@ -133,6 +133,44 @@ function _champNumericKey(nameOrSlug) {
   return _SPK_NAME_TO_KEY.map[norm] || 0;
 }
 
+// S144-U-217: the Live Client serves `rawChampionName` as a LOCALIZATION KEY,
+// "game_character_displayname_Kaisa", not a champion id (measured live
+// 2026-07-20; web/js/panels/aram_balance.js _AB_RAW_PREFIX and
+// core/focus_board_live.py _RAW_PREFIX strip the same prefix). Unstripped it
+// normalizes to "gamecharacterdisplaynamekaisa" and resolves to nothing. The
+// stripped key is the DDragon id, so it is tried FIRST: it also carries the id
+// for the champions whose display name differs ("Wukong" -> MonkeyKing,
+// "Nunu & Willump" -> Nunu), which championName alone never resolves.
+const _AM_RAW_CHAMP_PREFIX = /^game_character_displayname_/i;
+
+function _amStrOr(v) {
+  return (typeof v === "string") ? v : "";
+}
+
+function _amStripRawChamp(raw) {
+  return _amStrOr(raw).replace(_AM_RAW_CHAMP_PREFIX, "");
+}
+
+// Numeric champion key of one Live Client allPlayers row, or 0.
+function _amLiveChampKey(pl) {
+  if (!pl || typeof pl !== "object") return 0;
+  return _champNumericKey(_amStripRawChamp(pl.rawChampionName))
+      || _champNumericKey(_amStrOr(pl.championName));
+}
+
+// DDragon id ("MonkeyKing") of one allPlayers row, for icon paths and the
+// damage-mix route. From the champion index when it has loaded, else the
+// stripped key (itself the DDragon id), else the display name stripped to
+// ASCII letters and digits. "" when the row names nobody.
+function _amLiveChampSlug(pl) {
+  if (!pl || typeof pl !== "object") return "";
+  const key = _amLiveChampKey(pl);
+  const slug = key ? (CHAMPS.byId || {})[String(key)] : "";
+  if (typeof slug === "string" && slug) return slug;
+  const alnum = (s) => s.replace(/[^a-zA-Z0-9]/g, "");
+  return alnum(_amStripRawChamp(pl.rawChampionName)) || alnum(_amStrOr(pl.championName));
+}
+
 // s170 (step 2): per-tick DS rerank cache. Keyed by a coarse "input
 // fingerprint" so we don't refetch on every state envelope (~1 Hz)
 // when nothing meaningful changed. Cooldown floors the refetch rate
@@ -693,6 +731,32 @@ export function _shouldRetainBuild(champion, picksLen, metaLen, hasContent) {
   return nothingToPaint && !!hasContent;
 }
 
+// S144-U-215 (queue defect B#3): the hasContent the guard above takes. Only a
+// paint _renderAmBuildBody itself made (it stamps data-am-build-sig) is a "good
+// render" worth keeping. The index.html scaffold line ("DS engine ranks + owned
+// items list will render here mid-game.") is content too, and counting it kept
+// that line on screen for the whole game whenever the DS rerank, the Meta order
+// and the Ultimate order were all empty - measured on the ?ui_mock=1&mode=complete
+// finished build at 31:20, dashboard and overlay. Exported for the test.
+export function _amBuildPainted(el) {
+  return !!(el && el.innerHTML && el.dataset && el.dataset.amBuildSig !== undefined);
+}
+
+// S144-U-215: the Daemon Slayer row's text when it has no pick to show. Six
+// inventory items is the finished build the coach stops ranking for
+// (active_match_complete.json: daemon_slayer_picks [] at six items), so the row
+// says so instead of a bare label over a blank strip. Fewer items: "" - the
+// strip stays blank and holds its height (a fetch may still land; never a stuck
+// "loading..." string). The caller passes _amLiveclientOwnedIds(lc).length:
+// the server owned_item_ids drop trinkets and consumables (an undercount shows
+// no line) and the roster path drops slot >= 6, but the coach items_display
+// fallback can carry the trinket (5 items + trinket = 6), so it never counts -
+// not when no liveclient block is present, and not when one is present but the
+// server could not match the active player (S144-U-216).
+export function _bmLiveEmptyText(ownedCount) {
+  return (Number(ownedCount) || 0) >= 6 ? "All six item slots full" : "";
+}
+
 // BATCH A (2026-07-06): the in-game BUILD module reshaped to three NAMED,
 // family-safe build rows - "Daemon Slayer" (live adaptive DS order), "Meta
 // Build" (archetype / popular order) and "Ultimate Build" (DS-optimal, family-
@@ -749,6 +813,9 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // name so DS rows light up regardless of which currency they carry.
   const ownedNames = _amOwnedItemNames(p, ownedIds);
   const ownedSet = new Set(ownedIds.map(String));
+  // S144-U-216: the full-inventory line counts only the liveclient block's own
+  // ids, never the name-resolved fallback the caller may have passed.
+  const liveOwnedCount = _amLiveclientOwnedIds(lc).length;
   ownedNames.forEach((o) => ownedSet.add(String(o || "").toLowerCase()));
   const livePicks  = _maybeRefreshDsPicks(champion, mode, level, ownedIds);
   const coachPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
@@ -816,7 +883,7 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // holds a good render, keep it - game-end hides the whole active-match surface
   // upstream, so this never wedges a stale pane after the match.
   if (_shouldRetainBuild(champion, picks.length,
-        metaOrder.length || ultimateOrder.length, !!build.innerHTML)) {
+        metaOrder.length || ultimateOrder.length, _amBuildPainted(build))) {
     return;
   }
 
@@ -835,6 +902,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     p: dedupedPicks.slice(0, 7).map((r) => (r && (r.id != null ? r.id : (r.item_id != null ? r.item_id : r.name))) || r),
     c: _dsTargetStatsCaption(),
     o: ownedNames,
+    // S144-U-216: the liveclient-sourced count drives the empty LIVE row's
+    // "All six item slots full" line; a change repaints it even when the
+    // display names (o) stay the same.
+    lo: liveOwnedCount,
     // WP-B2: Row2 META order ids, so a standard-build change repaints the strip.
     m: metaOrder.slice(0, 7).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
     // BATCH A: Row3 ULTIMATE order ids, so the from-scratch build change repaints.
@@ -934,7 +1005,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
       } else {
         // Reserve the strip height so the row does not reflow when its fetch
         // lands (no-reflow-on-absence); blank, NOT a stuck "loading..." string.
-        rowEl.appendChild(_bmStrip());
+        // S144-U-215: an empty LIVE row beside a full inventory says so
+        // (_bmLiveEmptyText) in the same reserved height (build_module.css).
+        const emptyText = isLive ? _bmLiveEmptyText(liveOwnedCount) : "";
+        rowEl.appendChild(emptyText ? _bmEmptyStrip(emptyText) : _bmStrip());
       }
       mod.appendChild(rowEl);
     });
@@ -986,9 +1060,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   }
   // UX-2: THREATS strip - per-enemy portrait + inline damage-mix donut. Skips
   // when liveclient/enemies are absent or in shared-vision modes.
+  // S144-U-218: the roster comes from _amThreatEnemies, which lists nobody when
+  // my team is unresolved (it used to list the whole lobby, me and my duo too).
   if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
-    const myTeam = _resolveMyTeam(lc);
-    const enemies = lc.allPlayers.filter((pl) => pl && pl.team && pl.team !== myTeam);
+    const enemies = _amThreatEnemies(lc);
     if (enemies.length) {
       build.appendChild(_line("THREATS", ""));
       const strip = document.createElement("div");
@@ -1321,7 +1396,9 @@ function _amRenderLiveFallback(fb, p, ctx) {
       clearInterval(_AM_MAP.pollHandle);
       _AM_MAP.pollHandle = null;
     }
+    _amMapDropInflight();
     _AM_MAP.vsCache = null;
+    _AM_MAP.feed = _amMapFeedTrack();
     // RM-1769: no canvas to fit either - release the fit observer.
     if (_AM_MAP.fitObserver) {
       _AM_MAP.fitObserver.disconnect();
@@ -1767,9 +1844,15 @@ function _amDsSyntheticCs(p, ctx) {
       if (!pl || typeof pl !== "object") continue;
       const meta = aligned ? (roster[i] || null) : null;
       if (meta && meta.is_active) myPosition = String(meta.position || "");
-      if (myTeam && pl.team === myTeam) continue;
-      const slug = pl.rawChampionName || pl.championName || "";
-      const eid = _champNumericKey(slug);
+      // S144-U-219: an enemy is a row on a KNOWN team other than mine. The old
+      // `myTeam && pl.team === myTeam` passed every row when my team did not
+      // resolve, so the card took the operator's own team and headlined the
+      // operator's own champion as the lane opponent; now the roster is empty
+      // and the matchup card hides (as the THREATS strip does, S144-U-218).
+      if (!myTeam || !pl.team || pl.team === myTeam) continue;
+      // S144-U-217: rawChampionName is a localization key live; the helper
+      // strips it (it used to resolve every live enemy to 0 here).
+      const eid = _amLiveChampKey(pl);
       if (eid > 0) {
         theirTeam.push({
           championId: eid,
@@ -1814,8 +1897,26 @@ function _amActivePlayerEntry(lc) {
 // fallback currency, resolved through the ITEMS index. slot >= 6
 // (trinket) excluded to match core.enemy_aware_stats's extraction.
 function _amOwnedItemIds(p, lc) {
+  const ids = _amLiveclientOwnedIds(lc);
+  if (ids.length) return ids;
+  const names = Array.isArray(p && p.items) ? p.items
+    : _splitItemList((p && p.items_display) || "", false);
+  for (const nm of names) {
+    const iid = _resolveItemId(nm);
+    if (iid) ids.push(String(iid));
+  }
+  return ids;
+}
+
+// S144-U-216: the liveclient-sourced half of _amOwnedItemIds - the ids the
+// liveclient block itself says the operator owns (server owned_item_ids first,
+// else the active player's own roster row, slots 0-5). [] when there is no
+// block, or the server could not match the active player and the roster has
+// no row for them. The "All six item slots full" line counts THIS, never the
+// coach items_display name fallback. Exported for the test.
+export function _amLiveclientOwnedIds(lc) {
   const ids = [];
-  if (lc) {
+  if (lc && typeof lc === "object") {
     // Live /api/state envelope: the summarized liveclient block carries a
     // server-authoritative id list (owned_item_ids, dashboard/_liveclient.py)
     // but NOT the full allPlayers[].items structure _amActivePlayerEntry needs
@@ -1836,13 +1937,6 @@ function _amOwnedItemIds(p, lc) {
       const iid = it.itemID || it.itemId || 0;
       if (iid) ids.push(String(iid));
     }
-    if (ids.length) return ids;
-  }
-  const names = Array.isArray(p && p.items) ? p.items
-    : _splitItemList((p && p.items_display) || "", false);
-  for (const nm of names) {
-    const iid = _resolveItemId(nm);
-    if (iid) ids.push(String(iid));
   }
   return ids;
 }
@@ -2059,6 +2153,20 @@ export function renderCapabilityGapChip(block, payload) {
     <div class="capability-gap-verdict">${escHtml(verdict)}</div>`;
 }
 
+// S144-U-219: the capability gap's enemy NAME roster - the THREATS strip's
+// roster (_amThreatEnemies: players on a known team other than mine, none when
+// my team is unresolved), championName first. The old inline filter
+// `myTeam && pl.team === myTeam` passed every player against a null team, so
+// the gap was asked about all ten champions, the operator's own included.
+function _amCapgapEnemyNames(lc) {
+  const out = [];
+  for (const pl of _amThreatEnemies(lc)) {
+    const name = pl.championName || pl.rawChampionName || "";
+    if (name) out.push(name);
+  }
+  return out;
+}
+
 // Host: resolve the operator's champion + the live enemy NAME roster + mode,
 // then fetch (cache-guarded) + render. Idempotent (innerHTML rebuild each
 // tick). Guards hide the chip when the mount, my champion, or the enemy
@@ -2070,16 +2178,7 @@ function _amRenderCapabilityGap(p, ctx, isLive) {
   if (!isLive) { block.hidden = true; return; }
   const myChamp = (p && p.champion) || "";
   const lc = (ctx && ctx.liveclient) || null;
-  const enemyNames = [];
-  if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
-    const myTeam = _resolveMyTeam(lc);
-    for (const pl of lc.allPlayers) {
-      if (!pl || typeof pl !== "object") continue;
-      if (myTeam && pl.team === myTeam) continue;
-      const name = pl.championName || pl.rawChampionName || "";
-      if (name) enemyNames.push(name);
-    }
-  }
+  const enemyNames = _amCapgapEnemyNames(lc);
   if (!myChamp || !enemyNames.length) { block.hidden = true; return; }
   const mode = String((ctx && ctx.mode) || "sr").toUpperCase();
   _amFetchCapabilityGap(myChamp, enemyNames, mode,
@@ -2170,15 +2269,30 @@ const _AM_SHARED_VISION = new Set(["ARAM", "KIWI"]);
 const _AM_MIA_THRESHOLD = 12;
 // Gank-warning threshold (s) for enemy JG missing outside their jungle.
 const _AM_GANK_THRESHOLD = 20;
+// The faintest a canvas dot gets: a ghost long missing, and (S144-U-228)
+// every last-known dot while the feed is stalled.
+const _AM_GHOST_MIN_ALPHA = 0.25;
+// S144-U-230: the one red behind the white bold text of the gank band and
+// the MIA badge. Translucent, so 15 percent of the map shows through; the
+// old rgba(220, 38, 38, 0.85) fell to 4.05:1 over a near-white patch. This
+// red holds 5.13:1 over white and 8.14:1 over black (AA is 4.5:1).
+const _AM_MAP_ALERT_BG = "rgba(185, 28, 28, 0.85)";
 // Cadence: how often we re-poll /api/vision-state. 500ms matches the
 // home-view's VT_INTERVAL_MS so dot positions don't lag.
 const _AM_TICK_MS = 500;
+// S144-U-224: a poll request still unanswered after this is aborted and
+// settles as a failure. Under the 10 s stale cut (_AM_MAP_STALE_S), so a
+// hang before the first answer says "vision feed did not load" well before
+// a live feed could be called stalled.
+const _AM_MAP_FETCH_TIMEOUT_MS = 5000;
 
 const _AM_MAP = {
   attachedMode: null,    // last mode we rendered the shell for
   pollHandle:   null,    // setInterval handle
   vsCache:      null,    // last successful /api/vision-state response
   fitObserver:  null,    // ResizeObserver re-fitting the canvas (RM-1769)
+  feed:         _amMapFeedTrack(),  // feed-age track (S144-U-221)
+  inflight:     null,    // the one open poll request (S144-U-224)
 };
 
 function _renderAmMap(host, mode, payload) {
@@ -2260,7 +2374,7 @@ function _renderAmMap(host, mode, payload) {
     figure.appendChild(canvas);
     const ganker = document.createElement("div");
     ganker.id = "am-map-gank";
-    ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#fff;background:rgba(220,38,38,0.85);font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
+    ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:var(--fs-xs);color:#fff;background:" + _AM_MAP_ALERT_BG + ";font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
     figure.appendChild(ganker);
     shell.appendChild(figure);
     host.appendChild(shell);
@@ -2288,20 +2402,106 @@ function _amStartMapPolling() {
   const tick = () => {
     // Only poll while the active-match view is current - otherwise we
     // burn CPU + bandwidth on hidden surfaces.
+    // S144-U-232: while away the page stops watching the feed, so the
+    // track is marked unobserved; see _amMapStaleS. A stall already
+    // judged stays judged (its age keeps running), so a return never
+    // paints a stalled feed's counts as live.
     const view = document.body.dataset.view;
-    if (view !== "active-match") return;
-    fetch("/api/vision-state", { cache: "no-store" })
+    if (view !== "active-match") {
+      const feed = _AM_MAP.feed;
+      if (!_amMapIsStale(_amMapStaleS(feed, Date.now()))) {
+        feed.unobserved = true;
+      }
+      return;
+    }
+    // S144-U-220: a poll that fails with nothing cached says so instead of
+    // leaving "loading vision..." up. S144-U-221: with an answer cached the
+    // last line is repainted against the feed's age, so a feed that keeps
+    // failing reads as stalled instead of repeating its counts (the next
+    // tick retries either way).
+    // S144-U-222: the cached repaint covers every layer (roster, dots,
+    // gank band), so a dead feed's rows and band stand down with the line.
+    const failed = () => {
+      if (_AM_MAP.vsCache) {
+        _amDrawOverlay(_AM_MAP.vsCache);
+        return;
+      }
+      const status = document.getElementById("am-map-status");
+      if (status) status.textContent = _AM_MAP_FEED_FAILED;
+    };
+    // S144-U-224: one request open at a time. The poll used to send one
+    // every tick with no timeout, so a server that stopped answering
+    // collected an open request per tick (34 to 35 after 15 s) and a hang before
+    // the first answer left "loading vision..." up for good. A tick that
+    // finds a request still open repaints the cached answer against the
+    // feed's age and sends nothing; a request unanswered after
+    // _AM_MAP_FETCH_TIMEOUT_MS is aborted and settles as a failure, so the
+    // next tick asks again. A request dropped by _amMapDropInflight (the
+    // poll stopped) never paints.
+    if (_AM_MAP.inflight) {
+      if (_AM_MAP.vsCache) _amDrawOverlay(_AM_MAP.vsCache);
+      return;
+    }
+    const ctl = (typeof AbortController === "function")
+      ? new AbortController() : null;
+    const req = { ctl: ctl, timer: null };
+    _AM_MAP.inflight = req;
+    // True once, for the request that is still the open one.
+    const settle = () => {
+      if (_AM_MAP.inflight !== req) return false;
+      _AM_MAP.inflight = null;
+      // S144-U-232: a request that settles while the view is shown (the
+      // one still open on a return, or the first sent after it) observes
+      // the track again, whatever the outcome, before its answer or
+      // failure paints. One settling while away leaves the mark.
+      if (document.body.dataset.view === "active-match") {
+        _AM_MAP.feed.unobserved = false;
+      }
+      if (req.timer !== null) {
+        clearTimeout(req.timer);
+        req.timer = null;
+      }
+      return true;
+    };
+    req.timer = setTimeout(() => {
+      req.timer = null;
+      if (!settle()) return;
+      if (ctl) ctl.abort();
+      failed();
+    }, _AM_MAP_FETCH_TIMEOUT_MS);
+    const opts = { cache: "no-store" };
+    if (ctl) opts.signal = ctl.signal;
+    fetch("/api/vision-state", opts)
       .then((r) => r.ok ? r.json() : null)
       .then((vs) => {
+        if (!settle()) return;
         if (vs) {
+          _amMapNoteFeed(_AM_MAP.feed, vs, Date.now());
           _AM_MAP.vsCache = vs;
           _amDrawOverlay(vs);
+        } else {
+          failed();
         }
       })
-      .catch(() => { /* swallow - next tick retries */ });
+      .catch(() => {
+        if (settle()) failed();
+      });
   };
   tick();   // fire immediately so the first draw isn't 500ms late
   _AM_MAP.pollHandle = setInterval(tick, _AM_TICK_MS);
+}
+
+// S144-U-224: abort and forget the open poll request, so an answer that
+// lands after the poll stopped neither fills the reset cache nor paints.
+function _amMapDropInflight() {
+  const req = _AM_MAP.inflight;
+  _AM_MAP.inflight = null;
+  if (!req) return;
+  if (req.timer !== null) {
+    clearTimeout(req.timer);
+    req.timer = null;
+  }
+  if (req.ctl) req.ctl.abort();
 }
 
 // mm:ss from the vision-state game clock - the visibly-ticking heartbeat
@@ -2309,6 +2509,118 @@ function _amStartMapPolling() {
 function _amClock(t) {
   const s = Math.max(0, Math.floor(+t || 0));
   return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+
+// S144-U-220: the status line for one /api/vision-state answer. The counts
+// only when the tracker knows at least one enemy: the server sends {} when no
+// vision state exists (dashboard/routes_diag.py _serve_vision_state) and
+// core/vision_tracker.py reports an all-zero summary until it resolves the
+// active player's team, and "0 visible - 0 MIA - 0 dead" for either claimed
+// every enemy was accounted for. The clock stays when the feed carries one.
+const _AM_MAP_NO_ENEMIES = "no enemy vision yet";
+// The line for a poll that failed with no answer cached (it said
+// "loading vision..." for the rest of the game).
+const _AM_MAP_FEED_FAILED = "vision feed did not load";
+
+// S144-U-221: a stalled feed. core/vision_tracker.py stamps every state it
+// writes with t_now = time.time() (every 0.75 s); when the Live Client relay
+// goes stale it stops writing, and data/vision_state.json keeps its last
+// in-game state, which /api/vision-state keeps serving with a 200. The line
+// repainted those counts for the rest of the game. The age is measured on
+// THIS page's clock from the last poll that brought a new t_now, so a skew
+// between the box and the viewer cannot fake a stall. 10 s is the cut the SR
+// coach prompt applies to the same file (coach_integration/_sr_prompt.py
+// _vision_tracker_locs).
+const _AM_MAP_STALE_S = 10;
+
+// Feed-age bookkeeping: { seen, tNow, at, unobserved } - whether any answer
+// arrived, the last t_now seen, the page time (ms) it was first seen, and
+// (S144-U-232) whether the page stopped watching the feed since.
+function _amMapFeedTrack() {
+  return { seen: false, tNow: undefined, at: 0, unobserved: false };
+}
+
+// Note one successful answer. A new numeric t_now is an advance; an answer
+// without a numeric t_now cannot be judged, so its arrival counts as one. A
+// non-object is no answer.
+function _amMapNoteFeed(track, vs, nowMs) {
+  if (!track || !vs || typeof vs !== "object") return;
+  const t = vs.t_now;
+  const judged = typeof t === "number" && Number.isFinite(t);
+  if (!track.seen || !judged || t !== track.tNow) {
+    track.seen = true;
+    track.tNow = judged ? t : undefined;
+    track.at = nowMs;
+  }
+}
+
+// Seconds since the feed last advanced; null before any answer. Never
+// negative (a page clock stepping back reads as fresh).
+// S144-U-232: null while the track is unobserved. The poll sends nothing
+// while another view is shown, so on return `at` is as old as the time
+// away, and the view-change repaint called a feed that wrote the whole time
+// "stalled 15s ago" (roster "no feed", gank band down) until the first poll
+// after the return landed. The first request to settle on the view clears
+// the mark (success, failure or timeout), so a feed that stalled while away
+// reads stalled, with its whole age, one request later (at most the 5 s
+// request timeout); a stall judged before leaving is never marked.
+function _amMapStaleS(track, nowMs) {
+  if (!track || !track.seen || track.unobserved) return null;
+  return Math.max(0, (nowMs - track.at) / 1000);
+}
+
+// S144-U-222: the one stale cut every MAP layer reads - the status line,
+// the roster rows and the gank band. A non-number or non-finite age is not a
+// stall.
+function _amMapIsStale(staleS) {
+  return typeof staleS === "number" && Number.isFinite(staleS)
+    && staleS >= _AM_MAP_STALE_S;
+}
+
+// S144-U-222: one roster row's state and text. While the feed is stalled the
+// row claims nothing live - "on bridge" in green, an "MIA 12s" that stopped
+// counting and a "DEAD 18s" respawn countdown that never ticked all read a
+// frozen answer as live - so it reads "no feed" in a neutral state; the status
+// line above names the game time the feed stalled at.
+function _amMapRosterState(e, stale) {
+  if (stale) return { state: "stale", text: "no feed" };
+  e = (e && typeof e === "object") ? e : {};
+  if (e.is_dead) {
+    const rs = (e.respawn_in_s != null)
+      ? " " + Math.ceil(e.respawn_in_s) + "s" : "";
+    return { state: "dead", text: "DEAD" + rs };
+  }
+  if (e.visible) {
+    return {
+      state: "ok",
+      text: String(e.last_seen_zone || "visible").replace(/_/g, " "),
+    };
+  }
+  const ms = (e.missing_for_s != null)
+    ? " " + Math.round(e.missing_for_s) + "s" : "";
+  return { state: "mia", text: "MIA" + ms };
+}
+
+function _amMapStatusText(vs, staleS) {
+  const ok = vs && typeof vs === "object" && !Array.isArray(vs);
+  const clock = (ok && vs.game_time != null)
+    ? _amClock(vs.game_time) + " - " : "";
+  const summary = ok ? vs.summary : null;
+  if (!summary || typeof summary !== "object" || Array.isArray(summary)) {
+    return clock + _AM_MAP_NO_ENEMIES;
+  }
+  const visible = summary.visible_count | 0;
+  const missing = summary.missing_count | 0;
+  const dead    = summary.dead_count | 0;
+  if (visible + missing + dead <= 0) return clock + _AM_MAP_NO_ENEMIES;
+  if (_amMapIsStale(staleS)) {
+    const at = (vs.game_time != null) ? " at " + _amClock(vs.game_time) : "";
+    return `vision feed stalled${at} - ${Math.floor(staleS)}s ago`;
+  }
+  const shared = _AM_SHARED_VISION.has(String(vs.game_mode || "").toUpperCase());
+  return shared
+    ? `${clock}${visible} on bridge - ${dead} dead`
+    : `${clock}${visible} visible - ${missing} MIA - ${dead} dead`;
 }
 
 // Text layers (status line + per-enemy roster). Deliberately independent
@@ -2319,19 +2631,11 @@ function _amUpdateMapText(vs) {
   const status = document.getElementById("am-map-status");
   const roster = document.getElementById("am-map-roster");
   const enemies = (vs && vs.enemies) || {};
-  const summary = (vs && vs.summary) || {};
-  const gameModeUp = String((vs && vs.game_mode) || "").toUpperCase();
-  const shared = _AM_SHARED_VISION.has(gameModeUp);
+  const staleS = _amMapStaleS(_AM_MAP.feed, Date.now());
+  const stale = _amMapIsStale(staleS);
 
   if (status) {
-    const visible = summary.visible_count | 0;
-    const missing = summary.missing_count | 0;
-    const dead    = summary.dead_count | 0;
-    const clock   = (vs && vs.game_time != null)
-      ? _amClock(vs.game_time) + " - " : "";
-    status.textContent = shared
-      ? `${clock}${visible} on bridge - ${dead} dead`
-      : `${clock}${visible} visible - ${missing} MIA - ${dead} dead`;
+    status.textContent = _amMapStatusText(vs, staleS);
   }
 
   if (roster) {
@@ -2340,21 +2644,9 @@ function _amUpdateMapText(vs) {
       if (!e || typeof e !== "object") continue;
       const row = document.createElement("div");
       row.className = "am-mr-row";
-      let stateTxt;
-      if (e.is_dead) {
-        row.dataset.state = "dead";
-        const rs = (e.respawn_in_s != null)
-          ? " " + Math.ceil(e.respawn_in_s) + "s" : "";
-        stateTxt = "DEAD" + rs;
-      } else if (e.visible) {
-        row.dataset.state = "ok";
-        stateTxt = String(e.last_seen_zone || "visible").replace(/_/g, " ");
-      } else {
-        row.dataset.state = "mia";
-        const ms = (e.missing_for_s != null)
-          ? " " + Math.round(e.missing_for_s) + "s" : "";
-        stateTxt = "MIA" + ms;
-      }
+      const rowState = _amMapRosterState(e, stale);
+      row.dataset.state = rowState.state;
+      const stateTxt = rowState.text;
       const nm = document.createElement("span");
       nm.className = "am-mr-name";
       nm.textContent = String(name).slice(0, 10);
@@ -2409,12 +2701,59 @@ function _amFitOverlay() {
   return { w, h };
 }
 
+// S144-U-229: the MIA badge's font size in canvas px - the resolved
+// --fs-xs floor (web/css/tokens.css), read off the canvas so a theme or a
+// scale that moves the token moves the badge with it. The overlay canvas
+// is sized 1:1 to CSS px (_amFitOverlay), so a CSS px is a canvas px.
+// Falls back to 16 when the token does not resolve to a positive number.
+function _amMapBadgeFs(canvas) {
+  const fs = parseFloat(
+    getComputedStyle(canvas).getPropertyValue("--fs-xs"));
+  return fs > 0 ? fs : 16;
+}
+
+// S144-U-231: the MIA badge text. The /api/vision-state `enemies` keys are
+// Live Client display names (core/vision_tracker.py), so the badge draws
+// the whole name - "Nidalee 25s", "Tahm Kench 25s" - the same name the
+// gank band prints. Only when the tag is wider than maxW (measure = the
+// canvas measureText width) is the name cut and ended with "...", keeping
+// at least one letter; the seconds are never cut.
+function _amMapBadgeTag(name, secs, maxW, measure) {
+  const nm = String(name || "") || "?";
+  const tail = ` ${Math.round(secs)}s`;
+  const whole = nm + tail;
+  if (measure(whole) <= maxW) return whole;
+  for (let n = nm.length - 1; n > 1; n--) {
+    const cut = nm.slice(0, n).trimEnd() + "..." + tail;
+    if (measure(cut) <= maxW) return cut;
+  }
+  return nm.slice(0, 1) + "..." + tail;
+}
+
+// S144-U-231: where the MIA badge goes - {bx: the text's left x, top: the
+// red box's top y}. Right of the dot with the box's bottom on the dot's
+// centre line, pulled inside the far edges, and then (applied last, so it
+// wins on a canvas too small for the box) never left of 4 px or above
+// 2 px. The old order let the far-edge bound win and start the box at a
+// negative coordinate on a canvas under about 26 px tall.
+function _amMapBadgeBox(px, py, txtW, boxH, w, h) {
+  const bx = Math.max(4, Math.min(w - txtW - 8, px + 8));
+  const top = Math.max(2, Math.min(h - boxH - 2, py - boxH));
+  return { bx, top };
+}
+
 // Dot / MIA-badge / gank-band layer. Called by every vision tick (through
 // _amDrawOverlay) and by the fit observer on a resize, with the cached
 // state (null before the first answer: fit only, nothing to draw).
 function _amDrawDots(vs) {
   const canvas = document.getElementById("am-map-overlay");
   const ganker = document.getElementById("am-map-gank");
+  // S144-U-222: a stalled feed raises no gank warning - "missing 25s" off a
+  // frozen answer is a number that stopped counting, not a jungler on the
+  // way. Taken down before the fit, so a figure with no image to lie over
+  // cannot leave a stale band up either.
+  const stale = !!vs && _amMapIsStale(_amMapStaleS(_AM_MAP.feed, Date.now()));
+  if (stale && ganker) ganker.style.display = "none";
   const fit = _amFitOverlay();
   if (!fit) return;
   const { w, h } = fit;
@@ -2437,6 +2776,7 @@ function _amDrawDots(vs) {
   }
 
   const mapSize = _AM_MAP_WORLD[gameModeUp] || 14800;
+  const badgeFs = _amMapBadgeFs(canvas);
   function project(x, z) {
     // Game origin = bottom-left, z grows up. Canvas y grows down -> flip.
     return [(x / mapSize) * w, h - (z / mapSize) * h];
@@ -2456,6 +2796,21 @@ function _amDrawDots(vs) {
     const [px, py] = project(pos.x, pos.z);
     const missing = e.missing_for_s || 0;
 
+    // S144-U-228: a stalled feed vouches for no position. Every enemy with a
+    // last position is drawn as a faint last-known dot - the ghost floor a
+    // long-missing enemy already gets - with no MIA badge, since its seconds
+    // stopped counting. A bright ringed dot reads as "seen right now".
+    if (stale) {
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(240, 126, 139, ${_AM_GHOST_MIN_ALPHA})`;
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${_AM_GHOST_MIN_ALPHA * 0.7})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      continue;
+    }
+
     if (e.visible) {
       // Bright current-position dot
       ctx.beginPath();
@@ -2467,7 +2822,7 @@ function _amDrawDots(vs) {
       ctx.stroke();
     } else {
       // Ghost dot fading with missing time
-      const alpha = Math.max(0.25, 1.0 - missing / 30);
+      const alpha = Math.max(_AM_GHOST_MIN_ALPHA, 1.0 - missing / 30);
       ctx.beginPath();
       ctx.arc(px, py, 6, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(240, 126, 139, ${alpha})`;
@@ -2475,17 +2830,23 @@ function _amDrawDots(vs) {
       ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
       ctx.lineWidth = 1;
       ctx.stroke();
-      // MIA badge
+      // MIA badge. S144-U-229: the tag reads at --fs-xs (it was bold
+      // 10px, under the floor); the red box is sized to that font, its
+      // bottom at the dot's centre line, and clamped inside the canvas.
+      // S144-U-231: the whole name, cut with "..." only when the tag is
+      // wider than the canvas (it was cut to 6 chars: "Nidale", "Tahm K").
       if (missing > _AM_MIA_THRESHOLD) {
-        const tag = `${name.slice(0, 6)} ${Math.round(missing)}s`;
-        ctx.font = "bold 10px sans-serif";
+        ctx.font = `bold ${badgeFs}px sans-serif`;
+        ctx.textBaseline = "top";
+        const tag = _amMapBadgeTag(name, missing, w - 12,
+          (s) => ctx.measureText(s).width);
         const txtW = ctx.measureText(tag).width;
-        const bx = Math.min(w - txtW - 8, Math.max(4, px + 8));
-        const by = Math.min(h - 14, Math.max(12, py - 4));
-        ctx.fillStyle = "rgba(220, 38, 38, 0.85)";
-        ctx.fillRect(bx - 3, by - 10, txtW + 6, 14);
+        const boxH = badgeFs + 6;
+        const { bx, top } = _amMapBadgeBox(px, py, txtW, boxH, w, h);
+        ctx.fillStyle = _AM_MAP_ALERT_BG;
+        ctx.fillRect(bx - 3, top, txtW + 6, boxH);
         ctx.fillStyle = "#fff";
-        ctx.fillText(tag, bx, by);
+        ctx.fillText(tag, bx, top + 3);
       }
       // Gank-watch: jungler-shaped missing pattern
       if (missing > _AM_GANK_THRESHOLD
@@ -2565,9 +2926,9 @@ function _renderSpikeCurveFromCtx(ctx) {
   const enemyIds = [];
   for (const pl of lc.allPlayers) {
     if (!pl || typeof pl !== "object") continue;
-    const champ = pl.championName || pl.rawChampionName || "";
-    if (!champ) continue;
-    const numKey = _champNumericKey(champ);
+    // S144-U-217: championName alone misses Wukong / Nunu & Willump, and this
+    // strip needs all ten champions; the helper tries the stripped key first.
+    const numKey = _amLiveChampKey(pl);
     if (!numKey) continue;
     if (pl.team === myTeam) {
       allyIds.push(numKey);
@@ -2711,9 +3072,9 @@ function _renderDraftEloFromCtx(ctx) {
   const enemyIds = [];
   for (const pl of lc.allPlayers) {
     if (!pl || typeof pl !== "object") continue;
-    const champ = pl.championName || pl.rawChampionName || "";
-    if (!champ) continue;
-    const numKey = _champNumericKey(champ);
+    // S144-U-217: championName alone misses Wukong / Nunu & Willump, and this
+    // strip needs all ten champions; the helper tries the stripped key first.
+    const numKey = _amLiveChampKey(pl);
     if (!numKey) continue;
     if (pl.team === myTeam) allyIds.push(numKey);
     else                    enemyIds.push(numKey);
@@ -2753,6 +3114,24 @@ function _resolveMyTeam(lc) {
   return null;
 }
 
+// S144-U-218: the THREATS strip roster - players on a known team other than
+// mine. When my team is unresolved (no allPlayers row carries the activePlayer
+// name, or that row has no team) it is EMPTY: the old filter
+// `pl.team && pl.team !== myTeam` passed every player against a null team, so
+// a 12-player Arena lobby drew 12 threats led by the operator's own champion
+// (docs/qa/UI_UX_QUEUE_2026-07-21.md, In-game overlay). Nobody can be told
+// apart from the operator then, so the strip is left out rather than wrong.
+// The build-plan extractors keep their pinned fail-open (every player when the
+// team is unknown); those feed counter hints, not a list drawn as threats.
+function _amThreatEnemies(lc) {
+  if (!lc || typeof lc !== "object" || !Array.isArray(lc.allPlayers)) return [];
+  const myTeam = _resolveMyTeam(lc);
+  if (!myTeam) return [];
+  return lc.allPlayers.filter(
+    (pl) => pl && typeof pl === "object" && pl.team && pl.team !== myTeam,
+  );
+}
+
 // RM-1330: /api/damage-mix answers 400 to any mode but SR / ARAM / ARENA / BRAWL
 // and the donut draws a "?" tile for that. Those four pass through unchanged. This
 // fold is a guard for any other value _threatRow is handed: it asks for the mapped
@@ -2771,15 +3150,16 @@ function _threatRow(pl, mode, level) {
   row.className = "threat-row";
   row.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
 
-  const champ = pl.championName || pl.rawChampionName || "?";
+  // S144-U-217: the label is the game's display name; the DDragon id comes from
+  // _amLiveChampSlug, which strips the live localization key. Preferring the raw
+  // key here made every live portrait 404 (hidden) and every donut "?".
+  const champId = _amLiveChampSlug(pl);
+  const champ = _amStrOr(pl.championName) || _amStripRawChamp(pl.rawChampionName) || champId || "?";
   const portrait = document.createElement("img");
   portrait.className = "threat-portrait";
   portrait.alt = champ;
   portrait.title = champ;
   const ver = (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
-  // DDragon champion-square id is the championName (no spaces / apostrophes
-  // for most; rawChampionName has the canonical id form when present).
-  const champId = (pl.rawChampionName || champ).replace(/[^a-zA-Z0-9]/g, "");
   portrait.src = `/data/ddragon/${ver}/img/champion/${champId}.png`;
   portrait.style.cssText = "width:28px;height:28px;border-radius:50%;border:1px solid #303040;display:inline-block;vertical-align:middle;";
   portrait.onerror = () => {
@@ -3149,9 +3529,25 @@ function _dsIconFallback(name, id, delta) {
 // (web/js/panels/active_match_dscluster.test.mjs). Not part of the page API.
 export const __test = {
   _champNumericKey,
+  _amLiveChampKey,
+  _amLiveChampSlug,
   _amDsSyntheticCs,
   _amDsComboMode,
   _amThreatMode,
+  _amThreatEnemies,
+  _amCapgapEnemyNames,
+  _amMapStatusText,
+  _amMapIsStale,
+  _amMapBadgeTag,
+  _amMapBadgeBox,
+  _amMapRosterState,
+  _AM_MAP_FEED_FAILED,
+  _AM_MAP_STALE_S,
+  _AM_MAP_FETCH_TIMEOUT_MS,
+  _amMapFeedTrack,
+  _amMapNoteFeed,
+  _amMapStaleS,
+  _resolveMyTeam,
   _threatRow,
   _renderSpikeMarkersFromCtx,
 };

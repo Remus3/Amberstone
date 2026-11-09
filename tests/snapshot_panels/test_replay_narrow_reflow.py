@@ -43,6 +43,19 @@ sideways either.
 Above the 720 line (722x900, 860x900 and the 1920x920 baseline) the panes
 keep the desktop layout: the 320 px list column beside the main pane,
 which scrolls on y. At the baseline the Timeline keeps its four tracks.
+
+Under the 320 floor (s144 lane uiux, S144-U-179; S144-U-175 filed it): at
+300 and 280 px the meta line under the scrubber (#replay-meta, the match id,
+queue, length and patch) held its 191 px match id unbroken in a 196 / 176 px
+pane, so it ran 9 / 29 px past the pane and the view and the pane's
+overflow-x clip cut the id off; from 280 down each match row's queue label
+ran past its row (and the view) beside the champion name. Contract pinned at
+300x640 and 280x640, at rest, with the first match and with the long-id
+match loaded: nothing lies past the view, the meta and clock lie inside the
+main pane, and every match row's top line lies inside its row. The same
+meta fault hit the long-id ui_mock match (a 473 px id) at 860, 722, 480,
+360 and 320, so that match is loaded there too (and at 640, which it fit). At the baseline the meta
+stays one line with the clock beside it.
 """
 import copy
 import json
@@ -148,7 +161,29 @@ _READ = """() => {
     : [];
   const fig = document.getElementById("replay-map-figure");
   const canvas = document.getElementById("replay-map-canvas");
+  const meta = document.getElementById("replay-meta");
+  const metaRange = document.createRange();
+  metaRange.selectNodeContents(meta);
+  const matchRows = Array.from(sec.querySelectorAll(
+    "#replay-match-list .replay-match-row")).filter(shown).map((row) => {
+      const rcs = getComputedStyle(row);
+      const rb = box(row);
+      return {
+        row: rb,
+        // The content box: the parts sit inside the row's own padding.
+        inL: rb.l + parseFloat(rcs.borderLeftWidth)
+          + parseFloat(rcs.paddingLeft),
+        inR: rb.r - parseFloat(rcs.borderRightWidth)
+          - parseFloat(rcs.paddingRight),
+        top: Array.from(row.querySelectorAll(".replay-match-top > *"))
+          .filter(shown).map((c) => ({cls: c.className, ...box(c)})),
+      };
+    });
   return {
+    meta: box(meta), metaText: meta.textContent,
+    metaLines: metaRange.getClientRects().length,
+    clock: box(document.getElementById("replay-clock")),
+    matchRows,
     sw: sec.scrollWidth, cw: sec.clientWidth, content,
     docSw: document.documentElement.scrollWidth, vw: innerWidth,
     viewPast: viewPast.slice(0, 8), nViewPast: viewPast.length,
@@ -174,7 +209,7 @@ _READ = """() => {
 }"""
 
 
-def _read(pw_browser, url, size, load, pad=False, show_map=False):
+def _read(pw_browser, url, size, load, pad=False, show_map=False, row=0):
     ctx = pw_browser.new_context(
         ignore_https_errors=True,
         viewport={"width": size[0], "height": size[1]},
@@ -193,7 +228,8 @@ def _read(pw_browser, url, size, load, pad=False, show_map=False):
         page.wait_for_selector("#replay-match-list .replay-match-row",
                                timeout=10_000)
         if load:
-            page.click("#replay-match-list .replay-match-row")
+            page.locator("#replay-match-list .replay-match-row").nth(
+                row).click()
             page.wait_for_function(
                 "() => document.querySelectorAll("
                 "'.replay-grid-wrap tbody tr').length > 0"
@@ -444,3 +480,93 @@ def test_beside_a_shown_minimap_the_timeline_reflows_on_its_own_width(
         _check_wrapped_row("1200-map", row, r["evW"], r["rem"])
     assert r["elSw"] <= r["elCw"] + 1, (r["elSw"], r["elCw"])
     assert r["sw"] <= r["cw"], (r["sw"], r["cw"])
+
+
+# Under the 320 floor: rest, the first match, and the long-id ui_mock match
+# (row 1, MOCK_ARENA_LOSS_OVERFLOW_LONG_NAME_FOR_ELLIPSIS_TEST).
+_TINY = ((300, 640), (280, 640))
+_TINY_CASES = [(s, load, row) for s in _TINY
+               for load, row in ((False, 0), (True, 0), (True, 1))]
+_TINY_IDS = [f"{s[0]}-{'rest' if not load else f'row{row}'}"
+             for s, load, row in _TINY_CASES]
+
+
+@pytest.fixture(scope="module")
+def tiny(mock_server, pw_browser):
+    mock_server._store["data"] = {}
+    return {c: _read(pw_browser, mock_server.url, c[0], c[1], row=c[2])
+            for c in _TINY_CASES}
+
+
+@pytest.mark.parametrize("case", _TINY_CASES, ids=_TINY_IDS)
+def test_under_the_floor_nothing_runs_past_the_view(tiny, case):
+    r = tiny[case]
+    assert r is not None, case
+    assert r["sw"] <= r["cw"], (case, r["sw"], r["cw"])
+    assert r["docSw"] <= r["vw"], (case, r["docSw"], r["vw"])
+    assert r["nViewPast"] == 0, (case, r["viewPast"])
+
+
+@pytest.mark.parametrize("case", _TINY_CASES, ids=_TINY_IDS)
+def test_under_the_floor_the_meta_and_clock_stay_in_the_pane(tiny, case):
+    r = tiny[case]
+    m_in = r["mainIn"]
+    for key in ("meta", "clock"):
+        b = r[key]
+        assert b["l"] >= m_in["l"] - 0.5 and b["r"] <= m_in["r"] + 0.5, (
+            case, key, b, m_in)
+    if case[1]:
+        # The loaded meta names the picked match (a real line, not the
+        # resting prompt), whole.
+        ids = ("MOCK_NORMAL_DRAFT_WIN",
+               "MOCK_ARENA_LOSS_OVERFLOW_LONG_NAME_FOR_ELLIPSIS_TEST")
+        assert r["metaText"].startswith(ids[case[2]] + " - "), (
+            case, r["metaText"])
+
+
+@pytest.mark.parametrize("case", _TINY_CASES, ids=_TINY_IDS)
+def test_under_the_floor_each_match_row_holds_its_top_line(tiny, case):
+    r = tiny[case]
+    assert len(r["matchRows"]) == 4, (case, r["matchRows"])
+    for mr in r["matchRows"]:
+        rb = mr["row"]
+        assert rb["h"] >= 42 - 0.5, (case, rb)
+        assert len(mr["top"]) == 3, (case, mr)
+        for part in mr["top"]:
+            assert part["l"] >= mr["inL"] - 0.5, (case, part, mr)
+            assert part["r"] <= mr["inR"] + 0.5, (case, part, mr)
+            # A label drops to its own line whole; it is never broken
+            # inside itself (one 19 px line, not a 38 px two-line box).
+            assert part["h"] < 30, (case, part)
+
+
+# The long-id ui_mock match at the stacked widths and beside the list:
+# its 473 px id ran past the pane (and the view) at all of these but 640
+# before S144-U-179 (the cases above load row 0 only).
+_LONG = ((860, 900), (722, 900)) + _NARROW
+
+
+@pytest.mark.parametrize("size", _LONG, ids=[str(s[0]) for s in _LONG])
+def test_the_long_match_id_breaks_inside_the_pane(mock_server, pw_browser,
+                                                  size):
+    mock_server._store["data"] = {}
+    r = _read(pw_browser, mock_server.url, size, True, row=1)
+    assert r["metaText"].startswith(
+        "MOCK_ARENA_LOSS_OVERFLOW_LONG_NAME_FOR_ELLIPSIS_TEST - "), (
+        r["metaText"])
+    m_in = r["mainIn"]
+    for key in ("meta", "clock"):
+        b = r[key]
+        assert b["l"] >= m_in["l"] - 0.5 and b["r"] <= m_in["r"] + 0.5, (
+            size, key, b, m_in)
+    assert r["sw"] <= r["cw"], (size, r["sw"], r["cw"])
+    assert r["nViewPast"] == 0, (size, r["viewPast"])
+
+
+def test_the_baseline_meta_is_one_line_beside_the_clock(wide):
+    r = wide[(1920, 920)]
+    assert r["metaText"].startswith("MOCK_NORMAL_DRAFT_WIN - "), r["metaText"]
+    assert r["metaLines"] == 1, (r["metaLines"], r["meta"])
+    # The clock shares the meta's line, to its right.
+    assert r["clock"]["l"] >= r["meta"]["r"] - 0.5, (r["meta"], r["clock"])
+    assert r["clock"]["t"] < r["meta"]["b"], (r["meta"], r["clock"])

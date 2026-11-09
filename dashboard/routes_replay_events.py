@@ -25,8 +25,14 @@ Returned event shape per row:
       "assists_champs":  list[str|None],     # champion_name per id (null parity)
       "subtype":         str|None, # DRAGON / BARON / HERALD / NEXUS_TURRET / ...
       "lane":            str|None, # TOP / MID / BOT / NONE
-      "pos":             [x,y]|null
+      "pos":             [x,y]|null,
+      "timestamp_ms":    int|None  # the event's own ms (floored); null
+                                   # where the stored timestamp is NULL
     }
+
+``timestamp_ms`` (S144-U-195) lets a Timeline seek put the minimap on
+the event's own millisecond: the map opens a death window at a kill's
+exact ms, so a seek to ``clock_s * 1000`` showed the victim still alive.
 
 Defaults to the "strong" event types only (CHAMPION_KILL +
 BUILDING_KILL + ELITE_MONSTER_KILL + TURRET_PLATE_DESTROYED). The
@@ -105,7 +111,8 @@ _MATCH_ID_ERROR = ("match_id must be 1-64 characters of A-Z, a-z, 0-9, "
 # The schema sentinel bumps when the event-dict shape changes so old
 # entries (e.g. cached pre-participant-join payloads) evict on first hit
 # without waiting out the 5-min TTL.
-_CACHE_SCHEMA = "v2-participant-join"
+# v3 (S144-U-195): each event gains timestamp_ms.
+_CACHE_SCHEMA = "v3-timestamp-ms"
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()
 _CACHE_TTL_S = 300.0
@@ -357,6 +364,15 @@ def _clock_s(row: sqlite3.Row) -> tuple[int | None, bool]:
     return int(ts // 1000), True
 
 
+def _timestamp_ms(row: sqlite3.Row) -> int | None:
+    """S144-U-195: the event's own ms for a row ``_clock_s`` found usable,
+    floored like its clock; None where the stored timestamp is NULL."""
+    ts = row["timestamp_ms"]
+    if ts is None:
+        return None
+    return int(math.floor(ts))
+
+
 def _you_flagged(match_id: str) -> list[dict]:
     """RM-638: the player's in-game "mark this moment" pins for this match
     (core/moment_marks.py). ADDITIVE field, read per request (never cached)
@@ -431,6 +447,7 @@ def _read_events(conn: sqlite3.Connection, match_id: str,
             "subtype":         _row_subtype(row),
             "lane":            row["lane_type"] or None,
             "pos":             _pos(row),
+            "timestamp_ms":    _timestamp_ms(row),
         })
     if skipped:
         log.warning("api/replay/events: %s: skipped %d event row(s) with an "

@@ -81,7 +81,9 @@
    * convention as pgr_winprob.css and the audit-sibling spike_curve.css. Below
    * --fs-xs (16px) is intentional here, never a real sub-floor DOM type size. */
   font-size: 13px;
-  fill: var(--text-faint, #9ca3af);
+  /* S144-U-205: --text-faint was 3.64-3.94:1 on the chart's --surface-3,
+   * under AA wherever the label renders under large-text size (923 px). */
+  fill: var(--text-dim, #9ca3af);
   font-variant-numeric: tabular-nums;
 }
 #bi-flow-mount .pf-xlab-end { text-anchor: end; }

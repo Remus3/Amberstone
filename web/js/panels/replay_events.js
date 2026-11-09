@@ -41,15 +41,34 @@ function _portraitUrl(champName) {
 // existing Replay scrubber so a route change tears it down cleanly.
 const _RE = {
   matchId: null,
+  // S144-U-183: bumped by every loadReplayEvents call; a reply applies only
+  // while it is still the newest request (a late reply for an earlier pick
+  // or filter used to replace the ribbon of the later one).
+  seq: 0,
   include: new Set(),  // subset of {items, skills, wards}
   events:  [],
   // RM-638: the player's in-game "mark this moment" presses for this match
   // (route field you_flagged; core/moment_marks.py). Rendered as rows in
   // the same ribbon, interleaved by clock, so a click seeks like any event.
   flags:   [],
+  // S144-U-186: the ribbon note while a pick that did not load is showing
+  // (null = the markup's own "No timeline events for this match.").
+  // S144-U-187: NOTE_LOADING while a new pick's events are pending.
+  note:    null,
+  // S144-U-188: the match the scrubber holds and its frame count, as
+  // dev.js reports them (setReplayEventsScrubber). A row seeks only when
+  // that match is the ribbon's and it has frames to seek.
+  scrubMatchId: null,
+  scrubFrames:  0,
 };
 
 const FLAG_LABEL = "you flagged";
+const NOTE_PLAIN  = "No timeline events for this match.";
+const NOTE_FAILED = "No timeline events - the match did not load.";
+const NOTE_LOADING = "Loading timeline events...";
+// S144-U-188: shown over rows that cannot seek (their buttons disabled).
+const HINT_PENDING  = "These rows jump the scrubber once the match loads.";
+const HINT_NOFRAMES = "No timeline frames are stored for this match, so these rows cannot jump the scrubber.";
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the events fetch
@@ -237,16 +256,86 @@ function _renderEvents() {
   if (!list || !empty || !count) return;
   const events = _RE.events || [];
   const flags  = _RE.flags || [];
-  count.textContent = String(events.length);
+  const loading = _RE.note === NOTE_LOADING;
+  // S144-U-187: "-" (no data yet) while loading, never a count of 0.
+  count.textContent = loading ? "-" : String(events.length);
+  empty.textContent = _RE.note || NOTE_PLAIN;
+  if (loading) list.setAttribute("aria-busy", "true");
+  else {
+    list.removeAttribute("aria-busy");
+    // Release the height held by loadReplayEvents for the pending pick.
+    const section = document.getElementById("replay-events-section");
+    if (section) section.style.minHeight = "";
+  }
   if (!events.length && !flags.length) {
     list.innerHTML = "";
     empty.hidden = false;
-    return;
+  } else {
+    empty.hidden = true;
+    // Rebuilt only on a fetch resolve (never on a timer), matching the
+    // pre-RM-638 render; the delegated seek listeners survive the rebuild.
+    list.innerHTML = _rowsHtml(events, flags);
   }
-  empty.hidden = true;
-  // Rebuilt only on a fetch resolve (never on a timer), matching the
-  // pre-RM-638 render; the delegated seek listeners survive the rebuild.
-  list.innerHTML = _rowsHtml(events, flags);
+  // S144-U-188: on both branches, so an emptied ribbon drops the hint too.
+  _applySeekable();
+}
+
+// S144-U-188: why the listed rows cannot seek, or null when they can. The
+// ribbon's rows can land before their match does (two routes), and a match
+// can hold no timeline frames; either way a row click did nothing and
+// nothing said so.
+function _seekBlockedHint() {
+  if (_RE.scrubMatchId !== _RE.matchId) return HINT_PENDING;
+  if (!(_RE.scrubFrames > 0)) return HINT_NOFRAMES;
+  return null;
+}
+
+// S144-U-189: the title of one row that cannot seek, naming its clock.
+function _blockedRowTitle(why, row) {
+  const el = row.querySelector(".replay-events-clock");
+  const clock = el ? el.textContent : "";
+  return why === HINT_PENDING
+    ? `Jumps the scrubber to ${clock} once the match loads`
+    : `No timeline frames are stored for this match, so this row cannot jump the scrubber to ${clock}`;
+}
+
+// Disables the listed rows (out of the tab order, no click, no hover)
+// and shows the hint while they cannot seek; re-enables them in place,
+// with no rebuild, once they can. Guard:
+// tests/snapshot_panels/test_replay_ribbon_seek_ready.py.
+function _applySeekable() {
+  const list = document.getElementById("replay-events-list");
+  const hint = document.getElementById("replay-events-hint");
+  if (!list) return;
+  const rows = list.querySelectorAll(".replay-events-row");
+  const why = rows.length ? _seekBlockedHint() : null;
+  rows.forEach((b) => {
+    b.disabled = !!why;
+    // S144-U-189: a disabled row's title (hover tooltip and accessible
+    // description) says why it cannot jump, not "Jump the scrubber to";
+    // the row's own seek title is kept on the node and put back when it
+    // can seek. Rows are fresh nodes after each rebuild, so the first
+    // pass here always reads the markup's title. Guard:
+    // tests/snapshot_panels/test_replay_ribbon_disabled_row_title.py.
+    if (b.dataset.seekTitle === undefined) b.dataset.seekTitle = b.title || "";
+    b.title = why ? _blockedRowTitle(why, b) : b.dataset.seekTitle;
+  });
+  if (hint) {
+    hint.textContent = why || "";
+    hint.hidden = !why;
+  }
+}
+
+/**
+ * S144-U-188: dev.js reports the match its scrubber holds (null when none)
+ * and that match's frame count, on every load and every failed load. The
+ * ribbon's rows are enabled only when they are that match's and it has
+ * frames.
+ */
+export function setReplayEventsScrubber(matchId, frames) {
+  _RE.scrubMatchId = matchId || null;
+  _RE.scrubFrames = Math.max(0, Number(frames) || 0);
+  _applySeekable();
 }
 
 // One timeline-event row (the pre-RM-638 map body; li > button since RM-1066).
@@ -266,9 +355,18 @@ function _eventRowHtml(e) {
     // drives the scrubber to this event's timestamp via the delegated
     // listener in wireReplayEventsOnce. data-clock carries the raw seconds.
     // RM-1066: the li stays a listitem and the control is a real button.
+    // S144-U-195: data-ms carries the event's own ms (the route's
+    // timestamp_ms) so a seek puts the minimap on that moment: the map
+    // opens a kill's death window at its exact ms, and clockS * 1000 is up
+    // to 999 ms early (the victim still alive). Only an ms that agrees
+    // with the shown clock is carried; without one the row seeks its clock.
+    const ms = e.timestamp_ms;
+    const msAttr = (typeof ms === "number" && Number.isFinite(ms) && ms >= 0
+                    && Math.floor(ms / 1000) === clockS)
+      ? ` data-ms="${Math.floor(ms)}"` : "";
     return `<li class="replay-events-item"><button type="button"
       class="replay-events-row" data-kind="${kind}" data-team="${team}"
-      data-clock="${clockS}"
+      data-clock="${clockS}"${msAttr}
       title="Jump the scrubber to ${_escHtml(clock)}">
       <span class="replay-events-clock">${_escHtml(clock)}</span>
       <span class="replay-events-label">${_escHtml(label)}${sub}${lane}</span>
@@ -285,7 +383,10 @@ function _eventRowHtml(e) {
 export function loadReplayEvents(matchId) {
   const section = document.getElementById("replay-events-section");
   if (!section) return;
+  const seq = ++_RE.seq;
+  const fresh = () => seq === _RE.seq;
   if (!matchId) {
+    _RE.note = null;
     section.hidden = true;
     _RE.matchId = null;
     _RE.events = [];
@@ -293,18 +394,35 @@ export function loadReplayEvents(matchId) {
     _renderEvents();
     return;
   }
+  // S144-U-187: a pick of a DIFFERENT match drops the previous match's rows
+  // at once (they were listed under "loading <id>..." until this reply
+  // landed, each a seek into the previous match) and says the events are
+  // loading. The section keeps its current height until the reply renders,
+  // so nothing under it moves twice. A filter toggle on the same match
+  // keeps its rows (they still belong to the match in the scrubber).
+  // Guard: tests/snapshot_panels/test_replay_pending_pick_ribbon.py.
+  if (matchId !== _RE.matchId) {
+    const h = section.hidden ? 0 : section.getBoundingClientRect().height;
+    _RE.events = [];
+    _RE.flags = [];
+    _RE.note = NOTE_LOADING;
+    _renderEvents();
+    if (h > 0) section.style.minHeight = `${h}px`;
+  }
   _RE.matchId = matchId;
   section.hidden = false;
   if (_replayEventsIsMock()) {
     _replayEventsMockLoad()
       .then((m) => {
+        if (!fresh()) return;
+        _RE.note = null;
         if (!m || !Array.isArray(m.matches)) { _RE.events = []; _RE.flags = []; _renderEvents(); return; }
         const hit = m.matches.find((x) => x.match_id === matchId);
         _RE.events = (hit && Array.isArray(hit.events)) ? hit.events : [];
         _RE.flags = (hit && Array.isArray(hit.you_flagged)) ? hit.you_flagged : [];
         _renderEvents();
       })
-      .catch(() => { _RE.events = []; _RE.flags = []; _renderEvents(); });
+      .catch(() => { if (!fresh()) return; _RE.note = null; _RE.events = []; _RE.flags = []; _renderEvents(); });
     return;
   }
   const includeParam = [..._RE.include].sort().join(",");
@@ -313,6 +431,8 @@ export function loadReplayEvents(matchId) {
   fetch(url, { headers: { "Accept": "application/json" } })
     .then((r) => r.json())
     .then((d) => {
+      if (!fresh()) return;
+      _RE.note = null;
       if (!d || !d.ok) {
         _RE.events = [];
         _RE.flags = [];
@@ -323,11 +443,32 @@ export function loadReplayEvents(matchId) {
       _renderEvents();
     })
     .catch((err) => {
+      if (!fresh()) return;
       try { console.warn("[replay-events] fetch failed:", err); } catch (_) {}
+      _RE.note = null;
       _RE.events = [];
       _RE.flags = [];
       _renderEvents();
     });
+}
+
+/**
+ * S144-U-186: the pick whose match reply failed (dev.js _replayLoadMatch).
+ * The events route can still answer for it, so the ribbon used to list its
+ * events - each a "jump the scrubber" button with no match to seek - under
+ * the "could not load" meta line. Drops the rows, says why, ignores a late
+ * events reply for that pick (seq bump) and leaves a filter toggle nothing
+ * to re-fetch. The section stays where it is. The next pick's
+ * loadReplayEvents restores the plain note.
+ * Guard: tests/snapshot_panels/test_replay_failed_load_ribbon.py.
+ */
+export function clearReplayEventsFailed() {
+  ++_RE.seq;
+  _RE.matchId = null;
+  _RE.events = [];
+  _RE.flags = [];
+  _RE.note = NOTE_FAILED;
+  _renderEvents();
 }
 
 let _wired = false;
@@ -345,7 +486,13 @@ function _seekFromRow(target) {
   const row = target && target.closest ? target.closest(".replay-events-row") : null;
   if (!row || !_seekHandler) return;
   const c = Number(row.getAttribute("data-clock"));
-  if (!isNaN(c)) _seekHandler(c);
+  // S144-U-195: the event's own ms when the row carries one, else null
+  // (the scrubber then seeks the whole-second clock).
+  const msAttr = row.getAttribute("data-ms");
+  const ms = msAttr === null || msAttr === "" ? NaN : Number(msAttr);
+  // S144-U-187: the row's match rides along, so the scrubber can refuse a
+  // row of a match it does not hold yet.
+  if (!isNaN(c)) _seekHandler(c, _RE.matchId, Number.isFinite(ms) ? ms : null);
 }
 
 /**

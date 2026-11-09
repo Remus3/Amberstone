@@ -5,7 +5,10 @@ import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
 import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } from '../lib/theme.js';
 // s220 PGR S5: Match-V5 timeline event ribbon for the Replay view.
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
-import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
+import {
+  loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler, clearReplayEventsFailed,
+  setReplayEventsScrubber,
+} from './replay_events.js';
 // RM-612 (X-12): pure minimap logic (death windows, last-known + age halo).
 import { buildModel, stateAt, worldToCanvas, mapArtUrls, monogram, MAP_WORLD } from './replay_minimap.js';
 import { loadReviewPlayer } from './review_player.js';
@@ -250,7 +253,7 @@ function renderSpendGates() {
 // Loads recent matches from /api/replay/matches; clicking one fetches
 // /api/replay/match/<id> and lets the user scrub through per-minute
 // snapshots. Items, level, gold, CS reflect the slider position.
-const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null };
+const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null, loadSeq: 0, listSeq: 0 };
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the three fetch
@@ -260,10 +263,17 @@ const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null };
 let _replayMockPromise = null;
 function _replayMockLoad() {
   if (_replayMockPromise) return _replayMockPromise;
-  _replayMockPromise = fetch("/data/ui_mock/replay.json", { cache: "no-store" })
+  // S144-U-210: a failed fixture load is not cached, so the next visit to
+  // the view fetches again (a cached null read as a failure for good).
+  const p = fetch("/data/ui_mock/replay.json", { cache: "no-store" })
     .then((r) => (r && r.ok ? r.json() : null))
-    .catch(() => null);
-  return _replayMockPromise;
+    .catch(() => null)
+    .then((j) => {
+      if (!j && _replayMockPromise === p) _replayMockPromise = null;
+      return j;
+    });
+  _replayMockPromise = p;
+  return p;
 }
 function _replayIsMock() {
   return document.body && document.body.dataset.uiMock === "1";
@@ -314,15 +324,41 @@ function _replayViewRefresh() {
     focusMatchId = sessionStorage.getItem("rc-replay-focus-match") || null;
     if (focusMatchId) sessionStorage.removeItem("rc-replay-focus-match");
   } catch (_) {}
+  // S144-U-210: a list fetch that fails (an HTTP error, a rejected fetch,
+  // a body that is not JSON, a reply with no matches array) says the
+  // matches did not load. It used to reach the empty branch as null and
+  // read "no matches in rewind_history.db" (a 500 said the store was
+  // empty), and a rejected fetch left "loading..." for good. Entering the
+  // view fetches again. Only the newest list request paints: the view left
+  // and re-entered before the first reply landed used to let an older
+  // failed reply replace the newer list.
+  // Guard: tests/snapshot_panels/test_replay_list_fetch_failure.py.
+  const listSeq = ++_REPLAY.listSeq;
+  const listFailed = () => {
+    if (listSeq !== _REPLAY.listSeq) return;
+    const ul = document.getElementById("replay-match-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+    const li = document.createElement("li");
+    li.className = "home-empty";
+    li.textContent = "matches did not load - reopen Replay to retry";
+    ul.appendChild(li);
+  };
   const matchesPromise = _replayIsMock()
-    ? _replayMockLoad().then((m) => (m && m.matches) ? { matches: m.matches } : null)
+    ? _replayMockLoad().then((m) => (m && Array.isArray(m.matches)) ? { matches: m.matches } : null)
     : fetch("/api/replay/matches?limit=30").then(r => r.ok ? r.json() : null);
+  // A rejected fetch reads as null here, so only a FETCH failure paints the
+  // did-not-load line; a throw while painting rows is logged below, as
+  // before, and never replaces rows already painted.
   matchesPromise
+    .catch(e => { console.warn("replay matches:", e); return null; })
     .then(j => {
+      if (listSeq !== _REPLAY.listSeq) return;
+      if (!j || !Array.isArray(j.matches)) { listFailed(); return; }
       const ul = document.getElementById("replay-match-list");
       if (!ul) return;
       ul.innerHTML = "";
-      const items = (j && j.matches) || [];
+      const items = j.matches;
       if (!items.length) {
         ul.innerHTML = '<li class="home-empty">no matches in rewind_history.db</li>';
         return;
@@ -365,12 +401,14 @@ function _replayViewRefresh() {
         // button activation never fires a second load.
         // RM-1062: Ctrl / Alt / Meta + key is left to the recording
         // player (modifier+Space plays from anywhere).
-        btn.addEventListener("click", () => _replayLoadMatch(m.match_id, btn));
+        // S144-U-182: a pick by click or key brings the loaded match into
+        // view where the panes stack (_replayRevealMain).
+        btn.addEventListener("click", () => _replayLoadMatch(m.match_id, btn, { reveal: true }));
         btn.addEventListener("keydown", (e) => {
           if (e.ctrlKey || e.altKey || e.metaKey) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            _replayLoadMatch(m.match_id, btn);
+            _replayLoadMatch(m.match_id, btn, { reveal: true });
           }
         });
         ul.appendChild(li);
@@ -379,26 +417,71 @@ function _replayViewRefresh() {
       // s220 PGR S5: auto-load the focused match (from PGR Review ->).
       // Fires AFTER all rows are mounted so .active highlighting works.
       if (focusRow) {
-        _replayLoadMatch(focusMatchId, focusRow);
         try { focusRow.scrollIntoView({ block: "nearest" }); } catch (_) {}
+        _replayLoadMatch(focusMatchId, focusRow, { reveal: true });
       }
     })
     .catch(e => console.warn("replay matches:", e));
   _replayLoadItemsIndex();
 }
-function _replayLoadMatch(matchId, rowEl) {
+// S144-U-182: at 720 px and under the panes stack (primitives.css), the
+// match list above the main pane, and the view section scrolls both as one
+// page. A pick loaded the match below the list and left the view where it
+// was, so the loaded match was out of sight (measured: at 640x307, the 300%
+// zoom of the 1920x920 baseline, the main pane began 53 px under the view's
+// bottom). Once the match has loaded (the meta line can grow a line), scroll
+// the least that shows the main pane's head: its top through the bottom of
+// the scrubber. Where that head is taller than the view, its top leads, so
+// the meta line shows. Side by side (main pane beside the list) and where
+// the head already shows, nothing moves. Focus is not moved: the picked row
+// keeps it, so Tab and Shift+Tab walk the list as before.
+// Guard: tests/snapshot_panels/test_replay_pick_reveals_main.py.
+function _replayRevealMain() {
+  const sec = document.getElementById("view-replay");
+  const list = sec && sec.querySelector(".replay-list-pane");
+  const main = sec && sec.querySelector(".replay-main-pane");
+  const slider = document.getElementById("replay-slider");
+  if (!list || !main || !slider) return;
+  const mr = main.getBoundingClientRect();
+  if (!mr.height || mr.top < list.getBoundingClientRect().bottom - 1) return;
+  const sr = sec.getBoundingClientRect();
+  const top = Math.max(0, sr.top + sec.clientTop);
+  const bottom = Math.min(window.innerHeight, sr.top + sec.clientTop + sec.clientHeight);
+  const headBottom = slider.getBoundingClientRect().bottom;
+  if (mr.top >= top - 1 && headBottom <= bottom + 1) return;
+  try {
+    if (headBottom - mr.top > bottom - top) {
+      main.scrollIntoView({ block: "start", inline: "nearest" });
+    } else {
+      slider.scrollIntoView({ block: "nearest", inline: "nearest" });
+      if (main.getBoundingClientRect().top < top - 1) {
+        main.scrollIntoView({ block: "start", inline: "nearest" });
+      }
+    }
+  } catch (_) {}
+}
+function _replayLoadMatch(matchId, rowEl, opts) {
+  const reveal = !!(opts && opts.reveal);
   // RM-1062: aria-current names the loaded match for a screen reader.
   document.querySelectorAll(".replay-match-row.active").forEach(r => {
     r.classList.remove("active");
     r.removeAttribute("aria-current");
   });
   if (rowEl) { rowEl.classList.add("active"); rowEl.setAttribute("aria-current", "true"); }
+  // S144-U-183: only the newest pick's reply is applied. Pick A on a slow
+  // reply then pick B, and A's late reply used to repaint the meta line,
+  // scrubber, map and grid as A under row B, and re-arm the recording lane
+  // for A. Guard: tests/snapshot_panels/test_replay_stale_load.py.
+  const seq = ++_REPLAY.loadSeq;
   const meta = document.getElementById("replay-meta");
   if (meta) meta.textContent = "loading " + matchId + "...";
   // s220 PGR S5: fire the Match-V5 timeline event ribbon fetch in
   // parallel with the per-frame snapshot fetch below. Both target
   // the same matchId so the ribbon + scrubber are coherent.
   try { loadReplayEvents(matchId); } catch (_) {}
+  // S144-U-192: after the ribbon has measured the height it holds while
+  // loading (the pending state tells it no match is in the scrubber).
+  _replayShowPending();
   // RM-641: local recording lane (hidden unless an RM-637 sidecar names a
   // servable video). The team arrives with the match payload below.
   try { loadReviewPlayer(matchId, null); } catch (_) {}
@@ -408,11 +491,38 @@ function _replayLoadMatch(matchId, rowEl) {
         return m.matches.find((x) => x.match_id === matchId) || null;
       })
     : fetch("/api/replay/match/" + encodeURIComponent(matchId)).then(r => r.ok ? r.json() : null);
+  // S144-U-184: a newest pick that does not load (a null reply: a 404 or a
+  // ui_mock id the fixture lacks; or a rejected fetch) used to leave the
+  // meta line on "loading <id>..." for good, with the previous match still
+  // in the scrubber, clock, minimap and grid under the highlighted row. It
+  // now says so and drops the previous match; picking the row again
+  // retries. Guard: tests/snapshot_panels/test_replay_failed_load.py.
+  const failed = () => {
+    if (seq !== _REPLAY.loadSeq) return;
+    _replaySetGridBusy(false);
+    _REPLAY.match = null;
+    _REPLAY.snapshotIdx = 0;
+    const slider = document.getElementById("replay-slider");
+    if (slider) { slider.max = "0"; slider.value = "0"; slider.disabled = true; }
+    const m = document.getElementById("replay-meta");
+    if (m) m.textContent = "could not load " + matchId + " - pick it again to retry";
+    _replayShowNoFrames("match did not load");
+    // S144-U-186: no ribbon rows for a match that did not load (the events
+    // route can still answer for it; its rows had nothing to seek).
+    try { clearReplayEventsFailed(); } catch (_) {}
+    try { setReplayEventsScrubber(null, 0); } catch (_) {}
+    if (reveal && (!rowEl || rowEl.classList.contains("active"))) _replayRevealMain();
+  };
   matchPromise
     .then(d => {
-      if (!d) return;
+      if (seq !== _REPLAY.loadSeq) return;
+      if (!d) { failed(); return; }
+      _replaySetGridBusy(false);
       _REPLAY.match = d;
       _REPLAY.snapshotIdx = 0;
+      // S144-U-188: the ribbon enables its rows only for the match the
+      // scrubber holds, and only when it has frames to seek.
+      try { setReplayEventsScrubber(d.match_id, (d.snapshots || []).length); } catch (_) {}
       _replayMapAttach(d);
       const slider = document.getElementById("replay-slider");
       if (slider) {
@@ -438,9 +548,85 @@ function _replayLoadMatch(matchId, rowEl) {
           p.champion_id === (d.tracked && d.tracked.champion_id));
         try { loadReviewPlayer(matchId, me ? Number(me.team_id) : null); } catch (_) {}
       }
-      _replayRenderSnapshot(0);
+      // S144-U-184: a match stored with no timeline frames (the store holds
+      // such rows, e.g. an ARAM Mayhem q2400 game) left the previous
+      // match's clock and grid under this one's meta line.
+      if ((d.snapshots || []).length) _replayRenderSnapshot(0);
+      else _replayShowNoFrames("no timeline frames stored for this match");
+      // S144-U-182: reveal only for the pick still showing (a later pick
+      // that already loaded keeps its own place).
+      if (reveal && (!rowEl || rowEl.classList.contains("active"))) _replayRevealMain();
     })
-    .catch(e => console.warn("replay match:", e));
+    .catch(e => {
+      console.warn("replay match:", e);
+      failed();
+    });
+}
+// S144-U-192: the state of the scrubber, clock, minimap and grid while a
+// pick is loading. A pick only rewrote the meta line, so until its match
+// reply landed the previous match stayed under "loading <id>...": its
+// scrubber still live (a drag moved its clock and grid), its clock, its
+// drawn map and its grid rows. Now the scrubber is disabled at 0, the clock
+// reads "-", the grid holds one "loading this match..." row and is
+// aria-busy, and the ribbon is told no match is in the scrubber. A shown
+// map figure stays shown at its own height with a blank canvas, so the map
+// row and the grid under it do not collapse while the pick loads; the
+// reply then shows or hides it as before.
+// Guard: tests/snapshot_panels/test_replay_pending_pick_main_pane.py.
+function _replayShowPending() {
+  _REPLAY.match = null;
+  _REPLAY.snapshotIdx = 0;
+  const slider = document.getElementById("replay-slider");
+  if (slider) { slider.max = "0"; slider.value = "0"; slider.disabled = true; }
+  const clock = document.getElementById("replay-clock");
+  if (clock) clock.textContent = "-";
+  _REPLAY_MAP.model = null;
+  const canvas = document.getElementById("replay-map-canvas");
+  const ctx = canvas && canvas.getContext ? canvas.getContext("2d") : null;
+  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const mapClock = document.getElementById("replay-map-clock");
+  if (mapClock) mapClock.textContent = "-";
+  const flags = document.getElementById("replay-map-flags");
+  if (flags) flags.textContent = "";
+  _replayGridNote("loading this match...");
+  _replaySetGridBusy(true);
+  try { setReplayEventsScrubber(null, 0); } catch (_) {}
+}
+function _replaySetGridBusy(on) {
+  const body = document.getElementById("replay-grid-body");
+  const table = body && body.closest("table");
+  if (!table) return;
+  if (on) table.setAttribute("aria-busy", "true");
+  else table.removeAttribute("aria-busy");
+}
+// S144-U-184: the frame-less state of the clock, minimap and grid, with one
+// note row in the grid (the same home-empty row the page opens with).
+function _replayShowNoFrames(note) {
+  const clock = document.getElementById("replay-clock");
+  if (clock) clock.textContent = "-";
+  _REPLAY_MAP.model = null;
+  const fig = document.getElementById("replay-map-figure");
+  if (fig) fig.hidden = true;
+  _replayGridNote(note);
+}
+// The one note row the grid shows in place of player rows (the same
+// home-empty row the page opens with), spanning all 7 columns. The text
+// sits in a .replay-grid-note box one visible pane wide, so it stays on
+// screen where the table scrolls sideways (S144-U-185).
+function _replayGridNote(note) {
+  const tbody = document.getElementById("replay-grid-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  const tr = document.createElement("tr");
+  const td = document.createElement("td");
+  td.colSpan = 7;
+  td.className = "home-empty";
+  const span = document.createElement("span");
+  span.className = "replay-grid-note";
+  span.textContent = note;
+  td.appendChild(span);
+  tr.appendChild(td);
+  tbody.appendChild(tr);
 }
 function _replayRenderSnapshot(idx, mapTms) {
   const d = _REPLAY.match;
@@ -465,6 +651,13 @@ function _replayRenderSnapshot(idx, mapTms) {
     if (ta !== tb) return ta - tb;
     return a.participant_id - b.participant_id;
   });
+  // S144-U-185: a frame with no entries (a match stored with frames but no
+  // participant rows; the ui_mock ARAM row) left a bare header over an empty
+  // body under a live clock. Guard: tests/snapshot_panels/test_replay_empty_frame.py.
+  if (!entries.length) {
+    _replayGridNote("no player rows stored for this frame");
+    return;
+  }
   for (const e of entries) {
     const p = partsByPid.get(e.participant_id) || {};
     const tr = document.createElement("tr");
@@ -519,10 +712,21 @@ function _replayRenderSnapshot(idx, mapTms) {
 // event clock (seconds) to the nearest per-frame snapshot by minute, moves
 // the slider, and re-renders the grid at that frame - so a timeline click
 // is real navigation (the "actionable event timeline", not a passive log).
-function _replaySeekToClock(clockS) {
+// S144-U-187: matchId is the ribbon's match; a row whose match is not the
+// one in the scrubber (its events landed before its match reply) does not
+// seek. Guard: tests/snapshot_panels/test_replay_pending_pick_ribbon.py.
+// S144-U-195: tMs is the event's own ms when its row carries one; the map
+// goes to that moment (a kill's death window opens at its exact ms, so the
+// whole second, up to 999 ms early, showed the victim alive). Without it
+// the seek uses clockS * 1000 as before.
+// Guard: tests/snapshot_panels/test_replay_kill_seek_exact_ms.py.
+function _replaySeekToClock(clockS, matchId, tMs) {
   const d = _REPLAY.match;
   if (!d || !Array.isArray(d.snapshots) || !d.snapshots.length) return;
-  const targetMin = (Number(clockS) || 0) / 60;
+  if (matchId != null && d.match_id !== matchId) return;
+  const exact = (tMs != null && Number.isFinite(Number(tMs)))
+    ? Number(tMs) : (Number(clockS) || 0) * 1000;
+  const targetMin = exact / 60000;
   let bestIdx = 0, bestDelta = Infinity;
   for (let i = 0; i < d.snapshots.length; i++) {
     const mn = Number(d.snapshots[i].minute) || 0;
@@ -532,7 +736,7 @@ function _replaySeekToClock(clockS) {
   _REPLAY.snapshotIdx = bestIdx;
   const slider = document.getElementById("replay-slider");
   if (slider && !slider.disabled) slider.value = String(bestIdx);
-  _replayRenderSnapshot(bestIdx, (Number(clockS) || 0) * 1000);
+  _replayRenderSnapshot(bestIdx, exact);
 }
 
 // -- RM-612 (X-12, external reference I): past-match minimap -------------
@@ -601,6 +805,10 @@ function _replayMapIcon(name) {
 }
 function _replayMapSetTime(tMs) {
   _REPLAY_MAP.t = Math.max(0, Number(tMs) || 0);
+  // S144-U-195: the canvas names the moment it shows, in game ms (its
+  // caption clock reads whole seconds only).
+  const canvas = document.getElementById("replay-map-canvas");
+  if (canvas) canvas.dataset.tMs = String(_REPLAY_MAP.t);
   _replayMapSchedule();
 }
 function _replayMapSchedule() {

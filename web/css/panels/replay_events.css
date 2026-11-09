@@ -35,6 +35,12 @@
 
 .replay-events-head {
   display: flex; align-items: center; justify-content: space-between;
+  /* S144-U-176: one row (title left, filters / keys right) wherever both
+   * fit; where they do not, the filters or keys wrap under the title. The
+   * head used to be a column only because the top bar's bare `header`
+   * rule leaked onto it (now `body > header`, header.css). Guards:
+   * test_in_view_header_scope.py, test_replay_narrow_reflow.py. */
+  flex-wrap: wrap;
   gap: var(--panel-gap);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border-soft);
@@ -120,10 +126,22 @@
 }
 .replay-events-row[data-team="100"] { border-left-color: var(--good); }
 .replay-events-row[data-team="200"] { border-left-color: var(--bad); }
-.replay-events-row:hover {
+.replay-events-row:not(:disabled):hover {
   background: var(--surface-alt);
   border-color: var(--accent);
 }
+/* S144-U-188: a row that cannot seek yet (its match has not loaded) or at
+ * all (the match has no timeline frames) is a disabled button: no pointer
+ * and no hover; its text keeps its colour (the author `color: inherit`
+ * above beats the UA disabled grey), and the hint above the list says why.
+ * Guard: tests/snapshot_panels/test_replay_ribbon_seek_ready.py. */
+.replay-events-row:disabled { cursor: default; }
+.replay-events-hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.replay-events-hint[hidden] { display: none; }
 /* RM-1017: --focus-ring is a box-shadow value, so it was an invalid
  * outline that painted nothing; drawn inset, inside the row, as the old
  * outline-offset -2px asked. */
@@ -181,8 +199,8 @@
  * line, actor and victim share the second as equal halves (each still
  * ellipsizes; a grid with the clock track above them left the victim
  * 11 px at 320). Under 20rem a half is too narrow for a portrait and a
- * name, so each takes its own line. The filters wrap (the head itself is
- * already a column: the global `header` rule, header.css). At the
+ * name, so each takes its own line. The filters wrap (and the head wraps
+ * them under the title, S144-U-176). At the
  * 1920x920 baseline the section is far wider and keeps the four tracks.
  * Guard: tests/snapshot_panels/test_replay_narrow_reflow.py. */
 @container replay-events (width < 34rem) {
@@ -260,6 +278,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* S144-U-187: fills the section's held height while a new pick's events
+   * load (replay_events.js loadReplayEvents), so the note sits centred in
+   * that box, not at its top. Inert otherwise: the section is content-height
+   * (.replay-map-row aligns flex-start), so there is no space to grow into. */
+  flex: 1 0 auto;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-1);
   font-size: var(--fs-sm);

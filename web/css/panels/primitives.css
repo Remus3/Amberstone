@@ -62,16 +62,18 @@
 }
 
 /* 3.3 - sticky header that compresses on scroll. JS toggles
- * <header data-compressed="1"> at scroll-Y > 200 (see the dashboard JS). */
-header[data-compressed="1"] {
+ * <header data-compressed="1"> at scroll-Y > 200 (see the dashboard JS).
+ * Scoped to the top bar (`body > header`, S144-U-176) so the transition
+ * never reaches an in-view <header>. */
+body > header[data-compressed="1"] {
   height: 44px !important;
   min-height: 44px;
   transition: height 180ms ease;
 }
-header[data-compressed="1"] .header-row.header-row-1 {
+body > header[data-compressed="1"] .header-row.header-row-1 {
   align-items: center;
 }
-header { transition: height 180ms ease; }
+body > header { transition: height 180ms ease; }
 
 /* (3.6 loading skeletons removed 2026-07-01: the mechanism was dormant dead
  * code - nothing ever set its opt-in attribute and its strip event was never
@@ -202,8 +204,13 @@ header { transition: height 180ms ease; }
 }
 .replay-match-row.won:focus-visible  { box-shadow: inset 3px 0 0 var(--good), inset var(--focus-ring); }
 .replay-match-row.lost:focus-visible { box-shadow: inset 3px 0 0 var(--bad), inset var(--focus-ring); }
+/* S144-U-179: the top line wraps, so under the 320 floor (280 px and
+ * down) the queue label drops under the champion, still right-aligned by
+ * its auto margin, instead of running past the row and the view. A row
+ * that fits keeps its one line. */
 .replay-match-top {
   display: flex; align-items: baseline; gap: var(--space-2);
+  flex-wrap: wrap;
   font-size: var(--fs-sm); font-weight: 700;
 }
 .replay-match-verdict {
@@ -310,10 +317,17 @@ header { transition: height 180ms ease; }
   gap: var(--space-4);
   flex-wrap: wrap;
 }
+/* S144-U-179: the meta wants 12rem on the clock's line (so the clock
+ * still drops under it where both do not fit, as before), may shrink to
+ * the pane, and breaks a match id longer than the pane: at 300 px the
+ * 191 px id ran 9 px past a 196 px pane and its clip cut the id off.
+ * Guard: tests/snapshot_panels/test_replay_narrow_reflow.py. */
 .replay-meta {
   font-size: var(--fs-sm); color: var(--text-dim);
   font-variant-numeric: tabular-nums;
-  flex: 1;
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .replay-clock {
   font-size: var(--fs-stat); font-weight: 900;
@@ -384,6 +398,16 @@ header { transition: height 180ms ease; }
   font-size: var(--fs-xs);
   color: var(--text-dim);
 }
+/* S144-U-193: the note holds 3 lines in every face. Where the Timeline wraps
+ * under the map (923 px and other stacked widths) the note's line count
+ * moved the whole ribbon: 2 lines in the first-paint fallback, 3 in Lato's
+ * stub and in monospace, so a webfont swap shifted the filter labels 18 px
+ * past RM-1072's 1 px. The 76-character note wraps to at most 3 lines in a
+ * 300 px column even in monospace; a narrower figure may still grow it
+ * (min-height, never a clip). */
+.replay-map-note {
+  min-height: 3lh;
+}
 .replay-map-clock {
   font-size: var(--fs-sm);
   font-weight: 700;
@@ -400,6 +424,8 @@ header { transition: height 180ms ease; }
   flex: 1; overflow: auto;
   border-radius: var(--panel-radius-sm);
   min-height: 360px;
+  /* S144-U-185: sizes the grid note to the visible pane (cqw below). */
+  container-type: inline-size;
 }
 /* RM-1785: narrow windows and high zoom (300% of the 1920x920 baseline
  * is 640 wide, 400% is 480; WCAG 1.4.10 reflows at 320) - the 720px line
@@ -501,6 +527,51 @@ header { transition: height 180ms ease; }
 }
 .replay-match-list .home-empty::before,
 .replay-grid .home-empty::before {
+  content: "\2756"; font-size: var(--fs-xl); line-height: 1;
+  color: var(--accent); opacity: 0.35;
+}
+/* S144-U-184: display:flex took the grid placeholder <td> out of table
+ * layout, so its colspan was ignored and the note sat in a 105 px column
+ * at the grid's left edge, wrapped into a 150-240 px tall stack (measured
+ * at 1920x920). The cell stays a table cell spanning the grid; the sigil
+ * is a block above the centred note. Guard:
+ * tests/snapshot_panels/test_replay_failed_load.py. */
+.replay-grid td.home-empty {
+  display: table-cell;
+  vertical-align: middle;
+}
+.replay-grid td.home-empty::before {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+/* S144-U-185: at 480 px and under the scoreboard keeps its 414 px table
+ * and scrolls sideways inside .replay-grid-wrap (RM-1777), and the note
+ * was centred across the whole table, so at 480 "no player rows stored
+ * for this frame" ran 23 px past the 348 px pane and at 320 "no match
+ * selected" ran 96 px past the 188 px pane, the sigil off-view too
+ * (MEASURED, ui_mock, headless). The note text and its sigil now live in
+ * a .replay-grid-note box one visible pane wide (100cqw of the wrap)
+ * pinned to the pane's left edge (sticky), so both stay centred in what
+ * is on screen. The cell keeps its vertical padding only. Guard:
+ * tests/snapshot_panels/test_replay_empty_frame.py. */
+.replay-grid td.home-empty:has(> .replay-grid-note) {
+  padding-inline: 0;
+}
+.replay-grid td.home-empty:has(> .replay-grid-note)::before {
+  content: none;
+}
+.replay-grid-note {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: 100cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-4);
+}
+.replay-grid-note::before {
   content: "\2756"; font-size: var(--fs-xl); line-height: 1;
   color: var(--accent); opacity: 0.35;
 }
