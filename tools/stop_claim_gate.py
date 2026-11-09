@@ -2726,8 +2726,12 @@ def _git_target(here, words):
     """The directory a `git ...` statement acts on, from HERE."""
     start = next((i for i, word in enumerate(words)
                   if re.split(r"[\\/]", word)[-1].lower() in ("git", "git.exe")), None)
+    if _wrapper_moves(words if start is None else words[:start]):
+        return None  # S144-Q-136: `env -C dir git ...` runs elsewhere
     if start is None:
         return here
+    if _sets_git_location(words[:start]):
+        return None  # `GIT_DIR=x git -C y ...`: another repo, fail closed
     target, i = here, start + 1
     while i < len(words) and words[i].startswith("-"):
         word = words[i]
@@ -2783,8 +2787,12 @@ def _git_target(here, words):
 # filed under the same id: a flag from a QUOTED assignment, a git call inside
 # a quoted string that is not the whole value (`x="a $(git ...)"`),
 # `Start-Process -ArgumentList`, `-EncodedCommand`, an escaped quote in a
-# launcher; and S144-Q-136 (`env -C dir git ...` is placed at the caller's
-# directory). S144-Q-135 (EXTRA only, _assignment_command) reads the command
+# launcher. S144-Q-136 (_wrapper_moves, both walks): a git statement behind
+# a moving `env -C dir` / `env -S` / `wsl --cd` is placed None, not at the
+# caller's directory; env's options are read as getopt does (`-iC dir`,
+# `--ch dir`, a split `-S` string; also for a launcher behind env); a
+# GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR word before the git word is
+# None. S144-Q-135 (EXTRA only, _assignment_command) reads the command
 # an assignment runs - `$r = bash -c '...'`, `r=$(bash -c '...')`,
 # `x="$(git push --no-verify)"` - and a bash `NAME=x` prefix before a
 # launcher.
@@ -2885,27 +2893,115 @@ def _git_words_bypass(words):
     return i < len(rest) and rest[i].lower() == "commit" and _commit_no_verify(rest[i + 1:])
 
 
-def _env_unwrapped(rest):
-    """`env`'s command words after its options and NAME=VALUE words, and
-    whether `-C` / `--chdir` moved it, or (None, moved) for `-S`."""
-    moved, i = False, 0
+# S144-Q-136: GNU env's long options (getopt_long takes any unambiguous
+# prefix, `--ch` = `--chdir`) and the ones that take a value.
+_ENV_LONG_OPTS = ("argv0", "block-signal", "chdir", "debug", "default-signal",
+                  "ignore-environment", "ignore-signal", "list-signal-handling",
+                  "null", "split-string", "unset")
+# `-a` / `--argv0` (coreutils 9.x) is NOT read as taking a value: this
+# box's env 8.32 rejects it, and reading `env -a bash -c '...'` as argv0
+# `bash` would stop counting a script the older walk counted.
+_ENV_LONG_VALUE_OPTS = frozenset({"chdir", "split-string", "unset"})
+_ENV_SHORT_VALUE_OPTS = "CSu"
+
+
+def _env_long_name(name):
+    """The env long option NAME abbreviates, or None (unknown / ambiguous)."""
+    if name in _ENV_LONG_OPTS:
+        return name
+    found = [option for option in _ENV_LONG_OPTS if option.startswith(name)]
+    return found[0] if name and len(found) == 1 else None
+
+
+def _env_options(rest):
+    """S144-Q-136: GNU `env`'s options and NAME=VALUE words in REST, read as
+    getopt reads them (a short cluster `-iC dir` / `-iCdir`, a long
+    abbreviation `--ch dir`): (its command words, the `-C` / `--chdir`
+    values in order, whether `-S` / `--split-string` split a string). A
+    split string's words are read as more of env's arguments, as env does."""
+    rest, dirs, split, i = list(rest), [], False, 0
     while i < len(rest) and rest[i].startswith("-"):
         word = rest[i]
         if word == "--":
             i += 1
             break
-        if word in ("-S", "--split-string") or word.startswith(("-S", "--split-string=")):
-            return None, moved  # env splits that string itself: not read
-        if word in ("-C", "--chdir") or word.startswith("--chdir="):
-            moved = True
-        elif word.startswith("-C") and not word.startswith("--"):
-            moved = True  # -Cdir
-        if word in ("-C", "--chdir", "-u", "--unset"):
-            i += 1
-        i += 1
+        option, value, step = None, "", 1
+        if word.startswith("--"):
+            name, eq, value = word[2:].partition("=")
+            option = _env_long_name(name)
+            if option in _ENV_LONG_VALUE_OPTS and not eq:
+                value = rest[i + 1] if i + 1 < len(rest) else ""
+                step = 2
+        else:
+            for k, letter in enumerate(word[1:], 1):
+                if letter in _ENV_SHORT_VALUE_OPTS:
+                    option, value = letter, word[k + 1:]
+                    if not value:
+                        value = rest[i + 1] if i + 1 < len(rest) else ""
+                        step = 2
+                    break
+        if option in ("chdir", "C"):
+            dirs.append(value)
+        if option in ("split-string", "S"):
+            split = True
+            rest[i:i + step] = _tokens(value)
+            continue
+        i += step
     while i < len(rest) and _BASH_ASSIGN.fullmatch(rest[i]):
         i += 1
-    return rest[i:], moved
+    return rest[i:], dirs, split
+
+
+def _env_unwrapped(rest):
+    """`env`'s command words after its options and NAME=VALUE words (a
+    `-S` string split into them), and whether `-C` / `--chdir` moved it."""
+    command, dirs, _split = _env_options(rest)
+    return command, bool(dirs)
+
+
+# Variables that point git at a repository other than the working directory.
+_GIT_LOCATION_VARS = frozenset({"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"})
+
+
+def _sets_git_location(words):
+    """True when a NAME=VALUE word in WORDS sets a _GIT_LOCATION_VARS name
+    (upper-cased: Windows environment names are case-insensitive)."""
+    return any(match.group(1).upper() in _GIT_LOCATION_VARS
+               for match in map(_BASH_ASSIGN.fullmatch, words) if match)
+
+
+# A command word as a wrapper name: basename, lower case, no `.exe`, and
+# no `NAME=` / `$(` / `(` / backtick in front (`r=$(env -C dir git ...)`).
+_WRAPPER_WORD = re.compile(r"[\\/=(`]")
+
+
+def _wrapper_moves(words):
+    """S144-Q-136: True when an `env` / `wsl` word in WORDS (the words in
+    front of a git word) runs what follows elsewhere: `env -C` / `--chdir`
+    in any spelling, `env -S` (its string may hold a `-C`), `wsl --cd` /
+    `wsl ~`. Every such word counts, not only a leading one (`nohup env -C`,
+    `time env -C`, `if env -C`, `r=$(env -C ...)`, verifier round 5). Such
+    a git statement is placed None (fail closed), never at the `-C`
+    directory, by decision (2026-11-09, s144 queue lane): verifier rounds
+    1-3 found real RC commits that a placement - or a narrower git-word
+    search - stopped counting (an earlier `export GIT_DIR=<rc>`,
+    `env -C W nohup env GIT_DIR=<rc> git`), because a repo can be named in
+    more ways than this walk reads. Against the pre-S144-Q-136 walk it
+    counts less ONLY where no git bypass runs against RC (verifier round 4,
+    147,596 commands): an env option cluster a real env 8.32 rejects
+    (`env -iu bash -c ...`), or a statement no shell runs as git
+    (`cd git commit -n`) whose old catch-all None a newly read env launcher
+    placed outside RC now displaces. Reverses if: the walk tracks every git
+    location source (environment, config, `-c`)."""
+    for i, word in enumerate(words):
+        name = _WRAPPER_WORD.split(word)[-1].lower().removesuffix(".exe")
+        if name == "env":
+            _command, dirs, split = _env_options(words[i + 1:])
+            if dirs or split:
+                return True
+        elif name == "wsl" and _wsl_unwrapped(words[i + 1:])[1]:
+            return True
+    return False
 
 
 def _wsl_unwrapped(rest):
