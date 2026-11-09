@@ -64,6 +64,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from pathlib import Path
 from collections import Counter
 
 import pytest
@@ -72,7 +73,7 @@ import pytest
 # redirects it, which is what the guard test uses so that running the guard can
 # never clobber a real census the operator is reading.
 _REPORT_DIR = os.environ.get("RC_LOGGER_CENSUS_REPORT_DIR") or os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ops", "runtime")
+    str(Path(__file__).absolute().parents[1]), "ops", "runtime")
 _REPORT_JSON = os.path.join(_REPORT_DIR, "logger_leak_census.json")
 _REPORT_TXT = os.path.join(_REPORT_DIR, "logger_leak_census.txt")
 

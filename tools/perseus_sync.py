@@ -53,7 +53,7 @@ DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
 # scheduling any of them under pythonw would surface the flash measured in
 # claude_quota_watch.py on 2026-08-01. Flagged now so that never happens.
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = str(Path(__file__).absolute().parents[1])
 # The project slug is derived from THIS checkout (its main working tree), never
 # baked in: a literal publishes the machine's checkout path and goes stale the
 # day the checkout moves.

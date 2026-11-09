@@ -21,10 +21,11 @@ Usage:
 """
 import collections
 import os
+from pathlib import Path
 import subprocess
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = str(Path(__file__).absolute().parents[1])
 AUTH_EXT = {'.py', '.js', '.css', '.md', '.ps1', '.txt', '.xml', '.bat', '.cmd'}
 EXCL_PREFIX = ('docs/_archive/', 'data/',
                'agents/agent6_auditor/reports/', 'agents/agent6_auditor/proposals/')

@@ -16,10 +16,11 @@ from __future__ import annotations
 import glob
 import json
 import os
+from pathlib import Path
 
 import pytest
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = str(Path(__file__).absolute().parents[1])
 _PROFILES = os.path.join(_ROOT, "data", "vision_profiles")
 
 # scalar OCR fields that were previously absent from the 2560 profiles

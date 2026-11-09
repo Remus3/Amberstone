@@ -24,6 +24,7 @@ ASCII only (repo hard rule). No em-dashes.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -42,8 +43,7 @@ def _refdirs():
     """Candidate corpus directories. The repo-relative dir first; when this is a
     git worktree (.claude/worktrees/<name>) the gitignored corpus is only in the
     primary checkout, so add that too."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    root = os.path.dirname(here)
+    root = str(Path(__file__).absolute().parents[1])
     dirs = [os.path.join(root, "data", "vision_calib_reference")]
     key = os.sep + os.path.join(".claude", "worktrees") + os.sep
     if key in root + os.sep:

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from core import vision_profiles as vp
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = str(Path(__file__).absolute().parents[1])
 _BASELINE_FILE = os.path.join(_ROOT, "data", "vision_regions.json")
 
 

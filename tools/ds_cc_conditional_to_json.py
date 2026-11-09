@@ -22,14 +22,15 @@ import argparse
 import dataclasses
 import json
 import os
+from pathlib import Path
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).absolute().parents[1]))
 
 from agents.daemon_slayer import cc_conditional as c  # noqa: E402
 
 _OUT = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    str(Path(__file__).absolute().parents[1]),
     "agents", "daemon_slayer", "cc_conditional_registry.json",
 )
 
