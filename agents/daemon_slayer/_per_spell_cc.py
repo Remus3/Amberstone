@@ -827,7 +827,7 @@ def _apply_tenacity_to_cc_tuple(
 # FORWARD-MARKER / BYTE-IDENTICAL: nothing consumes _PER_SPELL_CC_RANGE at
 # ship - it mirrors how _PER_SPELL_CC_DURATIONS itself shipped EMPTY at
 # ENGINE 1.29.0 (item 130; item 112 STAT_GRANT_CALC_KEYS precedent).
-# compute_cc_pressure / compute_ehp / cooldown_watch / cc_output read ONLY
+# compute_cc_pressure / compute_ehp / cc_pairing / laning precompute read ONLY
 # _PER_SPELL_CC_DURATIONS and never this sibling, so live DS output is
 # byte-identical and ENGINE_VERSION does NOT bump. A future EHP-vs-CC /
 # fight-sim consumer can read the worst-case (max-distance) ceiling without
