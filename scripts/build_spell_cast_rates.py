@@ -62,6 +62,10 @@ from core.polled_json import atomic_write_bytes  # noqa: E402
 
 DB_PATH = ROOT / "data" / "rewind_history.db"
 OUTPUT = ROOT / "data" / "daemon_slayer" / "spell_cast_rates.json"
+# S144-D-202: the rewind DB carries the Match-V5 ``championName``, which is
+# not always the DDragon id the DS lookup indexes by ("FiddleSticks" vs
+# "Fiddlesticks"); a row keyed by the Match-V5 spelling is unreachable.
+DDRAGON_CHAMPIONS = ROOT / "data" / "meta" / "ddragon_champions.json"
 
 MIN_SAMPLES = 5
 
@@ -88,6 +92,37 @@ def _bucket(queue_id: int | None) -> str | None:
     if queue_id in ARENA_QUEUES:
         return "ARENA"
     return None
+
+
+def _ddragon_ids_by_casefold(path: Path) -> dict[str, str]:
+    """casefolded DDragon id -> DDragon id. Fail-soft: any unreadable or
+    malformed roster returns {} (every name then passes through) and warns,
+    so a regeneration is never blocked on the roster file."""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        data = raw.get("data", raw) if isinstance(raw, dict) else None
+        if not isinstance(data, dict):
+            raise ValueError("no champion map")
+        out: dict[str, str] = {}
+        for entry in data.values():
+            cid = entry.get("id") if isinstance(entry, dict) else None
+            if isinstance(cid, str) and cid:
+                out[cid.casefold()] = cid
+        if not out:
+            raise ValueError("no champion ids")
+        return out
+    except Exception as exc:  # noqa: BLE001 - fail-soft, never block a regeneration
+        print(
+            f"WARNING: DDragon roster unreadable at {path} ({exc}); champion "
+            f"names are written as the rewind DB spells them",
+            file=sys.stderr,
+        )
+        return {}
+
+
+def _canon_champ(name: str, ids_by_casefold: dict[str, str]) -> str:
+    """The DDragon id for ``name`` (exact or case-insensitive), else ``name``."""
+    return ids_by_casefold.get(name.casefold(), name)
 
 
 def _safe_median(values: list[float]) -> float:
@@ -122,10 +157,13 @@ def main() -> int:
 
     # by_champ_mode[champion][mode]["Q"|...] = list of casts/sec floats
     by_champ_mode: dict[str, dict[str, dict[str, list[float]]]] = {}
+    ids_by_casefold = _ddragon_ids_by_casefold(DDRAGON_CHAMPIONS)
 
-    for champ, q_casts, w_casts, e_casts, r_casts, dur, queue_id in cur.fetchall():
+    for raw_champ, q_casts, w_casts, e_casts, r_casts, dur, queue_id in cur.fetchall():
         if dur is None or dur <= 0:
             continue
+        # Canonicalise BEFORE aggregating so both spellings pool into one row.
+        champ = _canon_champ(str(raw_champ), ids_by_casefold)
         bucket = _bucket(queue_id)
         # Always record into "global" - sample size is best when not partitioned.
         targets: list[str] = ["global"]
