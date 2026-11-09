@@ -3468,14 +3468,45 @@ def _prefix_unwrapped(name, rest, full=False):
     return rest, bool(seen & _PREFIX_MOVES.get(name, frozenset()))
 
 
+# S144-Q-153 (read only when EXTRA is on): reserved words that open a
+# statement and run the command after them, measured with GNU bash 5.2
+# (`if true; then bash -c '...'; fi`, `while x; do ...`, `else ...`,
+# `elif ...`, `until ...`, `! ...`, `{ ...; }`, `( ... )`); compared in
+# lower case, so a PowerShell statement that STARTS `else { ... }` or
+# `do { ... }` reads too (`} else {` and `if (...) {` do not: S144-Q-158).
+_SH_KEYWORD_HEADS = frozenset({"then", "do", "else", "elif", "if", "while",
+                               "until", "!", "{", "("})
+# The same heads at the start of a statement's raw text, for an assignment
+# behind them (`then r=$(bash -c '...')`).
+_SH_KEYWORD_HEAD_TEXT = re.compile(
+    r"^(?:(?:then|do|else|elif|if|while|until|!|\{)(?=\s)\s*|\(\s*)*",
+    re.IGNORECASE)
+
+
+def _keyword_unwrapped(words):
+    """S144-Q-153: WORDS without leading shell keyword heads
+    (_SH_KEYWORD_HEADS) and the `(` of a subshell glued to the first word
+    (`(bash -c '...')`; bash reads `((bash ...) )` as two subshells too)."""
+    i = 0
+    while i < len(words) and words[i].lower() in _SH_KEYWORD_HEADS:
+        i += 1
+    rest = list(words[i:])
+    if rest and rest[0].startswith("(") and rest[0].lstrip("("):
+        rest[0] = rest[0].lstrip("(")
+    return rest
+
+
 def _unwrapped(words, escapes=False, full=False):
     """WORDS without leading `env` / `wsl` wrappers, bash `NAME=VALUE`
     environment prefixes (S144-Q-135) or prefix commands (S144-Q-146:
     `nohup`, `time`, `nice`, `sudo`, ... with their options), and whether
     one changed directory; WORDS is None when a wrapper cannot be read.
     ESCAPES (S144-Q-145) reads an `env -S` string with env's own escapes;
-    FULL (S144-Q-150) reads each prefix's options as getopt_long does."""
+    FULL (S144-Q-150) reads each prefix's options as getopt_long does.
+    S144-Q-153: shell keyword heads first (`then`, `do`, `!`, ...), and
+    the `!` bash allows after `time` (`time ! cmd`)."""
     moved = False
+    words = _keyword_unwrapped(words)
     while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
         words = words[1:]
     while words and ((head := _head_name(words[0])) in _WRAPPERS
@@ -3486,6 +3517,9 @@ def _unwrapped(words, escapes=False, full=False):
             words, step = _wsl_unwrapped(words[1:])
         else:
             words, step = _prefix_unwrapped(head, words[1:], full)
+            if head == "time":
+                while words and words[0] == "!":
+                    words = words[1:]
         moved = moved or step
     return words, moved
 
@@ -3533,8 +3567,9 @@ def _substituted(value, powershell):
 
 def _assignment_command(statement):
     """S144-Q-135: the command an assignment STATEMENT (raw text) runs, or
-    None when it is not an assignment or its value runs nothing."""
-    text = statement.strip()
+    None when it is not an assignment or its value runs nothing.
+    S144-Q-153: read behind shell keyword heads (`then r=$(...)`)."""
+    text = _SH_KEYWORD_HEAD_TEXT.sub("", statement.strip())
     ps = _PS_ASSIGN_HEAD.match(text)
     if ps:
         value = text[ps.end():].strip()
@@ -3744,7 +3779,18 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
         if not words:
             continue
         head = words[0].lower()
-        if head in _CD_WORDS:
+        bare = _keyword_unwrapped(words) if extra and not legacy else words
+        if bare != words and bare and (
+                bare[0].lower() in _CD_WORDS
+                or bare[0].lower() in ("popd", "pop-location")):
+            # S144-Q-153: a cd behind a keyword head (`then cd x`) may not
+            # run, so the directory after it is unknown (fail closed). A
+            # bypass the statement itself runs (`then cd $(git commit -n)`)
+            # is placed None too, never dropped.
+            if hit:
+                targets.append(None)
+            here = None
+        elif head in _CD_WORDS:
             path = next((w for w in words[1:] if not w.startswith("-")), None)
             here = _join(here, path) if path is not None else None
         elif head in ("popd", "pop-location"):
