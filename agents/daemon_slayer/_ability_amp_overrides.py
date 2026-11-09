@@ -97,8 +97,26 @@ Two amp gatings (via ``_amp_multiplier``):
 
 ``amp_per_rank`` is the multiplier ADDEND per spell rank (0-based index by
 the spell's current rank, matching ``ability_dps``'s ``rank_at_level``
-0-based contract). Values verified against the form's ``raw_modifiers``
-and ``effects_descriptions`` at patch 16.11.1.
+0-based contract). Values were first read from the form's ``raw_modifiers``
+and ``effects_descriptions`` at patch 16.11.1. They are not re-checked by
+hand: these live guards rebuild them from the CURRENT snapshot on every run -
+test_ability_amp_live_magnitudes_s144d272.py (ability and cross-spell
+magnitudes, the Hwei route, the live-shape claims),
+test_ability_amp_aa_rows_live_s144d275.py (the base="aa" rows and the Sion
+block index) and test_ability_amp_prose_and_disposition_s144d279.py (every
+``ed[N]`` cite, and the bucket coverage below).
+
+Out of seam - the taxonomy's other ``damage_amp_self`` blocks
+(``modifier_blocks.classify_modifier_kind``) that this registry deliberately
+does not key: Mel W "Replicated Projectile Damage Modifier" (a ratio of a
+reflected ENEMY projectile, not Mel's own damage; the taxonomy docstring files
+replicated projectiles under ``other``); Mel R "Stored Damage Increase per
+Stack" (the form already carries the "Increased Stored Damage" damage block,
+so an amp would double-model it); TahmKench E "Damage Stored into Grey Health"
+and "Increased Damage Stored into Grey Health" (damage TAKEN stored as grey
+health, a defensive mechanic; the taxonomy docstring files grey health under
+``other``); Yone E "Damage Stored" (a mark storing a share of damage dealt,
+paid out as the recast's true damage; the form has no damage block to scale).
 """
 from __future__ import annotations
 
@@ -172,7 +190,9 @@ class CrossSpellAmpEntry:
 
 
 # (champion_id, key, form_index) -> AmpEntry.
-# Verified 2026-05-31 against raw_modifiers + effects_descriptions at 16.11.1.
+# First authored 2026-05-31 from raw_modifiers + effects_descriptions at
+# 16.11.1; the live guards named in the module docstring re-check every value
+# and every ed[N] cite against the current snapshot.
 _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
     # Illaoi Q Tentacle Smash: ed[0] "Passive: Tentacle damage is increased"
     # (unconditional). raw_modifiers "Damage Increase" [10,15,20,25,30]%.
@@ -236,8 +256,8 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
     # damage + gain 360% bonus AS (ed[0]). The damage_block "Damage Modifier" is
     # 70:110 % AD by rank - i.e. each empowered AA deals 0.70..1.10 * AD, MOSTLY
     # BELOW a normal 1.0*AD hit (only rank 5/6 exceed it). Hyper Charge's value is
-    # the +360% bonus AS (4x hits in the window), which the base-AA DAMAGE consumer
-    # does NOT model. INERT: modeling it as a per-AA damage multiplier would make
+    # the +360% bonus AS on the next 3 AAs within 4 s, which the base-AA DAMAGE
+    # consumer does NOT model. INERT: modeling it as a per-AA damage multiplier would make
     # the spell look like a base-AA NERF at ranks 1-4 (delta -0.30..-0.06 *AD), the
     # opposite of grounded; the AS gain is the real uplift + belongs in an AS-aware
     # AA seam, not the base-AA damage factor.
@@ -304,8 +324,9 @@ _CROSS_SPELL_AMP_OVERRIDES: dict[tuple[str, str, int], CrossSpellAmpEntry] = {
     # AurelionSol Q Breath of Light: amplified by W (Astral Flight) while W
     # flight is active. W's "Breath of Light Flat Damage Modifier" raw_modifiers
     # are [108,109,110,111,112]% by W rank (x1.08..1.12 -> addend 0.08..0.12).
-    # Source rank = W; gated on the W-flight self-state midpoint (0.4). Verified
-    # against AurelionSol W raw_modifiers + effects_descriptions at 16.11.1.
+    # Source rank = W; gated on the W-flight self-state midpoint (0.4). First
+    # read from AurelionSol W raw_modifiers + effects_descriptions at 16.11.1;
+    # S144-D-273 re-checks the magnitude against the live form.
     ("AurelionSol", "Q", 0): CrossSpellAmpEntry(
         source_key="W",
         amp_per_rank=(0.08, 0.09, 0.10, 0.11, 0.12),
