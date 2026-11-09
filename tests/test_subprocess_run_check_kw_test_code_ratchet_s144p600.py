@@ -83,6 +83,11 @@ slice 22 (S144-P-624) does the same for the next ten ratchet modules no other la
 changed (private_exception_name, pt001_fixture_parens, pt012_raises_block, pt018_ruf036_prod,
 pt019_fixture_param, pyi_fly_prod, pytest_idiom, q001_multiline_quote, q003_escaped_quote and
 raise_comprehension), one site each bar pytest_idiom, which has two;
+slice 23 (S144-P-625) does the same for the next ten ratchet modules no other lane branch had
+changed, one site each (range_start_startswith_tuple, range_startswith_dictcomp,
+redundant_collection_call, redundant_return_compare, regex_flag_alias,
+regex_match_and_implicit_optional, removeprefix_merged_branch, repeated_comparison,
+reraise_exc_info and ret503_test_code);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -130,16 +135,6 @@ _BASELINE = {
     "tests/test_loop_concurrency.py": 1,
     "tests/test_naive_datetime_prod_ratchet_s144p340.py": 1,
     "tests/test_package_portable_atomic_write_rm258.py": 1,
-    "tests/test_range_start_startswith_tuple_ratchet_s144p158.py": 1,
-    "tests/test_range_startswith_dictcomp_ratchet_s144p123.py": 1,
-    "tests/test_redundant_collection_call_ratchet_s144p115.py": 1,
-    "tests/test_redundant_return_compare_ratchet_s144p162.py": 1,
-    "tests/test_regex_flag_alias_ratchet_s144p152.py": 1,
-    "tests/test_regex_match_and_implicit_optional_ratchet_s144p113.py": 1,
-    "tests/test_removeprefix_merged_branch_ratchet_s144p135.py": 1,
-    "tests/test_repeated_comparison_ratchet_s144p121.py": 1,
-    "tests/test_reraise_exc_info_ratchet_s144p118.py": 1,
-    "tests/test_ret503_test_code_ratchet_s144p245.py": 1,
     "tests/test_ret505_plr1714_plr0402_ratchet_s144p130.py": 1,
     "tests/test_return_nan_idiom_ratchet_s144p172.py": 1,
     "tests/test_return_ratchet_s144p144.py": 1,
@@ -415,6 +410,16 @@ _FIXED = (
     "tests/test_q001_multiline_quote_ratchet_s144p236.py",
     "tests/test_q003_escaped_quote_ratchet_s144p235.py",
     "tests/test_raise_comprehension_ratchet_s144p157.py",
+    "tests/test_range_start_startswith_tuple_ratchet_s144p158.py",
+    "tests/test_range_startswith_dictcomp_ratchet_s144p123.py",
+    "tests/test_redundant_collection_call_ratchet_s144p115.py",
+    "tests/test_redundant_return_compare_ratchet_s144p162.py",
+    "tests/test_regex_flag_alias_ratchet_s144p152.py",
+    "tests/test_regex_match_and_implicit_optional_ratchet_s144p113.py",
+    "tests/test_removeprefix_merged_branch_ratchet_s144p135.py",
+    "tests/test_repeated_comparison_ratchet_s144p121.py",
+    "tests/test_reraise_exc_info_ratchet_s144p118.py",
+    "tests/test_ret503_test_code_ratchet_s144p245.py",
 )
 
 
