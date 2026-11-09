@@ -3661,30 +3661,113 @@ def _script_prefix_unwrapped(name, rest, full):
 # (`if true; then bash -c '...'; fi`, `while x; do ...`, `else ...`,
 # `elif ...`, `until ...`, `! ...`, `{ ...; }`, `( ... )`); compared in
 # lower case, so a PowerShell statement that STARTS `else { ... }` or
-# `do { ... }` reads too (`} else {` and `if (...) {` do not: S144-Q-158).
+# `do { ... }` reads too.
 _SH_KEYWORD_HEADS = frozenset({"then", "do", "else", "elif", "if", "while",
                                "until", "!", "{", "("})
+# S144-Q-158 (read only when EXTRA is on): PowerShell runs the block after
+# a condition head and its `( ... )` (`if ($x) {`, `elseif`, `while`,
+# `foreach`) or a block head (`else {`, `do {`, `try {`, `finally {`,
+# `catch [Type] {`), and a statement may open with the `}` that closes the
+# block before it (`} else {`); measured with Windows PowerShell 5.1.
+_PS_CONDITION_HEADS = frozenset({"if", "elseif", "while", "foreach"})
+_PS_BLOCK_HEADS = frozenset({"else", "do", "try", "finally", "catch"})
 # The same heads at the start of a statement's raw text, for an assignment
 # behind them (`then r=$(bash -c '...')`).
 _SH_KEYWORD_HEAD_TEXT = re.compile(
     r"^(?:(?:then|do|else|elif|if|while|until|!|\{)(?=\s)\s*|\(\s*)*",
     re.IGNORECASE)
+# S144-Q-158: the brace reading of the same, beside it (never instead):
+# `} else { $r = bash -c '...'`, `if ($x) { $r = ...` (a condition nests
+# its parentheses at most two deep here).
+_PS_CONDITION_TEXT = r"\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)"
+_PS_BRACE_HEAD_TEXT = re.compile(
+    r"^(?:\}\s*|(?:if|elseif|while|foreach)\s*" + _PS_CONDITION_TEXT
+    + r"\s*\{\s*|(?:else|do|try|finally|catch(?:\s*\[[^\]]*\])*)\s*\{\s*"
+    r"|(?:then|do|else|elif|if|while|until|!|\{)(?=\s)\s*|\(\s*)*",
+    re.IGNORECASE)
 
 
-def _keyword_unwrapped(words):
+def _ps_brace_head_end(words):
+    """S144-Q-158: the index of the first word after a PowerShell brace head
+    at the start of WORDS, and that word with a glued `{` removed (`{bash`,
+    `($x){bash`), or None when WORDS do not open with one. A condition head
+    needs its balanced `( ... )` and then `{`; a block head needs its `{`
+    (`catch` may name `[Type]` words first). Anything else is None, so the
+    S144-Q-153 reading of `if (bash -c '...')` is kept."""
+    head = words[0].lower()
+    i = 1
+    if head in _PS_CONDITION_HEADS:
+        if i >= len(words) or not words[i].startswith("("):
+            return None
+        depth = 0
+        while i < len(words):
+            word = words[i]
+            for k, char in enumerate(word):
+                depth += (char == "(") - (char == ")")
+                if depth == 0:
+                    tail = word[k + 1:]
+                    break
+            else:
+                i += 1
+                continue
+            i += 1
+            if tail:
+                # `($x){` / `($x){bash`: the block opens in this word
+                if not tail.startswith("{"):
+                    return None
+                return (i, None) if tail == "{" else (i - 1, tail[1:])
+            break
+        else:
+            return None
+    elif head in _PS_BLOCK_HEADS:
+        while head == "catch" and i < len(words) and words[i].startswith("["):
+            i += 1
+    else:
+        return None
+    if i >= len(words) or not words[i].startswith("{"):
+        return None
+    return (i + 1, None) if words[i] == "{" else (i, words[i][1:])
+
+
+def _keyword_unwrapped(words, braces=False):
     """S144-Q-153: WORDS without leading shell keyword heads
     (_SH_KEYWORD_HEADS) and the `(` of a subshell glued to the first word
-    (`(bash -c '...')`; bash reads `((bash ...) )` as two subshells too)."""
+    (`(bash -c '...')`; bash reads `((bash ...) )` as two subshells too).
+    S144-Q-158: BRACES is a second reading that also drops a leading `}`
+    and PowerShell brace heads with their condition and `{`
+    (_ps_brace_head_end). It is walked BESIDE the first, never instead:
+    PowerShell runs the condition too (`if (bash -c '...') { ... }`)."""
+    words = list(words)
     i = 0
-    while i < len(words) and words[i].lower() in _SH_KEYWORD_HEADS:
+    while i < len(words):
+        if braces and words[i] == "}":
+            i += 1
+            continue
+        brace = _ps_brace_head_end(words[i:]) if braces else None
+        if brace is not None:
+            step, glued = brace
+            i += step
+            if glued is not None:
+                words[i] = glued
+            continue
+        if words[i].lower() not in _SH_KEYWORD_HEADS:
+            break
         i += 1
-    rest = list(words[i:])
+    rest = words[i:]
     if rest and rest[0].startswith("(") and rest[0].lstrip("("):
         rest[0] = rest[0].lstrip("(")
     return rest
 
 
-def _unwrapped(words, escapes=False, full=False):
+def _keyword_readings(words):
+    """S144-Q-158: _keyword_unwrapped's reading of WORDS, then its BRACES
+    reading when that differs."""
+    plain = _keyword_unwrapped(words)
+    braced = _keyword_unwrapped(words, braces=True)
+    return [plain] if braced == plain else [plain, braced]
+
+
+def _unwrapped(words, escapes=False, full=False, braces=False):
     """WORDS without leading `env` / `wsl` wrappers, bash `NAME=VALUE`
     environment prefixes (S144-Q-135) or prefix commands (S144-Q-146:
     `nohup`, `time`, `nice`, `sudo`, ... with their options), and whether
@@ -3692,9 +3775,10 @@ def _unwrapped(words, escapes=False, full=False):
     ESCAPES (S144-Q-145) reads an `env -S` string with env's own escapes;
     FULL (S144-Q-150) reads each prefix's options as getopt_long does.
     S144-Q-153: shell keyword heads first (`then`, `do`, `!`, ...), and
-    the `!` bash allows after `time` (`time ! cmd`)."""
+    the `!` bash allows after `time` (`time ! cmd`); BRACES reads them with
+    _keyword_unwrapped's S144-Q-158 brace reading."""
     moved = False
-    words = _keyword_unwrapped(words)
+    words = _keyword_unwrapped(words, braces)
     while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
         words = words[1:]
     while words and ((head := _head_name(words[0])) in _WRAPPERS
@@ -3753,11 +3837,14 @@ def _substituted(value, powershell):
     return None
 
 
-def _assignment_command(statement):
+def _assignment_command(statement, braces=False):
     """S144-Q-135: the command an assignment STATEMENT (raw text) runs, or
     None when it is not an assignment or its value runs nothing.
-    S144-Q-153: read behind shell keyword heads (`then r=$(...)`)."""
-    text = _SH_KEYWORD_HEAD_TEXT.sub("", statement.strip())
+    S144-Q-153: read behind shell keyword heads (`then r=$(...)`).
+    S144-Q-158: BRACES reads behind PowerShell brace heads instead
+    (_PS_BRACE_HEAD_TEXT); see _assignment_commands."""
+    head_text = _PS_BRACE_HEAD_TEXT if braces else _SH_KEYWORD_HEAD_TEXT
+    text = head_text.sub("", statement.strip())
     ps = _PS_ASSIGN_HEAD.match(text)
     if ps:
         value = text[ps.end():].strip()
@@ -3773,6 +3860,17 @@ def _assignment_command(statement):
     return None
 
 
+def _assignment_commands(statement):
+    """S144-Q-158: _assignment_command's body, then its BRACES body when it
+    differs (`if ($x) { $r = bash -c '...'`); both are walked, so the
+    S144-Q-153 body (`if ($r = bash -c '...') { ...`) is never lost."""
+    bodies = [_assignment_command(statement)]
+    braced = _assignment_command(statement, braces=True)
+    if braced not in bodies:
+        bodies.append(braced)
+    return [body for body in bodies if body is not None]
+
+
 def _cmd_script(rest):
     """The command line of `cmd /c ...` / `cmd /k ...` (`//c` from Git Bash)."""
     for i, word in enumerate(rest):
@@ -3783,7 +3881,8 @@ def _cmd_script(rest):
     return None
 
 
-def _launcher_script(words, extra=True, escapes=False, full=False):
+def _launcher_script(words, extra=True, escapes=False, full=False,
+                     braces=False):
     """The quoted script of a `bash -c` / `sh -c` / `pwsh -Command` statement
     (WORDS, quotes removed), or None for any other statement. With EXTRA
     (S144-Q-127 part 2) also behind `env` / `wsl` wrappers, after a bash
@@ -3791,10 +3890,11 @@ def _launcher_script(words, extra=True, escapes=False, full=False):
     a wrapper moved (`env -C`, `wsl --cd`, `wsl ~`) starts with a `cd` to
     an unknown directory, so its statements are placed None (fail closed).
     ESCAPES reads an `env -S` string with env's escapes (S144-Q-145); FULL
-    reads prefix options as getopt_long does (S144-Q-150)."""
+    reads prefix options as getopt_long does (S144-Q-150); BRACES reads
+    behind PowerShell brace heads (S144-Q-158)."""
     moved = False
     if extra:
-        words, moved = _unwrapped(words, escapes, full)
+        words, moved = _unwrapped(words, escapes, full, braces)
         if not words:
             return None
     script = _launcher_head_script(words, extra)
@@ -3808,15 +3908,20 @@ def _launcher_scripts(words, extra=True):
     with env's `-S` escapes (`env -S 'bash\\_-c\\_"..."'`) and (S144-Q-150)
     the ones read with prefix options in full (`nice --adj 5 bash -c ...`)
     when they differ: all are walked (count-only, the plain reading is
-    never replaced)."""
+    never replaced). S144-Q-158: each again behind PowerShell brace heads
+    when WORDS open with one (`if ($x) { bash -c '...'`)."""
     scripts = [_launcher_script(words, extra)]
     if extra:
+        braced = len(_keyword_readings(words)) > 1
         # S144-Q-154: FULL_BSD is a third reading, walked beside both
-        for escapes, full in ((True, False), (False, True), (True, True),
-                              (False, FULL_BSD), (True, FULL_BSD)):
-            more = _launcher_script(words, extra, escapes=escapes, full=full)
-            if more not in scripts:
-                scripts.append(more)
+        for braces in (False, True) if braced else (False,):
+            for escapes, full in ((False, False), (True, False), (False, True),
+                                  (True, True), (False, FULL_BSD),
+                                  (True, FULL_BSD)):
+                more = _launcher_script(words, extra, escapes=escapes,
+                                        full=full, braces=braces)
+                if more not in scripts:
+                    scripts.append(more)
     return [script for script in scripts if script is not None]
 
 
@@ -3880,14 +3985,44 @@ def _statements(raw):
     return parts
 
 
-def _readings(command):
+def _readings(command, extra=False):
     """COMMAND without heredoc bodies, as written and (when it differs) with
     line continuations joined: a bash backslash or a PowerShell backtick
     before a newline continues a statement, but PowerShell reads that
-    backslash as the end of a path, so both readings are kept."""
+    backslash as the end of a path, so both readings are kept.
+    S144-Q-158 (EXTRA only): each reading again with a statement break
+    before a PowerShell `}` that a block keyword follows (_brace_broken),
+    walked beside it, so the block after `if ($x) { a } else {` reads too."""
     raw = _HEREDOC.sub(" ", command)
     joined = _CONTINUATION.sub(" ", raw)
-    return [raw] if joined == raw else [raw, joined]
+    texts = [raw] if joined == raw else [raw, joined]
+    for text in list(texts) if extra else ():
+        broken = _brace_broken(text)
+        if broken not in texts:
+            texts.append(broken)
+    return texts
+
+
+# S144-Q-158: a `}` that closes a PowerShell block another block follows
+# in the same statement (`if ($x) { a } else { b }`, `} catch {`).
+_PS_BLOCK_CLOSE = re.compile(r"\}(?=\s*(?:else|elseif|catch|finally)\b)",
+                             re.IGNORECASE)
+
+
+def _brace_broken(text):
+    """S144-Q-158: TEXT with a newline (a statement break) before each
+    _PS_BLOCK_CLOSE outside quotes; the `}` opens the next statement, where
+    _keyword_unwrapped drops it with the block head after it."""
+    masked = _QUOTED.sub(lambda m: "x" * len(m.group(0)), text)
+    pieces, start = [], 0
+    for match in _PS_BLOCK_CLOSE.finditer(masked):
+        before = masked[:match.start()].rstrip()
+        if not before or before[-1] in ";\n|&":
+            continue  # the `}` already opens its statement
+        pieces.extend((text[start:match.start()], "\n"))
+        start = match.start()
+    pieces.append(text[start:])
+    return "".join(pieces)
 
 
 # S144-Q-157: a variable reference (`$F`, `${F}`, `$env:F`), so _has_bypass
@@ -3921,7 +4056,7 @@ def _has_bypass(command, depth=0, extra=True, expand=True):
         return False
     if depth > BYPASS_NEST_MAX:
         return flagged  # fail closed: the raw script holds a flag and a git word
-    for text in _readings(command):
+    for text in _readings(command, extra):
         variables = {}
         for statement in _statements(text):
             bare = statement.strip().lstrip("({").rstrip(")}").strip()
@@ -3947,10 +4082,14 @@ def _held_bypass(words, expanded):
     (`C="git commit -n"; $C`), so a held string handed to another command
     (`m="git commit -n"; echo $m`) is data, not a git statement.
     Returns "git", "split" (only an `env -S` string, placed None like
-    S144-Q-143) or "" for none."""
+    S144-Q-143) or "" for none.
+    S144-Q-158: the expanded head is read behind keyword and brace heads
+    too (`if x; then $C; fi`), never instead of the first word."""
     if not expanded or expanded == words:
         return ""
     own_git = (_head_name(expanded[0]) == "git"
+               or any(lead and _head_name(lead[0]) == "git"
+                      for lead in _keyword_readings(expanded))
                or any(_head_name(word) == "git" for word in words))
     if own_git and _git_words_bypass(expanded):
         return "git"
@@ -3965,8 +4104,8 @@ def _raw_words_bypass(statement, words, depth, extra, expand):
     for script in _launcher_scripts(words, extra) if words else ():
         if _has_bypass(script, depth + 1, extra, expand):
             return True
-    body = _assignment_command(statement) if extra else None
-    return body is not None and _has_bypass(body, depth + 1, extra, expand)
+    bodies = _assignment_commands(statement) if extra else ()
+    return any(_has_bypass(body, depth + 1, extra, expand) for body in bodies)
 
 
 def _placed(command, here, variables, depth, extra=True, expand=True):
@@ -3978,7 +4117,7 @@ def _placed(command, here, variables, depth, extra=True, expand=True):
     if depth > BYPASS_NEST_MAX:
         return [None]
     targets = []
-    for text in _readings(command):
+    for text in _readings(command, extra):
         targets.extend(_placed_reading(text, here, dict(variables), depth,
                                        extra=extra, expand=expand))
     return targets
@@ -4012,9 +4151,9 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True,
         if not hit and not legacy and extra and expand:
             held = _held_bypass(raw_words, _held_words(statement, variables))
             split = held == "split"
-        body = None if legacy or not extra or hit else _assignment_command(text)
+        bodies = () if legacy or not extra or hit else _assignment_commands(text)
         hit = hit or bool(held)
-        if body is not None:
+        for body in bodies:
             # S144-Q-135: the command an assignment runs, walked like a
             # launcher script (its own copy of HERE and VARIABLES). A HIT
             # statement is already placed from its own words below.
@@ -4028,14 +4167,22 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True,
         if not words:
             continue
         head = words[0].lower()
-        bare = _keyword_unwrapped(words) if extra and not legacy else words
-        if bare != words and bare and (
-                bare[0].lower() in _CD_WORDS
-                or bare[0].lower() in ("popd", "pop-location")):
+        readings = _keyword_readings(words) if extra and not legacy else [words]
+        behind = [bare for bare in readings if bare != words and bare and (
+            bare[0].lower() in _CD_WORDS
+            or bare[0].lower() in ("popd", "pop-location"))]
+        if behind:
             # S144-Q-153: a cd behind a keyword head (`then cd x`) may not
             # run, so the directory after it is unknown (fail closed). A
             # bypass the statement itself runs (`then cd $(git commit -n)`)
             # is placed None too, never dropped.
+            if readings[0] not in behind:
+                # S144-Q-158: only the brace reading is a cd (`if (bash -c
+                # '...') { cd x`); the launchers the plain reading names
+                # are still walked from HERE, as before.
+                for script in _launcher_scripts(words, extra):
+                    targets.extend(_placed(script, here, variables, depth + 1,
+                                           extra=extra, expand=expand))
             if hit:
                 targets.append(None)
             here = None
@@ -4088,6 +4235,19 @@ def _bypass_targets(command, cwd):
     if (targets and None not in targets and _has_bypass(command, extra=False)
             and not _placed(command, here, {}, 0, extra=False)):
         targets.append(None)
+    if not expand and targets and None not in targets:
+        # S144-Q-158 (verifier round 2): a command the walk without
+        # expansion counts may still hold a bypass only expansion places
+        # (`F=-n; git commit $F; bash -c 'git -C <other> commit -n'`): its
+        # targets are added, never swapped in, so this only adds targets.
+        # A None already counts every statement (_bypass_hits_rc), so a
+        # fail-closed answer is kept exactly as it was.
+        unmatched = list(targets)
+        for target in _placed(command, here, {}, 0):
+            if target in unmatched:
+                unmatched.remove(target)
+            else:
+                targets.append(target)
     return targets or [None]
 
 
