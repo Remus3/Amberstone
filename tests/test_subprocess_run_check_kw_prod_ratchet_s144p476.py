@@ -15,8 +15,12 @@ the last two spell the call on the right of a conditional ``runner`` expression 
 ``.returncode`` at once); slice 4 (S144-P-480) for ten more modules outside tools/ (voice_coach,
 daemon_slayer_client, data_retention, operator_notify, game_reader/poller, audit/p0_inventory and
 the loop's claude_stub, done_sentinel, interrupt and repo_review, whose two sites read
-``returncode`` or take ``.stdout`` of a best-effort git call); the rest sit in the baseline below,
-which only shrinks. Held back on purpose: ``tools/credential_history_scan.py`` and
+``returncode`` or take ``.stdout`` of a best-effort git call); slice 6 (S144-P-486) for the loop's
+executor (four git reads: three test the exit code, the fourth reads the empty ``stdout`` of
+``git config --get`` for an unset key), lane_launcher (the
+``_git`` helper, whose callers read ``returncode``, and a best-effort ``taskkill``) and queue_loop
+(a ``taskkill``, the ``gh`` runner and an ``ls-remote``, each of which tests ``returncode``); the
+rest sit in the baseline below, which only shrinks. Held back on purpose: ``tools/credential_history_scan.py`` and
 ``tools/sibling_name_sweep.py`` (another lane branch changed them), the packaging files, and the
 gated one-shot probes not yet audited. A baseline row that stops offending fails
 ``test_baseline_is_exact`` until it is dropped; a new finding anywhere else fails
@@ -60,10 +64,7 @@ _OUT_OF_SCOPE = (
 _BASELINE = {
     "dashboard/routes_loop_status.py": 1,
     "ops/loop/drain_waves_2_3.py": 1,
-    "ops/loop/executor.py": 4,
-    "ops/loop/lane_launcher.py": 2,
     "ops/loop/loop_controller.py": 2,
-    "ops/loop/queue_loop.py": 3,
     "ops/rc_dev_runtime.py": 1,
     "ops/rc_supervisor.py": 3,
     "tools/build_portable.py": 1,
@@ -81,7 +82,10 @@ _FIXED = (
     "ops/audit/p0_inventory.py",
     "ops/loop/claude_stub.py",
     "ops/loop/done_sentinel.py",
+    "ops/loop/executor.py",
     "ops/loop/interrupt.py",
+    "ops/loop/lane_launcher.py",
+    "ops/loop/queue_loop.py",
     "ops/loop/repo_review.py",
     "scripts/audit_api_surface.py",
     "scripts/install_hooks.py",

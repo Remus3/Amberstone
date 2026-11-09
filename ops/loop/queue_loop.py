@@ -416,7 +416,7 @@ def _taskkill(pid) -> None:
     """
     try:
         subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)],
-                       capture_output=True, timeout=20,
+                       capture_output=True, timeout=20, check=False,
                        creationflags=_NO_WINDOW)
     except (OSError, subprocess.SubprocessError):
         pass
@@ -595,7 +595,8 @@ def _gh(args) -> tuple[int, str]:
     try:
         proc = subprocess.run(argv, capture_output=True, text=True,
                               encoding="utf-8", errors="replace",
-                              timeout=GH_TIMEOUT_S, creationflags=_NO_WINDOW)
+                              timeout=GH_TIMEOUT_S, check=False,
+                              creationflags=_NO_WINDOW)
     except (OSError, subprocess.SubprocessError) as exc:
         # 127 is the shell's "command not found", which is the common case here
         # (no gh on PATH under a detached pythonw) and reads correctly in a log.
@@ -625,7 +626,7 @@ def _head_sha() -> str | None:
             ["git", "-C", str(lanes.REPO_ROOT), "ls-remote", "origin",
              "refs/heads/" + CI_REF],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=GH_TIMEOUT_S, creationflags=_NO_WINDOW)
+            timeout=GH_TIMEOUT_S, check=False, creationflags=_NO_WINDOW)
     except (OSError, subprocess.SubprocessError):
         return None
     if proc.returncode != 0:

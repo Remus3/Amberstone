@@ -212,7 +212,7 @@ def _git(args, cwd=None, timeout=120, input=None):  # noqa: A002 - subprocess kw
         # RM-830: git writes path names as UTF-8; through the locale a
         # non-ASCII name was mojibake, or faulted the reader (stdout None).
         capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=timeout,
+        timeout=timeout, check=False,
         creationflags=_NO_WINDOW, input=input,
     )
 
@@ -552,7 +552,7 @@ def _kill(pid: int) -> None:
     """taskkill /F, never Stop-Process (CLAUDE.md hard rule - it hangs the MCP pipe)."""
     try:
         subprocess.run(["taskkill", "/F", "/PID", str(pid)],
-                       capture_output=True, timeout=20,
+                       capture_output=True, timeout=20, check=False,
                        creationflags=_NO_WINDOW)
     except (OSError, subprocess.SubprocessError):
         pass
