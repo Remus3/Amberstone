@@ -2814,6 +2814,11 @@ def _git_target(here, words):
 # with am's own short options (`-3n`, `-C <n>`, `-p <num>`); `-m` after
 # `git am` (--message-id) or `git rebase` (--merge) is a flag, not a
 # message option, so the word after it is read as an option.
+# S144-Q-150 (EXTRA only): a second, FULL reading of prefix options is walked
+# beside the S144-Q-146 one (getopt_long abbreviations: `nice --adj 5`,
+# `timeout --sig KILL 5`; sudo `--auth-type` / `--login-class`; `sudo -h
+# host`, placed None like `--host`); `xargs`, `doas` and `builtin` are
+# prefix commands and `eval` runs its joined words as a script.
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -3180,8 +3185,11 @@ def _wrapper_moves(words):
                 return True
         elif name == "wsl" and _wsl_unwrapped(words[i + 1:])[1]:
             return True
-        elif name in _PREFIX_MOVES and _prefix_unwrapped(name, words[i + 1:])[1]:
-            return True  # S144-Q-146: `sudo -D dir git ...`, `sudo -i git ...`
+        elif name in _PREFIX_MOVES and any(
+                _prefix_unwrapped(name, words[i + 1:], full)[1] for full in (False, True)):
+            # S144-Q-146: `sudo -D dir git ...`, `sudo -i git ...`; S144-Q-150:
+            # either reading (`sudo --chd dir git ...`, `sudo -h host git ...`)
+            return True
     return False
 
 
@@ -3254,27 +3262,72 @@ _PREFIX_COMMANDS = {
     "exec": ("a", frozenset()),
     "command": ("", frozenset()),
     "setsid": ("", frozenset()),
+    # S144-Q-150: GNU findutils xargs (-e / -i / -l and --eof / --replace /
+    # --max-lines take an OPTIONAL attached value only), OpenBSD doas, and
+    # bash's `builtin` (in front of `exec` / `command` / `eval`).
+    "xargs": ("aEdILnPs", frozenset({
+        "arg-file", "delimiter", "max-args", "max-procs", "max-chars",
+        "process-slot-var"})),
+    "doas": ("auC", frozenset()),
+    "builtin": ("", frozenset()),
 }
 # Options after which the prefix runs no command (`command -v` prints a
-# path, `sudo -l` lists, `sudo -e` edits files, `sudo -v` / `-K` / `-V`).
+# path, `sudo -l` lists, `sudo -e` edits files, `sudo -v` / `-K` / `-V`,
+# `doas -C` checks a config file, `doas -L` clears its persisted login).
 _PREFIX_NO_RUN = {
     "command": frozenset({"v", "V"}),
     "sudo": frozenset({"e", "l", "v", "K", "V", "edit", "list", "validate",
                        "remove-timestamp", "version", "help"}),
+    "xargs": frozenset({"help", "version"}),
+    "doas": frozenset({"C", "L"}),
 }
 # Options that run the command somewhere else (`sudo -D dir`, `sudo -i`
-# starts in the target user's home, `sudo -R` a chroot).
-_PREFIX_MOVES = {"sudo": frozenset({"D", "chdir", "R", "chroot", "i", "login"})}
+# starts in the target user's home, `sudo -R` a chroot; S144-Q-150: `sudo
+# -h host` / `--host` on a remote host).
+_PREFIX_MOVES = {"sudo": frozenset({"D", "chdir", "R", "chroot", "i", "login",
+                                    "h", "host"})}
 # Prefixes that take bash `NAME=VALUE` words before the command (`time` is
 # a keyword in front of a simple command; sudo reads them as environment).
 _PREFIX_ASSIGNS = frozenset({"time", "sudo"})
+# S144-Q-150, read only by the FULL reading of _prefix_unwrapped: sudo
+# value options S144-Q-146 did not list (sudo 1.9 `--auth-type` = -a,
+# `--login-class` = -c), and sudo's `-h`, which takes a following word that
+# is no option as a remote host (`-h host`; a NAME=VALUE word read as the
+# host is dropped by _PREFIX_ASSIGNS anyway).
+_PREFIX_LONG_MORE = {"sudo": frozenset({"auth-type", "login-class"})}
+_PREFIX_HOST_SHORT = {"sudo": "h"}
+# Short options declared with an OPTIONAL value (getopt `x::`): the rest of
+# the cluster is the value (`xargs -en`, `xargs -id`, `sudo -hhost`), so the
+# letter ends the cluster; only sudo's `-h` also takes a next word. xargs
+# `-l` is optional too, but its value is a number, which holds no letter.
+_PREFIX_OPTIONAL_SHORTS = {"sudo": "h", "xargs": "ei"}
 
 
-def _prefix_unwrapped(name, rest):
+def _long_names(name, option, long_values):
+    """S144-Q-150: the long options OPTION names for prefix NAME as GNU
+    getopt_long reads it: an exact name first, else every known name it
+    abbreviates (an ambiguous abbreviation is an error to the tool; the
+    plain reading is walked beside this one, so naming all can only add)."""
+    known = (long_values | _PREFIX_NO_RUN.get(name, frozenset())
+             | _PREFIX_MOVES.get(name, frozenset()))
+    known = {o for o in known if len(o) > 1}
+    if option in known or not option:
+        return {option}
+    return {o for o in known if o.startswith(option)} or {option}
+
+
+def _prefix_unwrapped(name, rest, full=False):
     """S144-Q-146: the command words of prefix command NAME (a
     _PREFIX_COMMANDS key) after its options REST, and whether it moved the
-    command; ([], False) when it runs none."""
+    command; ([], False) when it runs none. FULL (S144-Q-150, EXTRA only,
+    walked BESIDE the plain reading, never instead of it) reads the options
+    as getopt_long does: an abbreviated long option (`nice --adj 5`,
+    `timeout --sig KILL`), _PREFIX_LONG_MORE, and `sudo -h host`."""
     short_values, long_values = _PREFIX_COMMANDS[name]
+    host = _PREFIX_HOST_SHORT.get(name, "") if full else ""
+    optional = _PREFIX_OPTIONAL_SHORTS.get(name, "") if full else ""
+    if full:
+        long_values = long_values | _PREFIX_LONG_MORE.get(name, frozenset())
     seen, i = set(), 0
     while i < len(rest) and rest[i].startswith("-") and rest[i] != "-":
         word = rest[i]
@@ -3283,8 +3336,9 @@ def _prefix_unwrapped(name, rest):
             break
         if word.startswith("--"):
             option, eq, _value = word[2:].partition("=")
-            seen.add(option)
-            if option in long_values and not eq:
+            names = _long_names(name, option, long_values) if full else {option}
+            seen |= names
+            if names & long_values and not eq:
                 i += 1
         else:
             for k, letter in enumerate(word[1:], 1):
@@ -3292,6 +3346,14 @@ def _prefix_unwrapped(name, rest):
                 if letter in short_values:
                     if k == len(word) - 1:
                         i += 1  # `-n 5`; `-n5` carries its value
+                    break
+                if letter in optional:
+                    # An optional attached value ends the cluster; sudo's
+                    # `-h` also takes the next word that is no option as
+                    # its host (`-h host`; `-hhost` and `-h=host` attach).
+                    if letter == host and k == len(word) - 1 and i + 1 < len(rest) \
+                            and not rest[i + 1].startswith("-"):
+                        i += 1
                     break
         i += 1
     if seen & _PREFIX_NO_RUN.get(name, frozenset()):
@@ -3305,12 +3367,13 @@ def _prefix_unwrapped(name, rest):
     return rest, bool(seen & _PREFIX_MOVES.get(name, frozenset()))
 
 
-def _unwrapped(words, escapes=False):
+def _unwrapped(words, escapes=False, full=False):
     """WORDS without leading `env` / `wsl` wrappers, bash `NAME=VALUE`
     environment prefixes (S144-Q-135) or prefix commands (S144-Q-146:
     `nohup`, `time`, `nice`, `sudo`, ... with their options), and whether
     one changed directory; WORDS is None when a wrapper cannot be read.
-    ESCAPES (S144-Q-145) reads an `env -S` string with env's own escapes."""
+    ESCAPES (S144-Q-145) reads an `env -S` string with env's own escapes;
+    FULL (S144-Q-150) reads each prefix's options as getopt_long does."""
     moved = False
     while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
         words = words[1:]
@@ -3321,7 +3384,7 @@ def _unwrapped(words, escapes=False):
         elif head == "wsl":
             words, step = _wsl_unwrapped(words[1:])
         else:
-            words, step = _prefix_unwrapped(head, words[1:])
+            words, step = _prefix_unwrapped(head, words[1:], full)
         moved = moved or step
     return words, moved
 
@@ -3396,17 +3459,18 @@ def _cmd_script(rest):
     return None
 
 
-def _launcher_script(words, extra=True, escapes=False):
+def _launcher_script(words, extra=True, escapes=False, full=False):
     """The quoted script of a `bash -c` / `sh -c` / `pwsh -Command` statement
     (WORDS, quotes removed), or None for any other statement. With EXTRA
     (S144-Q-127 part 2) also behind `env` / `wsl` wrappers, after a bash
     `--rcfile x` / `--init-file x`, and for `cmd /c` and `iex`; a script
     a wrapper moved (`env -C`, `wsl --cd`, `wsl ~`) starts with a `cd` to
     an unknown directory, so its statements are placed None (fail closed).
-    ESCAPES reads an `env -S` string with env's escapes (S144-Q-145)."""
+    ESCAPES reads an `env -S` string with env's escapes (S144-Q-145); FULL
+    reads prefix options as getopt_long does (S144-Q-150)."""
     moved = False
     if extra:
-        words, moved = _unwrapped(words, escapes)
+        words, moved = _unwrapped(words, escapes, full)
         if not words:
             return None
     script = _launcher_head_script(words, extra)
@@ -3417,13 +3481,16 @@ def _launcher_script(words, extra=True, escapes=False):
 
 def _launcher_scripts(words, extra=True):
     """S144-Q-145: _launcher_script's script, plus with EXTRA the one read
-    with env's `-S` escapes (`env -S 'bash\\_-c\\_"..."'`) when it differs:
-    both are walked (count-only, the plain reading is never replaced)."""
+    with env's `-S` escapes (`env -S 'bash\\_-c\\_"..."'`) and (S144-Q-150)
+    the ones read with prefix options in full (`nice --adj 5 bash -c ...`)
+    when they differ: all are walked (count-only, the plain reading is
+    never replaced)."""
     scripts = [_launcher_script(words, extra)]
     if extra:
-        escaped = _launcher_script(words, extra, escapes=True)
-        if escaped != scripts[0]:
-            scripts.append(escaped)
+        for escapes, full in ((True, False), (False, True), (True, True)):
+            more = _launcher_script(words, extra, escapes=escapes, full=full)
+            if more not in scripts:
+                scripts.append(more)
     return [script for script in scripts if script is not None]
 
 
@@ -3438,6 +3505,12 @@ def _launcher_head_script(words, extra):
     if extra and head in _IEX_HEADS:
         if rest and len(rest[0]) > 1 and rest[0].startswith("-") and \
                 "command".startswith(rest[0][1:].lower()):
+            rest = rest[1:]
+        return " ".join(rest) or None
+    if extra and head == "eval":
+        # S144-Q-150: bash runs eval's words, joined, as a script in the
+        # same shell; a leading `--` ends eval's (empty) option list.
+        if rest and rest[0] == "--":
             rest = rest[1:]
         return " ".join(rest) or None
     if head in _SHELL_LAUNCHERS:
