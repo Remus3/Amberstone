@@ -173,4 +173,3 @@ def test_negative_lift_still_reads_red_and_the_bar_keeps_bare_red(
     assert fill and [round(c) for c in fill[:3]] == [
         round(c) for c in bare[:3]], (
         f"{theme}: negative bar fill {fill} is not bare --signal-bad {bare}")
-
