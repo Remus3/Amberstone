@@ -87,11 +87,21 @@ class):
     protected ally's max HP: Zilean R Chronoshift (revives + heals a flat amount
     by rank) and Akshan W Going Rogue (resurrects dead allies to base + restored
     health). The restored HP is a flat amount, so its fraction of the ally's max
-    HP is build-dependent on the PROTECTED ALLY (not a granter-side constant) AND
-    the heal value is absent from the parsed Meraki block (the items 147-153
-    parse-strip boundary). Deferred to the Phase D consumer that resolves the live
-    ally build. Renata W is seeded because it restores a clean 100% of max health
-    (fraction 1.0) with no ally-HP dependency.
+    HP is build-dependent on the PROTECTED ALLY (not a granter-side constant).
+    S144-D-313 (measured 16.22.1): the Zilean R heal IS in the live parsed
+    "Heal" block, 600/850/1100 (+200% AP) by R rank, so the old "absent from
+    the parsed block" reason no longer holds for Zilean; Akshan W still
+    carries no heal block. The ally max-HP dependency alone defers both to
+    the Phase D consumer that resolves the live ally build. Renata W is seeded
+    because it restores a clean 100% of max health (fraction 1.0) with no
+    ally-HP dependency.
+  - ALLY CC-IMMUNITY SHIELD (Morgana E Black Shield cast on an ALLY): the
+    self cast is ``_champion_spell_shield_overrides`` (block-one CC axis),
+    which files the ally cast under this ally domain. It is NOT seeded here:
+    the CC-immunity half has no ally seam (this registry grants resists, a
+    revive or flat HP, not a CC discount), and the 100/155/210/265/320
+    (+70% AP) "Magic Shield Strength" absorbs MAGIC damage only, which the
+    type-blind ``_ALLY_FLAT_HP_GRANT_OVERRIDES`` numerator add cannot express.
   - Ornn P Living Forge: a false-positive scan hit - it upgrades ITEMS into
     Masterwork variants with bonus stats, it does not grant an ally a resist.
 """
@@ -278,11 +288,14 @@ _ALLY_FLAT_HP_GRANT_OVERRIDES: dict[tuple[str, str, int], AllyGrantEntry] = {
         attribute="Inspire",
         rank_scaled=True,
     ),
-    # Yuumi E Zoomies: shield 65/90/115/140/165 (+30% AP) by E rank.
+    # Yuumi E Zoomies: shield 65/90/115/140/165 (+30% AP) by E rank. The live
+    # cast shields Yuumi herself; it reaches an ally only as the "Attached
+    # Bonus" ("Zoomies affects the Anchor instead of Yuumi"), i.e. while she
+    # is attached to that ally (S144-D-313).
     ("Yuumi", "E", 0): AllyGrantEntry(
         shield_hp=(65.0, 90.0, 115.0, 140.0, 165.0),
         conditional_probability=_ALLY_SHIELD_HEAL_PROB,
-        note="Zoomies: 65/90/115/140/165 base ally shield by E rank (+30% AP omitted); champion_abilities.json 16.12.1; rank_scaled",
+        note="Zoomies: 65/90/115/140/165 base ally shield by E rank (+30% AP omitted); reaches the ally only as the Attached Bonus (affects the Anchor while Yuumi is attached); champion_abilities.json 16.12.1; rank_scaled",
         attribute="Zoomies",
         rank_scaled=True,
     ),

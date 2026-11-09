@@ -270,8 +270,9 @@ class ExclusionDocTests(unittest.TestCase):
 
     def test_flat_heal_ally_revives_deferred(self):
         # Zilean R / Akshan W revive to a flat heal / base HP -> the second-life
-        # fraction needs the protected ally's max HP (not a granter-side constant)
-        # AND the value is absent from the parsed block. Renata W (100% -> 1.0) is
+        # fraction needs the protected ally's max HP (not a granter-side constant;
+        # S144-D-313: the Zilean R heal is in the live block at 16.22.1, so that
+        # dependency is the reason, not a missing value). Renata W (100% -> 1.0) is
         # the only ally revive with no ally-HP dependency, so the only one seeded.
         cids = {k[0] for k in _PASSIVE_ALLY_GRANT_OVERRIDES}
         for c in ("Zilean", "Akshan"):
