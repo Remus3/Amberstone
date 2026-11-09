@@ -2810,6 +2810,10 @@ def _git_target(here, words):
 # so `nohup bash -c 'git push --no-verify'` counts; `sudo -D` / `-i` / `-R`
 # place their statements None (also before a plain git word,
 # _wrapper_moves), and `command -v` / `sudo -l` / `sudo -e` run nothing.
+# S144-Q-149 (EXTRA only, _am_no_verify): `git am -n` is --no-verify, read
+# with am's own short options (`-3n`, `-C <n>`, `-p <num>`); `-m` after
+# `git am` (--message-id) or `git rebase` (--merge) is a flag, not a
+# message option, so the word after it is read as an option.
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -2843,7 +2847,8 @@ def _head_name(word):
 # quote-split `'core.hooksPath'=x`, is present, so _has_bypass parses a
 # command whose raw text EV_BYPASS does not match.
 # S144-Q-145: or one behind an `env -S` separator escape (`git\_commit\_-n`).
-_PARSE_HINT = re.compile(r"(?:(?<![\w-])|(?<=\\_))-[A-Za-z]*n|core\.hooksPath",
+# S144-Q-149: a digit may sit in the cluster (`git am -3n`).
+_PARSE_HINT = re.compile(r"(?:(?<![\w-])|(?<=\\_))-[A-Za-z0-9]*n|core\.hooksPath",
                          re.IGNORECASE)
 _BYPASS_FLAG_WORD = re.compile(r"--no-verify|--no-gpg-sign|core\.hooksPath\s*=.*",
                                re.IGNORECASE | re.DOTALL)
@@ -2867,10 +2872,19 @@ _DATA_SHORTS = frozenset("mFt")
 # next word is not its value (measured `git <sub> -h`, git 2.53): `-S` is
 # `--gpg-sign[=<key-id>]` (attached key id only), `-e` is `--edit`.
 # Elsewhere (log / diff pickaxe `-S`, grep `-e`) they still take the next word.
+# S144-Q-149: `-m` is `--message-id` in am and `--merge` in rebase (flags);
+# a short cluster ending in a letter listed here is read the same way. In am,
+# git takes `--message` / `--committer` as abbreviations of the flags
+# `--message-id` / `--committer-date-is-author-date` (measured: `git am
+# --message --abort` runs --abort); rebase takes `--committer` the same way
+# (measured: `git rebase --committer --no-verify` skips pre-rebase).
 _GIT_FLAG_ONLY_IN = {
     "-S": frozenset({"commit", "merge", "rebase", "cherry-pick", "revert",
                      "pull", "am", "commit-tree"}),
     "-e": frozenset({"commit", "merge", "cherry-pick", "revert", "tag"}),
+    "-m": frozenset({"am", "rebase"}),
+    "--message": frozenset({"am"}),
+    "--committer": frozenset({"am", "rebase"}),
 }
 
 
@@ -2881,7 +2895,8 @@ def _is_data_slot(prev, sub=None):
         return False
     if prev in _GIT_DATA_OPTS:
         return sub not in _GIT_FLAG_ONLY_IN.get(prev, ())
-    return bool(re.fullmatch(r"-[A-Za-z]+", prev)) and prev[-1] in _DATA_SHORTS
+    return (bool(re.fullmatch(r"-[A-Za-z]+", prev)) and prev[-1] in _DATA_SHORTS
+            and sub not in _GIT_FLAG_ONLY_IN.get("-" + prev[-1], ()))
 
 
 def _commit_no_verify(words):
@@ -2900,10 +2915,49 @@ def _commit_no_verify(words):
     return False
 
 
+# S144-Q-149: `git am` options (measured `git am -h`, git 2.53). `-n` is
+# --no-verify; `-C <n>` / `-p <num>` take a value (the rest of the cluster,
+# or the next word when the cluster ends in them); `-S` takes only an
+# attached key id; every other short (`-3`, `-i`, `-q`, `-s`, `-u`, `-k`,
+# `-m`, `-c`, `-r`) is a flag. A long option is read only when spelled in
+# full: an abbreviation (`--white -n`) reads its value as an option, which
+# counts more, never less.
+_AM_VALUE_SHORTS = frozenset("Cp")
+_AM_LONG_VALUE_OPTS = frozenset({
+    "--quoted-cr", "--whitespace", "--directory", "--exclude", "--include",
+    "--patch-format", "--resolvemsg", "--empty",
+})
+
+
+def _am_no_verify(words):
+    """S144-Q-149: True when WORDS (after `am`) carry `-n` in a short
+    cluster that is not an option's value."""
+    value_next = False
+    for word in words:
+        if value_next:
+            value_next = False
+            continue
+        if word == "--":
+            return False
+        if word in _AM_LONG_VALUE_OPTS:
+            value_next = True
+            continue
+        if re.fullmatch(r"-[A-Za-z0-9]+", word):
+            for k, letter in enumerate(word[1:], 1):
+                if letter == "n":
+                    return True
+                if letter == "S":
+                    break
+                if letter in _AM_VALUE_SHORTS:
+                    value_next = k == len(word) - 1
+                    break
+    return False
+
+
 def _git_words_bypass(words):
     """S144-Q-127: True when WORDS (one statement, quotes removed) hold a git
     word followed by an exact bypass flag that is not an option's value, or
-    are a `git commit` whose options include `-n`."""
+    are a `git commit` or (S144-Q-149) `git am` whose options include `-n`."""
     start = next((i for i, word in enumerate(words) if _head_name(word) == "git"), None)
     if start is None:
         return False
@@ -2922,6 +2976,8 @@ def _git_words_bypass(words):
                 and _BYPASS_FLAG_WORD.fullmatch(word):
             return True
         prev = word
+    if sub == "am":
+        return _am_no_verify(rest[i + 1:])
     return sub == "commit" and _commit_no_verify(rest[i + 1:])
 
 
