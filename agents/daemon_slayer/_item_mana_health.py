@@ -44,8 +44,11 @@ the equipped family items (not a sum), which cannot double-count the SHARED bonu
 mana pool if a synthetic build lists two.
 
 Registered ids (each confirmed present in the DS item index
-``data/daemon_slayer/16.13.1/items.json`` before adding; the exhaustive Meraki
-passives scan for 'health' + 'mana' co-occurrence returned exactly this family):
+``data/daemon_slayer/16.13.1/items.json`` before adding). The Meraki passives
+scan for 'health' + 'mana' co-occurrence returns 9 passives at 16.22.1, and only
+the Awe pair 3119 / 3121 converts mana into bonus max health; the other seven
+are excluded below (re-run by
+``agents/daemon_slayer/tests/test_item_ehp_registries_live_text_s144d364.py``):
   * 3119   - Winter's Approach (base; carries Awe HP + the Manaflow mana-stack).
   * 3121   - Fimbulwinter (base; Awe HP + a separate current-mana Empowered Shield,
     which is NOT this credit).
@@ -70,6 +73,14 @@ DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class)
   * MANA-REGEN / HEAL-ON-SPEND (Catalyst of Aeons 3803 Eternity heal-from-mana-
     spent; Diadem of Songs 2530 ally heal from your max mana): heal throughput /
     ally grants, not a self bonus-max-HP conversion.
+  * MANALESS FALLBACK REGEN (Guardian's Amulet 2049 / Guardian's Orb 3112
+    "Recovery": mana, or health regeneration for a manaless champion): regen,
+    not a max-HP grant.
+  * REVIVE RESTORE (Guardian Angel 3026 "Rebirth" heals 50% base health and
+    restores 100% maximum mana on resurrection): the ``_item_revive`` lane.
+  * ARENA GRAB-BAG (The Golden Spatula 224403 "Doing Something": level-scaled
+    bonus health (50 to 900) and bonus mana regeneration among a dozen stats):
+    stat grants, not a conversion of mana.
 
 R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
 ``core.daemon_slayer_resolver.name_to_id`` - the resolver hands the engine
@@ -82,8 +93,9 @@ never actually emits the ``32xxxx`` pair for these names - both 32 mirrors
 declare ``maps["11"]`` only, and the bare id wins the first-write-wins per-mode
 index - so those two rows are defensive coverage rather than a live path.
 
-OPEN, NOT ACTED ON (R144): the Arena mirrors' DDragon copy reads "Gain bonus
-Health equal to Total Mana" where the SR/ARAM line reads "bonus mana", and the
+OPEN, NOT ACTED ON (R144): the Arena mirrors' DDragon copy reads, for 223119,
+"Gain bonus Health equal to Total Mana" and, for 223121, "Gain bonus Health
+based on Mana" where the SR/ARAM line reads "bonus mana", and the
 Arena stat blocks are genuinely retuned (223119 carries 600 mana / 400 HP vs
 the base 500 / 550). DDragon strips the numeral from the Awe tooltip and Meraki
 keys base ids only, so the catalog cannot settle whether the Arena percent or
