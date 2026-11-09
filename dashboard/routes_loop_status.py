@@ -99,11 +99,13 @@ CONTROLLER_LOG = CONTROL_DIR / "controller.log"
 # Tail length for the controller.log preview (newest LOG_TAIL_LINES lines).
 LOG_TAIL_LINES = 12
 
-# controller.log is an append log that is never rotated (565 KB measured
-# 2026-10-30) and this route is polled every 4s, so only its newest bytes are
-# read - once per poll, shared by log_tail and the last_done fallback. The
-# newest "claude.done" line sat 269 bytes from the end of the real log, so the
-# cap costs the fallback nothing in practice; a done line older than the cap
+# controller.log is an append log (565 KB measured 2026-10-30; since
+# S144-Q-123 the controller rotates it at the RM-718 5 MiB cap, so the live
+# file can still exceed this window) and this route is polled every 4s, so only
+# its newest bytes are read - once per poll, shared by log_tail and the
+# last_done fallback. The newest "claude.done" line sat 269 bytes from the end
+# of the real log, so the cap costs the fallback nothing in practice; a done
+# line older than the cap, or one a rotation just moved to controller.log.1,
 # reads as no last_done, which is the stated tradeoff.
 LOG_READ_CAP_BYTES = 512 * 1024
 

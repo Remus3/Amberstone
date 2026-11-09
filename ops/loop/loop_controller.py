@@ -104,6 +104,20 @@ except ModuleNotFoundError:
         Path(__file__).resolve().parents[2] / "core" / "polled_json.py",
     ).atomic_write_bytes
 
+# S144-Q-123 (RM-718 residue): controller.log is size-capped through the shared
+# rotation helper, same import-then-bind shape as polled_json above. The cap is
+# the RM-718 bound, well above the newest-bytes window the dashboard's
+# routes_loop_status reads from the live file (LOG_READ_CAP_BYTES).
+try:
+    from core import log_rotation
+except ModuleNotFoundError:
+    log_rotation = _bind_path(
+        "rc_core_log_rotation",
+        Path(__file__).resolve().parents[2] / "core" / "log_rotation.py",
+    )
+CONTROLLER_LOG_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+CONTROLLER_LOG_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
+
 # FLEET-KIT v7 item 13 d: the per-cycle session checklist, mirrored to the log
 # and to progress/loop.json in the MAIN checkout. Same import-then-bind shape as
 # polled_json above, so the test suite's redirect of the package module (see
@@ -184,11 +198,36 @@ RUN_ID = ""  # minted in main(); namespaces slot payloads across concurrent runs
 # `failed_over` was dropped with the vendor failover on 2026-08-01.
 _ADJ_STATE = {"active": "", "usd": {}}
 
+def _rotate_controller_log(path):
+    """Rotate controller.log BEFORE an append when it is at or over the cap.
+
+    Returns the one-line refusal note to write ahead of the line when the
+    rotation is refused (another process holds the file), else "". Recovers a
+    crashed rotation's scratch even under the cap (this is the writer's open).
+    Never raises: a failing cap must not cost the loop its audit line, so any
+    error falls back to a plain append to the file as it is.
+    """
+    try:
+        log_rotation.recover_orphans(path, CONTROLLER_LOG_BACKUPS)
+        try:
+            oversize = path.stat().st_size >= CONTROLLER_LOG_MAX_BYTES
+        except OSError:
+            return ""
+        if not oversize:
+            return ""
+        err = log_rotation.try_rotate(path, CONTROLLER_LOG_BACKUPS)
+        return "" if err is None else log_rotation.refusal_note(path, err)
+    except Exception:  # noqa: BLE001 - the cap is best effort; the line is not
+        return ""
+
+
 def log(m):
     line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {m}"
     print(line, flush=True)
-    with open(CTL / "controller.log", "a", encoding="utf-8", newline="\n") as f:
-        f.write(line + "\n")
+    path = CTL / "controller.log"
+    note = _rotate_controller_log(path)
+    with open(path, "a", encoding="utf-8", newline="\n") as f:
+        f.write(note + line + "\n")
 
 def awrite(path, text):
     """Atomic write of a polled control file - STOP (from stop()), cycle.txt.
