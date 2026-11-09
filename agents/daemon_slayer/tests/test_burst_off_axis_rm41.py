@@ -100,8 +100,9 @@ class ChampionAxisGateTests(unittest.TestCase):
                 self.assertEqual(champion_burst_axis(rec), "ad")
 
     def test_indecisive_split_is_none(self) -> None:
-        # Shaco is 0.521 magical / 0.347 physical - dominant but inside the
-        # margin, so he has NO decisive axis and must never be stripped.
+        # Shaco has NO decisive axis and must never be stripped: 0.521 magical
+        # / 0.347 physical through 16.18.1, 0.503 / 0.342 at 16.22.1 - under
+        # the 0.55 floor and inside the 0.20 margin both times (S144-D-382).
         self.assertIsNone(champion_burst_axis(self.snap.champion("Shaco")))
 
     def test_missing_or_malformed_record_is_none(self) -> None:

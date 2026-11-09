@@ -6,8 +6,11 @@ If it does, an item that shields or heals teammates lands on someone, so the
 for them. If it does not, the grant reaches nobody and the seam must stay inert.
 
 The signal is the ``affects`` field on each ability form in
-``champion_abilities.json``. Measured at 16.14.1: 70 forms across 40 champions
-carry a strict ``allies`` token.
+``champion_abilities.json``. Measured at 16.14.1 and re-measured at 16.22.1
+(S144-D-381; every vendored dir 16.10.1..16.22.1 agrees): 70 forms across 40
+champions carry a strict ``allies`` token. 171 champions are keyed; Locke and
+Zaahen are in ``champions.json`` but have no abilities row, so the gate reads
+False for both until the abilities file gains them.
 
 WHY BOOLEAN, NOT A PER-CHAMPION MAGNITUDE: the item's shield is the same size
 whoever buys it. A per-champion multiplier would be a second invented constant
@@ -29,8 +32,9 @@ that is WRONG two ways:
 at 16.14.1, all handled by ``_affects_tokens``: two delimiters mixed
 (``"Self, Enemies"`` and ``"Enemies / Self"``), non-canonical order
 (``"Enemies, Allies"`` vs ``"Allies, Enemies"``), case drift (``"self"``),
-three misspellings of "Enemies" (``"Ememies"``), and both ``None`` and the
-string ``"None"``.
+one misspelling of "Enemies" on three forms (``"Ememies"``: Renata Q and E,
+Vex Q), a singular ``"Enemy, Structure"`` (Blitzcrank E), and both ``None``
+and the string ``"None"``.
 
 Documented EXCLUSIONS (strict ``allies`` hits deliberately gated OFF - these are
 parser false positives where the token does not mean "I confer something on a
@@ -68,9 +72,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
 # Strict ally-facing token. Anything else ("allied turrets", "oathsworn ally",
-# "rakan") is deliberately NOT admitted: the champions carrying those are
-# marksmen who never route to tank, so admitting them widens the parser and
-# buys nothing.
+# "rakan") is deliberately NOT admitted, and admitting them would buy nothing:
+# Kalista R ("oathsworn ally") and Xayah W ("rakan") are marksmen who route to
+# carry, never tank, and Janna E ("allied turrets") carries a plain "allies"
+# token in the same field, so she is reached anyway (S144-D-381).
 _ALLY_TOKEN = "allies"
 
 # Strict ``allies`` hits that are parser false positives. See the module
@@ -81,8 +86,10 @@ _ALLY_REACH_EXCLUDED = frozenset({"Ornn", "Sejuani"})
 # Keys are DDragon ids, machine-checked against ``champion_abilities.json`` by
 # ``tests/test_champion_ally_reach_overrides.py`` so a rename cannot silently
 # no-op. Every entry is individually justified; the set is NOT certified by
-# count. Each is Support-role and tank-routed, i.e. inside the RM-90 cohort
-# whose 28 champions collapsed onto one shipped build order.
+# count. Each is tank-routed (``archetype_picks`` primary ``tank``), i.e.
+# inside the RM-90 cohort whose 28 champions collapsed onto one shipped build
+# order. Blitzcrank, Leona and Nautilus carry the DDragon ``Support`` tag;
+# Poppy is tagged ``Tank`` / ``Fighter`` only (S144-D-381).
 #
 #   - Leona. The ONE textual case, and the reason a prose scan is tempting.
 #     Her Sunlight passive reads "Allied champions' damaging attacks and
@@ -99,10 +106,13 @@ _ALLY_REACH_EXCLUDED = frozenset({"Ornn", "Sejuani"})
 #     alongside the other two thin inclusions.
 #
 # DELIBERATELY NOT a prose-token widening of ``_affects_tokens``: scanning
-# ``effects_descriptions`` for allied/allies/ally admits 27 further champions at
-# 16.14.1 (Akshan, Annie, Fiora, Jhin, Kha'Zix, ...), almost all of them allied
-# TURRET / MINION / wave references. A four-name override is smaller, auditable,
-# and reversible; a parser change is none of those.
+# ``effects_descriptions`` for allied/allies/ally (whole words, any case) admits
+# 25 further champions, 24 once Leona is overridden (Akshan, Annie, Fiora, Jhin,
+# Kha'Zix, ...), almost all of them allied TURRET / MINION / wave references.
+# Re-measured at 16.22.1 (S144-D-381): every vendored dir 16.10.1..16.22.1
+# gives 25; the "27 at 16.14.1" first written here does not reproduce. A
+# four-name override is smaller, auditable, and reversible; a parser change is
+# none of those.
 _ALLY_REACH_INCLUDED = frozenset({
     "Blitzcrank", "Leona", "Nautilus", "Poppy",
 })
