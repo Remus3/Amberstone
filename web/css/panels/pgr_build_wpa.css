@@ -90,12 +90,25 @@
 .pbw-chip-val { font-weight: 700; }
 .pbw-pos .pbw-chip-val,
 .pbw-pos.pbw-chip { color: var(--signal-good, #4ade80); }
+/* S144-U-236: a negative grade takes the RM-1550 red-text lift (70 percent
+ * red toward --text in oklab). Bare --signal-bad on the strip card read
+ * 3.89 (arcane) to 4.45 (ember) at 16 px / 700, under AA 4.5, on the one
+ * value that says a buy has COST you games. The confidence segments keep
+ * bare --signal-bad (.pbw-seg below), so the chip still reads red. */
 .pbw-neg .pbw-chip-val,
-.pbw-neg.pbw-chip { color: var(--signal-bad, #f87171); }
+.pbw-neg.pbw-chip {
+  color: color-mix(in oklab, var(--signal-bad, #f87171) 70%, var(--text));
+}
+/* S144-U-236: "no data" (under 20 career buys of this item) is read, not
+ * disabled, so no opacity. --text-dim at opacity 0.6 read 3.19 to 3.72:1
+ * in all six themes. Neither token alone fits: --text-faint reads 4.31 to
+ * 4.48 on this --surface-2 card (the S144-U-233 finding) and full --text-dim
+ * outshines the negative grade in all six themes. The midpoint reads 5.33 to
+ * 6.47, dimmer than the strip label and either value chip. */
 .pbw-na {
-  color: var(--text-dim, #8b93a7);
+  color: color-mix(in oklab, var(--text-faint, #7688a2) 50%,
+    var(--text-dim, #8b93a7));
   font-size: var(--fs-xs, 16px);
-  opacity: 0.6;
 }
 
 .pbw-chip-conf { display: inline-flex; gap: 2px; }

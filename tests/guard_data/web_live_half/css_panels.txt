@@ -91,7 +91,7 @@ aa0c1e3260efd055e4630eb753752279946724d1db75436d83e2825bfcdb2fb9  web/css/panels
 
 605e2f7d0b0e631d125ae85b8842454e420e7f1c330c20347f45613815e140b4  web/css/panels/personal_context.css
 
-cba815085ce1ad071651f476620625ca6616a77b44b0e794a98af0015e49c31e  web/css/panels/pgr_build_wpa.css
+317a983eebd1eb0317b6afee93832cdfdac6dcea1e6cecb0b518235a886da512  web/css/panels/pgr_build_wpa.css
 
 331ecc99bba7871a5cc6e44646b5710c6eee7bf60c59940a6a97eecfe23e0a84  web/css/panels/pgr_lane_compare.css
 
