@@ -222,7 +222,7 @@ def test_a_junction_out_of_the_base_falls_back(home, tmp_path):
     outside.mkdir()
     link = home / "linked"
     try:
-        os.symlink(outside, link, target_is_directory=True)
+        Path(link).symlink_to(outside, target_is_directory=True)
     except (OSError, NotImplementedError):
         if sys.platform != "win32":
             pytest.skip("cannot create a directory link here")

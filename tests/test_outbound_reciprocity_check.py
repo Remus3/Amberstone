@@ -312,7 +312,7 @@ def _symlink_error(link: Path, target: Path, is_dir: bool) -> Exception | None:
     resolves to nothing).
     """
     try:
-        os.symlink(target, link, target_is_directory=is_dir)
+        Path(link).symlink_to(target, target_is_directory=is_dir)
     except (OSError, NotImplementedError) as exc:
         return exc
     return None

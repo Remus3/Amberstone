@@ -144,7 +144,7 @@ def _make_dir_link(link: Path, target: Path) -> None:
         import _winapi
         _winapi.CreateJunction(str(target), str(link))
     else:
-        os.symlink(target, link, target_is_directory=True)
+        Path(link).symlink_to(target, target_is_directory=True)
 
 
 def test_linked_panel_dir_cannot_redirect_write(tmp_path: Path, monkeypatch) -> None:

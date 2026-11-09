@@ -156,11 +156,11 @@ def test_step4_leaves_an_exact_key_file_untouched(tmp_path):
 def test_step4_fails_when_the_key_file_cannot_be_written(tmp_path):
     key = tmp_path / KEY_FILE
     key.write_bytes(b"sk-ant-OLD  \r\n")  # rc-credential-scan: allow-fixture
-    os.chmod(key, stat.S_IREAD)
+    Path(key).chmod(stat.S_IREAD)
     try:
         out = _run_step4(tmp_path)
     finally:
-        os.chmod(key, stat.S_IREAD | stat.S_IWRITE)
+        Path(key).chmod(stat.S_IREAD | stat.S_IWRITE)
     assert "STEP4=FAIL" in out and "STEP4=PASS" not in out
     assert "[FAIL] Step 4" in (tmp_path / "setup.log").read_text(encoding="ascii")
     assert _left_behind(tmp_path) == set()

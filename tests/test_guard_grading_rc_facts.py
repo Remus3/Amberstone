@@ -190,7 +190,7 @@ def test_payload_walk_refuses_a_real_file_symlink_and_moves_the_digest(tmp_path)
 
     baseline = rc_facts._payload_key(drop)
     try:
-        os.symlink(outside, drop / "link.txt")
+        (drop / "link.txt").symlink_to(outside)
     except (OSError, NotImplementedError) as exc:
         pytest.skip(f"this host cannot create a file symlink: {exc}")
 
