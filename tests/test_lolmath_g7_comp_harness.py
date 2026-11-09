@@ -10,7 +10,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-import pytest
 
 _HARNESS = Path(__file__).resolve().parent.parent / "ops" / "audit" / "lolmath_ds_sweep" / "g7_comp_harness.py"
 _spec = importlib.util.spec_from_file_location("g7_comp_harness", _HARNESS)

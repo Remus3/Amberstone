@@ -18,7 +18,6 @@ operator picked the two enhancements:
 Drive path: /?ui_mock=1#settings -> the static settings cards render under
 #settings-body; #settings-filter-input drives _settingsApplyFilter.
 """
-import pytest
 
 
 def _open_settings(pw_browser, mock_server, width=1920, height=1080):

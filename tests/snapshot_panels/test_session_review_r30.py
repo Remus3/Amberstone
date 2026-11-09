@@ -27,7 +27,6 @@ Drive path: /?ui_mock=1#session -> _sessionFetchAndRender renders the
 /data/ui_mock/session.json fixture. Landing signal: #session-games flips
 from "-" to the fixture game count.
 """
-import pytest
 from pathlib import Path
 
 SCREENSHOTS = Path(__file__).parent / "screenshots"

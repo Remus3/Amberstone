@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import logging
 
-import pytest
 
 from core import rofl_archive as ra
 

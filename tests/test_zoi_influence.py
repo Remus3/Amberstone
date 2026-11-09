@@ -4,7 +4,6 @@ live frame), mirrors tests/test_minimap_blob_detect.py so they run on a clean
 checkout / CI."""
 import math
 
-import pytest
 
 from core.zoi_influence import (
     _R_MAX_FRAC,

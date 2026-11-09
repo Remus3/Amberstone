@@ -18,10 +18,6 @@ in the RC test env (the sibling test_vision_profiles uses it).
 """
 from __future__ import annotations
 
-import importlib
-
-import pytest
-
 from core import vision_tesseract as vt
 
 
