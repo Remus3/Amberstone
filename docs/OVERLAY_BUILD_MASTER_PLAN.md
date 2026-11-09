@@ -166,14 +166,14 @@ test. Standing rule kept: hardcoded engine-identity counts restate NOWHERE outsi
 | retrain LR on N>=20 timelines | `core/post_game_score.py:220` | GATED data |
 | is_next_opponent / arena dataset gap | `coaches/_arena_item_advisor.py:13,97` | DEFER |
 | NSIS/MSIX/Inno installer | `tools/build_installer.py:8` + DISTRIBUTION/DEV/LAUNCH docs | DEFER (release trigger) |
-| Auto-ops verb-expansion gate (~550-day ETA) | `tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md:7` | EXPLICIT PARK (close perpetual deferral - WP-F6c) |
+| Auto-ops verb-expansion gate (~550-day ETA) | `docs/_archive/2026-05/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md:7` | EXPLICIT PARK (close perpetual deferral - WP-F6c) |
 
 ### WP-F6c - Park the auto-ops verb-expansion gate
 
 | Field | Value |
 |---|---|
 | Goal | Stop perpetually deferring the auto-ops verb-expansion gate (blocked on a 95% sample gate with ~zero accrual, ~550-day ETA). Make an explicit park/close decision instead. |
-| Files | `tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md:7`; ROADMAP/BACKLOG entries (gated bridge/auto-ops). |
+| Files | `docs/_archive/2026-05/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md:7`; ROADMAP/BACKLOG entries (gated bridge/auto-ops). |
 | Tier | Tier-0 (doc decision). |
 | Acceptance | One explicit PARKED-with-reason entry (or close) replaces the perpetual-defer; bridge largely Peer-decommissioned context noted. |
 | Deps | None. |

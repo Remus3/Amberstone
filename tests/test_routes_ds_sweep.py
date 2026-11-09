@@ -4,7 +4,7 @@ lift #3, docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
 The route is a thin wire over
 agents.daemon_slayer.dps_sweep.compute_dps_sweep (covered by
-tests/test_ds_sweep_2026_05_30.py); these tests pin the HTTP contract:
+tests/test_dps_sweep.py); these tests pin the HTTP contract:
 param validation, payload shape, axis aliasing, default-build resolution,
 cache.
 
