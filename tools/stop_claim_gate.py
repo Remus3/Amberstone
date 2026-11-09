@@ -2777,14 +2777,24 @@ def _git_target(here, words):
 # `git -c 'core.hooksPath=/dev/null' commit`) and `git commit -n`. A quoted
 # flag that is the VALUE of a message / search option stays data. Past
 # BYPASS_NEST_MAX only an EV_BYPASS flag fails closed (a bare `-n` beside a
-# git word is too common to count blind). Still missed, filed under the same
-# id: a flag from a QUOTED assignment, a git call inside a quoted assignment,
-# `& 'git'`, `cmd /c`, `iex`, `Start-Process`, `env bash -c`, `wsl -e`,
-# `bash --rcfile x -c`, `-EncodedCommand`, an escaped quote in a launcher.
+# git word is too common to count blind). Part 2 (_launcher_script, EXTRA
+# only) reads more launchers: `env` / `wsl` wrappers, bash `--rcfile x` /
+# `--init-file x`, `cmd /c` and `iex` / `Invoke-Expression`. Still missed,
+# filed under the same id: a flag from a QUOTED assignment, a git call inside
+# a quoted assignment, `Start-Process -ArgumentList`, `-EncodedCommand`, an
+# escaped quote in a launcher; and S144-Q-135 (a launcher on an assignment's
+# right side, `$r = bash -c '...'`), S144-Q-136 (`env -C dir git ...` is
+# placed at the caller's directory).
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
 _SHELL_VALUE_OPTS = frozenset({"-o", "+o", "-O", "+O"})
+# S144-Q-127 part 2 (read only when EXTRA is on, so extra=False stays RM-698).
+_BASH_LONG_VALUE_OPTS = frozenset({"--rcfile", "--init-file"})
+_WRAPPERS = frozenset({"env", "wsl"})
+_WSL_VALUE_OPTS = frozenset({"-d", "--distribution", "-u", "--user",
+                             "--shell-type", "--distribution-id"})
+_IEX_HEADS = frozenset({"iex", "invoke-expression"})
 _CONTINUATION = re.compile(r"[\\`]\r?\n")
 _BYPASS_GIT_WORD = re.compile(r"\bgit\b")
 
@@ -2872,18 +2882,113 @@ def _git_words_bypass(words):
     return i < len(rest) and rest[i].lower() == "commit" and _commit_no_verify(rest[i + 1:])
 
 
-def _launcher_script(words):
+def _env_unwrapped(rest):
+    """`env`'s command words after its options and NAME=VALUE words, and
+    whether `-C` / `--chdir` moved it, or (None, moved) for `-S`."""
+    moved, i = False, 0
+    while i < len(rest) and rest[i].startswith("-"):
+        word = rest[i]
+        if word == "--":
+            i += 1
+            break
+        if word in ("-S", "--split-string") or word.startswith(("-S", "--split-string=")):
+            return None, moved  # env splits that string itself: not read
+        if word in ("-C", "--chdir") or word.startswith("--chdir="):
+            moved = True
+        elif word.startswith("-C") and not word.startswith("--"):
+            moved = True  # -Cdir
+        if word in ("-C", "--chdir", "-u", "--unset"):
+            i += 1
+        i += 1
+    while i < len(rest) and _BASH_ASSIGN.fullmatch(rest[i]):
+        i += 1
+    return rest[i:], moved
+
+
+def _wsl_unwrapped(rest):
+    """`wsl`'s command words after its options, and whether `--cd` or `~`
+    moved it (the distribution's own path namespace is not placed)."""
+    moved, i = False, 0
+    while i < len(rest):
+        word = rest[i]
+        if word in ("-e", "--exec", "--"):
+            return rest[i + 1:], moved
+        if word == "~":
+            moved = True
+        elif word == "--cd":
+            moved = True
+            i += 1
+        elif word in _WSL_VALUE_OPTS:
+            i += 1
+        elif not word.startswith("-"):
+            break
+        i += 1
+    return rest[i:], moved
+
+
+def _unwrapped(words):
+    """WORDS without leading `env` / `wsl` wrappers, and whether one of them
+    changed directory; WORDS is None when a wrapper cannot be read."""
+    moved = False
+    while words and _head_name(words[0]) in _WRAPPERS:
+        unwrap = _env_unwrapped if _head_name(words[0]) == "env" else _wsl_unwrapped
+        words, step = unwrap(words[1:])
+        moved = moved or step
+    return words, moved
+
+
+def _cmd_script(rest):
+    """The command line of `cmd /c ...` / `cmd /k ...` (`//c` from Git Bash)."""
+    for i, word in enumerate(rest):
+        if not word.startswith("/"):
+            return None
+        if word.lstrip("/").lower() in ("c", "k"):
+            return " ".join(rest[i + 1:]) or None
+    return None
+
+
+def _launcher_script(words, extra=True):
     """The quoted script of a `bash -c` / `sh -c` / `pwsh -Command` statement
-    (WORDS, quotes removed), or None for any other statement."""
+    (WORDS, quotes removed), or None for any other statement. With EXTRA
+    (S144-Q-127 part 2) also behind `env` / `wsl` wrappers, after a bash
+    `--rcfile x` / `--init-file x`, and for `cmd /c` and `iex`; a script
+    a wrapper moved (`env -C`, `wsl --cd`, `wsl ~`) starts with a `cd` to
+    an unknown directory, so its statements are placed None (fail closed)."""
+    moved = False
+    if extra:
+        words, moved = _unwrapped(words)
+        if not words:
+            return None
+    script = _launcher_head_script(words, extra)
+    if script is not None and moved:
+        script = f"cd {_UNSET} && {script}"
+    return script
+
+
+def _launcher_head_script(words, extra):
+    """_launcher_script for WORDS whose first word is the launcher itself."""
     # A PowerShell `& pwsh ...` needs no case here: _STATEMENT_BREAK splits
     # on a bare `&`, so the launcher is already the first word.
     head = _head_name(words[0])
     rest = words[1:]
+    if extra and head == "cmd":
+        return _cmd_script(rest)
+    if extra and head in _IEX_HEADS:
+        if rest and len(rest[0]) > 1 and rest[0].startswith("-") and \
+                "command".startswith(rest[0][1:].lower()):
+            rest = rest[1:]
+        return " ".join(rest) or None
     if head in _SHELL_LAUNCHERS:
         i = 0
         while i < len(rest):
             word = rest[i]
             if word in _SHELL_VALUE_OPTS:
+                i += 2
+                continue
+            # A dash word is never the value: `bash --rcfile -c 'x'` keeps
+            # the RM-698 reading, so this can only count more.
+            if (extra and word in _BASH_LONG_VALUE_OPTS and i + 1 < len(rest)
+                    and not rest[i + 1].startswith("-")):
                 i += 2
                 continue
             if word == "--" or not word.startswith(("-", "+")):
@@ -2945,7 +3050,7 @@ def _has_bypass(command, depth=0, extra=True):
             words = _tokens(statement.strip().lstrip("({").rstrip(")}").strip())
             if extra and words and _git_words_bypass(words):
                 return True
-            script = _launcher_script(words) if words else None
+            script = _launcher_script(words, extra) if words else None
             if script is not None and _has_bypass(script, depth + 1, extra):
                 return True
     return False
@@ -2991,7 +3096,7 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
         elif head in ("popd", "pop-location"):
             here = None
         else:
-            script = None if legacy else _launcher_script(words)
+            script = None if legacy else _launcher_script(words, extra)
             if script is not None:
                 targets.extend(_placed(script, here, variables, depth + 1, extra=extra))
             if hit:
