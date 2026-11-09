@@ -51,9 +51,11 @@ import math
 from dataclasses import dataclass
 from typing import Optional
 
-from .abilities import AbilitiesNotFound, AbilitiesSnapshot, AbilityForm, load_default
+from .abilities import AbilitiesNotFound, AbilitiesSnapshot, load_default
+from .ability_dps import rank_at_level
 from .dps import _armor_factor
 from .modifier_blocks import classify_modifier_kind
+from .stats import LEVEL_MAX, LEVEL_MIN
 
 __all__ = [
     "SelfShredUplift",
@@ -119,8 +121,12 @@ def _rank_at_level(level: int) -> int:
 
     Self-shred is a ranking/coach substrate, not a per-point optimizer, so
     we use the simple "1 rank per 2 levels, capped at rank 5 (index 4)"
-    heuristic for Q/W/E shreds and clamp ult shreds (Rengar R, 3 ranks)
-    separately by length. Picking the highest rank the level supports
+    heuristic for Q/W/E shreds. It equals the engine's max-first table
+    (``ability_dps.rank_at_level(key, level, max_priority=(key,))``), so a
+    basic shred is read as if its key is maxed first (S144-D-292). An ult
+    shred (Rengar R, 3 ranks) is NOT read here: ``_ult_rank_at_level``
+    gives it the engine's R schedule (S144-D-290). Picking the highest
+    rank the level supports
     matches the "assume the amped condition is met" ranking convention the
     engine uses elsewhere (block_index defaults). The exact per-point order
     does not change the shred magnitude meaningfully for a fight-window
@@ -130,6 +136,21 @@ def _rank_at_level(level: int) -> int:
         level = 1
     # rank index: lvl 1 -> 0, lvl 3 -> 1, ... lvl 9 -> 4 (rank 5).
     return min(4, (level - 1) // 2)
+
+
+def _ult_rank_at_level(level: int) -> int:
+    """0-indexed rank of an ultimate (R) at the given level; -1 before 6.
+
+    S144-D-290: R used to share ``_rank_at_level``'s basic schedule, and
+    ``_shred_at_rank`` only clamps the index to the list, so Rengar R was
+    credited from level 1, read at its rank-3 value from level 5 and
+    labelled "rank 5". This reads ``ability_dps.rank_at_level("R", ...)``,
+    the engine's one R table (ranks at 6 / 11 / 16). The level is clamped
+    to [LEVEL_MIN, LEVEL_MAX] first because ``stats.clamp_level`` raises
+    on an out-of-range level and this module never raises.
+    """
+    lvl = min(LEVEL_MAX, max(LEVEL_MIN, level))
+    return rank_at_level("R", lvl)
 
 
 def _resist_kind_for(attribute: str, damage_type: Optional[str]) -> Optional[str]:
@@ -213,6 +234,7 @@ def _candidate_shreds(
     forms_by_key: dict,
     damage_type_by_form,
     rank: int,
+    ult_rank: Optional[int] = None,
 ) -> list[tuple[str, float, float, str]]:
     """Collect every modeled target_shred from a champion's ability map.
 
@@ -220,9 +242,18 @@ def _candidate_shreds(
     tuples, one per qualifying modifier block (skipping AD-reduction).
     ``source`` is ``"<key>"`` (e.g. ``"E"``); the caller prefixes the
     champion id.
+
+    ``ult_rank`` (S144-D-290), when given, is the rank the ``"R"`` key is
+    read at instead of ``rank``; a negative ``ult_rank`` (ult not learned
+    yet) skips R. ``None`` keeps the old one-rank-for-every-key reading.
     """
     out: list[tuple[str, float, float, str]] = []
     for key, forms in forms_by_key.items():
+        key_rank = rank
+        if ult_rank is not None and str(key) == "R":
+            if ult_rank < 0:
+                continue
+            key_rank = ult_rank
         if not isinstance(forms, (list, tuple)):
             forms = (forms,)
         for form in forms:
@@ -241,7 +272,7 @@ def _candidate_shreds(
                 if extracted is None:
                     continue
                 values, is_pct = extracted
-                mag = _shred_at_rank(values, rank)
+                mag = _shred_at_rank(values, key_rank)
                 if mag <= 0:
                     continue
                 if is_pct:
@@ -323,6 +354,10 @@ def compute_self_shred_uplift(
     per-stack + total; Rumble E base + enhanced) the source with the
     largest mitigation-factor gain wins - that naturally lands on the
     "Total" / "Enhanced" block (the realistic max-shred a fight reaches).
+
+    Rank: a Q/W/E shred is read at ``_rank_at_level`` (maxed first) and an
+    R shred at ``_ult_rank_at_level`` (ranks at 6 / 11 / 16); an R shred
+    before level 6 is not learned, so it is skipped with a note saying so.
     """
     try:
         lvl = int(level)
@@ -368,7 +403,15 @@ def compute_self_shred_uplift(
         )
 
     rank = _rank_at_level(lvl)
-    candidates = _candidate_shreds(forms_by_key, None, rank)
+    ult_rank = _ult_rank_at_level(lvl)
+    candidates = _candidate_shreds(forms_by_key, None, rank, ult_rank=ult_rank)
+    if not candidates and ult_rank < 0 and _candidate_shreds(
+        {"R": forms_by_key.get("R", ())}, None, 0,
+    ):
+        return _no_shred_result(
+            champ, lvl, target_armor, target_mr,
+            f"{champ}'s R shred unlocks at level 6 (level {lvl}) - uplift 0.0",
+        )
     if not candidates:
         return _no_shred_result(
             champ, lvl, target_armor, target_mr,
@@ -423,7 +466,8 @@ def compute_self_shred_uplift(
             notes=(
                 f"{champ} {key} shreds {resist_kind} "
                 f"(flat {flat_shred:.1f} + pct {pct_shred * 100:.0f}%) at "
-                f"rank {rank + 1}: mit {old_mit:.4f} -> {new_mit:.4f}"
+                f"rank {(ult_rank if key == 'R' else rank) + 1}: "
+                f"mit {old_mit:.4f} -> {new_mit:.4f}"
             ),
         )
         if best is None or result.dps_uplift_pct > best.dps_uplift_pct:

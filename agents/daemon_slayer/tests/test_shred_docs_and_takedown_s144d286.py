@@ -86,9 +86,9 @@ def _self_shred_importers() -> set[str]:
     for path in sorted(_DS.glob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and (node.module or "").endswith("self_shred"):
-                out.add(path.stem)
-            elif isinstance(node, ast.Import) and any(a.name.endswith("self_shred") for a in node.names):
+            from_hit = isinstance(node, ast.ImportFrom) and (node.module or "").endswith("self_shred")
+            plain_hit = isinstance(node, ast.Import) and any(a.name.endswith("self_shred") for a in node.names)
+            if from_hit or plain_hit:
                 out.add(path.stem)
     return out
 
