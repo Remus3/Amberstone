@@ -32,7 +32,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from core.polled_json import atomic_write_json
+from core.log_rotation import DEFAULT_MAX_BYTES
+from core.polled_json import atomic_write_bytes, atomic_write_json
 
 _log = logging.getLogger(__name__)
 
@@ -102,6 +103,7 @@ class IncidentLog:
         runtime_dir:    Path,
         retention_days: int          = 7,
         run_id:         Optional[str] = None,
+        max_bytes:      int          = DEFAULT_MAX_BYTES,
     ) -> None:
         # RM-161. `_purge_old_locked` keeps only entries newer than
         # `now - timedelta(days=retention_days)`, so a non-positive window is
@@ -118,15 +120,30 @@ class IncidentLog:
                 "window at or before now matches no entry, so the purge "
                 "would delete the entire incident log instead of trimming it"
             )
+        # S144-Q-123: the byte cap `_enforce_size_cap_locked` applies on
+        # every append. Same reject-before-side-effect rule as above.
+        if max_bytes <= 0:
+            raise ValueError(
+                f"max_bytes must be > 0, got {max_bytes!r} - a cap at or "
+                "below zero would trim the incident log on every append"
+            )
         self.runtime_dir    = Path(runtime_dir)
         self.log_file       = self.runtime_dir / "incident_log.jsonl"
         self.summary_file   = self.runtime_dir / "incident_summary.json"
         self.retention_days = retention_days
+        self.max_bytes      = max_bytes
         self._run_id        = run_id or ""         # context run_id for all entries
         self._session_id    = ""                   # populated by set_process_identity
         self._recent: list[Dict[str, Any]] = []    # in-memory last 50 entries
         self._lock          = threading.Lock()     # serialises ALL state mutations
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
+        # S144-Q-123: the only other `purge_old` caller is the self-monitor
+        # tick, which returns early while its profile says enabled=false - so
+        # with the monitor off the age retention never ran (live log measured
+        # 2026-11-08: 3.8 MB, 2026-04-13 onward, under a 7-day window). The
+        # supervisor builds this object on every start, so purge here too.
+        with self._lock:
+            self._purge_old_locked()
 
     def set_run_id(self, run_id: str) -> None:
         """Update the context run_id. Kept for backward compat; prefer set_process_identity."""
@@ -226,7 +243,42 @@ class IncidentLog:
             with self.log_file.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:  # noqa: BLE001
-            pass  # never let logging crash the monitor
+            return  # never let logging crash the monitor
+        self._enforce_size_cap_locked()
+
+    def _enforce_size_cap_locked(self) -> None:
+        """S144-Q-123: keep the file at or under `max_bytes`. Caller holds lock.
+
+        Over the cap: the age purge first (stale rows go before any fresh
+        one), then, if still over, the oldest lines go until the file is at or
+        under HALF the cap, so the next appends do not rewrite again. The
+        tail reader (`core/metrics_cache.py`) and the 24 h summary read only
+        the newest rows, so dropping the oldest is safe for both. Never raises.
+        """
+        try:
+            if self.log_file.stat().st_size <= self.max_bytes:
+                return
+            self._purge_old_locked()
+            data = self.log_file.read_bytes()
+        except Exception:  # noqa: BLE001
+            return
+        if len(data) <= self.max_bytes:
+            return
+        budget = self.max_bytes // 2
+        kept: list[bytes] = []
+        total = 0
+        for line in reversed(data.splitlines(keepends=True)):
+            # The newest row always survives, even one wider than the budget
+            # (`trigger` is not length-capped the way `detail` is).
+            if kept and total + len(line) > budget:
+                break
+            kept.append(line)
+            total += len(line)
+        kept.reverse()
+        try:
+            atomic_write_bytes(self.log_file, b"".join(kept))
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("incident log trim failed: %s", exc)
 
     def _load_recent_entries_locked(self, hours: int = 24) -> list[Dict[str, Any]]:
         """Load entries from last N hours from the .jsonl file. Caller must hold lock."""
@@ -269,8 +321,12 @@ class IncidentLog:
                 except Exception:  # noqa: BLE001
                     kept.append(line)  # keep malformed lines
             if removed:
-                self.log_file.write_text("\n".join(kept) + "\n", encoding="utf-8",
-                                         newline="\n")
+                # S144-Q-123: atomic (scratch + replace) - metrics_cache
+                # tail-reads this file from another process mid-rewrite.
+                atomic_write_bytes(
+                    self.log_file,
+                    "".join(line + "\n" for line in kept).encode("utf-8"),
+                )
         except Exception:  # noqa: BLE001
             pass
         return removed
