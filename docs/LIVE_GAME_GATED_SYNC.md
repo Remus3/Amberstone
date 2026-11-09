@@ -1513,6 +1513,54 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   `assumed_stacks`. **NOT a clean transport flip:** `apply_passive_damage` is deliberately /dps-scoped
   (R7/R12 precedent, `rank_items` does not forward it), the on_hit remainder needs net-new cadence
   math, and `assumed_stacks` needs a live stack feed. Own-build re-ranks are unverifiable headless.
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 124, 2026-11-09, S144-G-111; NOT a tick, NOT a
+  re-open; no game, RC :8888 not answering, read at `d2d4840f1` + this lane, DS ENGINE 1.291.0,
+  patch 16.22.1).** (1) CITE DRIFT, the first clause is STALE: `apply_passive_damage` is no longer
+  /dps-scoped. RM-42 wired it into `rank_items` (`agents/daemon_slayer/rank.py:1001`, forwarded to
+  BOTH `compute_dps` calls at `:1252` and `:1378`, rationale comment `:1184-1193`), and the server
+  parses it on exactly three routes: `/dps` (`_route_dps`, `agents/daemon_slayer/server.py:706`,
+  default False), `/rank` (`_route_rank`, `:868`, default False) and `/rank-onhit`
+  (`_route_rank_onhit`, `:2223`, default TRUE). No other route parses it, so the bruiser and mage
+  scorers never see it. On the RC side `rank_for` (`core/daemon_slayer_client.py:728`, body key only
+  when True at `:834-835`) and `rank_for_primary_archetype` (`:3058`) default False. Outside
+  `core/daemon_slayer_client.py`, `agents/daemon_slayer/` and `tests/` the flag is named only by the
+  hand-run `tools/gated_ds_flag_eyeball.py` (`:10`, `:97`, the G2-47 eyeball), so the ONE live-app
+  sender is the onhit branch, which hard-codes `apply_passive_damage=True` into `rank_onhit_for`
+  (`:3406`). The carry half of this clause is now G2-47's row (GATE 2 below: RM-42 on the CARRY ranker,
+  flipped TOGETHER with `apply_extra_shot_procs`, never singly). (2) THE ROW HOLDS on the
+  other two clauses, and its scope is LARGER than filed. The every-AA allowlist
+  `_AA_ROUTED_ON_HIT_KEYS` (`agents/daemon_slayer/_passive_damage_overrides.py:1205`) now holds 6
+  keys (Warwick P, Orianna P, Gwen P, Kayle E, KogMaw W, Akshan P); the registry
+  `_PASSIVE_DAMAGE_OVERRIDES` holds 34 entries, 26 with cadence `on_hit`, so 20 on_hit entries stay
+  unrouted, not 4. The 4 the row names (Lux, Ziggs, Akali, Kha'Zix) are all still unrouted (measured
+  in-process this cycle); `compute_dps` reads only the allowlist (`dps.py:1632-1660`,
+  `aa_routed_on_hit_entry`). `assumed_stacks` is a build-time constant on 4 per-stack entries
+  (Orianna 1.0 and Kai'Sa 2.0 on_hit, Darius 3.0 and Twitch 3.0 dot; fold at
+  `_passive_damage_overrides.py:1123`) and no RC module reads or feeds a stack count. Both are
+  ENGINE (Tier-2) code first; no game can drain them today. (3) WHAT A GAME CAN SEE TODAY:
+  `core.archetype_picks.get_archetype_for` resolves Gwen / Kayle / KogMaw to primary `onhit`
+  (default source, measured this cycle), so a live game on one of those three already sends the flag
+  True through `/rank-onhit`; that render is G4-17's row (`tools/gated_g417_onhit_render.py`), not
+  this one. Akshan and Kai'Sa resolve to `carry` (flag False on the wire), Warwick to `bruiser` and
+  Orianna to `mage` (routes that do not parse it), so the allowlist credit for Akshan / Warwick /
+  Orianna reaches no live surface at all. NO SECOND PREDICATE HERE: the Akshan carry flip is graded
+  under G2-47 and its READY block (`tools/gated_ds_flag_eyeball.py --row G2-47`), never twice. The
+  one thing this row adds to that grade is a WIRE check, stated now and graded only after a producer
+  flips the carry flag (a merger follow-up, not this lane's): in a live SR or ARAM game on Akshan,
+  PASS iff a timestamped record of the `/rank` request body carries BOTH `apply_passive_damage: true`
+  and `apply_extra_shot_procs: true`, `champion` equal to the canonical id of my roster row's
+  `championName` (`/api/state` -> `liveclient.allPlayers[]`, matched to `liveclient.activePlayer` as
+  `tools/gated_g417_onhit_render.py` `_me_row` does) and `item_ids` equal to
+  `liveclient.owned_item_ids` from an `/api/state` read within 10 s of game time of the body. FAIL if
+  either key is absent (the default-OFF path ran, or one half of the event flipped singly).
+  EVIDENCE: the body, the `/api/state` read, both timestamps, `game_time_s`, mode and queue.
+  SUBSTITUTION: a hand-run eyeball body (that tool sends the flags itself) or a `/rank` reply
+  computed with the flags on answers only whether the seam COMPUTES; it proves nothing about whether
+  RC SENT it, and an onhit render on Gwen / Kayle / KogMaw is G4-17's evidence, never this row's.
+  PROPOSAL, NOT A MOVE: the cadence-math and stack-feed
+  clauses are engine work with no live half until a stack source exists (no RC reader of one exists;
+  whether `:2999` exposes one was NOT probed this cycle, no game was up); a human may move them under
+  "Not actually live-gated" or to the DS roadmap.
 - **G2-22** (was B4) Anti-tank P3.2 - call `antitank.compute_antitank_live` with the live build +
   eyeball scaled %max-HP magnitudes. R93 added Darius E (Apprehend) as a PERCENT_PEN/SUSTAINED row
   (compute_antitank 0.0 -> 0.455, shreds_resist True), so this same eyeball surfaces Darius' shred.
