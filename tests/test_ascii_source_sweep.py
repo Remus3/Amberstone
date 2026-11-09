@@ -86,7 +86,9 @@ _BASELINE: dict[str, tuple[str, ...]] = {
     "web/js/panels/augment_reco.js": ("U+00B7",),
     "web/js/panels/item_build.js": ("U+00B7", "U+2192", "U+2713"),
     "web/js/panels/last_match.js": ("U+00B7",),
-    "web/js/panels/map_state.js": ("U+00B7", "U+26A0", "U+26D4", "U+2713"),
+    # S144-U-246: the zone-pill labels and the ?debug=1 readout moved into
+    # _updateZone as \u escapes (same rendered text); two middle dots remain.
+    "web/js/panels/map_state.js": ("U+00B7",),
     "web/js/panels/next.js": ("U+00B7", "U+2192", "U+25B6", "U+2713", "U+2717"),
     "web/js/panels/right_now.js": (
         "U+00B7", "U+1F6A8", "U+2022", "U+2192", "U+2212", "U+25B6", "U+25BA",

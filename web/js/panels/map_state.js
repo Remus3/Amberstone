@@ -338,9 +338,6 @@ function renderMinimapCanvases(p) {
   }
   const myTeam = (p.my_team || "blue").toLowerCase();
   document.body.dataset.myteam = myTeam;
-  // Y-07 tier, by perspective (matches the ZOI tint above).
-  const myColor = _rgbCss(_dataRGB("--data-ally"));
-  const enemyColor = _rgbCss(_dataRGB("--data-enemy"));
 
   // Drop positions for dead champions - they're not exerting pressure.
   // *_respawns keys -> remaining seconds; >0 = dead, skip contribution.
@@ -354,6 +351,89 @@ function renderMinimapCanvases(p) {
     Object.entries(p.positions.allies || {}).filter(([n]) => !deadA.has(n)));
   const enemies = Object.fromEntries(
     Object.entries(p.positions.enemies || {}).filter(([n]) => !deadE.has(n)));
+
+  const selfKey = _champKey(p.champion);
+  let selfPos = null;
+  for (const name of Object.keys(allies)) {
+    if (allies[name] && _champKey(name) === selfKey) selfPos = allies[name];
+  }
+  _updateZone(p, allies, enemies, myTeam, selfKey, selfPos);
+  // S144-U-246: the stack sits in the #minimap panel inside the top-level
+  // <main>, which every view hides (header.css) and the overlay shell
+  // hides (overlay.css), so these 720x720 canvases are never on screen.
+  // The zone pill above is this function's one visible output; the paint
+  // below runs only while the stack has a layout box (the S144-U-227 poll
+  // gate), and comes back by itself on the next tick if a view renders it.
+  // Guard: tests/snapshot_panels/test_minimap_hidden_canvas_paint.py.
+  if (stack.getClientRects().length === 0) return;
+  _paintMinimapCanvases(p, zoiCanvas, posCanvas, allies, enemies, myTeam, selfKey);
+}
+
+function _champKey(name) {
+  return String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// Pressure at your own position drives the header zone pill (and
+// body[data-zone]); no position resets both (S144-U-244).
+function _updateZone(p, allies, enemies, myTeam, selfKey, selfPos) {
+  if (!selfPos) {
+    _clearZone();
+    return;
+  }
+  const myIsRed = myTeam === "red";
+  const baselineSign = myIsRed ? -1 : 1;
+  let netAtSelf = (selfPos.y - selfPos.x) * ZOI.baselineStrength * baselineSign;
+  const _R = _zoiRadius(p.game_time_s);
+  for (const key of Object.keys(allies)) {
+    const q = allies[key]; if (!q || _champKey(key) === selfKey) continue;
+    const dx = selfPos.x - q.x, dy = selfPos.y - q.y;
+    const d2 = (dx*dx + dy*dy) / (_R * _R);
+    netAtSelf += _bubbleKernel(d2);
+  }
+  for (const key of Object.keys(enemies)) {
+    const q = enemies[key]; if (!q) continue;
+    const dx = selfPos.x - q.x, dy = selfPos.y - q.y;
+    const d2 = (dx*dx + dy*dy) / (_R * _R);
+    netAtSelf -= _bubbleKernel(d2);
+  }
+  // ?debug=1 - show ZOI pressure readouts under the Active Match map.
+  if (/[?&]debug=1/.test(location.search)) {
+    const dbg = el("zoi-debug");
+    if (dbg) {
+      dbg.classList.remove("hidden");
+      dbg.textContent =
+        `R=${_zoiRadius(p.game_time_s).toFixed(2)} \u00B7 baseline ${ZOI.baselineStrength}` +
+        ` \u00B7 deadband ${ZOI.deadband} \u00B7 self-pressure ${netAtSelf.toFixed(2)}`;
+    }
+  }
+  const zonePill = el("zone-pill"), zoneLabel = el("zone-label");
+  if (zonePill && zoneLabel) {
+    zonePill.classList.remove("hidden");
+    if (netAtSelf < -ZOI.deadband) {
+      // Deep-enemy-territory escalation: < -3*DB is the "you are
+      // clearly deeper than just adjacent to enemy influence" bar.
+      // Empirically: sr_gank_scenario (3 enemies stacked, 1 isolated ally)
+      // clears the bar; teamfight (5v5) does NOT.
+      const deep = netAtSelf < -ZOI.deadband * 3;
+      zoneLabel.textContent = deep ? "\u26D4 DEEP ENEMY" : "\u26A0 ENEMY ZONE";
+      zonePill.className = "zone-pill zone-enemy" + (deep ? " zone-deep" : "");
+      document.body.dataset.zone = deep ? "deep" : "enemy";
+    } else if (netAtSelf > ZOI.deadband) {
+      zoneLabel.textContent = "\u2713 SAFE";
+      zonePill.className = "zone-pill zone-safe";
+      document.body.dataset.zone = "safe";
+    } else {
+      zoneLabel.textContent = "- DMZ";
+      zonePill.className = "zone-pill zone-dmz";
+      document.body.dataset.zone = "dmz";
+    }
+  }
+}
+
+function _paintMinimapCanvases(p, zoiCanvas, posCanvas, allies, enemies, myTeam, selfKey) {
+  // Y-07 tier, by perspective (matches the ZOI tint above).
+  const myColor = _rgbCss(_dataRGB("--data-ally"));
+  const enemyColor = _rgbCss(_dataRGB("--data-enemy"));
 
   // Paint ZOI layer first, dots on top.
   const zctx = zoiCanvas.getContext("2d");
@@ -449,66 +529,9 @@ function renderMinimapCanvases(p) {
       ctx.stroke();
     }
   }
-  const selfKey = String(p.champion || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  let selfPos = null;
   for (const name of Object.keys(allies)) {
     const pos = allies[name]; if (!pos) continue;
-    const isSelf = String(name).toLowerCase().replace(/[^a-z0-9]/g, "") === selfKey;
-    if (isSelf) selfPos = pos;
-    drawDot(pos.x, pos.y, myColor, isSelf);
-  }
-  // Compute pressure at user's position to surface a "zone" chip.
-  if (selfPos) {
-    const myIsRed = myTeam === "red";
-    const baselineSign = myIsRed ? -1 : 1;
-    let netAtSelf = (selfPos.y - selfPos.x) * ZOI.baselineStrength * baselineSign;
-    const _R = _zoiRadius(p.game_time_s);
-    for (const key of Object.keys(allies)) {
-      const q = allies[key]; if (!q || key.toLowerCase().replace(/[^a-z0-9]/g,"") === selfKey) continue;
-      const dx = selfPos.x - q.x, dy = selfPos.y - q.y;
-      const d2 = (dx*dx + dy*dy) / (_R * _R);
-      netAtSelf += _bubbleKernel(d2);
-    }
-    for (const key of Object.keys(enemies)) {
-      const q = enemies[key]; if (!q) continue;
-      const dx = selfPos.x - q.x, dy = selfPos.y - q.y;
-      const d2 = (dx*dx + dy*dy) / (_R * _R);
-      netAtSelf -= _bubbleKernel(d2);
-    }
-    // ?debug=1 - show ZOI pressure readouts under the Active Match map.
-    if (/[?&]debug=1/.test(location.search)) {
-      const dbg = el("zoi-debug");
-      if (dbg) {
-        dbg.classList.remove("hidden");
-        dbg.textContent =
-          `R=${_zoiRadius(p.game_time_s).toFixed(2)} · baseline ${ZOI.baselineStrength}` +
-          ` · deadband ${ZOI.deadband} · self-pressure ${netAtSelf.toFixed(2)}`;
-      }
-    }
-    const zonePill = el("zone-pill"), zoneLabel = el("zone-label");
-    if (zonePill && zoneLabel) {
-      zonePill.classList.remove("hidden");
-      if (netAtSelf < -ZOI.deadband) {
-        // Deep-enemy-territory escalation: < -3*DB is the "you are
-        // clearly deeper than just adjacent to enemy influence" bar.
-        // Empirically: sr_gank_scenario (3 enemies stacked, 1 isolated ally)
-        // clears the bar; teamfight (5v5) does NOT.
-        const deep = netAtSelf < -ZOI.deadband * 3;
-        zoneLabel.textContent = deep ? "⛔ DEEP ENEMY" : "⚠ ENEMY ZONE";
-        zonePill.className = "zone-pill zone-enemy" + (deep ? " zone-deep" : "");
-        document.body.dataset.zone = deep ? "deep" : "enemy";
-      } else if (netAtSelf > ZOI.deadband) {
-        zoneLabel.textContent = "✓ SAFE";
-        zonePill.className = "zone-pill zone-safe";
-        document.body.dataset.zone = "safe";
-      } else {
-        zoneLabel.textContent = "- DMZ";
-        zonePill.className = "zone-pill zone-dmz";
-        document.body.dataset.zone = "dmz";
-      }
-    }
-  } else {
-    _clearZone();
+    drawDot(pos.x, pos.y, myColor, _champKey(name) === selfKey);
   }
   // Ghost-marker bookkeeping (2026-04-26 user request): when an enemy
   // dot hasn't moved in a few seconds, fade it and ring it with a
