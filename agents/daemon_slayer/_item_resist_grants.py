@@ -96,8 +96,8 @@ rather than the base's 8-stack Steadfast; those stack economics are deliberately
 NOT modelled and both rows keep the shared at-max-stacks midpoint.
 
 Only base + Arena (22xxxx) mirrors resolve in the DS item index
-(``data/daemon_slayer/16.13.1/items.json``, 706 items) - no ARAM (32xxxx) mirror
-of either exists, so ARAM uses the base id. Each of the four ids was confirmed
+(``data/daemon_slayer/16.13.1/items.json``, 706 items) - no 32xxxx copy of
+either exists (that family is map 11 only), so ARAM uses the base id. Each of the four ids was confirmed
 present in the index before adding.
 
 Why a NEW registry (not the champion ``_passive_resist_overrides``): that registry

@@ -39,9 +39,10 @@ the name "Unending Despair"):
     ``_item_revive.py``.
 
 NOT REGISTERED:
-  * 322502 (ARAM mirror) - DOES NOT EXIST. Unlike Riftmaker or Archangel's,
-    Unending Despair has no 32xxxx mirror; base 2502 IS the ARAM item
-    (``maps["12"] == True``). Verified against the item index, not assumed.
+  * 322502 (32xxxx copy) - DOES NOT EXIST. Unlike Archangel's, Unending
+    Despair has no 32xxxx copy (a 32xxxx copy is map 11 only anyway);
+    base 2502 is the item ARAM buys (``maps["12"] == True``). Verified
+    against the item index, not assumed.
 
 R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
 ``core.daemon_slayer_resolver.name_to_id``, which hands the engine ``222502``

@@ -955,7 +955,7 @@ class ItemEffect:
     # flag must both be set); appended at the END per the dataclass convention.
     basic_attack_damage_reduction: float = 0.0
     # R86 (1.182.0): item-keyed enemy ATTACK-SPEED-SLOW aura (defensive EHP).
-    # Frozen Heart (SR 3110 / ARAM 323110 / Arena 223110) "Winter's Caress"
+    # Frozen Heart (SR 3110 / map-11 323110 / Arena 223110) "Winter's Caress"
     # reduces nearby enemy Attack Speed by 20% (DDragon 16.13.1) but was a
     # defensive_only NOTE with no structured value, so the EHP scorer gave its
     # signature anti-AA aura ZERO credit though the item's armor already counted.

@@ -42,12 +42,13 @@ before adding; adversarial 4th-item hunt returned none missed):
   * 3814   - Edge of Night (base).
   * 223814 - Edge of Night (Arena mode-mirror; same nominal).
   * 4632   - Verdant Barrier (the Banshee's / Edge of Night component that keeps
-    the Annul spell shield; no Arena / ARAM mirror of its own in the index).
+    the Annul spell shield; no Arena 22xxxx or 32xxxx copy of its own in the
+    index).
 
 DROPPED (NOT present in the DS item index - an item id the engine never resolves
 would be dead weight, the ``_item_revive`` dropped-mirror convention):
-  * 323102 / 323814 - Banshee's / Edge of Night ARAM mirrors.
-  * 224632 / 324632 - Verdant Barrier Arena / ARAM mirrors.
+  * 323102 / 323814 - Banshee's / Edge of Night 32xxxx copies.
+  * 224632 / 324632 - Verdant Barrier Arena / 32xxxx copies.
 
 DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class,
 mirroring the champion registry's exclusion discipline):

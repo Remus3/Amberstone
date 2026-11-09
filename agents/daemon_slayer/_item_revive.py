@@ -34,7 +34,7 @@ items.json`` before adding):
     carry).
 
 DROPPED / DEFERRED:
-  * 323026 (ARAM mirror) - NOT present in the DS item index; intentionally
+  * 323026 (32xxxx copy) - NOT present in the DS item index; intentionally
     omitted (same convention as ``_item_omnivamp.py`` dropping 324633 - an item
     id the engine never resolves would be dead weight).
 

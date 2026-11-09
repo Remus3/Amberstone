@@ -51,9 +51,10 @@ passives scan for 'health' + 'mana' co-occurrence returned exactly this family):
     which is NOT this credit).
   * 223119 / 223121 - Arena mode-mirrors (same nominal; the ``_item_revive`` /
     ``_item_survival_window`` Arena-mirror convention).
-  * 323119 / 323121 - ARAM mode-mirrors. UNLIKE ``_item_revive``'s dropped ARAM
-    Guardian-Angel mirror (323026, absent from the index), these ARAM mirrors ARE
-    present in the DS item index, so they are included.
+  * 323119 / 323121 - the map-11 (SR) copies; live 16.22.1 maps them to 11
+    only, never 12. UNLIKE ``_item_revive``'s dropped Guardian-Angel copy
+    (323026, absent from the index), these copies ARE present in the DS item
+    index, so they are included.
 
 DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
   * MANA -> DAMAGE "Awe" twins (Manamune 3004 / Muramana 3042 = 2% max mana as
@@ -113,8 +114,8 @@ _ITEM_MANA_HEALTH_PCT: dict[str, float] = {
     "3121":   0.15,  # Fimbulwinter - Awe
     "223119": 0.15,  # Winter's Approach (Arena mirror; base nominal)
     "223121": 0.15,  # Fimbulwinter (Arena mirror; base nominal)
-    "323119": 0.15,  # Winter's Approach (ARAM mirror; base nominal)
-    "323121": 0.15,  # Fimbulwinter (ARAM mirror; base nominal)
+    "323119": 0.15,  # Winter's Approach (map-11 copy; base nominal)
+    "323121": 0.15,  # Fimbulwinter (map-11 copy; base nominal)
 }
 
 

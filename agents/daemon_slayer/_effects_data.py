@@ -3962,7 +3962,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
-    # -- Phase 4 batch 42 (2026-05-04): 222xxx/224xxx Arena + 32xxxx ARAM mirrors --
+    # -- Phase 4 batch 42 (2026-05-04): 222xxx/224xxx Arena + 32xxxx map-11 copies --
     # 35 entries: 10 active + 25 defensive_only.
     # All share the same passive coefficients as their SR counterparts
     # (ID - 220000 for 22xxxx; ID - 320000 for 32xxxx).
@@ -4136,25 +4136,25 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Stormsurge (Arena 224646): same as SR 4646 - 15 flat magic pen + Squall 125 (+10% AP) magic / 30s",
     ),
 
-    # -- 32xxxx ARAM mirrors ------------------------------------------------
+    # -- 32xxxx map-11 (SR) copies -----------------------------------------
 
     "323003": ItemEffect(
         item_id="323003",
         name="Archangel's Staff",
         bonus_ap_pct_bonus_mp=0.01,
-        note="Archangel's Staff (ARAM 323003): same as SR 3003 - Awe +1% bonus mana as AP",
+        note="Archangel's Staff (map-11 copy 323003): same as SR 3003 - Awe +1% bonus mana as AP",
     ),
     "323004": ItemEffect(
         item_id="323004",
         name="Manamune",
         bonus_ad_pct_max_mp=0.02,
-        note="Manamune (ARAM 323004): same as SR 3004 - Awe +2% max mana as bonus AD",
+        note="Manamune (map-11 copy 323004): same as SR 3004 - Awe +2% max mana as bonus AD",
     ),
     "323050": ItemEffect(
         item_id="323050",
         name="Zeke's Convergence",
         defensive_only=True,
-        # R70 slice A: ARAM mirror of SR 3050 - same Frostfire Tempest
+        # R70 slice A: map-11 copy of SR 3050 - same Frostfire Tempest
         # numbers per the mirror convention (no Meraki entry of its own).
         # SELF storm on ult cast, NOT the stale "Conduit ally aura".
         # Cryocombustion haste lives in _item_ability_haste.py; DPS side
@@ -4163,7 +4163,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         magic_burst_base=150.0,
         magic_burst_ap_ratio=0.0,
         note=(
-            "Zeke's Convergence (ARAM 323050): Frostfire Tempest SELF "
+            "Zeke's Convergence (map-11 copy 323050): Frostfire Tempest SELF "
             "storm on ult cast (150 flat, mirrors SR 3050) on the DSV6 "
             "assume_magic_burst seam; Cryocombustion haste lives in "
             "_item_ability_haste.py; DPS side intentionally unmodeled"
@@ -4173,19 +4173,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="323075",
         name="Thornmail",
         defensive_only=True,
-        note="Thornmail (ARAM 323075): Thorns reflected damage - counter-damage on being hit; no self proc",
+        note="Thornmail (map-11 copy 323075): Thorns reflected damage - counter-damage on being hit; no self proc",
     ),
     "323107": ItemEffect(
         item_id="323107",
         name="Redemption",
         defensive_only=True,
-        note="Redemption (ARAM 323107): Sanctify active AoE heal - support, no self DPS",
+        note="Redemption (map-11 copy 323107): Sanctify active AoE heal - support, no self DPS",
     ),
     "323109": ItemEffect(
         item_id="323109",
         name="Knight's Vow",
         defensive_only=True,
-        note="Knight's Vow (ARAM 323109): Pledge ally bond - support, no self DPS",
+        note="Knight's Vow (map-11 copy 323109): Pledge ally bond - support, no self DPS",
     ),
     "323110": ItemEffect(
         item_id="323110",
@@ -4193,37 +4193,37 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True,
         # R86 (1.182.0): mirror of SR 3110 - -20% nearby enemy AS physical-EHP seam.
         enemy_attack_speed_slow=0.20,
-        note="Frozen Heart (ARAM 323110): Winter's Caress AS-slow aura - defensive, no DPS proc",
+        note="Frozen Heart (map-11 copy 323110): Winter's Caress AS-slow aura - defensive, no DPS proc",
     ),
     "323119": ItemEffect(
         item_id="323119",
         name="Winter's Approach",
         defensive_only=True,
-        note="Winter's Approach (ARAM 323119): stat-stack ramp to Fimbulwinter - no DPS proc",
+        note="Winter's Approach (map-11 copy 323119): stat-stack ramp to Fimbulwinter - no DPS proc",
     ),
     "323190": ItemEffect(
         item_id="323190",
         name="Locket of the Iron Solari",
         defensive_only=True,
-        note="Locket (ARAM 323190): Consecrate/Devotion shield aura - support, no self DPS",
+        note="Locket (map-11 copy 323190): Consecrate/Devotion shield aura - support, no self DPS",
     ),
     "323222": ItemEffect(
         item_id="323222",
         name="Mikael's Blessing",
         defensive_only=True,
-        note="Mikael's Blessing (ARAM 323222): Purify active CC cleanse - support, no self DPS",
+        note="Mikael's Blessing (map-11 copy 323222): Purify active CC cleanse - support, no self DPS",
     ),
     "323504": ItemEffect(
         item_id="323504",
         name="Ardent Censer",
         defensive_only=True,
-        note="Ardent Censer (ARAM 323504): Sanctify heal/shield buff - support aura, no self DPS",
+        note="Ardent Censer (map-11 copy 323504): Sanctify heal/shield buff - support aura, no self DPS",
     ),
     "324005": ItemEffect(
         item_id="324005",
         name="Imperial Mandate",
         defensive_only=True,
-        note="Imperial Mandate (ARAM 324005): Coordinated Fire - support proc, no self DPS",
+        note="Imperial Mandate (map-11 copy 324005): Coordinated Fire - support proc, no self DPS",
     ),
     "326616": ItemEffect(
         item_id="326616",
@@ -4266,7 +4266,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="328020",
         name="Abyssal Mask",
         magic_amp_pct=0.12,
-        note="Abyssal Mask (ARAM 328020): same as SR 8020 - Unmake 12% more magic damage to nearby enemies",
+        note="Abyssal Mask (map-11 copy 328020): same as SR 8020 - Unmake 12% more magic damage to nearby enemies",
     ),
 
     # -- Phase 4 batch 43 (2026-05-04): 223xxx Arena mirrors (base 3xxx) --
@@ -5466,10 +5466,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Vigilant Wardstone (4643): support/vision - no DPS contribution",
     ),
 
-    # -- Phase 4 batch 47 (2026-05-04): Arena 22xxxx/32xxxx remaining + 221xxx components --
+    # -- Phase 4 batch 47 (2026-05-04): Arena 22xxxx + map-11 32xxxx remaining + 221xxx components --
     # ~42 items: 16 active, 26 defensive_only
 
-    # --- active: 22xxxx/32xxxx mirrors with DPS procs ---
+    # --- active: 22xxxx / 32xxxx copies with DPS procs ---
     "223001": ItemEffect(
         item_id="223001",
         name="Evenshroud",
@@ -5538,7 +5538,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         bonus_ap_pct_bonus_mp=0.02,
         unique_passive_key="lifeline",
         shield=ItemShield(max_mana_scaling=0.18, damage_type=ANY, default_off=True),
-        note="Seraph's Embrace (ARAM 323040): same as SR 3040 - Awe 2% bonus mana as AP + Lifeline 18% max mana generic shield at <30% HP (Meraki 16.13.1), default-off opt-in",
+        note="Seraph's Embrace (map-11 copy 323040): same as SR 3040 - Awe 2% bonus mana as AP + Lifeline 18% max mana generic shield at <30% HP (Meraki 16.13.1), default-off opt-in",
     ),
     "323042": ItemEffect(
         item_id="323042",
@@ -5550,7 +5550,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
-        note="Muramana (ARAM 323042): same as SR 3042 - Awe 2% max mana as AD + Shock 1.2% max mana physical on-hit",
+        note="Muramana (map-11 copy 323042): same as SR 3042 - Awe 2% max mana as AD + Shock 1.2% max mana physical on-hit",
     ),
 
     # --- active: 221xxx Arena components (stats-only, no proc) ---
@@ -5604,7 +5604,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Cappa Juice (222141): 500g Arena consumable - no DPS contribution",
     ),
 
-    # --- defensive_only: 22xxxx/32xxxx Arena pool ---
+    # --- defensive_only: Arena 22xxxx + map-11 32xxxx pool ---
     "223002": ItemEffect(
         item_id="223002",
         name="Trailblazer",
@@ -5774,31 +5774,31 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="322065",
         name="Shurelya's Battlesong",
         defensive_only=True,
-        note="Shurelya's Battlesong (ARAM 322065): same as SR 2065 - Inspire MS burst aura, no self DPS",
+        note="Shurelya's Battlesong (map-11 copy 322065): same as SR 2065 - Inspire MS burst aura, no self DPS",
     ),
     "322526": ItemEffect(
         item_id="322526",
         name="Whispering Circlet",
         defensive_only=True,
-        note="Whispering Circlet (ARAM 322526): HP + mana regen + heal/shield power - support, no DPS proc",
+        note="Whispering Circlet (map-11 copy 322526): HP + mana regen + heal/shield power - support, no DPS proc",
     ),
     "322530": ItemEffect(
         item_id="322530",
         name="Diadem of Songs",
         defensive_only=True,
-        note="Diadem of Songs (ARAM 322530): HP + mana - support/mana item, no DPS proc",
+        note="Diadem of Songs (map-11 copy 322530): HP + mana - support/mana item, no DPS proc",
     ),
     "323002": ItemEffect(
         item_id="323002",
         name="Trailblazer",
         defensive_only=True,
-        note="Trailblazer (ARAM 323002): same as SR 3002 - Pathfinder proc conditional on dash, not modeled",
+        note="Trailblazer (map-11 copy 323002): same as SR 3002 - Pathfinder proc conditional on dash, not modeled",
     ),
     "323070": ItemEffect(
         item_id="323070",
         name="Tear of the Goddess",
         defensive_only=True,
-        note="Tear of the Goddess (ARAM 323070): same as SR 3070 - mana component, no DPS; upgrades to Muramana/Archangel's",
+        note="Tear of the Goddess (map-11 copy 323070): same as SR 3070 - mana component, no DPS; upgrades to Muramana/Archangel's",
     ),
     "323121": ItemEffect(
         item_id="323121",
@@ -5808,7 +5808,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         shield=ItemShield(
             flat=100.0, max_mana_scaling=0.045, damage_type=ANY, default_off=True
         ),
-        note="Fimbulwinter (ARAM 323121): same as SR 3121 - Everlasting 100 +4.5% max mana generic shield (opt-in), no DPS proc",
+        note="Fimbulwinter (map-11 copy 323121): same as SR 3121 - Everlasting 100 +4.5% max mana generic shield (opt-in), no DPS proc",
     ),
 
     # -- Phase 4 batch 48 (2026-05-04): Core 1xxx tier-1 components ----------
@@ -5961,7 +5961,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="126697",
         name="Hubris",
         lethality=18.0,
-        # DSV2 (1.125.0): ARAM mirror of SR 6697 Eminence takedown AD.
+        # DSV2 (1.125.0): ARAM (map 12) copy 126697 of SR 6697 Eminence takedown AD.
         # RM-808 (a): CommunityDragon 16.21 Items/126697 BaseADBonusMelee 15 x
         # BaseADRangedMult 0.667, ADPerStatueMelee 2 x ADPerStatueRangedMult
         # 0.5 (16.20 stated the same split as values: 15 / 10 base, 2 / 1 per

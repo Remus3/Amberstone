@@ -33,7 +33,7 @@ def sum_wielder_hsp_pct(
     the seam callers gate on ``assume_hsp_amp`` so a 0.0 return is byte-identical.
 
     R143: mode-mirror ids resolve natively - the live resolver hands this
-    function ``32xxxx`` (SR/ARAM mirror) and ``22xxxx`` (Arena mirror) ids, which
+    function ``32xxxx`` (map-11 SR copy) and ``22xxxx`` (Arena mirror) ids, which
     are registered explicitly because their magnitudes DIFFER from the SR line
     (Arena Redemption 12% vs SR 10%). Never normalize by stripping the prefix.
 

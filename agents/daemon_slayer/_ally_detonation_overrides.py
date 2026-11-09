@@ -56,7 +56,7 @@ Handoff EXECUTED (R43, 2026-06-30) - ``_NONFIT_DETONATION_CANDIDATES`` is EMPTY:
     current-HP detonation is GONE; only the stale Meraki mirror, content_patch=None,
     still carries it). R41 recorded it as a non-fit handoff; R43 seeded the reworked
     7% Vulnerable into ``_target_vulnerability_overrides`` (4005 / Arena 224005 /
-    ARAM 324005) and removed it from this seam. No live item carries a current-HP
+    map-11 copy 324005) and removed it from this seam. No live item carries a current-HP
     ally detonation today; future detonation non-fits are recorded here with their
     real mechanic, mirroring the ``_NONFIT_VULN_CANDIDATES`` INERT-with-reason doctrine.
 """

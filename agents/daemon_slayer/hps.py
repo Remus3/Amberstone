@@ -1027,10 +1027,10 @@ def rank_items_by_hps(
         only_ids = {str(i) for i in only_item_ids}
     elif enchanter_only:
         # Restrict the candidate pool to the curated enchanter item registry.
-        # Mode-legal mirrors of the SR ids (Arena 22xxxx / ARAM 32xxxx) are
+        # Mode-legal copies of the SR ids (Arena 22xxxx / map-11 32xxxx) are
         # included by joining against ITEM_EFFECTS name match for the same name.
         registry_ids = set(snap_formulas.item_ids())
-        # Also accept Arena/ARAM mirrors by item name match (effects.py uses
+        # Also accept Arena / map-11 copies by item name match (effects.py uses
         # the same name across mode variants).
         names_in_registry = {snap_formulas.get_formula(i).name for i in registry_ids}
         for iid, eff in ITEM_EFFECTS.items():
@@ -1086,7 +1086,7 @@ def rank_items_by_hps(
         if shares_dead_unique and filter_shared_uniques:
             continue
         new_build = current_ids + (item_id,)
-        # For Arena/ARAM mirror items, resolve through the formula registry
+        # For Arena / map-11 copy items, resolve through the formula registry
         # only if the mirror id itself is registered; otherwise the
         # contribution will be 0 and the candidate ranks at the bottom.
         try:

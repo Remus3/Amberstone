@@ -45,14 +45,14 @@ adding):
     the Arena copy shares the identical Time Stop active (same-nominal carry,
     the ``_item_revive`` / ``_item_omnivamp`` Arena-mirror convention).
   * 2420   - Seeker's Armguard (the Zhonya component that keeps the 2.5s Time
-    Stop active; no Arena / ARAM mirror of its own in the index).
+    Stop active; no Arena 22xxxx or 32xxxx copy of its own in the index).
   * 228002 - Wooglet's Witchcap (Arena-native stasis item; no own 22/32 mirror).
 
 DROPPED / DEFERRED (NOT present in the DS item index - an item id the engine
 never resolves would be dead weight, the ``_item_revive`` dropped-mirror
 convention):
-  * 323157   - Zhonya's ARAM mirror.
-  * 222420 / 322420 - Seeker's Armguard Arena / ARAM mirrors.
+  * 323157   - Zhonya's 32xxxx copy.
+  * 222420 / 322420 - Seeker's Armguard Arena / 32xxxx copies.
   * 22228002 / 32228002 - Wooglet's Witchcap map-mirror ids.
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: the ``assume_item_stasis`` seam on

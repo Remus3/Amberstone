@@ -37,7 +37,7 @@ items.json`` before adding):
     the ``_item_tenacity.py`` Arena-mirror convention (same-nominal carry).
 
 DROPPED / DEFERRED:
-  * 324633 (ARAM mirror) - NOT present in the DS item index; intentionally
+  * 324633 (32xxxx copy) - NOT present in the DS item index; intentionally
     omitted (an item id the engine never resolves would be dead weight).
   * 124633 - not in the item index either; omitted.
   * 2517 Endless Hunger (Feast) - 15% omnivamp is TAKEDOWN-gated for an 8s

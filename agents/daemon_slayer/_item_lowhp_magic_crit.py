@@ -38,7 +38,7 @@ Shadowflame is DDragon-only in the item index):
 Both gate at the SAME 40% threshold; the amp value is the ONLY per-id difference.
 
 DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
-  * 324645 - ARAM/mode mirror id: ABSENT from the 16.13.1 item index (not
+  * 324645 - 32xxxx copy id: ABSENT from the 16.13.1 item index (not
     Cinderbloom-bearing this patch), so no constant to seed (mirrors R107's
     exclusion of absent mirror ids - never seed an unverifiable value).
   * The RUNE keystone low-HP amps (Coup de Grace / Cut Down): champion/rune-keyed,
