@@ -1372,7 +1372,7 @@ def compute_ability_dps(
         # avoids the double-counting an amp would cause. Gated on the flag so
         # the default path is byte-identical, and takes precedence over the
         # standard block_overrides for that (champion, key, form) only. Sion Q
-        # needs no route: champion_block_index.json {Q:2} already selects its
+        # needs no route: champion_block_index.json {Q:1} (damage-block ordinal) already selects its
         # Maximum block by default (the s191 routing predates this seam).
         _staged_route = (
             _staged_amp_block_route_for(resolved.champion_id, key, form.form_index)

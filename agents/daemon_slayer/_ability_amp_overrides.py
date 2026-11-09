@@ -34,8 +34,8 @@ block-index routing (the "Maximum ..." block already holds the ceiling, so an
 amp would double-model it - route the block-index instead, never add an amp):
 
 * Sion Q - already resolved BEFORE this seam: ``champion_block_index.json``
-  ``{"Q": 2}`` selects the "Maximum Physical Damage" block by default (the s191
-  block-index routing predates the Gap-1 amp analysis). No flag-gated route is
+  ``{"Q": 1}`` (a damage-block ordinal since F2) selects the "Maximum Physical Damage"
+  block by default (the s191 block-index routing predates the Gap-1 amp analysis). No flag-gated route is
   needed; flag on/off is byte-identical. Its STAGED entry was removed.
 * Hwei Q form2 - now wired via ``_STAGED_AMP_BLOCK_ROUTES`` below, GATED on
   ``apply_ability_amps`` (default byte-identical). The route points at the
@@ -329,9 +329,9 @@ _CROSS_SPELL_AMP_OVERRIDES: dict[tuple[str, str, int], CrossSpellAmpEntry] = {
 # never authored semantics (guarded by test_block_index_damage_ordinal_f2 and
 # test_ability_amp_live_magnitudes_s144d272).
 #
-# Sion Q is intentionally ABSENT: champion_block_index.json {Q:2} already routes
-# it to the Maximum block by default (flag on/off byte-identical), so no gated
-# entry is needed.
+# Sion Q is intentionally ABSENT: champion_block_index.json {Q:1} (damage-block
+# ordinal) already routes it to the Maximum block by default (flag on/off
+# byte-identical), so no gated entry is needed.
 _STAGED_AMP_BLOCK_ROUTES: dict[tuple[str, str, int], int] = {
     # Hwei Q form2 Severing Bolt: damage-block 0 "Magic Damage" is the un-amped
     # base; damage-block 1 "Maximum Damage" is the isolated / immobilized + full
