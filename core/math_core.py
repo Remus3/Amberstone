@@ -255,7 +255,7 @@ def hud_health(value: float) -> int:
     """
     if math.isnan(value) or math.isinf(value):
         raise ValueError("hud_health needs a finite value")
-    return int(math.ceil(value))
+    return math.ceil(value)
 
 
 # --------------------------------------------------------------------------

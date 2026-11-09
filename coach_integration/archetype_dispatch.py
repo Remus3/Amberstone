@@ -241,7 +241,7 @@ def _build_picks_str(rows: list[dict], scorer: str) -> str:
         name = " ".join(raw_name.split()) if isinstance(raw_name, str) else ""
         # Signed once: the old "+{delta}" template rendered a negative row as
         # "+-5dps"; a delta that rounds to zero reads "+0", never "-0".
-        delta = int(round(_row_delta(r, scorer)))
+        delta = round(_row_delta(r, scorer))
         pieces.append(f"{name or '?'}({delta:+d}{unit},{_row_gold(r)}g)")
     return " > ".join(pieces)
 

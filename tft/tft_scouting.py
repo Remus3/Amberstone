@@ -471,11 +471,11 @@ def compute_threat(rank: Optional[dict], sample: dict, streak: dict,
         score += 20.0 * (_TIERS.index(rank["tier"]) / (len(_TIERS) - 1) - 0.4)
     if streak.get("length", 0) >= 3:
         score += 5.0 if streak["kind"] == "top4" else -5.0
-    score = int(round(max(0.0, min(100.0, score))))
+    score = round(max(0.0, min(100.0, score)))
     level = "high" if score >= 65 else "medium" if score >= 45 else "low"
     parts = [rank_txt]
     if avg is not None and n:
-        parts.append(f"avg {avg:.1f}, top4 {int(round((top4 or 0) * 100))}% (last {n})")
+        parts.append(f"avg {avg:.1f}, top4 {round((top4 or 0) * 100)}% (last {n})")
     if streak.get("length", 0) >= 2:
         word = "top-4" if streak["kind"] == "top4" else "bottom-4"
         parts.append(f"{streak['length']} {word} in a row")

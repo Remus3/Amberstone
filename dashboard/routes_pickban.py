@@ -301,7 +301,7 @@ def _compute_team_damage_mix(team_ids: tuple[int, ...]) -> dict:
         })
     denom = sum_attack + sum_magic
     if denom > 0:
-        physical_pct = int(round(100 * sum_attack / denom))
+        physical_pct = round(100 * sum_attack / denom)
         magical_pct = 100 - physical_pct
     else:
         physical_pct = 0
@@ -451,7 +451,7 @@ _CLEANSE_SUMMONER_ID = 1
 
 def _pct(numerator: int, denominator: int) -> int:
     """Rounded integer percentage; 0 when the denominator is 0."""
-    return int(round(100 * numerator / denominator)) if denominator else 0
+    return round(100 * numerator / denominator) if denominator else 0
 
 
 def _resolve_operator_puuid(conn: sqlite3.Connection) -> str | None:

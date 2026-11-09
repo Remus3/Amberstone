@@ -21,6 +21,12 @@ death_recap, decision_detector, laning_cv_overrides, live_item_tape_store, opera
 precomputed_laning_coach, replay_seek, resolved_wr, self_cast_log); every site is ``int(round(x))`` over
 a float, so the value and the type are the same and the NaN / infinity failure mode is unchanged.
 
+Slice 3 (S144-P-502) drops the cast at the 14 sites in twelve more modules, three of them ``math.ceil`` /
+``math.floor`` (which return ``int`` since Python 3): coach_integration/archetype_dispatch, core/math_core,
+core/vision_template_match, core/zoi_influence, dashboard/_wave_timing, routes_ds_combo, routes_ds_shape,
+routes_duo_synergy, routes_pickban (two sites), routes_replay_events, tft/engine/recommend and
+tft/tft_scouting (two sites). The baseline keeps only the files below.
+
 Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the
 vendored ``ops/fleet_kit`` and the ``agents/agent3_testing/suite`` suite are out of scope. The run
 uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding.
@@ -54,21 +60,9 @@ _OUT_OF_SCOPE = (
 # file -> finding count that stays (module docstring). Only shrinks.
 _BASELINE = {
     "agents/supervisor.py": 1,
-    "coach_integration/archetype_dispatch.py": 1,
-    "core/math_core.py": 1,
-    "core/vision_template_match.py": 1,
-    "core/zoi_influence.py": 1,
-    "dashboard/_wave_timing.py": 1,
-    "dashboard/routes_ds_combo.py": 1,
-    "dashboard/routes_ds_shape.py": 1,
-    "dashboard/routes_duo_synergy.py": 1,
-    "dashboard/routes_pickban.py": 2,
-    "dashboard/routes_replay_events.py": 1,
     "ops/audit/ds_latency_probe.py": 1,
     "ops/loop/lane_progress.py": 1,
     "scripts/postmortem_analyze.py": 2,
-    "tft/engine/recommend.py": 1,
-    "tft/tft_scouting.py": 2,
     "tools/daemon_slayer_cdragon_ratio_extract.py": 1,
     "tools/daemon_slayer_cdragon_spell_extract.py": 1,
     "tools/gated_g239_wave_clock.py": 2,
@@ -79,11 +73,13 @@ _BASELINE = {
     "tools/run_phase2_perf.py": 1,
 }
 _FIXED = (
+    "coach_integration/archetype_dispatch.py",
     "core/aram_item_interaction_context.py",
     "core/death_recap.py",
     "core/decision_detector.py",
     "core/laning_cv_overrides.py",
     "core/live_item_tape_store.py",
+    "core/math_core.py",
     "core/minimap_blob_detect.py",
     "core/minimap_geometry.py",
     "core/minimap_identity.py",
@@ -93,8 +89,18 @@ _FIXED = (
     "core/resolved_wr.py",
     "core/self_cast_log.py",
     "core/vision_region_atlas.py",
+    "core/vision_template_match.py",
     "core/vision_tesseract.py",
+    "core/zoi_influence.py",
+    "dashboard/_wave_timing.py",
+    "dashboard/routes_ds_combo.py",
+    "dashboard/routes_ds_shape.py",
+    "dashboard/routes_duo_synergy.py",
+    "dashboard/routes_pickban.py",
+    "dashboard/routes_replay_events.py",
+    "tft/engine/recommend.py",
     "tft/tft_ocr_reader.py",
+    "tft/tft_scouting.py",
     "tft/tft_vision_reader.py",
     "tools/vision_atlas_validate.py",
 )

@@ -407,7 +407,7 @@ def _milestone_line(agg: Optional[Mapping]) -> Optional[str]:
     roll = _label((_floored(_section(agg, "first_rolldown")) or {}).get("median"))
     if roll:
         gold = _number((_floored(_section(agg, "rolldown_gold_end")) or {}).get("median"))
-        parts.append(f"roll at {roll} to ~{int(round(gold))}g" if gold is not None else f"roll at {roll}")
+        parts.append(f"roll at {roll} to ~{round(gold)}g" if gold is not None else f"roll at {roll}")
     slam = _label((_floored(_section(agg, "first_slam")) or {}).get("median"))
     if slam:
         parts.append(f"first slam {slam}")

@@ -282,7 +282,7 @@ def _compute_ttk(total_mitigated: float, duration_s: float, target_hp: float) ->
             "lethal":            False,
         }
     dps = total_mitigated / duration_s
-    rotations = int(math.ceil(target_hp / total_mitigated))
+    rotations = math.ceil(target_hp / total_mitigated)
     ttk_s = target_hp / dps
     return {
         "available":         True,

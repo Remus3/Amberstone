@@ -242,7 +242,7 @@ def _rank(value) -> int:
         return 0
     if isinstance(value, float) and not math.isfinite(value):
         return 0
-    return int(round(value))
+    return round(value)
 
 
 def _resolve_mode(bot_lock: str, bot_hover: str,

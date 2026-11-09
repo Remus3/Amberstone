@@ -370,7 +370,7 @@ def _timestamp_ms(row: sqlite3.Row) -> int | None:
     ts = row["timestamp_ms"]
     if ts is None:
         return None
-    return int(math.floor(ts))
+    return math.floor(ts)
 
 
 def _you_flagged(match_id: str) -> list[dict]:
