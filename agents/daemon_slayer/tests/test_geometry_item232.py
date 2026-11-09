@@ -366,7 +366,7 @@ class AsciiHygieneTests(unittest.TestCase):
     """Verify the new source files contain only ASCII bytes."""
 
     def _check_file(self, rel_path: str) -> None:
-        abs_path = os.path.join(_DS_DIR, rel_path)
+        abs_path = Path(_DS_DIR) / rel_path
         with open(abs_path, "rb") as fh:
             content = fh.read()
         non_ascii = [

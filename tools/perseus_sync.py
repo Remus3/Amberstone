@@ -44,8 +44,8 @@ except ImportError:  # pragma: no cover - script invocation
     from _perseus_rpc import read_json_reply
 
 PERSEUS_HOME = str(Path.home() / ".perseus-vault")
-PV = os.path.join(PERSEUS_HOME, "bin", "perseus-vault.exe")
-DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
+PV = str(Path(PERSEUS_HOME, "bin", "perseus-vault.exe"))
+DB = str(Path(PERSEUS_HOME, "data", "perseus-vault.db"))
 
 # perseus-vault.exe is a CONSOLE-subsystem binary (PE Subsystem=3), so a
 # parent WITHOUT a console of its own gets a new console window allocated
@@ -222,7 +222,7 @@ def sync(vault: Vault) -> dict:
         return True
 
     # 1. Settled - written via the CLI so --always-on can be set.
-    for block in settled_blocks(read_text(os.path.join(REPO, "CLAUDE.md"))):
+    for block in settled_blocks(read_text(str(Path(REPO, "CLAUDE.md")))):
         key = slugify(re.sub(r"[*`]", "", block[2:140]))
         body = json.dumps(
             {
@@ -251,7 +251,7 @@ def sync(vault: Vault) -> dict:
         for filename in sorted(entry.name for entry in Path(MEMDIR).iterdir()):
             if not filename.endswith(".md") or filename == "MEMORY.md":
                 continue
-            name, desc, mtype, body = parse_memory_file(os.path.join(MEMDIR, filename))
+            name, desc, mtype, body = parse_memory_file(str(Path(MEMDIR, filename)))
             if remember(
                 mtype, slugify(name), body, desc,
                 [mtype, "rc-memory"], IMPORTANCE[mtype],
@@ -260,7 +260,7 @@ def sync(vault: Vault) -> dict:
                 counts["memory"] += 1
 
     # 3. LEDGER items.
-    ledger_path = os.path.join(REPO, "docs", "LEDGER.md")
+    ledger_path = str(Path(REPO, "docs", "LEDGER.md"))
     if Path(ledger_path).exists():
         for match in re.finditer(r"^(\d{1,5})\.\s+(.+)$", read_text(ledger_path), re.MULTILINE):
             number, text = match.group(1), match.group(2).strip()
@@ -274,7 +274,7 @@ def sync(vault: Vault) -> dict:
 
     # 4. ROADMAP / BACKLOG sections.
     for filename, category in (("ROADMAP.md", "roadmap"), ("BACKLOG.md", "backlog")):
-        path = os.path.join(REPO, filename)
+        path = str(Path(REPO, filename))
         if not Path(path).exists():
             continue
         parts = re.split(r"^(#{2,4} .+)$", read_text(path), flags=re.MULTILINE)

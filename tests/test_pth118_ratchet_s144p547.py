@@ -6,14 +6,22 @@ test, the boots-catalog test, the recordings test, ``tools/freeze_witness.py``, 
 ``tools/ds_cc_conditional_to_json.py``); they are pinned clean in ``_FIXED``. Where a value is printed or handed on as a
 string, the ``Path`` join is wrapped in ``str()`` so the consumer sees the same type.
 
-The rest stays in ``_BASELINE`` (41 findings in 16 files), each for a stated reason:
+S144-P-548 converted sixteen more sites in seven files (``tools/perseus_sync.py`` six, ``tools/logger_leak_census.py`` three,
+``tools/perseus_recall.py`` two, ``ops/audit/opponent_prior_gonogo.py`` two, ``ops/audit/p2w5_partition.py``,
+``ops/audit/p2w5h2_partition.py`` and the DS geometry test, one each); they join ``_FIXED``. The two audit partition
+scripts spell ``(Path(root) / f).as_posix()`` for the old ``os.path.join(...).replace(os.sep, "/")``.
 
-- ``ops/rc_supervisor.py`` is frozen (ASKS 24); ``tests/test_pth100_pth120_ratchet_s144p531.py`` holds the old spelling as
-  an oracle; ``tools/precommit_gate.py`` and ``tools/live_write_tracer.py`` are the commit gate and the write tracer, which
-  keep a hand-written path each (the gate feeds ``compile()`` a filename).
-- The rest (``tools/perseus_sync.py``, ``tools/perseus_recall.py``, ``tools/logger_leak_census.py``,
-  ``tests/test_inbox_responder_runner.py``, the ops/audit and ops/migrate one-shots, ``core/hot_reload.py``,
-  ``dashboard/routes_vision_calibrator.py``, two tests) are unconverted sites awaiting a per-site look.
+The rest stays in ``_BASELINE`` (25 findings in nine files), each for a stated reason:
+
+- ``ops/rc_supervisor.py`` is frozen (ASKS 24); ``tests/test_pth100_pth120_ratchet_s144p531.py`` and
+  ``tests/test_no_process_wide_stdlib_fakes_rm801.py`` hold the old spelling as a control; ``tools/precommit_gate.py`` and
+  ``tools/live_write_tracer.py`` are the commit gate and the write tracer, which keep a hand-written path each (the gate
+  feeds ``compile()`` a filename).
+- ``core/hot_reload.py`` joins an empty tail component (``os.path.join(base, "")``) to get a trailing separator, which
+  ``Path`` cannot express; ``dashboard/routes_vision_calibrator.py`` joins untrusted request text under a containment check,
+  and ``ops/migrate/e_move_helpers.py`` joins a link target that may be drive-relative, where ``Path`` and
+  ``os.path.join`` differ - each stays on the string rule.
+- ``tests/test_inbox_responder_runner.py`` (twelve) is an unconverted test file awaiting a per-site look.
 
 The baseline only shrinks: ANY new finding, or one above a baselined file's count, fails
 ``test_no_file_exceeds_its_baseline``. The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a
@@ -45,24 +53,21 @@ _NOT_THIS_SCOPE = {
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE: dict[str, int] = {
-    "agents/daemon_slayer/tests/test_geometry_item232.py": 1,
     "core/hot_reload.py": 1,
     "dashboard/routes_vision_calibrator.py": 1,
-    "ops/audit/opponent_prior_gonogo.py": 2,
-    "ops/audit/p2w5_partition.py": 1,
-    "ops/audit/p2w5h2_partition.py": 1,
     "ops/migrate/e_move_helpers.py": 1,
     "ops/rc_supervisor.py": 2,  # FROZEN (ASKS 24)
     "tests/test_inbox_responder_runner.py": 12,
     "tests/test_no_process_wide_stdlib_fakes_rm801.py": 1,
     "tests/test_pth100_pth120_ratchet_s144p531.py": 5,  # holds the old spelling as an oracle
     "tools/live_write_tracer.py": 1,
-    "tools/logger_leak_census.py": 3,
-    "tools/perseus_recall.py": 2,
-    "tools/perseus_sync.py": 6,
     "tools/precommit_gate.py": 1,
 }
 _FIXED = (
+    "agents/daemon_slayer/tests/test_geometry_item232.py",
+    "ops/audit/opponent_prior_gonogo.py",
+    "ops/audit/p2w5_partition.py",
+    "ops/audit/p2w5h2_partition.py",
     "tests/test_build_order_boots.py",
     "tests/test_hook_invocation_log.py",
     "tests/test_minimap_blob_detect_precision.py",
@@ -72,7 +77,10 @@ _FIXED = (
     "tests/test_vision_profile_seeds.py",
     "tools/ds_cc_conditional_to_json.py",
     "tools/freeze_witness.py",
+    "tools/logger_leak_census.py",
     "tools/p3_ascii_census.py",
+    "tools/perseus_recall.py",
+    "tools/perseus_sync.py",
 )
 
 

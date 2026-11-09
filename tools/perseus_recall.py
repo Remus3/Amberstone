@@ -35,8 +35,8 @@ except ImportError:  # pragma: no cover - script invocation
     from _perseus_rpc import read_json_reply
 
 PERSEUS_HOME = str(Path.home() / ".perseus-vault")
-PV = os.path.join(PERSEUS_HOME, "bin", "perseus-vault.exe")
-DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
+PV = str(Path(PERSEUS_HOME, "bin", "perseus-vault.exe"))
+DB = str(Path(PERSEUS_HOME, "data", "perseus-vault.db"))
 
 # perseus-vault.exe is a CONSOLE-subsystem binary (PE Subsystem=3), so a
 # parent WITHOUT a console of its own gets a new console window allocated

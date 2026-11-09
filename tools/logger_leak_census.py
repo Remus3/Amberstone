@@ -72,10 +72,10 @@ import pytest
 # The report lands under ops/runtime by default. ``RC_LOGGER_CENSUS_REPORT_DIR``
 # redirects it, which is what the guard test uses so that running the guard can
 # never clobber a real census the operator is reading.
-_REPORT_DIR = os.environ.get("RC_LOGGER_CENSUS_REPORT_DIR") or os.path.join(
-    str(Path(__file__).absolute().parents[1]), "ops", "runtime")
-_REPORT_JSON = os.path.join(_REPORT_DIR, "logger_leak_census.json")
-_REPORT_TXT = os.path.join(_REPORT_DIR, "logger_leak_census.txt")
+_REPORT_DIR = os.environ.get("RC_LOGGER_CENSUS_REPORT_DIR") or str(
+    Path(__file__).absolute().parents[1] / "ops" / "runtime")
+_REPORT_JSON = str(Path(_REPORT_DIR, "logger_leak_census.json"))
+_REPORT_TXT = str(Path(_REPORT_DIR, "logger_leak_census.txt"))
 
 # The three fields NOW-6 proved a test can leak, in the order a reader wants
 # them. ``handlers`` is the identity tuple, not a count: swapping one handler for

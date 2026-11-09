@@ -1,6 +1,7 @@
 """P2 W5 cycle 16: balanced LPT partition of tests/ into 6 disjoint slices."""
 import json
 import os
+from pathlib import Path
 
 files = []
 for root, _, fs in os.walk("tests"):
@@ -8,7 +9,7 @@ for root, _, fs in os.walk("tests"):
         continue
     for f in fs:
         if f.endswith(".py"):
-            p = os.path.join(root, f).replace(os.sep, "/")
+            p = (Path(root) / f).as_posix()
             try:
                 with open(p, encoding="utf-8", errors="replace") as fh:
                     loc = sum(1 for _ in fh)
