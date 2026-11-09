@@ -287,7 +287,18 @@ def total_item_ability_haste(item_ids: Iterable[str | int]) -> float:
 
     Delegates per-item to ``item_ability_haste`` so the single-item
     accessor and the sum share one lookup path (no duplicate dict-get).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-142).
     """
+    # A bare "2020" was read character by character and lost The Brutalizer; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     return sum(item_ability_haste(iid) for iid in item_ids)
 
 

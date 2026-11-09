@@ -90,7 +90,18 @@ def item_omnivamp_fraction(item_ids: Iterable[str | int], is_ranged: bool) -> fl
     or ranged branch by ``is_ranged``. Items not in the registry contribute 0.
     Duplicate ids stack per occurrence (League stat-stack rules; the build
     planner enforces the inventory cap + unique-passive doctrine separately).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-147).
     """
+    # A bare "4633" was read character by character and lost Riftmaker; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     idx = 1 if is_ranged else 0
     total = 0.0
     for iid in item_ids:

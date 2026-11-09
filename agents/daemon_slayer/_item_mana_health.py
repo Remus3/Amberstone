@@ -140,7 +140,18 @@ def item_mana_health_hp(item_ids: Iterable[str | int], bonus_mana: float) -> flo
     Non-positive ``bonus_mana`` (a manaless build) yields 0.0. The default-OFF
     gating lives in ``compute_ehp`` (this function is only called when
     ``apply_item_mana_health`` is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-146).
     """
+    # A bare "3119" was read character by character and lost Awe; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     bm = max(0.0, float(bonus_mana))
     # S144-D-100: an infinite pool is unusable, as NaN / -inf already were via
     # the clamp; it returned inf, and NaN (0.0 * inf) on a build with no Awe item.

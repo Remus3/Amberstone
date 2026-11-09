@@ -124,7 +124,18 @@ def item_bonus_hp_amp_hp(
     Non-positive ``bonus_hp_from_items`` yields 0.0. The default-OFF gating lives in
     ``compute_ehp`` (this function is only called when ``apply_item_bonus_hp_amp`` is
     True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-143).
     """
+    # A bare "3083" was read character by character and lost Warmog's Vitality; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     bh = max(0.0, float(bonus_hp_from_items))
     # S144-D-101: an infinite pool is unusable, as NaN / -inf already were via
     # the clamp; it returned inf, and NaN (0.0 * inf) on a build with no Warmog's.

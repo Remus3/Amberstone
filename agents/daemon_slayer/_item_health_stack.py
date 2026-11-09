@@ -142,7 +142,18 @@ def item_health_stack_hp(
     stat conversions). Non-positive ``caster_max_hp`` yields 0.0. The default-OFF
     gating lives in ``compute_ehp`` (this function is only called when
     ``assume_item_health_stacks`` is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-145).
     """
+    # A bare "3084" was read character by character and lost Heartsteel; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     hp = max(0.0, float(caster_max_hp))
     # S144-D-104: an infinite pool is unusable, as NaN / -inf already were via
     # the clamp; it returned inf into every compute_ehp numerator.

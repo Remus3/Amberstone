@@ -167,9 +167,20 @@ def item_general_dr_multiplier(
     Items not in the registry contribute nothing. The default-OFF gating lives in
     ``compute_ehp`` (this helper short-circuits to identity before any item is
     inspected when the flag is False).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-144).
     """
     if not assume_item_general_dr:
         return 1.0
+    # A bare "3869" was read character by character and lost Celestial
+    # Opposition; a bare int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     max_dr = 0.0
     for iid in item_ids:
         pair = _ITEM_GENERAL_DR.get(str(iid))
