@@ -79,6 +79,10 @@ changed, one site each (mutable_default_arg, n805_first_arg, nan_selfcompare_pro
 perf102, pie810_startswith_tuple, plr1730_minmax, plr5501_collapsible_else_if,
 plw2901_loop_var_overwrite and precedence_and_dead_branch), bar naive_datetime_prod, which
 lane/true-audit changed;
+slice 22 (S144-P-624) does the same for the next ten ratchet modules no other lane branch had
+changed (private_exception_name, pt001_fixture_parens, pt012_raises_block, pt018_ruf036_prod,
+pt019_fixture_param, pyi_fly_prod, pytest_idiom, q001_multiline_quote, q003_escaped_quote and
+raise_comprehension), one site each bar pytest_idiom, which has two;
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -126,16 +130,6 @@ _BASELINE = {
     "tests/test_loop_concurrency.py": 1,
     "tests/test_naive_datetime_prod_ratchet_s144p340.py": 1,
     "tests/test_package_portable_atomic_write_rm258.py": 1,
-    "tests/test_private_exception_name_ratchet_s144p512.py": 1,
-    "tests/test_pt001_fixture_parens_ratchet_s144p234.py": 1,
-    "tests/test_pt012_raises_block_ratchet_s144p184.py": 1,
-    "tests/test_pt018_ruf036_prod_ratchet_s144p175.py": 1,
-    "tests/test_pt019_fixture_param_ratchet_s144p493.py": 1,
-    "tests/test_pyi_fly_prod_ratchet_s144p216.py": 1,
-    "tests/test_pytest_idiom_ratchet_s144p171.py": 2,
-    "tests/test_q001_multiline_quote_ratchet_s144p236.py": 1,
-    "tests/test_q003_escaped_quote_ratchet_s144p235.py": 1,
-    "tests/test_raise_comprehension_ratchet_s144p157.py": 1,
     "tests/test_range_start_startswith_tuple_ratchet_s144p158.py": 1,
     "tests/test_range_startswith_dictcomp_ratchet_s144p123.py": 1,
     "tests/test_redundant_collection_call_ratchet_s144p115.py": 1,
@@ -411,6 +405,16 @@ _FIXED = (
     "tests/test_plr5501_collapsible_else_if_ratchet_s144p128.py",
     "tests/test_plw2901_loop_var_overwrite_ratchet_s144p259.py",
     "tests/test_precedence_and_dead_branch_ratchet_s144p112.py",
+    "tests/test_private_exception_name_ratchet_s144p512.py",
+    "tests/test_pt001_fixture_parens_ratchet_s144p234.py",
+    "tests/test_pt012_raises_block_ratchet_s144p184.py",
+    "tests/test_pt018_ruf036_prod_ratchet_s144p175.py",
+    "tests/test_pt019_fixture_param_ratchet_s144p493.py",
+    "tests/test_pyi_fly_prod_ratchet_s144p216.py",
+    "tests/test_pytest_idiom_ratchet_s144p171.py",
+    "tests/test_q001_multiline_quote_ratchet_s144p236.py",
+    "tests/test_q003_escaped_quote_ratchet_s144p235.py",
+    "tests/test_raise_comprehension_ratchet_s144p157.py",
 )
 
 

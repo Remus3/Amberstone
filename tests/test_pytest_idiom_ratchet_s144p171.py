@@ -54,7 +54,7 @@ def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
         [sys.executable, "-m", "ruff", "check", "--isolated", "--target-version", "py39",
          "--line-length", "120", "--no-fix", "--no-cache", "--output-format", "json",
          "--select", ",".join(_RULES), *args],
-        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, **kwargs,
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, check=False, **kwargs,
     )
     # ruff exits 1 when it reports anything; 2 is a real failure.
     assert proc.returncode in (0, 1), proc.stderr[-400:]
@@ -117,7 +117,7 @@ def test_pytest_raises_and_try_except_shapes_agree(tmp_path):
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "--rootdir", str(tmp_path),
          str(tmp_path / "test_probe_raises_shapes.py")],
-        cwd=tmp_path, capture_output=True, text=True, timeout=120, **kwargs,
+        cwd=tmp_path, capture_output=True, text=True, timeout=120, check=False, **kwargs,
     )
     assert "2 failed, 1 passed" in proc.stdout, proc.stdout[-600:] + proc.stderr[-300:]
 
