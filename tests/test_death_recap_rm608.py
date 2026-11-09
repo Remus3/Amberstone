@@ -325,7 +325,7 @@ class PersistAndAggregateTests(unittest.TestCase):
         r1, r2 = self._rows()
         dr.append_row(r1, p)
         dr.append_row(r2, p)
-        with open(p, "a", encoding="utf-8", newline="\n") as f:
+        with p.open("a", encoding="utf-8", newline="\n") as f:
             f.write('{"torn": ')
         self.assertEqual(len(dr.read_rows(p)), 2)
         self.assertEqual(dr.read_rows(self.tmp / "missing.jsonl"), [])
