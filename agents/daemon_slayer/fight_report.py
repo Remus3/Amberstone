@@ -175,6 +175,21 @@ def _section_failed(section: str, exc: Exception) -> str:
     return f"{section} section failed - see logs"
 
 
+def _finite_knob(value, default: float, name: str, notes: List[str]) -> float:
+    """Return ``value`` as a finite float, else ``default`` plus a note.
+
+    S144-D-176..178. The note names the knob only, never the value: the notes
+    ride the :8860 reply (RM-838 (d))."""
+    try:
+        num = float(value)
+    except (TypeError, ValueError, OverflowError):
+        num = math.nan
+    if math.isfinite(num):
+        return num
+    notes.append(f"{name}: not a finite number - read as {default:g}")
+    return default
+
+
 def compute_fight_report(
     champion: str,
     level: int = 1,
@@ -224,6 +239,22 @@ def compute_fight_report(
 
     champ = str(champion or "").strip()
     notes: List[str] = []
+
+    # S144-D-176..178: a target knob or recharge window that is not a finite
+    # number reads as its own default, and one note names the knob. Before,
+    # a non-numeric one raised out of the report constructor's float() echo,
+    # a NaN / inf one was echoed non-finite while the damage sections failed
+    # with a note that never named it, and a NaN / inf window silently
+    # dropped every charge slot.
+    target_armor = _finite_knob(target_armor, 0.0, "target_armor", notes)
+    target_mr = _finite_knob(target_mr, 0.0, "target_mr", notes)
+    target_max_hp = _finite_knob(target_max_hp, 0.0, "target_max_hp", notes)
+    target_bonus_hp = _finite_knob(
+        target_bonus_hp, 0.0, "target_bonus_hp", notes,
+    )
+    recharge_window_s = _finite_knob(
+        recharge_window_s, 10.0, "recharge_window_s", notes,
+    )
 
     champion_name = champ
     # ----- MANA section -------------------------------------------------
