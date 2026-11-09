@@ -121,9 +121,12 @@
   color: var(--dim);
 }
 
+/* S144-U-272: --faint read 4.31 - 4.48:1 on the overlay pane in four themes
+ * (arcane, ember, hextech, moonlit); --text-dim is the S144-U-243 empty-state
+ * tier and reaches AA in all six. */
 .ovds-empty {
   font-size: var(--fs-xs, 16px);
-  color: var(--faint);
+  color: var(--text-dim);
   padding: 4px 0;
 }
 
@@ -139,9 +142,11 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* S144-U-272: --text-dim, as .ovds-empty (--faint was under AA); the same
+ * tone as the row labels below it, marked as the caption by its case. */
 .ovset-cap {
   font-size: var(--fs-xs, 16px);
-  color: var(--faint);
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }

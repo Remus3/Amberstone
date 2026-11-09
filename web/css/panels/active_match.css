@@ -312,8 +312,11 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   font-size: var(--fs-sm);
 }
 
+/* S144-U-272: --text-faint read 4.31 - 4.48:1 on the pane in four themes;
+ * --text-dim is the S144-U-243 empty-state tier (the TFT empty lines below
+ * already used it). */
 #view-active-match .am-empty {
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: 1.5;
   letter-spacing: 0.02em;

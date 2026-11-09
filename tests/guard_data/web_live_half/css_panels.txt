@@ -1,7 +1,7 @@
 # Live-half digests for web/css/panels/ - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-22223d257aa9ec35708a7e54d091629b88c6bdf26e9cd9a9f7c77823641a3499  web/css/panels/active_match.css
+feaa865da2d65606168c44b106ec1793be3bac62bacf3efe9cdf2ab976e2c2d9  web/css/panels/active_match.css
 
 89be8265266738cf3e8278d837d52f31ea3f49fbd29ec0952a200264f3eec266  web/css/panels/aram_balance.css
 
@@ -79,7 +79,7 @@ e57f721159c4f6a306582364e3b158a03b072973b6ee1d7dcf664172a9dfe994  web/css/panels
 
 d76c3062504d3d09a25a845373a5cf86b102e4bbf85d9405719a171706008271  web/css/panels/ops_panels.css
 
-1dc825fad45fe50dd585cc22dc2f54423cde79790f29230ed759e9c8cc367fe2  web/css/panels/overlay_ds_controls.css
+dabcce74efde6e7735a3e0de353c5d223797b4ae68e493d8d5e8c0ed9ef606f8  web/css/panels/overlay_ds_controls.css
 
 ad306d4a15fb282d9a9da006fb7ef0d9fede68fc44c5974c0c9a6fa7e004a948  web/css/panels/panel_visibility.css
 
