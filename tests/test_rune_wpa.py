@@ -9,9 +9,9 @@ deterministic fallback sigmoid).
 """
 from __future__ import annotations
 
-import os
 import sqlite3
 import unittest
+from pathlib import Path
 
 from core import rune_wpa
 from core.smoothed_rates import shrink
@@ -356,7 +356,7 @@ class RuneNameTests(unittest.TestCase):
 
 class RealDbSmokeTests(unittest.TestCase):
     @unittest.skipUnless(
-        os.path.exists("data/rewind_history.db"),
+        Path("data/rewind_history.db").exists(),
         "rewind_history.db not present",
     )
     def test_real_db_returns_runes(self):

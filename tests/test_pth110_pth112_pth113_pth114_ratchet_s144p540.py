@@ -11,8 +11,9 @@ symlink and regular-file checks), ``ops/audit/opponent_prior_gonogo.py``, ``tool
 Thirteen sites stay baselined (one more is fenced, below; two were cleared later by the S144-P-547 pathlib conversion of ``tests/test_build_order_boots.py`` and ``tests/test_minimap_blob_detect_precision.py``), each in a file this slice does not take: ``tools/perseus_recall.py`` (its test binds
 ``os.path.exists`` on the module through ``tests._module_view.bind_os_path``, a seam this slice does not rewrite),
 ``dashboard/routes_recordings.py`` (``_is_link`` also consults ``os.path.isjunction``, one idiom family), ``ops/launcher/``
-(PKG-owned), ``ops/migrate/e_move_helpers.py`` (one-shot migration owner's string handling) and six test sites that
-probe relative or Linux-only strings. ``ops/fleet_kit/`` is vendored byte-for-byte and fenced. The baseline only shrinks:
+(PKG-owned), ``ops/migrate/e_move_helpers.py`` (one-shot migration owner's string handling) and three test sites that
+probe relative or Linux-only strings (three more, the relative ``data/rewind_history.db`` skip guards of
+``tests/test_item_wpa.py``, ``test_rune_wpa.py`` and ``test_summspell_wpa.py``, became ``Path(...).exists()`` in S144-P-549). ``ops/fleet_kit/`` is vendored byte-for-byte and fenced. The baseline only shrinks:
 ANY new finding, or a further finding in a baselined file, fails ``test_no_file_exceeds_its_baseline``. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding, and ``--preview`` because the PTH family differs under
 it.
@@ -47,10 +48,7 @@ _BASELINE: dict[str, int] = {
     "ops/migrate/e_move_helpers.py": 3,  # one-shot migrate helper, string handling not touched blind
     "tests/_replace_faults.py": 1,  # fault-injection harness probing a string directory
     "tests/test_inbox_responder_runner.py": 1,  # os.path.isdir of the Linux-only /proc/self/fd
-    "tests/test_item_wpa.py": 1,
     "tests/test_junction_drive_spellings_pubrepo_f.py": 1,
-    "tests/test_rune_wpa.py": 1,
-    "tests/test_summspell_wpa.py": 1,
     "tools/perseus_recall.py": 1,  # tests bind os.path.exists on this module (tests/_module_view.bind_os_path)
 }
 _FIXED = (
@@ -62,6 +60,9 @@ _FIXED = (
     "tft/cv/ocr_fields.py",
     "vision_server/_inference.py",
     "tools/precommit_gate.py",
+    "tests/test_item_wpa.py",
+    "tests/test_rune_wpa.py",
+    "tests/test_summspell_wpa.py",
 )
 
 

@@ -889,7 +889,7 @@ def test_surface_auditor_resolves_dir_fd_relative_targets(tmp_path, monkeypatch)
 def test_fd_dir_path_reads_the_proc_fd_link(tmp_path):
     fd = os.open(str(tmp_path), os.O_RDONLY)
     try:
-        assert os.path.samefile(_fd_dir_path(fd), str(tmp_path))
+        assert Path(_fd_dir_path(fd)).samefile(tmp_path)
     finally:
         os.close(fd)
     assert _fd_dir_path(-1) is None
