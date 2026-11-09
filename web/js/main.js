@@ -5961,8 +5961,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         if (isOpen) {
           closeModeMenu(false);
         } else {
-          // Highlight the current queue
-          const lcu = (state.latest && state.latest.lcu) || {};
+          // Highlight the current queue. S144-U-251: read the lobby through
+          // _lobbyResolveLcu(), as the card above does, so under ?ui_mock=1
+          // the menu marks the fixture's queue instead of Practice Tool
+          // (qid 0 from an empty state.latest.lcu). Outside ui_mock it
+          // returns the same state.latest.lcu object as before.
+          const lcu = _lobbyResolveLcu();
           const lobby = lcu.lobby || null;
           const curQid = (lobby && lobby.queue_id) | 0;
           modeMenu.querySelectorAll(".lq-mode-item").forEach((it) => {

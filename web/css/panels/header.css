@@ -1278,10 +1278,15 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   background: var(--info-soft);
   border-color: var(--info);
 }
+/* S144-U-251: the current label mixes --clock 80 percent toward --text
+ * (the RM-1550 lift). Bare --clock on this --gold-soft wash read 4.41:1 in
+ * arcane at 18 px / 700, which is not large text. Frame and wash keep the
+ * bare --clock. Pinned by
+ * tests/snapshot_panels/test_lobby_mode_menu_current_contrast.py. */
 .lq-mode-item.is-current {
   background: var(--gold-soft);
   border-color: var(--clock);
-  color: var(--clock);
+  color: color-mix(in oklab, var(--clock) 80%, var(--text));
 }
 /* RM-1312: no rule here left the UA `auto` ring on the queue items of
  * both the Lobby mode menu and the Home Find Match picker, and the Home
