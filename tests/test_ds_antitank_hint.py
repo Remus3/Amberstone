@@ -25,8 +25,6 @@ from core.ds_antitank_hint import (
     ANTITANK_STRONG,
 )
 
-# Robust tank / bruiser enemy ids (DDragon tag-verified).
-_TANKY_ENEMIES = ["Malphite", "Ornn", "Sion", "Sett", "Leona"]
 # Non-tanky filler for "not enough tanks" test.
 _SQUISH_ENEMIES = ["Lux", "Ezreal", "Jinx"]
 

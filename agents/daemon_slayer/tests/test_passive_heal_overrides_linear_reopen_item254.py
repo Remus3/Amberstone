@@ -48,10 +48,6 @@ _REOPEN_SEEDS = (
     ("Zac", "P", 0),
     ("DrMundo", "P", 0),
 )
-# Of those, the 2 that stay GATED (0 at the default resolve-off).
-_GATED_SEEDS = (("Mordekaiser", "R", 0), ("Illaoi", "P", 0))
-# ...and the 2 that resolve at the default (caster max HP).
-_RESTING_SEEDS = (("Zac", "P", 0), ("DrMundo", "P", 0))
 
 
 def _snap() -> DataSnapshot:
