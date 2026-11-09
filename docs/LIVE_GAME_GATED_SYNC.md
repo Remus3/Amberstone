@@ -3468,6 +3468,33 @@ survivability flips below cannot roll otherwise.
   `core/daemon_slayer_client.py:403,442` -> `agents/daemon_slayer/server.py:850` ->
   `hybrid.rank_items_by_hybrid`.
   REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 138, read at `65c451b5a`; NOT a tick).** The
+  measurement and the REMAINS line hold; every chain cite moved. (1) RE-MEASURED in-process (compute
+  half only, the same headless class as the 2026-07-18 close, not live evidence): DS snapshot
+  `16.22.1`, ENGINE `1.291.0`, `hybrid.rank_items_by_hybrid` at the row's own inputs (items
+  `[3078,3053,3742]`, L13, mode ARAM, top_n 200) returns **pool=111 exact** ON and OFF; Yasuo DIFFERS
+  (ON floats `6665` + `3091`), Darius DIFFERS (`6631`, `6333`, `4401`), Udyr DIFFERS (`6665`, `3065`,
+  `3075`); Garen / Sett / Illaoi / Aatrox / Olaf / Trundle byte-identical - the filed partition and
+  floated ids, unchanged. (2) STILL DEFAULT-OFF at every layer (`inspect.signature`):
+  `dispatch_for_coach` (23 params), `rank_for_primary_archetype` (47), `rank_bruiser_for` (52) and
+  `hybrid.rank_items_by_hybrid` all default `prefer_survivability_by_win=False`, and `git grep`
+  finds the key under no file in `coaches/`, so the flip has NOT landed. (3) CHAIN, by symbol (the
+  filed `aram_coach.py:784` now lands in `_update_vision_cadence`): `coaches/aram_coach.py:1112` (the
+  `_ds_dispatch_for_coach(...)` call, key absent) -> `coach_integration/archetype_dispatch.py:289`
+  `dispatch_for_coach` (param `:313`, `seams` entry `:441-442`) -> `core/daemon_slayer_client.py:2995`
+  `rank_for_primary_archetype` (param `:3037`; bruiser branch `:3212`) -> `rank_bruiser_for` `:1514`
+  (param `:1535`, body key `:1638-1639`) -> `/rank-bruiser` (`agents/daemon_slayer/server.py:3239`)
+  -> `_route_rank_bruiser` `:1651` (parsed per request `:1738`, call `:1788`, kwarg `:1825`) ->
+  `hybrid.rank_items_by_hybrid` `:938` (param `:977`, resolve `:1274`). The same key also feeds RF3
+  (`_route_rank_tank` `:1299`) and RF2 (`_route_rank_enchanter` `:3097`), so a dispatcher-level
+  default flip flips all three rows (G3-05 / G3-06 / G3-07) at once. (4) ONE NEW REACH PATH since the
+  close: `dashboard/routes_state.py:969` `_DS_PREVIEW_SEAM_BOOLS` lets an `/api/ds-preview` body opt in
+  (forwarded at `:1053`), but no file under `web/` sends the key, so no on-screen surface reaches it
+  either. (5) RESTART NOTE, not a correction: `/rank-bruiser` already parses the key per request, so
+  a flip made at the RC caller (the row's "1-line caller default") needs an RC reload, which since the
+  2026-10-31 launcher cutover means an rc-shell relaunch (no task starts RC); the DS `:8860` restart
+  is owed only if the flip is made in the engine defaults instead. Idle this cycle: `:8888` curl
+  empty at 2026-11-09 09:43 local; no game.
 - **G3-06** (was C6) RF2 enchanter survivability flip - **EYEBALL CLOSED 2026-07-18.** MEASURED at
   `[3853,3504,6617]`, L13, **pool=8 exact**, and all three of the row's own predictions reproduce
   INCLUDING the negative: **Rakan DIFFERS** - ON floats `2051` Guardian's Horn + `3083` Warmog's Armor
