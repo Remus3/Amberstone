@@ -86,8 +86,14 @@ def sum_rune_hsp_pct(rune_ids: Optional[Iterable[str | int]]) -> float:
     amplifier is target-state conditional and is deliberately not modelled (see
     the module docstring). A repeated id is credited once. Returns 0.0 on an
     empty / None / non-iterable argument or any lookup failure - the seam caller
-    gates on its DEFAULT-OFF flag, so a 0.0 return is byte-identical.
+    gates on its DEFAULT-OFF flag, so a 0.0 return is byte-identical. A bare
+    ``str`` / ``int`` id (never ``bool``) is ONE id (S144-D-134).
     """
+    # A bare "8453" was read character by character and lost Revitalize.
+    if isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     try:
         # Inside the try (S144-D-102): a page whose truthiness raises must not
         # escape the fail-soft contract.

@@ -429,10 +429,16 @@ def rune_shield_grants(
     exactly 0.0.
 
     FAIL-SOFT: an empty / None / non-iterable rune list, a garbage entry, or a
-    non-numeric pool argument returns 0.0 rather than raising.
+    non-numeric pool argument returns 0.0 rather than raising. A bare ``str`` /
+    ``int`` id (never ``bool``) is ONE id (S144-D-136).
     """
     if not apply_rune_shield_grants:
         return 0.0
+    # A bare "8465" was read character by character and lost Guardian.
+    if isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     # The emptiness check runs inside the guard: a page whose truthiness raises
     # (a multi-element array) must stay inert, not escape (S144-D-96).
     try:

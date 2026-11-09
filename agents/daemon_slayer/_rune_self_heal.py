@@ -348,8 +348,14 @@ def sum_rune_self_heal(
     every sibling-lane Resolve rune returns zero. Returns 0.0 on an empty / None
     / non-iterable argument, a page whose truthiness raises (the emptiness check
     runs inside the guard, S144-D-94), a non-numeric pool, or any lookup
-    failure.
+    failure. A bare ``str`` / ``int`` id (never ``bool``) is ONE id
+    (S144-D-135).
     """
+    # A bare "8444" was read character by character and lost Second Wind.
+    if isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     try:
         if not rune_ids:
             return 0.0
