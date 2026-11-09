@@ -21,6 +21,11 @@ typing.Callable, statistics.mean, sys, os - in coaches, core, dashboard, scripts
 and tools; none re-exported, none patched by name in a test, none touched by
 another lane branch) and moves them from _BASELINE to FIXED.
 
+S144-P-471 cleans four more (one each: time in ops/loop/lanes.py, re in
+tools/lcu_agent.py, dataclasses.field in tools/inbox_responder_runner.py,
+typing.Dict in tools/replay_session.py; none re-exported, none read or patched by
+name, none touched by another lane branch) and moves them from _BASELINE to FIXED.
+
 The rest are in the shrinking _BASELINE (rel path -> count): frozen files, files
 another lane branch changed, the DS engine (lane ds), deliberate facades
 (``coaches/adaptation_hint.py`` re-exports its split modules, ``effects.py`` its
@@ -76,6 +81,7 @@ FIXED = (
     "modes/shared_vision.py",
     "ops/loop/claude_stub.py",
     "ops/loop/done_sentinel.py",
+    "ops/loop/lanes.py",
     "ops/rc_incident_log.py",
     "scripts/build_carry_benchmarks.py",
     "scripts/build_champion_benchmarks.py",
@@ -84,7 +90,10 @@ FIXED = (
     "tools/bootstrap_env_check.py",
     "tools/dev_cli.py",
     "tools/gated_lx01_draft_check.py",
+    "tools/inbox_responder_runner.py",
+    "tools/lcu_agent.py",
     "tools/live_flip_watcher.py",
+    "tools/replay_session.py",
     "tools/start_daemon_slayer.py",
 )
 
@@ -114,13 +123,9 @@ _BASELINE = {
     "dashboard/_writers.py": 1,
     "dashboard/routes_loadout.py": 1,
     "dashboard/routes_lobby_aux.py": 1,
-    "ops/loop/lanes.py": 1,
     "tools/build_portable.py": 1,
     "tools/champion_loadout_align.py": 1,
     "tools/ds_wiki_staleness_check.py": 2,
-    "tools/inbox_responder_runner.py": 1,
-    "tools/lcu_agent.py": 1,
-    "tools/replay_session.py": 1,
     "tools/run_phase2_perf.py": 1,
     "tools/session_steer.py": 1,
     "tools/validate_loadouts.py": 1,

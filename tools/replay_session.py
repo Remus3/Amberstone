@@ -51,7 +51,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 from urllib.parse import parse_qs, urlsplit
 
 _ROOT = Path(__file__).resolve().parent.parent
