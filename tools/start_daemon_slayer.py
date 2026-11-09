@@ -63,10 +63,18 @@ _FALLBACK_LOG_FILE = (
 
 
 def _write_log_line(target: Path, line: str) -> bool:
-    """Append one line to ``target``. True on success, False on OSError."""
+    """Append one line to ``target``. True on success, False on OSError.
+
+    ``errors="backslashreplace"``: a line holding text utf-8 cannot encode
+    (a lone surrogate from an exception naming an undecodable path) is
+    written escaped. Strict encoding raised UnicodeEncodeError, a ValueError
+    this function did not catch, out of a logger that must never raise
+    (S144-T-703).
+    """
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("a", encoding="utf-8", newline="\n") as f:
+        with target.open("a", encoding="utf-8", errors="backslashreplace",
+                         newline="\n") as f:
             f.write(line)
         return True
     except OSError:
@@ -77,8 +85,13 @@ def _log_startup(msg: str) -> Path | None:
     """Append a timestamped startup line; return the Path written, or None.
 
     Tries the canonical logs/ file, then the SYSTEM-writable ProgramData
-    fallback, and always echoes to stderr (best-effort). Never raises:
-    boot-time traceability must not itself crash the launcher.
+    fallback, and always echoes to stderr (best-effort). Never raises on
+    any failure a real file or stream produces: boot-time traceability must
+    not itself crash the launcher. The echo tolerates exactly those -
+    AttributeError (``sys.stderr`` is None under pythonw), OSError (a dead
+    handle) and ValueError (a closed stream, an encode error); anything
+    else is a programming error and surfaces, after the file line is
+    already on disk (S144-T-703).
     """
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"{ts}  {msg}\n"
@@ -90,7 +103,7 @@ def _log_startup(msg: str) -> Path | None:
     try:
         sys.stderr.write(line)
         sys.stderr.flush()
-    except Exception:
+    except (AttributeError, OSError, ValueError):
         pass
     return written
 
@@ -111,11 +124,21 @@ def main(*, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT,
 
     A held port is waited out (up to ``window_s``), never skipped on sight:
     exit 0 only when a live DS still holds it after the window, exit 1 when
-    something else holds it (nothing was started).
+    something else holds it (nothing was started). A preflight that raises
+    (``require_loopback``'s ValueError for a non-loopback host, an OSError
+    from creating the bind-probe socket) is logged with its traceback and
+    exits 1 without starting anything: under pythonw an exception that
+    escapes ``main()`` leaves no trace at all (S144-T-703).
     """
     log = log or _log_startup
     live = holder_live or (lambda: holder_is_ds(host, port))
-    h = await_port(host, port, holder_live=live, window_s=window_s, poll_s=poll_s)
+    try:
+        h = await_port(host, port, holder_live=live, window_s=window_s,
+                       poll_s=poll_s)
+    except Exception:
+        tb = traceback.format_exc()
+        log(f"port {port} preflight failed - not started (exit 1):\n{tb}")
+        return 1
     if h.state == LIVE:
         log(f"port {port} already bound by a live DS engine "
             f"(checked after {h.waited_s:.0f}s) - skipping (exit 0)")
