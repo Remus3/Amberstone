@@ -703,18 +703,28 @@ body[data-shell="overlay"] .ovx-hidden {
   display: none !important;
 }
 /* RC-HOTKEY-HINTS (doctrine section 11): the small reminder inside an interactive
- * widget. Neutral ink at the OBJECTIVE footer's alpha on the overlay's smallest type
- * token: never a status hue, never moving, never a hit target (pointer-events:none,
- * so it is not a click-through zone either). Absolute beside the drag handle, so it
- * takes no layout and a widget's box does not change for it. */
+ * widget. Neutral ink on the overlay's smallest type token: never a status hue,
+ * never moving, never a hit target (pointer-events:none, so it is not a
+ * click-through zone either). Absolute beside the drag handle, so it takes no
+ * layout and a widget's box does not change for it.
+ * S144-U-278: the reminder carries its OWN nested backing (the inset-row
+ * rgba(--ovx-bg-nested, 0.9) every widget row uses) and 0.70 ink. At 0.55 ink
+ * with no backing of its own it read 1.00:1 under the launcher (outside every box
+ * with a background, so the game pixel was its backing), 2.36:1 on the 0.58
+ * see-through w-choices wash, and 4.18 - 4.48:1 in the idle recede inside
+ * w-build / w-ovds. Now >= 4.5:1 live and idle over any game pixel, wherever a
+ * widget places it. Guard: tests/snapshot_panels/test_overlay_hotkey_hint_contrast.py. */
 body[data-shell="overlay"] .ovx-hotkey-hint {
   position: absolute;
   top: 6px;
   right: 30px;
   z-index: 1;
+  padding: 0 2px;
+  border-radius: 2px;
+  background: rgba(var(--ovx-bg-nested), 0.9);
   font-size: var(--fs-ov-sigil);
   line-height: 1;
-  color: rgba(var(--ovx-text), 0.55);
+  color: rgba(var(--ovx-text), 0.70);
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
@@ -737,6 +747,7 @@ body[data-shell="overlay"] .ovx-launcher > .ovx-hotkey-hint {
   top: 35px;
   left: -24px;
   right: auto;
+  padding: 0 1px; /* S144-U-278: the backing pill still clears x 70 */
   letter-spacing: -0.03em;
 }
 /* No text to read in a fight (rule 3, section 6). */

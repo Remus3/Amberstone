@@ -334,7 +334,9 @@ def test_hint_obeys_the_doctrine_tiers(mock_server, pw_browser):
         assert read["fontPx"] == token, read
         assert read["animation"] == "none", read
         assert "255, 255, 255" in read["color"], read  # --ovx-text, never a status hue
-        assert "0.55" in read["color"], read
+        # S144-U-278: 0.70 ink on its own nested backing (0.55 read under AA;
+        # tests/snapshot_panels/test_overlay_hotkey_hint_contrast.py).
+        assert read["color"] == "rgba(255, 255, 255, 0.7)", read
         page.evaluate("document.body.dataset.fight = '1'")
         assert page.eval_on_selector(hint, _READ_HINT)["display"] == "none", "must shed in a fight"
         assert page.eval_on_selector("#w-launcher > .ovx-hotkey-hint", _READ_HINT)["display"] == "none"

@@ -400,7 +400,12 @@ reminder fails it.
 - A registered TFT panel keeps the action it names (`registerTftOverlayPanel`
   passes `hotkey` through), and the reserved planner slot (`TFT_PLANNER_SLOT`, a
   picker) names `active`, so the planner shows its reminder the day it registers.
-- Rule tiers: neutral ink at the OBJECTIVE footer's alpha, the overlay's smallest type
-  token, no hue, no motion, no layout of its own. `pointer-events:none`, so it is never
+- Rule tiers: neutral ink at 0.70 on its own nested backing pill
+  (`rgba(--ovx-bg-nested, 0.9)`, the inset-row backing), the overlay's smallest type
+  token, no hue, no motion, no layout of its own. S144-U-278: the reminder used to
+  borrow the OBJECTIVE footer's 0.55 and whatever sat behind it, which read 1.00:1
+  under the launcher (only the game behind it), 2.36:1 on the see-through w-choices
+  wash and 4.18:1 in the idle recede; it now reaches AA live and idle over any game
+  pixel (`tests/snapshot_panels/test_overlay_hotkey_hint_contrast.py`). `pointer-events:none`, so it is never
   a hit target or a click-through zone. It sheds in combat (`body[data-fight="1"]`, rule
   3 and section 6); the per-chip pick keys stay, as section 6 says.
