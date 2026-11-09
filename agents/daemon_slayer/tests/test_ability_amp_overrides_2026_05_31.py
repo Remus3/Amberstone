@@ -14,6 +14,7 @@ Does NOT pin ENGINE_VERSION (orchestrator owns the bump).
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer._ability_amp_overrides import (
     _DEFAULT_AMP_PROBABILITY,
@@ -202,7 +203,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_and_test_are_ascii(self):
         import agents.daemon_slayer._ability_amp_overrides as mod
         for path in (mod.__file__, __file__):
-            with open(path, "rb") as fh:
+            with Path(path).open("rb") as fh:
                 raw = fh.read()
             self.assertTrue(raw.decode("ascii"),
                             f"non-ASCII byte in {path}")

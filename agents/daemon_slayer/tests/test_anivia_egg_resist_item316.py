@@ -16,6 +16,7 @@ survival-window stay multiplicative on the whole.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer.data_loader import DataSnapshot
@@ -206,7 +207,7 @@ class EhpIntegrationTests(unittest.TestCase):
 class AsciiHygieneTests(unittest.TestCase):
     def test_module_is_ascii(self):
         import agents.daemon_slayer._passive_revive_overrides as mod
-        with open(mod.__file__, encoding="utf-8") as fh:
+        with Path(mod.__file__).open(encoding="utf-8") as fh:
             src = fh.read()
         nonascii = sorted({c for c in src if ord(c) > 127})
         self.assertEqual(nonascii, [], f"non-ASCII codepoints: {nonascii}")

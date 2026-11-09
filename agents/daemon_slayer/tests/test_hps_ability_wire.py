@@ -19,6 +19,7 @@ NO ENGINE_VERSION assertion here - the orchestrator owns the version bump.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.hps import HpsResult, compute_hps
@@ -162,7 +163,7 @@ class AbilityHpsWireTests(unittest.TestCase):
 
 class AbilityHpsAsciiHygieneTests(unittest.TestCase):
     def test_module_is_ascii(self) -> None:
-        with open(__file__, "rb") as fh:
+        with Path(__file__).open("rb") as fh:
             raw = fh.read()
         for i, b in enumerate(raw):
             self.assertLess(

@@ -26,6 +26,7 @@ the growth formula. Flag OFF stays BYTE-IDENTICAL; flag ON re-ranks Arena
 """
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.dps import compute_dps
@@ -239,7 +240,7 @@ class ArenaAddendShippedTests(_SnapBase):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_source_is_ascii(self):
-        with open(__file__, "rb") as fh:
+        with Path(__file__).open("rb") as fh:
             raw = fh.read()
         for i, b in enumerate(raw):
             self.assertLess(
