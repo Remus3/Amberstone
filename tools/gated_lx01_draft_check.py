@@ -87,7 +87,7 @@ import sys
 import time
 import urllib.request
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
 from urllib.parse import quote

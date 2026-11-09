@@ -419,7 +419,6 @@ def backfill_tracked_summary(
     the DB at all is reported in `net_new` (that is the INSERT path's job, see
     `backfill_participants`), not inserted here.
     """
-    import json
     import sqlite3
     from pathlib import Path
 
@@ -522,7 +521,6 @@ def backfill_participants(
     in `unresolved_champions` and stored as NULL rather than guessed; callers
     should treat a non-empty list as a failure.
     """
-    import json
     import sqlite3
     from pathlib import Path
 

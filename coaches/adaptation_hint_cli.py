@@ -33,7 +33,7 @@ def _parse_since(spec: str) -> str:
     Accepts: ``today`` (default), ``24h`` / ``48h`` / etc., ``Nh`` where
     N is a positive int, or a full ISO-8601 string (passed through).
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
     s = (spec or "today").strip().lower()
     if s in ("today", ""):
         return _start_of_today_iso()

@@ -16,6 +16,11 @@ RM-1409 cleans twelve more stdlib leftovers (one each, in coaches, core,
 dashboard, game_reader, ops and tools; none re-exported, none patched by name in
 a test) and moves them from _BASELINE to FIXED.
 
+S144-P-470 cleans ten more (13 names: stdlib leftovers - datetime.timezone, json,
+typing.Callable, statistics.mean, sys, os - in coaches, core, dashboard, scripts
+and tools; none re-exported, none patched by name in a test, none touched by
+another lane branch) and moves them from _BASELINE to FIXED.
+
 The rest are in the shrinking _BASELINE (rel path -> count): frozen files, files
 another lane branch changed, the DS engine (lane ds), deliberate facades
 (``coaches/adaptation_hint.py`` re-exports its split modules, ``effects.py`` its
@@ -51,6 +56,8 @@ FIXED = (
     "agents/agent2_backend/pipeline/orchestrator.py",
     "agents/supervisor.py",
     "coach_integration/_coach.py",
+    "coaches/_adaptation_common.py",
+    "coaches/adaptation_hint_cli.py",
     "coaches/experimental_builder.py",
     "coaches/loadout_resolver.py",
     "coaches/replay_coach.py",
@@ -60,6 +67,8 @@ FIXED = (
     "core/feature_policy.py",
     "core/metrics_cache.py",
     "core/replay_history.py",
+    "core/rofl_stats_backfill.py",
+    "dashboard/_dispatch.py",
     "dashboard/_state_builder.py",
     "dashboard/routes_duo_synergy.py",
     "dashboard/routes_recordings.py",
@@ -68,7 +77,13 @@ FIXED = (
     "ops/loop/claude_stub.py",
     "ops/loop/done_sentinel.py",
     "ops/rc_incident_log.py",
+    "scripts/build_carry_benchmarks.py",
+    "scripts/build_champion_benchmarks.py",
+    "scripts/install_hooks.py",
+    "scripts/merge_refresh_builds.py",
     "tools/bootstrap_env_check.py",
+    "tools/dev_cli.py",
+    "tools/gated_lx01_draft_check.py",
     "tools/live_flip_watcher.py",
     "tools/start_daemon_slayer.py",
 )
@@ -92,27 +107,17 @@ _BASELINE = {
     "agents/daemon_slayer/self_shred.py": 1,
     "agents/daemon_slayer/server.py": 1,
     "app/_game_lifecycle.py": 2,
-    "coaches/_adaptation_common.py": 1,
     "coaches/adaptation_hint.py": 33,
-    "coaches/adaptation_hint_cli.py": 1,
     "composition_advisor.py": 7,
     "core/build_order_variants.py": 1,
     "core/log_setup.py": 2,
-    "core/rofl_stats_backfill.py": 2,
-    "dashboard/_dispatch.py": 1,
     "dashboard/_writers.py": 1,
     "dashboard/routes_loadout.py": 1,
     "dashboard/routes_lobby_aux.py": 1,
     "ops/loop/lanes.py": 1,
-    "scripts/build_carry_benchmarks.py": 1,
-    "scripts/build_champion_benchmarks.py": 2,
-    "scripts/install_hooks.py": 1,
-    "scripts/merge_refresh_builds.py": 2,
     "tools/build_portable.py": 1,
     "tools/champion_loadout_align.py": 1,
-    "tools/dev_cli.py": 1,
     "tools/ds_wiki_staleness_check.py": 2,
-    "tools/gated_lx01_draft_check.py": 1,
     "tools/inbox_responder_runner.py": 1,
     "tools/lcu_agent.py": 1,
     "tools/replay_session.py": 1,

@@ -62,7 +62,7 @@ def _db(mode: str) -> Path | None:
 def _start_of_today_iso() -> str:
     """Local midnight, ISO-8601 with tz - used as default ``since`` for
     session_summary."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     now = datetime.now().astimezone()
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     return start.isoformat()
