@@ -36,7 +36,9 @@ default champ fails LOUDLY (forces review) rather than silently dropping it.
 Output: ``core/aram_archetype_override.json`` - consumed by
 ``core.archetype_picks.get_archetype_for(prefer_aram_win_axis=True)`` (the
 DEFAULT-OFF DSP3 seam; the live default-ON flip is EXCLUDED -> appended to
-docs/LIVE_GAME_GATED_SYNC.md). Re-run after a cross-eval refresh to keep current.
+docs/LIVE_GAME_GATED_SYNC.md). Re-run after a cross-eval refresh to keep current;
+``--check`` compares the committed table with a fresh build and writes nothing
+(S144-D-241; the top-level ``patch`` stamp is provenance and no loader reads it).
 
 Hermetic: reads ONLY the small per-champ cross-eval JSONs (verdicts/ + data/).
 The 1.8GB rewind_history.db is NEVER opened here.
@@ -53,6 +55,10 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core.polled_json import atomic_write_text  # noqa: E402
+from ops.audit.ds_perm_swarm.credit_table_check import (  # noqa: E402
+    committed_matches_patch,
+    render_ascii,
+)
 
 _CE_DIR = _ROOT / "ops" / "audit" / "ds_cross_eval"
 _VERDICTS_DIR = _CE_DIR / "verdicts"
@@ -226,10 +232,22 @@ def build_table(
     }
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true",
+                        help="verify the committed JSON matches a fresh build")
+    args = parser.parse_args([] if argv is None else argv)
     table = build_table()
-    text = json.dumps(table, indent=2, ensure_ascii=True, sort_keys=False)
-    atomic_write_text(_OUT_PATH, text + "\n")
+    if args.check:
+        # S144-D-241: the committed top-level patch stamp is provenance, kept.
+        if not committed_matches_patch(_OUT_PATH, table):
+            print(f"DRIFT: {_OUT_PATH.name} != fresh build", file=sys.stderr)
+            return 2
+        print(f"{_OUT_PATH.name} in sync")
+        return 0
+    atomic_write_text(_OUT_PATH, render_ascii(table))
     champs = table["champions"]
     print(f"wrote {_OUT_PATH}")
     print(
@@ -241,7 +259,8 @@ def main() -> None:
     for c, e in champs.items():
         ev = ", ".join(f"{x['name']}({x['n']}/{x['wr']})" for x in e["evidence"][:3])
         print(f"  {c}: {e['default_primary']} -> {e['override']} [{e['axis']}]  {ev}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main(sys.argv[1:]))

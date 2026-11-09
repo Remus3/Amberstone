@@ -9,6 +9,10 @@ is provenance (the snapshot the table was built against); no loader reads it.
 So ``--check`` keeps the COMMITTED stamp when the committed one is a string and
 compares everything else byte for byte: content and format drift still fail.
 Write mode is unchanged and stamps the patch it built at.
+
+S144-D-241 adds the same rule for the two seam-override builders
+(build_marksman_offclass_exempt.py, build_aram_archetype_override.py), whose
+stamp is a top-level ``patch`` and whose render is ``render_ascii``.
 """
 from __future__ import annotations
 
@@ -36,3 +40,33 @@ def committed_matches(out: Path, built: dict) -> bool:
     if isinstance(stamp, str) and isinstance(expected.get("_meta"), dict):
         expected["_meta"]["ds_patch"] = stamp
     return cur == render(expected)
+
+
+def render_ascii(table: dict) -> str:
+    """The exact text the two seam-override builders write for ``table``.
+
+    S144-D-241. build_marksman_offclass_exempt.py and
+    build_aram_archetype_override.py keep insertion order and escape non-ASCII,
+    unlike the four WIN-credit builders above.
+    """
+    return json.dumps(table, indent=2, ensure_ascii=True, sort_keys=False) + "\n"
+
+
+def committed_matches_patch(out: Path, built: dict) -> bool:
+    """``committed_matches`` for the tables stamped with a top-level ``patch``.
+
+    Keeps the committed ``patch`` when it is a string (no loader reads it) and
+    compares the rest byte for byte against ``render_ascii``.
+    """
+    try:
+        cur = out.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    try:
+        stamp = json.loads(cur).get("patch")
+    except (ValueError, AttributeError):
+        return False
+    expected = dict(built)
+    if isinstance(stamp, str) and "patch" in expected:
+        expected["patch"] = stamp
+    return cur == render_ascii(expected)
