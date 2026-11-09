@@ -33,7 +33,7 @@ import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
-from pathlib import Path
+from pathlib import Path, PurePath, PurePosixPath, PureWindowsPath
 
 import pytest
 
@@ -55,6 +55,26 @@ LEFTOVER = re.compile(r"__RC_[A-Z0-9_]+__")
 RENDERER = ROOT / "tools" / "install_render_task_xml.ps1"
 DS_INSTALLER = ROOT / "tools" / "install_daemon_slayer_task.ps1"
 NO_WINDOW = 0x08000000
+#: What the existence check renders ``__RC_REPO__`` as. A task XML is a
+#: Windows Task Scheduler definition, so its targets are Windows paths on
+#: every host. Rendering with the host's own root (``str(ROOT)``) and reading
+#: the result back with the host's ``Path`` only worked on Windows: on the
+#: Linux CI runner ``<root>\tools\x.py`` is ONE file name with backslashes in
+#: it, so every target "did not exist" (s157, CI runs 42580217676,
+#: 42580217721, 42673808730). So the check renders under this fixed Windows
+#: root - with a space, so an unquoted target still fails - and maps what
+#: follows it onto ROOT by its Windows parts. Assembled at run time, not
+#: spelled as one drive-rooted literal.
+WIN_REPO = PureWindowsPath("C:" + "\\", "Rc Checkout")
+
+
+def _repo_file(target: str, root: PurePath = ROOT) -> PurePath | None:
+    """The checkout file a rendered Windows target names under ``root``, or
+    None when the target is not under :data:`WIN_REPO`."""
+    win = PureWindowsPath(target)
+    if not win.is_relative_to(WIN_REPO):
+        return None
+    return root.joinpath(*win.relative_to(WIN_REPO).parts)
 
 
 def _tracked_task_xmls() -> list[str]:
@@ -140,7 +160,7 @@ def test_each_template_renders_to_a_task_whose_targets_exist(rel: str) -> None:
     assert "UTF-16" not in head.upper(), (
         f"{rel} declares UTF-16 but is stored as ASCII; the renderer writes "
         "the UTF-16 file schtasks imports")
-    rendered = _render(text, str(ROOT), "someone", "C:" + r"\py\pythonw.exe")
+    rendered = _render(text, str(WIN_REPO), "someone", "C:" + r"\py\pythonw.exe")
     assert not LEFTOVER.search(rendered), (
         f"{rel} uses a placeholder the renderer does not fill: "
         f"{LEFTOVER.findall(rendered)}")
@@ -152,9 +172,25 @@ def test_each_template_renders_to_a_task_whose_targets_exist(rel: str) -> None:
         targets = re.findall(r'"([^"]+\.py)"', args)
         assert targets, f"{rel} Exec names no .py target: {args!r}"
         for target in targets:
-            path = Path(target)
-            assert path.is_absolute(), f"{rel} target is not rooted: {target}"
-            assert path.is_file(), f"{rel} target does not exist: {target}"
+            assert PureWindowsPath(target).is_absolute(), (
+                f"{rel} target is not rooted: {target}")
+            path = _repo_file(target)
+            assert path is not None, (
+                f"{rel} target is not under __RC_REPO__: {target}")
+            assert Path(path).is_file(), f"{rel} target does not exist: {target}"
+
+
+def test_a_rendered_target_maps_by_its_windows_parts_on_any_host() -> None:
+    """The s157 Linux red, pinned so a Windows run catches it too: the target
+    is split on the WINDOWS separator whatever the host, never joined onto a
+    POSIX root as text."""
+    posix_root = PurePosixPath("/srv/rc checkout")
+    target = str(WIN_REPO / "tools" / "ci_watchdog.py")
+    got = _repo_file(target, posix_root)
+    assert got == posix_root / "tools" / "ci_watchdog.py", got
+    assert "\\" not in str(got), got
+    outside = str(PureWindowsPath("C:" + "\\", "elsewhere", "tools", "x.py"))
+    assert _repo_file(outside, posix_root) is None
 
 
 def test_the_ds_task_description_names_the_live_port() -> None:
@@ -243,7 +279,10 @@ def test_the_renderer_refuses_an_absent_interpreter(tmp_path: Path) -> None:
 def test_the_renderer_refuses_a_name_that_leaves_ops(tmp_path: Path) -> None:
     # A real task XML outside ops/, so only the name check can refuse it.
     escape = "..\\docs\\_archive\\2026-06-11_RC-VisionServer_schtask_removed"
-    assert (ROOT / "ops" / (escape + ".xml")).resolve().is_file()
+    # Split on the Windows separator, not handed to the host Path as text
+    # (the s157 root cause; this test only runs where PS 5.1 exists).
+    parts = PureWindowsPath(escape + ".xml").parts
+    assert ROOT.joinpath("ops", *parts).resolve().is_file()
     out = tmp_path / "x.xml"
     proc = _ps51(["-File", str(RENDERER), "-Name", escape,
                   "-OutFile", str(out), "-PythonW", sys.executable])
