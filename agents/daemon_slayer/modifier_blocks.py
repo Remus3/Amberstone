@@ -4,11 +4,12 @@ Context (2026-05-30 DS review): a sibling project's scraper-refactor chat
 flagged "modifiers aren't being considered" for abilities like Caitlyn W
 (which shows 0 ability damage). The extractor classifies every ability
 sub-block into ``attribute_kind`` and the ability-DPS evaluator consumes
-ONLY ``"damage"`` blocks (``ability_dps.py`` block-select). 180 blocks at
-16.11.1 carry ``attribute_kind == "modifier"`` and are dropped from the
-damage sum.
+ONLY ``"damage"`` blocks (``ability_dps.py`` block-select). When first read
+at 16.11.1, 180 blocks carried ``attribute_kind == "modifier"`` and were
+dropped from the damage sum (the live total is pinned by
+``test_modifier_blocks_2026_05_30.py``).
 
-That drop is CORRECT - but only because the 180 modifier blocks are a
+That drop is CORRECT - but only because the modifier blocks are a
 heterogeneous bag, NOT one clean "damage x N" multiplier. A blanket
 "apply every modifier block as a multiplier" (the refactor's tempting
 shortcut) is wrong: it would multiply champion damage by minion-only
@@ -18,16 +19,24 @@ will have to be reverted."
 
 This module makes the modifier blocks QUERYABLE (so "modifiers are
 considered" is true in the honest sense - visible + classified) without
-corrupting any DPS number. It is PURELY ADDITIVE and behavior-neutral:
-nothing in the DPS / EHP / ability-DPS / HPS path imports it. It is the
-substrate a coach surface ("Nasus E shreds 50% armor") or a deliberate
-future self-shred DPS slice would build on.
+corrupting any DPS number. Two engine modules import the classifier, and
+each reads exactly one kind: ``data_loader.py`` (the per-rank percent
+damage-reduction walk reads ``defensive_self``) and ``self_shred.py`` (the
+self-shred uplift reads ``target_shred``). ``server.py`` serves
+``summarize_modifiers`` on the modifier-summary route. Moving a block
+between ``pve_only``, ``damage_amp_self`` and ``other`` therefore changes
+that route's JSON and nothing a scorer reads
+(``test_modifier_taxonomy_live_s144d282.py`` pins the importers and
+the kinds they read).
 
 Taxonomy (``classify_modifier_kind``):
 
 * ``pve_only``       - minion / monster / non-champion / epic / turret
-                       damage or heal. CORRECTLY excluded from champion
-                       DPS (~120 of 180 blocks). The bulk.
+                       damage or heal (Aatrox W, Belveth Q, Heimerdinger W
+                       minion totals). CORRECTLY excluded from champion
+                       DPS. The bulk (about two thirds when first read at
+                       16.11.1). A "Non-Minion" block is champion-scoped
+                       and is NOT PvE.
 * ``target_shred``   - reduces the TARGET's armor / MR / resistances / AD
                        (Nasus E, Corki E, Briar Q, KogMaw Q, JarvanIV Q,
                        Trundle Q). The ONE class with real unconditional
@@ -36,16 +45,20 @@ Taxonomy (``classify_modifier_kind``):
                        bump + DS validation), NOT applied here.
 * ``defensive_self`` - damage reduction / bonus resistance on the caster
                        or an ally (Garen W, Alistar R, Galio W, Braum E,
-                       Jax R MR). Belongs to EHP, never DPS.
-* ``damage_amp_self``- increases the caster's OWN damage (Caitlyn headshot,
-                       Fiora E crit, Mordekaiser Q isolation, Hwei/Sion
-                       max-charge). These are EITHER conditional-target-state
+                       Jax R magic resistance). Belongs to EHP, never DPS.
+* ``damage_amp_self``- increases the caster's OWN damage (Caitlyn W headshot,
+                       Fiora E crit, Mordekaiser Q isolation, Hwei Q /
+                       Sion Q max-charge). These are EITHER conditional-target-state
                        amps (the conditional-block schema's job; the arc is
                        operator-CLOSED per s232) OR auto-attack
                        empowerments that belong in the AA scorer
                        (``compute_dps``), NOT ``ability_dps``.
 * ``other``          - movement speed / size / cost / cooldown / grey-health
-                       / replicated-projectile utility.
+                       / replicated-projectile utility (Quinn R, Shyvana R,
+                       Vayne R, TahmKench E grey health, Mel W replicated
+                       projectile), plus champion-scoped maxima and totals
+                       that restate the form's own damage blocks (Aatrox Q,
+                       Heimerdinger W "Non-Minion" rows).
 
 The classifier is a pure function over the Meraki attribute name (the same
 string ``_classify_attribute`` already routed to ``"modifier"``).
@@ -67,8 +80,10 @@ MODIFIER_KINDS: tuple[str, ...] = (
 )
 
 # PvE: anything scoped to minions / monsters / non-champions / epic / turret.
+# The lookbehind keeps "Non-Minion" (champion-scoped: Aatrox Q, Heimerdinger W)
+# out; a bare word boundary matches the word after the hyphen.
 _PVE_RE = re.compile(
-    r"\b(minion|monster|non-champion|nonchampion|non-epic|epic|turret|"
+    r"\b(?<!non-)(minion|monster|non-champion|nonchampion|non-epic|epic|turret|"
     r"jungle|small monster|large monster)\b",
     re.IGNORECASE,
 )
@@ -88,6 +103,11 @@ _DEFENSIVE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# other, checked BEFORE the amp patterns: grey health is damage TAKEN
+# (TahmKench E) and a replicated projectile reflects an ENEMY's damage
+# (Mel W); both match "damage stored" / "damage modifier" otherwise.
+_OTHER_FIRST_RE = re.compile(r"(grey health|replicated projectile)", re.IGNORECASE)
+
 # damage_amp_self: increases the caster's OWN outgoing damage.
 _AMP_RE = re.compile(
     r"(damage increase|critical damage|headshot|"
@@ -102,7 +122,8 @@ def classify_modifier_kind(attribute: str) -> str:
 
     Pure function over the Meraki attribute name. Order: PvE first (a
     "Monster Damage Reduction" is PvE), then target-shred, then defensive
-    self-buff, then self damage-amp, else ``other``.
+    self-buff, then grey-health / replicated-projectile ``other``, then
+    self damage-amp, else ``other``.
     """
     s = (attribute or "").strip()
     if _PVE_RE.search(s):
@@ -111,6 +132,8 @@ def classify_modifier_kind(attribute: str) -> str:
         return "target_shred"
     if _DEFENSIVE_RE.search(s):
         return "defensive_self"
+    if _OTHER_FIRST_RE.search(s):
+        return "other"
     if _AMP_RE.search(s):
         return "damage_amp_self"
     return "other"

@@ -17,7 +17,7 @@ the "verified at 16.11.1" labels kept claiming a check nobody re-runs.
   (``modifier_blocks.classify_modifier_kind``) has exactly one disposition:
   an ``_ABILITY_AMP_OVERRIDES`` row, the ``_STAGED_AMP_BLOCK_ROUTES`` route,
   the cross-spell SOURCE, the Sion block index, or the module docstring's
-  out-of-seam list (Mel W / Mel R / TahmKench E / Yone E). A new or renamed
+  out-of-seam list (Mel R / Yone E). A new or renamed
   block fails until someone dispositions it; a disposition whose block left
   the live data fails too.
 * S144-D-281: no sentence in the module claims a value was "verified" at a
@@ -28,7 +28,9 @@ the "verified at 16.11.1" labels kept claiming a check nobody re-runs.
 MEASURED 2026-11-09 (``load_default()`` and the raw snapshot, patch 16.22.1,
 Meraki content patch 25.15): 15 ``damage_amp_self`` blocks, 10 inside the
 seam and 5 out of it; every ``ed[N]`` cite resolved except the Jayce "4x
-hits" wording. The engine edits are comments and docstring only, so scorer
+hits" wording. S144-D-282 then moved the Mel W replicated-projectile and the
+two TahmKench E grey-health blocks to ``other``, leaving 12 blocks, 2 of
+them out of the seam. The engine edits are comments and docstring only, so scorer
 output is byte-identical.
 """
 
@@ -227,10 +229,7 @@ DISPOSITION: dict[Block, str] = {
     ("Nidalee", "Q", 1, "Increased Damage Modifier"): "amp",
     ("Sion", "Q", 0, "Maximum Base Damage Increase"): "block_index",
     ("Sivir", "W", 0, "Bounce Critical Damage"): "amp",
-    ("Mel", "W", 0, "Replicated Projectile Damage Modifier"): "out",
     ("Mel", "R", 0, "Stored Damage Increase per Stack"): "out",
-    ("TahmKench", "E", 0, "Damage Stored into Grey Health"): "out",
-    ("TahmKench", "E", 0, "Increased Damage Stored into Grey Health"): "out",
     ("Yone", "E", 0, "Damage Stored"): "out",
 }
 
@@ -293,7 +292,7 @@ def test_disposition_check_catches_planted_defects(ab: Any, amp_src: str) -> Non
     assert any("absent from the live data" in e for e in errs), errs
     assert any("Zed" in e and "not backed" in e for e in errs), errs
     wrong = dict(DISPOSITION)
-    wrong[("Mel", "W", 0, "Replicated Projectile Damage Modifier")] = "amp"
+    wrong[("Mel", "R", 0, "Stored Damage Increase per Stack")] = "amp"
     errs = check_disposition(live, wrong, amp_src, bi)
     assert any("Mel" in e and "not backed" in e for e in errs), errs
     assert 'Yone E "Damage Stored"' in amp_src
@@ -305,8 +304,8 @@ def test_disposition_check_catches_planted_defects(ab: Any, amp_src: str) -> Non
 def test_out_of_seam_reasons_match_the_live_forms(ab: Any) -> None:
     """Pin the docstring's out-of-seam reasons against the live forms.
 
-    Mel R already carries the stored-damage block; Mel W, TahmKench E and
-    Yone E carry no damage block an amp could scale.
+    Mel R already carries the stored-damage block; Yone E carries no damage
+    block an amp could scale.
     """
     forms = {(c, k, f.form_index): f for c, k, f in ab.iter_forms()}
 
@@ -314,8 +313,7 @@ def test_out_of_seam_reasons_match_the_live_forms(ab: Any) -> None:
         return [b.attribute for b in forms[key].damage_blocks if b.attribute_kind == "damage"]
 
     assert "Increased Stored Damage" in dmg(("Mel", "R", 0))
-    for key in (("Mel", "W", 0), ("TahmKench", "E", 0), ("Yone", "E", 0)):
-        assert dmg(key) == [], key
+    assert dmg(("Yone", "E", 0)) == []
 
 
 # --------------------------------------------------------------- S144-D-281

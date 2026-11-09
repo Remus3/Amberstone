@@ -108,15 +108,13 @@ block index) and test_ability_amp_prose_and_disposition_s144d279.py (every
 
 Out of seam - the taxonomy's other ``damage_amp_self`` blocks
 (``modifier_blocks.classify_modifier_kind``) that this registry deliberately
-does not key: Mel W "Replicated Projectile Damage Modifier" (a ratio of a
-reflected ENEMY projectile, not Mel's own damage; the taxonomy docstring files
-replicated projectiles under ``other``); Mel R "Stored Damage Increase per
-Stack" (the form already carries the "Increased Stored Damage" damage block,
-so an amp would double-model it); TahmKench E "Damage Stored into Grey Health"
-and "Increased Damage Stored into Grey Health" (damage TAKEN stored as grey
-health, a defensive mechanic; the taxonomy docstring files grey health under
-``other``); Yone E "Damage Stored" (a mark storing a share of damage dealt,
-paid out as the recast's true damage; the form has no damage block to scale).
+does not key: Mel R "Stored Damage Increase per Stack" (the form already
+carries the "Increased Stored Damage" damage block, so an amp would
+double-model it); Yone E "Damage Stored" (a mark storing a share of damage
+dealt, paid out as the recast's true damage; the form has no damage block to
+scale). The Mel W replicated-projectile and TahmKench E grey-health blocks
+are no longer in the bucket: the taxonomy files them under ``other``
+(test_modifier_taxonomy_live_s144d282.py).
 """
 from __future__ import annotations
 
