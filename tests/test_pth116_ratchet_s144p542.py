@@ -119,7 +119,7 @@ def test_an_empty_string_stats_differently_so_the_string_sites_stay_baselined():
     """Why the five string-path production sites are not swapped blind."""
     with pytest.raises(OSError):
         os.stat("")  # noqa: PTH116 - the point of the test
-    assert Path("").stat().st_mode  # Path("") is "." and succeeds
+    assert Path().stat().st_mode  # Path() == Path("") is "." and succeeds
 
 
 def test_a_path_stat_matches_os_stat_for_a_path_argument(tmp_path):

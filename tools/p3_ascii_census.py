@@ -62,7 +62,7 @@ def main():
     buckets = collections.defaultdict(list)
     bom8, utf16, ps1_bom, ps1_nonascii = [], [], {}, set()
     for rel in files:
-        ext = os.path.splitext(rel)[1].lower()
+        ext = Path(rel).suffix.lower()
         if ext not in AUTH_EXT or excluded(rel):
             continue
         with open(os.path.join(ROOT, rel), 'rb') as fh:

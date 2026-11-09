@@ -210,7 +210,7 @@ def test_the_tracer_root_keeps_the_old_value_and_its_path_gates_stay_lexical():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     old = _OLD_DIRNAME(_OLD_DIRNAME(_OLD_ABSPATH(REPO_ROOT / "tools/live_write_tracer.py")))
-    assert module._ROOT == old
+    assert old == module._ROOT
     source = (REPO_ROOT / "tools/live_write_tracer.py").read_text(encoding="utf-8")
     assert source.count("str(Path(__file__).absolute().parents[1])") == 2
     assert "disp = os.path.abspath(os.fsdecode(os.fspath(path)))" in source

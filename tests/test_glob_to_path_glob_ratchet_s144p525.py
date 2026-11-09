@@ -7,8 +7,9 @@ vendored kit. Three became ``Path.glob`` (``ops/audit/ds_perm_swarm/build_aram_a
 objects with ``key=str`` (the same ordering the old string sort gave, whatever the platform's Path comparison does with
 case) and read the Path directly, and the three ``import glob`` lines went.
 
-The other two sites belong to the gated lane, whose branch changed both files (``tools/gated_lx01_draft_check.py``,
-``tests/test_vision_profile_2560_ocr_boxes.py``), so they sit in ``_BASELINE`` at one finding each. The baseline only
+The other two sites belonged to the gated lane, whose branch changed both files (``tools/gated_lx01_draft_check.py``,
+``tests/test_vision_profile_2560_ocr_boxes.py``). S144-P-543 converted the test (its pattern is a fixed relative
+literal); ``tools/gated_lx01_draft_check.py`` stays in ``_BASELINE`` at one finding because its spec may be absolute. The baseline only
 shrinks: ANY new finding, or a third finding in a baselined file, fails ``test_no_file_exceeds_its_baseline``.
 The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding, and ``--preview`` because PTH207 is
 preview-only in this ruff.
@@ -38,13 +39,15 @@ _NOT_THIS_SCOPE = {
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE: dict[str, int] = {
-    "tools/gated_lx01_draft_check.py": 1,  # gated lane's file at conversion time
-    "tests/test_vision_profile_2560_ocr_boxes.py": 1,  # gated lane's file at conversion time
+    # the pattern is caller-supplied and may be ABSOLUTE; Path.glob refuses a non-relative pattern, so the swap changes behaviour
+    "tools/gated_lx01_draft_check.py": 1,
 }
 _FIXED = (
     "ops/audit/ds_perm_swarm/build_aram_archetype_override.py",
     "ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py",
     "tools/ds_cross_eval/aggregate.py",
+    # converted in S144-P-543 once no lane branch changed it any more
+    "tests/test_vision_profile_2560_ocr_boxes.py",
 )
 
 

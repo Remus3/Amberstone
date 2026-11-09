@@ -13,7 +13,6 @@ drift. Every box must sit inside the 2560x1440 frame with left<right, top<bottom
 """
 from __future__ import annotations
 
-import glob
 import json
 import os
 from pathlib import Path
@@ -31,7 +30,7 @@ _REQUIRED_OCR = {
 
 
 def _profiles_2560():
-    return sorted(glob.glob(os.path.join(_PROFILES, "2560x1440_*.json")))
+    return sorted(str(p) for p in Path(_PROFILES).glob("2560x1440_*.json"))
 
 
 def _require_local_profiles():
