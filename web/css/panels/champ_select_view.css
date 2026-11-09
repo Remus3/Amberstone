@@ -920,10 +920,16 @@
  * ban cells stop eating vertical space during the pick window. The head
  * row stays ("BAN - phase over") so the section is still labelled; only
  * the cell row is removed from layout. Applied by _csvRenderPickBan via
- * _csvBanPhaseComplete(cs). */
-.csv-pb168-bans.is-collapsed { flex: 0 0 auto; opacity: 0.6; }
+ * _csvBanPhaseComplete(cs).
+ * S144-U-235: no section opacity. At 0.6 it sank the head's
+ * --text-faint to about 2.6:1 on the card (16 px / 700 needs 4.5). The
+ * head keeps --text-faint at full strength (AA on --surface, base.css)
+ * and only the accent dot fades, so it still reads dimmer than PICK and
+ * WHY THESE (--dim). */
+.csv-pb168-bans.is-collapsed { flex: 0 0 auto; }
 .csv-pb168-bans.is-collapsed .csv-pb168-row { display: none; }
 .csv-pb168-bans.is-collapsed .csv-pb168-head { border-bottom: none; color: var(--text-faint); }
+.csv-pb168-bans.is-collapsed .csv-pb168-head::before { opacity: 0.6; }
 .csv-pb168-expl  { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 /* item 213 (2026-05-28): PICK / BAN heads reformatted for a clearer
  * visual hierarchy - the head is now a left-aligned labeled bar with a
