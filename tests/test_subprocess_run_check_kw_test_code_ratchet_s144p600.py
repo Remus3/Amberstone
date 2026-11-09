@@ -58,6 +58,10 @@ status_helper_rc2 and web_js_esm_parse), bar the files the ratchet leaves (ratch
 launcher / build_portable / package_portable / third_party_notices packaging files, gated-lane
 files, loop_concurrency, ci_sibling_sweep_tree_wiring) and test_rm750_ds_keepalive (lane/true-audit
 changed it);
+slice 17 (S144-P-619) does the same for the first ten ratchet modules no other lane branch had
+changed, one site each (a001_test_code_idiom, agent3_suite_idiom, ambiguous_name, async_blocking_prod,
+asyncsleep_camelalias, branch_idiom and bug_class_lint_bundle2 to bundle5); their one site is
+the shared ``ruff`` helper whose only extra keyword dict holds ``creationflags``;
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -89,17 +93,7 @@ pytestmark = pytest.mark.skipif(
 _RULE = "PLW1510"
 # file -> finding count that stays. Only shrinks.
 _BASELINE = {
-    "tests/test_a001_test_code_idiom_ratchet_s144p182.py": 1,
-    "tests/test_agent3_suite_idiom_ratchet_s144p231.py": 1,
-    "tests/test_ambiguous_name_ratchet_s144p475.py": 1,
-    "tests/test_async_blocking_prod_ratchet_s144p213.py": 1,
-    "tests/test_asyncsleep_camelalias_ratchet_s144p239.py": 1,
     "tests/test_b4_client_directive_gate.py": 1,
-    "tests/test_branch_idiom_ratchet_s144p163.py": 1,
-    "tests/test_bug_class_lint_bundle2_zero_ratchet_s144p321.py": 1,
-    "tests/test_bug_class_lint_bundle3_zero_ratchet_s144p328.py": 1,
-    "tests/test_bug_class_lint_bundle4_zero_ratchet_s144p329.py": 1,
-    "tests/test_bug_class_lint_bundle5_zero_ratchet_s144p330.py": 1,
     "tests/test_bug_class_lint_bundle6_zero_ratchet_s144p332.py": 1,
     "tests/test_bug_class_lint_bundle_zero_ratchet_s144p319.py": 1,
     "tests/test_bugbear_gap_and_pie790_ratchet_s144p111.py": 1,
@@ -390,6 +384,16 @@ _FIXED = (
     "tests/test_sibling_name_sweep.py",
     "tests/test_status_helper_rc2.py",
     "tests/test_web_js_esm_parse.py",
+    "tests/test_a001_test_code_idiom_ratchet_s144p182.py",
+    "tests/test_agent3_suite_idiom_ratchet_s144p231.py",
+    "tests/test_ambiguous_name_ratchet_s144p475.py",
+    "tests/test_async_blocking_prod_ratchet_s144p213.py",
+    "tests/test_asyncsleep_camelalias_ratchet_s144p239.py",
+    "tests/test_branch_idiom_ratchet_s144p163.py",
+    "tests/test_bug_class_lint_bundle2_zero_ratchet_s144p321.py",
+    "tests/test_bug_class_lint_bundle3_zero_ratchet_s144p328.py",
+    "tests/test_bug_class_lint_bundle4_zero_ratchet_s144p329.py",
+    "tests/test_bug_class_lint_bundle5_zero_ratchet_s144p330.py",
 )
 
 
