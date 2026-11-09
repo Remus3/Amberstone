@@ -1295,12 +1295,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * Pinned by tests/snapshot_panels/test_home_find_match_picker_focus.py. */
 .lq-mode-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.lobby-view-leader-tag {
-  /* UI scale v2.1: 12 -> --fs-xs (16). */
-  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.16em;
-  color: var(--clock); padding: 3px 9px;
-  background: var(--gold-soft); border-radius: 999px;
-}
+/* S144-U-252: the leader pill rule is retired; its only emitter (the
+ * hidden #lv-leader-tag stub) left index.html in E11, and the member-row
+ * crown marks the leader. */
 
 /* ---- s162 v4: Friends / Recently Played panel, now the My Top 8 heading ---- */
 /* S144-U-248: the retired friends-row rules (lv-friends-list, lv-fr-*)
