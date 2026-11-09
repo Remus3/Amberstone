@@ -367,7 +367,7 @@ class AsciiHygieneTests(unittest.TestCase):
 
     def _check_file(self, rel_path: str) -> None:
         abs_path = Path(_DS_DIR) / rel_path
-        with open(abs_path, "rb") as fh:
+        with Path(abs_path).open("rb") as fh:
             content = fh.read()
         non_ascii = [
             (i, b) for i, b in enumerate(content) if b > 127

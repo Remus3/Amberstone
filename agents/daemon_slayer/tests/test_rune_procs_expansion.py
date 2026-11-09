@@ -18,6 +18,7 @@ runesReforged.json maps 8299 -> Last Stand, 8014 -> Coup de Grace,
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import rune_procs as rp
 from agents.daemon_slayer.rune_procs import (
@@ -229,7 +230,7 @@ class NewRuneFailSoftTests(unittest.TestCase):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_module_is_ascii(self):
-        with open(rp.__file__, "rb") as fh:
+        with Path(rp.__file__).open("rb") as fh:
             raw = fh.read()
         non_ascii = [b for b in raw if b > 0x7F]
         self.assertEqual(
@@ -237,7 +238,7 @@ class AsciiHygieneTests(unittest.TestCase):
         )
 
     def test_test_module_is_ascii(self):
-        with open(__file__, "rb") as fh:
+        with Path(__file__).open("rb") as fh:
             raw = fh.read()
         non_ascii = [b for b in raw if b > 0x7F]
         self.assertEqual(
