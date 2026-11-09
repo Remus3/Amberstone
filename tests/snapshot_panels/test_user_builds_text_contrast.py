@@ -129,9 +129,22 @@ def _measure(mock_server, pw_browser, theme, vp):
         page.add_style_tag(content=_SHEET)
         # The editor opens only once a champion is picked (_UB.champion);
         # same pick as test_user_builds_rune_tabs._open.
+        # The pick re-renders the list (main.js _ubChampionPicked ->
+        # _userBuildsFetchAndRender: two fetches, then list.innerHTML = "").
+        # The boot rows are still attached when the change event returns, so
+        # waiting for ".ub-build-row" again returns at once on rows about to
+        # be dropped; on a slower runner the Delete button below was resolved
+        # from them and detached mid-scroll (CI run 42559464705: "Element is
+        # not attached to the DOM"). Wait for the pick's own render instead:
+        # a boot row is gone and the new rows are in.
+        boot_row = page.query_selector("#ub-build-list .ub-build-row")
         page.fill("#ub-champion-input", "Tristana")
         page.dispatch_event("#ub-champion-input", "change")
-        page.wait_for_selector(".ub-build-row", timeout=10_000)
+        page.wait_for_function(
+            "(old) => !old.isConnected"
+            " && !!document.querySelector('#ub-build-list .ub-build-row')",
+            arg=boot_row, timeout=10_000,
+        )
         btn = page.locator("#view-user-builds .ub-btn-danger").first
         btn.scroll_into_view_if_needed()
         btn.hover()
