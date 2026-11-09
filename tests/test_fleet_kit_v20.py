@@ -79,6 +79,22 @@ def test_the_common_block_carries_the_v20_route_and_eta_clock_text():
     assert _load("fleet_headless").conformance(ROOT) == []
 
 
+def test_claude_md_kit_v20_line_says_who_may_arm_the_route_fallback():
+    # RM-2075: the line once said RC "arms no account fallback", but on
+    # 2026-11-08 the kit's own verb armed it on the operator's order
+    # (LEDGER 2079). The true rule: the kit is the route file's only writer,
+    # and a fallback is armed only on the operator's word.
+    text = _text("CLAUDE.md")
+    rc = text[text.index("<!-- FLEET-COMMON END -->"):]
+    line = next(ln for ln in rc.split("\n") if ln.startswith("**KIT v20 (MAIN 2026-10-18 1812"))
+    for needle in ("`~/.fleet/headless_route.json`", "only the kit writes it (never RC)",
+                   "arms a fallback only on the operator's word", "LEDGER 2079",
+                   "key SUBSET, never an exact set", "Guard `tests/test_fleet_kit_v20.py`"):
+        assert needle in line, needle
+    assert "arms no account fallback" not in text
+    assert (ROOT / "CLAUDE.md").stat().st_size <= 60 * 1024
+
+
 def test_v20_write_progress_adds_an_iso_started_key(tmp_path):
     fh = _load("fleet_headless")
     (tmp_path / ".git").mkdir()
