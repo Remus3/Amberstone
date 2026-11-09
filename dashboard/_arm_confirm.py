@@ -15,7 +15,7 @@ server safer, so the state machine moved here.
 
 WHAT IS GATED, AND WHY ONLY THREE ACTIONS. The gated set is exactly the set the
 UI armed, derived from the client rather than invented here:
-`web/mc/mc.js` armed a lane (fire_lane, the `_mcArm.arm(id)` in the
+`web/mc/mc.js` (the deleted client above) armed a lane (fire_lane, the `_mcArm.arm(id)` in the
 `_mcPaintLanes` button handler), a shortcut (queue_intent, `_mcArm.arm(sc.id)`
 in the `_MC_SHORTCUTS.forEach` button handler) and the interrupt
 (`_mcArm.arm(_MC_IRQ_ID)`). `stop`, `resume`, `set_directive` and
