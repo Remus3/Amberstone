@@ -351,8 +351,8 @@ def test_every_json_row_is_served_by_get_conditional_entries(
     for champ, keys in sorted(want.items()):
         got = [(e.champion, e.spell, e.form_index) for e in cc_conditional.get_conditional_entries(champ)]
         assert sorted(got, key=str) == sorted(keys, key=str), champ
-    assert cc_conditional.REGISTRY_TOTAL_ENTRIES == len(rows)
-    assert cc_conditional.REGISTRY_TOTAL_CHAMPIONS == len(want)
+    assert len(rows) == cc_conditional.REGISTRY_TOTAL_ENTRIES
+    assert len(want) == cc_conditional.REGISTRY_TOTAL_CHAMPIONS
 
 
 def test_planted_duplicate_off_roster_and_split_defects_are_caught() -> None:

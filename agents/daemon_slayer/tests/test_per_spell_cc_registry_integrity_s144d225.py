@@ -141,9 +141,14 @@ def walk_builders(src: str, builders: tuple[str, ...]) -> tuple[list[Assignment]
         if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
             body = body[1:]  # docstring
         for stmt in body:
-            if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
-                if stmt.target.id == "registry" and isinstance(stmt.value, ast.Dict) and not stmt.value.keys:
-                    continue
+            if (
+                isinstance(stmt, ast.AnnAssign)
+                and isinstance(stmt.target, ast.Name)
+                and stmt.target.id == "registry"
+                and isinstance(stmt.value, ast.Dict)
+                and not stmt.value.keys
+            ):
+                continue
             if isinstance(stmt, ast.Return) and isinstance(stmt.value, ast.Name) and stmt.value.id == "registry":
                 continue
             slot = (
