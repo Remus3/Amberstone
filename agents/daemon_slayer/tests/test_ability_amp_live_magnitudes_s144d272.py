@@ -255,7 +255,7 @@ def check_live_shapes(
 def test_s144d274_docstring_live_shape_claims_hold(ab: Any) -> None:
     ability_rows = [k for k, e in _ABILITY_AMP_OVERRIDES.items() if e.base == "ability"]
     assert len(ability_rows) >= 2 and _CROSS_SPELL_AMP_OVERRIDES, "registry walk went empty"
-    assert LIVE_INERT_ABILITY_ROWS <= set(ability_rows)
+    assert set(ability_rows) >= LIVE_INERT_ABILITY_ROWS
     assert check_live_shapes(ab, _ABILITY_AMP_OVERRIDES, _CROSS_SPELL_AMP_OVERRIDES, LIVE_INERT_ABILITY_ROWS) == []
 
 
