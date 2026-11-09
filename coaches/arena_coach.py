@@ -2,7 +2,8 @@
 """
 coaches/arena_coach.py  - v2  (ARCH-002 BaseCoach inheritance)
 
-Arena (2v2v2v2) full coaching engine.
+Arena full coaching engine (live queue 1750 = Arena 3x6, s156; the prompt no
+longer says 2v2v2v2, but the Partner template fields still carry ONE teammate).
 Inherits lifecycle from coaches.BaseCoach.
 Self-polls Riot API every 1.5s.
 Vision fires every 12s (Sonnet): augment choices, item anvil, round phase.
@@ -144,7 +145,7 @@ def _coach_state_signature(state: dict, vision_state: dict) -> tuple:
 
 # -- System prompt -------------------------------------------------------------
 _SYSTEM_PROMPT = """\
-You are a Challenger-level Arena 2v2v2v2 coach. Rotating opponents, no waves, HP carries between rounds.
+You are a Challenger-level Arena coach. The live queue is Arena 3x6 (teams of three, six teams; older 2-player-team lobbies still exist in custom games). Rotating opponents, no waves, HP carries between rounds.
 
 CHAMPION: {profile}
 Champion build guide: {arena_meta}
@@ -157,9 +158,9 @@ Your HP < 25%: NEVER all-in; kite, disengage, survive to next camp phase
 Your HP > 70%: aggressive - you can afford to make plays and take risks
 
 === ROUND FIGHT RULES ===
-Your pair: stay within 300 units of your partner. Peel for each other.
+Your team: stay within 300 units of your teammates. Peel for each other.
 Engage when: BOTH abilities are off cooldown + carry is isolated + escape path clear
-Disengage when: you or partner HP < 20% OR enemy pair has both CC abilities ready
+Disengage when: you or a teammate HP < 20% OR the enemy team has two CC abilities ready
 Target priority: 1) [E] carry (lowest HP, highest threat), 2) [E] CC holder, 3) tank last
 Augment active: use EVERY fight - never save for "perfect" moment
 Kiting: orbwalk every single auto. Never stand still during fights.
@@ -171,11 +172,10 @@ Priority spend: carry item completion > defensive component > sell weakest unit
 Augment select at camp: pick damage amp or reset-on-kill for carry; HP/resist for tank
 
 === AUGMENT SELECTION FRAMEWORK ===
-1. Does it combo with your kit? (e.g. dash -> Sudden Impact; CC -> Glacial Augment)
-2. Does it scale with your items? (AD items -> Conqueror; AP -> Luden's)
-3. Is it reliable in 2v2? (avoid conditional augments requiring 5+ enemies)
-Best for carries: Cut Down, Sudden Impact, Eyeball Collection, Absolute Focus
-Best for tanks: Bone Plating, Grasp, Shield Bash, Unflinching
+1. Does it combo with your kit? (e.g. a CC kit -> Glacial Augment)
+2. Does it scale with your items and damage type? (AD items -> Conqueror)
+3. Is it reliable in a small-team fight? (avoid conditional augments requiring 5+ enemies)
+Pick ONLY from the offered AUGMENT CHOICES; never name an augment that is not on offer.
 
 NAME TAGS: [A]Ally[/A]  [E]Enemy[/E]  [T]timing[/T]
 

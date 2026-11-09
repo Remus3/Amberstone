@@ -146,6 +146,44 @@ def test_gauges_render_live_sr_state(mock_server, pw_browser):
     assert not errors, f"JS errors [gauges live sr]: {errors[:3]}"
 
 
+def test_gauges_soul_driven_elder_paints(mock_server, pw_browser):
+    """s156 RM-518: Elder is soul-driven. The 4th elemental drake (1600s)
+    secures soul; at 1700s the ELDER ring counts down 1600 + 360 - 1700 = 4:20
+    and the DRAKE ring is '-' (pit is Elder). No reflow vs the idle layout."""
+    ev = [
+        {"name": "dragon", "killer_team": "ally", "down_at_s": t,
+         "dragon_type": ty}
+        for t, ty in ((300, "Fire"), (650, "Water"), (1000, "Air"),
+                      (1600, "Earth"))
+    ]
+    d = dict(_SR_STATE.items())
+    d["liveclient"] = {"level": 14, "game_time_s": 1700,
+                       "objective_events": ev}
+    ctx, page, errors = _open_live(pw_browser, mock_server, d)
+    try:
+        page.wait_for_function(
+            "() => { const m = document.getElementById('am-obj-gauges');"
+            " return m && !m.hidden &&"
+            " m.querySelectorAll('.og-dial').length === 3; }",
+            timeout=10_000,
+        )
+        got = {}
+        for key in ("drake", "baron", "elder"):
+            got[key] = page.eval_on_selector(
+                f'#am-obj-gauges .og-dial[data-obj="{key}"] .og-eta',
+                "el => el.textContent")
+        assert got["elder"] == "4:20", got
+        assert got["drake"] == "-", got
+        assert got["baron"] == "-", got    # static one-shot long past (1200+30)
+        # HIERARCHY / ASCII: no non-ASCII glyphs anywhere in the widget text.
+        txt = page.eval_on_selector("#am-obj-gauges", "el => el.innerText")
+        assert all(ord(c) < 128 for c in txt), repr(txt)
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [gauges soul elder]: {errors[:3]}"
+
+
 def test_gauges_double_alert_cadence_paints(mock_server, pw_browser):
     """BACKLOG "Overlay HUD micro-lifts" (a): a counting-down dial escalates
     twice - data-og-alert "soon" at 90s, "imminent" at 10s. Proven on the

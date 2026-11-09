@@ -388,8 +388,8 @@ Report pack status in Positioning or Reset/item fields whenever relevant.
 
 === ARAM MAYHEM AUGMENT RULES ===
 Active augments should be used in EVERY trade window, not saved
-Best augments for carries: Shield Bash, Eyeball Collection, Cut Down, Sudden Impact
 Prioritize augments that proc on your main damage type (AD vs AP)
+Only name augments that are actually on offer or active; never invent one
 
 === === ARAM ITEM RESTRICTIONS ===
 This is ARAM (Howling Abyss) NOT Summoner's Rift. STRICTLY:

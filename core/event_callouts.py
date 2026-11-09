@@ -446,7 +446,7 @@ def _objective_callouts(game_time_s: float,
                     "kind": "objective",
                 })
             # eta < -active_window: the one-shot is long past; drop it
-            # (e.g. plates at 14:00 are irrelevant at 30:00).
+            # (a spent one-shot such as the grubs row is irrelevant later).
     return out
 
 

@@ -155,7 +155,10 @@ def register_detector(fn: DetectorFn) -> DetectorFn:
 # SR epic-objective spawn timings (first-spawn / respawn). ONE cited source:
 # imported from core.event_callouts so the served callout path and this
 # vision-gated detector can never drift apart (L3 reconciliation).
-# Atakhan currently replaces Herald - skipped here pending mode-aware logic.
+# Atakhan was REMOVED from the game in patch 26.1 (core/sr_schedule.py,
+# status "removed"), so there is no Atakhan spawn to detect and nothing to
+# un-skip; Voidgrubs and Herald are not contest-detected here (no take-driven
+# respawn to key off: grubs spawn once, Herald does not respawn).
 from core.event_callouts import (  # noqa: E402
     SR_BARON_FIRST_S as _BARON_FIRST_S,
     SR_BARON_RESPAWN_S as _BARON_RESPAWN_S,
