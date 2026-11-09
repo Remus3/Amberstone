@@ -2718,16 +2718,26 @@ function _amMapBadgeFs(canvas) {
 // gank band prints. Only when the tag is wider than maxW (measure = the
 // canvas measureText width) is the name cut and ended with "...", keeping
 // at least one letter; the seconds are never cut.
+// S144-U-247: "..." is 3 chars, so a cut of a short name is WIDER than the
+// whole tag ("Vi 25s" -> "V... 25s"), and the one-letter last resort was
+// returned unmeasured. When no candidate fits, the narrowest one is drawn
+// (a tie keeps the longer name, the whole tag first), so the badge is
+// never wider than the uncut name.
 function _amMapBadgeTag(name, secs, maxW, measure) {
   const nm = String(name || "") || "?";
   const tail = ` ${Math.round(secs)}s`;
-  const whole = nm + tail;
-  if (measure(whole) <= maxW) return whole;
-  for (let n = nm.length - 1; n > 1; n--) {
-    const cut = nm.slice(0, n).trimEnd() + "..." + tail;
-    if (measure(cut) <= maxW) return cut;
+  let best = nm + tail;
+  let bestW = measure(best);
+  if (bestW <= maxW) return best;
+  for (let n = nm.length - 1; n >= 1; n--) {
+    const head = nm.slice(0, n).trimEnd();
+    if (!head) continue;
+    const cut = head + "..." + tail;
+    const cutW = measure(cut);
+    if (cutW <= maxW) return cut;
+    if (cutW < bestW) { best = cut; bestW = cutW; }
   }
-  return nm.slice(0, 1) + "..." + tail;
+  return best;
 }
 
 // S144-U-231: where the MIA badge goes - {bx: the text's left x, top: the

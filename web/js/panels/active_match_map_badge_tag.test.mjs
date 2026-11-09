@@ -59,6 +59,59 @@ test("badge tag: ASCII only, whatever the name", () => {
   assert.ok(/^[\x20-\x7e]*$/.test(tag), tag);
 });
 
+// S144-U-247 (the carried "short-name fallback width" FUTURE row): a cut
+// adds "..." (3 chars), so on a short name it is WIDER than the whole tag.
+// "Vi 25s" that did not fit came back as "V... 25s", 2 chars wider, and the
+// last-resort one-letter tag was returned unmeasured. The badge now never
+// draws a tag wider than the whole name: when no cut fits, it draws the
+// narrowest candidate, and a tie keeps the longer name.
+
+test("badge tag: a 2-letter name that does not fit stays whole, not V...", () => {
+  // "Vi 25s" = 60 px > 50; "V... 25s" = 80 px is wider still.
+  assert.strictEqual(am._amMapBadgeTag("Vi", 25, 50, per10), "Vi 25s");
+});
+
+test("badge tag: a 3-letter name that does not fit stays whole, not Za...", () => {
+  // "Zac 25s" = 70 px > 60; "Za... 25s" 90 px, "Z... 25s" 80 px.
+  assert.strictEqual(am._amMapBadgeTag("Zac", 25, 60, per10), "Zac 25s");
+});
+
+test("badge tag: when nothing fits, the narrowest candidate is drawn", () => {
+  // "Aurelion Sol 25s" = 160 px; nothing fits 20 px; "A... 25s" = 80 px.
+  assert.strictEqual(am._amMapBadgeTag("Aurelion Sol", 25, 20, per10), "A... 25s");
+  // "Nasus 125s" = 100 px; the cuts are 120 / 110 / 100 / 90 px, so the
+  // one-letter cut is the only one narrower than the whole tag.
+  assert.strictEqual(am._amMapBadgeTag("Nasus", 125, 50, per10), "N... 125s");
+  // "Ahri 9s" = 70 px; the cuts are 90 / 80 / 70 px, so a 70-px tie with
+  // the whole tag keeps the whole name.
+  assert.strictEqual(am._amMapBadgeTag("Ahri", 9, 40, per10), "Ahri 9s");
+});
+
+test("badge tag: never wider than the whole tag, never wider than maxW when a candidate fits", () => {
+  const names = ["Vi", "Zac", "Ahri", "Nasus", "Kindred", "Tahm Kench",
+    "Aurelion Sol", "Nunu & Willump", ""];
+  for (const nm of names) {
+    for (const secs of [9, 25, 125]) {
+      for (let maxW = 0; maxW <= 200; maxW += 5) {
+        const tag = am._amMapBadgeTag(nm, secs, maxW, per10);
+        const whole = (nm || "?") + ` ${secs}s`;
+        assert.ok(per10(tag) <= per10(whole), `${nm} ${secs} ${maxW}: ${tag}`);
+        assert.ok(tag.endsWith(` ${secs}s`), `${nm} ${secs} ${maxW}: ${tag}`);
+        assert.ok(/^[^ .]/.test(tag), `${nm} ${secs} ${maxW}: ${tag}`);
+        const fits = per10(whole) <= maxW
+          || per10((nm || "?").slice(0, 1) + "..." + ` ${secs}s`) <= maxW;
+        if (fits) assert.ok(per10(tag) <= maxW, `${nm} ${secs} ${maxW}: ${tag}`);
+      }
+    }
+  }
+});
+
+test("badge tag: a cut never leaves the name as bare ... (a leading space is skipped)", () => {
+  // A name whose first character is a space would trim to "" at n = 1.
+  const tag = am._amMapBadgeTag(" Xin Zhao", 25, 0, per10);
+  assert.ok(!tag.startsWith("..."), tag);
+});
+
 // S144-U-231 (carried FUTURE from S144-U-229): the badge box clamp took
 // min(far edge, max(near edge, wanted)), so on a canvas too small for the
 // box the far-edge bound won and the box started at a negative coordinate,
