@@ -58,7 +58,7 @@ _MAX_KDA_COUNT = 10_000
 # coach_integration).
 GAME_MODE_TO_DB = {
     "CLASSIC": "sr_ranked",      # default SR -> ranked; draft vs ranked
-    "RANKED_SOLO": "sr_ranked",  #   can't be disambiguated from live data
+    "RANKED_SOLO": "sr_ranked",  # (draft vs ranked can't be disambiguated from live data)
     "RANKED_FLEX": "sr_ranked",
     "DRAFT": "sr_draft",
     "ARAM": "aram",

@@ -110,7 +110,7 @@ def test_mode_mapping(seeded_db: Path, mode_label: str, expected_db: str) -> Non
         "champion": "Ahri",
         "game_mode": mode_label,
         "game_time_s": 1000,
-        "finished_at": f"2026-04-22T12:00:{hash(mode_label)%60:02d}+00:00",
+        "finished_at": f"2026-04-22T12:00:{hash(mode_label) % 60:02d}+00:00",
     })
     # Insert should succeed for all mapped modes.
     assert result["inserted"] is True, f"{mode_label}: {result}"

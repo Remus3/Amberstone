@@ -29,7 +29,7 @@ OUT = ROOT / "data" / "coach_reference" / "db_sizes.json"
 DEFAULT_THRESHOLDS = {
     "rewind_history.db": 2.0 * 1024 * 1024 * 1024,   # 2 GB
     "logs":              500 * 1024 * 1024,          # 500 MB
-    "data/spend":         50 * 1024 * 1024,          #  50 MB
+    "data/spend":         50 * 1024 * 1024,          # 50 MB
 }
 
 
