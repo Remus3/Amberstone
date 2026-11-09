@@ -2822,6 +2822,9 @@ def _git_target(here, words):
 # S144-Q-156 (EXTRA only): a word an option took as its value is not judged
 # as an option itself, so `git commit -m -am --no-verify` / `-m -- -n` count
 # (git hands a value option the next word whatever it looks like).
+# S144-Q-151 (EXTRA only, _long_abbrev_bypass): git takes an unambiguous
+# prefix of a long option, so `git commit --no-veri` counts, from the
+# shortest prefix git 2.53 accepted per subcommand (_BYPASS_LONG_MIN).
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -2856,8 +2859,10 @@ def _head_name(word):
 # command whose raw text EV_BYPASS does not match.
 # S144-Q-145: or one behind an `env -S` separator escape (`git\_commit\_-n`).
 # S144-Q-149: a digit may sit in the cluster (`git am -3n`).
-_PARSE_HINT = re.compile(r"(?:(?<![\w-])|(?<=\\_))-[A-Za-z0-9]*n|core\.hooksPath",
-                         re.IGNORECASE)
+# S144-Q-151: or an abbreviated `--no-verify` / `--no-gpg-sign` (`--no-veri`).
+_PARSE_HINT = re.compile(
+    r"(?:(?<![\w-])|(?<=\\_))(?:-[A-Za-z0-9]*n|--no-[gv])|core\.hooksPath",
+    re.IGNORECASE)
 _BYPASS_FLAG_WORD = re.compile(r"--no-verify|--no-gpg-sign|core\.hooksPath\s*=.*",
                                re.IGNORECASE | re.DOTALL)
 # Options whose next word is a VALUE (a message, a search string, a file), so
@@ -3010,6 +3015,45 @@ def _am_no_verify(words):
     return False
 
 
+# S144-Q-151: per subcommand, the shortest prefix of each bypass flag git
+# accepts (measured with git 2.53.0 on real hooks / a failing gpg.program;
+# a shorter one is refused as ambiguous, rc 129: `--no-ver` with
+# `--no-verbose`, merge / pull `--no-verif` with `--no-verify-signatures`).
+# cherry-pick / revert take only the full spelling, so they are not listed;
+# the full flags stay counted everywhere by _BYPASS_FLAG_WORD. git reads long
+# options case-sensitively and refuses `--no-veri=x`, so the match is exact.
+_BYPASS_LONG_MIN = {
+    "commit": (("--no-verify", 9), ("--no-gpg-sign", 6)),
+    "push": (("--no-verify", 9),),
+    "rebase": (("--no-verify", 9), ("--no-gpg-sign", 6)),
+    "am": (("--no-verify", 6), ("--no-gpg-sign", 6)),
+    "merge": (("--no-gpg-sign", 6),),
+    "pull": (("--no-gpg-sign", 6),),
+    "commit-tree": (("--no-gpg-sign", 6),),
+}
+
+
+def _long_abbrev_bypass(words, sub):
+    """S144-Q-151: True when WORDS (after subcommand SUB) hold an accepted
+    abbreviation of a bypass flag (_BYPASS_LONG_MIN) that is not an option's
+    value; a "--" that is not a value ends the options."""
+    table = _BYPASS_LONG_MIN.get(sub)
+    if not table:
+        return False
+    prev = None
+    for word in words:
+        if _is_data_slot(prev, sub):
+            prev = None
+            continue
+        if word == "--":
+            return False
+        if any(len(word) >= shortest and flag.startswith(word)
+               for flag, shortest in table):
+            return True
+        prev = word
+    return False
+
+
 def _git_words_bypass(words):
     """S144-Q-127: True when WORDS (one statement, quotes removed) hold a git
     word followed by an exact bypass flag that is not an option's value, or
@@ -3036,6 +3080,8 @@ def _git_words_bypass(words):
         if _BYPASS_FLAG_WORD.fullmatch(word):
             return True
         prev = word
+    if _long_abbrev_bypass(rest[i + 1:], sub):
+        return True
     if sub == "am":
         return _am_no_verify(rest[i + 1:])
     return sub == "commit" and _commit_no_verify(rest[i + 1:])
