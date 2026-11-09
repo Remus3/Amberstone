@@ -264,7 +264,7 @@ def _legion_tasks() -> list[dict] | None:
         p = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", TASK_PROBE_PS],
             capture_output=True, timeout=_probe_timeout(8.0), text=True,
-            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
+            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW, check=False,
         )
         if p.returncode != 0 or not p.stdout.strip():
             return None
@@ -322,7 +322,7 @@ def _task_events(names, since_ts: float) -> dict[str, list[dict]] | None:
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
              _task_events_ps(safe, since_ts)],
             capture_output=True, timeout=_probe_timeout(4.0), text=True,
-            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
+            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW, check=False,
         )
         if p.returncode != 0 or not p.stdout.strip():
             return None
@@ -1337,7 +1337,7 @@ def _last_boot_iso() -> str | None:
         p = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", cmd],
             capture_output=True, timeout=_probe_timeout(2.0), text=True,
-            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
+            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW, check=False,
         )
         if p.returncode == 0:
             return p.stdout.strip() or None

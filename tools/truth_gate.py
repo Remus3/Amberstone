@@ -249,7 +249,8 @@ def run_suite_fresh(cmd, out_path, owner=None):
     with open(out_path, "w", encoding="utf-8", errors="replace", newline="\n") as fh:
         try:
             rc = subprocess.run(run_argv, cwd=str(ROOT),
-                                stdout=fh, stderr=subprocess.STDOUT).returncode
+                                stdout=fh, stderr=subprocess.STDOUT,
+                                check=False).returncode
         except OSError as exc:
             # No shell means no shell "command not found" exit: keep the run
             # a REFUSE (127, the shell's own code) instead of a crash.
@@ -292,7 +293,7 @@ def check_git():
         # as itself (a locale decode faulted on 0x81 and left stdout None).
         r = subprocess.run(["git", "-c", "core.quotepath=false", *args],
                            cwd=str(ROOT), capture_output=True, text=True,
-                           encoding="utf-8", errors="replace")
+                           encoding="utf-8", errors="replace", check=False)
         return r.stdout or ""
     # rstrip only: a leading space is the status column of an unstaged edit.
     status = _git("status", "-s").rstrip("\n")
@@ -307,13 +308,13 @@ def check_ci(sha="HEAD"):
         if sha == "HEAD":
             r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT),
                                capture_output=True, text=True, encoding="utf-8",
-                               errors="replace")
+                               errors="replace", check=False)
             sha = r.stdout.strip()
         r = subprocess.run(
             ["gh", "run", "list", "--commit", sha, "--limit", "10",
              "--json", "status,conclusion,name"],
             cwd=str(ROOT), capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=30)
+            errors="replace", timeout=30, check=False)
         if r.returncode != 0:
             return {"status": "unavailable", "detail": r.stderr.strip()[:200],
                     "sha": sha}

@@ -219,7 +219,7 @@ def _git(args: list[str], root: str | None) -> str:
     try:
         out = subprocess.run(
             [*_GIT, *args], cwd=root or None, capture_output=True, **_CHILD_TEXT,
-            timeout=20, creationflags=_NO_WINDOW,
+            timeout=20, creationflags=_NO_WINDOW, check=False,
         )
         return out.stdout
     except (OSError, subprocess.SubprocessError):
@@ -407,7 +407,7 @@ def _resolve_ruff() -> list[str] | None:
         try:
             probe = subprocess.run(
                 [*cmd, "--version"], capture_output=True, **_CHILD_TEXT,
-                timeout=30, creationflags=_NO_WINDOW,
+                timeout=30, creationflags=_NO_WINDOW, check=False,
             )
         except (OSError, subprocess.SubprocessError):
             continue
@@ -764,6 +764,7 @@ def _gate_commit(command: str, claude: bool) -> int:
                 **_CHILD_TEXT,
                 timeout=RUFF_TIMEOUT_S,
                 creationflags=_NO_WINDOW,
+                check=False,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             note = (f"ruff timed out / not runnable ({type(exc).__name__}) - fix or "
