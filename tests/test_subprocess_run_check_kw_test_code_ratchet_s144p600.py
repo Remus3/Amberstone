@@ -97,6 +97,9 @@ changed, one site each (sim108_ternary, sim115_open_context_prod, small_idiom,
 sorted_all_and_slots_core, sorted_all_and_slots, sorted_all_and_slots_rest,
 sorted_first_min_test_code, startswith_tuple_and_identity_comprehension, ternary_or and
 test_code_misc_idiom);
+slice 26 (S144-P-631) does the same for the last three ratchet modules no other lane branch had
+changed, one site each (whitespace_docstring_prod_189, yoda_condition_test_code_166 and
+yoda_perf403_c408_146); unused_import_108 stays in the baseline (lane/ds changed it);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -146,11 +149,11 @@ _BASELINE = {
     "tests/test_rm750_ds_keepalive.py": 1,
     "tests/test_third_party_notices_pkg.py": 1,
     "tests/test_unused_import_ratchet_s144p108.py": 1,
-    "tests/test_whitespace_docstring_prod_ratchet_s144p189.py": 1,
-    "tests/test_yoda_condition_test_code_ratchet_s144p166.py": 1,
-    "tests/test_yoda_perf403_c408_ratchet_s144p146.py": 1,
 }
 _FIXED = (
+    "tests/test_whitespace_docstring_prod_ratchet_s144p189.py",
+    "tests/test_yoda_condition_test_code_ratchet_s144p166.py",
+    "tests/test_yoda_perf403_c408_ratchet_s144p146.py",
     "tests/test_api_key_single_lookup_env_apikey.py",
     "tests/test_ci_checkout_history_depth.py",
     "tests/test_drift_guard.py",
