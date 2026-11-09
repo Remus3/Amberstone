@@ -185,11 +185,9 @@ def _is_external_data(rel_posix: str) -> bool:
     # RM-300: kept in step with tests/test_smart_quote_hygiene._is_external_data.
     # Without these, a dry-run reported 5 "replacements" in Riot's own item
     # text and --apply would have rewritten a DDragon mirror RC does not author.
-    if rel_posix in {"data/meta/ddragon_items.json",
-                     "data/meta/ddragon_runes.json",
-                     "data/meta/ddragon_summoner_spells.json"}:
-        return True
-    return False
+    return rel_posix in {"data/meta/ddragon_items.json",
+                         "data/meta/ddragon_runes.json",
+                         "data/meta/ddragon_summoner_spells.json"}
 
 
 def _skip(path: Path, rel_posix: str) -> bool:
@@ -204,9 +202,7 @@ def _skip(path: Path, rel_posix: str) -> bool:
         return True
     if path.suffix.lower() in _SKIP_EXT:
         return True
-    if _is_external_data(rel_posix):
-        return True
-    return False
+    return bool(_is_external_data(rel_posix))
 
 
 def _replace_201d_safe(raw: bytes) -> tuple[bytes, int, int]:

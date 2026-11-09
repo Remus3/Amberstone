@@ -11,8 +11,11 @@ RM-1699 fixed ``core/item_wpa.py`` and ``tools/daemon_slayer_abilities_extract.p
 The baseline is the findings that stay, each for a named reason:
 
 - ``ops/launcher/service_host.py``: the packaged-app tree is owned by the main session (lane exclusions).
-- ``tools/repair_mojibake.py`` / ``tools/strip_smart_quotes.py``: the operator-gated smart-quote tooling
-  (the retro-sweep is gated); its two helpers are left for the cycle that is cleared to touch it.
+
+S144-P-571 fixed ``tools/repair_mojibake.py`` and ``tools/strip_smart_quotes.py`` (two sites each): the
+``_is_external_data`` tail and the ``_skip`` tail now return their condition. Only predicate bodies changed; no
+apply path, no sweep run (the smart-quote retro-sweep itself stays operator-gated). The behavioural parity of the
+tool copies with the drift guards is pinned by tests/test_py_source_ascii_rm300.py.
 
 A baseline entry that stops offending fails ``test_baseline_is_exact`` until it is dropped; a new finding
 anywhere else fails ``test_no_new_findings``.
@@ -50,8 +53,6 @@ _OUT_OF_SCOPE = (
 # file -> finding count that stays (reasons in the module docstring). Only shrinks.
 _BASELINE = {
     "ops/launcher/service_host.py": 1,
-    "tools/repair_mojibake.py": 2,
-    "tools/strip_smart_quotes.py": 2,
 }
 _FIXED = (
     "agents/agent0_gatekeeper/evaluator.py",
@@ -65,7 +66,9 @@ _FIXED = (
     "tools/daemon_slayer_abilities_extract.py",
     "tools/hz_shadow_report.py",
     "tools/p3_ascii_census.py",
+    "tools/repair_mojibake.py",
     "tools/strip_em_dashes.py",
+    "tools/strip_smart_quotes.py",
 )
 
 
