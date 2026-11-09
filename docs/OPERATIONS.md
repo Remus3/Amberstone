@@ -49,7 +49,7 @@ producing side - if you add a sixth tree, add it there:
 | `tests` | 21122 | yes | yes | yes |
 | `agents/daemon_slayer/tests` | 10856 | no | yes | yes |
 | `agents/agent3_testing/suite` | 359 | no | no | **no** |
-| `tools/tests` | 348 | no | no | **no** |
+| `tools/tests` | 348 | no | no | yes (RM-407, 2026-09-11) |
 | `oss/win32_atomic_io/tests` | 38 | no | no | yes |
 | **repo-root `pytest .`** | **32685** | | | |
 
@@ -81,22 +81,27 @@ is what collapsed the two sets into one. `oss/win32_atomic_io/tests` now
 occupies that slot for an unrelated reason: it is outside both local suites, but
 it has its own `ci.yml` step and so gates a push. The distinction is recorded
 here because it is live again, not merely so an older doc reads as stale. So
-today two trees (`agents/agent3_testing/suite` + `tools/tests`, 359 + 348 =
-**707** tests) are outside both local suites AND run by no CI job, and a third
-(`oss/win32_atomic_io/tests`, 38 tests) is outside both local suites but IS run
-by CI.
+today one tree (`agents/agent3_testing/suite`, 359 tests) is outside both local
+suites AND run by no CI job (RM-407 left it unwired on purpose: a measured
+load-dependent flake, declared in `tests/test_ci_collects_orphan_suite_trees.py`
+`_COLLECTION_ROOTS`), and two more (`tools/tests`, 348 tests, wired by RM-407 on
+2026-09-11; `oss/win32_atomic_io/tests`, 38 tests) are outside both local suites
+but ARE run by CI. This paragraph said until 2026-11-08 that `tools/tests` ran in
+no CI job, two months after the step landed (S144-P-468);
+`tests/test_operations_test_tree_ci_claims_s144p468.py` now joins the yes / no
+column above to the real parse of `ci.yml` so it cannot say that again.
 
-CI is still not two commands: there are **eleven** pytest invocation sites
+CI is still not two commands: there are **twelve** pytest invocation sites
 across the two workflows that run pytest (a third, `patch-day-ddragon-sync.yml`,
-runs none): `ci.yml:165`, `:358`, `:374`, `:389`, `:421`, `:445`, `:507`,
-`:521`, `:608` (`:421` and `:445` are `RC_REQUIRE_*=1 pytest` env-prefixed forms
-that a naive grep for a line starting with `pytest` will miss), plus
-`docs-guards.yml:151` and `:157` (`:151` is a `python -m pytest` form, which the
-same naive grep also misses). Not counted: the two `--collect-only` probes
-embedded in `python -c` at `ci.yml:506` and `:520`, which exist to prove a step
-collected something rather than to run tests. Re-derived 2026-09-12; these line
-numbers move whenever a workflow is edited - re-derive them, do not inherit
-them.
+runs none): `ci.yml:251`, `:509`, `:525`, `:540`, `:572`, `:596`, `:658`,
+`:672`, `:703`, `:838` (`:572` and `:596` are `RC_REQUIRE_*=1 pytest`
+env-prefixed forms that a naive grep for a line starting with `pytest` will
+miss; `:703` is a `python -m pytest` form, which the same naive grep also
+misses), plus `docs-guards.yml:160` (a `python -m pytest` form fed by `xargs`)
+and `:166`. Not counted: the two `--collect-only` probes embedded in
+`python -c` at `ci.yml:657` and `:671`, which exist to prove a step collected
+something rather than to run tests. Re-derived 2026-11-08; these line numbers
+move whenever a workflow is edited - re-derive them, do not inherit them.
 
 Until RM-170 the repo's habitual green bar was quietly one of the narrow two,
 and the trees outside it had gone red without anyone seeing it:
