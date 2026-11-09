@@ -323,7 +323,11 @@ _CROSS_SPELL_AMP_OVERRIDES: dict[tuple[str, str, int], CrossSpellAmpEntry] = {
 # reconciled by routing the block-index (vs the un-amped "first" block), NOT by
 # adding an amp that would double-count. The value is a DAMAGE-block index (the
 # index into the form's ``attribute_kind=="damage"`` blocks, matching
-# ``_select_blocks`` "indexed" semantics), out-of-range clamps to the last.
+# ``_select_blocks`` "indexed" semantics). Every value must be IN RANGE for the
+# live form: ``_select_blocks`` still clamps an out-of-range index to the last
+# damage block, but since F2 that clamp logs a WARNING as a defect signal and is
+# never authored semantics (guarded by test_block_index_damage_ordinal_f2 and
+# test_ability_amp_live_magnitudes_s144d272).
 #
 # Sion Q is intentionally ABSENT: champion_block_index.json {Q:2} already routes
 # it to the Maximum block by default (flag on/off byte-identical), so no gated
