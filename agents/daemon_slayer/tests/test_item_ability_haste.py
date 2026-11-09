@@ -66,12 +66,16 @@ class RegistryShapeTests(unittest.TestCase):
         # "+15 AH for abilities with Immobilizing effects" CONDITIONAL grant.
         # This registry's contract is BASE build-time AH only (conditional /
         # proc grants are excluded), so the correct value is 15. Verified vs
-        # data/meta_build/ddragon/16.12.1/item.json (4005 + ARAM alias 324005).
+        # data/meta_build/ddragon/16.12.1/item.json (4005 + variant 324005).
+        # 16.13.1 raised that conditional grant to +20 on 4005 / 324005 (the
+        # Arena mirror 224005 stays +15); the base stays 15. 324005 is a map-11
+        # variant, not an ARAM alias: its live map flag is 11 only, at 16.12.1
+        # and at 16.22.1 (S144-D-331).
         self.assertEqual(_ITEM_ABILITY_HASTE["4005"], 15.0)   # Imperial Mandate (SR)
-        self.assertEqual(_ITEM_ABILITY_HASTE["324005"], 15.0)  # Imperial Mandate (ARAM)
+        self.assertEqual(_ITEM_ABILITY_HASTE["324005"], 15.0)  # Imperial Mandate (map 11 variant)
         # 16.12.1 Arena normalization: the Arena mirror was 35 at 16.11.1 and
         # Riot dropped it to 15 in 16.12.1 (verified vs the 16.11.1 vs 16.12.1
-        # DDragon item.json stats blocks) - now matches the SR/ARAM value.
+        # DDragon item.json stats blocks) - now matches the SR value.
         self.assertEqual(_ITEM_ABILITY_HASTE["224005"], 15.0)  # Imperial Mandate (Arena)
 
     def test_arena_mirror_16_12_1_normalizations(self) -> None:

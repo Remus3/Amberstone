@@ -1,6 +1,6 @@
 """Guard: the per-item Ability-Haste registry stays in lock-step with live DDragon.
 
-The hand-pinned ``_item_ability_haste._ITEM_ABILITY_HASTE`` (220 items) has no
+The hand-pinned ``_item_ability_haste._ITEM_ABILITY_HASTE`` (221 items) has no
 committed regen tool, so a patch that re-values an item's AH silently drifts the
 registry - and every existing test asserts HARDCODED values, so nothing catches
 it. Exactly that happened: at 16.13.1 Riot re-valued Eclipse's Arena mirror

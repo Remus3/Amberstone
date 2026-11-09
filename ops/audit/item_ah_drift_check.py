@@ -1,6 +1,6 @@
 """Item Ability-Haste registry drift-check (DDragon truth vs engine pin).
 
-The engine's `_item_ability_haste._ITEM_ABILITY_HASTE` is hand-pinned (220
+The engine's `_item_ability_haste._ITEM_ABILITY_HASTE` is hand-pinned (221
 items) and has no committed regen tool. This probe re-derives the AH dict
 from the live DDragon item.json (the current patch, resolved from
 current.txt) using the documented parse (`<attention>N</attention> Ability
