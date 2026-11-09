@@ -307,12 +307,18 @@ body[data-shell="overlay"] #rn-choices:not([hidden]):not(.ovx-hidden),
 body[data-shell="overlay"] #rn-callouts:not([hidden]):not(.ovx-hidden) {
   display: flex !important;
 }
-/* Lead pill direction accent (good/bad left border) survives the Hextech frame. */
+/* Lead pill direction accent (good/caution left border) survives the Hextech
+ * frame. S144-U-277: behind takes the caution hue --ovx-warn, never red - w-lead
+ * is an AMBIENT widget and red is the ONE pop-out (doctrine rule 4, section 5),
+ * as for the severe STALE tag and the TFT crit opponent chip. --ovx-red here
+ * was a second red on the field and read 2.85:1 in the idle recede over a white
+ * game pixel, under the 3:1 non-text floor; --ovx-warn reads 4.93:1 or better.
+ * The tag beside it prints the state word, so the bar is never the only cue. */
 body[data-shell="overlay"] #rn-lead.rc-lead-ahead:not([hidden]) {
   border-left: 3px solid rgb(var(--ovx-good));
 }
 body[data-shell="overlay"] #rn-lead.rc-lead-behind:not([hidden]) {
-  border-left: 3px solid rgb(var(--ovx-red));
+  border-left: 3px solid rgb(var(--ovx-warn));
 }
 /* Lead pill backing + glance floor. callouts.css backs the pill with a faint
  * white wash + sizes the line at --fs-md (22) and the tag at --signal-dim; the
