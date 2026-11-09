@@ -835,6 +835,37 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/map_state.js:452"),
         ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/map_state.js:456"),
     )
+) + (
+    # 2026-11-09, S144-U-262 (session 144 uiux lane). The never-rendered
+    # Map State objective rows, their 1 s countdown tick and their CSS were
+    # retired: map_state.js shrank from 446 lines to 348, item_build.css
+    # from 500 to 454 and grid.css from 88 to 58. Each cite below is a
+    # dated read that named lines this cut removed or moved, so re-pointing
+    # would make it claim a line it never read.
+    (
+        "docs/RM125_web_live_glyph_adjudication.md",
+        "web/js/panels/map_state.js:439",
+        "HISTORICAL",
+        "An RM-125 live-glyph census cite into map_state.js as measured at "
+        "35c6730f; the module is 348 lines after S144-U-262 retired the "
+        "objective rows and their countdown tick.",
+    ),
+    (
+        "docs/qa/DESIGN_SYSTEM_MAP_2026-07-22.md",
+        "grid.css:68",
+        "HISTORICAL",
+        "The 2026-07-22 design-system map's fintech-RGB census; grid.css is "
+        "58 lines after S144-U-262 retired the dead objective column and "
+        "chip-row rules that sat near the cited line.",
+    ),
+    (
+        "docs/qa/DESIGN_SYSTEM_MAP_2026-07-22.md",
+        "item_build.css:163-498",
+        "HISTORICAL",
+        "The 2026-07-22 design-system map's fintech-RGB census range; "
+        "item_build.css is 454 lines after S144-U-262 retired the objective "
+        "countdown cues and progress fill (two of the cited halos).",
+    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

@@ -42,8 +42,12 @@ REPO = Path(__file__).resolve().parents[2]
 _DRIVE = r"""async () => {
   const url = performance.getEntriesByType('resource')
     .map((e) => e.name).find((n) => n.includes('/panels/map_state.js'));
-  if (!url) return {err: 'map_state.js not loaded'};
+  const surl = performance.getEntriesByType('resource')
+    .map((e) => e.name).find((n) => n.includes('/lib/state.js'));
+  if (!url || !surl) return {err: 'map_state.js or state.js not loaded'};
   const m = await import(url);
+  const s = await import(surl);
+  s.state.lastTouch.minimap = 0;
   const desc = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype, 'offsetWidth');
   let reads = 0;
@@ -88,8 +92,7 @@ _DRIVE = r"""async () => {
   const pill = document.getElementById('zone-pill');
   out.pillClass = pill ? pill.className : null;
   out.pillText = (document.getElementById('zone-label') || {}).textContent;
-  out.dragonRaw = (document.getElementById('mm-dragon') || {dataset: {}})
-    .dataset.raw ?? null;
+  out.touched = s.state.lastTouch.minimap > 0;
   return out;
 }"""
 
@@ -143,8 +146,10 @@ def test_positive_control_the_zone_pill_still_reads_your_position(drive):
     assert drive["pillText"] == "\u2713 SAFE", drive
 
 
-def test_positive_control_the_objective_rows_still_take_the_state(drive):
-    assert drive["dragonRaw"] == "Dragon spawns 12:00", drive
+def test_positive_control_render_minimap_still_stamps_its_panel(drive):
+    # S144-U-262 retired the objective rows this used to read; the
+    # CADENCE sweep's freshness stamp is the kept per-render write.
+    assert drive["touched"] is True, drive
 
 
 _NAMES = (
@@ -178,7 +183,7 @@ def test_anchor_the_name_scan_reads_real_files():
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
     assert 'id="zone-pill"' in files["web/index.html"]
-    assert 'id="mm-objectives-view"' in files["web/index.html"]
+    assert 'data-for="minimap"' in files["web/index.html"]
     assert "function _updateZone(" in files["web/js/panels/map_state.js"]
     assert "(function setupMinimapPoller()" in files["web/js/main.js"]
     assert "/api/vision-state" in files["web/js/panels/active_match.js"]

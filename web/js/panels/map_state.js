@@ -1,5 +1,4 @@
-// Map State panel - zone pill, game clock, spell CDs, gold diff,
-// objective countdowns.
+// Map State panel - zone pill, game clock, spell CDs, gold diff.
 import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { CHAMPS, SPELLS, ITEM_COSTS, _resolveChampId, _resolveSpell } from '../lib/items_index.js';
@@ -12,9 +11,6 @@ state.spellCds = {};
 const MM = {
   root: el("minimap"),
   staleness: document.querySelector('.staleness[data-for="minimap"]'),
-  dragon: el("mm-dragon"),
-  baron: el("mm-baron"),
-  herald: el("mm-herald"),
 };
 
 function _updateGameClock(p) {
@@ -44,24 +40,11 @@ function _applyGamePhase(gtS) {
     document.body.dataset.phase = phase;
   }
 }
-function _currentGameTimeS() {
-  if (!state.gameClock.startedAt) return null;
-  return state.gameClock.anchorS + (Date.now() - state.gameClock.startedAt) / 1000;
-}
 function _fmtMMSS(s) {
   s = Math.max(0, Math.round(s));
   const m = Math.floor(s / 60), ss = s % 60;
   return `${m}:${ss.toString().padStart(2, "0")}`;
 }
-// Extract "spawns MM:SS" or "next MM:SS" or "in N:SS" from objective text
-// so we can surface a live countdown chip alongside the narrative state.
-function _extractSpawnTime(text) {
-  if (!text) return null;
-  const m = String(text).match(/\b(?:spawns?|next|in)\s+(\d{1,2}):(\d{2})\b/i);
-  if (!m) return null;
-  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-}
-
 // Tick every second - pull current cd from state.spellCds and update
 // each header self-spell cell's display.
 function _tickSpellCooldowns() {
@@ -87,23 +70,6 @@ function _tickSpellCooldowns() {
 }
 setInterval(_tickSpellCooldowns, 1000);
 
-// Default spawn-cycle durations per objective (seconds) used as the
-// progress-bar denominator. Not scientific - Riot timings shift - but
-// gives a glanceable "how close are we" feel.
-const _OBJ_CYCLE = {
-  dragon: 300,  // 5:00 between drakes
-  baron:  360,  // 6:00 respawn after take
-  herald: 360,
-  atakhan: 300,
-};
-function _kindOf(elm) {
-  if (!elm || !elm.id) return null;
-  if (elm.id === "mm-dragon")  return "dragon";
-  if (elm.id === "mm-baron")   return "baron";
-  if (elm.id === "mm-herald")  return "herald";
-  if (elm.id === "mm-atakhan") return "atakhan";
-  return null;
-}
 // Zone of Influence (ZOI) pressure at your own position - drives the header
 // zone pill and body[data-zone]. S144-U-258 retired the minimap canvas stack
 // this math also painted (it rendered in no view), so only the one-point
@@ -306,78 +272,14 @@ function renderItemValueDiff(p) {
   lbl.className = clamp >= 0 ? "gd-ahead" : "gd-behind";
 }
 
-function _tickObjectiveCountdowns() {
-  const nowS = _currentGameTimeS();
-  for (const elm of [MM.dragon, MM.baron, MM.herald]) {
-    if (!elm) continue;
-    const raw = elm.dataset.raw || "-";
-    if (nowS == null) { elm.textContent = raw; continue; }
-    const target = _extractSpawnTime(raw);
-    // Find (or lazy-create) the tick progress bar on the containing .kv row.
-    const row = elm.closest(".kv");
-    let bar = row && row.querySelector(".obj-bar");
-    if (row && !bar) {
-      bar = document.createElement("i");
-      bar.className = "obj-bar";
-      row.appendChild(bar);
-    }
-    if (target == null) {
-      elm.textContent = raw;
-      if (bar) bar.style.setProperty("--pct", "0%");
-      continue;
-    }
-    const remaining = target - nowS;
-    const cycle = _OBJ_CYCLE[_kindOf(elm)] || 300;
-    // Ratio of progress toward spawn (0 = just went down, 1 = up now).
-    const progress = Math.max(0, Math.min(1, 1 - (remaining / cycle)));
-    if (bar) bar.style.setProperty("--pct", (progress * 100).toFixed(1) + "%");
-    if (remaining <= 0) {
-      elm.textContent = raw.replace(/\b(?:spawns?|next|in)\s+\d{1,2}:\d{2}\b/i, "UP NOW");
-      elm.classList.add("obj-up");
-      if (bar) bar.classList.add("full");
-    } else {
-      elm.textContent = raw.replace(
-        /\b(?:spawns?|next|in)\s+\d{1,2}:\d{2}\b/i,
-        `in ${_fmtMMSS(remaining)}`
-      );
-      elm.classList.toggle("obj-soon", remaining < 45);
-      elm.classList.remove("obj-up");
-      if (bar) bar.classList.remove("full");
-    }
-  }
-}
-// Tick every 1s - objective countdowns are the primary live pulse.
-// Skip work entirely when the tab is hidden (iPad battery / CPU).
-setInterval(() => {
-  if (document.hidden) return;
-  _tickObjectiveCountdowns();
-}, 1000);
-
 function renderMinimap(p) {
   _updateGameClock(p);
-  // Coaching-JSON fields surface objective state when the coach has
-  // computed it. When absent, keep the placeholder. Fields queried:
-  //   p.dragon_state / p.dragon_stack / p.soul - if the coach computed them
-  //   p.baron_alive / p.baron_timer
-  //   p.herald_alive / p.atakhan_state
-  //   p.game_time / p.game_time_s
-  // Store the raw state text in data-raw so the countdown tick can
-  // re-render from it without a fresh state envelope.
-  // Strip "(Cloud taken 12:04)" / "(Chemtech taken 8:30)" style parentheticals
-  // - the kill count + next-spawn line already convey the important bits;
-  // the parenthetical just eats horizontal space.
-  const _cleanObj = s => String(s || "-")
-    .replace(/\s*\([^)]*taken[^)]*\)\s*/gi, " ")
-    .replace(/  +/g, " ")
-    .trim() || "-";
-  for (const [elm, val] of [
-    [MM.dragon,  _cleanObj(p.dragon_state  || p.dragon)],
-    [MM.baron,   _cleanObj(p.baron_state   || p.baron)],
-    [MM.herald,  _cleanObj(p.herald_state  || p.herald)],
-  ]) {
-    if (elm) elm.dataset.raw = val;
-  }
-  _tickObjectiveCountdowns();
+  // S144-U-262: the Dragon / Baron / Herald rows of this panel, their 1 s
+  // countdown tick and the per-envelope raw-text writes that fed it are
+  // retired: the panel renders in no view (S144-U-246), so the tick
+  // rewrote nodes with no layout box for the page's life. The overlay's
+  // objective chips (objective_chips.js) carry their own spawn cycle.
+  // Guard: tests/snapshot_panels/test_minimap_objective_rows_retired.py.
   // Keep self-spell CDs current - feeds the header summoner-spell pill.
   _snapshotSpells(p.ally_spells);
   _tickSpellCooldowns();
@@ -385,8 +287,8 @@ function renderMinimap(p) {
   renderMinimapCanvases(p);
   // S144-U-261: the tower / team score / game time chips left this panel
   // 2026-04-23 (header row 2 carries those signals); their MM slots, the
-  // guarded writes here and in the 1 s tick, and their item_build.css
-  // icon tints are retired with them.
+  // guarded writes here and in the old 1 s objective tick, and their
+  // item_build.css icon tints are retired with them.
   // Guard: tests/snapshot_panels/test_minimap_dead_chip_writes_retired.py.
 
   // S144-U-256: the MAP STATE heartbeat line under the minimap image is
@@ -436,7 +338,7 @@ function _currentSpellCd(key) {
 export {
   MM,
   renderMinimap,
-  _tickSpellCooldowns, _tickObjectiveCountdowns,
+  _tickSpellCooldowns,
   _updateGameClock, _applyGamePhase,
   _snapshotSpells, _fmtMMSS,
   // RM-1211: main.js calls both; unexported, each call threw a ReferenceError.

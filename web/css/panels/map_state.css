@@ -286,10 +286,9 @@ body[data-mode="client"] .panel-right-now {
   grid-row: 1 / span 2;
 }
 
-/* MAP STATE panel: the objectives grid is in-game only. S144-U-260 retired
- * the client-mode aftergame bullets view it used to swap in here; the panel
+/* MAP STATE panel: S144-U-260 retired the client-mode aftergame bullets
+ * view and S144-U-262 the objective rows with their mode hides; the panel
  * renders in no view (S144-U-246). */
-body[data-mode="client"] #mm-objectives-view { display: none; }
 
 /* STATS view (in-game) vs ADAPTATION view (client/aftergame).
  * Mode-toggled visibility - in-game shows STATS, other modes keep the
@@ -307,11 +306,6 @@ body[data-mode="arena"] #adapt-view,
 body[data-mode="brawl"] #adapt-view,
 body[data-mode="tft"] #adapt-view   { display: none; }
 
-/* ARAM/Brawl/Mayhem: no dragons/barons/heralds on the Howling Abyss.
- * The mm-objectives-view block contains only those three rows, so hide
- * the whole block in those modes. (2026-04-26 user request mid-game.) */
-body[data-mode="aram"]  #mm-objectives-view,
-body[data-mode="brawl"] #mm-objectives-view { display: none; }
 /* S144-U-258: the minimap canvas caps (zen, ARAM / Brawl) and the
  * danger-zone ring on the canvas left with the retired canvas stack. */
 

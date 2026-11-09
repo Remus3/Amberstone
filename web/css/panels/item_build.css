@@ -299,7 +299,7 @@
  * of dead space after short labels like "RISK" or "RESET". Switching
  * to a max-content label column with a 10 px gap puts the value
  * roughly 10 px after the label text, ending the dead-space drift.
- * Other panels (minimap-grid, stats-view, etc.) keep their existing
+ * Other panels (stats-view, etc.) keep their existing
  * grid since they need cross-row column alignment for scanning. */
 .panel-right-now .kv {
   grid-template-columns: 56px 1fr;
@@ -440,11 +440,6 @@
 #nx-wave .wave-arrow.wave-dim,
 #nx-wave .wave-verb.wave-dim  { color: var(--text-faint); }
 
-.kv-with-icon {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
 .obj-ico {
   width: 18px;
   height: 18px;
@@ -452,49 +447,8 @@
   color: var(--info);
   fill: currentColor;
 }
-/* Per-objective accent tint so the icons read at a glance. */
-#mm-dragon + span, .kv:has(#mm-dragon) .obj-ico  { color: var(--bad); }
-.kv:has(#mm-dragon)  .obj-ico { color: var(--bad); }
-.kv:has(#mm-baron)   .obj-ico { color: var(--advisory); }
-.kv:has(#mm-herald)  .obj-ico { color: var(--gold); }
-.kv:has(#mm-atakhan) .obj-ico { color: var(--info); }
-/* Countdown state cues. */
-#mm-dragon.obj-soon, #mm-baron.obj-soon, #mm-herald.obj-soon, #mm-atakhan.obj-soon {
-  color: var(--gold);
-  text-shadow: 0 0 8px rgba(245, 184, 124, 0.35);
-}
-#mm-dragon.obj-up, #mm-baron.obj-up, #mm-herald.obj-up, #mm-atakhan.obj-up {
-  color: var(--good);
-  font-weight: 900;
-  text-shadow: 0 0 10px rgba(127, 209, 154, 0.45);
-}
-
-/* Objective progress bar - slim fill under each .kv row, colored per
- * objective type. Width comes from --pct custom property set by JS. */
-.minimap-grid .kv {
-  position: relative;
-  /* Labels here are short (Dragon/Baron/Herald/Atakhan) - reclaim the slack
-   * from the default 170px column so "1-0 (Cloud taken 12:04) - in 1:44
-   * Infernal" lays out on two lines instead of spilling to a clipped third. */
-  grid-template-columns: 110px 1fr;
-  gap: 10px;
-}
-.minimap-grid .kv .obj-bar {
-  position: absolute;
-  left: 0; bottom: 0;
-  height: 3px;
-  width: var(--pct, 0%);
-  background: var(--border-soft);
-  border-radius: 0 2px 2px 0;
-  transition: width 500ms linear, background-color 300ms ease;
-  pointer-events: none;
-}
-.minimap-grid .kv:has(#mm-dragon)   .obj-bar { background: color-mix(in srgb, var(--bad)      70%, transparent); }
-.minimap-grid .kv:has(#mm-baron)    .obj-bar { background: color-mix(in srgb, var(--advisory) 70%, transparent); }
-.minimap-grid .kv:has(#mm-herald)   .obj-bar { background: color-mix(in srgb, var(--gold)     70%, transparent); }
-.minimap-grid .kv:has(#mm-atakhan)  .obj-bar { background: color-mix(in srgb, var(--info)     70%, transparent); }
-.minimap-grid .kv .obj-bar.full {
-  background: var(--good);
-  box-shadow: 0 0 8px rgba(127,209,154,0.7);
-}
+/* S144-U-262: the Map State objective rows' rules (icon-label wrapper,
+ * per-objective tints and countdown cues, row layout and progress fill)
+ * are retired with their markup: the panel renders in no view.
+ * .obj-ico stays for the header vision pill. */
 

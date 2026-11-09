@@ -61,7 +61,7 @@ fd11a5fce98b2e3c10733a0a167cc80769a9d860aa3d3705bddfb89aa2f16ece  web/js/panels/
 
 0bb7ed5f80c5996f8cabccfa5e78317d8b5393cccbfe896ad01bb3193063ea40  web/js/panels/lobby_duo_synergy.js
 
-958d3f4877cf692e9ef099104e17fd17ad3263892a0ae46c66175ac77fab4adc  web/js/panels/map_state.js
+9978be88e055129e5fcc707b00fab2de0d0dec4d2bc7a1693c9ecc6e6f1ecc32  web/js/panels/map_state.js
 
 d9d4065b05235618c6e1bfda607aabe23998d191f41ca550085e737849ba5e53  web/js/panels/minimap_rect.js
 
@@ -71,7 +71,7 @@ f0b07a4950435d18f5ec5542512870c024a8deb231731b26617c83c2d9b7d8cc  web/js/panels/
 
 7596db5a77709dab113efde56462634bcb66b237da4374027f628febb693bafd  web/js/panels/next_buy.js
 
-1beefa164e0ff1ea5c0c5316b35ce179358119c83b442abadb2930d892c87208  web/js/panels/objective_chips.js
+a5c03c160aa9ce1b00f5dbcab81d3d1caac9b615ec3c3189c1c3d93ac5962d2b  web/js/panels/objective_chips.js
 
 61e938c2d59f03f9f55b22036dcce182efb567e4b5df704d17c96683526cf055  web/js/panels/objective_gauges.js
 

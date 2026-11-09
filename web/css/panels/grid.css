@@ -39,38 +39,8 @@ main {
 /* S144-U-256: the MAP STATE heartbeat line (its pill, heart, counts and
  * age, and their keyframes) is retired: it sat in #minimap, which
  * renders in no view. */
-.minimap-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.mm-chips {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-.mm-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: var(--surface-alt);
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
-}
-.mm-chip b {
-  color: var(--text);
-  font-weight: 900;
-}
-.mm-chip .obj-ico {
-  width: 14px;
-  height: 14px;
-  color: var(--text-faint);
-}
+/* S144-U-262: the objective rows' column and the tower / score chip row
+ * (markup removed 2026-04-23) are retired; neither has a producer. */
 
 /* S144-U-258: the #minimap panel's ZOI / position canvas stack (its map
  * backdrop, fade-in, vignette and the dot layer) is retired; the panel

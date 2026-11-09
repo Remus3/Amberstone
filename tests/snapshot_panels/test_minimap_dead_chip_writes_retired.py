@@ -21,9 +21,10 @@ removed; the renderMinimap comment no longer lists the fields only they
 read. The 1 s tick keeps the objective countdowns.
 
 The positive controls pin the live half of the same calls: renderMinimap
-still sets body[data-phase] from game_time_s (the game-clock update) and
-still stores the objective raw text on #mm-dragon, so the retirement cannot
-pass by breaking renderMinimap.
+still sets body[data-phase] from game_time_s (the game-clock update), so
+the retirement cannot pass by breaking renderMinimap. (S144-U-262 later
+retired the objective rows and their 1 s tick too; the counter-control now
+reads the kept .vis-pill .obj-ico rule.)
 """
 import re
 from pathlib import Path
@@ -62,7 +63,7 @@ _DRIVE = r"""async () => {
         if (r.cssRules) walk(r.cssRules);
         const sel = r.selectorText || '';
         if (ids.some((id) => sel.includes('#' + id))) out.rules.push(sel);
-        if (sel.includes('#mm-dragon')) out.dragonRules = true;
+        if (sel.includes('.vis-pill .obj-ico')) out.keptRule = true;
       }
     };
     walk(rules);
@@ -82,8 +83,6 @@ _DRIVE = r"""async () => {
   out.nodes = document.querySelectorAll(
     ids.map((id) => '#' + id).join(', ')).length;
   out.phase = document.body.dataset.phase ?? null;
-  out.dragonRaw = (document.getElementById('mm-dragon') || {dataset: {}})
-    .dataset.raw ?? null;
   return out;
 }"""
 
@@ -120,10 +119,10 @@ def test_the_served_cssom_holds_no_rule_for_the_removed_chips(drive):
     assert drive["rules"] == [], drive
 
 
-def test_counter_control_the_cssom_walk_reads_the_objective_rules(drive):
+def test_counter_control_the_cssom_walk_reads_a_kept_rule(drive):
     # The walk above would pass on an unread CSSOM; prove it reads the
-    # live item_build.css rules that name the kept objective rows.
-    assert drive.get("dragonRules") is True, drive
+    # live header.css rule for the vision pill's objective icon.
+    assert drive.get("keptRule") is True, drive
 
 
 def test_no_node_carries_a_removed_chip_id(drive):
@@ -133,7 +132,6 @@ def test_no_node_carries_a_removed_chip_id(drive):
 
 def test_positive_control_render_minimap_keeps_its_live_half(drive):
     assert drive["phase"] == "mid", drive
-    assert drive["dragonRaw"] == "Dragon spawns 20:00", drive
 
 
 def test_map_state_js_no_longer_looks_up_or_writes_the_chips():
@@ -161,8 +159,8 @@ def test_anchor_the_scans_read_the_live_neighbours():
     js = MAP_STATE.read_text(encoding="utf-8")
     css = ITEM_BUILD.read_text(encoding="utf-8")
     html = (REPO / "web/index.html").read_text(encoding="utf-8")
-    assert 'dragon: el("mm-dragon")' in js
-    assert "_tickObjectiveCountdowns();" in js
+    assert "staleness: document.querySelector(" in js
+    assert "setInterval(_tickSpellCooldowns, 1000);" in js
     assert "function renderMinimap(p)" in js
-    assert ".kv:has(#mm-dragon)  .obj-ico" in css
-    assert 'id="mm-dragon"' in html
+    assert ".obj-ico {" in css
+    assert 'id="minimap"' in html

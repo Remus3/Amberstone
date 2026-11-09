@@ -432,14 +432,9 @@
         <!-- Tower/score/game-time chips removed 2026-04-23 - all three
              signals live on the header row 2 group already, no value in
              duplicating them inside the map panel. -->
-        <!-- Objectives - full-width rows with state text (in-game view). -->
-        <div class="minimap-grid" id="mm-objectives-view">
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-dragon"/></svg>Dragon</span><span id="mm-dragon">-</span></div>
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-baron"/></svg>Baron</span><span id="mm-baron">-</span></div>
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-herald"/></svg>Herald</span><span id="mm-herald">-</span></div>
-          <!-- Atakhan removed 2026-04-23: not present in the live season. -->
-          <!-- Ally/Enemy team strips removed 2026-04-23: giving minimap panel more visual space. -->
-        </div>
+        <!-- S144-U-262 retired the Dragon / Baron / Herald objective rows
+             and their 1 s countdown tick; this panel renders in no view.
+             The overlay objective chips carry the countdowns. -->
         <!-- S144-U-260 retired the client-mode aftergame bullets view and
              its per-envelope list rebuild; this panel renders in no view. -->
       </div>

@@ -78,7 +78,7 @@ def test_anchor_the_scans_read_real_files():
     assert len(files) > 20, len(files)
     html = files["web/index.html"]
     assert 'id="minimap"' in html
-    assert 'id="mm-objectives-view"' in html
+    assert 'data-for="minimap"' in html
     assert 'id="zone-pill"' in html
     assert 'class="mm-zoi-canvas" id="am-zoi-canvas"' in html
     ms = files["web/js/panels/map_state.js"]
@@ -98,7 +98,7 @@ _DOM = r"""() => {
   const am = document.getElementById('am-zoi-canvas');
   return {
     panel: !!p,
-    objectives: !!document.getElementById('mm-objectives-view'),
+    staleness: !!document.querySelector('.staleness[data-for="minimap"]'),
     panelCanvases: p ? p.querySelectorAll('canvas').length : -1,
     retired: document.querySelectorAll(
       '#mm-canvas-stack, #mm-zoi-canvas, #mm-pos-canvas, '
@@ -127,9 +127,10 @@ def test_the_served_page_has_no_canvas_stack(mock_server, pw_browser, mode):
         page.close()
         ctx.close()
     assert not errors, errors[:3]
-    # Positive controls: the panel shell, its objective rows and the
-    # overlay ZOI canvas (shared class) are still served.
-    assert got["panel"] and got["objectives"] and got["amZoi"], got
+    # Positive controls: the panel shell, its staleness tag (S144-U-262
+    # retired its objective rows) and the overlay ZOI canvas (shared
+    # class) are still served.
+    assert got["panel"] and got["staleness"] and got["amZoi"], got
     assert got["retired"] == 0, got
     assert got["panelCanvases"] == 0, got
 

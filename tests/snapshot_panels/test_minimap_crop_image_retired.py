@@ -73,7 +73,7 @@ def test_anchor_the_scans_read_real_files():
     # files by finding the live neighbours of the retired parts.
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
-    assert 'id="mm-objectives-view"' in files["web/index.html"]
+    assert 'data-for="minimap"' in files["web/index.html"]
     assert 'id="zone-pill"' in files["web/index.html"]
     assert "function renderMinimapCanvases(" in files[
         "web/js/panels/map_state.js"]
@@ -88,7 +88,7 @@ _DOM = r"""() => {
   const p = document.getElementById('minimap');
   return {
     panel: !!p,
-    objectives: !!document.getElementById('mm-objectives-view'),
+    staleness: !!document.querySelector('.staleness[data-for="minimap"]'),
     retired: document.querySelectorAll(
       '#mm-img-wrap, #mm-img, #mm-img-caption, .minimap-img-wrap, '
       + '.minimap-img-caption, #minimap img').length,
@@ -115,6 +115,7 @@ def test_the_served_page_has_no_crop_image(mock_server, pw_browser, mode):
         page.close()
         ctx.close()
     assert not errors, errors[:3]
-    # Positive control: the panel and its kept objective rows are served.
-    assert got["panel"] and got["objectives"], got
+    # Positive control: the panel and its staleness tag are served
+    # (S144-U-262 retired its objective rows).
+    assert got["panel"] and got["staleness"], got
     assert got["retired"] == 0, got
