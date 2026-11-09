@@ -423,8 +423,8 @@ def _eog_raw_files(paths: Iterable) -> list:
     """The raw EoG files named by `paths` (a file, or a directory: its own
     eog_raw.json and every one a level below), de-duplicated, in order."""
     out, seen = [], set()
-    for p in paths or ():
-        p = Path(p)
+    for raw_path in paths or ():
+        p = Path(raw_path)
         found = ([p] if p.is_file() else
                  [*sorted(p.glob(EOG_RAW_NAME)), *sorted(p.glob(f"*/{EOG_RAW_NAME}"))] if p.is_dir() else [])
         for f in found:

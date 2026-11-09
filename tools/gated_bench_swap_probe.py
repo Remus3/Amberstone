@@ -231,8 +231,8 @@ def watch(seconds: float, poll: float) -> tuple[list[dict], list[float]]:
     url = f"{_probe._RELAY_BASE}/latest-lcu"
     token = _probe._relay_token()
     rows, polls = [], []
-    start = time.time()
-    while time.time() - start < seconds:
+    start = time.monotonic()
+    while time.monotonic() - start < seconds:
         wrap, _err = _probe._get_json(url, token)
         if isinstance(wrap, dict):
             rows.append(capture_row(wrap.get("data") or {}))

@@ -1060,4 +1060,3 @@ class SelfMonitor:
             self.incident_log.purge_old()
         except Exception:  # noqa: BLE001
             pass
-

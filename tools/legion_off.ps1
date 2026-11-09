@@ -2,19 +2,29 @@
 # Idempotent: re-run on already-stopped fleet = no-op.
 # Hard rule: never Stop-Process (hangs MCP pipe per CLAUDE.md) - use taskkill /F /PID.
 # Does NOT kill: Claude Code CLI sessions, Claude Desktop, Tailscale, windows-mcp, system services.
+#
+# Status (2026-10-31 launcher cutover): RC-Supervisor and RC-Phase3-Supervisor are
+# unregistered and the rc-shell service host runs the supervisor, the LCU agent, the
+# relay, the hotkey listener and Phase 3 (docs/OPERATIONS.md, "Moved to the app"). Step 1
+# therefore reports them MISSING on a cut-over host and the real stop is the step 2 and
+# 2b process sweeps; quitting the app is the clean stop. docs/OPERATIONS.md records the
+# wider rework of this script for the app as open.
 
 $ErrorActionPreference = 'SilentlyContinue'
 Write-Host "=== Legion OFF ==="
 
 # 0. Hold the DS keepalive (RC-DSKeepalive, RM-750) BEFORE the sweep below kills
-# DS: with RC down it would relaunch DS through RC-DaemonSlayer within a minute.
-# legion_on.ps1 removes the flag.
+# DS: with RC down a registered keepalive would relaunch DS within a minute.
+# legion_on.ps1 removes the flag. Status (2026-10-31 launcher cutover): RC-DSKeepalive
+# was never registered and RC-DaemonSlayer is unregistered (RC's DsWatchdog starts DS
+# as its own child), so on a cut-over host the flag holds nothing; it is still written
+# so a host that registers the keepalive stays held.
 $dsStop = Join-Path (Split-Path -Parent $PSScriptRoot) 'ops\runtime\DS_KEEPALIVE_STOP'
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dsStop) | Out-Null
 Set-Content -LiteralPath $dsStop -Value 'legion_off' -Encoding Ascii
 Write-Host "[off] DS keepalive held (ops\runtime\DS_KEEPALIVE_STOP)"
 
-# 1. Stop AtLogon + AtStartup RC-* scheduled tasks (dep order: app-level first, infra last)
+# 1. Stop the RC-* scheduled tasks that are still registered (dep order: app-level first, infra last)
 $tasks = @(
   'RC-Supervisor',
   'RC-Phase3-Supervisor',

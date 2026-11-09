@@ -306,12 +306,14 @@ def check_ci(sha="HEAD"):
     try:
         if sha == "HEAD":
             r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(ROOT),
-                               capture_output=True, text=True)
+                               capture_output=True, text=True, encoding="utf-8",
+                               errors="replace")
             sha = r.stdout.strip()
         r = subprocess.run(
             ["gh", "run", "list", "--commit", sha, "--limit", "10",
              "--json", "status,conclusion,name"],
-            cwd=str(ROOT), capture_output=True, text=True, timeout=30)
+            cwd=str(ROOT), capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=30)
         if r.returncode != 0:
             return {"status": "unavailable", "detail": r.stderr.strip()[:200],
                     "sha": sha}

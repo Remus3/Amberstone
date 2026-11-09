@@ -102,8 +102,8 @@ def _agent6_audit_outcomes_ex(max_count: int = 3) -> tuple[list, bool]:
     # to completion is cacheable.
     scanned_clean = True
     try:
-        for raw in q.read_text(encoding="utf-8", errors="replace").splitlines():
-            raw = raw.strip()
+        for raw_entry in q.read_text(encoding="utf-8", errors="replace").splitlines():
+            raw = raw_entry.strip()
             if not raw:
                 continue
             try:
@@ -287,7 +287,7 @@ def _state_payload_cached() -> bytes:
     failure - callers keep their own degradation (500 for /api/state, no
     event at all for SSE, RM-245(a))."""
     global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS, _STATE_CACHE_GEN
-    now = time.time()
+    now = time.monotonic()
     if _STATE_CACHE_PAYLOAD is not None and (now - _STATE_CACHE_TS) < _STATE_CADENCE_S:
         return _STATE_CACHE_PAYLOAD
     # RM-245(c): in-flight dedupe. The "unlocked on purpose" reasoning above
@@ -302,13 +302,13 @@ def _state_payload_cached() -> bytes:
     with _STATE_BUILD_LOCK:
         if gen_seen != _STATE_CACHE_GEN and _STATE_CACHE_PAYLOAD is not None:
             return _STATE_CACHE_PAYLOAD
-        now = time.time()
+        now = time.monotonic()
         if (_STATE_CACHE_PAYLOAD is not None
                 and (now - _STATE_CACHE_TS) < _STATE_CADENCE_S):
             return _STATE_CACHE_PAYLOAD
         payload = json.dumps(_timed_build_state()).encode("utf-8")
         _STATE_CACHE_PAYLOAD = payload
-        _STATE_CACHE_TS = time.time()
+        _STATE_CACHE_TS = time.monotonic()
         _STATE_CACHE_GEN += 1
         return payload
 
@@ -319,7 +319,7 @@ def _state_payload_cached() -> bytes:
 # liveclient snapshot and LOGS the top capability deficit. It adds no served
 # field, never raises, and is throttled to one line per _CAPGAP_THROTTLE_S.
 _CAPGAP_THROTTLE_S = 30.0
-_capgap_last_log = 0.0
+_capgap_last_log = float("-inf")  # never logged; monotonic stamp (S144-P-371)
 
 
 def _resolve_my_champion(liveclient_data) -> str:
@@ -384,7 +384,7 @@ def _capgap_shadow_log():
     global _capgap_last_log
     if os.environ.get("RC_CAPGAP_SHADOW", "0").strip().lower() not in ("1", "true", "yes", "on"):
         return None
-    now = time.time()
+    now = time.monotonic()
     if now - _capgap_last_log < _CAPGAP_THROTTLE_S:
         return None
     try:
@@ -929,7 +929,7 @@ def _serve_command_post(h, payload) -> None:
 # /api/console-error server-side throttle (10 Hz cap, all clients combined).
 # Migrated from web_dashboard._CE_LAST_TS/_CE_DROPPED in slice 2C-7a - nothing
 # outside this handler reads the counters.
-_CE_LAST_TS: float = 0.0
+_CE_LAST_TS: float = float("-inf")  # monotonic stamp, nothing yet (S144-P-371)
 _CE_DROPPED: int   = 0
 
 
@@ -1497,7 +1497,7 @@ def _serve_console_error_post(h, payload) -> None:
     # flooding the daily log. Drops are silent (the client's own
     # `dropped_since_last` field surfaces the count anyway).
     global _CE_LAST_TS, _CE_DROPPED
-    _now_ce = time.time()
+    _now_ce = time.monotonic()
     if _now_ce - _CE_LAST_TS < 0.1:
         _CE_DROPPED += 1
         h._send(200, b'{"ok":true,"throttled":true}', "application/json")

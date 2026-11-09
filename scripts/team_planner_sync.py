@@ -36,7 +36,7 @@ def read_lockfile(lockfiles):
     lf = next((p for p in lockfiles if p.exists()), None)
     if not lf:
         return None
-    parts = lf.read_text().strip().split(":")
+    parts = lf.read_text(encoding="utf-8").strip().split(":")
     return parts[2], parts[3]
 
 

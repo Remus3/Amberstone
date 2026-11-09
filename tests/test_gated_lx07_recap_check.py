@@ -147,9 +147,9 @@ def test_row_with_wrong_event_time_does_not_join(tmp_path):
     ev = _kill()
     payload = _agd([ev])
     path = _write(tmp_path, payload, ev)
-    rows = [json.loads(x) for x in path.read_text().splitlines()]
+    rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()]
     rows[0]["game_time_s"] = 999.0
-    path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     s = lx07.check(lx07.read_log(path), _cap(tmp_path, payload))
     assert s["join"]["join_verdict"] == "MISSING"
     assert s["join"]["rows_after_last_capture"] == 1
@@ -159,9 +159,9 @@ def test_orphan_row_inside_capture_window(tmp_path):
     ev = _kill()
     payload = _agd([ev])
     path = _write(tmp_path, payload, ev)
-    rows = [json.loads(x) for x in path.read_text().splitlines()]
+    rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()]
     rows[0]["event_id"] = 77
-    path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     s = lx07.check(lx07.read_log(path), _cap(tmp_path, payload))
     assert s["join"]["rows_without_wire_death"] == 1
 
@@ -170,9 +170,9 @@ def test_contributor_mismatch_is_counted(tmp_path):
     ev = _kill()
     payload = _agd([ev])
     path = _write(tmp_path, payload, ev)
-    rows = [json.loads(x) for x in path.read_text().splitlines()]
+    rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()]
     rows[0]["contributors"] = rows[0]["contributors"][:1]
-    path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     s = lx07.check(lx07.read_log(path), _cap(tmp_path, payload))
     assert s["join"]["contributors_mismatch"] == 1
     assert s["join"]["deaths"][0]["contributors_match"] is False
@@ -219,7 +219,7 @@ def test_grade_row_names_only_and_leaks():
 def test_window_filters_on_recorded_at(tmp_path):
     path = tmp_path / "r.jsonl"
     path.write_text("".join(json.dumps(_row(recorded_at=t)) + "\n" for t in (10, 20, 30))
-                    + "{torn\n")
+                    + "{torn\n", encoding="utf-8")
     log = lx07.read_log(path)
     assert log["torn"] == 1 and log["lines"] == 4
     s = lx07.check(log, since=15, until=25)
@@ -229,7 +229,7 @@ def test_window_filters_on_recorded_at(tmp_path):
 
 def test_huge_int_and_deep_torn_line_do_not_crash(tmp_path):
     path = tmp_path / "r.jsonl"
-    path.write_text(json.dumps(_row(recorded_at=10 ** 400)) + "\n" + "[" * 100000 + "\n")
+    path.write_text(json.dumps(_row(recorded_at=10 ** 400)) + "\n" + "[" * 100000 + "\n", encoding="utf-8")
     log = lx07.read_log(path)
     assert log["torn"] == 1
     s = lx07.check(log, since=0.0)

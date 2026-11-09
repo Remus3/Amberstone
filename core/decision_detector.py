@@ -40,7 +40,7 @@ import threading
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Iterator, Optional
+from typing import Callable, Generator, Optional
 
 import portalocker
 
@@ -82,7 +82,7 @@ _TL_DECISIONS = threading.Lock()
 
 
 @contextlib.contextmanager
-def _decisions_critical_section() -> Iterator[None]:
+def _decisions_critical_section() -> Generator[None, None, None]:
     """Process-local + cross-process lock for decisions_pending.json
     read-modify-writes. File-lock is best-effort with a 2s timeout."""
     with _TL_DECISIONS:

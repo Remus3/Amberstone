@@ -700,8 +700,8 @@ def _wait_for_ready(page, timeout_s=12.0):
     Deliberately NOT wait_until="networkidle": the dashboard polls
     continuously, so networkidle never fires and the goto times out at 45s.
     """
-    deadline = time.time() + timeout_s
-    while time.time() < deadline:
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
         try:
             if page.evaluate("() => document.body.classList.contains('ovx-ready')"):
                 return True

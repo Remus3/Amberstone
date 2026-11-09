@@ -86,8 +86,8 @@ def _reject_constant(name: str):
 def read_lines(path: Path) -> list[tuple[Optional[dict], bool]]:
     """Each non-blank line as (record or None, strict). Raises OSError."""
     out: list[tuple[Optional[dict], bool]] = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:

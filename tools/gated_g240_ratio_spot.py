@@ -157,7 +157,7 @@ _NUMERIC_RECORD_KEYS = ("raw", "predicted", "ratio_part", "weakest_ratio_part",
                         "game_time_s", "captured_at")
 _TEXT_RECORD_KEYS = ("ds_patch", "champion", "block")
 _RECORD_KEYS = ("tool", "form", "key", "role", "rank", "level", "damage_type", "stats",
-                "unpredictable", "source") + _NUMERIC_RECORD_KEYS + _TEXT_RECORD_KEYS
+                "unpredictable", "source", *_NUMERIC_RECORD_KEYS, *_TEXT_RECORD_KEYS)
 
 
 class Refused(ValueError):
@@ -598,8 +598,8 @@ def grade(samples: list[tuple[dict, float]]) -> dict:
         check_record(rec)
         if not _finite(observed) or observed <= 0:
             raise Refused(f"observed must be a positive finite number, got {observed!r}")
-        ident = _group(rec) + (rec["key"], rec["form"], rec["block"], rec["rank"],
-                               round(rec["predicted"], 6))
+        ident = (*_group(rec), rec["key"], rec["form"], rec["block"], rec["rank"],
+                 round(rec["predicted"], 6))
         if ident in seen:
             raise Refused(f"sample repeated: {rec['champion']} {rec['key']} {rec['block']}")
         seen.add(ident)

@@ -584,7 +584,7 @@ def trigger_refresh() -> tuple[bool, str]:
     details: list[str] = []
     for cmd, label in runs:
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120,
+            proc = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=120,
                                   creationflags=_NO_WINDOW)
             ok = proc.returncode in (0, 1)
             all_ok = all_ok and ok

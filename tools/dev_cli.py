@@ -78,6 +78,8 @@ def _run(args, *, cwd=None, capture=False):
             cwd=cwd or str(_PROJECT_ROOT),
             capture_output=capture,
             text=True,
+            # git, py and cmd children write different pages; an undecodable byte must not raise
+            errors="replace",
         )
     except FileNotFoundError as exc:
         print(f"ERROR: command not found: {exc}")
@@ -194,7 +196,7 @@ def cmd_status() -> int:
     if audit_dir.exists():
         try:
             test_f = audit_dir / ".write_test"
-            test_f.write_text("x", newline="\n")
+            test_f.write_text("x", encoding="utf-8", newline="\n")
             test_f.unlink()
             _ok(f"audit/ is writable ({audit_dir})")
         except Exception as exc:  # noqa: BLE001
@@ -262,7 +264,7 @@ def cmd_smoke() -> int:
 def cmd_perf(extra_args: list[str]) -> int:
     """Run the Phase 2 performance probe. Passes extra args through."""
     _require_tool("tools/run_phase2_perf.py")
-    cmd_args = [_PYTHON, "tools/run_phase2_perf.py"] + list(extra_args)
+    cmd_args = [_PYTHON, "tools/run_phase2_perf.py", *extra_args]
     print(f"Running perf probe: {' '.join(cmd_args)}")
     r = _run(cmd_args)
     return r.returncode

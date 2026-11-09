@@ -51,8 +51,8 @@ def test_cmd_icons_skips_hostile_image_full(dirs, bad):
     meta, icons, calls = dirs
     data = {"data": {"Evil": {"image": {"full": bad}},
                      "Ahri": {"image": {"full": "Ahri.png"}}}}
-    (meta / "ddragon_champions.json").write_text(json.dumps(data))
-    (meta / "ddragon_summoner_spells.json").write_text(json.dumps(data))
+    (meta / "ddragon_champions.json").write_text(json.dumps(data), encoding="utf-8")
+    (meta / "ddragon_summoner_spells.json").write_text(json.dumps(data), encoding="utf-8")
     dp.cmd_icons()
     assert all(_within(d, icons) and d.name not in (".", "..") for d in calls)
     assert sorted(d.name for d in calls) == ["Ahri.png", "Ahri.png"]
@@ -66,8 +66,8 @@ def test_cmd_runes_keeps_multi_segment_rune_paths(dirs):
                    "name": "Electrocute"},
                   {"icon": "..", "name": "Evil"},
               ]}]}]
-    (meta / "ddragon_runes.json").write_text(json.dumps(runes))
-    (meta / "ddragon_runes_version.json").write_text(json.dumps({"version": "16.14.1"}))
+    (meta / "ddragon_runes.json").write_text(json.dumps(runes), encoding="utf-8")
+    (meta / "ddragon_runes_version.json").write_text(json.dumps({"version": "16.14.1"}), encoding="utf-8")
     dp.cmd_runes()
     names = sorted(d.name for d in calls)
     assert names == ["7200_Domination.png", "Electrocute.png"]
@@ -87,11 +87,11 @@ def test_cache_ddragon_assets_skips_hostile_image_full(tmp_path, monkeypatch, ba
     cda = _load("cache_ddragon_assets_rm379", "scripts/cache_ddragon_assets.py")
     vdir = tmp_path / "data" / "meta_build" / "ddragon"
     (vdir / "16.14.1").mkdir(parents=True)
-    (vdir / "_index.json").write_text(json.dumps({"latest_pulled": "16.14.1"}))
+    (vdir / "_index.json").write_text(json.dumps({"latest_pulled": "16.14.1"}), encoding="utf-8")
     (vdir / "16.14.1" / "item.json").write_text(json.dumps(
-        {"data": {"1": {"image": {"full": bad}}, "2": {"image": {"full": "2.png"}}}}))
+        {"data": {"1": {"image": {"full": bad}}, "2": {"image": {"full": "2.png"}}}}), encoding="utf-8")
     (vdir / "16.14.1" / "champion.json").write_text(json.dumps(
-        {"data": {"Ahri": {"image": {"full": "Ahri.png"}}}}))
+        {"data": {"Ahri": {"image": {"full": "Ahri.png"}}}}), encoding="utf-8")
     monkeypatch.setattr(cda, "ROOT", tmp_path)
     monkeypatch.setattr(cda, "VERSION_DIR", vdir)
     calls = []

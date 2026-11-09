@@ -58,7 +58,7 @@ def test_wait_for_halts_on_the_durable_sentinel(lc, tmp_path: Path, monkeypatch)
     monkeypatch.setitem(lc.CFG, "poll_sec", 0)
     import time
     with pytest.raises(SystemExit) as exc:
-        lc.wait_for(tmp_path / "never", time.time() + 5)
+        lc.wait_for(tmp_path / "never", time.monotonic() + 5)
     assert exc.value.code == lc.EXIT_DISARMED
 
 

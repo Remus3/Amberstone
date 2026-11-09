@@ -54,8 +54,8 @@ from coaches.tft_coach import Coach, _coach_board_to_placement  # noqa: E402
 def _hexes(placement: str) -> list[str]:
     """The hex label of every unit in a placement string, in order."""
     out = []
-    for chunk in placement.split(","):
-        chunk = chunk.strip()
+    for raw_chunk in placement.split(","):
+        chunk = raw_chunk.strip()
         if chunk:
             out.append(chunk.rsplit(" ", 1)[-1])
     return out

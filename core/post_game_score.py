@@ -229,7 +229,8 @@ def _fallback_prob(features: Sequence[float]) -> float:
     alone cannot reflect.
 
     Intentionally generous: better than 0.5 baseline, worse than the
-    trained LR. TODO: retrain on N>=20 timelines for a stable fit.
+    trained LR. TODO (tracked as G7-07 in docs/LIVE_GAME_GATED_SYNC.md):
+    retrain on N>=20 timelines for a stable fit.
     """
     if len(features) < 11:
         return 0.5

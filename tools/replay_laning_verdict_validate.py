@@ -257,8 +257,8 @@ def _parse_states(raw: Optional[str], default: str) -> List[str]:
     """Comma-separated axis states -> ordered, de-duplicated list. An absent or
     all-blank value yields ``[default]`` so the caller always has one column."""
     out: List[str] = []
-    for chunk in str(raw or "").split(","):
-        chunk = chunk.strip()
+    for raw_chunk in str(raw or "").split(","):
+        chunk = raw_chunk.strip()
         if chunk and chunk not in out:
             out.append(chunk)
     return out or [default]
@@ -658,8 +658,8 @@ def _write_report(report: dict, out_path: Path) -> None:
 
 def _parse_levels(raw: str) -> List[int]:
     out: List[int] = []
-    for chunk in raw.split(","):
-        chunk = chunk.strip()
+    for raw_chunk in raw.split(","):
+        chunk = raw_chunk.strip()
         if not chunk:
             continue
         try:

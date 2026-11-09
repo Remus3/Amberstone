@@ -60,8 +60,8 @@ def _read_jsonl(path: Path, bad: Counter) -> Iterator[dict]:
     except OSError:
         return
     with fh:
-        for line in fh:
-            line = line.strip()
+        for raw_line in fh:
+            line = raw_line.strip()
             if not line:
                 continue
             try:

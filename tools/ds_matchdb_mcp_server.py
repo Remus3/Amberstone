@@ -148,7 +148,30 @@ SERVER_VERSION = "0.1.0"
 # Default is deliberately generous (a backstop, not a latency throttle):
 # the underlying core helpers (engine HTTP, sqlite) already carry their
 # own short timeouts, so this only trips on a genuine hang.
-DISPATCH_TIMEOUT_S = float(os.environ.get("RC_MCP_DISPATCH_TIMEOUT_S", "45"))
+_DEFAULT_DISPATCH_TIMEOUT_S = 45.0
+
+
+def _dispatch_timeout_from_env(raw: "str | None" = None) -> float:
+    """``RC_MCP_DISPATCH_TIMEOUT_S`` as a positive finite float, else the default.
+
+    S144-P-366: this was ``float(os.environ.get(...))`` at import, so a typo
+    (``"45s"``) crashed the whole MCP server before it could answer. ``nan`` and
+    ``inf`` parse but would make the watchdog never (or always) fire, and a
+    value at or below zero would time every tool out at once: all of those fall
+    back to the default as well.
+    """
+    if raw is None:
+        raw = os.environ.get("RC_MCP_DISPATCH_TIMEOUT_S")
+    try:
+        value = float(raw) if raw is not None else _DEFAULT_DISPATCH_TIMEOUT_S
+    except (TypeError, ValueError):
+        return _DEFAULT_DISPATCH_TIMEOUT_S
+    if not math.isfinite(value) or value <= 0:
+        return _DEFAULT_DISPATCH_TIMEOUT_S
+    return value
+
+
+DISPATCH_TIMEOUT_S = _dispatch_timeout_from_env()
 # Per-tool overrides for handlers that legitimately run long and govern
 # themselves with a tighter internal timeout. The watchdog must sit
 # ABOVE that internal ceiling so it never preempts the tool's own
@@ -174,7 +197,7 @@ log = logging.getLogger("ds-matchdb-mcp")
 # text, CR/LF and escapes included, into the log verbatim.
 install_scrub_filter(log)
 
-_START = time.time()
+_START = time.monotonic()
 
 
 # -- Safe JSON serialization ------------------------------------------------
@@ -734,7 +757,7 @@ class _Handler(HostAllowlistMixin, http.server.BaseHTTPRequestHandler):
             if not self._check_auth():
                 return
             body = json.dumps({"alive": True,
-                               "uptime_s": int(time.time() - _START),
+                               "uptime_s": int(time.monotonic() - _START),
                                "tools": list(TOOL_FUNCS.keys())}).encode()
             self._send(200, body)
             return

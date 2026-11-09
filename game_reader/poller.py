@@ -4,7 +4,8 @@
 Holds the connectivity primitives for `GameReader`:
   - Relay path: read /latest-liveclient + /latest-lcu off the vision server
     on Legion :8889. Post-1-PC (ADR-011) the vision server self-heals that
-    cache by reading :2999 in-process, so the RC-LiveClientRelay agent is an
+    cache by reading :2999 in-process, so the relay agent (tools/liveclient_relay.py,
+    run by the rc-shell service host since the 2026-10-31 launcher cutover) is an
     optimization, not a dependency - the relay endpoint stays fresh either way.
   - Direct path: fallback to :2999 (GAME_HOST) when the relay is unreachable.
   - LCU lockfile auth for champ-select reads.
@@ -28,7 +29,8 @@ from core.relay_age import is_stale as _relay_is_stale
 
 LIVE_API = f"https://{GAME_HOST}:2999/liveclientdata"
 
-# Relay endpoint: the RC-LiveClientRelay agent pushes Riot's localhost Live
+# Relay endpoint: the relay agent (tools/liveclient_relay.py, a service-host
+# service; its old task is unregistered) pushes Riot's localhost Live
 # Client API JSON to the vision server, which caches it. Post-1-PC the vision
 # server also self-reads :2999 in-process to keep this fresh if the agent is
 # down (ADR-011), so this stays the primary read path for all consumers.
@@ -431,7 +433,8 @@ class _PollerMixin:
             result = subprocess.run(
                 ["wmic", "process", "where",
                  "name='LeagueClientUx.exe'", "get", "commandline"],
-                capture_output=True, text=True, timeout=5, creationflags=0x08000000
+                capture_output=True, text=True, errors="replace", timeout=5,
+                creationflags=0x08000000
             )
             port = re.search(r"--app-port=(\d+)", result.stdout)
             token = re.search(r"--remoting-auth-token=([\w_-]+)", result.stdout)

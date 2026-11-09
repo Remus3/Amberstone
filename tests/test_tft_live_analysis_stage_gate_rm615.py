@@ -17,7 +17,7 @@ Before RM-615 `TftLiveAnalysis.notify_round` (pre-fix tft/tft_live_analysis.py
 Shape of the calls, as production makes them: core/tft_worker.py:308-312
 calls `notify_coach_state(state)` on every poll and `notify_round(state)`
 with the SAME dict only when the raw stage-round changed (initial (0, 0),
-:265); coaches/tft_pbe_coach.py:147-151 does the same. Each poll is a fresh
+:265); the since-removed coaches/tft_pbe_coach.py:147-151 did the same. Each poll is a fresh
 dict (TftStateReader._parse, tft/tft_state_reader.py, which sets "stage",
 "round", "stage_round", "game_time_s", "round_event" and "variant").
 

@@ -312,7 +312,11 @@ def find_ds_process() -> Optional[int]:
     return None
 
 
-# RM-740 (e): the scheduled task that owns DS (boot trigger, SYSTEM,
+# Status (2026-10-31 launcher cutover): the RC-DaemonSlayer task below is
+# unregistered (docs/OPERATIONS.md, "Moved to the app"), so on this host
+# ``spawn_ds`` takes its child route: DsWatchdog starts DS as its own child.
+# The task route stays for a host that still registers one.
+# RM-740 (e): the scheduled task that owned DS (boot trigger, SYSTEM,
 # restart-on-failure, MultipleInstancesPolicy IgnoreNew). A relaunch goes
 # through it so DS never becomes a child of RC: such a child sat in the
 # RC-Supervisor task's job object with the DS task left Ready, and could boot

@@ -145,7 +145,7 @@ _BUCKET_BY_DISTRICT = {
 }
 
 LANE_BUCKETS = ("top", "mid", "bot", "jungle", "river", "base", "other")
-GANK_BUCKETS = LANE_BUCKETS + ("none",)
+GANK_BUCKETS = (*LANE_BUCKETS, "none")
 
 
 # --- input coercion -------------------------------------------------------------

@@ -443,8 +443,8 @@ def _parse_csv_ids(raw: str) -> list[int]:
     if not raw:
         return []
     out: list[int] = []
-    for tok in raw.split(","):
-        tok = tok.strip()
+    for raw_tok in raw.split(","):
+        tok = raw_tok.strip()
         if not tok:
             continue
         out.append(int(tok))  # raises ValueError on garbage; caller catches

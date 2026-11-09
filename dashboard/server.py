@@ -113,8 +113,8 @@ def _peer_ip(value):
 @functools.lru_cache(maxsize=8)
 def _extra_control_nets(raw: str) -> tuple:
     nets = []
-    for part in raw.split(","):
-        part = part.strip()
+    for raw_part in raw.split(","):
+        part = raw_part.strip()
         if not part:
             continue
         try:

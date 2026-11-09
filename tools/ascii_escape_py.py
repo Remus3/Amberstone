@@ -204,7 +204,7 @@ def convert(text: str, name: str = "<src>") -> str:
 
 def tracked_py() -> list[str]:
     proc = subprocess.run(["git", "ls-files", "-z", "--", "*.py"], cwd=str(REPO),
-                          capture_output=True, check=True)
+                          capture_output=True, check=True, timeout=60)
     gate = _gate()
     return sorted(r for r in proc.stdout.decode("utf-8").split("\0")
                   if r and not gate._ascii_exempt(r))

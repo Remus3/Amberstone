@@ -63,7 +63,7 @@ def test_good_tokens_still_resolve(tmp_path):
 
 def test_the_leak_mechanism_is_real():
     """Positive control: urllib does put the raw value in its exception."""
-    conn = http.client.HTTPConnection("127.0.0.1", 9)
+    conn = http.client.HTTPConnection("127.0.0.1", 9, timeout=1)
     conn.putrequest("GET", "/")  # no socket opened until send
     with pytest.raises(ValueError) as ei:
         conn.putheader("X-RC-Token", f"abc\ndef-{SECRET}")

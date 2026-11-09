@@ -75,7 +75,7 @@ def _sync_target() -> Path:
 
 SYNC_DIR     = _sync_target()
 SYNC_DIR.mkdir(parents=True, exist_ok=True)
-_START_TIME  = time.time()
+_START_TIME  = time.monotonic()
 
 
 # -- API key + Anthropic client ---------------------------------------------

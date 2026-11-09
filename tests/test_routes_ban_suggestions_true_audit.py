@@ -68,11 +68,7 @@ _DDRAGON = {
 
 
 def _reset_index(monkeypatch):
-    # raising=False: the pre-audit module cached under _NAME_TO_ID, the
-    # hardened one under _CHAMP_INDEX; resetting both keeps the RED run
-    # honest (it fails on behaviour, not on a missing attribute).
-    monkeypatch.setattr(rbsu, "_CHAMP_INDEX", None, raising=False)
-    monkeypatch.setattr(rbsu, "_NAME_TO_ID", None, raising=False)
+    monkeypatch.setattr(rbsu, "_CHAMP_INDEX", None)
 
 
 @pytest.fixture

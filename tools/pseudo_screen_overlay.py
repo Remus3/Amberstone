@@ -96,8 +96,8 @@ INVENTORY_JS = r"""() => {
 
 def _wait_for_ready(page, timeout_s=12.0):
     """Poll for body.ovx-ready (overlay_layout marks it after first place)."""
-    deadline = time.time() + timeout_s
-    while time.time() < deadline:
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
         try:
             if page.evaluate("() => document.body.classList.contains('ovx-ready')"):
                 return True

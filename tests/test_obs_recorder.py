@@ -207,7 +207,7 @@ async def _with_fake(fake, body):
 
 
 def sidecar(tmp_path, mid="7001"):
-    return json.loads((tmp_path / "recordings" / f"{mid}.json").read_text())
+    return json.loads((tmp_path / "recordings" / f"{mid}.json").read_text(encoding="utf-8"))
 
 
 async def _start_game(rec, clock, events=()):

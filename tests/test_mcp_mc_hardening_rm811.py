@@ -37,7 +37,7 @@ import socket
 import subprocess
 import threading
 from pathlib import Path
-from typing import Iterator
+from typing import Generator
 
 import pytest
 
@@ -62,7 +62,7 @@ class _Cap(logging.Handler):
 
 
 @contextlib.contextmanager
-def _captured(name: str) -> Iterator[_Cap]:
+def _captured(name: str) -> Generator[_Cap, None, None]:
     lg = logging.getLogger(name)
     cap, prior = _Cap(), lg.level
     lg.addHandler(cap)

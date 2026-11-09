@@ -611,5 +611,3 @@ class WaveTracker:
 
 
 # -- Main integration class -----------------------------------------------------
-
-

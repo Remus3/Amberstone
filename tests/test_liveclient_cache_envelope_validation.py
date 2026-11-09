@@ -9,7 +9,7 @@ LIVE to every consumer:
 1. `ts` missing or null with `data` present -> `age_s` was 0.0, i.e. "perfectly
    fresh", forever. Eight production consumers gate on that number
    (`dashboard/routes_state.py:243,906,991`, `dashboard/_liveclient.py:140`,
-   `dashboard/_state_cooldowns.py:255`, `coaches/_base_coach.py:689`,
+   `dashboard/_state_cooldowns.py:255` (removed in 538c61e4b), `coaches/_base_coach.py:689`,
    `modes/shared_vision.py:183`, plus `core/decision_detector.py:830` and
    `core/vision_tracker.py:279` which pass it out), so a timestamp-less
    envelope defeated every freshness gate at once.

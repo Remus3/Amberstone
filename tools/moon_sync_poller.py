@@ -491,8 +491,8 @@ def _newest_prompt_invocation(self_root: str) -> float | None:
     except OSError:
         return None
     best: float | None = None
-    for line in text.splitlines():
-        line = line.strip()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:
@@ -1138,8 +1138,10 @@ def _pid_alive_detail(pid: int | None) -> tuple[bool | None, str]:
             if err == _ERROR_ACCESS_DENIED:
                 return None, "unknown (access denied)"
             return None, "unknown"
-        code = _process_exit_code(handle)
-        _close_handle(handle)
+        try:
+            code = _process_exit_code(handle)
+        finally:
+            _close_handle(handle)
         if code is None:
             return None, "unknown"
         return (True, "yes") if code == _STILL_ACTIVE else (False, "no")

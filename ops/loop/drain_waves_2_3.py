@@ -542,8 +542,10 @@ def _take_lock() -> bool:
     for _ in range(2):
         try:
             fd = os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            os.write(fd, str(os.getpid()).encode("ascii"))
-            os.close(fd)
+            try:
+                os.write(fd, str(os.getpid()).encode("ascii"))
+            finally:
+                os.close(fd)
             return True
         except FileExistsError:
             try:

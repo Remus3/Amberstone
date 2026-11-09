@@ -61,10 +61,13 @@ from __future__ import annotations
 
 import json
 import asyncio
+import logging
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+_log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -328,7 +331,10 @@ class MetricsCache:
         The immediate first refresh now runs in start(); this loop just
         sleeps + refreshes."""
         while not self._stop_event.wait(timeout=self._refresh_interval):
-            self._refresh()
+            try:
+                self._refresh()
+            except Exception:  # noqa: BLE001 - a raise ends the thread for good (S144-P-359)
+                _log.warning("metrics_cache: refresh pass failed", exc_info=True)
 
     async def _loop_async(self) -> None:
         """AppLoop-resident equivalent of _loop. start() runs the first
@@ -338,7 +344,10 @@ class MetricsCache:
                 await asyncio.sleep(self._refresh_interval)
             except asyncio.CancelledError:
                 return
-            self._refresh()
+            try:
+                self._refresh()
+            except Exception:  # noqa: BLE001 - a raise ends the task for good (S144-P-359)
+                _log.warning("metrics_cache: refresh pass failed", exc_info=True)
 
     def _refresh(self) -> None:
         """Read all source files and update the internal summary atomically.
@@ -638,8 +647,8 @@ class MetricsCache:
             else:
                 lines = text.splitlines()
             entries: List[Dict[str, Any]] = []
-            for line in lines:
-                line = line.strip()
+            for raw_line in lines:
+                line = raw_line.strip()
                 if not line:
                     continue
                 try:

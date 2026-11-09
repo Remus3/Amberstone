@@ -130,10 +130,10 @@ def test_stamp_daily_merges_into_the_status_file_and_reads_back(tmp_path):
     _daily_tree(tmp_path)
     status = tmp_path / RL.STATUS_REL
     status.parent.mkdir(parents=True)
-    status.write_text(json.dumps({"task": "s144-lanes", "status": "running", "pct": 5}))
+    status.write_text(json.dumps({"task": "s144-lanes", "status": "running", "pct": 5}), encoding="utf-8")
     assert RL.read_daily(tmp_path) is None
     fig = RL.stamp_daily(tmp_path, DAY)
-    doc = json.loads(status.read_text())
+    doc = json.loads(status.read_text(encoding="utf-8"))
     assert doc["task"] == "s144-lanes" and doc["pct"] == 5
     assert RL.read_daily(tmp_path) == fig == doc["daily"]
     assert fig["line"].startswith(DAY)
@@ -143,7 +143,7 @@ def test_stamp_daily_merges_into_the_status_file_and_reads_back(tmp_path):
 def _status_doc(root):
     status = root / RL.STATUS_REL
     status.parent.mkdir(parents=True)
-    status.write_text(json.dumps({"task": "s144-lanes", "status": "running", "pct": 5}))
+    status.write_text(json.dumps({"task": "s144-lanes", "status": "running", "pct": 5}), encoding="utf-8")
     return status
 
 

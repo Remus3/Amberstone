@@ -53,7 +53,7 @@ def _git(*args: str) -> str:
 def _numstat_churn(since: str, pathspec: list[str] | None = None) -> tuple[int, int]:
     args = ["log", f"--since={since}", "--numstat", "--pretty=tformat:"]
     if pathspec:
-        args += ["--"] + pathspec
+        args += ["--", *pathspec]
     add = dele = 0
     for line in _git(*args).splitlines():
         parts = line.split("\t")
@@ -89,8 +89,8 @@ def gather_git(days: int, author: str | None) -> dict:
     # top-level path histogram (what areas got touched)
     names = _git(*base, "--name-only", "--pretty=format:").splitlines()
     dirs: Counter = Counter()
-    for n in names:
-        n = n.strip()
+    for raw_name in names:
+        n = raw_name.strip()
         if not n:
             continue
         top = n.split("/")[0] if "/" in n else "(root)"

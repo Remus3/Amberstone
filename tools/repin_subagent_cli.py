@@ -173,8 +173,8 @@ def _read_log(log_path):
     except OSError:
         return []
     rows = []
-    for raw in text.splitlines():
-        raw = raw.strip()
+    for raw_line in text.splitlines():
+        raw = raw_line.strip()
         if not raw:
             continue
         try:

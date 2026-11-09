@@ -264,8 +264,8 @@ def test_xdist_workers_share_their_controllers_root(tmp_path):
     assert len(envs) == 1, envs
     root = Path(envs.pop())
     assert root.parent.resolve() == (systemp / guard.RUN_BASE_NAME).resolve(), root
-    for wid, tp, _ in rows:
-        tp = Path(tp)
+    for wid, raw_tp, _ in rows:
+        tp = Path(raw_tp)
         assert _under(tp, root), (tp, root)
         assert f"popen-{wid}" in tp.parts, tp
     assert not root.exists(), "a passing run removes its own root"

@@ -64,8 +64,8 @@ def _read_last_event_for(log_path: Path, task_id: str) -> dict | None:
         return None
     last: dict | None = None
     with log_path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
+        for raw_line in f:
+            line = raw_line.strip()
             if not line:
                 continue
             try:

@@ -22,7 +22,7 @@ _FILES = (
 
 
 def _beat_drop_prose() -> str:
-    cur = (_ROOT / "data" / "daemon_slayer" / "current.txt").read_text().strip()
+    cur = (_ROOT / "data" / "daemon_slayer" / "current.txt").read_text(encoding="utf-8").strip()
     doc = json.loads(
         (_ROOT / "data" / "daemon_slayer" / cur / "champion_abilities.json")
         .read_text(encoding="utf-8")

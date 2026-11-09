@@ -198,7 +198,7 @@ def _other_ingest_running() -> bool:
              "Where-Object { $_.CommandLine -like '*replay_roster_pull*' -or "
              "$_.CommandLine -like '*ladder_role_scout*' } | "
              "Measure-Object).Count"],
-            capture_output=True, text=True, timeout=30)
+            capture_output=True, text=True, errors="replace", timeout=30)
         return int((out.stdout or "0").strip() or 0) > 0
     except Exception:  # noqa: BLE001 - never block ingest on a probe failure
         return False

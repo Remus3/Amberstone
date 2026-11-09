@@ -349,8 +349,8 @@ def test_f9_rc_recorded_bytes_normalises_path_spellings(tmp_path):
     a.write_bytes(b"x" * 100)
     # string-built on purpose: pathlib would fold the ".." away itself
     dotted = str(vids) + "/../vids/a.mp4"
-    (rec / "1.json").write_text(json.dumps({"owner": "rc", "obs_output_path": str(a)}))
-    (rec / "2.json").write_text(json.dumps({"owner": "rc", "obs_output_path": dotted}))
+    (rec / "1.json").write_text(json.dumps({"owner": "rc", "obs_output_path": str(a)}), encoding="utf-8")
+    (rec / "2.json").write_text(json.dumps({"owner": "rc", "obs_output_path": dotted}), encoding="utf-8")
     assert dg.rc_recorded_bytes(rec) == 100
 
 
@@ -359,5 +359,5 @@ def test_f9_rc_recorded_bytes_ignores_relative_paths(tmp_path, monkeypatch):
     rec.mkdir()
     (tmp_path / "rel.mp4").write_bytes(b"x" * 70)
     monkeypatch.chdir(tmp_path)
-    (rec / "1.json").write_text(json.dumps({"owner": "rc", "obs_output_path": "rel.mp4"}))
+    (rec / "1.json").write_text(json.dumps({"owner": "rc", "obs_output_path": "rel.mp4"}), encoding="utf-8")
     assert dg.rc_recorded_bytes(rec) == 0

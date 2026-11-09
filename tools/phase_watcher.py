@@ -1,7 +1,13 @@
 """phase_watcher.py - LCU WAMP push-event capture watcher.
 
 Item 207 implementation of docs/_archive/LCU_PHASE_CAPTURE_WATCHER_PLAN.md.
-Runs Legion-local (1-PC, ADR-011) alongside the LCU polling agent.
+Status: RETIRED (docs/ARCHITECTURE.md agent table: DISABLED, no task). The
+rc-shell service host does not start it (no ops/launcher/services.json entry)
+and nothing at boot does; it is kept as a patched, tested reference. Starting
+it by hand runs a second capture beside the vision server's own self-grab, so
+the Deploy recipe below is for deliberately reviving it, not routine setup.
+
+Built to run Legion-local (1-PC, ADR-011) alongside the LCU polling agent.
 This file is event-driven: subscribes to LCU push events via WAMP-JSON v2
 and fires DXGI capture on phase transitions. The polling agent stays as
 the dashboard's primary state push; this watcher is additive.

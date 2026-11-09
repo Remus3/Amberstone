@@ -460,7 +460,7 @@ def normalize_name(name: str) -> str:
 
 def target_env(python_version: str = "3.14") -> Dict[str, str]:
     parts = python_version.split(".")
-    full = python_version if len(parts) >= 3 else ".".join((parts + ["0", "0"])[:3])
+    full = python_version if len(parts) >= 3 else ".".join([*parts, "0", "0"][:3])
     return {
         "sys_platform": "win32", "platform_system": "Windows", "os_name": "nt",
         "platform_machine": "AMD64", "implementation_name": "cpython",
@@ -599,8 +599,8 @@ def parse_requirements(text: str) -> Tuple[List[Pin], List[str]]:
         logical.append(buf)
     pins: List[Pin] = []
     problems: List[str] = []
-    for line in logical:
-        line = re.sub(r"(^|\s)#.*$", "", line).strip()
+    for raw_line in logical:
+        line = re.sub(r"(^|\s)#.*$", "", raw_line).strip()
         line = re.split(r"\s--", " " + line, maxsplit=1)[0].strip()
         if not line or line.startswith("-"):
             continue
@@ -671,8 +671,8 @@ def _binary_flag(basename: str) -> Optional[Tuple[str, str]]:
 
 def _dist_licence_texts(dist_info: Path, files: Sequence[str]) -> List[Tuple[str, str]]:
     chosen: Dict[str, Path] = {}
-    for rel in files:
-        rel = rel.strip()
+    for raw_rel in files:
+        rel = raw_rel.strip()
         if not rel:
             continue
         for cand in (dist_info / "licenses" / rel, dist_info / rel, dist_info / Path(rel).name):
@@ -787,8 +787,8 @@ def _cmp_ok(ver: Tuple[int, int, int], op: str, bound: Tuple[int, int, int]) -> 
 def satisfies(version: str, rng: str) -> bool:
     """npm semver range check: exact, =, ^, ~, comparators, `||`, `*`, x-ranges."""
     ver, pre = _semver(version)
-    for alt in rng.split("||"):
-        alt = alt.strip()
+    for raw_alt in rng.split("||"):
+        alt = raw_alt.strip()
         if alt in ("", "*", "x", "latest"):
             if not pre:
                 return True
@@ -856,7 +856,7 @@ def lock_drift(package_json: Mapping[str, object], lock: Mapping[str, object]) -
         problems.append("lockfileVersion {!r} is not 2 or 3".format(lock.get("lockfileVersion")))
     packages = lock.get("packages")
     if not isinstance(packages, dict) or "" not in packages:
-        return problems + ["lock has no packages[''] root entry"]
+        return [*problems, "lock has no packages[''] root entry"]
     root = packages[""]
     if lock.get("name") != package_json.get("name") or root.get("name") != package_json.get("name"):
         problems.append("lock name {!r} / {!r} != package.json name {!r}".format(lock.get("name"), root.get("name"), package_json.get("name")))

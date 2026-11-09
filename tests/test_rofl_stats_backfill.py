@@ -81,7 +81,7 @@ def test_sidecar_puuid_is_not_the_match_v5_puuid():
     the join back onto puuid and silently matching zero rows.
     """
     match_id = ORACLE_MATCH_IDS[0]
-    sidecar = json.loads((SIDECAR_DIR / f"{match_id}.json").read_text())
+    sidecar = json.loads((SIDECAR_DIR / f"{match_id}.json").read_text(encoding="utf-8"))
     sidecar_ids = {map_rofl_player(p, i)["rofl_uuid"] for i, p in enumerate(sidecar["players"])}
     db_ids = {r["puuid"] for r in _db_rows(match_id).values() if r.get("puuid")}
     assert not (sidecar_ids & db_ids), "sidecar and Match-V5 puuid namespaces overlap"
@@ -91,7 +91,7 @@ def test_sidecar_puuid_is_not_the_match_v5_puuid():
 @pytest.mark.parametrize("match_id", ORACLE_MATCH_IDS)
 def test_sidecar_player_matches_match_v5_row(match_id):
     """A sidecar-derived row agrees with the Match-V5 row already in the DB."""
-    sidecar = json.loads((SIDECAR_DIR / f"{match_id}.json").read_text())
+    sidecar = json.loads((SIDECAR_DIR / f"{match_id}.json").read_text(encoding="utf-8"))
     expected_by_pid = _db_rows(match_id)
     assert expected_by_pid, f"no participants rows in DB for {match_id}"
 
@@ -352,7 +352,7 @@ def _write_sidecar(stats_dir, match_id, players, game_length_ms=1250000):
         json.dumps(
             {"match_id": match_id, "game_length_ms": game_length_ms, "players": players}
         )
-    )
+    , encoding="utf-8")
     return path
 
 

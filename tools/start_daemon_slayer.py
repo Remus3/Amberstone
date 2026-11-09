@@ -6,8 +6,12 @@ working directory the scheduler hands over (``C:\\Windows\\System32`` for
 SYSTEM-context tasks), and ``data_loader`` resolves snapshots relative to
 ``cwd`` if no ``--data-root`` is given.
 
-Used by the ``RC-DaemonSlayer`` scheduled task. Manual invocation works
-too - ``$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py``.
+Status (2026-10-31 launcher cutover): the ``RC-DaemonSlayer`` scheduled task
+that used to run this launcher is unregistered (docs/OPERATIONS.md, "Moved to
+the app"); on this host RC's DsWatchdog starts it as its own child
+(``core/daemon_slayer_client.py`` ``_spawn_child``). A host that still
+registers the task runs it the same way. Manual invocation works too -
+``$env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/start_daemon_slayer.py``.
 
 Port preflight (session 129, sibling of the RC-DS-MatchDB-MCP restart race):
 a start that finds :8860 bound WAITS for the holder to let go
@@ -46,7 +50,8 @@ from core.port_handoff import (  # noqa: E402
 )
 
 _LOG_FILE = _PROJECT_ROOT / "logs" / "daemon_slayer_startup.log"
-# The RC-DaemonSlayer scheduled task runs as SYSTEM; appends under
+# A registered RC-DaemonSlayer task (unregistered on this host since the
+# 2026-10-31 launcher cutover) runs as SYSTEM; appends under
 # _PROJECT_ROOT can fail there, and the launcher is invoked via pythonw.exe
 # (no console) so sys.stderr may be unusable too. ProgramData is always
 # SYSTEM-writable - fall back to it so a boot-time failure still leaves a

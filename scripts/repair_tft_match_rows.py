@@ -138,8 +138,8 @@ def _iso_local(iso: str) -> datetime:
 
 def load_qa_matches(path: Path) -> list[dict]:
     out = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         m = json.loads(line)

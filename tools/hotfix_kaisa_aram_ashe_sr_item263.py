@@ -16,7 +16,8 @@ Carry from the 2026-06-02 live-watch DEFERRED note:
 
 The item-167 root (auto-seed coverage gap + the align tool routing a
 ranged ADC through an enchanter archetype) is unchanged; this is the
-data-side hand-curate, mirroring tools/hotfix_sr_adc_loadouts_item167.py.
+data-side hand-curate, mirroring tools/hotfix_sr_adc_loadouts_item167.py
+(quarantined in RC2 P7.3, no longer tracked; recover it from git history).
 Idempotent + atomic: the write goes through
 core.polled_json.atomic_write_bytes (fsync, WinError 5 retry, no scratch left
 behind; ensure_ascii=True, LF, no trailing newline as before).

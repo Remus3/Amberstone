@@ -154,7 +154,7 @@ def test_home_wl_strip(mock_server, pw_browser):
     import json
 
     fixture = json.loads(
-        (ROOT / "web" / "data" / "ui_mock" / "home.json").read_text()
+        (ROOT / "web" / "data" / "ui_mock" / "home.json").read_text(encoding="utf-8")
     )
     last20 = fixture["last20"]
 

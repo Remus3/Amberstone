@@ -1,5 +1,5 @@
 {
-  "_comment": "Catalog of known-legitimate cross-machine operations (§11.6.2).",
+  "_comment": "Catalog of known-legitimate cross-machine operations (section 11.6.2).",
   "version": 1,
   "operations": {
     "push-forwarder-update": {

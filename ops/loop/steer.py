@@ -206,8 +206,8 @@ def _read_all() -> list:
     except (OSError, UnicodeDecodeError):
         return []
     out = []
-    for line in raw.splitlines():
-        line = line.strip()
+    for raw_line in raw.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:

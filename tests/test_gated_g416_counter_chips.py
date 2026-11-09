@@ -376,3 +376,31 @@ def test_cli_refuses_a_non_object(tmp_path, capsys):
     sp = _write(tmp_path, "s.json", [1, 2])
     assert g.main(["grade", "--state", sp, "--dom", sp]) == 2
     assert "REFUSED" in capsys.readouterr().err
+
+
+def test_comp_inputs_keeps_exactly_the_penetration_item_ids(monkeypatch):
+    """S144-P-270 pin: comp_inputs' enemy_pen_item_ids is every enemy item classified lethality, percent armor pen
+    or percent magic pen, in order, and nothing else (the inline lambda it replaced was behaviour-equal)."""
+    from types import SimpleNamespace as NS
+
+    from core.build_planner import situational
+
+    def props(**kw):
+        base = dict(is_lethality=False, is_percent_armor_pen=False, is_percent_magic_pen=False,
+                    is_armor=False, is_magic_resist=False, hp=0.0)
+        return NS(**{**base, **kw})
+
+    table = {"1": props(is_lethality=True), "2": props(), "3": props(is_percent_armor_pen=True),
+             "4": props(is_percent_magic_pen=True), "5": props(is_armor=True, hp=300.0)}
+    calls: list[str] = []
+
+    def classify(i):
+        calls.append(str(i))
+        return table[str(i)]
+
+    monkeypatch.setattr(situational, "classify_item", classify)
+    out = g.comp_inputs({"enemy_items": [["1", "2"], ["3", "4"], [5]], "items": ["5"]})
+    assert out["enemy_pen_item_ids"] == ["1", "3", "4"]
+    assert calls[:5] == ["1", "2", "3", "4", "5"], "classify_item runs once per enemy item, in order"
+    assert out["my_has_resist"] is True
+    assert out["my_item_hp"] == 300.0

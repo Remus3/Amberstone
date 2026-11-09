@@ -54,7 +54,8 @@ def head():
     # Degrade to "" - the controller falls back to its own head() read.
     try:
         return subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
-                              capture_output=True, text=True, timeout=30,
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=30,
                               creationflags=NO_WINDOW).stdout.strip()
     except (subprocess.SubprocessError, OSError):
         return ""

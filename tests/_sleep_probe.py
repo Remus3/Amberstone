@@ -32,13 +32,13 @@ from __future__ import annotations
 import threading
 import time
 from contextlib import contextmanager
-from typing import Iterator, List
+from typing import Generator, List
 
 __all__ = ["record_sleeps", "thread_scoped"]
 
 
 @contextmanager
-def record_sleeps() -> Iterator[List[float]]:
+def record_sleeps() -> Generator[List[float], None, None]:
     """Record ``time.sleep`` calls made by the CALLING thread only.
 
     Yields the list of recorded durations; it fills as the code under test runs.

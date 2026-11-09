@@ -319,7 +319,7 @@ def roster_from_lc(
                    _item_ids(p, skip))
         (allies if team == my_team else enemies).append(fighter)
     if not enemies:
-        return None, notes + ["no live roster: no enemy players"]
+        return None, [*notes, "no live roster: no enemy players"]
     return LiveRoster(me, tuple(allies), tuple(enemies)), notes
 
 
@@ -444,8 +444,8 @@ def _compute(compute: Callable[..., Any], snapshot: Any, roster: LiveRoster,
         # cause to the log repr()-escaped so an engine bug is reported.
         log.warning("focus_board_live: compute_focus_board raised %s: %r - no "
                     "board", type(exc).__name__, str(exc)[:200])
-        return _result(STATUS_NO_BOARD, mode, notes=notes + [
-            f"engine raised ({type(exc).__name__}) - no board, see logs"])
+        return _result(STATUS_NO_BOARD, mode, notes=[
+            *notes, f"engine raised ({type(exc).__name__}) - no board, see logs"])
 
     boiler = _board_boilerplate()
     notes = notes + [n for n in (d.get("notes") or []) if n not in boiler]
@@ -583,7 +583,7 @@ def _run_job(job: tuple, stop: threading.Event) -> None:
             log.warning("focus_board_live: board worker failed (%s) - no board "
                         "for this roster", type(exc).__name__)
             _store(_roster_sig(mode, roster), _result(STATUS_ERROR, mode, notes=(
-                notes + [f"board worker failed ({type(exc).__name__}) - no "
+                [*notes, f"board worker failed ({type(exc).__name__}) - no "
                          "board, see logs"])))
             return
         if out.get("status") != STATUS_THROTTLED:
@@ -640,8 +640,8 @@ def _background_board(lc: Any, mode_key: Any, want_result: bool
     _submit(job)
     if not want_result:
         return None
-    return _result(STATUS_PENDING, mode, notes=notes + [
-        "board computing off the state thread - not ready yet"])
+    return _result(STATUS_PENDING, mode, notes=[
+        *notes, "board computing off the state thread - not ready yet"])
 
 
 def board_for_lc(lc: Any, mode_key: Any, *, now: Optional[float] = None,

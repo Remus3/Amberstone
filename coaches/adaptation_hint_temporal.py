@@ -4,11 +4,14 @@ Payload-boundary slice of the former monolithic `coaches.adaptation_hint`
 (AUTONOMOUS_AUDIT spec 4.C, 2026-05-18). Holds the time-of-day /
 day-of-week / duration breakdowns. `coaches.adaptation_hint` re-exports
 these names so existing call sites keep working unchanged; bodies are
-byte-verbatim - behavior pinned by the test_round* suite.
+byte-verbatim except that each mode DB is held under contextlib.closing
+(S144-P-346: a bare `with sqlite3.connect()` only commits, so it leaked one
+handle per mode) - behavior pinned by the test_round* suite.
 """
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 
 from coaches._adaptation_common import SUPPORTED_MODES, _db, logger
 
@@ -58,7 +61,7 @@ def time_of_day_analysis(
         if db is None:
             continue
         try:
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 conn.row_factory = sqlite3.Row
                 cols = {r[1] for r in conn.execute("PRAGMA table_info(matches)")}
                 has_kda = {"kills", "deaths", "assists"} <= cols
@@ -186,7 +189,7 @@ def duration_analysis(
         if db is None:
             continue
         try:
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 conn.row_factory = sqlite3.Row
                 cols = {r[1] for r in conn.execute("PRAGMA table_info(matches)")}
                 has_kda = {"kills", "deaths", "assists"} <= cols
@@ -297,7 +300,7 @@ def day_of_week_analysis(
         if db is None:
             continue
         try:
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 conn.row_factory = sqlite3.Row
                 cols = {r[1] for r in conn.execute("PRAGMA table_info(matches)")}
                 has_kda = {"kills", "deaths", "assists"} <= cols

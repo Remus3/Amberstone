@@ -159,7 +159,7 @@ class TestDefaultIsUnchanged:
 # --------------------------------------------------------------------------- CLI surface
 class TestCliFlag:
     @pytest.mark.parametrize(
-        "mod", _ID_MODULES + [pytest.param(ABIL, id="wiki_ability")]
+        "mod", [*_ID_MODULES, pytest.param(ABIL, id="wiki_ability")]
     )
     def test_full_roster_flag_defaults_off(self, mod):
         src = Path(mod.__file__).read_text(encoding="utf-8")

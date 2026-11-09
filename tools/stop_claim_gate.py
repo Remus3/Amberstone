@@ -1412,8 +1412,8 @@ def _sentences_with_line(texts):
     otherwise be invisible to the veto."""
     for text in texts:
         for line in text.split("\n"):
-            for part in _SENTENCE.split(line):
-                part = part.strip()
+            for raw_part in _SENTENCE.split(line):
+                part = raw_part.strip()
                 if part:
                     yield part, line
 
@@ -1725,8 +1725,8 @@ def audit(ev):
 def read_transcript(path):
     rows = []
     with open(path, encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            line = line.strip()
+        for raw_line in handle:
+            line = raw_line.strip()
             if not line:
                 continue
             try:

@@ -702,7 +702,7 @@ def artifact_body_fingerprint(doc: object) -> str:
     blob = json.dumps(
         _canonical_body(doc), sort_keys=True, separators=(",", ":")
     )
-    return hashlib.md5(blob.encode("utf-8")).hexdigest()[:8]
+    return hashlib.md5(blob.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
 
 
 def artifact_refresh_verdict(

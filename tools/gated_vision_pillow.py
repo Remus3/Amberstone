@@ -129,7 +129,7 @@ def stats_tie(report: dict, again: dict, wall: float, uptime_s,
 
     ``again`` is the listener re-read AFTER the GET: a different pid or
     ``create_time`` means the port changed hands around the GET. ``uptime_s``
-    (an int of ``time.time() - _START_TIME``, set at import) must also put that
+    (an int of ``time.monotonic() - _START_TIME``, set at import) must also put that
     process's start within ``tolerance_s`` of the pinned ``create_time``.
     """
     same = (again.get("pid") == report.get("pid")

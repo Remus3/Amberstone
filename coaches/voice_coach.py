@@ -40,7 +40,7 @@ from core import live_game_gate
 
 _log = logging.getLogger("rc.voice")
 
-_LAST_TS: float = 0.0
+_LAST_TS: float = float("-inf")  # monotonic stamp, never spoken (S144-P-371)
 _LAST_TEXT: str = ""
 _DEDUP_WINDOW_S = 60.0
 _MIN_INTERVAL_S = 4.0
@@ -82,7 +82,7 @@ def speak(text: str, *, dedup: bool = True, rate: int = 0) -> bool:
     if not text:
         return False
     text = text[:_MAX_CHARS]
-    now = time.time()
+    now = time.monotonic()
     global _LAST_TS, _LAST_TEXT
     with _lock:
         if dedup and text == _LAST_TEXT and (now - _LAST_TS) < _DEDUP_WINDOW_S:
@@ -120,7 +120,7 @@ def is_available() -> bool:
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
              "Add-Type -AssemblyName System.Speech;"
              "(New-Object System.Speech.Synthesis.SpeechSynthesizer).GetInstalledVoices().Count"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True, text=True, errors="replace", timeout=5,
             creationflags=0x08000000,
         )
         n = int((r.stdout or "0").strip() or "0")

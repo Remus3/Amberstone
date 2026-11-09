@@ -69,7 +69,6 @@ def test_post_game_summary_failure_does_not_block_auto_analyze():
             fn()
 
     with mock.patch("agents.supervisor.asyncio") as _aio:
-        _aio.get_event_loop.return_value.is_running.return_value = True
         _aio.get_running_loop.return_value = _Loop()
         # The locator bug must still surface (it is a real bug, not to be hidden)
         # but it must not take auto-analyze down with it.

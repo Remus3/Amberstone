@@ -59,8 +59,8 @@ from http.server import BaseHTTPRequestHandler
 # U+2066..U+2069) plus the bidi marks (U+061C, U+200E, U+200F), which
 # reorder the text a terminal shows. Escaped as ``\\uHHHH``; the backslash
 # escape keeps that injective too.
-EXTRA_SCRUB = ((0x061C, 0x200E, 0x200F, 0x2028, 0x2029)
-               + tuple(range(0x202A, 0x202F)) + tuple(range(0x2066, 0x206A)))
+EXTRA_SCRUB = (0x061C, 0x200E, 0x200F, 0x2028, 0x2029,
+               *range(0x202A, 0x202F), *range(0x2066, 0x206A))
 # s144 true-audit: a lone surrogate (U+D800..U+DFFF; ``json.loads`` makes
 # one out of a client's ``"\\ud800"``) is no control character, but RC's
 # file handler encodes UTF-8 strictly, so ``emit`` raised UnicodeEncodeError
@@ -338,8 +338,8 @@ def install_scrub_filter(*loggers: logging.Logger | str) -> None:
     A logger's filters see only the records created on THAT logger, not a
     child's, so each name a package logs on is installed explicitly (the
     package guard enumerates them from source)."""
-    for lg in loggers:
-        if isinstance(lg, str):
-            lg = logging.getLogger(lg)
+    for logger_or_name in loggers:
+        lg = (logging.getLogger(logger_or_name) if isinstance(logger_or_name, str)
+              else logger_or_name)
         if not any(isinstance(f, ScrubFilter) for f in lg.filters):
             lg.addFilter(ScrubFilter())

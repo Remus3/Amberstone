@@ -297,8 +297,8 @@ def capture(row: str, *, champion: Optional[str] = None, level: Optional[int] = 
 
 def _load_jsonl(path: Path) -> list[dict]:
     out = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if line:
             out.append(json.loads(line))
     return out

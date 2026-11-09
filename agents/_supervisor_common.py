@@ -33,10 +33,16 @@ def _env_port(name: str, default: int) -> int:
 
     RM-170 (2026-08-06): the ports and the state dir are env-overridable so a
     test can spawn a supervisor on FREE ports with a throwaway state dir while
-    the live RC-Phase3-Supervisor still holds :8890/:8891. The DEFAULTS are
+    a live Phase 3 supervisor still holds :8890/:8891. The DEFAULTS are
     unchanged, so the live supervisor (which sets none of these) behaves
     exactly as before. A malformed value falls back to the default rather than
     crashing the daemon at import time.
+
+    Status (2026-10-31 launcher cutover): the RC-Phase3-Supervisor task that
+    held those ports when RM-170 was written is unregistered (docs/OPERATIONS.md,
+    "Moved to the app"); the rc-shell service host runs ``-m agents.supervisor``
+    now, dev profile only (ops/launcher/services.json, ``phase3_supervisor``).
+    The ports and the reason to override them are unchanged.
     """
     raw = os.environ.get(name)
     if not raw:
@@ -313,7 +319,7 @@ def _pid_alive(pid: int) -> bool:
         if sys.platform.startswith("win"):
             try:
                 out = subprocess.check_output(
-                    ["tasklist", "/FI", f"PID eq {pid}"], text=True, timeout=5,
+                    ["tasklist", "/FI", f"PID eq {pid}"], text=True, errors="replace", timeout=5,
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
                 return str(pid) in out
@@ -418,8 +424,10 @@ def acquire_lock() -> bool:
     # Try exclusive-create first.
     try:
         fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.write(fd, str(os.getpid()).encode("ascii"))
-        os.close(fd)
+        try:
+            os.write(fd, str(os.getpid()).encode("ascii"))
+        finally:
+            os.close(fd)
         _LOCK_OWNER_PID, _LOCK_OWNER_SENTINEL = os.getpid(), sentinel
         _write_lock_metadata()
         return True
@@ -444,8 +452,10 @@ def acquire_lock() -> bool:
         pass
     try:
         fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.write(fd, str(os.getpid()).encode("ascii"))
-        os.close(fd)
+        try:
+            os.write(fd, str(os.getpid()).encode("ascii"))
+        finally:
+            os.close(fd)
     except FileExistsError:
         log.error("lost race to another reclaiming starter")
         return False
@@ -702,7 +712,7 @@ def smb_credential_present(target: str = SMB_TARGET) -> bool:
         return False
     try:
         out = subprocess.check_output(
-            ["cmdkey", f"/list:{target}"], text=True, timeout=5, stderr=subprocess.STDOUT,
+            ["cmdkey", f"/list:{target}"], text=True, errors="replace", timeout=5, stderr=subprocess.STDOUT,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except (subprocess.SubprocessError, OSError) as e:

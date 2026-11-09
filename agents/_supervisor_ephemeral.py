@@ -58,13 +58,19 @@ EPHEMERAL_ARGV_PROMPT = "Complete the task given on stdin, following your charte
 # Env vars removed from the ephemeral spawn's environment (2026-09-29).
 #
 # MEASURED: ANTHROPIC_API_KEY is set MACHINE-WIDE on Legion. The
-# RC-Phase3-Supervisor task runs `pythonw -m agents.supervisor` and inherits
+# RC-Phase3-Supervisor task ran `pythonw -m agents.supervisor` and inherited
 # it; the spawn below used to call subprocess.run() with no env= argument, so
 # on Windows the `claude` child inherited the parent's whole environment block
 # and picked the key up too. That key is ORG-scoped, not workspace-scoped, and
 # the CLI treats it as an auth source that TAKES PRECEDENCE over this box's
 # Claude subscription login. Result: every Agent-6 dispatch from 2026-08-02
 # onward died exit 1 (last success 2026-07-27, 7 consecutive weekly failures).
+#
+# Status (2026-10-31 launcher cutover): that measurement is dated, so it is in
+# the past tense. The RC-Phase3-Supervisor task is unregistered since (docs/OPERATIONS.md,
+# "Moved to the app"); the rc-shell service host runs `-m agents.supervisor`
+# now (dev profile only), still under the machine-wide environment, so the
+# scrub below is as needed as before.
 #
 # Each entry is a variable the CLI honours as an auth/endpoint override, so
 # leaving any of them in place would re-create the same precedence bug:

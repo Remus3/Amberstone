@@ -212,6 +212,8 @@ def read_head(repo: Path) -> Optional[str]:
             ["git", "-C", str(repo), "rev-parse", "HEAD"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=10,
             creationflags=_flags(),
             check=False,

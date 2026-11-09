@@ -28,6 +28,8 @@ import websocket
 
 CDP_LIST = "http://127.0.0.1:9222/json/list"
 API_STATE = "https://127.0.0.1:8888/api/state"
+# Seconds for every CDP connect / read; one Runtime.evaluate round trip is well under this.
+_CDP_TIMEOUT_S = 30
 
 # Reads the three NEXT BUY rows, the objective-gauge alert tiers, and the mount
 # geometry (a changed height between samples IS a reflow).
@@ -147,11 +149,13 @@ def main():
     ap.add_argument("--every", type=float, default=5.0, help="seconds between samples")
     args = ap.parse_args()
 
-    targets = json.load(urllib.request.urlopen(CDP_LIST))
+    # Bounded: a debug port that accepts and then goes quiet must not park the probe.
+    with urllib.request.urlopen(CDP_LIST, timeout=_CDP_TIMEOUT_S) as resp:
+        targets = json.load(resp)
     if not targets:
         raise SystemExit("no CDP target - is rc-shell running with --remote-debugging-port=9222?")
     ws = websocket.create_connection(targets[0]["webSocketDebuggerUrl"],
-                                     origin="http://127.0.0.1:9222")
+                                     origin="http://127.0.0.1:9222", timeout=_CDP_TIMEOUT_S)
     heights = set()
     try:
         for i in range(args.watch):

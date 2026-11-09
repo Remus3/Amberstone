@@ -981,12 +981,13 @@ def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
         stems = wiki_title_stems(champ, names)
         for stem in stems:
             prefix = _TEMPLATE_PREFIX + stem + "/"
-            for title, text in pages.items():
+            for title, page_text in pages.items():
                 if not title.startswith(prefix):
                     continue
                 name = title[len(prefix):]
                 if name in by_name:
                     continue
+                text = page_text
                 hop = hops.get(title)
                 if hop in pages:
                     text = pages[hop]

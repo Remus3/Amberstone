@@ -43,4 +43,3 @@ def test_positive_cap_still_prunes_only_old_files(tmp_path):
     assert log_setup._prune_old_logs(tmp_path, retention_days=30) == 2
     assert not any(p.exists() for p in old)
     assert fresh.exists()
-

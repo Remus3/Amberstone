@@ -61,7 +61,7 @@ class Lcu:
     """Minimal LCU client; the passive path only ever calls get()."""
 
     def __init__(self, lockfile: Path):
-        parts = lockfile.read_text().strip().split(":")
+        parts = lockfile.read_text(encoding="utf-8").strip().split(":")
         port, pw = parts[2], parts[3]
         auth = base64.b64encode(f"riot:{pw}".encode()).decode()
         self.base = f"https://127.0.0.1:{port}"  # game host is local (ADR-011)

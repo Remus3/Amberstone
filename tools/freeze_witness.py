@@ -74,7 +74,7 @@ def git_witness(root: Path) -> str:
     proc = subprocess.run(["git", "-C", str(root), "-c", "core.quotepath=false",
                            "status", "--porcelain", "--", "."],
                           capture_output=True, text=True, encoding="utf-8",
-                          errors="replace", check=False)
+                          errors="replace", check=False, timeout=60)
     return proc.stdout
 
 

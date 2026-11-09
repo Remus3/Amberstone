@@ -615,8 +615,8 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         events: list[dict[str, Any]] = []
         try:
             with sched._queue_log.open("r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
+                for raw_line in f:
+                    line = raw_line.strip()
                     if not line:
                         continue
                     try:

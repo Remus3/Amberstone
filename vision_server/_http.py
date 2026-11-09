@@ -106,7 +106,7 @@ class Handler(HostAllowlistMixin, BaseHTTPRequestHandler):
         if self.path == "/health":
             health = {"alive": True, "model": VISION_MODEL,
                       "api_key_ok": api_key_present(),
-                      "uptime_s": int(time.time() - _START_TIME)}
+                      "uptime_s": int(time.monotonic() - _START_TIME)}
             # RM-735: live worker count of the pooled server, so a pool that
             # loses workers over hours shows up before it stops answering.
             workers = getattr(self.server, "workers_alive", None)

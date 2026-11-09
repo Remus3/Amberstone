@@ -178,4 +178,3 @@ GAME_SENSE_VOCAB: dict[str, dict[str, str]] = {
     "Dominant":     {"valence": "good", "hint": "Dictated tempo, enemy reacted to you."},
     "On Point":     {"valence": "good", "hint": "Read plays before they committed."},
 }
-

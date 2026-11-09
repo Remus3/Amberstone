@@ -33,7 +33,7 @@ from agents.daemon_slayer._item_bonus_hp_amp import _ITEM_BONUS_HP_AMP_PCT
 from agents.daemon_slayer._item_health_stack import _ITEM_HEALTH_STACK_PCT
 
 _ROOT = Path(__file__).resolve().parents[3]
-_PATCH = (_ROOT / "data" / "daemon_slayer" / "current.txt").read_text().strip()
+_PATCH = (_ROOT / "data" / "daemon_slayer" / "current.txt").read_text(encoding="utf-8").strip()
 
 
 def _catalog() -> dict:

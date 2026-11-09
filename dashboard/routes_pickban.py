@@ -968,8 +968,8 @@ def _parse_csv_ints(raw: str) -> tuple[int, ...]:
     if not raw:
         return ()
     out: list[int] = []
-    for tok in raw.split(","):
-        tok = tok.strip()
+    for raw_tok in raw.split(","):
+        tok = raw_tok.strip()
         if not tok:
             continue
         try:

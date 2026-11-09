@@ -206,7 +206,7 @@ def _run_cli(rel_file: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, str(REPO_ROOT / "tools" / "sibling_name_sweep.py"),
          "--scan-file", rel_file],
-        cwd=str(REPO_ROOT), env=env, capture_output=True, text=True, timeout=300,
+        cwd=str(REPO_ROOT), env=env, capture_output=True, text=True, errors="replace", timeout=300,
     )
 
 

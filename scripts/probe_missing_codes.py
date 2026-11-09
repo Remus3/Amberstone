@@ -74,7 +74,7 @@ def main() -> int:
         print("NO_LOCKFILE")
         return 0
 
-    parts = lf.read_text().strip().split(":")
+    parts = lf.read_text(encoding="utf-8").strip().split(":")
     port, pw = parts[2], parts[3]
     auth = base64.b64encode(f"riot:{pw}".encode()).decode()
     ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
@@ -99,7 +99,7 @@ def main() -> int:
         lcu("DELETE", f"/lol-tft-team-planner/v1/sets/{sid}/teams/{tid}/champions")
         time.sleep(0.2)
 
-    results = json.loads(CODES_FILE.read_text()) if CODES_FILE.exists() else {}
+    results = json.loads(CODES_FILE.read_text(encoding="utf-8")) if CODES_FILE.exists() else {}
 
     for display, fmts in MISSING.items():
         if display in results:

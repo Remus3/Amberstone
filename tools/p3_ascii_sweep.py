@@ -251,7 +251,8 @@ def sweep_file_docstrings(path: Path, apply: bool):
     changed = 0
     unmapped = set()
     try:
-        toks = list(tokenize.tokenize(path.open("rb").readline))
+        with path.open("rb") as fh:
+            toks = list(tokenize.tokenize(fh.readline))
     except (tokenize.TokenError, IndentationError, SyntaxError) as exc:
         print(f"  TOKENIZE-FAIL {path}: {exc}", file=sys.stderr)
         return 0, set()

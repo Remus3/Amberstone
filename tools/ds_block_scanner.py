@@ -111,7 +111,7 @@ def main(argv: list[str]) -> int:
         import json
         from pathlib import Path
         reg = json.loads(
-            (Path("agents/daemon_slayer/champion_block_index.json")).read_text()
+            (Path("agents/daemon_slayer/champion_block_index.json")).read_text(encoding="utf-8")
         )["champions"]
         targets = sorted(set(asnap.champions) - set(reg))
     elif argv and argv[0] == "--slice":

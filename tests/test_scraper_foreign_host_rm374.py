@@ -60,7 +60,7 @@ def test_foreign_absolute_url_is_refused(scraper, tmp_path):
     assert scraper._client.calls == []
     assert scraper.robots_seen == []
     assert not scraper.cache_path("k").exists()
-    stamp = json.loads((tmp_path / "_last_fetch.json").read_text())["fakesite"]["k"]
+    stamp = json.loads((tmp_path / "_last_fetch.json").read_text(encoding="utf-8"))["fakesite"]["k"]
     assert stamp["status"] == "foreign_host"
 
 

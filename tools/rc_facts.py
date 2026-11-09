@@ -943,8 +943,8 @@ def _artifact_timestamp(signal: ArtifactSignal, root: Path) -> tuple[float | Non
         newest = None
         try:
             with target.open("r", encoding="utf-8", errors="replace") as fh:
-                for line in fh:
-                    line = line.strip()
+                for raw_line in fh:
+                    line = raw_line.strip()
                     if not line:
                         continue
                     try:
@@ -1328,7 +1328,7 @@ def task_health_lines(
         return [head], []
     # Acknowledged lines print FIRST and print even on a clean run: the whole
     # point is that a deliberate disarm stays visible without being an alarm.
-    return [head] + ack_lines + detail_lines, anomalies
+    return [head, *ack_lines, *detail_lines], anomalies
 
 
 def _last_boot_iso() -> str | None:

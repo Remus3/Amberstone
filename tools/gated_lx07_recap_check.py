@@ -126,8 +126,8 @@ def read_log(path: Path) -> dict:
     except OSError:
         out["exists"] = False
         return out
-    for line in text.splitlines():
-        line = line.strip()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         out["lines"] += 1

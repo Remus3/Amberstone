@@ -324,7 +324,11 @@ def _win_open_shared_delete(path: Path):
                None, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, None)
     if not h or h == invalid:
         raise OSError(ctypes.get_last_error(), f"CreateFileW failed: {path}")
-    fd = msvcrt.open_osfhandle(h, os.O_RDONLY)  # the fd owns the handle now
+    try:
+        fd = msvcrt.open_osfhandle(h, os.O_RDONLY)  # the fd owns the handle now
+    except OSError:
+        kernel32.CloseHandle(wintypes.HANDLE(h))    # no fd exists to own it
+        raise
     return os.fdopen(fd, "r", encoding="utf-8", errors="replace")
 
 
@@ -335,7 +339,10 @@ def _open_shared(path: Path, seek_end: bool):
     still rename the live log while we tail it (else WinError 32 freezes RC's
     logging - the 'share-lock' this watcher hit before re-arming). POSIX allows
     rename/unlink of an open file by default, so a plain open is share-safe there.
-    Returns None on any open error (the poll loop retries), never raises."""
+    Returns None on any open error (the poll loop retries), never raises. A
+    handle opened but not positioned (the seek raised) is closed here, so a
+    refused return never leaves it for the garbage collector."""
+    handle = None
     try:
         if sys.platform == "win32":
             handle = _win_open_shared_delete(path)
@@ -345,6 +352,11 @@ def _open_shared(path: Path, seek_end: bool):
             handle.seek(0, 2)  # SEEK_END - ignore pre-existing history
         return handle
     except OSError:
+        if handle is not None:
+            try:
+                handle.close()
+            except OSError:
+                pass
         return None
 
 

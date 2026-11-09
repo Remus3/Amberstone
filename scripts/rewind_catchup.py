@@ -664,7 +664,8 @@ def drain_retry_queue(
     if limit:
         sql += f" LIMIT {int(limit)}"
     rows = conn.execute(sql).fetchall()
-    for match_id, kind, attempts in rows:
+    for match_id, raw_kind, attempts in rows:
+        kind = raw_kind
         if kind == "timeline" and conn.execute(
                 "SELECT 1 FROM matches WHERE match_id = ?", (match_id,)
         ).fetchone() is None:

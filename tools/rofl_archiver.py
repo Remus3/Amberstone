@@ -53,7 +53,7 @@ class LcuReplayClient:
     """
 
     def __init__(self, lockfile=_LOCKFILE):
-        _name, _pid, self.port, pw, _proto = Path(lockfile).read_text().split(":")
+        _name, _pid, self.port, pw, _proto = Path(lockfile).read_text(encoding="utf-8").split(":")
         self._ctx = ssl.create_default_context()
         self._ctx.check_hostname = False
         self._ctx.verify_mode = ssl.CERT_NONE
@@ -111,7 +111,7 @@ def _lcu_replays_path():
     back to the default path rather than treating this as fatal.
     """
     try:
-        _name, _pid, port, pw, _proto = _LOCKFILE.read_text().split(":")
+        _name, _pid, port, pw, _proto = _LOCKFILE.read_text(encoding="utf-8").split(":")
     except (OSError, ValueError) as exc:
         logging.getLogger("rc.rofl_archive").info(
             "LCU lockfile unavailable (%s) - using the default replays path", exc

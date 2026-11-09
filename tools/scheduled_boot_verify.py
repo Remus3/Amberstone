@@ -37,7 +37,7 @@ def _last_boot_iso() -> str | None:
             ["powershell", "-NoProfile", "-NonInteractive", "-Command",
              "(Get-CimInstance Win32_OperatingSystem).LastBootUpTime."
              "ToString('o')"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True, text=True, errors="replace", timeout=15,
         )
     except (OSError, subprocess.SubprocessError):
         return None

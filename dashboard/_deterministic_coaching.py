@@ -1601,9 +1601,9 @@ def shadow_log_arena_coach(coach: dict, lc: dict | None, mode_key: str,
         build_remaining = None
         try:
             owned_names = []
-            for it in (gs.get("items") or []):
-                if isinstance(it, dict):
-                    it = it.get("displayName") or it.get("name")
+            for raw_it in (gs.get("items") or []):
+                it = (raw_it.get("displayName") or raw_it.get("name")
+                      if isinstance(raw_it, dict) else raw_it)
                 if it:
                     owned_names.append(str(it))
             gold = gs.get("gold")

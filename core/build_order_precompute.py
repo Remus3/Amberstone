@@ -385,9 +385,8 @@ def iter_order_item_ids(payload: object):
     for champion, classes in orders.items():
         if not isinstance(classes, dict):
             continue
-        for axis_class, cell in classes.items():
-            if isinstance(cell, dict):
-                cell = cell.get("order")
+        for axis_class, raw_cell in classes.items():
+            cell = raw_cell.get("order") if isinstance(raw_cell, dict) else raw_cell
             if not isinstance(cell, (list, tuple)):
                 continue
             for item_id in cell:
@@ -930,7 +929,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     """
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
-                    choices=("all",) + _MODE_KEYS,
+                    choices=("all", *_MODE_KEYS),
                     help="Which MODE(s) to generate: sr/aram/arena or all "
                          "(default: all). Selects modes ONLY - it does NOT "
                          "expand the champion roster; use --champions all "

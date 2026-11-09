@@ -27,7 +27,7 @@ class TestAtomicWriteJsonRetry:
         target = tmp_path / "lockfile"
         _atomic_write_json(target, {"pid": 1})
         import json
-        assert json.loads(target.read_text()) == {"pid": 1}
+        assert json.loads(target.read_text(encoding="utf-8")) == {"pid": 1}
 
     def test_no_tmp_sibling_after_success(self, tmp_path):
         target = tmp_path / "lockfile"

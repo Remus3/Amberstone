@@ -6,7 +6,9 @@ champ-select / gameflow / ready-check, and pushes state to the in-process
 vision server. Also drains the dashboard command queue (auto-accept, bench
 swap, summoner-spell change, lock pick, reroll) and executes them via LCU.
 
-Registered as the RC-LCUAgent ONLOGON task (Legion-neutral task name).
+Started by the rc-shell service host (ops/launcher/service_host.py, manifest
+ops/launcher/services.json) since the 2026-10-31 launcher cutover, which
+unregistered the old RC-LCUAgent ONLOGON task; nothing starts it at boot.
 
 Endpoints used (all Legion-local now):
   POST http://127.0.0.1:8889/upload-lcu        - push state snapshot
@@ -54,8 +56,8 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-# The agent is launched as ``python tools/lcu_agent.py`` (RC-LCUAgent
-# ONLOGON task), so sys.path[0] is tools/ and the repo's own packages are
+# The agent is launched as ``python tools/lcu_agent.py`` (by the service
+# host), so sys.path[0] is tools/ and the repo's own packages are
 # invisible. The champ-select shaping lives in lcu/ because the dashboard
 # has to build the same payload from an in-process client (RC2 L3); this
 # keeps ONE implementation instead of a drifting agent-side copy.
@@ -80,7 +82,8 @@ from core.log_rotation import (  # noqa: E402
 from core.polled_json import atomic_write_text  # noqa: E402
 from core.tls_policy import client_context_noverify  # noqa: E402
 
-# RM-154. The RC-LCUAgent task runs this under pythonw.exe, which has NO
+# RM-154. The agent runs under pythonw.exe (the RC-LCUAgent task did, the
+# service host's windowless child does now), which has NO
 # console: print() is discarded and stderr is None, so every line this module
 # used to emit - the 401s, the command results, the ingest-recovery trail -
 # went nowhere, and the only symptom was a champ-select UI that stopped
@@ -109,7 +112,7 @@ log = logging.getLogger("lcu_agent")
 # LAN address, which still resolves on this box but is wrong on both counts
 # post-ADR-011: both ends are the same machine, so the X-RC-Token crossed the
 # LAN interface in cleartext for nothing, and a DHCP change would have killed
-# this agent silently - it runs as RC-LCUAgent under pythonw, where a dead
+# this agent silently - it runs windowless under pythonw, where a dead
 # upload is invisible. Precedent: tools/liveclient_relay._upload_url.
 LEGION = os.environ.get("RC_VISION_BASE", "http://127.0.0.1:8889")
 # Legion's HTTPS dashboard. Distinct from LEGION (vision relay :8889);
@@ -1957,9 +1960,10 @@ def loop() -> None:
 
 if __name__ == "__main__":
     if not TOKEN:
-        # Exit non-zero so the RC-LCUAgent task's Last Result is not a
-        # reassuring 0 while every /upload-lcu POST 401s and champ-select
-        # never updates.
+        # Exit non-zero so the service host records a failed exit (its
+        # `last_error` in ops/runtime/launcher_status.json) rather than a
+        # clean 0 while every /upload-lcu POST 401s and champ-select never
+        # updates.
         log.error("no usable vision token: set RC_VISION_TOKEN or write one "
                   "printable-ASCII line to %s",
                   Path(__file__).resolve().parent.parent / "config" / "vision_token.txt")

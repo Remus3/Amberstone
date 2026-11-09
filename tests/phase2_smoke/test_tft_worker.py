@@ -106,7 +106,7 @@ class TestTftWorkerContract(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             cfg = Path(td) / "feature_flags.json"
             cfg.write_text(json.dumps({"tft": {"live_coaching": "disabled",
-                                               "tft_vision_analysis": "allow"}}))
+                                               "tft_vision_analysis": "allow"}}), encoding="utf-8")
             fp._reload(cfg)
             from tests.fixtures.state_dicts import TFT_STATE
             w, rq = self._make_worker(states=[dict(TFT_STATE)])

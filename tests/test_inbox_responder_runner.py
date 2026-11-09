@@ -4173,12 +4173,12 @@ def test_main_writes_the_item13_fire_checklist_start_and_end(world, tmp_path, mo
     # the run count advances once per fire
     runner.main(["--cycle"], run=RunSpy(), spawner=world.spawner, export=world.export,
                 singleton=_open_singleton, parent_env=world.parent_env)
-    assert (root / "ops/runtime" / runner.CHECKLIST_COUNT_NAME).read_text().strip() == "2"
+    assert (root / "ops/runtime" / runner.CHECKLIST_COUNT_NAME).read_text(encoding="utf-8").strip() == "2"
 
 
 def test_fire_checklist_never_raises(tmp_path):
     blocker = tmp_path / "ops"
-    blocker.write_text("a file where a directory belongs")
+    blocker.write_text("a file where a directory belongs", encoding="utf-8")
     assert runner.fire_checklist(tmp_path, "c1") is None
 
 

@@ -90,19 +90,20 @@ _TASK_NAME = re.compile(r"(?:/TN|-TaskName)\s+\"([^\"]+)\"", re.IGNORECASE)
 
 # Every task RC asks an operator to register from a docstring, by name. Names
 # survive line moves and reformatting, so this pins the corpus semantically
-# rather than by a line number or a raw count. Adding a sixth paste-me task is
-# expected to add its name here; prose can never satisfy it.
+# rather than by a line number or a raw count. RC-LiveClientRelay left the set
+# when the 2026-10-31 launcher cutover unregistered it and its docstring dropped
+# the paste-me schtasks line (tests/test_service_host_prose_s144p443.py pins
+# that). Adding a paste-me task is expected to add its name here; prose can
+# never satisfy it.
 _KNOWN_TASKS = frozenset({
     "RC-DS-MatchDB-MCP",
     "RC-KeybindListener",
-    "RC-LiveClientRelay",
     "RC-ScreenAgent-League",
     "RC-ScreenAgent-UI",
 })
 _KNOWN_SITES = (
     "tools/ds_matchdb_mcp_server.py",
     "tools/keybind_listener.py",
-    "tools/liveclient_relay.py",
     "tools/screen_agent.py",
 )
 

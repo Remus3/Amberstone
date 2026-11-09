@@ -427,7 +427,7 @@ def test_two_argument_extractor_gets_frame_meta_not_labels(mini_corpus, tmp_path
     assert acc.main(["--corpus", str(corpus), "--labels", str(labels),
                      "--extractor", "rc_tft06_meta:extract"]) == 0
     capsys.readouterr()
-    metas = json.loads(seen.read_text())
+    metas = json.loads(seen.read_text(encoding="utf-8"))
     assert [m["frame"] for m in metas] == FRAMES
     assert [m["t"] for m in metas] == [500.0, 501.0, 502.0, 503.0]
     assert all(set(m) == {"frame", "t"} for m in metas)

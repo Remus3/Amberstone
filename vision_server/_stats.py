@@ -189,7 +189,7 @@ def get_stats() -> dict:
         log_copy = [dict(x) for x in list(_log_ring)[-30:]]
         lat_copy = [dict(x) for x in list(_latency_ring)]
         return {
-            "uptime_s":     int(time.time() - _START_TIME),
+            "uptime_s":     int(time.monotonic() - _START_TIME),
             "stats":        stats_copy,
             "capture_skip": skip_copy,
             "obs_lane":     obs_copy,

@@ -197,7 +197,7 @@ class PersistenceTests(unittest.TestCase):
     def test_file_is_valid_json(self):
         archetype_picks.save_archetype_pick("Aatrox", primary="tank")
         self.assertTrue(self.tmp_path.exists())
-        raw = json.loads(self.tmp_path.read_text())
+        raw = json.loads(self.tmp_path.read_text(encoding="utf-8"))
         self.assertIsInstance(raw, dict)
         self.assertIn("Aatrox", raw)
 

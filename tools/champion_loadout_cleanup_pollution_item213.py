@@ -663,7 +663,7 @@ class Cleaner:
             # degenerate; keep boots first so list is non-empty
             return [keep]
         # core item at index 0, boots at index 1, rest after
-        return [non_boots[0], keep] + non_boots[1:]
+        return [non_boots[0], keep, *non_boots[1:]]
 
     def enforce_length(
         self, champ: str, mode: str, archetype: str, items: list[str],
@@ -817,7 +817,7 @@ class Cleaner:
                 f = self.fam.get(_fam_norm(cand))
                 if f and f in fams:
                     continue
-                alt_items = alt_items[:-1] + [cand]
+                alt_items = [*alt_items[:-1], cand]
                 break
             alt_items = self._reseat_boots(champ, mode, alt_items, arch)
             if frozenset(_norm(i) for i in alt_items) != frozenset(

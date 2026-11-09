@@ -298,8 +298,8 @@ class TftLiveAnalysisAuditTest(unittest.TestCase):
     # ---- W5: the secret must never reach a log or a repr -----------------
 
     def test_w5_upstream_error_text_is_redacted_before_it_is_logged(self):
-        """The key comes from API-Key-Claude.txt via coaches/tft_pbe_coach.py
-        _read_api_key and core/tft_worker.py. A raised SDK error is formatted
+        """The key comes from API-Key-Claude.txt via the removed PBE coach
+        (coaches/tft_pbe_coach.py _read_api_key) and core/tft_worker.py. A raised SDK error is formatted
         into logger.error on this path, so the leak would be silent.
         """
         obj = _mk(self.tmp, RuntimeError("401 unauthorized for " + _KEY))

@@ -341,4 +341,3 @@ def test_store_builder_refuses_a_root_inside_the_repo():
     from tests._store_states import _REPO_ROOT
     with pytest.raises(AssertionError, match="inside the repo"):
         POLLED.build(_REPO_ROOT / "data", ABSENT)
-

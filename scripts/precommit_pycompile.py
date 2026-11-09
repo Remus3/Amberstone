@@ -29,6 +29,7 @@ def staged_python_files() -> list[Path]:
     out = subprocess.check_output(
         ["git", "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR"],
         cwd=str(ROOT), text=True, encoding="utf-8", errors="replace",
+        timeout=60,
     )
     return [ROOT / p for p in out.split("\0") if p.endswith(".py")]
 

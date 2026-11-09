@@ -86,7 +86,7 @@ class HealthRouteTests(ServerLifecycleTests):
 
     def test_index_html(self) -> None:
         from urllib.request import urlopen
-        with urlopen(self.base + "/") as resp:
+        with urlopen(self.base + "/", timeout=10) as resp:
             self.assertEqual(resp.status, 200)
             ct = resp.headers.get("Content-Type", "")
             self.assertIn("text/html", ct)

@@ -17,7 +17,8 @@ Per S10 responsibilities:
   * Graceful shutdown on SIGTERM / SIGBREAK.
 
 The process also acquires a PID lock against ``agents/state/lockfile`` -
-duplicate launches abort cleanly (matching the existing RC-Supervisor pattern).
+duplicate launches abort cleanly (matching the PID-lock pattern of
+``ops/rc_supervisor.py``).
 
 This skeleton is intentionally MVP:
   * Ephemeral LLM dispatch is implemented as a subprocess stub that writes
@@ -231,8 +232,8 @@ def _should_emit_game_summary(payload: dict[str, Any]) -> bool:
     filed ``game-summary`` rows, 91 came back ``unknown game_mode`` and
     79 ``missing champion`` - 170 rows (29 pct) that round-tripped the
     scheduler only to hit a hardcoded early return in
-    ``agents.agent2_backend.game_ingest.ingest`` (lines 203-216). Both
-    refusals are decidable from the payload alone, so decide them here.
+    ``agents.agent2_backend.game_ingest.ingest_game_summary`` (its two
+    early returns). Both refusals are decidable from the payload alone, so decide them here.
 
     Checked in the INGESTER'S order so the logged reason matches the one
     ingest would have recorded. ``_select_mode_db`` stays the single
@@ -762,7 +763,13 @@ class Supervisor:
                 self._file_post_game_summary(prev_norm, new_norm)
             except Exception as e:  # noqa: BLE001 - must not block auto-analyze
                 log.warning("post-game summary failed: %s", e, exc_info=True)
-            loop = asyncio.get_running_loop() if asyncio.get_event_loop().is_running() else None
+            # get_running_loop() is the only loop probe that does not raise for
+            # the wrong reason: get_event_loop() raises RuntimeError on 3.14
+            # when no loop is set, which made the skip branch below unreachable.
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
             if loop is None:
                 log.debug("no running loop - skipping auto-analyze schedule")
                 return

@@ -109,8 +109,8 @@ def load_jsonl(path: Path) -> list[dict]:
         text = Path(path).read_text(encoding="utf-8")
     except OSError:
         return out
-    for line in text.splitlines():
-        line = line.strip()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:
@@ -294,8 +294,8 @@ def _says_player_dead(text: str, *, action: bool = False) -> bool:
     """True when some clause of ``text`` (already lowercased) says the PLAYER
     is dead or spectating NOW - see _NOT_NOW_RE / _OTHER_SUBJECT_RE for what
     never counts. ``action`` also accepts a DEAD / ELIMINATED head word."""
-    for clause in _CLAUSE_SPLIT_RE.split(text):
-        clause = clause.strip()
+    for raw_clause in _CLAUSE_SPLIT_RE.split(text):
+        clause = raw_clause.strip()
         if not clause:
             continue
         if _NOT_NOW_RE.search(clause) or _OTHER_SUBJECT_RE.search(clause):

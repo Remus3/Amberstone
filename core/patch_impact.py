@@ -276,9 +276,9 @@ def compute_patch_impact(mode: str = DEFAULT_MODE,
 
     played = []
     total = 0
-    for champ_id, games, wins in rows:
+    for raw_champ_id, raw_games, raw_wins in rows:
         try:
-            champ_id, games, wins = int(champ_id), int(games), int(wins or 0)
+            champ_id, games, wins = int(raw_champ_id), int(raw_games), int(raw_wins or 0)
         except (TypeError, ValueError):
             continue
         total += games

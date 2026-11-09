@@ -239,8 +239,8 @@ def pr_creations_last_24h(now_ts: float, path: Path = PR_LOG) -> int:
     if not path.exists():
         return 0
     n = 0
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         try:

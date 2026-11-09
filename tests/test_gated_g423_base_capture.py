@@ -209,7 +209,8 @@ def test_snapshot_refs_reads_meta_and_hashes(tmp_path):
     d.mkdir()
     (d / "a.jpg").write_bytes(b"jpeg-bytes")
     (d / "a.json").write_text(json.dumps({"config_key": CK, "ts": 12.5,
-                                          "width": 2560, "height": 1440}))
+                                          "width": 2560, "height": 1440}),
+                              encoding="utf-8")
     (d / "b__self_dead.jpg").write_bytes(b"x")
     snap = g423.snapshot_refs(d)
     assert snap["a.jpg"]["ts"] == 12.5 and snap["a.jpg"]["state"] == "base"
@@ -220,7 +221,7 @@ def test_snapshot_refs_reads_meta_and_hashes(tmp_path):
 
 def test_read_has_game(tmp_path):
     p = tmp_path / "h.json"
-    p.write_text(json.dumps({"has_game": True}))
+    p.write_text(json.dumps({"has_game": True}), encoding="utf-8")
     assert g423.read_has_game(p) is True
     assert g423.read_has_game(tmp_path / "none.json") is None
 

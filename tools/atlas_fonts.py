@@ -302,8 +302,8 @@ def declared_rfns(font: Sfnt) -> list[str]:
         for m in _RFN_CLAUSE.finditer(text):
             clause = m.group(1)
             quoted = [next(g for g in q.groups() if g) for q in _QUOTED.finditer(clause)]
-            for name in quoted or [clause]:
-                name = name.strip().strip(_QUOTE_CHARS).strip()
+            for raw_name in quoted or [clause]:
+                name = raw_name.strip().strip(_QUOTE_CHARS).strip()
                 if name and name not in found:
                     found.append(name)
     return found

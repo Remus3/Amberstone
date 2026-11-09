@@ -96,7 +96,7 @@ def test_shadow_log_on_emits_and_logs(monkeypatch, caplog):
 def test_shadow_log_throttled(monkeypatch):
     monkeypatch.setenv("RC_CAPGAP_SHADOW", "1")
     # Last log "just happened" -> throttled, returns None without a cache read.
-    monkeypatch.setattr(routes_state, "_capgap_last_log", routes_state.time.time())
+    monkeypatch.setattr(routes_state, "_capgap_last_log", routes_state.time.monotonic())
 
     def _boom():
         raise AssertionError("throttled call must not read the cache")

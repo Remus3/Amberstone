@@ -58,8 +58,8 @@ REL_TOL = 1e-9
 
 def load_fixtures(path: Path = FIXTURES) -> list[dict]:
     out = []
-    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        line = line.strip()
+    for i, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
         try:

@@ -215,7 +215,7 @@ def _world(tmp_path, monkeypatch, *, tasks, port_up, status=None, alive=False):
     monkeypatch.setattr(rc_facts, "_HEALTH", health)
     monkeypatch.setattr(rc_facts, "_APP", tmp_path)
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: port_up)
-    monkeypatch.setattr(rc_facts, "_health_all", lambda: {})
+    monkeypatch.setattr(rc_facts, "_health_all", dict)
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
     monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: tasks)
     monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)

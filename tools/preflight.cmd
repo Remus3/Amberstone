@@ -10,7 +10,7 @@ cd /d "%~dp0.."
 echo [preflight] Starting checks...
 echo.
 
-:: ── Ruff lint ─────────────────────────────────────────────────────────────
+:: -- Ruff lint -------------------------------------------------------------
 :: Try ruff from PATH first, fall back to known install locations
 set RUFF=
 "%SystemRoot%\System32\where.exe" ruff >nul 2>&1 && set RUFF=ruff
@@ -30,7 +30,7 @@ if "%RUFF%"=="" (
 
 echo.
 
-:: ── Python syntax check ───────────────────────────────────────────────────
+:: -- Python syntax check ---------------------------------------------------
 :: Use system python (same as deployed app)
 python -m compileall -q -x "ops[\\/]staging|ops[\\/]backups|ops[\\/]runtime|\.venv|__pycache__" .
 if errorlevel 1 (

@@ -247,7 +247,7 @@ def test_token_never_in_repr_detail_or_logs(fake, monkeypatch, caplog, capsys, t
     fake.close()  # connection refused path
     text.append(p.notify(_n())[1])
     out = capsys.readouterr()
-    text += [out.out, out.err, caplog.text, (tmp_path / "f.jsonl").read_text()]
+    text += [out.out, out.err, caplog.text, (tmp_path / "f.jsonl").read_text(encoding="utf-8")]
     blob = "\n".join(text)
     assert TOKEN not in blob
     assert TOPIC not in blob  # the topic is a capability too
@@ -392,7 +392,7 @@ def test_failure_falls_through_to_floor(fake, monkeypatch, tmp_path):
     ok, detail = chain.notify(_n())
     assert ok
     assert detail.startswith("ntfy: ") and "500" in detail and "jsonl: appended" in detail
-    assert json.loads(floor.read_text().splitlines()[0])["title"] == "Live flip ready"
+    assert json.loads(floor.read_text(encoding="utf-8").splitlines()[0])["title"] == "Live flip ready"
 
 
 def test_unreachable_server_falls_through_fast(monkeypatch, tmp_path):
