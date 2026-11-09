@@ -3504,6 +3504,31 @@ survivability flips below cannot roll otherwise.
   `3121` Fimbulwinter is NOT surfaced on the hps lane, and the row itself scopes that `inject_ids`
   work as a headless slice, not a gate.
   REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 139, read at `bcdee4eec`; NOT a tick).** The
+  measurement and the REMAINS line hold. (1) RE-MEASURED in-process (compute half only, the same
+  headless class as the 2026-07-18 close, not live evidence): DS snapshot `16.22.1`, ENGINE
+  `1.291.0`, `hps.rank_items_by_hps` at the row's own inputs (items `[3853,3504,6617]`, L13, mode
+  ARAM, top_n 200) evaluates **pool=8 exact** OFF; Rakan DIFFERS (ON floats `2051` + `3083` + `3084`
+  to ranks 1-3); Soraka / Janna / Lulu / Nami / Karma byte-identical. Depth `[]` evaluates pool=10
+  with the identical partition and floated ids; Rakan's three floats also hold at L6 and L18; `3121`
+  Fimbulwinter is surfaced neither OFF nor ON. READING NOTE, not a correction: "pool" is the OFF
+  `candidates_evaluated`; ON evaluates 11 (depth `[]`: 13) for Rakan only, because RF2 INJECTS the
+  three HP items into the pool before floating them (`hps.py:1008-1018`, unlike the RF1 hybrid lane,
+  which only re-orders), so the ON count is pool + injected, not a different pool. (2) STILL
+  DEFAULT-OFF at every layer (`inspect.signature`): `dispatch_for_coach` (23 params),
+  `rank_for_primary_archetype` (47), `rank_enchanter_for` (16) and `hps.rank_items_by_hps` all
+  default `prefer_survivability_by_win=False`, and `git grep` finds the key under no file in
+  `coaches/` or `web/`, so the flip has NOT landed. (3) CHAIN, by symbol (the row filed none):
+  `coaches/aram_coach.py:1112` (the `_ds_dispatch_for_coach(...)` call, key absent) ->
+  `coach_integration/archetype_dispatch.py:289` `dispatch_for_coach` (param `:313`, `seams` entry
+  `:441-442`) -> `core/daemon_slayer_client.py:2995` `rank_for_primary_archetype` (param `:3037`;
+  enchanter branch `:3354`) -> `rank_enchanter_for` `:2353` (param `:2368`, body key `:2401-2402`)
+  -> `/rank-enchanter` (`agents/daemon_slayer/server.py:3246`) -> `_route_rank_enchanter` `:3063`
+  (parsed per request `:3097`, kwarg `:3115`) -> `hps.rank_items_by_hps` `:904` (param `:921`,
+  resolve `:1012-1015`). G3-05's dispatcher-level note applies here unchanged: one default flip at
+  `dispatch_for_coach` flips G3-05 / G3-06 / G3-07 together, and the `/api/ds-preview` opt-in
+  (`dashboard/routes_state.py:969` `_DS_PREVIEW_SEAM_BOOLS`, forwarded at `:1053`) has no `web/`
+  sender. Idle this cycle: `:8888` and `:2999` curl status `000` at 2026-11-09 10:14 local; no game.
 - **G3-07** (was C7) RF3+RF6 tank survivability flip - **EYEBALL CLOSED 2026-07-18, on the EMPTY-DEPTH
   run and ONLY on that run.** THE RUN THAT CLOSES THIS ROW: depth `[]`, **pool=121**, KSante ON top-6 =
   `['6662','3075','3143','3083','6665','2504']` - Iceborn Gauntlet 6662 **and** Thornmail 3075 - so the
