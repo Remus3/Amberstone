@@ -3,8 +3,9 @@
 
 Each model uses extra="allow" so new fields added by coaches never cause
 validation failures - only declared fields are type-checked.
-validate_coaching_payload() logs warnings for wrong-type fields but never
-raises; coaches keep working even if the schema drifts.
+validate_coaching_payload() logs warnings for wrong-type (and non-finite
+float) fields but never raises; coaches keep working even if the schema
+drifts. An unchanged error set is logged once, not on every build.
 
 Usage:
     from core.coaching_payload import validate_coaching_payload
@@ -13,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -21,7 +23,11 @@ log = logging.getLogger("rc.coaching_payload")
 
 
 class _Base(BaseModel):
-    model_config = ConfigDict(extra="allow", validate_default=False)
+    # s144 true-audit F2: allow_inf_nan=False. Python's json reads NaN /
+    # Infinity and json.dumps writes them back bare, which the browser's
+    # JSON.parse rejects; a non-finite declared float is a field error.
+    model_config = ConfigDict(extra="allow", validate_default=False,
+                              allow_inf_nan=False)
     mode: str = ""
     action: str = ""
     # R65-A (L9/L10): declared on the shared base so every mode payload
@@ -244,25 +250,94 @@ _MODE_TO_MODEL: dict[str, type[_Base]] = {
 }
 
 
+# s144 true-audit F3: at most this many per-field WARNING lines per call,
+# then ONE summary line - a payload with 30 bad team_context rows used to
+# log 30 lines on every /api/state build.
+_MAX_FIELD_WARNINGS = 8
+
+# s144 true-audit F4: build_state() validates on EVERY /api/state build
+# (about every 0.5 s), so one stuck bad field re-logged the same WARNING
+# twice a second for as long as the file held it. The last logged error
+# set is remembered; an identical one logs at DEBUG only, a changed one
+# logs again, and a valid payload (or an idle / unknown-mode one) clears
+# the memo so a recurrence is visible. The key is (mode, field location,
+# message): a new VALUE with the same error message is a repeat on
+# purpose, since messages never carry the input. Guarded by a lock: the
+# dashboard serves on threads.
+_repeat_lock = threading.Lock()
+_last_logged: Optional[tuple] = None
+
+
+def _reset_repeat_memo() -> None:
+    """Forget the last logged error set (tests; a fresh log after a fix)."""
+    global _last_logged
+    with _repeat_lock:
+        _last_logged = None
+
+
+def _is_repeat(signature: tuple) -> bool:
+    """True if ``signature`` was the last one logged; else remember it."""
+    global _last_logged
+    with _repeat_lock:
+        if signature == _last_logged:
+            return True
+        _last_logged = signature
+        return False
+
+
+def _report(signature: tuple, lines: list[str]) -> None:
+    """Log ``lines`` as WARNINGs (capped), or one DEBUG line on a repeat."""
+    if _is_repeat(signature):
+        log.debug("coaching_payload: same %d error(s) as last build",
+                  len(lines))
+        return
+    for line in lines[:_MAX_FIELD_WARNINGS]:
+        log.warning("%s", line)
+    extra = len(lines) - _MAX_FIELD_WARNINGS
+    if extra > 0:
+        log.warning("coaching_payload: %d more error(s) not shown", extra)
+
+
 def validate_coaching_payload(data: dict) -> bool:
     """Soft-validate a coaching payload dict against its mode schema.
 
-    Logs a WARNING per field error; never raises. Returns True if valid.
+    Never raises on any payload shape. Returns True if valid, or if the
+    mode is absent / None / an unknown string (idle and lobby states).
+    A non-dict payload, a non-string ``mode`` (s144 F1: a list or dict
+    mode used to raise TypeError out of build_state, so /api/state served
+    500) and any field error return False. Field errors log one WARNING
+    each, capped at ``_MAX_FIELD_WARNINGS`` plus a summary line; the same
+    error set as the previous call logs at DEBUG only (see ``_report``).
     Called in build_state() and in unit tests (Phase 5 smoke harness).
     """
     if not isinstance(data, dict):
-        log.warning("coaching_payload: expected dict, got %s", type(data).__name__)
+        name = type(data).__name__
+        _report(("<non-dict>", name),
+                [f"coaching_payload: expected dict, got {name}"])
         return False
     mode = data.get("mode", "")
+    if mode is None:
+        mode = ""
+    if not isinstance(mode, str):
+        name = type(mode).__name__
+        _report(("<mode-type>", name),
+                [f"coaching_payload: mode is {name}, expected str"])
+        return False
     model_cls = _MODE_TO_MODEL.get(mode)
     if model_cls is None:
         # Unknown mode is not a hard error - idle/lobby states may omit mode.
+        # Clears the memo too, so a bad field that comes back next game
+        # warns again instead of once per process.
+        _reset_repeat_memo()
         return True
     try:
         model_cls.model_validate(data)
-        return True
     except ValidationError as exc:
-        for err in exc.errors():
-            loc = ".".join(str(x) for x in err["loc"])
-            log.warning("coaching_payload [%s] %s: %s", mode, loc, err["msg"])
+        errors = [(".".join(str(x) for x in err["loc"]), str(err["msg"]))
+                  for err in exc.errors()]
+        _report((mode, tuple(errors)),
+                [f"coaching_payload [{mode}] {loc}: {msg}"
+                 for loc, msg in errors])
         return False
+    _reset_repeat_memo()
+    return True
