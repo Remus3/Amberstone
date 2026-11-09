@@ -2819,6 +2819,9 @@ def _git_target(here, words):
 # `timeout --sig KILL 5`; sudo `--auth-type` / `--login-class`; `sudo -h
 # host`, placed None like `--host`); `xargs`, `doas` and `builtin` are
 # prefix commands and `eval` runs its joined words as a script.
+# S144-Q-156 (EXTRA only): a word an option took as its value is not judged
+# as an option itself, so `git commit -m -am --no-verify` / `-m -- -n` count
+# (git hands a value option the next word whatever it looks like).
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -2924,9 +2927,14 @@ def _commit_no_verify(words):
     """True when WORDS (after `commit`) carry `-n` in a short cluster."""
     prev = None
     for word in words:
+        # S144-Q-156: a word an option took as its value (even "--") is not
+        # an option, and the word after it is judged afresh (prev cleared).
+        if _is_data_slot(prev, "commit"):
+            prev = None
+            continue
         if word == "--":
             return False
-        if not _is_data_slot(prev, "commit") and re.fullmatch(r"-[A-Za-z]+", word):
+        if re.fullmatch(r"-[A-Za-z]+", word):
             for letter in word[1:]:
                 if letter == "n":
                     return True
@@ -3020,8 +3028,12 @@ def _git_words_bypass(words):
     prev = None
     for k, word in enumerate(rest):
         # S144-Q-147: after the subcommand a data slot is judged by it.
-        if not _is_data_slot(prev, sub if k > i else None) \
-                and _BYPASS_FLAG_WORD.fullmatch(word):
+        # S144-Q-156: a consumed value clears prev, so `-m -am --no-verify`
+        # reads the flag as an option, as git's parse-options does.
+        if _is_data_slot(prev, sub if k > i else None):
+            prev = None
+            continue
+        if _BYPASS_FLAG_WORD.fullmatch(word):
             return True
         prev = word
     if sub == "am":
