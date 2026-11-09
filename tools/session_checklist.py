@@ -43,9 +43,18 @@ KIT_HEADLESS = ROOT / "ops" / "fleet_kit" / "fleet_headless.py"
 PROGRESS_REL = Path("ops") / "loop" / "control" / "progress"
 
 BOX = chr(0x2610)  # U+2610 ballot box; ASCII source
-SESSION_RE = re.compile(r"^SESSION:[ \t]*(\d+)[ \t]*$", re.MULTILINE)
+# ASCII digits only, and an optional CR before the end of line so a CRLF
+# hand-off is matched (and its CR kept) by stamp_session's byte read; the
+# readers go through read_text's universal newlines and never see the CR.
+SESSION_RE = re.compile(r"^SESSION:[ \t]*([0-9]+)[ \t]*(\r?)$", re.MULTILINE)
 _NEXT_ACTION_RE = re.compile(r"^Next action:[ \t]*(.+)$", re.MULTILINE)
 TASK_MAX = 120
+_BOM = chr(0xFEFF)  # UTF-8 BOM as a code point; ASCII source
+# The kit's own task-stem and state rules (fleet_headless _TASK and
+# PROGRESS_STATES), so the local write_progress fallback refuses what the kit
+# refuses: a task name is a plain file stem, never a path.
+_TASK_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+PROGRESS_STATES = ("running", "done", "failed", "blocked")
 
 DIRECTIVE = (
     "FLEET item 13: print this block as your FIRST chat output, completed from the "
@@ -74,40 +83,71 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
 
 
 def read_session(path: Path = HANDOFF) -> int | None:
-    """The `SESSION: <n>` value in the hand-off, or None when absent/unreadable."""
+    """The `SESSION: <n>` value in the hand-off, or None when absent/unreadable
+    (a leading BOM is skipped; a value too long for int() is unreadable)."""
     try:
-        text = Path(path).read_text(encoding="utf-8", errors="replace")
+        text = Path(path).read_text(encoding="utf-8-sig", errors="replace")
     except OSError:
         return None
     m = SESSION_RE.search(text)
-    return int(m.group(1)) if m else None
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except ValueError:
+        return None
+
+
+def _counter(n) -> int:
+    """A session counter: an int (never a bool) or a string of ASCII digits,
+    >= 1. Anything else raises, so a float is never truncated into a stamp."""
+    if isinstance(n, bool) or not isinstance(n, (int, str)):
+        raise TypeError(f"session counter must be a whole number, got {n!r}")
+    if isinstance(n, str):
+        text = n.strip()
+        if not (text.isascii() and text.isdigit()):
+            raise ValueError(f"session counter must be ASCII digits, got {n!r}")
+        n = int(text)
+    if n < 1:
+        raise ValueError(f"session counter must be >= 1, got {n}")
+    return n
 
 
 def stamp_session(n: int, path: Path = HANDOFF) -> None:
     """Set the hand-off's `SESSION: <n>` line, inserting it after the
-    `NEXT SESSION` underline (or first) when absent. Atomic, LF-preserving."""
-    n = int(n)
-    if n < 1:
-        raise ValueError(f"session counter must be >= 1, got {n}")
+    `NEXT SESSION` underline (or first) when absent. Atomic; keeps the file's
+    line ending (a CRLF hand-off stays CRLF and its line is replaced, never
+    duplicated) and a leading BOM stays first. Raises on a bad counter, a
+    missing file or bytes that are not UTF-8, writing nothing."""
+    n = _counter(n)
     path = Path(path)
     data = path.read_bytes().decode("utf-8")
+    bom = _BOM if data.startswith(_BOM) else ""
+    body = data[len(bom):]
     line = f"SESSION: {n}"
-    if SESSION_RE.search(data):
-        new = SESSION_RE.sub(line, data, count=1)
+    if SESSION_RE.search(body):
+        new = SESSION_RE.sub(lambda m: line + m.group(2), body, count=1)
     else:
-        lines = data.split("\n")
+        cr = "\r" if "\r\n" in body else ""
+        lines = body.split("\n")
         at = 0
         if len(lines) >= 2 and lines[0].strip() == "NEXT SESSION" and set(lines[1].strip()) == {"-"}:
             at = 2
-        lines.insert(at, line)
+        if at == len(lines):
+            # The underline is the last line and has no terminator: give it
+            # the file's ending and leave the new last line unterminated too.
+            lines[-1] += cr
+            lines.append(line)
+        else:
+            lines.insert(at, line + cr)
         new = "\n".join(lines)
-    _atomic_write_bytes(path, new.encode("utf-8"))
+    _atomic_write_bytes(path, (bom + new).encode("utf-8"))
 
 
 def next_action(path: Path = HANDOFF) -> str | None:
     """The hand-off's `Next action:` line, trimmed to one checklist task line."""
     try:
-        text = Path(path).read_text(encoding="utf-8", errors="replace")
+        text = Path(path).read_text(encoding="utf-8-sig", errors="replace")
     except OSError:
         return None
     m = _NEXT_ACTION_RE.search(text)
@@ -206,6 +246,10 @@ def write_progress(root, task: str, pct: int, step: str, eta_s, status: str,
         kit = None
     if kit is not None and "checklist" in inspect.signature(kit.write_progress).parameters:
         return kit.write_progress(root, task, pct, step, eta_s, status, checklist=checklist)
+    if not isinstance(task, str) or not _TASK_RE.fullmatch(task):
+        raise ValueError(f"task name {task!r} must be a plain file stem")
+    if status not in PROGRESS_STATES:
+        raise ValueError(f"status {status!r} not in {PROGRESS_STATES}")
     doc = {"task": task, "pct": max(0, min(100, int(pct))), "step": str(step)[:200],
            "eta_s": None if eta_s is None else max(0, int(eta_s)), "status": status,
            "updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -278,8 +322,17 @@ def main(argv: list[str] | None = None, path: Path = HANDOFF) -> int:
         emit(str(n + 1))
         return 0
     if "--stamp" in args:
-        n = int(args[args.index("--stamp") + 1])
-        stamp_session(n, path)
+        at = args.index("--stamp") + 1
+        try:
+            n = _counter(args[at] if at < len(args) else None)
+        except (TypeError, ValueError) as exc:
+            emit(f"error: --stamp needs a whole number >= 1 ({exc})")
+            return 2
+        try:
+            stamp_session(n, path)
+        except (OSError, UnicodeDecodeError) as exc:
+            emit(f"error: cannot stamp the hand-off ({type(exc).__name__}); nothing written")
+            return 1
         emit(str(read_session(path)))
         return 0
     if "--show" in args or not args:
