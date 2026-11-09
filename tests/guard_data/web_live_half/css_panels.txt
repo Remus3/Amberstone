@@ -13,7 +13,7 @@ a923d6de4797af53e3e3cdc90d985269bbfe6244c9e677348ee32f54fdc67234  web/css/panels
 
 3f840a2899e8e8f8779aa2d47d156419bfb55d80301364321f8b8d2602cd425d  web/css/panels/build_insights.css
 
-5a1a54594475e49451af14d3012a8a903527997834fb8785d620b592a614e456  web/css/panels/build_module.css
+1ecad403ed98b306daf0073679be54b4a25c9344e7f7b474f42a7778cd756ff8  web/css/panels/build_module.css
 
 c76dada2f4f9d6d9b458adafe00575cd9b1a62f3999748f88fc7f416d23e7fee  web/css/panels/build_order.css
 
