@@ -2046,15 +2046,28 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lv-mc-row.is-selected {
   border-color: var(--text);
 }
+/* S144-U-238: the empty slot no longer dims by row opacity. At 0.65 its
+ * --text-dim cells (champ, points, kda) read 3.24 to 3.95:1, under AA in
+ * all six themes (measured headless, PARTY MAINS tab, solo lobby). The
+ * dashed border marks the slot as empty; every "-" sentinel paints
+ * --text-dim at full alpha (5.54 to 7.46:1 measured after), still under
+ * a filled row's --text / party-colour names. Only the disabled copy
+ * button keeps the old dimming (a disabled control has no contrast
+ * floor, and it should not read as pressable). */
 .lv-mc-row.is-placeholder {
   border-style: dashed;
   border-color: var(--border-soft);
-  opacity: 0.65;
   /* E11 R4: tighten empty reserved rows a touch to offset the tokenized
    * font bump - the slot still holds its place with "-" sentinels so no
    * reflow when data lands, just a shorter empty box. */
   min-height: calc(var(--hit-min) - 6px);
 }
+.lv-mc-row.is-placeholder :is(.lv-mc-summoner-name, .lv-mc-party-champ,
+    .lv-mc-mastery-level, .lv-mc-mastery-points, .lv-mc-result,
+    .lv-mc-kda) {
+  color: var(--text-dim);
+}
+.lv-mc-row.is-placeholder .lv-mc-copy { opacity: 0.65; }
 .lv-mc-summoner-name {
   /* UI scale v2.1: 12 -> --fs-xs (16). */
   font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.08em;
