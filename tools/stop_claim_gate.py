@@ -2795,7 +2795,9 @@ def _git_target(here, words):
 # None. S144-Q-135 (EXTRA only, _assignment_command) reads the command
 # an assignment runs - `$r = bash -c '...'`, `r=$(bash -c '...')`,
 # `x="$(git push --no-verify)"` - and a bash `NAME=x` prefix before a
-# launcher.
+# launcher. S144-Q-143 (EXTRA only, _env_split_bypass) reads a git command
+# inside an `env -S` / `--split-string` string (`env -S "git commit -n"`),
+# which the stripper blanked; such a statement is placed None.
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -3004,6 +3006,31 @@ def _wrapper_moves(words):
     return False
 
 
+def _env_split_words(words):
+    """S144-Q-143: env's command words for each `env` word in WORDS (every
+    one, as in _wrapper_moves) whose `-S` / `--split-string` string env
+    splits into more arguments, with a nested `env -S` string spliced in
+    too. One left-to-right pass: each splice drops the `-S` word and the
+    string's quotes, so it ends, and a run of `env -S` words costs a list
+    copy each, not a walk per suffix."""
+    words, starts, i = list(words), [], 0
+    while i < len(words):
+        if _WRAPPER_WORD.split(words[i])[-1].lower().removesuffix(".exe") == "env":
+            command, _dirs, split = _env_options(words[i + 1:])
+            if split:
+                words[i + 1:] = command
+                starts.append(i + 1)
+        i += 1
+    return [words[start:] for start in starts]
+
+
+def _env_split_bypass(words):
+    """S144-Q-143: True when a git command that an `env -S` string in WORDS
+    (one statement, quotes removed) splits out carries a bypass
+    (_git_words_bypass): `env -S "git commit --no-verify"`."""
+    return any(_git_words_bypass(command) for command in _env_split_words(words))
+
+
 def _wsl_unwrapped(rest):
     """`wsl`'s command words after its options, and whether `--cd` or `~`
     moved it (the distribution's own path namespace is not placed)."""
@@ -3210,7 +3237,8 @@ def _has_bypass(command, depth=0, extra=True):
     for text in _readings(command):
         for statement in _statements(text):
             words = _tokens(statement.strip().lstrip("({").rstrip(")}").strip())
-            if extra and words and _git_words_bypass(words):
+            if extra and words and (_git_words_bypass(words)
+                                    or _env_split_bypass(words)):
                 return True
             script = _launcher_script(words, extra) if words else None
             if script is not None and _has_bypass(script, depth + 1, extra):
@@ -3245,8 +3273,15 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
         words = _tokens(_expand(statement, variables))
         stripped = strip_command_noise(statement)
         hit = bool(EV_BYPASS.search(stripped) and _BYPASS_GIT_WORD.search(stripped))
+        split = False
         if not hit and not legacy and extra:
-            hit = _git_words_bypass(_tokens(statement))
+            raw_words = _tokens(statement)
+            hit = _git_words_bypass(raw_words)
+            if not hit and _env_split_bypass(raw_words):
+                # S144-Q-143: a git command split out of `env -S "..."` is
+                # placed None (fail closed, the S144-Q-136 decision), never
+                # by a git word _git_target finds elsewhere in the statement.
+                hit = split = True
         body = None if legacy or not extra or hit else _assignment_command(text)
         if body is not None:
             # S144-Q-135: the command an assignment runs, walked like a
@@ -3256,7 +3291,7 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
         if _assigned(statement, variables):
             # `$out = git push --no-verify` (PowerShell) RUNS what it assigns.
             if hit and not legacy:
-                targets.append(_git_target(here, words))
+                targets.append(None if split else _git_target(here, words))
             continue
         if not words:
             continue
@@ -3273,7 +3308,7 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
             if hit:
                 # An absolute `git -C` places the statement even when HERE
                 # is unknown; a relative one from an unknown HERE stays None.
-                targets.append(_git_target(here, words))
+                targets.append(None if split else _git_target(here, words))
     return targets
 
 
