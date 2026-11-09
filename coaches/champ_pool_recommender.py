@@ -343,8 +343,8 @@ def _min_games(value: Any) -> int:
 
 def _csv_ids(csv: Any) -> set[int]:
     out: set[int] = set()
-    for tok in str(csv or "").split(","):
-        tok = tok.strip()
+    for raw_tok in str(csv or "").split(","):
+        tok = raw_tok.strip()
         try:
             out.add(int(tok))
         except ValueError:
