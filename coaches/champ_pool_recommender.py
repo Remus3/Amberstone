@@ -10,19 +10,32 @@ API:
     recommend(my_pool, enemy_comp, *, min_games=3) -> list[dict]
 
 Each recommendation row carries:
-    {champion, games, wins, win_pct, avg_kda, score,
-     sample: "vs comp" | "vs any"}
+    {champion, champ_id, games, wins, win_pct, avg_kda, score,
+     sample: "vs comp" | "vs any", total_games_on_champ}
 
 `sample = "vs comp"` means we found enough games matching the exact
 enemy comp; `"vs any"` falls back to the full champion history when we
-couldn't gather min_games of comp-matched data.
+couldn't gather min_games of comp-matched data. A game matches the comp
+when at least two of its enemy champions are in `enemy_comp`, compared by
+champion ID (lane 8 s144 cycle 237: participants carry Riot's internal
+name - "Kaisa", "Chogath" - so a display-name compare never matched 22
+champions). A name the champion index cannot resolve is still compared by
+name.
 
 Performance score is a simple win-pct weighted by sample size so a
 70% wr in 4 games doesn't outrank 60% wr in 40 games.
 
-Wiring: dashboard route was retired in item 186 (zero callers). The
-`recommend()` function is still imported directly by scripts/build_champ_kda.py
-and remains available for any future dashboard or coach surface.
+Inputs are untrusted shapes: a bare string is one name (never iterated
+per character), non-string members are dropped, duplicates collapse to
+one row, and a junk `min_games` (bool, non-int) falls back to the default
+while a value below 1 is clamped to 1. A rewind DB that is missing,
+locked, corrupt or missing a table answers [] and logs a warning; the DB
+is opened read-only.
+
+Wiring: no production caller - the dashboard route was retired in item
+186. scripts/build_champ_kda.py BUILDS the KDA file this module reads; it
+does not import `recommend()`. The function remains available for any
+future dashboard or coach surface.
 """
 from __future__ import annotations
 
@@ -31,7 +44,7 @@ import logging
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from core.resolved_wr import resolution_select, resolved_wr, wr_pct
 
@@ -41,10 +54,15 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _REWIND_DB    = _PROJECT_ROOT / "data" / "rewind_history.db"
 _DDR_CHAMPS   = _PROJECT_ROOT / "data" / "meta" / "ddragon_champions.json"
 # AUDIT 2026-04-29: pre-aggregated KDA file produced by
-# scripts/build_champ_kda.py. When fresh, _kda_for reads from this
+# scripts/build_champ_kda.py. When present, _kda_for reads from this
 # instead of folding 2.5M timeline_events live (~10s cold) -> ~50 ms
-# warm-DB lookup. Missing / stale file falls through to live SQL.
+# warm-DB lookup. A missing file, a champion absent from it, or a junk
+# entry falls through to live SQL. The file is NOT checked for staleness
+# against the DB: rebuild it with scripts/build_champ_kda.py.
 _KDA_FILE = _PROJECT_ROOT / "data" / "coach_reference" / "champ_kda.json"
+
+_DEFAULT_MIN_GAMES = 3
+_KDA_KEYS = ("kills", "deaths", "assists", "games")
 
 # Lazy-loaded user puuid + champion-name -> id map.
 _user_puuid: Optional[str] = None
@@ -56,7 +74,9 @@ _cache_lock = threading.Lock()
 
 
 def _load_champ_index() -> None:
-    """Populate name <-> id maps from DDragon champion data."""
+    """Populate name <-> id maps from DDragon champion data. A junk shape
+    (non-dict root, non-dict ``data``, non-dict entry) is skipped, never
+    raised; a missing or non-string display name falls back to the slug."""
     global _name_to_id, _id_to_name
     if _name_to_id:
         return
@@ -66,14 +86,23 @@ def _load_champ_index() -> None:
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         _log.warning("ddragon_champions read failed: %s", exc)
         return
+    champs = data.get("data") if isinstance(data, dict) else None
+    if not isinstance(champs, dict):
+        _log.warning("ddragon_champions has no champion map (got %s)",
+                     type(champs).__name__)
+        return
     new_n2i: dict[str, int] = {}
     new_i2n: dict[int, str] = {}
-    for slug, entry in (data.get("data") or {}).items():
+    for slug, entry in champs.items():
+        if not isinstance(entry, dict):
+            continue
         try:
             cid = int(entry.get("key"))
         except (TypeError, ValueError):
             continue
-        name = entry.get("name") or slug
+        name = entry.get("name")
+        if not isinstance(name, str) or not name.strip():
+            name = slug
         # Index by both the display name + the slug so callers can use
         # either ("Cho'Gath" or "Chogath").
         new_n2i[name.lower()] = cid
@@ -109,37 +138,60 @@ def _resolve_user_puuid(c: sqlite3.Connection) -> Optional[str]:
 
 
 def _open() -> Optional[sqlite3.Connection]:
+    """Read-only connection to the rewind DB, or None when it is absent
+    or cannot be opened. Read-only (URI ``mode=ro``) so a race with the
+    exists() check can never create an empty DB and no statement here
+    can write; the caller closes it."""
     if not _REWIND_DB.exists():
         return None
     try:
-        c = sqlite3.connect(str(_REWIND_DB))
-        c.row_factory = sqlite3.Row
-        return c
+        c = sqlite3.connect(_REWIND_DB.resolve().as_uri() + "?mode=ro",
+                            uri=True)
     except sqlite3.Error as exc:
         _log.warning("rewind_history open: %s", exc)
         return None
+    c.row_factory = sqlite3.Row
+    return c
+
+
+def _participant_has_win(c: sqlite3.Connection) -> bool:
+    try:
+        cols = {r[1] for r in c.execute("PRAGMA table_info(participants)")}
+    except sqlite3.Error:
+        return False
+    return "win" in cols
 
 
 def _games_on_champ(c: sqlite3.Connection, puuid: str, champ_id: int) -> list[dict]:
     """All games the user played that champion. Returns rows with
-    match_id, team_id, win, kills/deaths/assists. Enemy-team champions
-    surfaced in a sub-query is left to the caller (kept cheap).
+    match_id, team_id, win and the enemy team as two CSVs: champion IDs
+    (``enemy_ids_csv``) and Riot's internal names (``enemy_comp_csv``).
 
     RM-610: remake signals (game_duration_s, early surrender) ride along
     when the schema has them so core.resolved_wr can drop remakes from the
-    WR denominator."""
+    WR denominator.
+
+    S144-T-94: ``teams`` is LEFT-joined and the seat's own
+    ``participants.win`` answers when no team row exists (measured: all
+    60 of the user's Arena seats have none, and the inner join dropped
+    every one). Where both exist the team row stays the authority."""
     extra = resolution_select(c, "m")
+    win = "COALESCE(t.win, p.win)" if _participant_has_win(c) else "t.win"
     return [dict(r) for r in c.execute(
         f"""
         SELECT m.match_id, p.team_id,
-               t.win{extra},
+               {win} AS win{extra},
+               COALESCE((SELECT GROUP_CONCAT(p2.champion_id)
+                         FROM participants p2
+                         WHERE p2.match_id = m.match_id
+                           AND p2.team_id != p.team_id), '') AS enemy_ids_csv,
                COALESCE((SELECT GROUP_CONCAT(p2.champion_name)
                          FROM participants p2
                          WHERE p2.match_id = m.match_id
                            AND p2.team_id != p.team_id), '') AS enemy_comp_csv
         FROM matches m
         JOIN participants p ON p.match_id = m.match_id AND p.puuid = ?
-        JOIN teams      t ON t.match_id = m.match_id AND t.team_id = p.team_id
+        LEFT JOIN teams t ON t.match_id = m.match_id AND t.team_id = p.team_id
         WHERE p.champion_id = ?
         """,
         (puuid, champ_id),
@@ -148,7 +200,9 @@ def _games_on_champ(c: sqlite3.Connection, puuid: str, champ_id: int) -> list[di
 
 def _load_materialized_kda() -> Optional[dict]:
     """AUDIT 2026-04-29: load champ_kda.json if mtime changed. The file
-    is keyed champ_id-as-string -> {games, kills, deaths, assists}."""
+    is keyed champ_id-as-string -> {games, kills, deaths, assists}. A
+    root or ``champions`` value that is not a dict caches as {} (no
+    entries, so every champion uses live SQL) instead of raising later."""
     global _kda_materialized, _kda_mtime
     if not _KDA_FILE.exists():
         return None
@@ -166,9 +220,41 @@ def _load_materialized_kda() -> Optional[dict]:
         # RM-291A: UnicodeDecodeError is a ValueError, not an OSError.
         except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             return _kda_materialized   # keep prior cache on parse error
-        _kda_materialized = (data.get("champions") or {}) if isinstance(data, dict) else None
+        champs = data.get("champions") if isinstance(data, dict) else None
+        if not isinstance(champs, dict):
+            _log.warning("champ_kda.json has no champion map (got %s);"
+                         " live SQL answers", type(champs).__name__)
+            champs = {}
+        _kda_materialized = champs
         _kda_mtime = mt
     return _kda_materialized
+
+
+def _count(value: Any) -> Optional[int]:
+    """A non-negative integral count, or None for anything else (bool,
+    string, None, negative, fractional)."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value >= 0 else None
+    if isinstance(value, float) and value.is_integer() and value >= 0:
+        return int(value)
+    return None
+
+
+def _materialized_entry(entry: Any) -> Optional[tuple[int, int, int, int]]:
+    """(kills, deaths, assists, games) from one champ_kda.json entry, or
+    None when it is junk. A missing key reads 0; a present junk value
+    voids the whole entry so live SQL answers."""
+    if not isinstance(entry, dict):
+        return None
+    vals = []
+    for key in _KDA_KEYS:
+        v = _count(entry.get(key, 0))
+        if v is None:
+            return None
+        vals.append(v)
+    return (vals[0], vals[1], vals[2], vals[3])
 
 
 def _kda_for(c: sqlite3.Connection, puuid: str, champ_id: int) -> tuple[int, int, int, int]:
@@ -176,22 +262,26 @@ def _kda_for(c: sqlite3.Connection, puuid: str, champ_id: int) -> tuple[int, int
     the champion. AUDIT 2026-04-29: prefers data/coach_reference/
     champ_kda.json (built by scripts/build_champ_kda.py) when present -
     that path is ~50 ms vs ~474 ms for the live timeline_events fold.
-    Live SQL is the fallback when the file is missing or doesn't have
-    this champ_id (e.g. user picked up a new champ since last build)."""
+    Live SQL is the fallback when the file is missing, doesn't have
+    this champ_id (e.g. user picked up a new champ since last build), or
+    its entry is junk."""
     cache = _load_materialized_kda()
     if cache:
         entry = cache.get(str(champ_id))
         if entry:
-            return (int(entry.get("kills", 0)),
-                    int(entry.get("deaths", 0)),
-                    int(entry.get("assists", 0)),
-                    int(entry.get("games", 0)))
+            got = _materialized_entry(entry)
+            if got is not None:
+                return got
+            _log.debug("champ_kda.json entry for %s is junk; live SQL",
+                       champ_id)
     # Live-SQL fallback (original implementation).
     # timeline_events has CHAMPION_KILL events. Match-scoped JOIN against
     # participants by puuid + champion_id gives the user's row in each
-    # match - kills/deaths are counted by killer_id/victim_id; assists
-    # use a JSON-substring LIKE which is good enough for an O(2.5M-row)
-    # one-shot read once per recommendation request.
+    # match - kills/deaths are counted by killer_id/victim_id. Assists
+    # match the participant id as a WHOLE element of the JSON id list
+    # ("[1, 2, 3]" -> ",1,2,3,"), never as a substring: the old LIKE
+    # matched participant 1 inside "[10, 3]" (measured +17% on the live
+    # DB). No JSON1 dependency, and a malformed list cannot raise.
     cur = c.execute(
         """
         SELECT
@@ -212,7 +302,10 @@ def _kda_for(c: sqlite3.Connection, puuid: str, champ_id: int) -> tuple[int, int
                ON me.match_id = e.match_id
              WHERE e.event_type = 'CHAMPION_KILL'
                AND me.puuid = ? AND me.champion_id = ?
-               AND e.assisting_ids_json LIKE '%' || me.participant_id || '%') AS assists,
+               AND (',' || REPLACE(REPLACE(REPLACE(
+                      COALESCE(e.assisting_ids_json, ''),
+                      '[', ''), ']', ''), ' ', '') || ',')
+                   LIKE ('%,' || me.participant_id || ',%')) AS assists,
           (SELECT COUNT(*) FROM participants p
              WHERE p.puuid = ? AND p.champion_id = ?) AS games
         """,
@@ -224,11 +317,54 @@ def _kda_for(c: sqlite3.Connection, puuid: str, champ_id: int) -> tuple[int, int
             cur["assists"] or 0, cur["games"] or 0)
 
 
-def _comp_overlap(comp_csv: str, target: set[str]) -> int:
-    if not comp_csv or not target:
-        return 0
-    cs = {c.strip().lower() for c in comp_csv.split(",") if c.strip()}
-    return len(cs & target)
+def _names(value: Any) -> list[str]:
+    """Stripped non-empty string members of *value*. A bare string is ONE
+    name (a str is itself iterable, so it used to be read per character);
+    None, a non-iterable or a non-string member contributes nothing."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = [value]
+    try:
+        items = list(value)
+    except TypeError:
+        return []
+    return [v.strip() for v in items if isinstance(v, str) and v.strip()]
+
+
+def _min_games(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        if value is not None:
+            _log.debug("recommend: junk min_games %r - using %d",
+                       value, _DEFAULT_MIN_GAMES)
+        return _DEFAULT_MIN_GAMES
+    return max(1, value)
+
+
+def _csv_ids(csv: Any) -> set[int]:
+    out: set[int] = set()
+    for tok in str(csv or "").split(","):
+        tok = tok.strip()
+        try:
+            out.add(int(tok))
+        except ValueError:
+            continue
+    return out
+
+
+def _csv_names(csv: Any) -> set[str]:
+    return {n.strip().lower() for n in str(csv or "").split(",") if n.strip()}
+
+
+def _enemy_overlap(game: dict, target_ids: set[int],
+                   target_names: set[str]) -> int:
+    """How many of the game's enemy champions are in the target comp:
+    by ID for resolved names, by internal name for the rest (a target
+    name lands in exactly one of the two sets, so nothing counts twice)."""
+    n = len(_csv_ids(game.get("enemy_ids_csv")) & target_ids)
+    if target_names:
+        n += len(_csv_names(game.get("enemy_comp_csv")) & target_names)
+    return n
 
 
 def _score(win_pct: float, games: int) -> float:
@@ -242,57 +378,77 @@ def _score(win_pct: float, games: int) -> float:
 
 def recommend(my_pool: Iterable[str],
               enemy_comp: Iterable[str],
-              *, min_games: int = 3) -> list[dict]:
+              *, min_games: int = _DEFAULT_MIN_GAMES) -> list[dict]:
     """Score each champion in `my_pool` against the recorded performance
     vs `enemy_comp`. Returns rows sorted by `score` (desc).
 
-    Empty rewind history -> returns []."""
+    Empty, missing or unreadable rewind history -> returns [] (a SQLite
+    failure is logged as a warning, never raised to the caller)."""
     _load_champ_index()
+    need = _min_games(min_games)
+    pool = _names(my_pool)
+    target_ids: set[int] = set()
+    target_names: set[str] = set()
+    for name in _names(enemy_comp):
+        cid = _name_to_id.get(name.lower())
+        if cid:
+            target_ids.add(cid)
+        else:
+            target_names.add(name.lower())
     c = _open()
     if c is None:
         return []
     try:
-        puuid = _resolve_user_puuid(c)
-        if not puuid:
-            return []
-
-        target_enemy = {n.strip().lower() for n in enemy_comp if n}
-        out: list[dict] = []
-        for champ in my_pool:
-            if not champ:
-                continue
-            cid = _name_to_id.get(str(champ).lower())
-            if not cid:
-                _log.debug("recommend: unknown champion %r - skipping", champ)
-                continue
-            games = _games_on_champ(c, puuid, cid)
-            if not games:
-                continue
-            # Bucket: games where enemy comp overlaps target by >= 2.
-            comp_games = [g for g in games
-                          if _comp_overlap(g["enemy_comp_csv"], target_enemy) >= 2]
-            sample_label = "vs comp" if len(comp_games) >= min_games else "vs any"
-            sample = comp_games if sample_label == "vs comp" else games
-            # RM-610: one resolved denominator (no remakes, no unknown
-            # results) shared with every personal-WR builder.
-            wins, played, _display = resolved_wr(sample)
-            win_pct = (wr_pct(wins, played, None) or 0.0) / 100.0
-            kk, dd, aa, _ = _kda_for(c, puuid, cid)
-            out.append({
-                "champion":  _id_to_name.get(cid, str(champ)),
-                "champ_id":  cid,
-                "games":     played,
-                "wins":      wins,
-                "win_pct":   round(win_pct * 100, 1),
-                "avg_kda":   round((kk + aa) / max(dd, 1), 2),
-                "score":     round(_score(win_pct, played) * 100, 1),
-                "sample":    sample_label,
-                "total_games_on_champ": len(games),
-            })
-        out.sort(key=lambda r: r["score"], reverse=True)
-        return out
+        return _recommend_rows(c, pool, target_ids, target_names, need)
+    except sqlite3.Error as exc:
+        _log.warning("recommend: rewind_history query failed: %s", exc)
+        return []
     finally:
         try:
             c.close()
         except sqlite3.Error:
             pass
+
+
+def _recommend_rows(c: sqlite3.Connection, pool: list[str],
+                    target_ids: set[int], target_names: set[str],
+                    need: int) -> list[dict]:
+    puuid = _resolve_user_puuid(c)
+    if not puuid:
+        return []
+    out: list[dict] = []
+    seen: set[int] = set()
+    for champ in pool:
+        cid = _name_to_id.get(champ.lower())
+        if not cid:
+            _log.debug("recommend: unknown champion %r - skipping", champ)
+            continue
+        if cid in seen:
+            continue
+        seen.add(cid)
+        games = _games_on_champ(c, puuid, cid)
+        if not games:
+            continue
+        # Bucket: games where enemy comp overlaps target by >= 2.
+        comp_games = [g for g in games
+                      if _enemy_overlap(g, target_ids, target_names) >= 2]
+        sample_label = "vs comp" if len(comp_games) >= need else "vs any"
+        sample = comp_games if sample_label == "vs comp" else games
+        # RM-610: one resolved denominator (no remakes, no unknown
+        # results) shared with every personal-WR builder.
+        wins, played, _display = resolved_wr(sample)
+        win_pct = (wr_pct(wins, played, None) or 0.0) / 100.0
+        kk, dd, aa, _ = _kda_for(c, puuid, cid)
+        out.append({
+            "champion":  _id_to_name.get(cid, champ),
+            "champ_id":  cid,
+            "games":     played,
+            "wins":      wins,
+            "win_pct":   round(win_pct * 100, 1),
+            "avg_kda":   round((kk + aa) / max(dd, 1), 2),
+            "score":     round(_score(win_pct, played) * 100, 1),
+            "sample":    sample_label,
+            "total_games_on_champ": len(games),
+        })
+    out.sort(key=lambda r: r["score"], reverse=True)
+    return out

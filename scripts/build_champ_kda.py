@@ -136,8 +136,13 @@ def main() -> int:
                   ON me.match_id = e.match_id
                 WHERE e.event_type = 'CHAMPION_KILL'
                   AND me.puuid = ? AND me.champion_id = ?
-                  AND e.assisting_ids_json LIKE '%' || me.participant_id || '%'
+                  AND (',' || REPLACE(REPLACE(REPLACE(
+                         COALESCE(e.assisting_ids_json, ''),
+                         '[', ''), ']', ''), ' ', '') || ',')
+                      LIKE ('%,' || me.participant_id || ',%')
                 """,
+                # Whole-element id match (lane 8 s144 cycle 237): the old
+                # substring LIKE counted participant 1 inside "[10, 3]".
                 (puuid, champ_id),
             ).fetchone()[0]
             out[str(champ_id)] = {
