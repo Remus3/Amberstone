@@ -695,6 +695,37 @@ def _model_for(path: Path) -> _Model | None:
     return model
 
 
+@functools.cache
+def _dir_entries(directory: Path) -> frozenset:
+    try:
+        return frozenset(p.name for p in directory.iterdir())
+    except OSError:
+        return frozenset()
+
+
+def _is_file_case_exact(path: Path) -> bool:
+    """`path.is_file()` with every segment under the repo root spelled exactly.
+
+    Python's import system is case-sensitive on every host, and so is CI's
+    filesystem. `Path.is_file()` on Windows is not, so without this the walk
+    resolved `agents.agent1_lead.Scheduler` (a name the package re-exports) to
+    scheduler.py locally and to the package on CI, and one skip site got two
+    verdicts (see test_first_party_resolution_is_case_exact_on_every_host).
+    """
+    if not path.is_file():
+        return False
+    try:
+        rel = path.relative_to(_REPO_ROOT)
+    except ValueError:
+        return True
+    cur = _REPO_ROOT
+    for part in rel.parts:
+        if part not in _dir_entries(cur):
+            return False
+        cur = cur / part
+    return True
+
+
 def _first_party_file(dotted: str) -> Path | None:
     """Resolve an import target to a file in THIS repo, or None if third party."""
     if not dotted:
@@ -702,10 +733,10 @@ def _first_party_file(dotted: str) -> Path | None:
     parts = dotted.split(".")
     while parts:
         cand = _REPO_ROOT.joinpath(*parts).with_suffix(".py")
-        if cand.is_file():
+        if _is_file_case_exact(cand):
             return cand
         pkg = _REPO_ROOT.joinpath(*parts) / "__init__.py"
-        if pkg.is_file():
+        if _is_file_case_exact(pkg):
             return pkg
         parts = parts[:-1]
     return None
@@ -2466,6 +2497,26 @@ def test_lfs_oracle_comes_from_git_and_covers_only_lfs_paths():
     assert "ops/rc_config.json" in _NON_LFS_TRACKED
     assert "data/daemon_slayer/current.txt" in _NON_LFS_TRACKED
     assert all(p.endswith(".json") for p in _LFS_TRACKED)
+
+
+def test_first_party_resolution_is_case_exact_on_every_host():
+    """`from agents.agent1_lead import Scheduler` names the PACKAGE, not scheduler.py.
+
+    A case-insensitive filesystem (Windows, the local gated suite) let the
+    capitalised module candidate for `Scheduler` match the lower-case
+    scheduler module file, so the walk
+    entered a module CI (Linux) never reaches and picked up its unrelated
+    `try: import msvcrt` as an optional-import capability. The verdict for
+    tests/test_ui_feedback_true_audit_s144t182.py then differed by host: green
+    locally, DEFECT on runs 42559464705 and 42564923607.
+    """
+    got = _first_party_file("agents.agent1_lead.Scheduler")
+    assert got is not None
+    assert got.relative_to(_REPO_ROOT).as_posix() == "agents/agent1_lead/__init__.py"
+    # The exact spelling still resolves to the module file.
+    exact = _first_party_file("agents.agent1_lead.scheduler")
+    assert exact is not None
+    assert exact.relative_to(_REPO_ROOT).as_posix() == "agents/agent1_lead/scheduler.py"
 
 
 def test_lfs_chain_rule_is_all_not_any():

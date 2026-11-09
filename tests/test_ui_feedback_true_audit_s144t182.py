@@ -470,19 +470,39 @@ def test_f8_shared_helper_skips_a_too_deep_candidate() -> None:
     [{"file": "web/js/panels/x.js", "content": "function f() { if (1) { if (2) { {"
       + " " * 300 + "\n"}],
     [{"file": "web/js/main.js", "content": "console.log(1);\n"}],
-    [{"file": "web/css/panels/A.css", "content": "a {}"},
-     {"file": "web/css/panels/a.css", "content": "b {}"}],
 ])
 def test_r2_proposal_the_applier_rejects_is_never_filed(
         tmp_path: Path, monkeypatch, changes) -> None:
-    import os
-    if changes[0]["file"].endswith("A.css") and os.path.normcase("A") == "A":
-        pytest.skip("case-folded duplicate is a Windows-only rule")
     p, sched = _parser(tmp_path, monkeypatch,
                        llm=_llm_returning(_changes_env(changes)))
     r = p.parse("rearrange the minimap to the right side")
     assert r.refused is True, r.reply
     assert sched.calls == []
+
+
+@pytest.mark.parametrize("pathmod", ["ntpath", "posixpath"])
+def test_r2_case_folded_duplicate_follows_the_hosts_normcase(
+        tmp_path: Path, monkeypatch, pathmod: str) -> None:
+    # "A.css" + "a.css" is one file where os.path.normcase folds case (ntpath)
+    # and two files where it does not (posixpath). Both semantics run on every
+    # host by binding ufb's own os.path.normcase, so neither branch is a skip.
+    import importlib
+
+    from tests._module_view import bind_os_path
+    bind_os_path(monkeypatch, ufb,
+                 normcase=importlib.import_module(pathmod).normcase)
+    changes = [{"file": "web/css/panels/A.css", "content": "a {}"},
+               {"file": "web/css/panels/a.css", "content": "b {}"}]
+    p, sched = _parser(tmp_path, monkeypatch,
+                       llm=_llm_returning(_changes_env(changes)))
+    r = p.parse("rearrange the minimap to the right side")
+    if pathmod == "ntpath":
+        assert r.refused is True, r.reply
+        assert "same file twice" in r.reply
+        assert sched.calls == []
+    else:
+        assert r.refused is not True, r.reply
+        assert sched.calls[-1]["op"] == "ui-proposal"
 
 
 def test_r2_rule_proposal_passes_the_applier_checks(tmp_path: Path, monkeypatch) -> None:

@@ -233,13 +233,22 @@ def test_open_shared_missing_file_returns_none(tmp_path):
     assert _open_shared(tmp_path / "nope.log", seek_end=True) is None
 
 
-def test_open_shared_closes_a_handle_whose_seek_fails(tmp_path, monkeypatch):
+@pytest.mark.parametrize("platform", ["win32", "linux"])
+def test_open_shared_closes_a_handle_whose_seek_fails(tmp_path, monkeypatch, platform):
     # S144-P-355: the seek to the end follows the open. When it raises OSError the
     # function returns None (the poll loop retries) - and the handle it just
     # opened must be closed on the way out, not left for the garbage collector.
-    import sys as _sys
+    #
+    # Both open branches run on every host: the module's OWN `sys` is a view
+    # with the platform under test. The POSIX branch's open is faked on THIS
+    # path object (a Path subclass), never on pathlib.Path itself - patching
+    # the shared class made the test's own `p.write_text` receive the fake
+    # handle on CI (Linux, run 42559464705: "'_Handle' object does not support
+    # the context manager protocol"), and every other thread's opens with it.
+    import pathlib
 
     import tools.lcu_push_watcher as w
+    from tests._module_view import bind_module_view
 
     class _Handle:
         closed = False
@@ -251,12 +260,16 @@ def test_open_shared_closes_a_handle_whose_seek_fails(tmp_path, monkeypatch):
             self.closed = True
 
     handle = _Handle()
-    if _sys.platform == "win32":
-        monkeypatch.setattr(w, "_win_open_shared_delete", lambda _p: handle)
-    else:
-        monkeypatch.setattr(w.Path, "open", lambda _self, *_a, **_k: handle)
-    p = tmp_path / "2026-07-11.log"
-    p.write_text("l1\n", encoding="utf-8")
+
+    class _FakeOpenPath(type(pathlib.Path())):
+        def open(self, *_a, **_k):
+            return handle
+
+    real = tmp_path / "2026-07-11.log"
+    real.write_text("l1\n", encoding="utf-8")
+    p = _FakeOpenPath(real)
+    bind_module_view(monkeypatch, w, "sys", platform=platform)
+    monkeypatch.setattr(w, "_win_open_shared_delete", lambda _p: handle)
     assert w._open_shared(p, seek_end=True) is None
     assert handle.closed, "the opened handle was left open after the seek failed"
     # a good seek still returns the open handle, unclosed
