@@ -45,6 +45,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from core import champion_info_overrides as _cio
+from core.draft_meta_freshness import meta_freshness
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -144,6 +145,21 @@ def _load_counters_index() -> dict:
         return out
     _COUNTERS_INDEX = out
     return out
+
+
+def _counters_freshness() -> dict:
+    """s156 S3: how old champion_counters.json is vs the live DDragon patch.
+
+    The counters list is hand-curated (no first-party refresh source), so the
+    routes that serve it report its own ``patch`` / ``updated`` stamp. Read
+    per call (the file is ~2 KB); a missing or malformed file reads as an
+    unknown, stale source - never an error."""
+    try:
+        doc = json.loads(_COUNTERS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError, RecursionError) as exc:
+        log.debug("pickban: counters freshness read failed: %s", exc)
+        doc = None
+    return meta_freshness(doc)
 
 
 def _ddragon_champ_entries() -> dict:
@@ -1179,6 +1195,9 @@ def _serve_pickban_recs(h) -> None:
             "struggle_ban":   struggle_ban,
             "cleanse_advisory": cleanse_advisory,
             "elapsed_ms": int((time.time() - t0) * 1000),
+            # s156 S3: performance_bans may come from the curated counters
+            # file; additive staleness of that file, END of dict.
+            "counters_freshness": _counters_freshness(),
         }
         _cache_put(cache_key, t0, payload)
         _send_json(h, 200, payload)
@@ -1296,6 +1315,8 @@ def _serve_counter_picks(h) -> None:
             "role": role,
             "enemy_ids": [int(x) for x in enemy_ids if int(x) > 0],
             "counters": counters,
+            # s156 S3: additive staleness of the curated counters file.
+            "freshness": _counters_freshness(),
         }
         _send_json(h, 200, payload)
     except Exception as exc:  # noqa: BLE001
