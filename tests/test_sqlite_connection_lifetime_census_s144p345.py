@@ -43,7 +43,6 @@ _RO_MARKERS = ("mode=ro", "_ro_uri(")
 
 # (file, scope) -> number of with-as calls. A ceiling: may only be lowered.
 _WITH_AS_CEILING = {
-    ("agents/agent2_backend/db_migrate_kda.py", "ensure_kda_columns"): 1,
     ("agents/agent4_coach_mentor/analyzer.py", "main"): 1,
 }
 
@@ -53,6 +52,7 @@ _RO_DB = "read-only opener of the rewind DB; the caller closes it (a missing or 
 # (file, scope) -> (calls, "ro" | "rw", why nobody closes it here).
 _FACTORIES = {
     ("agents/agent2_backend/backfill_kda.py", "_open_rewind"): (1, "ro", _RO_DB),
+    ("agents/agent2_backend/db_migrate_kda.py", "_connect_existing"): (2, "rw", "S144-T-598: opens an EXISTING mode DB (URI mode=rw, no create; plain connect only for a UNC path after the exists() check); its one caller, ensure_kda_columns, holds it under contextlib.closing"),
     ("agents/agent2_backend/migration_rewind.py", "_open_rewind"): (1, "ro", _RO_DB),
     ("coaches/adaptation_hint_session.py", "_connect"): (1, "rw", "opener for the session digest; the caller owns the connection, no write is issued through it"),
     ("coaches/champ_pool_recommender.py", "_open"): (1, "rw", "plain-path opener of the rewind DB (a read-only URI would be tighter); the caller closes it, a failure answers None"),

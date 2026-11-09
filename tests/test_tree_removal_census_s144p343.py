@@ -62,6 +62,10 @@ _TREE_SITES = {
         (1, "the build output dir, only after it was checked to be empty or a previous build of this tool"),
     ("tools/build_portable.py", "build", "rmtree"):
         (1, "PKG-owned: the portable output dir, only after it was checked to be a previous build of this tool"),
+    ("tools/bytecode_hygiene.py", "remove", "rmdir"):
+        (1, "RM-705, --apply only: a `__pycache__` dir this run just emptied, re-checked empty first; rmdir refuses a non-empty dir"),
+    ("tools/bytecode_hygiene.py", "remove", "rmtree"):
+        (1, "RM-705, --apply only: a nested `.pytest_cache` dir the dry run listed (never the root one, never a tracked path, never below a nested checkout); regenerable cache"),
     ("tools/build_python_embed.py", "drop_certifi", "rmtree"):
         (1, "certifi inside the embeddable-Python site-packages this build is assembling; a build artifact, not a user dir"),
     ("tools/ddragon_mirror_refresh.py", "prune_stale_versions", "rmdir"):
@@ -90,7 +94,7 @@ _UNLINK_CEILING = {
     "core/log_retention.py": 2,
     "core/log_rotation.py": 3,
     "core/log_setup.py": 1,
-    "core/polled_json.py": 1,
+    "core/polled_json.py": 2,  # S144-Q-126: sweep_stale_scratch drops its own aged scratch a hard kill orphaned
     "core/rofl_archive.py": 1,
     "dashboard/routes_loop_control.py": 2,
     "ops/launcher/first_run.py": 3,
@@ -112,6 +116,8 @@ _UNLINK_CEILING = {
     "scripts/repair_tft_match_rows.py": 1,
     "tools/bootstrap_env_check.py": 1,
     "tools/build_python_embed.py": 1,
+    "tools/bytecode_hygiene.py": 1,  # RM-705: --apply removes the regenerable .pyc residue the dry run listed
+    "tools/ci_watchdog.py": 1,  # RM-718 (c): prune_attempts drops dead <run_id>.txt attempt counters it wrote
     "tools/dev_cli.py": 1,
     "tools/inbox_responder_runner.py": 5,
     "tools/lcu_push_watcher.py": 2,
@@ -119,6 +125,7 @@ _UNLINK_CEILING = {
     "tools/moon_sync_poller.py": 1,
     "tools/phase_watcher.py": 1,
     "tools/progress_watch.py": 2,
+    "tools/rc_facts.py": 1,  # RM-718 (e): sweep_stale_scratch drops this module's own aged scratch files
     "tools/repin_subagent_cli.py": 1,
     "tools/rofl_dedupe.py": 1,
     "tools/shadow_archive_split.py": 1,

@@ -79,6 +79,8 @@ _DYNAMIC_SITES = {
 _PARAM_INTERPOLATION = {
     # db_migrate_kda._existing_columns: the only caller passes the literal "matches".
     ("agents/agent2_backend/db_migrate_kda.py", "_existing_columns", "table"),
+    # db_migrate_kda._add_column: the only caller (ensure_kda_columns) passes each name of the KDA_COLUMNS literal tuple.
+    ("agents/agent2_backend/db_migrate_kda.py", "_add_column", "col"),
     # win_reconcile._lookup_postgame_result: pg_table comes from the _MODE_TO_POSTGAME_TABLE lookup (None is skipped).
     ("agents/agent2_backend/win_reconcile.py", "_lookup_postgame_result", "pg_table"),
     # resolved_wr._cols: callers pass the literals "matches" and "participants".

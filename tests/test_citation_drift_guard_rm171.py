@@ -150,9 +150,10 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "of a claim. Point-in-time; the doc shipped inside the mirror.",
     ),
     # 2026-11-07, RM-712: the ORCHESTRATION_PLAN.md entries for
-    # Share/README.md:19-32 and tools/ds_share_sync.py:60 left the budget with
-    # the DONE rows that carried them (now in docs/ORCHESTRATION_PLAN_HISTORY.md,
-    # HISTORY scope). The citations were not re-pointed.
+    # Share/README.md:19-32 and tools/ds_share_sync.py:60 (both deleted
+    # 2026-09-07) left the budget with the DONE rows that carried them (now
+    # in docs/ORCHESTRATION_PLAN_HISTORY.md, HISTORY scope). The citations
+    # were not re-pointed.
     (
         "docs/specs/DECISION_cdragon_cross_reference.md",
         "Share/src/agents/daemon_slayer/abilities.py:622",
@@ -255,8 +256,8 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
     # budget with their docs: the archive is HISTORY scope, where a dated record's
     # citation stays as written. The citations themselves were not re-pointed.
     # 2026-11-07, RM-712: the ORCHESTRATION_PLAN.md entries for
-    # spike_cue.js:109-112 and dashboard/_state_cooldowns.py:18 left the budget
-    # with the DONE rows that carried them (now in
+    # spike_cue.js:109-112 and dashboard/_state_cooldowns.py:18 (removed
+    # 2026-08-11) left the budget with the DONE rows that carried them (now in
     # docs/ORCHESTRATION_PLAN_HISTORY.md, HISTORY scope).
     (
         "docs/LIVE_GAME_GATED_SYNC.md",
