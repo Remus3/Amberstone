@@ -16,7 +16,9 @@ lane branch had changed, bar the gated-lane, launcher and held sibling-sweep fil
 module, helper or launcher file); slice 4 (S144-P-604) does the same for twelve more one-site
 files (ascii_escape_py through compare_101qq, alphabetically); slice 5 (S144-P-605) does the same
 for the next twelve (cost_tracker_compensating_cites through ds_engine_logger_boot_order,
-bar the ratchet modules between them); every other
+bar the ratchet modules between them); slice 6 (S144-P-606) does the same for the next twelve
+(ds_engine_logger_scrub through hook_log_live_isolation, bar the ratchet modules and the two
+gated-lane files between them); every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
 a finding beyond the baseline fails ``test_no_new_findings``; a ``_FIXED`` file that offends again
@@ -83,14 +85,8 @@ _BASELINE = {
     "tests/test_dict_items_test_code_ratchet_s144p169.py": 1,
     "tests/test_dict_iter_unused_half_ratchet_s144p139.py": 1,
     "tests/test_docindent_pathdot_yoda_ratchet_s144p240.py": 1,
-    "tests/test_ds_engine_logger_scrub_s144d58.py": 1,
-    "tests/test_ds_extract_import_no_log_rm828b.py": 1,
-    "tests/test_ds_pick_consumption_p1l11.py": 1,
-    "tests/test_edit_lint_check_stdin_payload.py": 1,
     "tests/test_env_name_case_prod_ratchet_s144p215.py": 1,
     "tests/test_exception_chain_ratchet_s144p153.py": 1,
-    "tests/test_extract_champion_profiles_no_import_write_s144p25.py": 1,
-    "tests/test_fetch_cdragon_pbe_no_import_fetch_s144p23.py": 1,
     "tests/test_first_element_slice_test_code_ratchet_s144p167.py": 1,
     "tests/test_fleet_kit_v12_race_guards.py": 1,
     "tests/test_fleet_kit_v26.py": 1,
@@ -105,13 +101,7 @@ _BASELINE = {
     "tests/test_gated_g417_onhit_render.py": 2,
     "tests/test_gated_g418_jhin_lethality.py": 1,
     "tests/test_gated_live_probe_relay_auth.py": 1,
-    "tests/test_gen_archmap_atomic_write_rm258.py": 1,
-    "tests/test_gen_archmap_gitignored_file_s144d14.py": 1,
-    "tests/test_gen_archmap_gitignored_scratch_s144d04.py": 1,
-    "tests/test_gitignore_negations_are_effective.py": 1,
     "tests/test_global_return_perf_ratchet_s144p117.py": 1,
-    "tests/test_headless_env.py": 1,
-    "tests/test_hook_log_live_isolation.py": 1,
     "tests/test_hz_mismatch_diagnose_atomic_write_rm258.py": 1,
     "tests/test_idempotent_stream_gate.py": 1,
     "tests/test_idiom_zero_ratchet_s144p180.py": 1,
@@ -348,6 +338,18 @@ _FIXED = (
     "tests/test_docs_ds_calibration_pipeline_s134d12.py",
     "tests/test_download_aram_icons_no_import_probe_s144p22.py",
     "tests/test_ds_engine_logger_boot_order_s144d59.py",
+    "tests/test_ds_engine_logger_scrub_s144d58.py",
+    "tests/test_ds_extract_import_no_log_rm828b.py",
+    "tests/test_ds_pick_consumption_p1l11.py",
+    "tests/test_edit_lint_check_stdin_payload.py",
+    "tests/test_extract_champion_profiles_no_import_write_s144p25.py",
+    "tests/test_fetch_cdragon_pbe_no_import_fetch_s144p23.py",
+    "tests/test_gen_archmap_atomic_write_rm258.py",
+    "tests/test_gen_archmap_gitignored_file_s144d14.py",
+    "tests/test_gen_archmap_gitignored_scratch_s144d04.py",
+    "tests/test_gitignore_negations_are_effective.py",
+    "tests/test_headless_env.py",
+    "tests/test_hook_log_live_isolation.py",
 )
 
 

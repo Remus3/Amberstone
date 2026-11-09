@@ -83,7 +83,7 @@ def _run(args, cwd: Path) -> subprocess.CompletedProcess:
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     return subprocess.run(
         [sys.executable, *args], cwd=str(cwd), env=env, capture_output=True,
-        text=True, timeout=180, creationflags=_FLAGS,
+        text=True, timeout=180, check=False, creationflags=_FLAGS,
     )
 
 

@@ -95,7 +95,7 @@ def _run_script_mode(code: str, cwd: Path) -> subprocess.CompletedProcess:
     prelude = f"import sys; sys.path.insert(0, {str(_TOOLS)!r}); import gen_archmap as g\n"
     return subprocess.run(
         [sys.executable, "-I", "-c", prelude + code],
-        cwd=cwd, capture_output=True, text=True, timeout=120,
+        cwd=cwd, capture_output=True, text=True, timeout=120, check=False,
     )
 
 

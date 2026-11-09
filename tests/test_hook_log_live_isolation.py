@@ -95,7 +95,7 @@ def test_a_child_process_inherits_the_redirect():
             "from tools.rc_facts import invocation_log_path; "
             "print(invocation_log_path().resolve())")
     r = subprocess.run([_PY, "-c", code, str(_ROOT)], capture_output=True, text=True,
-                       timeout=60, creationflags=_NO_WINDOW)
+                       timeout=60, check=False, creationflags=_NO_WINDOW)
     assert r.returncode == 0, r.stderr
     resolved = Path(r.stdout.strip())
     assert str(resolved), "child printed no path"

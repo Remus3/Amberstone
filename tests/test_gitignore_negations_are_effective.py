@@ -62,6 +62,7 @@ def test_every_gitignore_negation_actually_re_includes_its_path() -> None:
             [_GIT, "check-ignore", "-q", "--no-index", "--", path],
             cwd=REPO_ROOT,
             capture_output=True,
+            check=False,
         )
         if proc.returncode not in (0, 1):
             pytest.skip(f"git check-ignore returned {proc.returncode} - could not check")

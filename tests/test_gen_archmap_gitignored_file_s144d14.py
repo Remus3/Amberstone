@@ -80,6 +80,7 @@ def test_git_reports_the_decoys_as_bare_ignored_file_entries(repo):
         ["git", "-C", str(repo), "ls-files", "-z", "--others", "--ignored",
          "--exclude-standard", "--directory"],
         capture_output=True,
+        check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     entries = {e for e in out.stdout.decode("utf-8").split("\0") if e}
