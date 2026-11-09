@@ -4874,6 +4874,33 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
   NO LIVE RESIDUAL. What remains is the operator's per-row call: run `--trust-lcu CHAMP + --match-id`
   for 1633 and 1506, clear the 5 ARAM rows as junk, then VERIFY the historical rows actually changed
   (Data Fixes rule - a fix is not done until the bad rows are backfilled). SOURCE: ROADMAP.md:81.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 128, 2026-11-09, S144-G-115, read at `c33b5ae45`; NOT a
+  tick, NOT a re-open; no game up).** Read-only (`mode=ro`) reads of the main checkout's
+  `data/match_history.db` (mtime 2026-10-28) and `data/rewind_history.db`. No Match-V5 id is
+  restated here (RM-906). (1) HOLDS: the 7 rows exist unchanged - `game_id = 0`, and champion, mode
+  and `game_time_s` (1633 = 923.35, 1506 = 2248.72) as filed. (2) PREDICATE DEFECT: `game_id = 0`
+  does NOT confirm orphan status. It is the normal state (item 211 carry (c),
+  `docs/ROADMAP_HISTORY.md`: Live Client rarely exposes gameId): 153 of 404 rows carry it, and 103
+  non-TFT rows carry it with no `lcu_match_detail` at all. The sharp signature, measured over the
+  whole table: these 7 are the ONLY rows with `game_id = 0` AND a `raw_data.lcu_match_detail`, and in
+  every one the detail's participants exclude `db.champion`, so they are MISATTRIBUTED (each holds
+  another game's blob: 1633 holds a q2400 952 s game), not detail-less. (3) THE 1633 PRESCRIPTION IS
+  WRONG AS FILED, so scope is LARGER than filed. The Jinx q420 929 s game named for 1633 is already
+  stamped as `game_id` on row **1620** (Jinx SR, saved 2026-05-24 20:53:41 local, `game_time_s`
+  1810; its detail lists championId 222 = Jinx, `gameDuration` 929). That game was created at
+  20:58:11 local and ended about 21:13:40, AFTER row 1620 was saved and 60 s before row 1633 (21:14:40),
+  so 1633 is its true row and 1620 is an 8th misattributed row outside the 7. `--match-id` posts to
+  `/api/last-match/ingest`, which matches gameId FIRST (`dashboard/routes_last_match.py`
+  `_row_match_by_game_id`, called before the ts-window fallback in `_try_ingest_once`), so it would
+  re-stamp row 1620 and leave 1633 unchanged. Recovering 1633 needs row 1620's `game_id` cleared
+  first, a DB write that no shipped tool offers; 1620's own game (about 1810 s, ended about 20:53)
+  then has no blob. (4) 1506 HOLDS: its Kai'Sa q420 2262 s game is stamped on no row, and the
+  fallback can reach 1506 (rank 26 of the newest 50 non-TFT `game_id = 0` rows its query reads; game
+  end about 13:30:33 local vs row 13:31:21 = 48 s, inside `INGEST_TS_WINDOW_S = 180`). It still needs
+  RC `:8888` up (down at this read) and a Riot key. (5) Cite drift: SOURCE `ROADMAP.md:81` is now
+  `ROADMAP.md:156` (the RM-16 carry-forwards line). Verdict unchanged: NOT live-gated, no live
+  residual; the operator decision now covers 8 rows (1620 added), and moving the row to "Not
+  actually live-gated" stays a human doc edit.
 - **G4-30** `[NEW 2026-10-04]` RM-526 / Y-01 Step 0 - the live half of the target-pinned live
   writer (code SHIPPED headless, LEDGER entry for RM-526). Over the next 5 real game ends (include
   at least one Mayhem q2400 and one Match-V5-eligible game), read the writer's INFO lines
