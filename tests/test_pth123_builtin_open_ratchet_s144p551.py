@@ -187,17 +187,10 @@ _BASELINE: dict[str, int] = {
     "tools/live_write_tracer.py": 2,
     "tools/logger_leak_census.py": 2,
     "tools/moon_sync_poller.py": 3,
-    "tools/p3_ascii_census.py": 1,
-    "tools/p3_ascii_sweep.py": 1,
-    "tools/perseus_sync.py": 1,
     "tools/phase_watcher.py": 1,
     "tools/precommit_gate.py": 1,
     "tools/pytest_guard.py": 1,
     "tools/shadow_archive_split.py": 1,
-    "tools/tests/test_cdragon_ratio_extract.py": 2,
-    "tools/tests/test_cdragon_spell_extract.py": 2,
-    "tools/tests/test_wiki_ability_extract.py": 2,
-    "tools/tests/test_wiki_stats_extract.py": 2,
     "tools/truth_gate.py": 1,
 }
 _FIXED = (
@@ -210,6 +203,14 @@ _FIXED = (
     "tests/test_lane_launcher.py",
     "tests/test_vision_profile_derive.py",
     "tests/test_vision_profile_seeds.py",
+    # S144-P-552: plain text / binary reads of tools/ and the four tools/tests extractor `__file__` source reads
+    "tools/p3_ascii_census.py",
+    "tools/p3_ascii_sweep.py",
+    "tools/perseus_sync.py",
+    "tools/tests/test_cdragon_ratio_extract.py",
+    "tools/tests/test_cdragon_spell_extract.py",
+    "tools/tests/test_wiki_ability_extract.py",
+    "tools/tests/test_wiki_stats_extract.py",
 )
 
 

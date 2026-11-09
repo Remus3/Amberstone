@@ -191,7 +191,7 @@ def _docstring_spans(path: Path):
 def _comment_spans(path: Path):
     """Return list of (row, start_col) for every COMMENT token in a .py file."""
     spans = []
-    with open(path, "rb") as f:
+    with Path(path).open("rb") as f:
         for tok in tokenize.tokenize(f.readline):
             if tok.type == tokenize.COMMENT:
                 spans.append((tok.start[0], tok.start[1]))

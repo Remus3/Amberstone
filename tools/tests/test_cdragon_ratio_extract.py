@@ -730,7 +730,7 @@ class TestExtract:
         assert any("Darius" in e for e in out["_errors"])
 
     def test_engine_independent_no_agents_import(self):
-        with open(R.__file__, encoding="utf-8") as fh:
+        with Path(R.__file__).open(encoding="utf-8") as fh:
             src = fh.read()
         assert "import requests" not in src
         _assert_agents_imports_allowlisted(src, R.__file__)
@@ -910,7 +910,7 @@ class TestFloatSnap:
 # --------------------------------------------------------------------------- ASCII hygiene (tool source)
 class TestAsciiHygiene:
     def test_source_is_ascii(self):
-        with open(R.__file__, encoding="utf-8") as fh:
+        with Path(R.__file__).open(encoding="utf-8") as fh:
             data = fh.read()
         try:
             data.encode("ascii")

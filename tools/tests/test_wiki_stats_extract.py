@@ -674,7 +674,7 @@ class TestExtract:
 
     def test_engine_independent_no_imports(self):
         # no heavy DS engine import; stdlib + urllib only
-        with open(W.__file__, encoding="utf-8") as fh:
+        with Path(W.__file__).open(encoding="utf-8") as fh:
             src = fh.read()
         assert "import requests" not in src
         assert "from agents" not in src
@@ -1198,7 +1198,7 @@ class TestOffsetCastTier:
 # --------------------------------------------------------------------------- ASCII hygiene
 class TestAsciiHygiene:
     def test_source_is_ascii(self):
-        with open(W.__file__, encoding="utf-8") as fh:
+        with Path(W.__file__).open(encoding="utf-8") as fh:
             data = fh.read()
         try:
             data.encode("ascii")

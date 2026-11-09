@@ -147,7 +147,7 @@ def slugify(text: str, limit: int = 70) -> str:
 
 
 def read_text(path: str) -> str:
-    with open(path, encoding="utf-8", errors="replace") as handle:
+    with Path(path).open(encoding="utf-8", errors="replace") as handle:
         return handle.read()
 
 

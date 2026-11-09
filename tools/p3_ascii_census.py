@@ -64,7 +64,7 @@ def main():
         ext = Path(rel).suffix.lower()
         if ext not in AUTH_EXT or excluded(rel):
             continue
-        with open(Path(ROOT) / rel, 'rb') as fh:
+        with (Path(ROOT) / rel).open('rb') as fh:
             raw = fh.read()
         if raw[:3] == b'\xef\xbb\xbf':
             bom8.append(rel)
