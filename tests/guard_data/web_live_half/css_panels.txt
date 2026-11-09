@@ -55,7 +55,7 @@ c821d26812fc587f8f7552032be97a5bcbf8341fa412db19659ef80c5d8f07e2  web/css/panels
 
 d9d3565c5af511fa7260b82b684af5a8d85d15a66ceb9a62995670010075a2b5  web/css/panels/duration_winrate.css
 
-c2113b9899e3ff34906e06ac24caf6be38e23107c7c868a81c6a53f1257d0aff  web/css/panels/grid.css
+4fbd2339207285a8273623ee00f223c41d6a4f20073e6385c4b1ce1c7d9d10e6  web/css/panels/grid.css
 
 8b17234b566b78c7bec8a5b0f369cf171b471d6f5a75c2a8443b8b756af659b0  web/css/panels/home.css
 

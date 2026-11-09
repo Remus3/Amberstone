@@ -61,7 +61,7 @@ fd11a5fce98b2e3c10733a0a167cc80769a9d860aa3d3705bddfb89aa2f16ece  web/js/panels/
 
 0bb7ed5f80c5996f8cabccfa5e78317d8b5393cccbfe896ad01bb3193063ea40  web/js/panels/lobby_duo_synergy.js
 
-e866b4577a0d4dfcf37489da13752ea274cdffb621a9932e6e9657a5d75b83aa  web/js/panels/map_state.js
+36c71b2a1d2ca8ee59cd7aa0bea86cf2a65cf5a7b1fb070502c39e686d73fa4d  web/js/panels/map_state.js
 
 d9d4065b05235618c6e1bfda607aabe23998d191f41ca550085e737849ba5e53  web/js/panels/minimap_rect.js
 

@@ -32,42 +32,8 @@ main {
   scrollbar-color: var(--border) transparent;
 }
 
-/* Match-phase strip - three colored segments (early/mid/late) + a
- * marker showing where in the typical 40-min match arc we are. */
-.phase-strip {
-  position: relative;
-  display: flex;
-  height: 6px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: var(--surface-alt);
-}
-.phase-strip.hidden { display: none; }
-.phase-seg { flex: 1; opacity: 0.35; transition: opacity 250ms ease; }
-.phase-seg.phase-early { background: var(--info); }
-.phase-seg.phase-mid   { background: var(--gold); }
-.phase-seg.phase-late  { background: var(--bad);  }
-body[data-phase="early"] .phase-seg.phase-early,
-body[data-phase="mid"]   .phase-seg.phase-mid,
-body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
-.phase-marker {
-  position: absolute;
-  top: -2px; bottom: -2px;
-  width: 3px;
-  background: var(--text);
-  border-radius: 999px;
-  transform: translateX(-50%);
-  box-shadow: 0 0 4px rgba(0,0,0,0.6);
-  transition: left 500ms ease;
-}
-.phase-marker.phase-transition {
-  animation: phaseTransition 1.8s ease-out;
-}
-@keyframes phaseTransition {
-  0%   { width: 3px; box-shadow: 0 0 4px rgba(255,255,255,1); }
-  50%  { width: 10px; background: var(--gold); box-shadow: 0 0 20px rgba(245,184,124,0.9); }
-  100% { width: 3px; box-shadow: 0 0 4px rgba(0,0,0,0.6); }
-}
+/* The match-phase strip (S144-U-254) is retired: it sat in #minimap,
+ * which renders in no view. body[data-phase] itself stays live. */
 .minimap-body::-webkit-scrollbar { width: 6px; }
 .minimap-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .minimap-state {

@@ -39,29 +39,16 @@ function _updateGameClock(p) {
 //   early  < 15:00   (calm blue)
 //   mid    15-25:00  (engaged gold)
 //   late   25:00+    (urgent coral)
+// Read by the header tint (web/css/panels/base.css) and the stage-gated
+// STATS groups (web/css/panels/map_state.css). S144-U-254: the match-phase
+// strip and its marker that this also drove are retired - they sat in the
+// #minimap panel, which renders in no view (S144-U-246).
 let _lastPhase = null;
 function _applyGamePhase(gtS) {
   const phase = gtS < 900 ? "early" : gtS < 1500 ? "mid" : "late";
-  const strip = el("phase-strip"), marker = el("phase-marker");
   if (phase !== _lastPhase) {
     _lastPhase = phase;
     document.body.dataset.phase = phase;
-    // Mark transition - briefly pulse the marker + announce via status.
-    if (marker && _lastPhase) {
-      marker.classList.remove("phase-transition");
-      void marker.offsetWidth;
-      marker.classList.add("phase-transition");
-    }
-  }
-  if (strip && marker) {
-    strip.classList.remove("hidden");
-    // Match-length denominator by mode. ARAM games are much shorter.
-    const typicalS = state.mode === "aram" ? 1200   // ~20min
-                   : state.mode === "arena" ? 900   // ~15min per lobby avg
-                   : state.mode === "tft"   ? 1800  // ~30min
-                   : 2280;                          // SR ~38min
-    const ratio = Math.max(0, Math.min(1, gtS / typicalS));
-    marker.style.left = (ratio * 100).toFixed(1) + "%";
   }
 }
 function _currentGameTimeS() {
