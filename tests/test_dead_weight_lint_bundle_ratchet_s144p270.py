@@ -8,11 +8,11 @@ assignment). None of them is in ``ruff.toml`` (F841 is ignored there as noisy fo
 Measured 2026-11-06 with ``ruff check --isolated`` (target py39) over the tracked tree: 20 findings. Eight sit in
 the two fenced trees below (the DS engine and the vendored kit). Of the 12 held-scope findings, two were fixed here
 (``tools/gated_g416_counter_chips.py`` ``comp_inputs`` called a lambda inline; ``tests/test_rc_facts_launcher_cutover_a45d.py``
-patched ``_health_all`` with ``lambda: {}``) and ten remain in ``_BASELINE``, each in a file this lane may not edit:
+patched ``_health_all`` with ``lambda: {}``) and ten remained in ``_BASELINE``, each in a file this lane may not edit:
 frozen (``app/_game_lifecycle.py``, ``app/_loop.py``, ``core/log_setup.py``, ``lcu/lcu_client.py``,
 ``ops/rc_supervisor.py``), PKG-owned (``ops/launcher/update_cycle.py``, ``tools/build_portable.py``,
-``tests/test_launcher_first_run.py``, ``tests/test_launcher_key_read_rm810.py``) or the DS lane's extractor
-(``tools/daemon_slayer_abilities_extract.py``).
+``tests/test_launcher_first_run.py``, ``tests/test_launcher_key_read_rm810.py``). The tenth, the DS extractor
+``tools/daemon_slayer_abilities_extract.py`` (a PERF403 copy loop), was fixed in S144-P-526 and left the baseline.
 
 RET504 is left out on purpose: its firing changed between ruff 0.15 and 0.17 (``tests/_ruff_version.py``), so a count
 of it is not portable. Every rule above has been stable across both.
@@ -55,11 +55,11 @@ _BASELINE: dict[str, int] = {
     "tools/build_portable.py": 1,  # PKG-owned
     "tests/test_launcher_first_run.py": 1,  # PKG-owned (tests/test_launcher_*)
     "tests/test_launcher_key_read_rm810.py": 1,  # PKG-owned (tests/test_launcher_*)
-    "tools/daemon_slayer_abilities_extract.py": 1,  # the DS lane's extractor
 }
 _FIXED = (
     "tools/gated_g416_counter_chips.py",
     "tests/test_rc_facts_launcher_cutover_a45d.py",
+    "tools/daemon_slayer_abilities_extract.py",
 )
 
 

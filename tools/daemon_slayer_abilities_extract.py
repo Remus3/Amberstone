@@ -490,8 +490,7 @@ def _build_damage_block(leveling: dict) -> dict:
         "attribute": attribute,
         "attribute_kind": "damage",
     }
-    for field, vals in typed.items():
-        block[field] = vals
+    block.update(typed)
     if unparsed:
         block["unparsed_modifiers"] = unparsed
     return block
