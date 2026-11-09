@@ -27,6 +27,18 @@ class _Slotted:
     __slots__ = ("game_mode",)
 
 
+def _stable_id(value):
+    """repr, except for a value whose default repr carries its memory address:
+    each pytest-xdist worker would collect a different test id and the run
+    stops at collection ("Different tests were collected"). Those are named by
+    their content or type instead."""
+    if isinstance(value, _Snap):
+        return f"_Snap({vars(value)!r})"
+    if type(value) is object:
+        return "object()"
+    return repr(value)
+
+
 # -- live aliases stay True ----------------------------------------------------
 
 @pytest.mark.parametrize("state", [
@@ -36,7 +48,7 @@ class _Slotted:
     {"game_mode": "", "gameMode": "KIWI"},
     {"game_mode": None, "gameMode": "kiwi"},
     _Snap(game_mode="KIWI"), _Snap(gameMode="KIWI"),
-], ids=repr)
+], ids=_stable_id)
 def test_known_alias_is_mayhem(state):
     assert is_mayhem(state) is True
 
@@ -52,7 +64,7 @@ def test_slotted_snapshot_reads_and_unset_slot_is_not_mayhem():
     None, "", "ARAM", "CLASSIC", "CHERRY", "URF", "ARAM_UNRANKED_5X5",
     {}, {"game_mode": "ARAM"}, {"game_mode": "ARAM", "gameMode": "KIWI"},
     _Snap(), _Snap(game_mode="CLASSIC"), 0, 2400, object(),
-], ids=repr)
+], ids=_stable_id)
 def test_other_modes_are_not_mayhem(state):
     assert is_mayhem(state) is False
 
