@@ -84,6 +84,7 @@ def _tracked_markdown_files() -> list[str]:
         text=True,
         encoding="utf-8",
         errors="replace",
+        check=False,
     )
     assert proc.returncode == 0, (
         f"git ls-files failed (rc={proc.returncode}) in {_REPO_ROOT}: "

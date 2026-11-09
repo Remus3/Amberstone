@@ -62,6 +62,7 @@ def _run_js(snippet: str) -> str:
         capture_output=True,
         text=True,
         timeout=30,
+        check=False,
     )
     if proc.returncode != 0:
         raise AssertionError(

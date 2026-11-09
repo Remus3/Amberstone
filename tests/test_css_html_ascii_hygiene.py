@@ -215,7 +215,7 @@ def test_the_walk_agrees_with_the_git_ls_files_sweep() -> None:
     proc = subprocess.run(
         ["git", "ls-files", "--", *_PATTERNS],
         cwd=str(_REPO), capture_output=True, text=True,
-        encoding="utf-8", errors="replace",
+        encoding="utf-8", errors="replace", check=False,
     )
     assert proc.returncode == 0, f"git ls-files failed: {proc.stderr.strip()}"
     indexed = {ln.strip() for ln in proc.stdout.splitlines() if ln.strip()}

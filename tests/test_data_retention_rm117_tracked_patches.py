@@ -59,5 +59,6 @@ def test_real_repo_patch_dirs_are_seen_as_tracked():
     assert probe.is_dir(), "premise: tracked DS patch dir 16.15.1 is checked out"
     assert dr._is_tracked_dir(data, probe, tracked)
     ls = subprocess.run(["git", "-C", str(data), "ls-files",
-                         "daemon_slayer/16.15.1"], capture_output=True)
+                         "daemon_slayer/16.15.1"], capture_output=True,
+                        check=False)
     assert ls.stdout.strip(), "premise: 16.15.1 is tracked"

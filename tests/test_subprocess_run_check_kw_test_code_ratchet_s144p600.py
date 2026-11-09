@@ -14,7 +14,9 @@ files); slice 2 (S144-P-602) states it at 24 sites in twelve more (every two-sit
 lane branch had changed, bar the gated-lane, launcher and held sibling-sweep files); slice 3
 (S144-P-603) states it at twelve one-site files no other lane branch had changed (none a ratchet
 module, helper or launcher file); slice 4 (S144-P-604) does the same for twelve more one-site
-files (ascii_escape_py through compare_101qq, alphabetically); every other
+files (ascii_escape_py through compare_101qq, alphabetically); slice 5 (S144-P-605) does the same
+for the next twelve (cost_tracker_compensating_cites through ds_engine_logger_boot_order,
+bar the ratchet modules between them); every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
 a finding beyond the baseline fails ``test_no_new_findings``; a ``_FIXED`` file that offends again
@@ -74,25 +76,13 @@ _BASELINE = {
     "tests/test_collapsible_if_ratchet_s144p161.py": 1,
     "tests/test_collection_idiom_ratchet_s144p141.py": 1,
     "tests/test_container_builtin_return_ratchet_s144p160.py": 1,
-    "tests/test_cost_tracker_compensating_cites_s144p52.py": 1,
-    "tests/test_cost_tracker_vision_bucket_removed_s144p61.py": 1,
-    "tests/test_css_html_ascii_hygiene.py": 1,
-    "tests/test_csv_push_swap_wipe.py": 1,
-    "tests/test_csv_push_toggles_phase5.py": 1,
     "tests/test_d417_docstring_param_ratchet_s144p509.py": 1,
-    "tests/test_dashboard_condense_rc2.py": 1,
-    "tests/test_data_retention_rm117_tracked_patches.py": 1,
     "tests/test_dead_weight_lint_bundle_ratchet_s144p270.py": 1,
     "tests/test_dict_fromkeys_ratchet_s144p137.py": 1,
     "tests/test_dict_fromkeys_test_code_ratchet_s144p164.py": 1,
     "tests/test_dict_items_test_code_ratchet_s144p169.py": 1,
     "tests/test_dict_iter_unused_half_ratchet_s144p139.py": 1,
-    "tests/test_doc_action_ref_hygiene.py": 1,
     "tests/test_docindent_pathdot_yoda_ratchet_s144p240.py": 1,
-    "tests/test_docs_ds_archetype_picker_s134d14.py": 1,
-    "tests/test_docs_ds_calibration_pipeline_s134d12.py": 1,
-    "tests/test_download_aram_icons_no_import_probe_s144p22.py": 1,
-    "tests/test_ds_engine_logger_boot_order_s144d59.py": 1,
     "tests/test_ds_engine_logger_scrub_s144d58.py": 1,
     "tests/test_ds_extract_import_no_log_rm828b.py": 1,
     "tests/test_ds_pick_consumption_p1l11.py": 1,
@@ -346,6 +336,18 @@ _FIXED = (
     "tests/test_champ_select_rune_follows_build.py",
     "tests/test_coach_choices_trigger_render.py",
     "tests/test_compare_101qq_atomic_write_rm258.py",
+    "tests/test_cost_tracker_compensating_cites_s144p52.py",
+    "tests/test_cost_tracker_vision_bucket_removed_s144p61.py",
+    "tests/test_css_html_ascii_hygiene.py",
+    "tests/test_csv_push_swap_wipe.py",
+    "tests/test_csv_push_toggles_phase5.py",
+    "tests/test_dashboard_condense_rc2.py",
+    "tests/test_data_retention_rm117_tracked_patches.py",
+    "tests/test_doc_action_ref_hygiene.py",
+    "tests/test_docs_ds_archetype_picker_s134d14.py",
+    "tests/test_docs_ds_calibration_pipeline_s134d12.py",
+    "tests/test_download_aram_icons_no_import_probe_s144p22.py",
+    "tests/test_ds_engine_logger_boot_order_s144d59.py",
 )
 
 
