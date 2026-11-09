@@ -82,7 +82,8 @@ resist grant). TWO source modes:
     R (ONE shared series [25,60,95] = AP == armor == MR), Braum W / Leona W / Jax R
     (a TWO-series block where series[0] varies by rank = the flat base, series[1]
     is a rank-constant percent coefficient that is OMITTED per its base - Braum
-    36% of ALLY bonus / Leona 20% uncertain / Jax 40%/24% of BONUS AD). The
+    36% and Leona 20% of the caster's own bonus resist (unit "% bonus armor";
+    seedable only as a Tier-2 value change) / Jax 40%/24% of BONUS AD). The
     rank-varying flat base armor / MR is seeded (rank_scaled); the percent
     coefficient + the AP / MS / regen / per-instance-DR / per-hit sub-terms are
     documented omissions (the item-264 omission boundary). No new schema field -
@@ -463,15 +464,18 @@ _PASSIVE_RESIST_OVERRIDES: dict[tuple[str, str, int], PassiveResistEntry] = {
     # confidently attributed". HAND attribution resolves them cleanly:
     #   - Singed R "Bonus Stats" is ONE series [25,60,95] shared by AP / armor / MR
     #     (the canonical Insanity Potion - the same flat number to all three; the
-    #     % MS + the two regen blocks are separate). armor == MR == that series.
+    #     two regen blocks are separate, and the movement speed the text names has
+    #     no block at 16.22.1). armor == MR == that series.
     #   - Braum W / Leona W / Jax R carry a TWO-series block: series[0] VARIES by
     #     ability rank (the flat base armor / MR) and series[1] is CONSTANT across
     #     ranks (a percent coefficient). The rank-varying series is seeded as the
     #     flat base; the constant percent coefficient is OMITTED per its (different)
-    #     base: Braum 36% of the ALLY's bonus resist (cross-champion, no ally seam),
-    #     Leona 20% (attribution uncertain - own-bonus not confirmed), Jax 40%/24%
-    #     of BONUS AD (no bonus-AD ctx on the EHP seam - the item-264 omission
-    #     boundary). The flat base is exact + correct lower-bound.
+    #     base: Braum 36% and Leona 20% are a percent of the caster's OWN bonus
+    #     resist (the 16.22.1 block unit is "% bonus armor" / "% bonus magic
+    #     resistance" on the caster's own grant; the pct_base="bonus" shape Rell W
+    #     seeds, so adding them is a Tier-2 value change, not a missing seam), Jax
+    #     40%/24% of BONUS AD (no bonus-AD ctx on the EHP seam - the item-264
+    #     omission boundary). The flat base is exact + correct lower-bound.
     #
     # Singed R Insanity Potion: armor == MR == [25,60,95] by R rank ("Bonus Stats"
     # block). 25s active on a 100s cooldown -> amortized at the active midpoint
@@ -486,29 +490,31 @@ _PASSIVE_RESIST_OVERRIDES: dict[tuple[str, str, int], PassiveResistEntry] = {
         rank_scaled=True,
     ),
     # Braum W Stand Behind Me: self base armor + MR [20,25,30,35,40] by W rank
-    # ("Self Bonus Armor" / "Self Bonus Magic Resistance" series[0]). The +36% of
-    # the ALLY's bonus resists (series[1], constant 36) is OMITTED (cross-champion,
-    # no ally resist on the EHP seam). Short active grant -> amortized. rank_scaled
-    # (W priority_2).
+    # ("Self Bonus Armor" / "Self Bonus Magic Resistance" series[0]). The +36%
+    # (series[1], constant 36, unit "% bonus armor" / "% bonus magic resistance"
+    # on the SELF block = a percent of Braum's own bonus resist) is OMITTED (a
+    # Tier-2 value change; the ally copy is _passive_ally_grant_overrides). 3s
+    # active grant -> amortized. rank_scaled (W priority_2).
     ("Braum", "W", 0): PassiveResistEntry(
         armor=(20.0, 25.0, 30.0, 35.0, 40.0),
         mr=(20.0, 25.0, 30.0, 35.0, 40.0),
         conditional_probability=_ACTIVE_RESIST_PROB,
-        note="Stand Behind Me: 20/25/30/35/40 self armor + MR by W rank (series[0]); +36% of ALLY bonus resist omitted (cross-champion); active amortized at the midpoint; rank_scaled (W priority_2)",
+        note="Stand Behind Me: 20/25/30/35/40 self armor + MR by W rank (series[0]); +36% of his own bonus resist (series[1], unit '% bonus armor') omitted; 3s active amortized at the midpoint; rank_scaled (W priority_2)",
         attribute="Stand Behind Me",
         rank_scaled=True,
     ),
     # Leona W Eclipse: base armor + MR [20,27.5,35,42.5,50] by W rank ("Bonus
     # Armor" / "Bonus Magic Resistance" series[0]). The +20% (series[1], constant
-    # 20) is OMITTED (attribution uncertain - own-bonus not confirmed), as is the
-    # separate "Flat Damage Reduction" [8..24] (a per-INSTANCE flat-AMOUNT
-    # reduction, NOT a flat-% DR; the item-261 per-instance exclusion). 3s active
-    # (+3s if it hits) -> amortized. rank_scaled (W priority_2).
+    # 20, unit "% bonus armor" / "% bonus magic resistance" = a percent of her own
+    # bonus resist) is OMITTED (a Tier-2 value change), as is the separate "Flat
+    # Damage Reduction" [8..24] (a per-INSTANCE flat-AMOUNT reduction, NOT a
+    # resist; _passive_flat_mitigation_overrides carries it). 3s active (+3s if
+    # it hits) -> amortized. rank_scaled (W priority_2).
     ("Leona", "W", 0): PassiveResistEntry(
         armor=(20.0, 27.5, 35.0, 42.5, 50.0),
         mr=(20.0, 27.5, 35.0, 42.5, 50.0),
         conditional_probability=_ACTIVE_RESIST_PROB,
-        note="Eclipse: 20/27.5/35/42.5/50 armor + MR by W rank (series[0]); +20% second series + the per-instance flat damage reduction omitted; 3s active amortized at the midpoint; rank_scaled (W priority_2)",
+        note="Eclipse: 20/27.5/35/42.5/50 armor + MR by W rank (series[0]); +20% of her own bonus resist (series[1], unit '% bonus armor') omitted; per-instance flat damage reduction lives in the flat-mitigation registry; 3s active amortized at the midpoint; rank_scaled (W priority_2)",
         attribute="Eclipse",
         rank_scaled=True,
     ),

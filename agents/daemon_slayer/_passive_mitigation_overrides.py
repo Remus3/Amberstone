@@ -166,7 +166,7 @@ _PASSIVE_MITIGATION_OVERRIDES: dict[tuple[str, str, int], PassiveMitigationEntry
         note="Void Stone: permanent 10% reduced magic damage taken (innate, always-on)",
         attribute="Void Stone",
     ),
-    # Nilah W Slipstream: "during which she becomes ghosted ... reduces all
+    # Nilah W Jubilant Veil: "during which she becomes ghosted ... reduces all
     # incoming magic damage taken by 25%, and dodges all non-turret basic
     # attacks." 25% MAGIC, active 2.25s on a cooldown -> amortized at the active
     # midpoint. The ally-share (allies she touches gain the same for 1.5s) is not
