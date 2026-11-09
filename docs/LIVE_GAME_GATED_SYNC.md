@@ -980,6 +980,48 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
 - **G1-06** `[NOT BUILT]` (was A12) Mode-specific overlay layout AUTO-SELECT-ARAM acceptance - queued
   for planning, not yet built. Once built the auto-select needs a live ARAM queue/lobby state and a
   per-map placement eyeball. SOURCE: BACKLOG.md:48.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 127, 2026-11-09, S144-G-114; NOT a tick, NOT a re-open; still
+  NOT BUILT, so nothing here is drainable yet).** The filing bundles THREE halves and they no longer
+  share a status. (1) CITE DRIFT: `BACKLOG.md:48` is now `BACKLOG.md:1907` (the row "Mode-specific
+  overlay settings (SR vs ARAM) + mode-specific out-of-game stats overlay", queued `cf8353d7b`,
+  2026-06-30). (2) PER-MODE OVERLAY LAYOUT - NOT BUILT. `web/js/lib/overlay_layout.js:36` `LS_KEY`
+  "rc-overlay-layout" holds ONE `_layout` object keyed by widget id (`:293`, read `:296`, write
+  `:305`); the only per-game split is TFT vs League (`_isTftNow` `:187` off `body[data-ovx-game]`,
+  `_inGame` `:199`), which chooses WHICH widget set is on the field, never WHERE, so SR, ARAM and Arena
+  share one arrangement. Do not mistake `web/js/panels/panel_visibility.js` (per-mode dashboard panel
+  VISIBILITY, contexts in-game-sr / -aram / -arena / -tft / out-game) for it: shipped, a show / hide
+  gate, not a layout store, not this row. (3) OUT-OF-GAME STATS MODE SELECTOR - BUILT, manual:
+  `38dc1bf9d` (2026-07-04, "feat(home): SR/ARAM/ARENA mode tabs - FE half"), `web/index.html:217`
+  `#home-mode-tabs` (ALL / SR / ARAM / ARENA), `web/js/main.js:3402` `_homeModeTabLoad` (localStorage
+  `rc-home-mode-tab`, whitelist, default ALL), `:3990` `_homeApplyModeTab`, fetch
+  `/api/home/summary?mode=<tab>` at `:3942-3943` (ALL sends no `mode`); pinned by
+  `tests/snapshot_panels/test_home_mode_tabs.py`. (4) AUTO-SELECT ARAM - NOT BUILT: `_homeApplyModeTab`
+  has exactly two callers, the tab click `:4387` and the startup restore `:4389`; nothing feeds it
+  `lcu.lobby.queue_id` or `mode_key`.
+  **DESIGN TRAP for whoever builds (4), recorded so it does not ship invisible:** the view router sends
+  Lobby / Matchmaking / ReadyCheck to the `lobby` view (`web/js/main.js:796`) and ChampSelect to
+  `champ-select` (`:788`), and the home overlay paints only on the home view (`:4194-4203`, plus
+  `_homeShouldShow` `:3411`). So "auto-select ARAM when queued" cannot be SEEN while queued: it is first
+  observable on the return to home (lobby left, dodge, or post-game). The build has to name its driver
+  (the lobby `queue_id` at queue time, persisted, vs the last game's mode on return) and its precedence
+  over a manual pick (the filing says "stays manually switchable").
+  **READY-WHEN-BUILT (stated before any lobby; GATE 1 for (4), GATES 2 + 3 for (2)).** (4) PRECONDITIONS:
+  ui_mock OFF (the mock path ignores the filter, `:3936-3941`); before queueing, click SR on the home
+  tabs and record `#home-overlay[data-mode-tab]` = "SR". Then enter an ARAM lobby (`lcu.lobby.queue_id`
+  450 or 2400), leave it, and on the home view read `#home-overlay[data-mode-tab]`,
+  `.home-mode-tab[data-hmode="ARAM"]` `aria-selected`, and the next `/api/home/summary` request line
+  in `<main>/logs/<day>.log`. PASS iff the attribute reads "ARAM", that button is aria-selected "true",
+  and the request carries `?mode=ARAM`, all after a recorded "SR" pre-state. FAIL iff it still reads
+  "SR". The steps assume the build drives off the lobby `queue_id`; if it drives off the last game's
+  mode instead, replace "enter an ARAM lobby, leave it" with "finish an ARAM game, return home" before
+  running, else a correct build reads FAIL. (2) per-map placement: drag one widget in an ARAM game, then
+  in an SR game; PASS iff each mode
+  restores its own position and the ARAM drag did not move the SR one. EVIDENCE: the three values,
+  their selectors, the ISO time and the lobby `queue_id`. SUBSTITUTION CHECK: the tab state lives in
+  per-browser localStorage, so an "ARAM" left by an earlier manual click passes the DOM read with the
+  auto-select never running - that is why the recorded SR pre-state is part of the predicate; a
+  `tests/snapshot_panels` run or a mock lobby proves the handler COMPUTES, not that a real ARAM queue
+  DROVE it.
 - **G1-07** `[LOBBY-PARTY, READY 2026-10-27 - s144 lane gated cycle 16; PREP only, nothing ticked]`
   RM-881 (b) (QA23) live read-back: the lobby view re-fires `/api/duo-synergy` when the party reaches 2.
   SHIPPED headless `a503ce413` (s144 queue lane, LEDGER 1951): `web/js/panels/lobby_duo_synergy.js`
