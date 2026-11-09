@@ -493,6 +493,21 @@ def reset_rewind_live_writer_staging_between_tests():
 
 
 @pytest.fixture(autouse=True)
+def no_live_game_window(monkeypatch):
+    """S156 S7: ``vision_server._frame._game_window`` reads the live desktop's
+    League / TFT window (read-only Win32) on every GDI grab, so a frame test
+    would change with whatever is open on the box running the suite. Stub it
+    to "no window" for every test; a test that wants a window injects one.
+    Only touched when the module is already imported (test modules import it
+    at collection). It rides the shared ``monkeypatch`` instance, so a test's
+    own ``monkeypatch.undo()`` reaches the real seam."""
+    frame = sys.modules.get("vision_server._frame")
+    if frame is not None and hasattr(frame, "_game_window"):
+        monkeypatch.setattr(frame, "_game_window", lambda: None)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def reset_lockfile_notice_between_tests():
     """`lcu/lockfile_notice.py` dedupes the LCU lockfile-missing notice across
     every client in the process, so its episode state is process-global for the
