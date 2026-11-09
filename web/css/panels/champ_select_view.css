@@ -2537,7 +2537,15 @@
 .csv-duo-cell.locked { border-color: var(--good); }
 .csv-duo-cell.locked.is-me { border-color: #818cf8; }
 .csv-duo-cell.hovering { border-color: var(--warn); }
-.csv-duo-cell.is-empty { border-style: dashed; opacity: 0.55; }
+/* S144-U-271: the empty partner slot reads as empty by its dashed border
+ * and --text-dim words, not by fading the whole cell. Opacity 0.55 sank
+ * its "ALLY" tag to 2.89 - 3.33:1 on every theme (the S144-U-243 ruling:
+ * an empty state takes --text-dim at full strength). "waiting..." steps
+ * down from the picked-name white to the same tone, so the slot stays
+ * dimmer than a filled one. Guard:
+ * tests/snapshot_panels/test_champ_select_arena_pane_contrast.py. */
+.csv-duo-cell.is-empty { border-style: dashed; }
+.csv-duo-cell.is-empty .csv-duo-cell-name { color: var(--text-dim); }
 .csv-duo-cell-icon {
   width: 64px; height: 64px;
   border-radius: 6px;
@@ -2727,7 +2735,10 @@
 .csv-arena-cell.locked { border-color: #2a3f30; }
 .csv-arena-cell.locked .csv-arena-cell-icon { border-color: var(--good); }
 .csv-arena-cell.hovering .csv-arena-cell-icon { border-color: var(--warn); }
-.csv-arena-cell.is-empty { border-style: dashed; opacity: 0.55; }
+/* S144-U-271: same ruling for an unpicked enemy slot - dashed border and
+ * --text-dim ("?" inherits it; the "-" name override sits after the name
+ * block below), no fade. Opacity 0.55 put "-" at 4.42:1 on arcane. */
+.csv-arena-cell.is-empty { border-style: dashed; color: var(--text-dim); }
 .csv-arena-cell-icon {
   width: 32px;
   height: 32px;
@@ -2751,6 +2762,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.csv-arena-cell.is-empty .csv-arena-cell-name { color: var(--text-dim); }
 .csv-arena-cell-mark {
   display: flex;
   align-items: center;
