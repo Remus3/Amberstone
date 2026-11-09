@@ -59,6 +59,7 @@ Phase 6 ALSO models per-target multiplier overrides via
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional
@@ -510,6 +511,32 @@ def _empty_result(
     )
 
 
+def _normalized_targets_override(value: Optional[float]) -> Optional[float]:
+    """Floor a negative ``targets_per_proc_override`` at 0.0; refuse non-finite.
+
+    S144-D-163: the override multiplies every item's per-proc heal and shield,
+    so -1 (a finite value the HTTP layer accepts) turned Soraka's item
+    throughput negative, and NaN / inf made every total NaN. A negative count
+    means "no targets", the zero-credit contract test_engine_robustness_p1l12
+    already states, so it reads as 0.0. A non-finite or unconvertible value
+    raises ValueError (the routes map it to 422). None and every finite value
+    >= 0 are unchanged.
+    """
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"targets_per_proc_override must be a number, got {value!r}"
+        ) from None
+    if not math.isfinite(v):
+        raise ValueError(
+            f"targets_per_proc_override must be finite, got {value!r}"
+        )
+    return value if v >= 0.0 else 0.0
+
+
 def compute_hps(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -534,7 +561,9 @@ def compute_hps(
     ``targets_per_proc_override`` replaces the curated per-item
     ``heal_targets_per_proc`` / ``shield_targets_per_proc`` values for ALL
     items in the build - useful for Arena (2v2 -> override=1) or solo-lane
-    pre-grouping scenarios. None preserves the per-item curated defaults.
+    pre-grouping scenarios. None preserves the per-item curated defaults. A
+    negative override reads as 0.0 and a non-finite one raises ValueError
+    (S144-D-163).
 
     ``assume_missing_hp_heal_amp`` / ``caster_missing_hp_pct`` (R5 seam,
     DEFAULT-OFF/0.0) are threaded straight into the champion-ability heal scorer
@@ -567,6 +596,9 @@ def compute_hps(
     # through a non-ARAM multiplier path.
     mode = canonical_mode(mode)
     level = clamp_level(level)
+    targets_per_proc_override = _normalized_targets_override(
+        targets_per_proc_override
+    )
 
     # RM-172: apply_mode_modifiers (DEFAULT-OFF) opts into the ARENA/Swiftplay
     # stat-growth ADDEND lane. Forwarded to compute_ability_hps below too, so
@@ -969,6 +1001,9 @@ def rank_items_by_hps(
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
+    targets_per_proc_override = _normalized_targets_override(
+        targets_per_proc_override
+    )
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
