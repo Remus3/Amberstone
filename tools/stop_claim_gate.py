@@ -2804,6 +2804,12 @@ def _git_target(here, words):
 # S144-Q-147 (EXTRA only): after `git commit` / merge / rebase / cherry-pick
 # / revert / pull / am / commit-tree, `-S` (gpg-sign) and `-e` (edit) take no
 # next-word value, so `git commit -S -n` counts (_GIT_FLAG_ONLY_IN).
+# S144-Q-146 (EXTRA only, _prefix_unwrapped): a launcher behind a prefix
+# command is read - `nohup` / `time` / `nice` / `sudo` / `stdbuf` /
+# `timeout` / `exec` / `command` / `setsid`, each with its own options -
+# so `nohup bash -c 'git push --no-verify'` counts; `sudo -D` / `-i` / `-R`
+# place their statements None (also before a plain git word,
+# _wrapper_moves), and `command -v` / `sudo -l` / `sudo -e` run nothing.
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -3118,6 +3124,8 @@ def _wrapper_moves(words):
                 return True
         elif name == "wsl" and _wsl_unwrapped(words[i + 1:])[1]:
             return True
+        elif name in _PREFIX_MOVES and _prefix_unwrapped(name, words[i + 1:])[1]:
+            return True  # S144-Q-146: `sudo -D dir git ...`, `sudo -i git ...`
     return False
 
 
@@ -3173,19 +3181,91 @@ def _wsl_unwrapped(rest):
     return rest[i:], moved
 
 
+# S144-Q-146 (read only when EXTRA is on): commands that run the command
+# after their own options, read like a wrapper: name -> (short options that
+# take a value, long options that take a value). Measured from each tool's
+# usage (GNU coreutils nohup / nice / stdbuf / timeout, GNU time, sudo
+# 1.9, bash's `time` / `exec` / `command`, util-linux setsid).
+_PREFIX_COMMANDS = {
+    "nohup": ("", frozenset()),
+    "time": ("of", frozenset({"output", "format"})),
+    "nice": ("n", frozenset({"adjustment"})),
+    "sudo": ("acgpCDrtTuUR", frozenset({
+        "user", "group", "prompt", "close-from", "chdir", "role", "type",
+        "command-timeout", "other-user", "host", "chroot"})),
+    "stdbuf": ("ioe", frozenset({"input", "output", "error"})),
+    "timeout": ("sk", frozenset({"signal", "kill-after"})),
+    "exec": ("a", frozenset()),
+    "command": ("", frozenset()),
+    "setsid": ("", frozenset()),
+}
+# Options after which the prefix runs no command (`command -v` prints a
+# path, `sudo -l` lists, `sudo -e` edits files, `sudo -v` / `-K` / `-V`).
+_PREFIX_NO_RUN = {
+    "command": frozenset({"v", "V"}),
+    "sudo": frozenset({"e", "l", "v", "K", "V", "edit", "list", "validate",
+                       "remove-timestamp", "version", "help"}),
+}
+# Options that run the command somewhere else (`sudo -D dir`, `sudo -i`
+# starts in the target user's home, `sudo -R` a chroot).
+_PREFIX_MOVES = {"sudo": frozenset({"D", "chdir", "R", "chroot", "i", "login"})}
+# Prefixes that take bash `NAME=VALUE` words before the command (`time` is
+# a keyword in front of a simple command; sudo reads them as environment).
+_PREFIX_ASSIGNS = frozenset({"time", "sudo"})
+
+
+def _prefix_unwrapped(name, rest):
+    """S144-Q-146: the command words of prefix command NAME (a
+    _PREFIX_COMMANDS key) after its options REST, and whether it moved the
+    command; ([], False) when it runs none."""
+    short_values, long_values = _PREFIX_COMMANDS[name]
+    seen, i = set(), 0
+    while i < len(rest) and rest[i].startswith("-") and rest[i] != "-":
+        word = rest[i]
+        if word == "--":
+            i += 1
+            break
+        if word.startswith("--"):
+            option, eq, _value = word[2:].partition("=")
+            seen.add(option)
+            if option in long_values and not eq:
+                i += 1
+        else:
+            for k, letter in enumerate(word[1:], 1):
+                seen.add(letter)
+                if letter in short_values:
+                    if k == len(word) - 1:
+                        i += 1  # `-n 5`; `-n5` carries its value
+                    break
+        i += 1
+    if seen & _PREFIX_NO_RUN.get(name, frozenset()):
+        return [], False
+    rest = rest[i:]
+    if name == "timeout":
+        rest = rest[1:]  # its DURATION
+    if name in _PREFIX_ASSIGNS:
+        while len(rest) > 1 and _BASH_ASSIGN.fullmatch(rest[0]):
+            rest = rest[1:]
+    return rest, bool(seen & _PREFIX_MOVES.get(name, frozenset()))
+
+
 def _unwrapped(words, escapes=False):
-    """WORDS without leading `env` / `wsl` wrappers or bash `NAME=VALUE`
-    environment prefixes (S144-Q-135), and whether a wrapper changed
-    directory; WORDS is None when a wrapper cannot be read. ESCAPES
-    (S144-Q-145) reads an `env -S` string with env's own escapes."""
+    """WORDS without leading `env` / `wsl` wrappers, bash `NAME=VALUE`
+    environment prefixes (S144-Q-135) or prefix commands (S144-Q-146:
+    `nohup`, `time`, `nice`, `sudo`, ... with their options), and whether
+    one changed directory; WORDS is None when a wrapper cannot be read.
+    ESCAPES (S144-Q-145) reads an `env -S` string with env's own escapes."""
     moved = False
     while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
         words = words[1:]
-    while words and _head_name(words[0]) in _WRAPPERS:
-        if _head_name(words[0]) == "env":
+    while words and ((head := _head_name(words[0])) in _WRAPPERS
+                     or head in _PREFIX_COMMANDS):
+        if head == "env":
             words, step = _env_unwrapped(words[1:], escapes)
-        else:
+        elif head == "wsl":
             words, step = _wsl_unwrapped(words[1:])
+        else:
+            words, step = _prefix_unwrapped(head, words[1:])
         moved = moved or step
     return words, moved
 
