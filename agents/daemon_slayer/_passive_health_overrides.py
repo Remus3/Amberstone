@@ -1,7 +1,8 @@
 """R46 (2026-06-30) - effects-text-only STACKING permanent max-HP passives.
 
-A NEW survivability axis and the SECOND EHP-NUMERATOR term (after the revive
-multiplier): a champion passive that grants PERMANENT bonus maximum health PER
+A NEW survivability axis and an EHP-NUMERATOR term (beside the revive and
+survival-window multipliers, but additive rather than multiplicative): a
+champion passive that grants PERMANENT bonus maximum health PER
 STACK and accumulates (effectively) without bound over a game. It is NOT in the
 resolved stat block - not a base-per-level value, not an item - so neither EHP
 scorer saw it. Three champions carry the class at patch 16.13.1:
