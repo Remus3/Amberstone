@@ -545,6 +545,15 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-strip {
   flex-wrap: nowrap;
 }
+/* S144-U-281: the "+Ndps" power delta (build_module.css .bm-delta, bare
+ * --accent) read 4.48:1 in the idle recede on arcane, whose accent is a muted
+ * lavender (#ad9dbd), on the 0.9 nested backing. The RM-1550 lift toward
+ * --text keeps the accent hue and holds AA live and idle in every theme. The
+ * dashboard copy keeps the bare accent (6.12:1 at worst, opaque pane).
+ * Pinned by tests/snapshot_panels/test_overlay_build_delta_contrast.py. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-delta {
+  color: color-mix(in oklab, var(--accent, #6cf) 80%, var(--text, #fff));
+}
 /* BATCH C #1 (2026-07-06): the objective gauges are now ONE horizontal row of
  * 3 dials (objective_gauges.css .og-grid). Three 88px dials + 2x8px gaps need
  * ~280px; the default --ovx-w:210px clipped the 3rd dial, so widen w-objgauges

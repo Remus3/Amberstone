@@ -3443,8 +3443,9 @@ function _dsIcon(r, ownedSet, planState, opts) {
     dlt.textContent = `+${(delta || 0).toFixed(0)}`;
     // C2 UI-audit: the +Ndps gain is the key build signal under each icon;
     // bumped off the sub-floor 11px to the --fs-xs token (a 2-4 char number
-    // still fits the 48px icon cell).
-    dlt.style.cssText = "font-size:var(--fs-xs);font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
+    // still fits the 48px icon cell). S144-U-281: styled by the .bm-delta
+    // class (build_module.css) so the overlay can lift its ink (overlay.css).
+    dlt.className = "bm-delta";
     wrap.appendChild(dlt);
   }
   // WP-D1: hover tooltip (name + stats + passive from /api/dictionary/items).

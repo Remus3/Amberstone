@@ -75,6 +75,18 @@
   color: #6cf;
 }
 
+/* The "+Ndps" power delta under each Daemon Slayer item (active_match.js
+   _dsIcon; the LIVE row only). C2 UI-audit: the --fs-xs floor, weight 600, the
+   theme accent. S144-U-281 moved these values off an inline style so the
+   overlay can lift the ink (overlay.css, w-build); pinned by
+   tests/snapshot_panels/test_overlay_build_delta_contrast.py. */
+.bm-delta {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--accent, #6cf);
+  margin-top: 2px;
+}
+
 /* Row3 - the four DS fight-model knobs in a compact horizontal strip */
 .bm-knobs .bm-knob-strip {
   display: flex;
