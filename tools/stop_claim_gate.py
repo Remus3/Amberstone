@@ -3896,12 +3896,25 @@ def _assignment_commands(statement):
 # measured with Windows PowerShell 5.1 (a `$(` in double quotes runs too,
 # one in single quotes or behind a backtick does not). The later `for`
 # clauses sit past a statement break (_STATEMENT_BREAK splits at `;`), the
-# S144-Q-162 cause. _PS_HEAD_STEP is one brace head at the scan position:
-# a `}`, a lone `{`, a block head with its `{`, or a condition head up to
-# its `(`.
-_PS_HEAD_STEP = re.compile(
+# S144-Q-162 cause. _PS_STATEMENT_HEAD is one brace head at a position: a
+# `}`, a lone `{`, a block head with its `{`, or a condition head up to its
+# `(`; _PS_HEAD_STEP (below) is the scan's step.
+_PS_STATEMENT_HEAD = re.compile(
     r"\s*(?:[{}]|(?:else|do|try|finally|catch(?:\s*\[[^\]]*\])*)\s*\{"
     r"|(?P<cond>(?:if|elseif|while|foreach|for|switch(?:\s+-\w+)*)\s*\())",
+    re.IGNORECASE)
+# S144-Q-169: the scan also reads the condition of `do { } until (...)`
+# (measured with PS 5.1: it runs like `do { } while (...)`). `until` alone
+# is no statement: PowerShell reads `until (...)` as a command named
+# `until` whose `( ... )` argument runs before the lookup fails (measured),
+# so the scan reads it the same. _PS_STATEMENT_HEAD, which decides a
+# pipeline's mode (_ps_pipeline_mode) and drops a statement pipeline, has
+# no `until`: a pipeline opening with `until (` stays a command
+# (`if (until (..))`, counted before this too).
+_PS_HEAD_STEP = re.compile(
+    r"\s*(?:[{}]|(?:else|do|try|finally|catch(?:\s*\[[^\]]*\])*)\s*\{"
+    r"|(?P<cond>(?:if|elseif|while|until|foreach|for"
+    r"|switch(?:\s+-\w+)*)\s*\())",
     re.IGNORECASE)
 _PS_BLOCK_OPEN = re.compile(r"\s*\{")
 # How deep _ps_group nests plain `( ... )` / `{ ... }` groups before it
@@ -4004,7 +4017,7 @@ def _ps_pipeline_mode(text, i):
     "statement" when it opens with a statement keyword or a block (in a
     group it runs nothing: measured, PS 5.1), "command" when it opens with
     a command name or the call operator `&`, else "expression"."""
-    if _PS_HEAD_STEP.match(text, i) is not None:
+    if _PS_STATEMENT_HEAD.match(text, i) is not None:
         return "statement"
     n = len(text)
     while i < n and text[i] in " \t":
@@ -4175,7 +4188,7 @@ def _ps_condition_scan(statement):
     # A pipeline or group that opens with a statement keyword or a block
     # (`(if (..) { .. })`, `({ .. })`) runs nothing: measured, PS 5.1.
     return subs, [pipe for pipe in pipes if pipe is not None and pipe.strip()
-                  and _PS_HEAD_STEP.match(pipe) is None]
+                  and _PS_STATEMENT_HEAD.match(pipe) is None]
 
 
 def _ps_group_bodies(text, spans):
