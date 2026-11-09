@@ -26,6 +26,7 @@ shop-buyable) so it is scored but NOT in SELECTABLE_TIER2.
 """
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 # Tier-2 boot ids.
@@ -81,29 +82,75 @@ _INCUMBENT_DEF = 0.3   # stickiness for a DEFENSIVE archetype's default boot (ho
 _SWITCH_MARGIN = 0.15
 
 
+def _unit_share(value: float) -> float:
+    """A share / proxy as a float clamped to [0,1] (s144 S144-T-683 F2).
+
+    An in-range value comes back as exactly ``float(value)``, so every caller
+    that already passed a fraction is byte-identical. Out of range is clamped
+    (a percent such as 70 reads as 1.0, not 70x the kit prior; +inf -> 1.0,
+    -inf -> 0.0) and nan reads as 0.0 - no signal - instead of making every
+    weight nan. A non-numeric value still raises from ``float()``.
+    """
+    x = float(value)
+    if math.isnan(x):
+        return 0.0
+    return max(0.0, min(1.0, x))
+
+
 def comp_weights(
     archetype: str,
     enemy_ad_share: float,
     enemy_ap_share: float,
     cc_proxy: float,
 ) -> dict[str, float]:
-    """Per-axis weights for a comp. cc_proxy in [0,1] is the caller's CC estimate."""
+    """Per-axis weights for a comp. Shares and cc_proxy are fractions in [0,1];
+    out-of-range or nan values are clamped by :func:`_unit_share`.
+
+    A blank / None / whitespace archetype reads as ``"carry"``, matching
+    ``core.build_order._select_boots``; a non-string archetype is a TypeError.
+    """
+    if archetype is not None and not isinstance(archetype, str):
+        raise TypeError(
+            f"comp_weights: archetype must be a str or None, got {type(archetype).__name__}"
+        )
     weights: dict[str, float] = {
-        "armor_survival": _DEF * float(enemy_ad_share),
-        "mr_survival": _DEF * float(enemy_ap_share),
-        "tenacity": _TEN * float(cc_proxy),
+        "armor_survival": _DEF * _unit_share(enemy_ad_share),
+        "mr_survival": _DEF * _unit_share(enemy_ap_share),
+        "tenacity": _TEN * _unit_share(cc_proxy),
         "move_speed": _MS,
     }
-    kit_axis = _ARCHETYPE_AXIS.get((archetype or "carry").strip().lower())
+    arch = (archetype or "").strip().lower() or "carry"
+    kit_axis = _ARCHETYPE_AXIS.get(arch)
     if kit_axis:
         weights[kit_axis] = weights.get(kit_axis, 0.0) + _KIT
     return weights
 
 
 def score_boot(boot_id: str, weights: dict[str, float]) -> float:
-    """Dot product of the boot's utility vector with the comp weights. 0.0 if unknown."""
+    """Dot product of the boot's utility vector with the comp weights. 0.0 if unknown.
+
+    Walks the BOOT's own axes (s144 S144-T-683 F1): walking the weights made a
+    non-finite weight on an axis the boot does not carry poison it anyway
+    (0.0 * inf is nan). A non-finite weight on the boot's own axis contributes
+    0.0. For finite weights the nonzero terms are summed in the same order, so
+    the score is byte-identical.
+    """
     profile = BOOT_UTILITY_PROFILE.get(str(boot_id), {})
-    return sum(profile.get(axis, 0.0) * w for axis, w in weights.items())
+    total = 0.0
+    for axis, utility in profile.items():
+        w = weights.get(axis, 0.0)
+        if not math.isfinite(w):
+            continue
+        total += utility * w
+    return total
+
+
+def _require_pool_like(value: object, name: str) -> None:
+    """A bare str / bytes is iterated per CHARACTER - refuse it by name (F5)."""
+    if isinstance(value, (str, bytes, bytearray)):
+        raise TypeError(
+            f"{name} must be an iterable of ids / names, not a bare {type(value).__name__}"
+        )
 
 
 def select_boot(
@@ -115,7 +162,19 @@ def select_boot(
     """Argmax boot over pool, but the challenger must beat the archetype default
     by switch_margin. A DEFENSIVE archetype's default boot earns an incumbency
     bonus so a neutral comp holds it. Fail-soft: an empty pool returns default_id.
+
+    ``switch_margin`` must be finite and >= 0 (ValueError otherwise); ``pool``
+    must not be a bare string (TypeError). The bar is the default's score plus
+    ``|default| * switch_margin``, so a NEGATIVE default score keeps its
+    hysteresis (s144 S144-T-683 F4); for a non-negative default the comparison
+    is the original ``default * (1 + margin)`` expression, byte-identical.
     """
+    _require_pool_like(pool, "select_boot: pool")
+    margin = float(switch_margin)
+    if not math.isfinite(margin) or margin < 0.0:
+        raise ValueError(
+            f"select_boot: switch_margin must be finite and >= 0, got {switch_margin!r}"
+        )
     ids = [str(b) for b in pool]
     did = str(default_id)
     if not ids:
@@ -128,8 +187,12 @@ def select_boot(
         return s
 
     default_score = _eff(did)
+    if default_score >= 0.0:
+        bar = default_score * (1.0 + margin)
+    else:
+        bar = default_score - default_score * margin
     challenger = max(ids, key=_eff)
-    if challenger != did and _eff(challenger) > default_score * (1.0 + switch_margin):
+    if challenger != did and _eff(challenger) > bar:
         return challenger
     return did
 
@@ -172,14 +235,22 @@ def comp_cc_signal(
     ``lockdown_ref`` defaults to None and is resolved to the module-level
     ``_CC_LOCKDOWN_REF`` at CALL time, not bound at def time, so the knob stays
     genuinely operator-tunable (and monkeypatchable) at runtime.
+
+    Input hardening (s144 S144-T-683): a bare str / bytes roster is a TypeError
+    (it used to be read per CHARACTER, so ``"Leona"`` returned 0.0 - "no CC" -
+    and overrode the v1 fallback); a non-finite or non-positive ref returns
+    None (a nan ref used to SATURATE to 1.0 through ``min(1.0, nan)``); a
+    non-finite or negative per-champion score contributes 0.0 like an
+    unregistered name, so one corrupt row cannot saturate the comp.
     """
+    _require_pool_like(enemy_champions, "comp_cc_signal: enemy_champions")
     if not enemy_champions:
         return None
     names = [str(c).strip() for c in enemy_champions if str(c).strip()]
     if not names:
         return None
     ref = float(_CC_LOCKDOWN_REF if lockdown_ref is None else lockdown_ref)
-    if ref <= 0.0:
+    if not math.isfinite(ref) or ref <= 0.0:
         return None
     try:
         from agents.daemon_slayer.cc_output import compute_cc_output
@@ -188,7 +259,10 @@ def comp_cc_signal(
     total = 0.0
     for name in names:
         try:
-            total += float(compute_cc_output(name, mode).total_lockdown_score)
+            score = float(compute_cc_output(name, mode).total_lockdown_score)
         except Exception:  # noqa: BLE001 - one bad name must not sink the comp
             continue
+        if not math.isfinite(score) or score < 0.0:
+            continue
+        total += score
     return max(0.0, min(1.0, (total / float(len(names))) / ref))
