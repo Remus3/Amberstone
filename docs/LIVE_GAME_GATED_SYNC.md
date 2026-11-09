@@ -5054,6 +5054,30 @@ waits on the RM-875 wiring.)
   `data/arena_coach_shadow.jsonl` still has 617 rows. (4) THE TOOL IS STILL GREEN.
   `tests/test_gated_g506_debounce_lag.py` gave 29 passed at `5f3af5aad`, so its string pins still
   match the source. The CHECK, the tool steps and the evidence contract do not change.
+  **RE-CHECK 2026-11-08 (lane 9 s144 cycle 117, S144-G-104, source read at `25b5f31fb`; NOT a tick;
+  no game up: :8888 `/api/state` and :2999 both gave curl 000).** (1) CITE DRIFT, top of the file
+  only, behaviour unchanged. The one commit since `5f3af5aad` that touches `coaches/arena_coach.py`,
+  `coaches/_base_coach.py` or `core/safe_coach_output.py` is `81c26322c` (s156 S5 C7). It rewrote
+  the module docstring (one line became two) and the Arena system prompt text (2v2v2v2 / pair
+  wording and the SR-rune augment list, one line net shorter), and touched no code path. So lines
+  `:3` to about `:175` are one lower and everything below is where it was. The flag read is `:70`
+  (was `:69`), the 45 s ceiling `_STATE_DEBOUNCE_MAX_STALE_S` `:76` (was `:75`) and
+  `_coach_state_signature` `:89` (was `:88`). These hold: `_STABLE_DEBOUNCE_S = 22.0` `:443`,
+  `_run_vision` `:610` (gate `:615`), `_run_coach` `:639` under the decorator at `:638` (gate
+  `:642`), the debounce log `:815-819`, the Haiku `timeout=20` `:831`, `Arena: no fields parsed`
+  `:842`, the `game_time_s` write `:875`, the `safe_write` `:914` and the ceiling stamp `:923`.
+  (2) THE PRECONDITION IS UNCHANGED, AND ITS ROUTE IS NAMED. The default is still `"0"`, the
+  variable is absent from both the user and the machine environment keys (`reg query`, both
+  "unable to find"), and no tracked launcher or config names it. Since the 2026-10-31 launcher
+  cutover RC inherits rc-shell's environment: `ops/launcher/service_host.py` `child_environment`
+  starts from `os.environ`, and `ops/launcher/services.json` sets only `RC_DASH_BIND` (top-level
+  `env` is `{}`). So the flag reaches RC by a User-scope variable plus an rc-shell relaunch, or by
+  an `env` entry in `ops/launcher/services.json` (a main-session path); either is a merger /
+  operator act, as in G3-12. (3) THE REPLAY INPUT IS STILL ABSENT. The 15 retained day logs
+  (`2026-10-17` to `2026-10-31`) hold no `arena_coach`, `Arena coaching` or `Arena state-debounce`
+  line, and `data/arena_coach_shadow.jsonl` still has 617 rows. (4) THE TOOL IS STILL GREEN.
+  `tests/test_gated_g506_debounce_lag.py` gave 29 passed at this cycle's lane HEAD (its string pins
+  still match the source). The CHECK, the tool steps and the evidence contract do not change.
 - **G5-07** Arena deterministic A/B choices lever (`dc6b3d80`) - shipped SHADOW-only; served coach
   output unchanged. The live serve flip is gated on shadow accrual (G7-17).
   **AGE CHECK: THE IN-GAME SERVE FLIP IS MOOT WHILE B4 STANDS (lane 9 PREP s144 cycle 92, S144-G-83,
