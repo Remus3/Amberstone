@@ -106,7 +106,7 @@ _UNLINK_CEILING = {
     "ops/loop/executor.py": 1,
     "ops/loop/inbox_tick.py": 2,
     "ops/loop/lane_launcher.py": 1,
-    "ops/loop/loop_controller.py": 4,
+    "ops/loop/loop_controller.py": 5,  # S144-Q-138: _publish_claim drops its own claim scratch file
     "ops/loop/slots.py": 3,
     "ops/rc_dev_runtime.py": 9,
     "ops/rc_self_monitor.py": 6,
