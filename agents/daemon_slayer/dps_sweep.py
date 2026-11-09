@@ -114,6 +114,25 @@ class SweepResult:
         }
 
 
+def _finite_axis_values(axis_values: Iterable) -> List[float]:
+    """The finite numeric entries of ``axis_values`` as floats, in order.
+
+    A NaN / +-inf entry is dropped (P2 W2). S144-D-175: a non-numeric entry
+    (str, None, an int too large for a float) made ``math.isfinite`` raise
+    and sank the whole sweep; it is dropped the same way. A numeric string
+    keeps its float reading.
+    """
+    out: List[float] = []
+    for v in axis_values:
+        try:
+            f = float(v)
+        except (TypeError, ValueError, OverflowError):
+            continue
+        if math.isfinite(f):
+            out.append(f)
+    return out
+
+
 def _one_dps(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -195,7 +214,7 @@ def compute_dps_sweep(
         # sink the whole sweep instead of the documented fail-soft. A finite
         # filter keeps the sweep honest on a malformed caller-supplied list.
         levels = (
-            tuple(int(v) for v in axis_values if math.isfinite(v))
+            tuple(int(v) for v in _finite_axis_values(axis_values))
             if axis_values is not None
             else None
         )
@@ -232,7 +251,7 @@ def compute_dps_sweep(
     # the consuming chart route. Finite-filter keeps every emitted point
     # JSON-safe.
     if axis_values is not None:
-        values = [float(v) for v in axis_values if math.isfinite(v)]
+        values = _finite_axis_values(axis_values)
     else:
         values = [float(a) for a in range(0, 301, 25)]
 

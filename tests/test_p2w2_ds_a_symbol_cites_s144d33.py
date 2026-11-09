@@ -107,9 +107,13 @@ def test_travel_time_still_rejects_a_non_finite_distance():
 
 def test_sweep_still_finite_filters_both_axes():
     # The prose: level axis (int(inf) OverflowError) AND resist axes (NaN x).
+    # S144-D-175 moved the filter into _finite_axis_values (which also drops
+    # a non-numeric entry); both axes still route through it.
     seg = _segment("dps_sweep", "compute_dps_sweep")
-    assert "tuple(int(v) for v in axis_values if math.isfinite(v))" in seg
-    assert "[float(v) for v in axis_values if math.isfinite(v)]" in seg
+    assert "tuple(int(v) for v in _finite_axis_values(axis_values))" in seg
+    assert "values = _finite_axis_values(axis_values)" in seg
+    helper = _segment("dps_sweep", "_finite_axis_values")
+    assert "if math.isfinite(f):" in helper
 
 
 def test_objdamage_sentinel_edge_the_prose_names():
