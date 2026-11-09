@@ -13,14 +13,24 @@ Lifecycle (per Agent 7 charter):
 
 Thread-safety (RM-294a): two locks. ``_send_lock`` serialises whole
 ``send()`` calls, so turns never interleave in the shared history - a
-second send waits for the first to finish, up to the 30s request
-timeout. ``_lock`` guards state only (history, counters, client) and is
+second send waits for the first to finish (30s per attempt, and the
+SDK's own retries can repeat an attempt, so the wait can be a multiple
+of 30s). ``_lock`` guards state only (history, counters, client) and is
 NEVER held across the upstream call: ``send()`` snapshots the history
 under it, calls the API outside it, then re-takes it to append the reply.
 So ``stats()`` and ``close()`` return promptly even while a send is in
 flight. A ``close()`` that lands mid-send bumps ``_generation``; the late
 reply is still returned to its caller but is not written back into the
 cleared history.
+
+History invariant (S144-T-719): the history is replayed on EVERY
+request, so one bad entry poisons every later turn until the idle reset
+- silently, because both consumers fall back to the ephemeral CLI on
+WarmSessionError. So a user turn is kept only once a reply with real
+text is in hand: a failed call AND a reply with no usable text both roll
+it back, and an empty / whitespace / non-str reply never becomes an
+assistant turn (the Messages API requires non-empty text in every
+non-final message). Pinned by tests/test_warm_session_true_audit_s144t719.py.
 """
 from __future__ import annotations
 
@@ -64,6 +74,38 @@ def _load_api_key(app_dir: Path | None = None) -> str:
     tests/test_api_key_single_lookup_env_apikey.py.
     """
     return anthropic_key.read_anthropic_key(app_dir)
+
+
+def _token_count(value: Any) -> int:
+    """A usage token count as a non-negative int; anything else is 0.
+
+    The usage block is upstream data: a non-numeric value used to raise
+    ValueError AFTER the reply was in hand, past the consumers' only
+    handler (WarmSessionError). A bool is not a count (True is int 1),
+    and a negative or non-finite number is junk, not a refund.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0
+    if value != value or value in (float("inf"), float("-inf")) or value < 0:
+        return 0
+    return int(value)
+
+
+def _reply_text(resp: Any) -> str | None:
+    """The reply text: every str ``.text`` block joined, in order.
+
+    A thinking or tool block may come FIRST, so reading only
+    ``content[0].text`` called a real reply malformed. Returns None when
+    there is no usable text (no content, no text block, or only blank /
+    whitespace text), which the caller treats as a malformed reply.
+    """
+    content = getattr(resp, "content", None)
+    if not isinstance(content, (list, tuple)):
+        return None
+    parts = [b.text for b in content
+             if isinstance(getattr(b, "text", None), str)]
+    text = "".join(parts)
+    return text if text.strip() else None
 
 
 def _load_charter() -> str:
@@ -187,7 +229,8 @@ class WarmAgent7Session:
                 except Exception as exc:      # noqa: BLE001
                     # A transport already torn down must not block the
                     # supervisor's shutdown path.
-                    logger.debug("sdk client close: %s", exc)
+                    logger.debug("sdk client close: %s",
+                                 self._redact(str(exc)))
             self._last_activity = 0.0
         logger.info("warm session closed")
 
@@ -212,9 +255,28 @@ class WarmAgent7Session:
             )
         if not user_text.strip():
             raise WarmSessionError("empty user_text")
+        # A bool is an int subclass and a float / str / None is a caller
+        # bug; the API rejects all of them (and zero or less), so refuse
+        # here instead of spending a round trip and a WARNING on it.
+        if (isinstance(max_tokens, bool) or not isinstance(max_tokens, int)
+                or max_tokens < 1):
+            raise WarmSessionError(
+                f"max_tokens must be a positive int, got {max_tokens!r}"
+            )
 
         with self._send_lock:
             return self._send_serialized(user_text, max_tokens)
+
+    def _rollback_user_turn(self, gen: int) -> None:
+        """Drop the user turn this send appended, so a retry does not
+        duplicate it and a failed turn never lingers. Popping the TAIL
+        cannot change the head, so _trim_history's user-first alignment
+        still holds. Skipped when close() ran meanwhile: it already
+        cleared the history."""
+        with self._lock:
+            if (gen == self._generation and self._messages
+                    and self._messages[-1]["role"] == "user"):
+                self._messages.pop()
 
     def _send_serialized(self, user_text: str, max_tokens: int) -> dict[str, Any]:
         """One send under ``_send_lock``. ``_lock`` is held only for the
@@ -241,27 +303,38 @@ class WarmAgent7Session:
                 timeout=30,
             )
         except Exception as e:
-            # Roll back the user message so a retry doesn't duplicate it
-            # into the conversation. Popping the TAIL cannot change the
-            # head, so _trim_history's user-first alignment still holds.
-            # Skipped when close() ran meanwhile: it already cleared it.
-            with self._lock:
-                if (gen == self._generation and self._messages
-                        and self._messages[-1]["role"] == "user"):
-                    self._messages.pop()
-            # Raw error to logs/ per the CLAUDE.md Error Handling
-            # rule; the propagated string is redacted.
-            logger.warning("warm send failed: %s", e)
-            raise WarmSessionError(self._redact(str(e))) from e
+            self._rollback_user_turn(gen)
+            # The error goes to logs/ per the CLAUDE.md Error Handling
+            # rule - REDACTED there too (S144-T-719: the log line used to
+            # carry the raw string, so a key echoed into an error reached
+            # logs/ although the raised copy was redacted).
+            msg = self._redact(str(e))
+            logger.warning("warm send failed: %s", msg)
+            raise WarmSessionError(msg) from e
 
+        # The call was billed whatever its content, so it is recorded
+        # BEFORE the reply is judged (a malformed reply used to be lost to
+        # cost_tracker). Outside the state lock (file I/O); still
+        # serialised by _send_lock. AUDIT 2026-05-23 (cost-trace gap C):
+        # one record per turn so by_purpose["agent7_warm"] reflects real
+        # cadence.
         try:
-            text = resp.content[0].text
-        except (AttributeError, IndexError) as e:
-            raise WarmSessionError(f"malformed response: {e}") from e
+            from core.cost_tracker import record_anthropic_response
+            record_anthropic_response(resp, model=self._model, purpose="agent7_warm")
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("cost_tracker record: %s", self._redact(str(exc)))
+
+        text = _reply_text(resp)
+        if text is None:
+            # No usable text: keeping the user turn would put two user
+            # turns in a row into every later request (S144-T-719).
+            self._rollback_user_turn(gen)
+            logger.warning("warm send: reply carried no usable text")
+            raise WarmSessionError("malformed response: no text in reply")
 
         usage = getattr(resp, "usage", None)
-        inp = int(getattr(usage, "input_tokens", 0) or 0) if usage else 0
-        out = int(getattr(usage, "output_tokens", 0) or 0) if usage else 0
+        inp = _token_count(getattr(usage, "input_tokens", 0))
+        out = _token_count(getattr(usage, "output_tokens", 0))
 
         with self._lock:
             if gen == self._generation:
@@ -274,16 +347,6 @@ class WarmAgent7Session:
             self._total_input_tokens += inp
             self._total_output_tokens += out
             turns = self._total_sent
-
-        # AUDIT 2026-05-23 (cost-trace gap C): feed cost_tracker. Warm
-        # session reuses one client across turns; recording happens per
-        # turn so by_purpose["agent7_warm"] reflects real cadence. Outside
-        # the state lock (file I/O); still serialised by _send_lock.
-        try:
-            from core.cost_tracker import record_anthropic_response
-            record_anthropic_response(resp, model=self._model, purpose="agent7_warm")
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("cost_tracker record: %s", exc)
 
         # `turns` was captured INSIDE the lock above, so two callers can
         # never report the same turn number.
@@ -323,8 +386,21 @@ def warm_spawn_factory(session: WarmAgent7Session) -> Callable[[str, str, str, d
     parsing doesn't need a branch.
     """
     def _spawn(agent: str, task_id: str, op: str, payload: dict) -> dict:
+        # Both consumers catch ONLY WarmSessionError to fall back, so a
+        # non-dict payload (a scheduler task's payload is upstream data)
+        # must not escape as AttributeError, and a non-str instruction or
+        # message must not be stringified into the prompt (S144-T-719).
+        if not isinstance(payload, dict):
+            raise WarmSessionError(
+                f"payload must be a dict, got {type(payload).__name__}"
+            )
         message = payload.get("message") or payload.get("user_text") or ""
         instruction = payload.get("instruction") or ""
+        for name, value in (("message", message), ("instruction", instruction)):
+            if not isinstance(value, str):
+                raise WarmSessionError(
+                    f"{name} must be str, got {type(value).__name__}"
+                )
         # The parser's fallback flow expects a JSON reply under result.result;
         # we give it that by packing the assistant text into the standard
         # claude --output-format json envelope shape.
