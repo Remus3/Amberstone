@@ -442,7 +442,6 @@
           <canvas id="mm-pos-canvas" class="mm-pos-canvas" width="720" height="720"></canvas>
         </div>
         <div class="minimap-state" id="mm-state">awaiting liveclient data...</div>
-        <div class="zoi-debug hidden" id="zoi-debug" aria-hidden="true"></div>
         <!-- Team gold diff - slim bar showing our team's gold lead / deficit. -->
         <div class="gold-diff hidden" id="gold-diff" title="Team item value (gold worth of items on board) - ally vs enemy">
           <div class="gold-diff-track">
@@ -2404,6 +2403,13 @@
           <div class="am-pane-body" id="am-map-body">
             <div class="am-empty">Static mode map + ZOI/threat overlay will render here mid-game.</div>
           </div>
+          <!-- S144-U-245: the ?debug=1 zone-pressure readout (map_state.js).
+               It lived in the #minimap panel inside the top-level <main>,
+               which every view and the overlay shell hide, so it never
+               rendered. Here it sits under the map, beside the header zone
+               pill it explains. Outside #am-map-body, whose innerHTML the
+               map render replaces. -->
+          <div class="zoi-debug hidden" id="zoi-debug" aria-hidden="true"></div>
         </div>
         <!-- Riot compliance 2026-08-11: the am-pane-cd summoner + ultimate
              cooldown ledger was REMOVED (banned enemy summoner-spell cooldown

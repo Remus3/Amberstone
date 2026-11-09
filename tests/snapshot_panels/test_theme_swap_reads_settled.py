@@ -206,7 +206,16 @@ makes), the s144 uiux module of S144-U-243:
     curve's and, outside aram, the ward heat strip's), adds the
     transitions-off sheet, then reads them in one evaluate. Nothing it
     reads transitions, so the sheet is belt and braces, not a fix.
-This module pins all fifty-six verdicts at runtime with each test's own opener,
+Audit (2026-11-09, s144 uiux cycle 240, S144-U-245, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-245:
+  - test_zoi_debug_readout: boot-stamped (?theme=), never swaps in-page;
+    it adds the transitions-off sheet, drives map_state.js
+    renderMinimapCanvases() with a deep-enemy call (no style read), then
+    reads the ?debug=1 readout under the Active Match map in one
+    evaluate. Nothing it reads transitions, so the sheet is belt and
+    braces, not a fix.
+This module pins all fifty-seven verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -295,7 +304,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The fifty-six modules audited above, keyed by file name.
+# The fifty-seven modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_empty_line_contrast.py",
@@ -353,6 +362,7 @@ _COVERED = {
     "test_view_menu_items.py",
     "test_view_menu_keyboard.py",
     "test_zone_pill_contrast.py",
+    "test_zoi_debug_readout.py",
 }
 
 _SHEET = "*, *::before, *::after { transition: none !important; }"
@@ -1143,8 +1153,8 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The twenty-one contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
-# U-242, U-243):
+# The twenty-two contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# U-242, U-243, U-245):
 # each one's _measure extra arguments after (mock_server, pw_browser, theme),
 # taken from its own constants (its first viewport, its first mode, the TFT
 # footer state, the mixed Session scenario, its first surface).
@@ -1170,8 +1180,9 @@ _CONTRAST = {
     "test_ui_mock_active_match_build_eyebrows": ("surface",),
     "test_ui_mock_active_match_complete": (),
     "test_user_builds_text_contrast": ("vp",),
+    "test_zoi_debug_readout": ("vp",),
 }
-# The thirteen whose opener adds the sheet before its first interaction.
+# The fourteen whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
@@ -1186,6 +1197,7 @@ _CONTRAST_SHEETED = (
     "test_replay_match_row_text_contrast",
     "test_session_hygiene_inert_contrast",
     "test_user_builds_text_contrast",
+    "test_zoi_debug_readout",
 )
 
 # Force style on every element, then list every transition / animation

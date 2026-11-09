@@ -241,6 +241,24 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   padding: 14px;
 }
 
+/* S144-U-245: the ?debug=1 zone-pressure readout (map_state.js), moved here
+ * from grid.css with its node: the #minimap panel it sat in is inside the
+ * top-level <main>, hidden in every view. It was 11 px --text-faint on
+ * --surface-alt (3.64 - 3.94:1 in five of six themes); now --fs-xs and
+ * --text-dim, 5.54 - 7.46:1 in all six. Guard: tests/snapshot_panels/test_zoi_debug_readout.py. */
+#view-active-match .zoi-debug {
+  flex: none;
+  margin: 0 14px 14px;
+  padding: 4px 10px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.02em;
+}
+#view-active-match .zoi-debug.hidden { display: none; }
+
 #view-active-match .am-empty {
   color: var(--text-faint);
   font-size: var(--fs-xs);

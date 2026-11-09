@@ -239,18 +239,6 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
 }
 .mm-canvas-stack.hidden { display: none; }
 
-.zoi-debug {
-  margin-top: 6px;
-  padding: 4px 10px;
-  font-family: "SF Mono", Consolas, monospace;
-  font-size: 11px;
-  color: var(--text-faint);
-  background: var(--surface-alt);
-  border-radius: var(--radius-sm);
-  letter-spacing: 0.02em;
-}
-.zoi-debug.hidden { display: none; }
-
 .mm-canvas-stack > * {
   position: absolute;
   inset: 0;

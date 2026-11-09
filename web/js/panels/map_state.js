@@ -311,6 +311,12 @@ function _clearZone() {
   const zonePill = el("zone-pill"), zoneLabel = el("zone-label");
   if (zonePill) zonePill.className = "zone-pill hidden";
   if (zoneLabel) zoneLabel.textContent = "-";
+  // S144-U-245: the ?debug=1 readout explains the pill, so it goes with it.
+  const dbg = el("zoi-debug");
+  if (dbg) {
+    dbg.classList.add("hidden");
+    dbg.textContent = "";
+  }
 }
 
 function renderMinimapCanvases(p) {
@@ -469,7 +475,7 @@ function renderMinimapCanvases(p) {
       const d2 = (dx*dx + dy*dy) / (_R * _R);
       netAtSelf -= _bubbleKernel(d2);
     }
-    // ?debug=1 - show ZOI pressure readouts under the legend.
+    // ?debug=1 - show ZOI pressure readouts under the Active Match map.
     if (/[?&]debug=1/.test(location.search)) {
       const dbg = el("zoi-debug");
       if (dbg) {
