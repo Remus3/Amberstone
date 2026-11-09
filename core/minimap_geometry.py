@@ -152,8 +152,8 @@ def compute_minimap_rect(
     left = margin_r if want_flip else target_w - margin_r - side
     top = target_h - margin_b - side
 
-    x, y = int(round(left)), int(round(top))
-    w = h = int(round(side))
+    x, y = round(left), round(top)
+    w = h = round(side)
     if w <= 0 or h <= 0:
         return None
     if x < 0 or y < 0 or x + w > target_w or y + h > target_h:

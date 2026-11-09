@@ -402,8 +402,8 @@ def identify_dots(crop_rgb, dots, roster):
             y = _num(d.get("y_frac"))
             if x is None or y is None or not (0.0 <= x <= 1.0) or not (0.0 <= y <= 1.0):
                 continue
-            cx = int(round(x * (W - 1)))
-            cy = int(round(y * (H - 1)))
+            cx = round(x * (W - 1))
+            cy = round(y * (H - 1))
             top = max(0, cy - half)
             left = max(0, cx - half)
             bot = min(H, cy + half + 1)

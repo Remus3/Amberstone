@@ -58,8 +58,8 @@ def synth_crop(tpl_rgb, bg=_BG):
     import numpy as np
     a = np.asarray(tpl_rgb)
     h, w = int(a.shape[0]), int(a.shape[1])
-    ch = max(h + 2, int(round(h / vtm._TPL_FRAC)))
-    cw = max(w + 2, int(round(w / vtm._TPL_FRAC)))
+    ch = max(h + 2, round(h / vtm._TPL_FRAC))
+    cw = max(w + 2, round(w / vtm._TPL_FRAC))
     canvas = np.full((ch, cw, 3), int(bg), dtype=np.uint8)
     oy = (ch - h) // 2
     ox = (cw - w) // 2

@@ -196,10 +196,10 @@ def crop_minimap(frame_rgb, minimap_rect: dict, design_w: int = 1920, design_h: 
         h = float(minimap_rect["h"]) / design_h
     except Exception:  # noqa: BLE001
         return None
-    L = max(0, int(round(x * FW)))
-    T = max(0, int(round(y * FH)))
-    Rr = min(FW, int(round((x + w) * FW)))
-    Bb = min(FH, int(round((y + h) * FH)))
+    L = max(0, round(x * FW))
+    T = max(0, round(y * FH))
+    Rr = min(FW, round((x + w) * FW))
+    Bb = min(FH, round((y + h) * FH))
     if Rr - L < 3 or Bb - T < 3:
         return None
     return im[T:Bb, L:Rr]
@@ -288,8 +288,8 @@ def _scaled_size_bounds(crop_w) -> tuple[int, int]:
         sc = max(1.0, float(crop_w) / _TUNED_CROP_W)
     except (TypeError, ValueError):
         return _MIN_PX, _MAX_PX
-    minpx = max(_MIN_PX, int(round(_MIN_PX * sc)))
-    maxpx = max(minpx + 1, int(round(_MAX_PX * sc)))
+    minpx = max(_MIN_PX, round(_MIN_PX * sc))
+    maxpx = max(minpx + 1, round(_MAX_PX * sc))
     return minpx, maxpx
 
 
@@ -306,7 +306,7 @@ def _champ_floor_px(crop_w) -> int:
         sc = max(1.0, float(crop_w) / _TUNED_CROP_W)
     except (TypeError, ValueError):
         return _CHAMP_MIN_PX
-    return max(_CHAMP_MIN_PX, int(round(_CHAMP_MIN_PX * sc)))
+    return max(_CHAMP_MIN_PX, round(_CHAMP_MIN_PX * sc))
 
 
 def _grab_obs_minimap(minimap_rect):

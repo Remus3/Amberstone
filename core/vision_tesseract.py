@@ -281,7 +281,7 @@ def _apply_color_correction(img, color: dict):
             out = ImageEnhance.Contrast(out).enhance(contrast)
         if abs(gdev) > 1e-6:
             exp = max(0.3, min(3.0, 1.0 + 2.0 * gdev))
-            lut = [max(0, min(255, int(round(((i / 255.0) ** exp) * 255)))) for i in range(256)]
+            lut = [max(0, min(255, round(((i / 255.0) ** exp) * 255))) for i in range(256)]
             out = out.point(lut * 3)
         return out
     except Exception:  # noqa: BLE001
@@ -398,7 +398,7 @@ def _bar_fill_pct(img, color: str = "green", settings: Optional[dict] = None) ->
             any_match = True
     if not any_match:
         return 0
-    return int(round((last_filled_col + 1) * 100 / w))
+    return round((last_filled_col + 1) * 100 / w)
 
 
 def _ally_ults_strip(img, slots: int = 4) -> Optional[list]:
@@ -462,7 +462,7 @@ def _ult_pct(img) -> Optional[int]:
                 lit += 1
     if total == 0:
         return None
-    return int(round(lit * 100 / total))
+    return round(lit * 100 / total)
 
 
 def _ocr_int_stack(img, channel: Optional[str] = None,
