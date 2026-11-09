@@ -56,6 +56,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from itertools import starmap
 
 try:
     from tools import ascii_rule, credential_patterns
@@ -320,7 +321,7 @@ def _run() -> int:
             # Type name only. Exception text can carry file content.
             cred_faults.append(f"{p}: credential scan skipped ({type(exc).__name__})")
 
-    glyphs = [g for g in (_ascii_finding(p, w) for p, w in files.items()) if g]
+    glyphs = [g for g in starmap(_ascii_finding, files.items()) if g]
     py_files = [p for p in files if p.suffix == ".py"]
     ruff = _ruff_findings(py_files) if py_files else []
 

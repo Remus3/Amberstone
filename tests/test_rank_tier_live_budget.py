@@ -69,6 +69,7 @@ sys.path.insert(0, str(_ROOT))
 from core import rank_tier_bench as RTB  # noqa: E402
 from core import rank_tier_source as RTS  # noqa: E402
 from tests._timing_budget import fleet_test_guard  # noqa: E402
+from itertools import starmap
 
 
 def _bind_opener(monkeypatch, fake) -> None:
@@ -1453,7 +1454,7 @@ def _drop_aliases(name, tainted) -> None:
     edges = [(s, d) for s, d in _alias_edges(tainted) if name in (s, d)]
     if not edges:
         return
-    tainted -= {_alias_mark(s, d) for s, d in edges}
+    tainted -= set(starmap(_alias_mark, edges))
     froms = {s for s, d in edges if d == name}
     tos = {d for s, d in edges if s == name}
     tainted |= {_alias_mark(s, d) for s in froms for d in tos if s != d}

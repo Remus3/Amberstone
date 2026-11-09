@@ -24,6 +24,7 @@ reach a database file (s134 true-audit S1 / S2 / S3).
 from __future__ import annotations
 
 from types import MappingProxyType
+from itertools import starmap
 
 SCHEMA_VERSION = 1
 
@@ -241,7 +242,7 @@ def _create_table(name, cols, pk):
 
 def ddl_v1():
     """Every CREATE statement of schema v1, tables then indexes."""
-    stmts = [_create_table(*t) for t in TABLES]
+    stmts = list(starmap(_create_table, TABLES))
     declared = {name: {c for c, _t in cols} for name, cols, _pk in TABLES}
     for ix, table, cols in INDEXES:
         if table not in declared or any(c not in declared[table] for c in cols):
