@@ -4103,6 +4103,31 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   separately gated (G2-23); and these builds span patches 14.15-15.24 scored against a 16.14.1 engine.
   **NO LIVE RESIDUAL - the row never needed a client.** What remains is the operator-gated flip.
   SOURCE: LEDGER 745 + 831.
+  **AGE CHECK (lane 9 PREP s144 cycle 132, S144-G-119; source read at lane HEAD `98c59a301` over
+  local main `d2d4840f1`, no game up: :8888 and :2999 both curl 000 at 2026-11-09T06:41-06:00;
+  NOT a tick). The flip has NOT landed and no RC producer sends the flag.**
+  (1) Still DEFAULT-OFF everywhere: `assume_hsp_amp: bool = False` at `ehp.py:1414` and `:3324`,
+  `hybrid.py:453` and `:1019`, `sustain.py:347` (`compute_sustain`); `server.py` parses it with
+  `_opt_bool(body, "assume_hsp_amp", False)` on four routes only - `_route_ehp` (:1022),
+  `_route_rank_tank`, `_route_rank_bruiser`, `_route_sustain`.
+  (2) Cite drift: the `ehp.py:1472-1479` cite above is stale; the `hsp_pct` block now sits at
+  `ehp.py:1990-2000`, with `shield_amp_mult = heal_amp_mult * (1.0 + hsp_pct)` at `:2000`.
+  (3) Census drift: `ITEM_EFFECTS` now holds 549 entries, **20** with a `shield` (the row filed 16).
+  The "14 carry BOTH" figure was measured on the 16-item set and was NOT re-run here (a corpus
+  re-score is a DS measurement, not a gated one); treat 14 as a lower bound, not a current count.
+  (4) Producer: the RC senders are `core/daemon_slayer_client.py` `ehp_for` (:1131), `rank_tank_for`
+  (:907) and `rank_bruiser_for` (:1514, forwards at :1676). The only caller in `core/` `coaches/`
+  `dashboard/` `modes/` `app/` is `core/defensive_picks.py:402` `rank_tank_for(...)`, which passes
+  no `assume_hsp_amp`, so it sends False. The flag is not in `_DS_PREVIEW_SEAM_BOOLS`
+  (`dashboard/routes_state.py:969`) and no `web/` file names it.
+  PROPOSAL (not a move; a human moves rows): this is a `Not actually live-gated` CANDIDATE. Both
+  halves were settled headless on real builds, `:2999` carries no heal or shield throughput field
+  (Riot Live Client schema, not re-measured this cycle), so no game can grade the magnitude, and the
+  flip itself is an operator decision, not an observation. SUBSTITUTION CHECK: if the flip lands
+  and a later row asks whether RC SENT the flag live, that is a producer question in the G4-10
+  shape (a recorded outbound body with `ts` joined to a `:2999` items read within 10 s of
+  `gameData.gameTime`); a hand-POSTed body or the LEDGER 745 ratios answer only that the engine
+  COMPUTES the amp.
 - **G4-10** `[BLOCKED ON WIRING 2026-11-06]` (was B47c) R109 `apply_ability_hsp_amp` - item HSP amp of the CHAMPION-ABILITY heal/shield
   throughput in `compute_hps` (an enchanter's Ardent/Staff/Redemption/Moonstone/Mikael amped her ITEM
   heals but NOT her ABILITY heals - Soraka Q/W, Janna E, Lulu E; live-proven delta==0 on 8 enchanters,
