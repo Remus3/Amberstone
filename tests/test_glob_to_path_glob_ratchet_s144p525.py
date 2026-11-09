@@ -133,7 +133,7 @@ def test_aggregate_load_reads_sorted_json_and_reports_parse_errors(tmp_path, mon
 def test_marksman_exempt_table_reads_every_json_in_the_dir(tmp_path, monkeypatch):
     """Behaviour pin: a cross-eval file reaches the table through the Path read."""
     mod = _load_by_path("_s144p525_marksman", "ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py")
-    item = sorted(mod.OFFCLASS_MARKSMAN_ITEM_NAMES)[0]
+    item = min(mod.OFFCLASS_MARKSMAN_ITEM_NAMES)
     monkeypatch.setattr(mod, "_is_ranged_marksman", lambda rec: True)
     snap = type("Snap", (), {"champions": {"Zed": object(), "Yi": object()}})()
     block = {"all": {"wr": 50.0, "items": [{"name": item, "n": 99, "wr": 50.0}]}}

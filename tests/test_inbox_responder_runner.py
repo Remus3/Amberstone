@@ -885,7 +885,7 @@ def test_surface_auditor_resolves_dir_fd_relative_targets(tmp_path, monkeypatch)
     assert t("os.remove", ("x.md", 99)) == ["x.md"]
 
 
-@pytest.mark.skipif(not os.path.isdir("/proc/self/fd"), reason="needs /proc fd links")
+@pytest.mark.skipif(not Path("/proc/self/fd").is_dir(), reason="needs /proc fd links")
 def test_fd_dir_path_reads_the_proc_fd_link(tmp_path):
     fd = os.open(str(tmp_path), os.O_RDONLY)
     try:
