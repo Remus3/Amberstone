@@ -301,6 +301,18 @@ function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
   ctx.drawImage(off, 0, 0, W, H);
 }
 
+// S144-U-244: no position for you (dead, missing from the allies, or no
+// positions at all) resets the header zone pill to its "-" placeholder and
+// drops body[data-zone]. Adding .hidden alone kept the last call ("DEEP
+// ENEMY") on the static pill and in its aria-live region, and the
+// no-positions return kept the pill lit and the red zone tint on.
+function _clearZone() {
+  delete document.body.dataset.zone;
+  const zonePill = el("zone-pill"), zoneLabel = el("zone-label");
+  if (zonePill) zonePill.className = "zone-pill hidden";
+  if (zoneLabel) zoneLabel.textContent = "-";
+}
+
 function renderMinimapCanvases(p) {
   const stack = el("mm-canvas-stack");
   const zoiCanvas = el("mm-zoi-canvas");
@@ -308,6 +320,7 @@ function renderMinimapCanvases(p) {
   if (!stack || !posCanvas || !zoiCanvas) return;
   if (!p.positions || (!p.positions.allies && !p.positions.enemies)) {
     stack.classList.add("hidden");
+    _clearZone();
     return;
   }
   stack.classList.remove("hidden");
@@ -489,9 +502,7 @@ function renderMinimapCanvases(p) {
       }
     }
   } else {
-    delete document.body.dataset.zone;
-    const zonePill = el("zone-pill");
-    if (zonePill) zonePill.classList.add("hidden");
+    _clearZone();
   }
   // Ghost-marker bookkeeping (2026-04-26 user request): when an enemy
   // dot hasn't moved in a few seconds, fade it and ring it with a
