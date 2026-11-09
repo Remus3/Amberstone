@@ -776,7 +776,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             # DEFAULT-OFF ``assume_item_health_stacks`` EHP-numerator seam.
             # NOTE the coefficient: this comment previously read 8%, inherited
             # from ``items_meraki.json``, which is FROZEN at content patch 25.15
-            # (its body is byte-identical across all five vendored patch dirs).
+            # (its items body is identical across every vendored patch dir,
+            # 16.10.1 .. 16.22.1 at the 2026-11-09 re-measure).
             # DDragon 16.14.1, CommunityDragon 16.14 and the wiki all read 10%,
             # and the wiki's dated V26.11 note ("increased to 10% from 8%")
             # matches the 8 -> 10 flip visible between the vendored 16.10.1 and

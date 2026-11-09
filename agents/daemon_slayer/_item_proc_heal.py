@@ -12,8 +12,8 @@ heal, and a 2.5x multiplier per champion hit is not utility. Both notes now
 point here instead. This module fills that gap.
 
 SOURCE MAGNITUDE (vendored feed, re-derived - not inherited from the filing):
-``data/daemon_slayer/16.14.1/items_meraki.json`` item 2502, passive "Anguish"
-(``"unique": true``):
+``items_meraki.json`` item 2502, passive "Anguish" (``"unique": true``; the
+same text in every vendored patch dir through 16.22.1):
 
     "Every 4 seconds after entering combat with champions, sap all enemy
     champions around you within 650 units to deal magic damage equal to 3% of
@@ -27,14 +27,19 @@ So, per proc, per enemy champion hit::
 
 There is NO level scaling in the passive text, so none is modeled.
 
-REGISTERED IDS (each confirmed present in ``data/daemon_slayer/16.14.1/
-items.json`` before adding; exactly two ids in the whole 706-item index carry
-the name "Unending Despair"):
-  * 2502   - Unending Despair (base). ``maps`` 11 / 12 / 21 / 35 -> this single
-    id already covers SR, ARAM and the Nexus modes.
+The 3% bonus-health ratio is Meraki-only. Live DDragon (16.22.1) prints the
+heal multiplier for both ids ("heal for 250% of the damage dealt") but no
+damage ratio at all, and Meraki is frozen at content patch 25.15, so under the
+RM-808 source order (live DDragon, then CommunityDragon, then Meraki) the 3% is
+a fallback value that no live feed in the tree re-confirms (S144-D-374).
+
+REGISTERED IDS (re-confirmed in the 16.22.1 ``items.json``: exactly two ids in
+the whole 699-item index carry the name "Unending Despair"):
+  * 2502   - Unending Despair (base). ``maps`` 11 / 12 / 453 -> this single id
+    already covers SR, ARAM and the throwback mode.
   * 222502 - Unending Despair (Arena mode-mirror, ``maps`` 30 only). Carries the
     base nominal: Meraki keys base ids only, and the Arena DDragon copy carries
-    the identical Anguish text ("heal for 250% of the damage dealt"). Same
+    the identical Anguish text ("heal for 250% of the damage dealt"). The
     same-nominal Arena-mirror convention as ``_item_omnivamp.py`` /
     ``_item_revive.py``.
 
@@ -52,7 +57,8 @@ registered, and the missing ``322502`` was re-confirmed absent from the index.
 The Arena mirror IS retuned in its stat block (350 HP / 10 AH vs the base
 400 / 15), but its Anguish passive text is identical to the base's ("heal for
 250% of the damage dealt"), so the 0.075 coefficient is carried on measured
-text rather than assumed. Pinned by ``tests/test_r144_mirror_slice_c.py``.
+text rather than assumed. Pinned by
+``agents/daemon_slayer/tests/test_r144_mirror_slice_c.py``.
 
 THE ONE ASSUMPTION IN THIS LANE: ``_ASSUMED_TARGET_MR_FOR_PROC_HEAL``.
 The heal is 250% of POST-mitigation damage, but the EHP consumer

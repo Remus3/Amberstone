@@ -49,7 +49,8 @@ Three things fall out of that choice, all of them wanted:
   1. A coefficient edit in ``_effects_data.py`` propagates automatically. A
      hand-transcription drift is impossible by construction.
   2. MIRRORS need no suffix rule. The filed row warned that mirror prefixes are
-     irregular - 2502 becomes 222502 on ARAM but 2501 / 447111 on Arena - so a
+     irregular - Unending Despair 2502's Arena copy is 222502 but Overlord's
+     Bloodmail 2501's is 447111 (both map 30 only; ARAM buys the base ids) - so a
      by-name or by-suffix table would have been wrong. A machine sweep of
      ``ITEM_EFFECTS`` sidesteps the question.
   3. It catches a divergence a by-name table would have flattened: Heartsteel's
@@ -67,6 +68,15 @@ reports a 6 percent slope and crediting it would be a category error - the
 wielder is not spending health, it is being rewarded for having more than the
 target. It is therefore DENIED BY ID in ``_DENIED_ITEM_IDS``, and the test suite
 pins that the deny is non-vacuous (the probe really would credit it).
+
+That lambda is what ``ITEM_EFFECTS["4017"]`` computes, and the live text points
+the OTHER way: DDragon 16.22.1 says the burn grows "based on how much more max
+Health they have than you", with the bonus maximum "reached at 3000 health
+difference" (the engine caps at 2000). Filed as S144-D-377 (Tier-2 item-effect),
+not changed here. The deny holds under either reading - the wielder's health is
+a comparison term, never the damage source, and under the live reading more
+caster health LOWERS the burn - but a Tier-2 fix flips the probe's slope
+negative, so the non-vacuous deny test moves with it.
 
 ``4015`` Perplexity needs no deny entry: its ``caster_max_hp`` lives in a note
 string and in the ``giant_slayer_*`` fields, and this derivation only ever reads
@@ -126,9 +136,12 @@ _REFERENCE_FIGHT_SECONDS = 10.0
 # legendary attacks faster than this; understating it understates the credit for
 # on-hit procs (Titanic, Reverberation) rather than overstating it.
 _ASSUMED_ATTACKS_PER_SECOND = 1.0
-# Defensive ceiling on the converted fraction. NON-BINDING at 16.14.1 - the
-# largest shipped value is Sunfire / Titanic at 0.10 - and present only so a
-# future sub-second proc period cannot manufacture an unbounded sort key.
+# Defensive ceiling on the converted fraction. NON-BINDING at 16.22.1: the census
+# ceiling fires_per_fight * (max_hp_pct + bonus_hp_pct) / 100 tops out at
+# Reverberation 447114 (2% bonus health x 10 fires = 0.20), ahead of Arena
+# Heartsteel 223084 (6% x 10/3.5 fires, ~0.171) and Void Immolation 223069 (0.15);
+# Sunfire / Titanic sit at 0.10. Present only so a future sub-second proc period
+# cannot manufacture an unbounded sort key.
 _MAX_CONVERTED_FRACTION = 1.0
 
 # Items whose proc damage RESPONDS to caster health without the caster's health
@@ -136,7 +149,8 @@ _MAX_CONVERTED_FRACTION = 1.0
 # never by name (feedback_deny_sweep_by_id_suffix_not_name) - and enumerated
 # explicitly rather than by suffix, because mirror prefixes are irregular.
 #   * 4017 Hellfire Hatchet - Char reads (caster_max_hp - target_max_hp), a
-#     tankiness comparison. No mirror of it exists at 16.14.1.
+#     tankiness comparison (live text reads it the other way; S144-D-377). It is
+#     itself Arena-only (map 30) and has no other id at 16.22.1.
 _DENIED_ITEM_IDS = frozenset({"4017"})
 
 # ---------------------------------------------------------------------------
@@ -173,8 +187,8 @@ class ItemCasterHpProcEntry:
 
     ``max_hp_pct`` / ``bonus_hp_pct`` are the percent of the WIELDER's maximum /
     bonus health the item's procs re-spend as damage per fire, differentiated out
-    of ``ITEM_EFFECTS``. Exactly one is non-zero for every shipped item at
-    16.14.1; the guard test fails a future two-pool proc rather than averaging
+    of ``ITEM_EFFECTS``. Exactly one is non-zero for every shipped item at 16.22.1;
+    the guard test fails a future two-pool proc rather than averaging
     the two pools together.
 
     ``fires_per_fight`` is that proc's cadence expressed over one reference
