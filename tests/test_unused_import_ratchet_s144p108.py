@@ -34,6 +34,12 @@ top-level `import importlib.util`, and dashboard._dispatch.prefix in routes_load
 and routes_lobby_aux; none re-exported, none read or patched by name,
 none touched by another lane branch) and moves them from _BASELINE to FIXED.
 
+S144-P-479 cleans composition_advisor.py (seven names, all from champion_profiles:
+TANKS, FIGHTERS, AD_CHAMPS, AP_CHAMPS, HYBRID_CHAMPS, SUSTAIN_CHAMPS, MANA_CHAMPS;
+the module reads only CHAMPIONS from it, no tracked file reads
+``composition_advisor.<name>`` or imports one of them from it, and none is patched by
+name) and moves it from _BASELINE to FIXED.
+
 The rest are in the shrinking _BASELINE (rel path -> count): frozen files, files
 another lane branch changed, the DS engine (lane ds), deliberate facades
 (``coaches/adaptation_hint.py`` re-exports its split modules, ``effects.py`` its
@@ -76,6 +82,7 @@ FIXED = (
     "coaches/loadout_resolver.py",
     "coaches/replay_coach.py",
     "coaches/voice_coach.py",
+    "composition_advisor.py",
     "core/benchmarks.py",
     "core/decision_detector.py",
     "core/feature_policy.py",
@@ -133,7 +140,6 @@ _BASELINE = {
     "agents/daemon_slayer/server.py": 1,
     "app/_game_lifecycle.py": 2,
     "coaches/adaptation_hint.py": 33,
-    "composition_advisor.py": 7,
     "core/build_order_variants.py": 1,
     "core/log_setup.py": 2,
     "tools/build_portable.py": 1,
