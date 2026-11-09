@@ -16,20 +16,17 @@ WHY a static table and not the live timer
     complementary: live timer = ground truth once a thing exists; this
     table = the deterministic schedule + spike windows.
 
-TIMING SOURCES (Summoner's Rift, current-patch canonical LoL values)
-    These are long-stable map constants, not balance-churn numbers:
-      - First dragon spawn ......... 5:00 (300s)
-      - Dragon respawn cadence ..... 5:00 (300s) after a take
-      - Rift Herald spawn .......... 14:00 (840s)
-      - Baron Nashor spawn ......... 20:00 (1200s)
-      - Turret plating falls ....... 14:00 (840s)
-      - Elder Dragon (earliest) .... ~35:00 (2100s, soul-gated; we use
-                                     a nominal late marker)
-    Cited from canonical LoL map mechanics (League of Legends Wiki
-    "Epic monster" / "Turret" pages; values stable across seasons for
-    the listed objectives). The repo carried NO prior spawn-time
-    constant (grep at author time found only DS damage numbers), so
-    these are the canonical values, not a reuse.
+TIMING SOURCES (Summoner's Rift)
+    ONE authoritative cited schedule: core/sr_schedule.py (s156 S5). Every
+    SR timer below is imported from it, and each row there carries a status
+    (official / recorded / unverified / removed) and a source (Riot patch
+    note URL + date, or a recorded RC timeline bound). Current values
+    (patch 26.x, season 2026): first drake 5:00, drake respawn 5:00,
+    Voidgrubs 8:00 once (no respawn), Rift Herald 15:00, Baron 20:00 and
+    6:00 respawn. Atakhan was REMOVED in 26.1 and turret plates are
+    PERMANENT since 26.1 (no 14:00 fall), so neither has a schedule row.
+    The previous header cited the gated wiki, Herald 14:00 and plates
+    14:00; none of those is true any more.
 
     ARAM (Howling Abyss) has NO neutral objectives - the ARAM coach
     prompt itself states "No dragon/baron/rift herald - only towers and
@@ -57,51 +54,51 @@ from typing import Optional
 # Each entry: tag -> (spawn_s, line, cadence_s_or_None).
 # cadence_s set => the objective respawns on that cadence after spawn_s
 # (used so a single drake "tag" keeps producing the *next* drake ETA as
-# the game runs long). cadence None => one-shot (herald, baron, elder,
-# plates).
+# the game runs long). cadence None => one-shot (grubs, herald, baron).
 # ---------------------------------------------------------------------------
-# Canonical SR epic-objective spawn schedule (seconds). ONE cited source: the
-# served callout path (this module) AND the vision-gated contest detector
-# (core.decision_detector imports these) read the SAME constants so the two can
-# never drift. Stable LoL Summoner's Rift map constants.
-SR_DRAGON_FIRST_S = 300.0      # 5:00 first drake
-SR_DRAGON_RESPAWN_S = 300.0    # 5:00 after a take
-SR_BARON_FIRST_S = 1200.0      # 20:00 first Baron
-SR_BARON_RESPAWN_S = 360.0     # 6:00 after a take
+# Canonical SR epic-objective schedule (seconds): core/sr_schedule.py is the ONE
+# cited source. The served callout path (this module), the vision-gated contest
+# detector (core.decision_detector), macro_context and the snapshot normalizer
+# all read the SAME constants so they can never drift.
+import core.sr_schedule as _sched  # noqa: E402
+
+SR_DRAGON_FIRST_S = _sched.DRAGON_FIRST_S      # 5:00 first drake
+SR_DRAGON_RESPAWN_S = _sched.DRAGON_RESPAWN_S  # 5:00 after a take
+SR_BARON_FIRST_S = _sched.BARON_FIRST_S        # 20:00 first Baron
+SR_BARON_RESPAWN_S = _sched.BARON_RESPAWN_S    # 6:00 after a take
 
 # Back-compat aliases used by the static schedule table below.
 _SR_FIRST_DRAGON_S = SR_DRAGON_FIRST_S
 _SR_DRAGON_CADENCE_S = SR_DRAGON_RESPAWN_S
-_SR_RIFT_HERALD_S = 840.0      # 14:00
+_SR_VOIDGRUBS_S = _sched.VOIDGRUBS_FIRST_S            # 8:00, spawns once
+_SR_VOIDGRUBS_END_S = _sched.VOIDGRUBS_WINDOW_END_S   # unverified bound
+_SR_RIFT_HERALD_S = _sched.HERALD_FIRST_S             # 15:00
 _SR_BARON_S = SR_BARON_FIRST_S
-_SR_PLATES_FALL_S = 840.0      # 14:00 (turret plating gone)
-_SR_ELDER_NOMINAL_S = 2100.0   # ~35:00 nominal late marker
-_SR_HERALD_DESPAWN_S = 1185.0  # 19:45 - Herald leaves the pit before Baron
-# RM-306: Elder exists only after Dragon Soul; it spawns 6:00 after the
-# soul-securing drake and respawns 6:00 after an Elder take.
-_SR_ELDER_AFTER_SOUL_S = 360.0
-_SR_ELDER_RESPAWN_S = 360.0
-_INHIB_RESPAWN_S = 300.0       # 5:00 - inhibitor respawn after it falls
+_SR_HERALD_DESPAWN_S = _sched.HERALD_DESPAWN_S        # unverified; 19:45 refuted
+# RM-306: Elder exists only after Dragon Soul; it spawns after the
+# soul-securing drake and respawns after an Elder take (both unverified).
+_SR_ELDER_AFTER_SOUL_S = _sched.ELDER_AFTER_SOUL_S
+_SR_ELDER_RESPAWN_S = _sched.ELDER_RESPAWN_S
+_INHIB_RESPAWN_S = _sched.INHIB_RESPAWN_S
 
-# RM-305: epic monsters STAND in their pit until killed, unlike the plates
-# one-shot. tag -> despawn time (None = stays until taken). A take event
-# retires the row via _dynamic_epic_callouts (baron/elder respawn timers,
-# herald gone for the game).
+# RM-305: epic monsters STAND in their pit until killed. tag -> despawn time
+# (None = stays until taken). A take event retires the row via
+# _dynamic_epic_callouts (baron/elder respawn timers, herald gone for the
+# game; grubs retire after the third take).
 _PERSISTENT_UNTIL_S: dict[str, Optional[float]] = {
+    "grubs": _SR_VOIDGRUBS_END_S,
     "herald": _SR_HERALD_DESPAWN_S,
     "baron": None,
     "elder": None,
 }
 
-# Epic-monster team-buff durations (seconds). Stable map constants, NOT balance
-# churn: Baron Nashor's "Hand of Baron" lasts 180s; Elder Dragon's "Aspect of the
-# Dragon" execute buff lasts 150s. Keyed PER objective so each countdown is
-# correct-by-construction rather than one averaged window (the research-doc title
-# merged both as 180s; the accurate per-monster durations are used here so the
-# late-game macro read is exact). Elemental drakes grant no expiring team buff,
-# so they are deliberately absent.
-_BARON_BUFF_S = 180.0
-_ELDER_BUFF_S = 150.0
+# Epic-monster team-buff durations (seconds), from core/sr_schedule.py (both
+# UNVERIFIED legacy values: the 26.1 notes state no duration). Keyed PER
+# objective so each countdown is correct-by-construction rather than one
+# averaged window. Elemental drakes grant no expiring team buff, so they are
+# deliberately absent.
+_BARON_BUFF_S = _sched.BARON_BUFF_S
+_ELDER_BUFF_S = _sched.ELDER_BUFF_S
 _EPIC_BUFF_S: dict[str, float] = {"baron": _BARON_BUFF_S, "elder": _ELDER_BUFF_S}
 
 # Per (objective, side) epic-buff directive. The SIDE is the whole value - the
@@ -119,12 +116,15 @@ _EPIC_BUFF_LINES: dict[tuple[str, str], str] = {
 # convention change can never produce a WRONG lane.
 _INHIB_LANE_BY_TOKEN: dict[str, str] = {"L": "top", "C": "mid", "R": "bot"}
 
+# Plates (permanent since 26.1) and Atakhan (removed in 26.1) have NO row. The
+# elder row only carries the line text: Elder is soul-driven and always claimed
+# by _dynamic_epic_callouts, so its spawn column is never read.
 _SR_OBJECTIVES: tuple[tuple[str, float, str, Optional[float]], ...] = (
     ("dragon",  _SR_FIRST_DRAGON_S, "Drake spawns 5:00 - set up vision", _SR_DRAGON_CADENCE_S),
-    ("herald",  _SR_RIFT_HERALD_S,  "Rift Herald 14:00 - ward river",    None),
-    ("plates",  _SR_PLATES_FALL_S,  "Plates fall 14:00 - shove for gold", None),
+    ("grubs",   _SR_VOIDGRUBS_S,    "Voidgrubs 8:00 - one wave only",    None),
+    ("herald",  _SR_RIFT_HERALD_S,  "Rift Herald 15:00 - ward river",    None),
     ("baron",   _SR_BARON_S,        "Baron up 20:00 - ward river",       None),
-    ("elder",   _SR_ELDER_NOMINAL_S, "Elder Dragon late - group for it",  None),
+    ("elder",   _SR_ELDER_AFTER_SOUL_S, "Elder Dragon up - group for it", None),
 )
 
 # ---------------------------------------------------------------------------
@@ -255,6 +255,10 @@ def milestone_line(tag: object) -> str:
 # "active" ("UP now") so the coach can call the contest, not just the pre-warn.
 _OBJ_ACTIVE_WINDOW_S = 30.0
 
+# One Voidgrub camp = three grubs (the Live Client emits one HordeKill each).
+# Recorded 16.x timelines: exactly 3 HORDE kills per match, no second wave.
+_GRUBS_PER_CAMP = 3
+
 
 def _last_kill_t(objective_events: object, *, name: str,
                  elemental_only: bool = False) -> Optional[float]:
@@ -345,6 +349,14 @@ def _dynamic_epic_callouts(objective_events: object,
     if _last_kill_t(objective_events, name="herald") is not None:
         claimed.add("herald")
 
+    # s156: the Voidgrubs spawn once (25.09 'No longer respawns') as THREE
+    # grubs, one HordeKill each; the third take retires the static row. One or
+    # two takes leave grubs standing, so the row stays.
+    grub_takes = sum(1 for ev in objective_events
+                     if isinstance(ev, dict) and ev.get("name") == "voidgrub")
+    if grub_takes >= _GRUBS_PER_CAMP:
+        claimed.add("grubs")
+
     return rows, claimed
 
 
@@ -404,6 +416,13 @@ def _objective_callouts(game_time_s: float,
                 # RM-305: up since spawn and still standing - no take event
                 # claimed it above. Stays active until its despawn (if any).
                 until = _PERSISTENT_UNTIL_S[tag]
+                if tag == "grubs" and not has_event_data \
+                        and eta < -active_window:
+                    # s156: grubs are almost always cleared minutes after
+                    # spawn; with NO event data "still up" would be a guess
+                    # that is mostly wrong (the drake rule: a missing row
+                    # beats a wrong one). Only the just-spawned window shows.
+                    continue
                 if until is None or game_time_s < until:
                     out.append({
                         "tag": tag,
@@ -435,9 +454,9 @@ def _active_line(tag: str, fallback: str) -> str:
     """Short 'this is up NOW' variant of an objective line (<= 8 words)."""
     active = {
         "dragon": "Drake UP now - contest or trade",
+        "grubs":  "Voidgrubs UP now - take them",
         "herald": "Herald UP now - take it",
         "baron":  "Baron UP now - contest with vision",
-        "plates": "Plates gone now - group mid",
         "elder":  "Elder UP now - group for it",
     }
     return active.get(tag, fallback)

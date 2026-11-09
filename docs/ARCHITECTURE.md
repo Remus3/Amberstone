@@ -230,6 +230,7 @@ Self-heal details for both relay halves: "RC relocated agents" below.
 | `core/riot_api.py` | Riot Web API client + rate limiter + endpoint wrappers |
 | `core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
 | `core/sgp_client.py` | service-gateway match-history client - serves event modes Match-V5 refuses |
+| `core/sr_schedule.py` | ONE cited Summoner's Rift objective schedule |
 | `core/vision_fusion.py` | confidence-weighted partial-read fusion of Live Client + CV reads |
 | `core/vod_alignment.py` | pure VOD alignment (game time -> recording time) |
 | `core/vod_retention.py` | keep-on-condition VOD retention over RC recording sidecars |
@@ -361,7 +362,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 0.7 | - | `core/metrics_cache.py:439` | supervisor_state added to status.json; tolerate absence in older files |
 | 0.9 | - | `ops/rc_self_monitor.py:342` | _check_health() returns a (state, detail) tuple |
 | 0.9 | - | `ops/rc_self_monitor.py:550` | _check_health() returns 3-value state string instead of plain bool |
-| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1514` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
+| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1521` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:288` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
 | 3 step 1.1 | - | `tft/tft_coach_engine.py:1047` | write TFT coaching timestamp only after payload write succeeds |

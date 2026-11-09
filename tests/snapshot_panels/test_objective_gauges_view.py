@@ -32,7 +32,7 @@ _HUES = {
 # A live SR envelope at game clock 6:00 (360s):
 #   - drake: elemental (Fire) taken at 5:00 -> respawn 300+300=600 -> 4:00.
 #   - baron: no kill yet -> static first spawn 1200 -> 14:00.
-#   - elder: nominal late marker 2100 -> 29:00.
+#   - elder: no soul yet (s156: the invented 35:00 marker is gone) -> "-".
 _SR_STATE = {
     "mode_key": "sr",
     "coach": {"action": "Push mid", "immediate": "Group up", "kda": "1/0/0"},
@@ -98,7 +98,7 @@ def test_gauges_render_live_sr_state(mock_server, pw_browser):
         )
         # Exact ETA centers (canonical schedule + game_time arithmetic).
         for key, eta in (("drake", "4:00"), ("baron", "14:00"),
-                         ("elder", "29:00")):
+                         ("elder", "-")):
             txt = page.eval_on_selector(
                 f'#am-obj-gauges .og-dial[data-obj="{key}"] .og-eta',
                 "el => el.textContent")

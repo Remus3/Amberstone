@@ -16,12 +16,16 @@
 //   - liveclient.objective_events          -> `out["objective_events"]` in the
 //     same function ({name, killer_team, down_at_s, dragon_type?}).
 //
-// The objective schedule MIRRORS core/event_callouts.py exactly - no timer
-// is fabricated beyond that canonical schedule + game_time arithmetic:
-//   SR_DRAGON_FIRST_S/RESPAWN_S 300/300, SR_BARON_FIRST_S/RESPAWN_S 1200/360
-//   (same block), _SR_ELDER_NOMINAL_S 2100, _OBJ_ACTIVE_WINDOW_S 30,
-//   _SOUL_SECURED_STACKS 4. tests/test_objective_gauges_oq16.py pins
-//   these copies against the Python constants so drift fails CI.
+// The objective schedule MIRRORS core/sr_schedule.py (the ONE cited SR
+// schedule, s156 S5 / RM-518) via core/event_callouts.py - no timer is
+// fabricated beyond that schedule + game_time arithmetic:
+//   DRAGON first/respawn 300/300, BARON first/respawn 1200/360, ELDER after
+//   soul / respawn 360/360 (both UNVERIFIED in sr_schedule, kept as legacy),
+//   _OBJ_ACTIVE_WINDOW_S 30, soul secured at 4 elemental drakes.
+//   tests/test_sr_schedule_s156.py pins these copies against the Python
+//   constants so drift fails CI. The old 35:00 "nominal Elder" marker is GONE:
+//   it was invented (Elder exists only after a soul), and the Atakhan-era
+//   assumptions (Baron 25:00) are not the 26.1+ rules.
 // Path mirror (`_dynamic_epic_callouts` / `_objective_callouts` in
 // core/event_callouts.py):
 //   - drake: soul secured (>= 4 elemental drakes one side) -> the pit is
@@ -30,12 +34,15 @@
 //     30s active window).
 //   - baron: a real take anchors last_kill + 360; else the static one-shot
 //     at 1200 (UP inside the 30s window, then dropped -> "-").
-//   - elder: the canonical source encodes ONLY the nominal 2100 late marker
-//     (one-shot) and NO post-kill elder respawn - so after an Elder take,
-//     or once the nominal marker is long past, the dial is honestly "-".
+//   - elder: no soul yet -> "-" (it cannot exist). Soul secured -> counts
+//     down to soul_time + 360 (`_soul_secured_at`); after an Elder take it
+//     counts down to last_elder + 360 (`_SR_ELDER_RESPAWN_S`).
 //   - kill-anchored respawns keep UP until the next kill event lands (the
 //     objective really is up - same convention as `up: eta <= 0` in
 //     objective_chips.js).
+//   - Voidgrubs / Rift Herald are not dials; their callout rows live in
+//     core/event_callouts.py (grubs 8:00 once, herald 15:00). Atakhan was
+//     removed in patch 26.1 and plates are permanent, so neither has a row.
 //
 // DOUBLE-ALERT CADENCE (BACKLOG "Overlay HUD micro-lifts"): each counting-down
 // dial also carries an alert tier - "soon" at eta <= 90s, "imminent" at
@@ -58,7 +65,8 @@ const OG_SCHED = {
   drakeRespawnS: 300,
   baronFirstS: 1200,
   baronRespawnS: 360,
-  elderNominalS: 2100,
+  elderAfterSoulS: 360,
+  elderRespawnS: 360,
   activeWindowS: 30,
   soulSecuredStacks: 4,
   // Double-alert cadence (BACKLOG "Overlay HUD micro-lifts"): a dial that is
@@ -186,16 +194,58 @@ function _baronDial(events, gt) {
   return _dial("baron", "none");
 }
 
+// Time the first Dragon Soul was secured, or null (mirror of
+// core/event_callouts._soul_secured_at): the 4th elemental drake of whichever
+// side got there first; when some killers are unresolved, the 4th elemental
+// drake overall (a possible soul keeps Elder visible).
+function _soulSecuredAt(events) {
+  if (!Array.isArray(events)) return null;
+  const bySide = { ally: [], enemy: [] };
+  const every = [];
+  let unresolved = false;
+  for (const ev of events) {
+    if (!_isElementalDrake(ev)) continue;
+    const t = Number(ev.down_at_s);
+    if (!Number.isFinite(t)) continue;
+    every.push(t);
+    if (ev.killer_team === "ally" || ev.killer_team === "enemy") {
+      bySide[ev.killer_team].push(t);
+    } else {
+      unresolved = true;
+    }
+  }
+  const need = OG_SCHED.soulSecuredStacks;
+  const secured = [];
+  for (const ts of [bySide.ally, bySide.enemy]) {
+    if (ts.length >= need) secured.push(ts.slice().sort((x, y) => x - y)[need - 1]);
+  }
+  if (secured.length) return Math.min(...secured);
+  if (unresolved && every.length >= need) {
+    return every.slice().sort((x, y) => x - y)[need - 1];
+  }
+  return null;
+}
+
 function _elderDial(events, gt) {
-  // The canonical source has NO post-kill elder respawn constant - after an
-  // Elder take the dial is honestly "-" rather than an invented timer.
+  // Elder is soul-driven (`_dynamic_epic_callouts`): no soul and no Elder take
+  // means no Elder exists -> honest "-". A secured soul anchors the first
+  // spawn; an Elder take anchors the respawn. Both are UNVERIFIED legacy
+  // 360s values (core/sr_schedule.py) and stay UP until the next kill lands.
   const lastElder = _lastKillT(events, (ev) =>
     ev.name === "dragon" && !_isElementalDrake(ev));
-  if (lastElder !== null) return _dial("elder", "none");
-  const eta = OG_SCHED.elderNominalS - gt; // nominal late marker (`_SR_ELDER_NOMINAL_S`)
-  if (eta > 0) return _dial("elder", "eta", eta, OG_SCHED.elderNominalS);
-  if (eta >= -OG_SCHED.activeWindowS) return _dial("elder", "up");
-  return _dial("elder", "none");
+  let next = null;
+  if (lastElder !== null) next = lastElder + OG_SCHED.elderRespawnS;
+  else {
+    const soulT = _soulSecuredAt(events);
+    if (soulT !== null) next = soulT + OG_SCHED.elderAfterSoulS;
+  }
+  if (next === null) return _dial("elder", "none");
+  const eta = next - gt;
+  if (eta > 0) {
+    const w = lastElder !== null ? OG_SCHED.elderRespawnS : OG_SCHED.elderAfterSoulS;
+    return _dial("elder", "eta", eta, w);
+  }
+  return _dial("elder", "up");
 }
 
 // Compute all 3 dials, or null when the widget must hide entirely
@@ -299,6 +349,7 @@ export const __test = {
   computeGauges,
   _alertTier,
   _drakeDial,
+  _soulSecuredAt,
   fmtEta,
   dialHtml,
   gaugesHtml,
