@@ -27,6 +27,11 @@ body[data-shell="overlay"] {
   --ovx-good: 55, 208, 138;      /* #37D08A lead-ahead / good band */
   --ovx-warn: 232, 163, 61;      /* #E8A33D Hextech warn */
   --ovx-red: 232, 64, 87;        /* #E84057 the ONE emergency pop-out */
+  /* S144-U-275: the urgent band's glyph + bar ink on the call pane. Same hue as
+   * --ovx-red, lighter only: --ovx-red reads 2.90:1 there in the idle recede
+   * over a white game pixel (arcane), under the WCAG 1.4.11 3:1 non-text floor;
+   * this reads 3.41:1 or better idle, 4.59:1 or better live, in every theme. */
+  --ovx-red-ink: 235, 91, 111;   /* #EB5B6F */
   --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.55) - palette section 5 */
   /* Damage-type hues (Y-07, external reference P): the threat donut renders in
    * the overlay build widget, so its hues join the overlay table (doctrine
@@ -408,8 +413,10 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
  * .am-call-glyph; the band drives a glyph color + a 3px color-bar left border.
  * urgent=red (the ONE reserved emergency pop-out, rule 4 - painted only on this
  * single primary action, never a flood) / fight=gold (the single caution hue) /
- * good=green. The verb text stays white (the rule above, doctrine line 164) - the
- * band is carried by the glyph + bar, never by recoloring the verb. This is the
+ * good=green. Urgent paints --ovx-red-ink, the same red lifted to the 3:1
+ * non-text floor in the idle recede (S144-U-275; the glyph is aria-hidden and
+ * repeats the bar, so it is a graphical object, not text). The verb text stays
+ * white (the rule above, doctrine line 164) - the band is carried by the glyph + bar, never by recoloring the verb. This is the
  * preattentive channel the section-6 combat shed leans on (see the
  * "7. Combat declutter" block below). The band-
  * specific rules trail the generic [data-call-band] rule so equal-specificity
@@ -423,10 +430,10 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   color: rgba(var(--ovx-text), 0.55);
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="urgent"] {
-  border-left-color: rgb(var(--ovx-red));
+  border-left-color: rgb(var(--ovx-red-ink));
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="urgent"] .am-call-glyph {
-  color: rgb(var(--ovx-red));
+  color: rgb(var(--ovx-red-ink));
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="fight"] {
   border-left-color: rgb(var(--ovx-gold));

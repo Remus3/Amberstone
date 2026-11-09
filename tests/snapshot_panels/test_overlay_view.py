@@ -314,7 +314,8 @@ def test_overlay_call_action_band_channel(mock_server, pw_browser):
     preattentive signal the combat shed (doctrine section 6; the
     "7. Combat declutter" block of web/css/overlay.css) leans on."""
     BAND_RGB = {
-        "urgent": "232, 64, 87",   # --ovx-red, the reserved emergency pop-out
+        # --ovx-red-ink: --ovx-red lifted to the 3:1 idle floor (S144-U-275)
+        "urgent": "235, 91, 111",
         "fight": "200, 170, 110",  # --ovx-gold, the single caution hue
         "good": "55, 208, 138",    # --ovx-good
     }
