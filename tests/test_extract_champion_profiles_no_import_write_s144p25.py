@@ -125,8 +125,7 @@ def test_importing_the_script_writes_nothing_and_prints_nothing_else():
 def ecp():
     test_the_module_body_writes_nothing()
     sys.modules.pop(_MOD, None)
-    mod = importlib.import_module(_MOD)
-    yield mod
+    yield importlib.import_module(_MOD)
     sys.modules.pop(_MOD, None)
 
 

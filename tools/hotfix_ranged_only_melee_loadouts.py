@@ -115,14 +115,12 @@ def apply(data: dict) -> int:
         if not _is_melee(champ):
             continue
         for var in (cd.get("variants") or {}).values():
-            changed = False
             for p in var.get("build_paths") or []:
                 if not isinstance(p, dict):
                     continue
                 new_items = _fix_items(p.get("key"), p, list(p.get("items") or []))
                 if new_items != list(p.get("items") or []):
                     p["items"] = new_items
-                    changed = True
                     touched += 1
             # Resync the variant-level items mirror to the primary path (the
             # s8 mirror guard requires variant.items == primary path items).
@@ -133,16 +131,12 @@ def apply(data: dict) -> int:
                 )
                 if list(var.get("items") or []) != list(prim.get("items") or []):
                     var["items"] = list(prim.get("items") or [])
-                    changed = True
             elif any(_norm(x) == _norm(_RUNAAN) for x in (var.get("items") or [])):
                 # Pathless variant: fix the mirror list directly.
                 var["items"] = _fix_items(
                     "", var, list(var.get("items") or [])
                 )
                 touched += 1
-                changed = True
-            if changed:
-                pass
     return touched
 
 
