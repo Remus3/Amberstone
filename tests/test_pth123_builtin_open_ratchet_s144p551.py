@@ -68,7 +68,7 @@ _BASELINE: dict[str, int] = {
     "tools/ds_waveclear_build.py": 2,
     "tools/ds_zonecontrol_build.py": 2,
     "tools/sibling_name_sweep.py": 1,
-    "tools/stop_claim_gate.py": 4,
+    "tools/stop_claim_gate.py": 2,
     # unconverted: binary / exclusive-create / handle-held opens and writers that other ratchets (RM-481 LF, RM-258 atomic) read by shape, plus plain reads not yet swept
     "coaches/_base_coach.py": 1,
     "core/death_recap.py": 1,
@@ -78,8 +78,6 @@ _BASELINE: dict[str, int] = {
     "dashboard/routes_recordings.py": 1,
     "lib/ingest_receipt.py": 1,
     "ops/loop/headless_env.py": 1,
-    "ops/loop/lane_run_ledger.py": 2,
-    "ops/loop/lanes.py": 1,
     "ops/loop/queue_loop.py": 1,
     "ops/loop/slots.py": 1,
     "ops/loop/steer.py": 1,
@@ -94,7 +92,6 @@ _BASELINE: dict[str, int] = {
     "tft/rounds/store.py": 1,
     "tft/sources/tft_log.py": 1,
     "tools/build_portable.py": 1,
-    "tools/det_coach_shadow_report.py": 1,
     "tools/inbox_responder_runner.py": 2,
     "tools/landing_sampler.py": 2,
     "tools/moon_sync_poller.py": 3,
@@ -217,6 +214,10 @@ _FIXED = (
     "ops/audit/p2w5_partition.py",
     "ops/audit/p2w5h2_partition.py",
     "tools/pytest_guard.py",
+    # S144-P-565: three files fully clean (two binary tail reads on Path objects in the lane ledger, one binary status-tail read, one held-handle binary read in the shadow report); tools/stop_claim_gate.py gave up its two transcript text reads and keeps its LF append and atomic tmp write
+    "ops/loop/lane_run_ledger.py",
+    "ops/loop/lanes.py",
+    "tools/det_coach_shadow_report.py",
 )
 
 
