@@ -10,6 +10,7 @@ length + ASCII hygiene, and fail-soft on bad input.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from core.event_callouts import (
     _inhib_lane,
@@ -329,8 +330,7 @@ class LineLengthAndAsciiTests(unittest.TestCase):
     def test_module_source_is_ascii(self):
         import core.event_callouts as mod
 
-        with open(mod.__file__, "rb") as fh:
-            raw = fh.read()
+        raw = Path(mod.__file__).read_bytes()
         non_ascii = [b for b in raw if b > 127]
         self.assertEqual(non_ascii, [], "module source has non-ASCII bytes")
 

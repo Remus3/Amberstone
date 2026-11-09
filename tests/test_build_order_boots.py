@@ -359,7 +359,7 @@ class BootsInjectionTests(unittest.TestCase):
             items_path.exists(),
             f"tracked catalog {items_path} is missing from this checkout",
         )
-        with open(items_path, encoding="utf-8") as fh:
+        with items_path.open(encoding="utf-8") as fh:
             raw = json.load(fh)
         items = raw.get("data", raw)
         for bare, mirror in _BOOTS_ARENA_MIRROR.items():

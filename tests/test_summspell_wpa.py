@@ -369,8 +369,7 @@ class AsciiHygieneTests(unittest.TestCase):
         for path in ("core/summoner_spell_wpa.py",
                      "dashboard/routes_summspell_wpa.py",
                      "tests/test_summspell_wpa.py"):
-            with open(path, "rb") as f:
-                data = f.read()
+            data = Path(path).read_bytes()
             try:
                 data.decode("ascii")
             except UnicodeDecodeError as exc:

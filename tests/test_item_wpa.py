@@ -329,8 +329,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_files_are_ascii(self):
         for path in ("core/item_wpa.py", "dashboard/routes_item_wpa.py",
                      "tests/test_item_wpa.py"):
-            with open(path, "rb") as f:
-                data = f.read()
+            data = Path(path).read_bytes()
             try:
                 data.decode("ascii")
             except UnicodeDecodeError as exc:
