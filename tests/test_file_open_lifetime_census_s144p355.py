@@ -12,9 +12,10 @@ every file-object open in the tracked non-test ``.py`` and requires each to be o
 - NAMED: a row in ``_NAMED`` below: the file is returned or kept on ``self`` and an owner
   outlives the function, or it is a process-lifetime log sink. A NAMED row states who closes it.
 
-Measured 2026-11-07 over the git index (AST, alias-aware for ``open``): 209 file opens in 140
-files, 194 of them ``with`` items and 15 not (5 WITH_NAME, 10 NAMED rows in 9 functions; this
-row converted tools/p3_ascii_sweep.py's ``tokenize.tokenize(path.open("rb").readline)`` to a
+Measured 2026-11-08 (s156 lane landing) over the git index (AST, alias-aware for ``open``): 214
+file opens in 144 files, 198 of them ``with`` items and 16 not (5 WITH_NAME, 1 FINALLY in
+tools/det_coach_shadow_report.iter_jsonl, 10 NAMED rows in 9 functions; the 2026-11-07 row
+converted tools/p3_ascii_sweep.py's ``tokenize.tokenize(path.open("rb").readline)`` to a
 ``with`` and closed the handle tools/lcu_push_watcher._open_shared stranded when the ``seek``
 after the open raised). The kinds seen:
 builtin ``open``, ``io.open``, ``codecs`` / ``gzip`` / ``bz2`` / ``lzma`` / ``tarfile`` ``.open``,
@@ -40,8 +41,8 @@ _OUT_OF_SCOPE = ("tests/", "ops/fleet_kit/", "agents/agent3_testing/suite/", "do
 _OPEN_MODULES = {"io", "codecs", "gzip", "bz2", "lzma", "tarfile"}
 _MODE = re.compile(r"^[rwaxbt+U]{1,4}$")
 
-_MEASURED_TOTAL = 209
-_MEASURED_NOT_WITH = 15
+_MEASURED_TOTAL = 214
+_MEASURED_NOT_WITH = 16
 
 _SINK = ("a process-lifetime --log-file sink for a one-shot CLI: it replaces sys.stdout and "
          "sys.stderr for the whole run and is released at interpreter exit, so no function "

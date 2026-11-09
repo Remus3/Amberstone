@@ -252,6 +252,8 @@ def test_one_bad_key_drops_only_that_field():
 
 def test_str_subclass_key_label_ignores_overridden_str():
     class S(str):
+        __slots__ = ()
+
         def __str__(self):
             raise RuntimeError("x")
 
@@ -279,5 +281,5 @@ def test_output_is_strict_json_for_hostile_numerics():
         if key == "_notes":
             continue
         assert math.isfinite(entry["confidence"])
-    json.dumps({k: v for k, v in res.items() if k != "_notes" and k != "hp"},
+    json.dumps({k: v for k, v in res.items() if k not in {"_notes", "hp"}},
                allow_nan=False)

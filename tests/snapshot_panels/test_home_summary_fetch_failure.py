@@ -58,8 +58,19 @@ _CARD = "#home-recent-list .home-recent-card"
 _SUB_FAIL = "summary did not load - retrying"
 _RECENT_FAIL = "matches did not load - retrying"
 _WEEK_FAIL = "week did not load - retrying"
-_LIVE_RE = re.compile(r"/api/home/summary")
-_MOCK_GLOB = "**/data/ui_mock/home.json"
+
+
+def _route_summary(page, mock, handler):
+    """Route the Home summary fetch: the mock JSON file, or the live /api/home/summary call.
+
+    The matchers are written out at the call so the RM-1506 route-matcher guard
+    (tests/snapshot_panels/test_route_matcher_no_wide_interception_rm1506.py) can read
+    them; a bare name or a conditional expression is refused there."""
+    if mock:
+        page.route("**/data/ui_mock/home.json", handler)
+    else:
+        page.route(re.compile(r"/api/home/summary"), handler)
+
 
 _SETTLED = """() => {
   const ul = document.querySelector('#home-recent-list');
@@ -188,7 +199,7 @@ def test_http_error_says_did_not_load(mock, mock_server, pw_browser):
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_MOCK_GLOB if mock else _LIVE_RE, _fail)
+        _route_summary(page, mock, _fail)
         _goto(page, mock_server, mock)
         _settle(page, timeout=5_000)
         got = _read(page)
@@ -206,7 +217,7 @@ def test_rejected_or_shapeless_reply_says_did_not_load(
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_LIVE_RE, handler)
+        _route_summary(page, False, handler)
         _goto(page, mock_server, False)
         _settle(page, timeout=5_000)
         got = _read(page)
@@ -221,7 +232,7 @@ def test_real_empty_store_still_says_empty(mock_server, pw_browser):
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_LIVE_RE, _empty_live)
+        _route_summary(page, False, _empty_live)
         _goto(page, mock_server, False)
         _settle(page)
         got = _read(page)
@@ -242,7 +253,7 @@ def test_next_visit_fetches_again_after_a_failure(mock, mock_server,
     ctx, page, errors = _new_page(pw_browser)
     sw = _Switch(_fail)
     try:
-        page.route(_MOCK_GLOB if mock else _LIVE_RE, sw)
+        _route_summary(page, mock, sw)
         _goto(page, mock_server, mock)
         _settle(page, timeout=5_000)
         first = _text(page, _RECENT)
@@ -266,7 +277,7 @@ def test_failed_tab_switch_drops_the_previous_tab(mock_server, pw_browser):
     ctx, page, errors = _new_page(pw_browser)
     sw = _Switch(_ok)
     try:
-        page.route(_LIVE_RE, sw)
+        _route_summary(page, False, sw)
         _goto(page, mock_server, False)
         page.wait_for_function(
             f"document.querySelectorAll('{_CARD}').length > 0",
@@ -299,7 +310,7 @@ def test_failed_refetch_of_the_same_tab_keeps_the_paint(mock_server,
     ctx, page, errors = _new_page(pw_browser)
     sw = _Switch(_ok)
     try:
-        page.route(_LIVE_RE, sw)
+        _route_summary(page, False, sw)
         _goto(page, mock_server, False)
         page.wait_for_function(
             f"document.querySelectorAll('{_CARD}').length > 0",

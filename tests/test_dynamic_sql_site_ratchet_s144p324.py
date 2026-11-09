@@ -201,7 +201,7 @@ def test_a_function_parameter_reaches_sql_text_only_where_reviewed():
     ("def f(c, t):\n    c.executescript(f'DROP TABLE {t}')\n", (1, {("f", "t")})),
     ("async def f(c, t):\n    c.execute(f'SELECT {t}')\n", (1, {("f", "t")})),
     ("T = 'x'\n\n\ndef f(c):\n    c.execute(f'SELECT 1 FROM {T}')\n", (1, set())),
-    ("def f(c):\n    c.execute(\"SELECT 1\" + \" FROM t\")\n", (0, set())),
+    ('def f(c):\n    c.execute("SELECT 1" + " FROM t")\n', (0, set())),
     ("def f(c, t):\n    c.execute('SELECT ? FROM t', (t,))\n", (0, set())),
     ("def f(c):\n    c.execute(f'SELECT 1')\n", (0, set())),
     ("class K:\n    def m(self, c, t):\n        c.execute(f'SELECT {t}')\n", (1, {("m", "t")})),

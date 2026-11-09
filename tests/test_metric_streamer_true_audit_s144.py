@@ -32,6 +32,7 @@ from pathlib import Path
 import pytest
 
 from core import metric_streamer as ms
+from tests._timing_budget import fleet_test_guard
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -358,7 +359,7 @@ def test_close_flush_does_not_block_a_concurrent_on_state(rec):
     rec.flush_hook = hook
     closer = threading.Thread(target=s.close, name="close-test", daemon=True)
     closer.start()
-    assert entered.wait(5)
+    assert entered.wait(fleet_test_guard.budget(5))
     done = threading.Event()
 
     def tick():

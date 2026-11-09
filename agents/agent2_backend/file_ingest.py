@@ -116,7 +116,7 @@ def _read_text_blocking(path: Path) -> str:
 
 def _null_constant(_token: str) -> None:
     """json parse_constant: NaN / Infinity / -Infinity are not JSON; read as null."""
-    return None
+    return
 
 
 def _finite_float(text: str) -> float | None:

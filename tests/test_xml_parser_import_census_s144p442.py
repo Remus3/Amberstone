@@ -58,7 +58,7 @@ def _is_parser_module(name: str) -> bool:
         return False
     if name == "xml.sax" or name.startswith("xml.sax."):
         return True
-    root = name.split(".")[0]
+    root = name.split(".", maxsplit=1)[0]
     if root in _PARSER_ROOTS or root == "lxml":
         return True
     return any(name == p or name.startswith(p + ".") for p in _PARSER_PREFIXES)

@@ -104,7 +104,7 @@ def tree_counts() -> dict[str, int]:
 
 def test_no_new_text_mode_writer_without_newline(tree_counts):
     new = {f: n for f, n in tree_counts.items() if n > _BASELINE.get(f, 0)}
-    assert not new, f"text-mode writer(s) without newline=: {new} - pass newline=\"\\n\""
+    assert not new, f'text-mode writer(s) without newline=: {new} - pass newline="\\n"'
 
 
 def test_baseline_is_exact(tree_counts):

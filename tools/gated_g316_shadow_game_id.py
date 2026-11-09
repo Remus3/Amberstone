@@ -76,8 +76,8 @@ def parse_ts(value: object) -> Optional[datetime]:
 def rows_since(lines: Iterable[str], since: datetime) -> list[dict]:
     """Decode jsonl lines, keep dict rows whose ts parses and is >= since."""
     out: list[dict] = []
-    for line in lines:
-        line = line.strip()
+    for raw_line in lines:
+        line = raw_line.strip()
         if not line:
             continue
         try:

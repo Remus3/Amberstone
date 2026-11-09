@@ -86,7 +86,7 @@ def test_no_open_takes_its_mode_from_a_variable():
     new = [(rel, line, expr) for rel, line, expr in _tree_hits() if (rel, expr) not in _NAMED]
     assert not new, (
         "an open-family call with a non-literal mode hides from the CRLF ratchets - pass a literal mode "
-        f"(and newline=\"\\n\" for a text write), or name the row in _NAMED: {new}"
+        f'(and newline="\\n" for a text write), or name the row in _NAMED: {new}'
     )
 
 

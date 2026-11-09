@@ -96,7 +96,7 @@ def _scan(source: str) -> list[tuple[int, str, str]]:
 
     def is_env(node: ast.AST) -> bool:
         d = _dotted(node)
-        return d is not None and _resolve(d, aliases) in envs or d in envs
+        return (d is not None and _resolve(d, aliases) in envs) or d in envs
 
     hits: list[tuple[int, str, str]] = []
 

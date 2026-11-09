@@ -17,6 +17,7 @@ import pytest
 
 import agents.agent7_context.ui_feedback as ufb
 from agents.agent4_coach_mentor.ui_applier import MAX_CHANGES, MAX_FILE_BYTES
+from tests._timing_budget import fleet_test_guard
 
 _BASE_CSS = (
     ":root {\n  --canvas: #2B2721;\n  --text: #E8DFD3;\n  --accent2: #101010;\n}\n"
@@ -498,7 +499,7 @@ def test_r2_long_text_is_answered_fast_without_rules(tmp_path: Path, monkeypatch
     p, sched = _parser(tmp_path, monkeypatch)
     t0 = time.monotonic()
     r = p.parse("bigger " * 30000)
-    assert time.monotonic() - t0 < 2.0
+    assert time.monotonic() - t0 < fleet_test_guard.budget(2.0)
     assert r.intent == "ui_feedback_too_long"
     assert sched.calls == []
 

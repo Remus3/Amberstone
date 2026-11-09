@@ -160,7 +160,7 @@ def test_scanner_is_live():
         "Badge: [![b](x/badge.svg)](adr/BADGE_GONE.md) and [![b](https://example.org/b.svg)](adr/README.md).\n"
         "Index prose: arr[a][0] stays prose.\n"
         "[ok]: adr/README.md\n"
-        "  [gone]: <adr/REF_GONE.md> \"A title\"\n"
+        '  [gone]: <adr/REF_GONE.md> "A title"\n'
         "[web]: https://example.org/x 'T'\n"
         "[top]: #anchor\n"
         "[cite]: ../web/js/x.js:3 (paren title)\n"

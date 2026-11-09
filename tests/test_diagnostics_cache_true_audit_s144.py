@@ -63,7 +63,7 @@ class _Clock:
         self.mono += seconds
 
 
-@pytest.fixture()
+@pytest.fixture
 def fresh(monkeypatch):
     """Empty cache, counted builder, fake clock."""
     monkeypatch.setattr(diag, "_DIAG_CACHE", {})
@@ -197,7 +197,7 @@ def test_f2_strict_json_through_the_real_health_reader(monkeypatch, tmp_path):
     the NaN / Infinity literals and an overflowing 1e400 (all accepted by
     json.loads) still yields a strict-JSON diagnostics body."""
     import dashboard._context as ctx
-    import dashboard.builders as builders
+    from dashboard import builders
 
     (tmp_path / "ops" / "runtime").mkdir(parents=True)
     (tmp_path / "ops" / "runtime" / "health.json").write_bytes(
@@ -206,13 +206,14 @@ def test_f2_strict_json_through_the_real_health_reader(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(ctx, "APP_DIR", tmp_path)
     monkeypatch.setattr(builders, "_APP_DIR", tmp_path)
-    # Keep the two loopback probes off the network: refuse instantly.
-    import urllib.request as ur
+    # Keep the two loopback probes off the network: refuse instantly, in
+    # dashboard.builders only (tests/_module_view.py, RM-801).
+    from tests._module_view import bind_urlopen
 
     def _refuse(*_a, **_k):
         raise OSError("probe disabled in test")
 
-    monkeypatch.setattr(ur, "urlopen", _refuse)
+    bind_urlopen(monkeypatch, builders, _refuse)
     monkeypatch.setattr(diag, "_DIAG_CACHE", {})
     monkeypatch.setattr(diag, "_build_diagnostics", builders._build_diagnostics)
     out = _strict_loads(diag.diagnostics_cached())

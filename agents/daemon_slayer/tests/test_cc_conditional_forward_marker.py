@@ -64,6 +64,11 @@ _ALLOWED_TEST_FILES = {
     # cc_conditional, reaching the registry through the already-authorized
     # cc_pressure.py consumer.
     "test_cc_floor_route_seam_rm201.py",
+    # S144-T-577 (true-audit lane, landed s156). A TEST read, not a consumer
+    # wire: it reads the two registries to build the full roster for the
+    # enabler-equivalence check of compute_cc_pairing. No SOURCE import of
+    # cc_conditional is added; cc_pairing reaches it as before.
+    "test_cc_pairing_fail_soft_s144t577.py",
     "test_cc_conditional_forward_marker.py",
     "test_cc_conditional_wave1.py",
     "test_cc_conditional_wave2.py",

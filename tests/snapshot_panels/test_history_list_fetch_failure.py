@@ -51,8 +51,19 @@ _LIST = "#history-session-list"
 _ROW = "#history-session-list .history-session-row"
 _FAIL_LINE = "sessions did not load - reopen History to retry"
 _EMPTY_LINE = "no sessions in scope"
-_LIVE_RE = re.compile(r"/api/history\?")
-_MOCK_GLOB = "**/data/ui_mock/history.json"
+
+
+def _route_history(page, mock, handler):
+    """Route the History fetch: the mock JSON file, or the live /api/history call.
+
+    The matchers are written out at the call so the RM-1506 route-matcher guard
+    (tests/snapshot_panels/test_route_matcher_no_wide_interception_rm1506.py) can read
+    them; a bare name or a conditional expression is refused there."""
+    if mock:
+        page.route("**/data/ui_mock/history.json", handler)
+    else:
+        page.route(re.compile(r"/api/history\?"), handler)
+
 
 _SETTLED = """() => {
   const ul = document.querySelector('#history-session-list');
@@ -177,7 +188,7 @@ def test_http_error_says_did_not_load(mock, mock_server, pw_browser):
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_MOCK_GLOB if mock else _LIVE_RE, _fail)
+        _route_history(page, mock, _fail)
         _goto(page, mock_server, mock)
         try:
             text = _settled_text(page, timeout=5_000)
@@ -200,7 +211,7 @@ def test_rejected_or_shapeless_reply_says_did_not_load(
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_LIVE_RE, handler)
+        _route_history(page, False, handler)
         _goto(page, mock_server, False)
         try:
             text = _settled_text(page, timeout=5_000)
@@ -219,8 +230,7 @@ def test_real_empty_scope_still_says_empty(mock, mock_server, pw_browser):
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_MOCK_GLOB if mock else _LIVE_RE,
-                   _empty_mock if mock else _empty_live)
+        _route_history(page, mock, _empty_mock if mock else _empty_live)
         _goto(page, mock_server, mock)
         text = _settled_text(page)
         count = _text(page, "#history-session-count")
@@ -240,7 +250,7 @@ def test_failure_is_retried_on_the_next_visit(mock, mock_server, pw_browser):
     ctx, page, errors = _new_page(pw_browser)
     try:
         handler = _seq([_fail, _ok_mock if mock else _ok_live])
-        page.route(_MOCK_GLOB if mock else _LIVE_RE, handler)
+        _route_history(page, mock, handler)
         _goto(page, mock_server, mock)
         try:
             first = _settled_text(page, timeout=5_000)
@@ -263,7 +273,7 @@ def test_failed_scope_pick_drops_the_previous_scope(mock_server, pw_browser):
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_LIVE_RE, _seq([_ok_live, _fail]))
+        _route_history(page, False, _seq([_ok_live, _fail]))
         _goto(page, mock_server, False)
         page.wait_for_selector(_ROW, timeout=10_000)
         page.click(_ROW)
@@ -307,7 +317,7 @@ def test_older_reply_never_replaces_newer_scope(mock_server, pw_browser):
 
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_LIVE_RE, _hold_first_then_ok)
+        _route_history(page, False, _hold_first_then_ok)
         _goto(page, mock_server, False)
         for _ in range(100):
             if held:

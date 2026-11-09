@@ -56,18 +56,26 @@ def _drive(monkeypatch, creds_seq, bus_cls, *, passes):
     monkeypatch.setattr(lcu_events, "LcuEventBus", bus_cls)
     seq = list(creds_seq)
     calls = {"n": 0}
+    hook = {"reached": None}
 
     def _creds():
         calls["n"] += 1
+        if calls["n"] >= passes and hook["reached"] is not None:
+            hook["reached"]()
         return seq[min(calls["n"] - 1, len(seq) - 1)]
 
     monkeypatch.setattr(orc, "_lcu_credentials", _creds)
 
     async def _go():
+        loop = asyncio.get_running_loop()
+        reached = asyncio.Event()
+        # thread-safe: _creds may run on an executor thread
+        hook["reached"] = lambda: loop.call_soon_threadsafe(reached.set)
         rec = _Rec()
         sup = asyncio.ensure_future(orc._lcu_supervisor(rec))
-        while calls["n"] < passes and not sup.done():
-            await asyncio.sleep(0.005)
+        waiter = asyncio.ensure_future(reached.wait())
+        await asyncio.wait({waiter, sup}, return_when=asyncio.FIRST_COMPLETED)
+        waiter.cancel()
         still_running = not sup.done()
         rec._stop.set()
         try:

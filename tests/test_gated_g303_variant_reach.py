@@ -103,7 +103,7 @@ def test_store_flag_reads_that_file_read_only(tmp_path):
     _, user, _ = g._default_sources(str(store))
     assert [(r["key"], r["label"]) for r in user("Vayne")] == [("k1", "AP on-hit")]
     assert user("Caitlyn") == []
-    assert ub._STORE_PATH == before  # the module store is never repointed
+    assert before == ub._STORE_PATH  # the module store is never repointed
 
 
 def test_default_path_reads_the_module_store_without_its_reader(monkeypatch,

@@ -87,10 +87,10 @@ def _targets(source: str) -> list[tuple[int, str, str]]:
             if (isinstance(first, ast.Name) and first.id in alias and isinstance(second, ast.Constant)
                     and isinstance(second.value, str)):
                 out.append((node.lineno, alias[first.id], second.value))
-        elif fname == "patch" and _hatch(node, "create"):
-            if isinstance(first, ast.Constant) and isinstance(first.value, str) and "." in first.value:
-                mod, attr = first.value.rsplit(".", 1)
-                out.append((node.lineno, mod, attr))
+        elif (fname == "patch" and _hatch(node, "create") and isinstance(first, ast.Constant)
+              and isinstance(first.value, str) and "." in first.value):
+            mod, attr = first.value.rsplit(".", 1)
+            out.append((node.lineno, mod, attr))
     return out
 
 

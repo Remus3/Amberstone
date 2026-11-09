@@ -113,5 +113,5 @@ def test_the_two_fixed_pointers_would_have_been_caught():
         "   take its recommendation, log it, refine.\n"
     )
     assert scan_source(old_doctrine, tracked) == [(1, "tools/gemini_ask.ps1")]
-    old_row = "`core/summoner_cooldowns.py` consumer exists; drives \"enemy Flash down -> all-in\"\n"
+    old_row = '`core/summoner_cooldowns.py` consumer exists; drives "enemy Flash down -> all-in"\n'
     assert scan_source(old_row, tracked) == [(1, "core/summoner_cooldowns.py")]

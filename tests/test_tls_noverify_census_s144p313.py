@@ -104,12 +104,12 @@ def _docstring_ids(tree: ast.AST) -> set[int]:
 def _sites(tree: ast.AST) -> int:
     n = 0
     for node in ast.walk(tree):
-        if isinstance(node, ast.Attribute) and node.attr in ("CERT_NONE", "_create_unverified_context"):
+        noverify_attr = isinstance(node, ast.Attribute) and node.attr in ("CERT_NONE", "_create_unverified_context")
+        hostname_off = (isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant)
+                        and node.value.value is False
+                        and any(isinstance(t, ast.Attribute) and t.attr == "check_hostname" for t in node.targets))
+        if noverify_attr or hostname_off:
             n += 1
-        elif isinstance(node, ast.Assign):
-            if (isinstance(node.value, ast.Constant) and node.value.value is False
-                    and any(isinstance(t, ast.Attribute) and t.attr == "check_hostname" for t in node.targets)):
-                n += 1
     return n
 
 

@@ -68,8 +68,9 @@ def _normalised(path) -> str:
     """`path` as a normalised POSIX string; "" when there is no path.
 
     Accepts str or os.PathLike. Backslashes become "/" and "." / ".." segments
-    collapse, so "data/../tools/x.py" is judged as tools/x.py (it was exempt
-    through the "data/" prefix) and "./data/x.json" as data/x.json.
+    collapse, so a path that climbs out of data/ through ".." into tools/ is
+    judged as the tools/ path (it was exempt through the "data/" prefix) and
+    "./data/x.json" as data/x.json.
     """
     if not path:
         return ""
@@ -125,7 +126,7 @@ def split_lines(text: str) -> list[str]:
     lines = text.split("\n")
     if text.endswith("\n"):
         lines.pop()
-    return [ln[:-1] if ln.endswith("\r") else ln for ln in lines]
+    return [ln.removesuffix("\r") for ln in lines]
 
 
 def hits(text: str, path: str = "") -> list[str]:

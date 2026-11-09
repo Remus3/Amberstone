@@ -35,6 +35,7 @@ no view renders it).
 import json
 from urllib.parse import parse_qs, urlparse
 
+from tests.snapshot_panels._route_match import on_path
 from tests.snapshot_panels.conftest import _ICON_STAND_IN, _WS_STUB, FIXTURE_DIR
 
 _SHOW_MAIN_CSS = (
@@ -50,15 +51,14 @@ def show_coaching_main(page):
     nothing while it is not rendered (pinned by
     test_home_minimap_polls_need_rendered_panel.py)."""
 
-    def is_index(url):
-        return urlparse(url).path in ("/", "/index.html")
-
     def handler(route):
         resp = route.fetch()
         body = resp.text().replace("</head>", _SHOW_MAIN_CSS + "</head>", 1)
         route.fulfill(response=resp, body=body)
 
-    page.route(is_index, handler)
+    # Compiled path matchers, not a Python callable (RM-1506 guard).
+    page.route(on_path("/"), handler)
+    page.route(on_path("/index.html"), handler)
 
 
 _COUNT_JS = r"""

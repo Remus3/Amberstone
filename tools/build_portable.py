@@ -339,10 +339,6 @@ BOOT_SCAN_ALLOW = {
         frozenset({"schtasks"}),
         "FROZEN supervisor: `schtasks /Run RC-Phase3-Supervisor` of an existing task, "
         "breaker-bounded (plan S9); it creates no task"),
-    "tools/liveclient_relay.py": (
-        frozenset({"schtasks", "schtasks /Create"}),
-        "module docstring records the legacy ONLOGON task; the agent creates none "
-        "(the launcher runs it, plan section 3.1)"),
 }
 
 

@@ -18,11 +18,11 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import threading
 from unittest.mock import patch
 
-import pytest
-
 from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
+from tests._timing_budget import fleet_test_guard
 
 _SKIP = ("ops/fleet_kit/",)
 
@@ -69,13 +69,37 @@ def test_the_detector_sees_both_call_shapes():
 
 
 def test_mode_transition_outside_a_loop_skips_instead_of_raising():
-    """The behaviour fix: game -> client with no running loop logs the skip and returns."""
+    """The behaviour fix: game -> client with no running loop logs the skip and returns.
+
+    Driven on a fresh thread: the running-loop marker is per thread, and a worker
+    whose session Playwright browser started earlier keeps the main thread's
+    marker set (tests/snapshot_panels/conftest.py, RM-1974c), so the main
+    thread is not "outside any loop" on every xdist worker."""
     from agents.supervisor import Supervisor
 
-    sup = Supervisor()
-    with pytest.raises(RuntimeError):
-        asyncio.get_running_loop()  # precondition: this test runs outside any loop
-    with patch("agents.supervisor.log") as log:
-        sup._on_mode_transition("game", "client")  # must not raise
-    assert not getattr(sup, "_auto_analyze_task", None)
-    assert any("no running loop" in c.args[0] for c in log.debug.call_args_list)
+    box: dict = {}
+
+    def body() -> None:
+        try:
+            sup = Supervisor()
+            try:
+                asyncio.get_running_loop()
+                box["precondition"] = False
+            except RuntimeError:
+                box["precondition"] = True  # this thread runs outside any loop
+            with patch("agents.supervisor.log") as log:
+                sup._on_mode_transition("game", "client")  # must not raise
+            box["task"] = getattr(sup, "_auto_analyze_task", None)
+            box["debug"] = [c.args[0] for c in log.debug.call_args_list]
+        except Exception as exc:  # noqa: BLE001 - re-raised on the test thread below
+            box["error"] = exc
+
+    worker = threading.Thread(target=body, name="no-loop-transition", daemon=True)
+    worker.start()
+    worker.join(fleet_test_guard.budget(30))
+    assert not worker.is_alive(), "the transition did not return"
+    if "error" in box:
+        raise box["error"]
+    assert box["precondition"], "the worker thread unexpectedly had a running loop"
+    assert not box["task"]
+    assert any("no running loop" in m for m in box["debug"])

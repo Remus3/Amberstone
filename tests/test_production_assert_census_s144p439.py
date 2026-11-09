@@ -137,7 +137,7 @@ def test_the_detector_flags_each_shape():
         "assert x\n"
         "def f():\n"
         "    assert y is not None, 'why'\n"
-        "s = \"assert z\"\n"
+        's = "assert z"\n'
         "# assert w\n"
     )
     assert [(ln, s) for ln, s, _n in _asserts(src)] == [(1, "assert x"), (3, "assert y is not None, 'why'")]

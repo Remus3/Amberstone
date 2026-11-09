@@ -20,6 +20,7 @@ import threading
 from core import minimap_presence as mp
 from core.minimap_districts import load_grid
 from core.minimap_presence import MinimapPresenceTracker, presence_payload
+from tests._timing_budget import fleet_test_guard
 
 
 def _dot(team, x, y):
@@ -159,6 +160,8 @@ def test_payload_rejects_bool_negative_and_absurd_values():
 
 def test_payload_district_must_be_a_string_id():
     class Evil(str):
+        __slots__ = ()
+
         def __str__(self):
             raise RuntimeError("boom")
 
@@ -210,15 +213,15 @@ def test_update_and_reset_are_serialized(monkeypatch):
         target=tr.update, args=([_dot("blue", 0.30, 0.70)], "sr", 100.0)
     )
     worker.start()
-    assert entered.wait(5)
+    assert entered.wait(fleet_test_guard.budget(5))
     resetter = threading.Thread(target=tr.reset)
     resetter.start()
     resetter.join(0.3)
     # reset must wait for the in-flight update, never interleave with it
     assert resetter.is_alive()
     release.set()
-    worker.join(5)
-    resetter.join(5)
+    worker.join(fleet_test_guard.budget(5))
+    resetter.join(fleet_test_guard.budget(5))
     assert not resetter.is_alive()
     monkeypatch.setattr(mp, "_bucket", real_bucket)
     # the reset ran AFTER the update, so nothing survives it

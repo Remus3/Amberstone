@@ -29,10 +29,10 @@ SYN = "synthetic\\V\\m.mp4"
 class RaisingApi:
     """A fake shell whose named method raises; the rest behave."""
 
-    def __init__(self, raise_in=None, exc=OSError("boom"), *, gone=True,
+    def __init__(self, raise_in=None, exc=None, *, gone=True,
                  exists_raises=False, lands=True):
         self.raise_in = raise_in
-        self.exc = exc
+        self.exc = OSError("boom") if exc is None else exc
         self.deleted = []
         self.gone = gone
         self.exists_raises = exists_raises
@@ -234,10 +234,7 @@ def _stub_winreg(monkeypatch, policies, bitbucket):
     import winreg
 
     def open_key(hive, sub):
-        if sub == rb._POLICIES:
-            vals = policies.get(hive)
-        else:
-            vals = bitbucket
+        vals = policies.get(hive) if sub == rb._POLICIES else bitbucket
         if vals is None:
             raise OSError("no key")
         return _FakeKey(vals)
@@ -303,7 +300,7 @@ def test_no_recycle_files_zero_is_permissive(monkeypatch):
 # -- F4: a truncated $I record is not proof of a landing --------------------------
 
 
-def _v2(original: str, declared: int = None) -> bytes:
+def _v2(original: str, declared: int | None = None) -> bytes:
     name = original + "\0"
     n = len(name) if declared is None else declared
     return struct.pack("<qqqi", 2, 1, 0, n) + name.encode("utf-16-le")

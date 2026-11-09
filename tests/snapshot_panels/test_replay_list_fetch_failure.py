@@ -47,8 +47,19 @@ _MOCK = (Path(__file__).resolve().parents[2]
 _LIST = "#replay-match-list"
 _FAIL_LINE = "matches did not load - reopen Replay to retry"
 _EMPTY_LINE = "no matches in rewind_history.db"
-_LIVE_GLOB = "**/api/replay/matches*"
-_MOCK_GLOB = "**/data/ui_mock/replay.json"
+
+
+def _route_replay(page, mock, handler):
+    """Route the replay list fetch: the mock JSON file, or the live /api/replay/matches call.
+
+    The matchers are written out at the call so the RM-1506 route-matcher guard
+    (tests/snapshot_panels/test_route_matcher_no_wide_interception_rm1506.py) can read
+    them; a bare name or a conditional expression is refused there."""
+    if mock:
+        page.route("**/data/ui_mock/replay.json", handler)
+    else:
+        page.route("**/api/replay/matches*", handler)
+
 
 _SETTLED = """() => {
   const ul = document.querySelector('#replay-match-list');
@@ -149,7 +160,7 @@ def test_http_error_says_did_not_load_not_empty_store(
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_MOCK_GLOB if mock else _LIVE_GLOB, _fail)
+        _route_replay(page, mock, _fail)
         _goto(page, mock_server, mock)
         text = _settled_text(page)
         rows = _row_ids(page)
@@ -170,7 +181,7 @@ def test_rejected_fetch_says_did_not_load_not_loading(
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_LIVE_GLOB, handler)
+        _route_replay(page, False, handler)
         _goto(page, mock_server, False)
         try:
             page.wait_for_function(_SETTLED, timeout=5_000)
@@ -191,7 +202,7 @@ def test_real_empty_list_still_says_empty_store(
     mock_server._store["data"] = {}
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_MOCK_GLOB if mock else _LIVE_GLOB, _empty)
+        _route_replay(page, mock, _empty)
         _goto(page, mock_server, mock)
         text = _settled_text(page)
     finally:
@@ -209,7 +220,7 @@ def test_failure_is_retried_on_the_next_visit(mock, mock_server, pw_browser):
     ctx, page, errors = _new_page(pw_browser)
     try:
         handler = _seq([_fail, _ok_mock if mock else _ok_live])
-        page.route(_MOCK_GLOB if mock else _LIVE_GLOB, handler)
+        _route_replay(page, mock, handler)
         _goto(page, mock_server, mock)
         first = _settled_text(page)
         _leave_and_return(page)
@@ -240,7 +251,7 @@ def test_older_failed_reply_never_replaces_newer_rows(
 
     ctx, page, errors = _new_page(pw_browser)
     try:
-        page.route(_LIVE_GLOB, _hold_first_then_ok)
+        _route_replay(page, False, _hold_first_then_ok)
         _goto(page, mock_server, False)
         for _ in range(100):
             if held:

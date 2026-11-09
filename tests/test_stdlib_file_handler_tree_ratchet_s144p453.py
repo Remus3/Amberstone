@@ -86,7 +86,7 @@ def test_no_new_crlf_file_handler():
     new = {rel: n for rel, n in counts.items() if n > _BASELINE.get(rel, 0)}
     assert not new, (
         "stdlib file handlers write CRLF on Windows - use core.log_rotation.LFFileHandler / "
-        f"LFRotatingFileHandler (or override _open with newline=\"\\n\"), file: count: {new}"
+        f'LFRotatingFileHandler (or override _open with newline="\\n"), file: count: {new}'
     )
 
 

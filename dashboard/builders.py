@@ -13,6 +13,7 @@ Each function reads from data/* sqlite DBs or json files and returns a
 plain dict - no IO side-effects, no http handler coupling.
 """
 import sqlite3
+import urllib.request as _ur  # module scope: tests fake it with tests/_module_view.bind_urlopen
 
 from core.resolved_wr import classify, resolution_select, resolved_wr, wr_pct
 from dashboard._context import (
@@ -343,7 +344,6 @@ def _build_diagnostics() -> dict:
     })
     # Vision relay (loopback)
     try:
-        import urllib.request as _ur
         with _ur.urlopen("http://127.0.0.1:8889/health", timeout=1) as r:
             out["connections"].append({"name": "Vision relay", "ok": r.status == 200,
                                         "detail": "127.0.0.1:8889"})
@@ -352,7 +352,6 @@ def _build_diagnostics() -> dict:
                                     "detail": f"down ({type(exc).__name__})"})
     # Live Client API (local on Legion post 1-PC consolidation)
     try:
-        import urllib.request as _ur
         from core.game_host import GAME_HOST
         with _ur.urlopen(f"http://{GAME_HOST}:2999/liveclientdata/activeplayer", timeout=2) as r:
             out["connections"].append({"name": "Live Client API", "ok": r.status == 200,

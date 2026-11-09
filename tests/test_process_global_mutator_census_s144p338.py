@@ -66,6 +66,8 @@ _SITES = {
         "HTTP MCP server script launched by a scheduled task with an arbitrary cwd; pins the project root before its core.* imports",
     ("tools/gated_tls_2999_probe.py", "warnings.simplefilter", "relay_context"):
         "NOT global: sits inside warnings.catch_warnings(), restored on exit",
+    ("tools/pytest_guard.py", "warnings.simplefilter", "_syntax_error"):
+        "NOT global: sits inside warnings.catch_warnings(), restored on exit",
     ("tools/ladder_role_scout.py", "sys.stdout", "main"):
         "CLI entry: --log-file redirects the run's own output, set inside main()",
     ("tools/ladder_role_scout.py", "sys.stderr", "main"):
@@ -126,7 +128,7 @@ def _scan(source: str) -> list[tuple[str, int, str]]:
                 s, f = [*scope, child.name], [*fn, child.name]
             elif isinstance(child, ast.ClassDef):
                 s = [*scope, child.name]
-            where = ".".join(f and s or []) or "module"
+            where = ".".join((f and s) or []) or "module"
             if isinstance(child, ast.Call):
                 d = _dotted(child.func)
                 if d is not None:

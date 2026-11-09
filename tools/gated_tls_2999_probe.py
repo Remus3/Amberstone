@@ -102,7 +102,10 @@ _TLS_ATTRS = frozenset({"urlopen", "build_opener", "install_opener", "HTTPSHandl
 # relay_context() was checked against them. When the relay changes one, re-read
 # its context and request path against relay_context(), then re-pin this
 # (tests/test_gated_tls_2999_probe.py prints the new value).
-_RELAY_TLS_SHA256 = "dbfc3ad5340ba89491fc782846d8cfe29b0fafe8cb4bfc2c9c609a211710590a"
+# Re-pinned s156: the repo lane (90fd2d5ba) made upload()'s urlopen response a
+# with-item; that POST goes to the local :8889 relay over plain http, and
+# _ssl_ctx, _try_one and fetch_live are unchanged, so relay_context() holds.
+_RELAY_TLS_SHA256 = "95bcd1e1d6bcd5ca69ebd9a303a3f6a3e7658f67701a9f08056735a498b9d19c"
 # :2999 exists only for a League game; TFT's standalone client serves none.
 _LEAGUE_MODES = {"sr", "aram", "arena", "brawl", "jade"}
 _LEAGUE_EXE = "League of Legends.exe"

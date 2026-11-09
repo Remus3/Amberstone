@@ -99,7 +99,7 @@ def _open(pw_browser, mock_server):
 
     def _champ_square(route):
         name = route.request.url.rsplit("/", 1)[-1].split("?", 1)[0]
-        stem = name[:-4] if name.endswith(".png") else name
+        stem = name.removesuffix(".png")
         if stem in known and "ddragon.leagueoflegends.com" not in route.request.url:
             route.continue_()
         else:

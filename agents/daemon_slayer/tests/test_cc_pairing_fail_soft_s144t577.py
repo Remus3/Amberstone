@@ -44,6 +44,8 @@ class _RaisingStr:
 class _Forge(str):
     """A str subclass that claims equality with every registry key."""
 
+    __slots__ = ()
+
     def __eq__(self, other):
         return True
 

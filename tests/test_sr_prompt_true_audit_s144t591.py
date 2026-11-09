@@ -165,7 +165,7 @@ def test_no_field_can_smuggle_an_unmarked_role_marker():
         "ward_hint", "enemy_lane_str", "game_mode", "_lane_matchup_note",
         "comp_context",
     ) + NUMERIC_KEYS
-    gs = {k: INJ for k in keys}
+    gs = dict.fromkeys(keys, INJ)
     gs.update(items=[INJ], ally_comp=[INJ], enemy_comp=[INJ])
     p = _build_user_prompt(gs, INJ)
     assert not _ROLE_MARKER_RE.findall(p), _ROLE_MARKER_RE.findall(p)

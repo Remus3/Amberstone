@@ -30,9 +30,9 @@ pytestmark = pytest.mark.skipif(
 
 _RULES = "PIE807,RET501,PLR1711"
 # file -> finding count that stays because another owner holds the file. Only shrinks.
-_BASELINE: dict[str, int] = {
-    "tests/test_rc_facts_launcher_cutover_a45d.py": 1,  # blocked: a launcher-cutover test the PKG owner may hold
-}
+# (Empty since the s156 landing: S144-P-270, f556b2e63, fixed the one held
+# tests/test_rc_facts_launcher_cutover_a45d.py finding.)
+_BASELINE: dict[str, int] = {}
 _FIXED = (
     "core/death_patterns_loader.py",
     "tests/conftest.py",

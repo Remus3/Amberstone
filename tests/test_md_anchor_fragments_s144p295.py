@@ -131,7 +131,7 @@ def test_scanner_is_live():
     docs = {
         "docs/a.md": (
             "# Alpha\n## Same\n## Same\n```\n# Fenced heading\n```\n"
-            "<a name=\"Raw-Anchor\"></a>\n"
+            '<a name="Raw-Anchor"></a>\n'
             "[ok](#alpha) [ok2](b.md#beta-one) [dup](#same-1) [raw](#raw-anchor) [case](#ALPHA)\n"
             "[gone](#nope) [gone2](b.md#nope-two) [fenced](#fenced-heading)\n"
             "[![badge](img.svg)](#alpha) [![badge](img.svg)](#nope-badge) [js](../web/js/x.js#L12) [web](https://example.org/p#frag) `[code](#inline)` [bare](b.md)\n"

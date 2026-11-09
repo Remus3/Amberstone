@@ -130,6 +130,12 @@ _SITES = {
         "POSIX branch only: kills the process group of the child this helper started",
     ("tools/inbox_responder_procs.py", "str:taskkill", "kill_tree"):
         "taskkill /F /T /PID of the headless child tree this helper started",
+    ("tools/landing_sampler.py", "call:kill", "PopenChild.stop"):
+        "fallback Popen.kill on the held handle of the one gate child this sampler launched",
+    ("tools/landing_sampler.py", "str:taskkill", "PopenChild.stop"):
+        "taskkill /F /T /PID of the one gate child (and its pytest tree) this sampler launched, on a STOP",
+    ("tools/landing_sampler.py", "str:taskkill", "kill_tree_argv"):
+        "builds the taskkill /F /T /PID argv for that one launched child; runs nothing itself",
     ("tools/perseus_recall.py", "call:terminate", "recall"):
         "terminates the MCP server child this call started, in a finally",
     ("tools/perseus_sync.py", "call:terminate", "Vault.close"):

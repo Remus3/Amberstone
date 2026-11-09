@@ -31,6 +31,8 @@ if sys.platform != "win32":
     pytest.skip("Windows-only Win32 hotkey listener", allow_module_level=True)
 
 import tools.hotkey_listener as hk  # noqa: E402
+from tests._module_view import bind_urlopen  # noqa: E402
+from tests._timing_budget import fleet_test_guard  # noqa: E402
 
 _FAULTS = [
     TimeoutError("read timed out"),
@@ -66,7 +68,7 @@ def _seed(cache: "hk.DecisionCache") -> None:
 
 @pytest.mark.parametrize("fault", _FAULTS, ids=lambda f: type(f).__name__)
 def test_refresh_swallows_a_fault_raised_while_reading_the_body(monkeypatch, fault):
-    monkeypatch.setattr(hk.urllib.request, "urlopen", lambda *a, **k: _Resp(fault))
+    bind_urlopen(monkeypatch, hk, lambda *a, **k: _Resp(fault))
     cache = hk.DecisionCache()
     _seed(cache)
     assert cache.refresh() is None
@@ -79,7 +81,7 @@ def test_refresh_swallows_a_fault_raised_by_urlopen_itself(monkeypatch, fault):
     def boom(*a, **k):
         raise fault
 
-    monkeypatch.setattr(hk.urllib.request, "urlopen", boom)
+    bind_urlopen(monkeypatch, hk, boom)
     cache = hk.DecisionCache()
     _seed(cache)
     assert cache.refresh() is None
@@ -89,7 +91,7 @@ def test_refresh_swallows_a_fault_raised_by_urlopen_itself(monkeypatch, fault):
 def test_refresh_still_publishes_a_good_payload(monkeypatch):
     """Positive control: the broadened guard must not swallow the success path."""
     body = b'{"pending": [{"id": "d2", "created_at_unix": 9}]}'
-    monkeypatch.setattr(hk.urllib.request, "urlopen", lambda *a, **k: _Resp(body))
+    bind_urlopen(monkeypatch, hk, lambda *a, **k: _Resp(body))
     cache = hk.DecisionCache()
     _seed(cache)
     cache.refresh()
@@ -113,6 +115,6 @@ def test_refresh_loop_keeps_polling_after_refresh_raises(monkeypatch):
 
     t = threading.Thread(target=hk._refresh_loop, args=(_Cache(), stop), daemon=True)
     t.start()
-    t.join(timeout=5)
+    t.join(timeout=fleet_test_guard.budget(5))
     assert not t.is_alive(), "the refresh loop did not stop on the event"
     assert len(calls) >= 3, "the loop ended after the first raise instead of polling on"

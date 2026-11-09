@@ -31,6 +31,7 @@ from unittest import mock
 
 import pytest
 
+from tests._module_view import bind_subprocess
 from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
 
 _OUT_OF_SCOPE = ("tests/", "ops/fleet_kit/", "ops/launcher/", "agents/agent3_testing/suite/", "docs/_archive/")
@@ -112,7 +113,7 @@ def test_voice_coach_min_interval_is_aged_on_the_monotonic_clock(monkeypatch):
             type(self).calls += 1
 
     monkeypatch.setattr(live_game_gate, "live_game_now", lambda: False)
-    monkeypatch.setattr(voice_coach.subprocess, "Popen", _Popen)
+    bind_subprocess(monkeypatch, voice_coach, Popen=_Popen)
     monkeypatch.setattr(voice_coach, "_LAST_TS", float("-inf"))
     monkeypatch.setattr(voice_coach, "_LAST_TEXT", "")
     assert voice_coach.speak("first line") is True

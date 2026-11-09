@@ -120,6 +120,8 @@ def test_unrelated_types_are_unmapped(value):
 # ------------------------------------ F6 subclass overrides are never run
 
 class _RaisingStr(str):
+    __slots__ = ()
+
     def strip(self, *a):
         raise RuntimeError("strip")
 

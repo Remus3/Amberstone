@@ -14,6 +14,7 @@ import logging
 import threading
 
 from core.metrics_cache import MetricsCache
+from tests._asyncio_isolation import run_coro
 
 _INTERVAL_S = 0.01
 _PASSES = 4
@@ -63,6 +64,6 @@ def test_async_loop_keeps_refreshing_after_a_raise(tmp_path, caplog):
         await asyncio.wait_for(task, timeout=10)
 
     with caplog.at_level(logging.WARNING, logger="core.metrics_cache"):
-        asyncio.run(drive())
+        run_coro(drive())
     assert done.is_set(), f"the task ended after the first raise (calls={calls['n']})"
     assert any("synthetic refresh fault" in r.getMessage() or r.exc_info for r in caplog.records)

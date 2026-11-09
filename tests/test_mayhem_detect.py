@@ -99,6 +99,8 @@ def test_non_ascii_mode_is_not_mayhem(value):
 
 def test_str_subclass_cannot_redirect_the_match():
     class _Forged(str):
+        __slots__ = ()
+
         def upper(self):
             return "KIWI"
 

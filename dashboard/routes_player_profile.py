@@ -242,7 +242,7 @@ def _serve_player_profile(h) -> None:
         payload["cached"] = False
         payload["elapsed_ms"] = _elapsed_ms(t0)
         _send_json(h, 200, payload)
-    except Exception:  # noqa: BLE001 - last-resort 500, traceback logged
+    except Exception:  # last-resort 500, traceback logged
         log.warning("api/player-profile failed", exc_info=True)
         try:
             # Raw exception text stays in the log only.

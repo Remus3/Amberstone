@@ -107,7 +107,7 @@ def test_the_loop_wait_seam_is_monotonic_at_both_ends():
         assert "deadline_ts" in [a.arg for a in fn.args.args], name
         assert "time.monotonic" in {ast.unparse(c.func) for c in ast.walk(fn) if isinstance(c, ast.Call)}, name
     executor = (REPO_ROOT / "ops/loop/executor.py").read_bytes().decode("utf-8")
-    assert "deadline = time.monotonic() + self.cfg[\"cycle_deadline_sec\"]" in executor
+    assert 'deadline = time.monotonic() + self.cfg["cycle_deadline_sec"]' in executor
     assert "time.time()" not in executor
 
 

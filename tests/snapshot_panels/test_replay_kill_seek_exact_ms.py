@@ -163,7 +163,7 @@ def test_a_row_without_ms_seeks_on_its_clock(mock_server, pw_browser):
         exact = page.evaluate(_READ)
         page.evaluate(
             "(c) => document.querySelector("
-            "`.replay-events-row[data-clock=\"${c}\"]`)"
+            '`.replay-events-row[data-clock="${c}"]`)'
             ".removeAttribute('data-ms')", first["clock_s"])
         _row(page, first["clock_s"]).click()
         page.evaluate(_SETTLE)

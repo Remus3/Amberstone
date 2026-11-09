@@ -5,7 +5,7 @@ time. In a tree whose loops and dashboard routes load sibling modules by path (t
 ``sys.path``) the one question that matters is where the NAME or PATH comes from: a literal or repo-relative path is a
 module-binding convenience; a value from a request, a config file or a data file is code execution. Nothing forced such
 a site to be written down. Measured 2026-11-07 by AST over every tracked production ``.py`` (outside ``tests/``,
-``docs/`` and the vendored ``ops/fleet_kit/``): 67 calls, each its own ``(file, call, scope)`` site, listed in ``_SITES``.
+``docs/`` and the vendored ``ops/fleet_kit/``): 68 calls, each its own ``(file, call, scope)`` site, listed in ``_SITES``.
 
 Result of the measurement: every target is one of
 - ``LITERAL`` - a string / path literal, or a module constant, at the call;
@@ -106,6 +106,7 @@ _SITES = {
     ("tools/ascii_escape_py.py", "spec_from_file_location", "_gate"): _LITERAL,
     ("tools/bot_merge_check.py", "spec_from_file_location", "_kit_module"): _SIBLING,
     ("tools/ci_watchdog.py", "spec_from_file_location", "_kit_module"): _SIBLING,
+    ("tools/landing_sampler.py", "import_module", "_kit"): _SIBLING,
     ("tools/precommit_gate.py", "spec_from_file_location", "_ascii_rule"):
         "LITERAL: the sibling ASCII rule file next to this gate, located from __file__",
     ("tools/progress_watch.py", "import_module", "_steer_module"): _LITERAL,
@@ -203,7 +204,7 @@ def test_every_production_dynamic_load_is_a_named_site():
     gone = sorted(set(_SITES) - found)
     assert not new, f"new dynamic module load (add it to _SITES with its target source): {new}"
     assert not gone, f"stale _SITES entry (drop it): {gone}"
-    assert calls == 67, f"call count moved to {calls}; a second call in a listed scope needs a look"
+    assert calls == 68, f"call count moved to {calls}; a second call in a listed scope needs a look"
 
 
 def test_every_site_names_its_target_source():

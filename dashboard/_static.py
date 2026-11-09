@@ -117,7 +117,11 @@ def resolve_safe_icon(root: Path, rel: str) -> Path | None:
     # backslashes on Windows and symlink targets. This helper canonicalises
     # both paths and returns None unless the resolved file is a regular
     # file inside `root`.
-    if not rel or "/" in rel or "\\" in rel or ".." in rel or not rel.endswith(".png"):
+    # ":" too: a drive-relative name ("C:ok.png") joins INTO root when root
+    # sits on that same drive (pathlib), so the refusal must not depend on
+    # which drive root is on; an NTFS stream name ("ok.png:x.png") likewise.
+    if (not rel or "/" in rel or "\\" in rel or ":" in rel or ".." in rel
+            or not rel.endswith(".png")):
         return None
     try:
         candidate = (root / rel).resolve()

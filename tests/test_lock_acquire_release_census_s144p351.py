@@ -177,7 +177,7 @@ def test_every_acquire_releases_in_a_finally_or_is_a_named_row():
 def test_every_row_is_live():
     """A row that matches no un-finalled acquire is a dead exemption a new bare acquire could hide behind."""
     tree = _tree_sites()
-    for (rel, fname), (kind, recv, why) in _ROWS.items():
+    for (rel, fname), (_kind, _recv, why) in _ROWS.items():
         assert why.strip(), (rel, fname)
         hits = [s for s in tree.get(rel, ()) if s["fn"] == fname and not s["finally"]]
         assert hits, f"row {(rel, fname)} matches no acquire that lacks a finally release"

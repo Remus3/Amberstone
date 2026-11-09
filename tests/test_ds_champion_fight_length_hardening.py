@@ -82,6 +82,8 @@ def test_ascii_display_and_ddragon_spellings_unchanged(champ, want) -> None:
 
 def test_str_subclass_resolves_like_its_value() -> None:
     class Name(str):
+        __slots__ = ()
+
         def lower(self):  # an override must not redirect the lookup
             return "draven"  # 0.3: distinct from both expected answers
 

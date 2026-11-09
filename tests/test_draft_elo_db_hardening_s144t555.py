@@ -31,7 +31,7 @@ from tests._draft_elo_fixture import build_fixture_db
 # team as 64) and m2 (q420, win, opposing team).
 
 
-@pytest.fixture()
+@pytest.fixture
 def conn(tmp_path):
     path = tmp_path / "rewind_history.db"
     build_fixture_db(path)
@@ -275,7 +275,7 @@ class _Harness:
 _DRAFT = "ally=22,64,55,89,12&enemy=42,67,69,33,99"
 
 
-@pytest.fixture()
+@pytest.fixture
 def route(tmp_path, monkeypatch):
     from dashboard import routes_draft_elo
 

@@ -103,8 +103,7 @@ def iter_jsonl(path: Path) -> Iterator[dict]:
                 return
             if first:
                 first = False
-                if raw.startswith(_BOM):
-                    raw = raw[len(_BOM):]
+                raw = raw.removeprefix(_BOM)
             try:
                 line = raw.decode("utf-8").strip()
             except UnicodeDecodeError:

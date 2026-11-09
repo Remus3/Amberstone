@@ -40,6 +40,29 @@ _ALLOWED = {
     # The per-session lane drivers are gitignored runtime files the test describes, never tracked.
     ("tests/test_fleet_test_guard_lane_driver_rm874.py", "ops/loop/control/lane_prompts/s133_lane_driver.py"),
     ("tests/test_fleet_test_guard_lane_driver_rm874.py", "ops/loop/control/lane_prompts/s134_lane_driver.py"),
+    # s156 lane landing: S144-P-288 (1bf59d757) widened the shared scan_source to .js / .bat / .ps1 cites
+    # after this guard last ran, which brought these pre-existing cites into scope. Each was read:
+    # web/js-relative cites of TRACKED web/js/lib modules (the page imports them as /js/lib/...), not repo-rooted.
+    ("tests/snapshot_panels/test_overlay_hidden_display_contract.py", "lib/overlay_tft.js"),
+    ("tests/snapshot_panels/test_overlay_launcher_menu.py", "lib/overlay_layout.js"),
+    ("tests/snapshot_panels/test_overlay_root_type_tokens_rm139.py", "lib/overlay_item_radial.js"),
+    ("tests/snapshot_panels/test_overlay_root_type_tokens_rm139.py", "lib/overlay_tooltip.js"),
+    ("tests/snapshot_panels/test_stale_fade_view_t12.py", "lib/state.js"),
+    ("tests/snapshot_panels/test_view_docstring_anchors_s144p33.py", "lib/state.js"),
+    # Guards whose subject IS the archived legacy launchers (RM-721 / RM-826); they say "archived", a word the
+    # shared history regex does not carry.
+    ("tests/test_batch_system_tools_rm826.py", "ops/autostart_on_login.bat"),
+    ("tests/test_batch_system_tools_rm826.py", "ops/launch_new_system.bat"),
+    ("tests/test_citation_drift_guard_rm171.py", "ops/autostart_on_login.bat"),
+    ("tests/test_citation_drift_guard_rm171.py", "ops/launch_new_system.bat"),
+    ("tests/test_citation_drift_guard_rm171.py", "ops/loop/spawn_lanes.ps1"),
+    ("tests/test_orphan_ops_legacy_bat_chain_rm721.py", "ops/autostart_on_login.bat"),
+    ("tests/test_orphan_ops_legacy_bat_chain_rm721.py", "ops/launch_new_system.bat"),
+    ("tests/test_orphan_ops_loop_spawn_lanes_rm721.py", "ops/loop/spawn_lanes.ps1"),
+    # A dated measurement note listing the .ps1 files of an old encoding sweep.
+    ("tests/test_ps1_encoding_hygiene.py", "tools/bridge_watcher_update_check.ps1"),
+    # Placeholder in a docstring that explains why web/ cites are relative.
+    ("tests/test_script_file_script_cites_s144p289.py", "lib/x.js"),
 }
 
 
