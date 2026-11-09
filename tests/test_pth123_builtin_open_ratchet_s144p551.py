@@ -73,12 +73,11 @@ _BASELINE: dict[str, int] = {
     "core/hud_settings.py": 1,
     "dashboard/routes_diag.py": 1,
     "dashboard/routes_recordings.py": 1,
-    "lib/ingest_receipt.py": 1,
     "ops/loop/slots.py": 1,
     "tests/_basetemp_guard.py": 1,
     "tests/test_coach_trace_lf_s144p186.py": 1,
     "tests/test_ds_calibration_log_lf_s144p185.py": 1,
-    "tests/test_inbox_responder_runner.py": 2,
+    "tests/test_inbox_responder_runner.py": 1,
     "tests/test_log_appenders_lf_s144p195.py": 1,
     "tests/test_shadow_appenders_lf_s144p190.py": 1,
     "tests/test_tft_sources_tft_log.py": 1,
@@ -220,6 +219,8 @@ _FIXED = (
     "core/live_session_recorder.py",
     "tft/rounds/store.py",
     "tft/sources/tft_log.py",
+    # S144-P-568: lib/ingest_receipt.py fully clean (the ASCII LF append handle, a Path receiver; tests patch _append_line, never the module-level open name); tests/test_inbox_responder_runner.py gives up its metrics-file append and keeps the audit-hook probe that writes through a short-name / verbatim-prefix string on purpose
+    "lib/ingest_receipt.py",
 )
 
 

@@ -4074,7 +4074,7 @@ def test_trial_rows_exclude_dry_rows_and_other_agreements(world):
     result = world.drive()
     aid = result.agreement_id
     path = runner.metrics_path(world.log_root)
-    with open(path, "a", encoding="ascii", newline="\n") as fh:
+    with path.open("a", encoding="ascii", newline="\n") as fh:
         fh.write(json.dumps({"dry": True, "agreement_id": aid, "grammar": "A5"}) + "\n")
         fh.write(json.dumps({"dry": False, "agreement_id": "other", "grammar": "A5"}) + "\n")
         fh.write(json.dumps({"dry": False, "agreement_id": aid, "grammar": None}) + "\n")
