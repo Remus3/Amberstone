@@ -33,6 +33,7 @@ import os
 import stat
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from core.minimap_geometry import compute_minimap_rect
@@ -135,7 +136,7 @@ def _decode(data: bytes) -> str:
 def _read_cfg(p: str) -> str:
     """Decoded text of ``p``, read as at most ``_MAX_FILE_BYTES + 1`` bytes.
     Raises OSError when unreadable or over the cap."""
-    with open(p, "rb") as fh:
+    with Path(p).open("rb") as fh:
         data = fh.read(_MAX_FILE_BYTES + 1)
     if len(data) > _MAX_FILE_BYTES:
         raise OSError("over the size cap")

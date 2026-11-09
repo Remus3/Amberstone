@@ -45,6 +45,7 @@ import json
 import os
 import sys
 import warnings
+from pathlib import Path
 
 CODE_SKIP_SUFFIXES = (".md", ".txt")
 PY_SUFFIXES = (".py", ".pyw")
@@ -94,7 +95,7 @@ def _syntax_error(path: str) -> str | None:
     the interpreter does, and - unlike py_compile - writes no bytecode.
     """
     try:
-        with open(path, "rb") as fh:
+        with Path(path).open("rb") as fh:
             source = fh.read()
     except OSError:
         return None  # vanished or unreadable: nothing to say

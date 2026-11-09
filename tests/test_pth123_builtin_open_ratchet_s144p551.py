@@ -73,14 +73,10 @@ _BASELINE: dict[str, int] = {
     "coaches/_base_coach.py": 1,
     "core/death_recap.py": 1,
     "core/hud_settings.py": 1,
-    "core/league_settings.py": 1,
     "core/live_session_recorder.py": 2,
     "dashboard/routes_diag.py": 1,
     "dashboard/routes_recordings.py": 1,
-    "dashboard/routes_static.py": 1,
     "lib/ingest_receipt.py": 1,
-    "ops/audit/p2w5_partition.py": 2,
-    "ops/audit/p2w5h2_partition.py": 3,
     "ops/loop/headless_env.py": 1,
     "ops/loop/lane_run_ledger.py": 2,
     "ops/loop/lanes.py": 1,
@@ -103,7 +99,6 @@ _BASELINE: dict[str, int] = {
     "tools/landing_sampler.py": 2,
     "tools/moon_sync_poller.py": 3,
     "tools/phase_watcher.py": 1,
-    "tools/pytest_guard.py": 1,
     "tools/shadow_archive_split.py": 1,
 }
 _FIXED = (
@@ -216,6 +211,12 @@ _FIXED = (
     "core/rofl_stats_backfill.py",
     "tools/bot_merge_check.py",
     "tools/ci_impact_selector.py",
+    # S144-P-564: five more files fully clean (three plain binary reads, five LF-or-text sites in two one-shot audit partition scripts); core/hud_settings.py and dashboard/routes_recordings.py stay baselined because their tests patch the module-level `open` name
+    "core/league_settings.py",
+    "dashboard/routes_static.py",
+    "ops/audit/p2w5_partition.py",
+    "ops/audit/p2w5h2_partition.py",
+    "tools/pytest_guard.py",
 )
 
 

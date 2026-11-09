@@ -17,7 +17,7 @@ for root, _, fs in os.walk(ROOT):
         if not f.endswith(".py"):
             continue
         p = (Path(root) / f).as_posix()
-        with open(p, encoding="utf-8", errors="replace") as fh:
+        with Path(p).open(encoding="utf-8", errors="replace") as fh:
             text = fh.read()
         loc = text.count("\n") + 1
         files.append((loc, p))
@@ -43,8 +43,8 @@ print("non-ascii files:", len(census), "| BANNED-glyph files:", len(banned_hits)
 if banned_hits:
     print("BANNED:", json.dumps(banned_hits, indent=1))
 
-with open("ops/audit/p2w5h2_slices.json", "w", encoding="utf-8", newline="\n") as fh:
+with Path("ops/audit/p2w5h2_slices.json").open("w", encoding="utf-8", newline="\n") as fh:
     json.dump({chr(65 + i): bins[i] for i in range(6)}, fh, indent=1)
-with open("ops/audit/p2w5h2_nonascii_census.json", "w", encoding="utf-8", newline="\n") as fh:
+with Path("ops/audit/p2w5h2_nonascii_census.json").open("w", encoding="utf-8", newline="\n") as fh:
     json.dump(census, fh, indent=1)
 print("-> ops/audit/p2w5h2_slices.json + p2w5h2_nonascii_census.json")
