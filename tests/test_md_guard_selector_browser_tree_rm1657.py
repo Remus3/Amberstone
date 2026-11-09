@@ -35,7 +35,7 @@ def _no_browser_pytest(*args: str, job: str = "") -> subprocess.CompletedProcess
     if job:
         env["GITHUB_JOB"] = job
     return subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True,
-                          text=True, timeout=300, env=env, **kwargs)
+                          text=True, timeout=300, env=env, check=False, **kwargs)
 
 
 _SUMMARY = re.compile(r"^=*\s*((?:\d+ [a-z]+, )*\d+ [a-z]+) in \d+(?:\.\d+)?s\b", re.MULTILINE)

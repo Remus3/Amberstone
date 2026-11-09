@@ -27,7 +27,7 @@ def ruff_minor() -> tuple[int, int]:
     if sys.platform == "win32":
         kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
     proc = subprocess.run([sys.executable, "-m", "ruff", "--version"],
-                          capture_output=True, text=True, timeout=60, **kwargs)
+                          capture_output=True, text=True, timeout=60, check=False, **kwargs)
     m = re.search(r"(\d+)\.(\d+)\.", proc.stdout)
     assert m, f"no version in {proc.stdout!r} {proc.stderr[-200:]!r}"
     return int(m.group(1)), int(m.group(2))

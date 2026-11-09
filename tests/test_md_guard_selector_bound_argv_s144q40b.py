@@ -344,7 +344,7 @@ def test_each_oracle_verdict_is_what_git_does(scratch_repo, key):
     words, cwd, lists_md = _ORACLE[key]
     run_in = scratch_repo if cwd is None else scratch_repo / cwd
     out = subprocess.run([_GIT, *words], cwd=str(run_in), env=_git_env(),
-                         capture_output=True, text=True, timeout=60)
+                         capture_output=True, text=True, timeout=60, check=False)
     assert out.returncode == 0, (key, out.stderr)
     assert any(line.endswith(".md") for line in out.stdout.splitlines()) is lists_md, key
 

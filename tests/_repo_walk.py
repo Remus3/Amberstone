@@ -134,6 +134,7 @@ def tracked_relpaths(root: str = "") -> Optional[frozenset[str]]:
             capture_output=True,
             encoding=None,
             timeout=120,
+            check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return None

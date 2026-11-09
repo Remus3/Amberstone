@@ -52,6 +52,12 @@ slice 15 (S144-P-617) does the same for the seven two-site files no other lane b
 (precommit_gate_cp1252_rm818, precommit_gate_message_file, rm825_jsonrpc_scrub_host_residuals,
 rm830_quoted_path_sweep, session_intents_true_audit_s144t169, text_first_guard and
 tft_meta_provenance_rm846), 14 sites in all;
+slice 16 (S144-P-618) does the same for ten more files no other lane branch had changed, 18 sites
+(_repo_walk, _ruff_version, ascii_source_sweep, the four md_guard_selector files, sibling_name_sweep,
+status_helper_rc2 and web_js_esm_parse), bar the files the ratchet leaves (ratchet modules,
+launcher / build_portable / package_portable / third_party_notices packaging files, gated-lane
+files, loop_concurrency, ci_sibling_sweep_tree_wiring) and test_rm750_ds_keepalive (lane/true-audit
+changed it);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -83,12 +89,9 @@ pytestmark = pytest.mark.skipif(
 _RULE = "PLW1510"
 # file -> finding count that stays. Only shrinks.
 _BASELINE = {
-    "tests/_repo_walk.py": 1,
-    "tests/_ruff_version.py": 1,
     "tests/test_a001_test_code_idiom_ratchet_s144p182.py": 1,
     "tests/test_agent3_suite_idiom_ratchet_s144p231.py": 1,
     "tests/test_ambiguous_name_ratchet_s144p475.py": 1,
-    "tests/test_ascii_source_sweep.py": 2,
     "tests/test_async_blocking_prod_ratchet_s144p213.py": 1,
     "tests/test_asyncsleep_camelalias_ratchet_s144p239.py": 1,
     "tests/test_b4_client_directive_gate.py": 1,
@@ -140,10 +143,6 @@ _BASELINE = {
     "tests/test_launcher_key_read_rm810.py": 3,
     "tests/test_launcher_update_cycle_pkg6b.py": 1,
     "tests/test_loop_concurrency.py": 1,
-    "tests/test_md_guard_selector_bound_argv_s144q40b.py": 1,
-    "tests/test_md_guard_selector_browser_tree_rm1657.py": 1,
-    "tests/test_md_guard_selector_option_args_s144q41.py": 1,
-    "tests/test_md_guard_selector_residue_s144q40.py": 1,
     "tests/test_mutable_default_arg_ratchet_s144p318.py": 1,
     "tests/test_n805_first_arg_ratchet_s144p238.py": 1,
     "tests/test_naive_datetime_prod_ratchet_s144p340.py": 1,
@@ -185,7 +184,6 @@ _BASELINE = {
     "tests/test_ruf050_ruf070_ratchet_s144p516.py": 1,
     "tests/test_ruf056_falsy_dict_get_ratchet_s144p520.py": 1,
     "tests/test_s324_hash_usedforsecurity_prod_ratchet_s144p212.py": 1,
-    "tests/test_sibling_name_sweep.py": 6,
     "tests/test_sim102_nested_if_ratchet_s144p254.py": 1,
     "tests/test_sim103_ratchet_s144p145.py": 1,
     "tests/test_sim108_ternary_ratchet_s144p252.py": 1,
@@ -196,7 +194,6 @@ _BASELINE = {
     "tests/test_sorted_all_and_slots_rest_ratchet_s144p250.py": 1,
     "tests/test_sorted_first_min_test_code_ratchet_s144p168.py": 1,
     "tests/test_startswith_tuple_and_identity_comprehension_ratchet_s144p114.py": 1,
-    "tests/test_status_helper_rc2.py": 1,
     "tests/test_ternary_or_ratchet_s144p143.py": 1,
     "tests/test_test_code_misc_idiom_ratchet_s144p246.py": 1,
     "tests/test_third_party_notices_pkg.py": 1,
@@ -210,7 +207,6 @@ _BASELINE = {
     "tests/test_unused_noqa_ratchet_s144p103.py": 1,
     "tests/test_unused_unpack_ratchet_s144p147.py": 1,
     "tests/test_useless_yield_fixture_ratchet_s144p170.py": 2,
-    "tests/test_web_js_esm_parse.py": 3,
     "tests/test_whitespace_docstring_prod_ratchet_s144p189.py": 1,
     "tests/test_yoda_condition_test_code_ratchet_s144p166.py": 1,
     "tests/test_yoda_perf403_c408_ratchet_s144p146.py": 1,
@@ -384,6 +380,16 @@ _FIXED = (
     "tests/test_session_intents_true_audit_s144t169.py",
     "tests/test_text_first_guard.py",
     "tests/test_tft_meta_provenance_rm846.py",
+    "tests/_repo_walk.py",
+    "tests/_ruff_version.py",
+    "tests/test_ascii_source_sweep.py",
+    "tests/test_md_guard_selector_bound_argv_s144q40b.py",
+    "tests/test_md_guard_selector_browser_tree_rm1657.py",
+    "tests/test_md_guard_selector_option_args_s144q41.py",
+    "tests/test_md_guard_selector_residue_s144q40.py",
+    "tests/test_sibling_name_sweep.py",
+    "tests/test_status_helper_rc2.py",
+    "tests/test_web_js_esm_parse.py",
 )
 
 

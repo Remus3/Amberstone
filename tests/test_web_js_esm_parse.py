@@ -98,7 +98,7 @@ const bad = [];
 """
     out = subprocess.run(
         ["node", "--input-type=module", "-e", script, json.dumps([str(f) for f in files])],
-        capture_output=True, text=True, timeout=180, cwd=str(ROOT),
+        capture_output=True, text=True, timeout=180, cwd=str(ROOT), check=False,
     )
     assert out.returncode == 0, f"node harness failed: {out.stderr[-800:]}"
     tail = (out.stdout or "").strip().splitlines()
@@ -128,13 +128,13 @@ def test_node_check_goes_blind_on_a_file_that_leads_with_import(tmp_path):
         encoding="utf-8")
 
     chk = subprocess.run(["node", "--check", str(probe)],
-                         capture_output=True, text=True, timeout=60)
+                         capture_output=True, text=True, timeout=60, check=False)
     esm = subprocess.run(
         ["node", "--input-type=module", "-e",
          "import('file:///' + process.argv[1].replace(/\\\\/g,'/').replace(/ /g,'%20'))"
          ".then(()=>process.exit(0)).catch(e=>process.exit(e && e.name === 'SyntaxError' ? 1 : 2))",
          str(probe)],
-        capture_output=True, text=True, timeout=60)
+        capture_output=True, text=True, timeout=60, check=False)
 
     assert chk.returncode == 0, (
         "node --check now CATCHES a duplicate const in an import-leading file - "

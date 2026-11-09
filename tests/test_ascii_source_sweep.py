@@ -113,7 +113,7 @@ def _tracked_source() -> list[str]:
     proc = subprocess.run(
         ["git", "ls-files", "--", *_PATTERNS],
         cwd=str(_REPO), capture_output=True, text=True,
-        encoding="utf-8", errors="replace",
+        encoding="utf-8", errors="replace", check=False,
     )
     assert proc.returncode == 0, f"git ls-files failed: {proc.stderr.strip()}"
     return [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
@@ -171,6 +171,7 @@ def _run_scan(*paths: Path) -> int:
         [sys.executable, str(_REPO / "tools" / "precommit_gate.py"),
          "--scan-files", *[str(p) for p in paths]],
         capture_output=True, text=True, encoding="utf-8", errors="replace",
+        check=False,
     )
     return proc.returncode
 
