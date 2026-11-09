@@ -118,8 +118,7 @@ def _literal_hosts(tree: ast.AST) -> set[str]:
     hosts: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in skip:
-            for m in _URL.finditer(node.value):
-                hosts.add(m.group(1).lower())
+            hosts.update(m.group(1).lower() for m in _URL.finditer(node.value))
     return hosts
 
 

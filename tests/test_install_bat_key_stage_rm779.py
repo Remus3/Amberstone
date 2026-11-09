@@ -73,8 +73,7 @@ _REDIRECT = re.compile(r'(?<![0-9&])>>?\s*("[^"]*"|\S+)')
 def test_step4_redirects_only_to_the_key_file_the_log_or_nul():
     targets = set()
     for ln in _code(_step4()):
-        for m in _REDIRECT.finditer(ln):
-            targets.add(m.group(1))
+        targets.update(m.group(1) for m in _REDIRECT.finditer(ln))
     assert '"%API_FILE%"' in targets, f"no in-place key-file write found: {targets}"
     allowed = {'"%API_FILE%"', '"%LOG_FILE%"', "nul"}
     assert targets <= allowed, f"step 4 writes somewhere else: {targets - allowed}"

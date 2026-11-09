@@ -1,4 +1,4 @@
-"""FURB142 (``set.add`` in a ``for`` loop) holds at zero in production code (S144-P-518).
+"""FURB142 (``set.add`` in a ``for`` loop) holds at zero across the whole tree (S144-P-518, widened S144-P-519).
 
 FURB142 is a ruff PREVIEW rule and ruff.toml does not select it, so nothing held the count. It flags
 ``for x in it: s.add(f(x))`` where ``s.update(f(x) for x in it)`` says the same thing in one statement
@@ -7,10 +7,10 @@ FURB142 is a ruff PREVIEW rule and ruff.toml does not select it, so nothing held
 Measured 2026-11-09 with ``ruff check --isolated --preview`` (target py39) over every tracked ``.py`` file:
 32 findings. The 9 outside test code (scripts/audit_ddragon_items.py, scripts/rewind_scraper.py,
 tools/ds_feed_watch.py (3), tools/gated_lx11_minimap_check.py, tools/md_guard_selector.py,
-tools/probe_101qq_hero_rank_double.py, tools/validate_loadouts.py) are fixed here with no behaviour change.
-The other 23 sit in test files (tests/, agents/daemon_slayer/tests) and are NOT held here: a later
-cycle converts them and widens this scope. The baseline for the production scope is empty, so it can
-only stay empty.
+tools/probe_101qq_hero_rank_double.py, tools/validate_loadouts.py) were fixed by S144-P-518 with no
+behaviour change. The other 23 sat in 21 test files (tests/, agents/daemon_slayer/tests) and are converted
+by S144-P-519 (``found.update(x for ...)``; the same elements land in the same set, so no assertion
+changes meaning), after which test code is in scope too. The baseline is empty, so it can only stay empty.
 
 ``ops/fleet_kit`` (vendored byte-for-byte) is out of scope. The run uses NO config (``--isolated``) so a
 per-file-ignore cannot hide a finding. A probe pair proves the preview selection is live: an empty
@@ -37,12 +37,6 @@ _RULE = "FURB142"
 _OUT_OF_SCOPE = ("ops/fleet_kit/",)
 
 
-def _is_test_code(rel: str) -> bool:
-    name = rel.rsplit("/", 1)[-1]
-    parts = rel.split("/")
-    return "tests" in parts[:-1] or name.startswith("test_") or name == "conftest.py"
-
-
 def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
     kwargs = {}
     if sys.platform == "win32":
@@ -57,23 +51,15 @@ def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
     return json.loads(proc.stdout)
 
 
-def test_production_tree_has_no_findings():
+def test_tree_has_no_findings():
     tracked = {relative_posix(p) for p in repo_files(REPO_ROOT, ("*.py",))}
     assert len(tracked) > 100, "the tracked-file walk returned almost nothing"
     found = []
     for d in _ruff(["."]):
         rel = relative_posix(Path(d["filename"]).resolve())
-        if rel in tracked and not rel.startswith(_OUT_OF_SCOPE) and not _is_test_code(rel):
+        if rel in tracked and not rel.startswith(_OUT_OF_SCOPE):
             found.append(f"{rel}:{d['location']['row']}")
-    assert not found, f"FURB142 findings in production code (use set.update(...); the baseline is empty): {sorted(found)}"
-
-
-def test_scope_helper_separates_test_code():
-    assert _is_test_code("tests/test_x.py")
-    assert _is_test_code("agents/daemon_slayer/tests/test_y.py")
-    assert _is_test_code("tools/tests/test_z.py")
-    assert not _is_test_code("tools/ds_feed_watch.py")
-    assert not _is_test_code("scripts/rewind_scraper.py")
+    assert not found, f"FURB142 findings (use set.update(...); the baseline is empty): {sorted(found)}"
 
 
 def _probe(src: str) -> set[str]:

@@ -277,8 +277,7 @@ def _economy_triples(path: Path) -> set:
             if not chunk:
                 break
             buf = tail + chunk
-            for m in _ECONOMY_RE.finditer(buf):
-                found.add(tuple(g.decode("ascii") for g in m.groups()))
+            found.update(tuple(g.decode("ascii") for g in m.groups()) for m in _ECONOMY_RE.finditer(buf))
             tail = buf[-200:]
     return found
 

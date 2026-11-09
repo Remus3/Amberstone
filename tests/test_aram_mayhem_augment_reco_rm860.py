@@ -448,8 +448,7 @@ class PanelRenderTests(_Stubbed):
         for p in sorted((_PROJECT_ROOT / "data" / "daemon_slayer").glob(
                 "*/cherry_augments.json")):
             snap = json.loads(p.read_text(encoding="utf-8"))
-            for row in (snap.get("augments") or {}).values():
-                emitted.add(row.get("rarity"))
+            emitted.update(row.get("rarity") for row in (snap.get("augments") or {}).values())
         # Anchor: an empty or partial enumeration must not pass vacuously.
         self.assertTrue({"kSilver", "kGold", "kPrismatic", "kEventChoice"} <= emitted,
                         emitted)

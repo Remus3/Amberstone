@@ -2228,11 +2228,9 @@ def _default_bindings(fn, state, late=frozenset()):
             bound.add(_LOGFN + arg.arg)
         if _is_logger_expr(default, state):
             bound.add(_LOGOBJ + arg.arg)
-        for spec in _value_wrapper_specs(default, state, late):
-            bound.add(f"{_SINKFN}{arg.arg} {spec}")
+        bound.update(f"{_SINKFN}{arg.arg} {spec}" for spec in _value_wrapper_specs(default, state, late))
         # S144-Q-96: and a mutating helper's pairs (`def f(r, k=h)`).
-        for pair in _value_mut_specs(default, state, late):
-            bound.add(f"{_MUTFN}{arg.arg} {pair}")
+        bound.update(f"{_MUTFN}{arg.arg} {pair}" for pair in _value_mut_specs(default, state, late))
     return bound
 
 

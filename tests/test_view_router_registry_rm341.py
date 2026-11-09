@@ -242,16 +242,16 @@ def test_static_extraction_covers_what_the_function_actually_returns():
         for mode in modes:
             for prior in (None, "champ-select", "in-progress"):
                 for active in (True, False):
-                    for live in (True, False):
-                        observed.add(
-                            mirror.derive_view(
-                                phase,
-                                mode,
-                                prior,
-                                active_match_enabled=active,
-                                live=live,
-                            ).view
-                        )
+                    observed.update(
+                        mirror.derive_view(
+                            phase,
+                            mode,
+                            prior,
+                            active_match_enabled=active,
+                            live=live,
+                        ).view
+                        for live in (True, False)
+                    )
 
     extracted = _derivable_view_ids(ROOT)
     escaped = observed - extracted
