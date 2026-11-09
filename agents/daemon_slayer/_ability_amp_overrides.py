@@ -72,8 +72,10 @@ Two amp bases:
   * Fiora E (Bladework) - the 2nd empowered AA is a GUARANTEED CRIT at modified
     crit damage 160%:200% by rank; on Fiora's typical no-crit bruiser build that
     is a real ``(m - 1)`` per-AA damage uplift, amortized over the E cooldown.
-    AUTHORED (condition ``nth_hit``; the guaranteed crit is the every-Nth-AA
-    empowered hit). See its note for the assumption.
+    AUTHORED ``always_on`` with no condition: the addend is already amortized
+    over the E cooldown, so a probability gate would double-discount it (and
+    ``nth_hit`` is not a ``_DEFAULT_AMP_PROBABILITY`` key, so naming it would
+    read probability 0.0). See its note for the assumption.
   The other 4 stay INERT placeholders (``amp_per_rank=(0.0,)``) because their
   empowerment is NOT a base-AA single-target damage multiplier the consumer can
   represent (Caitlyn W = a conditional Headshot passive gated on a sprung trap;
