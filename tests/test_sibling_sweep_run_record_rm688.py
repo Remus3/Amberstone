@@ -462,6 +462,7 @@ def test_live_record_path_is_gitignored():
          "ops/runtime/sibling_sweep_runs.jsonl"],
         capture_output=True,
         creationflags=_NO_WINDOW,
+        check=False,
     )
     assert proc.returncode == 0, proc.stderr
 

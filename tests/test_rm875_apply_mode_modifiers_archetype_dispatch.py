@@ -283,7 +283,7 @@ def _import_flag(env_value):
         [sys.executable, "-c",
          "import coaches.arena_coach as m; print(repr(m._ARENA_MODE_MODIFIERS))"],
         cwd=str(REPO_ROOT), env=env, capture_output=True, text=True,
-        timeout=120, creationflags=flags,
+        timeout=120, creationflags=flags, check=False,
     )
     assert out.returncode == 0, out.stderr[-2000:]
     return out.stdout.strip().splitlines()[-1]

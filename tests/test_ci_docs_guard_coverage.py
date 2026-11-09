@@ -137,7 +137,7 @@ def _selector_live_output():
     """Exactly what the workflow gets - the CLI, not the importable function."""
     proc = subprocess.run(
         [sys.executable, str(_SELECTOR)],
-        cwd=str(_REPO), capture_output=True, text=True, timeout=300,
+        cwd=str(_REPO), capture_output=True, text=True, timeout=300, check=False,
     )
     assert proc.returncode == 0, (
         f"{_SELECTOR_REL} exited {proc.returncode}\nstderr:\n{proc.stderr}"

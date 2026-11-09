@@ -42,6 +42,12 @@ web_js_unimported_calls and ws_server_port_in_use_rm756), bar the ratchet module
 files, the gated-lane files, test_ci_sibling_sweep_tree_wiring (its one site runs the whole
 sibling-sweep gate, a heavy re-run for a keyword) and test_b4_client_directive_gate (lane/uiux
 changed it);
+slice 14 (S144-P-616) does the same for the seven remaining one-site non-ratchet files that no other
+lane branch changed and that carry no byte pin or packaging subject (ci_docs_guard_coverage,
+fleet_kit_v12_race_guards, phase3_setup_rerun_bytes_rm820, rewrite_sha_citations_atomic_write_rm258,
+rm875_apply_mode_modifiers_archetype_dispatch, sibling_sweep_prefilter_f2 and
+sibling_sweep_run_record_rm688); loop_concurrency (it carries the SHARED_SHA256 pin) and
+package_portable_atomic_write stay in the baseline;
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -91,7 +97,6 @@ _BASELINE = {
     "tests/test_bug_class_lint_bundle_zero_ratchet_s144p319.py": 1,
     "tests/test_bugbear_gap_and_pie790_ratchet_s144p111.py": 1,
     "tests/test_build_portable_bundle_pkg.py": 1,
-    "tests/test_ci_docs_guard_coverage.py": 1,
     "tests/test_ci_sibling_sweep_tree_wiring.py": 1,
     "tests/test_clamp_expression_ratchet_s144p124.py": 1,
     "tests/test_cli_logging_print_conversion_s144p214.py": 1,
@@ -108,7 +113,6 @@ _BASELINE = {
     "tests/test_env_name_case_prod_ratchet_s144p215.py": 1,
     "tests/test_exception_chain_ratchet_s144p153.py": 1,
     "tests/test_first_element_slice_test_code_ratchet_s144p167.py": 1,
-    "tests/test_fleet_kit_v12_race_guards.py": 1,
     "tests/test_furb105_print_empty_string_ratchet_s144p133.py": 1,
     "tests/test_furb140_starmap_zero_ratchet_s144p521.py": 1,
     "tests/test_furb142_set_add_loop_ratchet_s144p518.py": 1,
@@ -143,7 +147,6 @@ _BASELINE = {
     "tests/test_noqa_concat_ratchet_s144p156.py": 1,
     "tests/test_package_portable_atomic_write_rm258.py": 1,
     "tests/test_perf102_ratchet_s144p178.py": 1,
-    "tests/test_phase3_setup_rerun_bytes_rm820.py": 1,
     "tests/test_pie810_startswith_tuple_ratchet_s144p150.py": 1,
     "tests/test_plr1730_minmax_ratchet_s144p127.py": 1,
     "tests/test_plr5501_collapsible_else_if_ratchet_s144p128.py": 1,
@@ -174,11 +177,9 @@ _BASELINE = {
     "tests/test_ret505_plr1714_plr0402_ratchet_s144p130.py": 1,
     "tests/test_return_nan_idiom_ratchet_s144p172.py": 1,
     "tests/test_return_ratchet_s144p144.py": 1,
-    "tests/test_rewrite_sha_citations_atomic_write_rm258.py": 1,
     "tests/test_rm750_ds_keepalive.py": 1,
     "tests/test_rm825_jsonrpc_scrub_host_residuals.py": 2,
     "tests/test_rm830_quoted_path_sweep.py": 2,
-    "tests/test_rm875_apply_mode_modifiers_archetype_dispatch.py": 1,
     "tests/test_ruf005_core_ratchet_s144p271.py": 1,
     "tests/test_ruf012_classvar_prod_ratchet_s144p211.py": 1,
     "tests/test_ruf050_ruf070_ratchet_s144p516.py": 1,
@@ -186,8 +187,6 @@ _BASELINE = {
     "tests/test_s324_hash_usedforsecurity_prod_ratchet_s144p212.py": 1,
     "tests/test_session_intents_true_audit_s144t169.py": 2,
     "tests/test_sibling_name_sweep.py": 6,
-    "tests/test_sibling_sweep_prefilter_f2.py": 1,
-    "tests/test_sibling_sweep_run_record_rm688.py": 1,
     "tests/test_sim102_nested_if_ratchet_s144p254.py": 1,
     "tests/test_sim103_ratchet_s144p145.py": 1,
     "tests/test_sim108_ternary_ratchet_s144p252.py": 1,
@@ -374,6 +373,13 @@ _FIXED = (
     "tests/test_web_ascii_sweep_atomic_write_rm258.py",
     "tests/test_web_js_unimported_calls_s144q43.py",
     "tests/test_ws_server_port_in_use_rm756.py",
+    "tests/test_ci_docs_guard_coverage.py",
+    "tests/test_fleet_kit_v12_race_guards.py",
+    "tests/test_phase3_setup_rerun_bytes_rm820.py",
+    "tests/test_rewrite_sha_citations_atomic_write_rm258.py",
+    "tests/test_rm875_apply_mode_modifiers_archetype_dispatch.py",
+    "tests/test_sibling_sweep_prefilter_f2.py",
+    "tests/test_sibling_sweep_run_record_rm688.py",
 )
 
 
