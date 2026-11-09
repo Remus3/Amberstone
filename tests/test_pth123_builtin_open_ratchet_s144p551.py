@@ -70,15 +70,6 @@ _BASELINE: dict[str, int] = {
     "tools/sibling_name_sweep.py": 1,
     "tools/stop_claim_gate.py": 4,
     # unconverted: binary / exclusive-create / handle-held opens and writers that other ratchets (RM-481 LF, RM-258 atomic) read by shape, plus plain reads not yet swept
-    "agents/daemon_slayer/tests/test_cc_conditional_wave12.py": 5,
-    "agents/daemon_slayer/tests/test_cc_conditional_wave13.py": 9,
-    "agents/daemon_slayer/tests/test_cc_conditional_wave16.py": 5,
-    "agents/daemon_slayer/tests/test_cc_conditional_wave17.py": 3,
-    "agents/daemon_slayer/tests/test_effects_expansion.py": 1,
-    "agents/daemon_slayer/tests/test_null_damage_type_overrides_2026_05_31.py": 1,
-    "agents/daemon_slayer/tests/test_staged_amp_block_route_item246.py": 1,
-    "agents/daemon_slayer/tests/test_target_vulnerability_overrides_r12.py": 2,
-    "agents/daemon_slayer/tests/test_target_vulnerability_overrides_r43.py": 2,
     "coaches/_base_coach.py": 1,
     "core/death_patterns_loader.py": 1,
     "core/death_recap.py": 2,
@@ -216,6 +207,16 @@ _FIXED = (
     "agents/daemon_slayer/tests/test_rune_procs_expansion.py",
     "agents/daemon_slayer/tests/test_rune_procs_per_attack.py",
     "agents/daemon_slayer/tests/test_rune_procs_shield_bash_dsp4.py",
+    # S144-P-558: nine more daemon_slayer tests (29 sites): notes-file / module-source / test-file reads (read_text), three binary ASCII reads, one items-JSON read
+    "agents/daemon_slayer/tests/test_cc_conditional_wave12.py",
+    "agents/daemon_slayer/tests/test_cc_conditional_wave13.py",
+    "agents/daemon_slayer/tests/test_cc_conditional_wave16.py",
+    "agents/daemon_slayer/tests/test_cc_conditional_wave17.py",
+    "agents/daemon_slayer/tests/test_effects_expansion.py",
+    "agents/daemon_slayer/tests/test_null_damage_type_overrides_2026_05_31.py",
+    "agents/daemon_slayer/tests/test_staged_amp_block_route_item246.py",
+    "agents/daemon_slayer/tests/test_target_vulnerability_overrides_r12.py",
+    "agents/daemon_slayer/tests/test_target_vulnerability_overrides_r43.py",
 )
 
 

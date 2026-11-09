@@ -26,6 +26,7 @@ from agents.daemon_slayer._ability_amp_overrides import (
 )
 from agents.daemon_slayer.ability_dps import compute_ability_dps
 from agents.daemon_slayer.data_loader import DataSnapshot
+import pathlib
 
 _SNAP = DataSnapshot.load()
 
@@ -110,7 +111,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_and_test_are_ascii(self):
         import agents.daemon_slayer._ability_amp_overrides as mod
         for path in (mod.__file__, __file__):
-            with open(path, "rb") as fh:
+            with pathlib.Path(path).open("rb") as fh:
                 raw = fh.read()
             raw.decode("ascii")
 
