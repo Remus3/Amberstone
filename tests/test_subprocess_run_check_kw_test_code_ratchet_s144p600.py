@@ -70,6 +70,10 @@ slice 19 (S144-P-621) does the same for the next ten ratchet modules no other la
 changed, one site each (dict_fromkeys, dict_fromkeys_test_code, dict_items_test_code,
 dict_iter_unused_half, docindent_pathdot_yoda, env_name_case_prod, exception_chain,
 first_element_slice_test_code, furb105_print_empty_string and furb140_starmap_zero);
+slice 20 (S144-P-622) does the same for the next ten ratchet modules no other lane branch had
+changed, one site each (furb142_set_add_loop, furb148_furb145_zero, furb154_furb156_zero,
+furb192_prod, global_return_perf, idiom_zero, import_alias_test_code, isc001_same_line_concat,
+isc002_backslash_concat and lambda_assignment);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -104,21 +108,11 @@ _BASELINE = {
     "tests/test_b4_client_directive_gate.py": 1,
     "tests/test_build_portable_bundle_pkg.py": 1,
     "tests/test_ci_sibling_sweep_tree_wiring.py": 1,
-    "tests/test_furb142_set_add_loop_ratchet_s144p518.py": 1,
-    "tests/test_furb148_furb145_zero_ratchet_s144p515.py": 1,
-    "tests/test_furb154_furb156_zero_ratchet_s144p517.py": 1,
-    "tests/test_furb192_prod_ratchet_s144p188.py": 1,
     "tests/test_gated_g101_cs_cards.py": 2,
     "tests/test_gated_g103_cc_pressure.py": 2,
     "tests/test_gated_g417_onhit_render.py": 2,
     "tests/test_gated_g418_jhin_lethality.py": 1,
     "tests/test_gated_live_probe_relay_auth.py": 1,
-    "tests/test_global_return_perf_ratchet_s144p117.py": 1,
-    "tests/test_idiom_zero_ratchet_s144p180.py": 1,
-    "tests/test_import_alias_test_code_ratchet_s144p165.py": 1,
-    "tests/test_isc001_same_line_concat_ratchet_s144p507.py": 1,
-    "tests/test_isc002_backslash_concat_ratchet_s144p237.py": 1,
-    "tests/test_lambda_assignment_ratchet_s144p473.py": 1,
     "tests/test_launcher_cutover_ps1.py": 3,
     "tests/test_launcher_embed_fitness_a45b.py": 1,
     "tests/test_launcher_first_run.py": 2,
@@ -402,6 +396,16 @@ _FIXED = (
     "tests/test_first_element_slice_test_code_ratchet_s144p167.py",
     "tests/test_furb105_print_empty_string_ratchet_s144p133.py",
     "tests/test_furb140_starmap_zero_ratchet_s144p521.py",
+    "tests/test_furb142_set_add_loop_ratchet_s144p518.py",
+    "tests/test_furb148_furb145_zero_ratchet_s144p515.py",
+    "tests/test_furb154_furb156_zero_ratchet_s144p517.py",
+    "tests/test_furb192_prod_ratchet_s144p188.py",
+    "tests/test_global_return_perf_ratchet_s144p117.py",
+    "tests/test_idiom_zero_ratchet_s144p180.py",
+    "tests/test_import_alias_test_code_ratchet_s144p165.py",
+    "tests/test_isc001_same_line_concat_ratchet_s144p507.py",
+    "tests/test_isc002_backslash_concat_ratchet_s144p237.py",
+    "tests/test_lambda_assignment_ratchet_s144p473.py",
 )
 
 
