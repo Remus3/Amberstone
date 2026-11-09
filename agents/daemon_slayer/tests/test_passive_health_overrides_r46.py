@@ -28,7 +28,6 @@ from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.ehp import compute_ehp
 from agents.daemon_slayer._passive_health_overrides import (
-    PassiveHealthEntry,
     _PASSIVE_HEALTH_OVERRIDES,
     _hp_per_stack_at_level,
     _stacks_at_level,

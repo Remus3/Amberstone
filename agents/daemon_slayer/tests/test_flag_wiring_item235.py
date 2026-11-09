@@ -27,7 +27,7 @@ from agents.daemon_slayer.abilities import load_default
 from agents.daemon_slayer.beam import beam_search_build
 from agents.daemon_slayer.burst import rank_items_by_burst
 from agents.daemon_slayer.data_loader import DataSnapshot
-from agents.daemon_slayer.dps import compute_dps, compute_dps_curve
+from agents.daemon_slayer.dps import compute_dps_curve
 from agents.daemon_slayer.ehp import compute_ehp, rank_items_by_ehp
 from agents.daemon_slayer.fight_report import compute_fight_report
 from agents.daemon_slayer.hybrid import compute_hybrid, rank_items_by_hybrid

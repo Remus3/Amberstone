@@ -48,7 +48,6 @@ import unittest
 from dataclasses import FrozenInstanceError
 
 from agents.daemon_slayer import ENGINE_VERSION
-from agents.daemon_slayer import ability_dps
 from agents.daemon_slayer.ability_dps import (
     AbilitySpellDps,
     _PER_SPELL_CC_DURATIONS,

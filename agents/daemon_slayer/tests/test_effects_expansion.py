@@ -1097,7 +1097,6 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
         # We assert this indirectly: replace Ravenous with a hypothetical
         # 65 AD pure-stat item - same DPS expected. Easier path: just
         # assert the proc *would* resolve to zero given Aatrox's rotations.
-        from agents.daemon_slayer.engine import build_champion
         from agents.daemon_slayer.dps import _phase_rotations
         rotations = _phase_rotations(self.snap, "Aatrox")
         for phase_rot in rotations.values():

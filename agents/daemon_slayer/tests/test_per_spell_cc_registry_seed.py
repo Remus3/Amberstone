@@ -35,7 +35,6 @@ import unittest
 
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer.ability_dps import (
-    AbilitySpellDps,
     _PER_SPELL_CC_DURATIONS,
     _apply_tenacity_to_cc_tuple,
     _per_spell_cc_for,

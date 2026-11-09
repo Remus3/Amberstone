@@ -19,7 +19,6 @@ import unittest
 
 from agents.daemon_slayer._effects_types import (
     CallContext,
-    MAGICAL,
     PHYSICAL,
     PeriodicProc,
 )

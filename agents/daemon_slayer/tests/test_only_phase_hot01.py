@@ -18,7 +18,7 @@ from __future__ import annotations
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot
-from agents.daemon_slayer.dps import PHASES, _select_phase, compute_dps
+from agents.daemon_slayer.dps import PHASES, compute_dps
 from agents.daemon_slayer.rank import rank_items
 
 # (champion_id, item_ids) fixtures - real champions with nonzero AA DPS.
