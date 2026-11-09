@@ -2945,6 +2945,45 @@ survivability flips below cannot roll otherwise.
   trap. This row can therefore be closed ONLY by wiring the cc panel into `/api/state` (headless code),
   NOT by playing the right game. Re-file consequence: the "TANK/BRUISER PICK" closing path is dead on its
   own; keep only the "wire the cc panel" path.
+  **READY (lane 9 PREP s144 cycle 115, source read at `a2abb3bb7`; NOT a tick).** AGE re-check, and the
+  2026-08-02 PREP is NARROWER than the truth in one place. HOLDS: `/api/state` still carries no cc field
+  (`cc_blended` appears in neither `dashboard/_state_builder.py` nor `dashboard/routes_state.py`; pinned by
+  `tests/test_gated_g311_cc_blended_chip.py` `test_state_payload_still_carries_no_cc_blended_field`), and
+  the coach consumer `core/cc_blended_ehp_context.py` `cc_blended_ehp_impact_line` (called from
+  `coaches/aram_coach.py`) is a Haiku PROMPT line, never drawn as such - so the in-game ARAM half still
+  needs the wiring above. MISSED: a RENDERED cc_blended_ehp surface has existed since 2026-05-22
+  (`ae6deb5e0`, item 139 carry (a)): the champ-select threat chip `#csv-sugg-cc-blended-ehp-threat`
+  (renderer `web/js/panels/cc_blended_ehp_threat.js` `renderCcBlendedEhpThreat`, gate
+  `web/js/panels/champ_select.js` `_csvRenderCcBlendedEhpThreat`, compute `GET /api/cc-blended-ehp-threat`),
+  inside the TEAM ANALYSIS drawer beside the G1-03 conditional chip. It is mode-agnostic in its route
+  (SR / ARAM / KIWI / ARENA) but its gate hides it while `their_team` is empty, so it is HIDDEN in blind
+  ARAM / Mayhem select (LCU behaviour, not proven in source) and this gate cannot drain it: it drains in
+  a DRAFT lobby (q400 / q420, GATE 1), in the same capture as G1-03, and it has no other row in this doc.
+  It carries all four G1-03 traps: static `data-cc-tier="warn"` in `web/index.html`, the collapsed
+  `#csv-ta-body` drawer, `[hidden]` not being the visibility truth, and the unchanged-signature early
+  return in `renderCcBlendedEhpThreat` after the gate's direct hide (reproduced under node by the test
+  `test_stale_signature_trap_still_exists`).
+  **CHECK (any DRAFT champ select once one enemy pick is visible), predicate stated first:** PASS iff
+  `lcu.champ_select.their_team[]` and `my_team[]` each hold a `championId > 0` on `/api/state`, the chip has
+  a rendered on-screen box (drawer open), its tier is good / warn / bad with the matching label
+  (FAVORABLE / EVEN / AT RISK), both rows read `<n>.<n>s` with an integer EHP caption ("(your EHP n)" on
+  "Enemy can chain on you", "(enemy EHP n)" on "You can chain on them"), a verdict line is present, AND
+  the page's own last `/api/cc-blended-ehp-threat` URL is for THIS roster by names and mode with the
+  rendered tier, seconds (0.05 tolerance) and EHP integers (JS half-up rounding) equal to that URL's body.
+  FAIL = chip missing from the DOM, populated but malformed, populated with an open drawer and no box, or
+  hidden on a page reloaded 10 to 90 s earlier in this lobby with a visible tab and an ok body for this
+  roster. Anything else (blind select, collapsed drawer, render lag, no route fetch seen) = INCONCLUSIVE.
+  **PROBE (read-only):** `python tools/gated_g311_cc_blended_chip.py snippet` prints an async expression;
+  run it in the real dashboard tab (operator Chrome DevTools console, or headless Chromium against the
+  live :8888 - record which), save the JSON, then `python tools/gated_g311_cc_blended_chip.py grade
+  --evidence <file>` (exit 0 PASS / 1 FAIL / 3 INCONCLUSIVE / 2 unreadable). The bundle keeps only phase,
+  queue id and champion ids - no puuid, no player name (RM-906).
+  **EVIDENCE CONTRACT:** value = tier, both chain seconds, both EHP captions; source = the chip DOM plus
+  the page's own route URL and its re-fetched body; timestamp = `captured_at` plus phase and queue id;
+  predicate = the CHECK above. **SUBSTITUTION:** a GET of `/api/cc-blended-ehp-threat`, the coach prompt
+  line, a `?ui_mock=1` fixture page, or this file's tests (which reach PASS from hand-built bundles) are
+  the COMPUTE half only - never tick from them. A live PASS would discharge only the champ-select RENDER half; the
+  in-game ARAM residual stays "wire a cc panel into `/api/state`" (headless code, not a game).
 - **G3-12** (was C14) `RC_ARAM_STATE_DEBOUNCE` DEFAULT-ON flip validation. **DO NOT close on the OFF
   observation.** The coach refreshed coherently with the flag OFF twice (2026-07-04 6+ min; LEDGER 820
   2026-07-08 "debounce OFF, coach refreshes coherently") - the LEDGER 820 headline reads "C14
