@@ -177,8 +177,13 @@
   color: var(--signal-good, #37D08A);
 }
 
+/* S144-U-234: the negative lift takes the RM-1550 red-text lift (70 percent
+ * --signal-bad toward --text in oklab). Bare red read 4.44:1 arcane and
+ * 4.48:1 moonlit on the card's --surface; at 18 px / 800 this is not WCAG
+ * large text (bold large starts at 18.67 px), so the floor is 4.5. The
+ * negative bar fill keeps bare --signal-bad, so the row still reads red. */
 .pbw-lift[data-sign="neg"] {
-  color: var(--signal-bad, #E84057);
+  color: color-mix(in oklab, var(--signal-bad, #E84057) 70%, var(--text));
 }
 
 .pbw-lift[data-sign="zero"] {

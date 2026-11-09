@@ -87,7 +87,7 @@ aa0c1e3260efd055e4630eb753752279946724d1db75436d83e2825bfcdb2fb9  web/css/panels
 
 6353eed346260e55e4c4ed4cbbbe64dbf8673716d3b4e53de39da208410df0b9  web/css/panels/perf_curve.css
 
-cf050723dde73c50e405ab84c0148fa91a86854169b82d7471cb2f074bcea5ef  web/css/panels/personal_build.css
+483b3f8c0b875fdd949a8e6ba8875e6952648e19c859d5cdbc51693a691e63c3  web/css/panels/personal_build.css
 
 605e2f7d0b0e631d125ae85b8842454e420e7f1c330c20347f45613815e140b4  web/css/panels/personal_context.css
 
