@@ -696,8 +696,7 @@ def main():
 
     # -- 2. Determine already-scraped matches ----------------------------------
     existing = set()
-    for row in conn.execute("SELECT match_id FROM matches"):
-        existing.add(row[0])
+    existing.update(row[0] for row in conn.execute("SELECT match_id FROM matches"))
     print(f"Already in DB: {len(existing)} matches")
 
     # -- 3. Iterate and scrape -------------------------------------------------

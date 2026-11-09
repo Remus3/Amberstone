@@ -371,8 +371,7 @@ def art_colours(img, step: int = 12) -> int:
     """Distinct RGB colours on a coarse grid: map art has many, a flat fill has one."""
     seen = set()
     for y in range(step // 2, img.height, step):
-        for x in range(step // 2, img.width, step):
-            seen.add(img.getpixel((x, y))[:3])
+        seen.update(img.getpixel((x, y))[:3] for x in range(step // 2, img.width, step))
     return len(seen)
 
 

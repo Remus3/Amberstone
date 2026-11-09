@@ -49,8 +49,7 @@ def main() -> int:
         # Coverage check
         modes_covered = set()
         for v in variants.values():
-            for m in (v.get("modes") or []):
-                modes_covered.add(str(m).lower())
+            modes_covered.update(str(m).lower() for m in (v.get("modes") or []))
         if "aram" not in modes_covered:
             coverage_gaps.append(f"{champ} (no aram variant)")
         if "sr" not in modes_covered:

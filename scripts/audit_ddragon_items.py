@@ -71,8 +71,10 @@ def collect_from_db() -> set[str]:
     conn = sqlite3.connect(DB_PATH)
     try:
         for slot in range(7):
-            for (iid,) in conn.execute(f"SELECT DISTINCT item{slot} FROM participants WHERE item{slot}>0"):
-                ids.add(str(iid))
+            ids.update(
+                str(iid)
+                for (iid,) in conn.execute(f"SELECT DISTINCT item{slot} FROM participants WHERE item{slot}>0")
+            )
     finally:
         conn.close()
     return ids

@@ -163,12 +163,9 @@ def _safe_date(y: int, m: int, d: int) -> Optional[str]:
 
 def changelog_dates(text: str) -> list:
     found = set()
-    for y, m, d in _ISO_RE.findall(text):
-        found.add(_safe_date(int(y), int(m), int(d)))
-    for mon, d, y in _MDY_RE.findall(text):
-        found.add(_safe_date(int(y), _MONTHS[mon.lower()[:3]], int(d)))
-    for d, mon, y in _DMY_RE.findall(text):
-        found.add(_safe_date(int(y), _MONTHS[mon.lower()[:3]], int(d)))
+    found.update(_safe_date(int(y), int(m), int(d)) for y, m, d in _ISO_RE.findall(text))
+    found.update(_safe_date(int(y), _MONTHS[mon.lower()[:3]], int(d)) for mon, d, y in _MDY_RE.findall(text))
+    found.update(_safe_date(int(y), _MONTHS[mon.lower()[:3]], int(d)) for d, mon, y in _DMY_RE.findall(text))
     found.discard(None)
     return sorted(found)
 
