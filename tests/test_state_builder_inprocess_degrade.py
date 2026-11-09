@@ -99,7 +99,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 import dashboard._state_builder as sb  # noqa: E402
 
 _LOGGER_NAME = "rc.web_dashboard"
-_THIS_FILE = os.path.basename(__file__)
+_THIS_FILE = Path(__file__).name
 _INPROCESS_MOD = "dashboard._lcu_inprocess"
 
 # Identity sentinel: the relay fallback must be returned verbatim.

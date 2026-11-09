@@ -69,7 +69,6 @@ All authored content here is 7-bit ASCII.
 """
 from __future__ import annotations
 
-import os
 import sys
 import unittest
 from pathlib import Path
@@ -82,7 +81,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 import dashboard._lcu_inprocess as inp  # noqa: E402
 
 _LOGGER_NAME = "rc.web_dashboard"
-_THIS_FILE = os.path.basename(__file__)
+_THIS_FILE = Path(__file__).name
 
 
 def _raise_from_named_helper(*_args, **_kwargs):

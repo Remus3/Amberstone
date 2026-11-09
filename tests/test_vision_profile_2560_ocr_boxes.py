@@ -48,10 +48,10 @@ def test_2560_profiles_carry_all_numeric_ocr_boxes():
     for path in _require_local_profiles():
         with open(path, encoding="utf-8") as fh:
             d = json.loads(fh.read())
-        assert d.get("base") == [2560, 1440], f"{os.path.basename(path)} wrong base"
+        assert d.get("base") == [2560, 1440], f"{Path(path).name} wrong base"
         regions = d.get("regions", {})
         missing = sorted(_REQUIRED_OCR - set(regions))
-        assert not missing, f"{os.path.basename(path)} missing OCR boxes: {missing}"
+        assert not missing, f"{Path(path).name} missing OCR boxes: {missing}"
 
 
 def test_2560_ocr_boxes_are_inside_frame_and_well_formed():

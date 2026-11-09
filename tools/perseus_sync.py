@@ -175,7 +175,7 @@ def settled_blocks(claude_md: str) -> list[str]:
 def parse_memory_file(path: str) -> tuple[str, str, str, str]:
     """Return (name, description, type, body) for a memory .md file."""
     raw = read_text(path)
-    name = os.path.basename(path)[:-3]
+    name = Path(path).name[:-3]
     description, mtype, body = "", "reference", raw
     front = re.match(r"^---\n(.*?)\n---\n(.*)$", raw, re.DOTALL)
     if front:

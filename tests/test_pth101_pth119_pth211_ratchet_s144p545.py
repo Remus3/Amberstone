@@ -3,13 +3,15 @@
 Measured 2026-11-09 with ``ruff check --isolated --preview`` (target py39): 36 findings in 24 files, none in the
 vendored kit (``ops/fleet_kit/``, fenced anyway). Sixteen sites in ten test files became pathlib (``Path.symlink_to`` /
 ``Path.chmod``; both call the same ``os`` function with the same arguments, ``target_is_directory`` included), so
-those ten files are pinned clean. Twenty findings in fourteen files stay baselined, for a stated reason each:
+those ten files are pinned clean. Twenty findings in fourteen files stayed baselined, for a stated reason each; S144-P-546 then
+converted the ten files whose basename only formats a log or display name (twelve PTH119 sites; the existing
+log-line tests ``tests/test_state_builder_inprocess_degrade.py`` and
+``tests/rc2_l3/test_lcu_inprocess_degrade_log_rm312.py`` still anchor the frame basename), leaving eight findings in
+four files:
 
 - ``os.path.basename`` is NOT ``Path.name`` on a string with a trailing separator (``basename("a/")`` is ``""``,
   ``Path("a/").name`` is ``"a"``), so the two name-validation sites (``lib/icons/downloader.py``, which compares the
   basename to the input to refuse a path, and ``tools/ddragon_mirror_refresh.py``) are behaviour-bearing and stay.
-  The other basename sites format a log or display name from a frame filename, ``argv[0]`` or ``__file__``; they were
-  left for a later slice rather than mixed into this one.
 - ``tests/_basetemp_guard.py`` chmods inside a gate that must never raise on odd input; ``tests/test_launcher_first_run.py``
   (five sites) is the packaging owner's.
 
@@ -43,22 +45,22 @@ _NOT_THIS_SCOPE = {
 }
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE: dict[str, int] = {
-    "dashboard/_lcu_inprocess.py": 1,  # basename of a traceback frame filename, for a log line
-    "dashboard/_state_builder.py": 1,  # basename of a traceback frame filename, for a log line
     "lib/icons/downloader.py": 1,  # name validation: basename(img) != img refuses a path
     "tests/_basetemp_guard.py": 1,  # chmod inside a gate that must not raise
-    "tests/rc2_l3/test_lcu_inprocess_degrade_log_rm312.py": 1,
-    "tests/test_ascii_rule_true_audit_s144.py": 1,
     "tests/test_launcher_first_run.py": 5,  # packaging owner's test
-    "tests/test_log_rotation_rm718a.py": 1,
-    "tests/test_state_builder_inprocess_degrade.py": 1,
-    "tests/test_vision_profile_2560_ocr_boxes.py": 2,
-    "tools/console_flash_control.py": 2,  # basename of argv[0] in two log lines
-    "tools/console_flash_detector.py": 1,  # basename of a process image buffer
     "tools/ddragon_mirror_refresh.py": 1,  # name validation: basename(name) != name
-    "tools/perseus_sync.py": 1,
 }
 _FIXED = (
+    "dashboard/_lcu_inprocess.py",
+    "dashboard/_state_builder.py",
+    "tests/rc2_l3/test_lcu_inprocess_degrade_log_rm312.py",
+    "tests/test_ascii_rule_true_audit_s144.py",
+    "tests/test_log_rotation_rm718a.py",
+    "tests/test_state_builder_inprocess_degrade.py",
+    "tests/test_vision_profile_2560_ocr_boxes.py",
+    "tools/console_flash_control.py",
+    "tools/console_flash_detector.py",
+    "tools/perseus_sync.py",
     "tests/test_ddragon_mirror_prune.py",
     "tests/test_guard_grading_rc_facts.py",
     "tests/test_install_bat_key_stage_rm779.py",
@@ -133,6 +135,16 @@ def test_basename_is_not_path_name_on_a_trailing_separator():
     """Why the two name-validation sites stay baselined."""
     assert os.path.basename("a/") == ""  # noqa: PTH119 - the old spelling is the control
     assert Path("a/").name == "a"
+
+
+@pytest.mark.parametrize("name", [
+    "ascii_rule.py", "<string>", "<stdin>", "<frozen importlib._bootstrap>", "", "no_extension",
+    "dir/mod.py", "dir/sub/mod.py", "/abs/dir/mod.py", "C" + ":/abs/dir/mod.py", "x.tar.gz",
+])
+def test_path_name_matches_basename_on_the_converted_sites_inputs(name):
+    """The converted PTH119 sites feed a traceback frame filename, ``__file__``, an argv[0], a process image
+    name or a memory-file path: none ends in a separator, and for those the two spellings agree."""
+    assert Path(name).name == os.path.basename(name)  # noqa: PTH119 - the old spelling is the control
 
 
 def test_path_symlink_to_matches_os_symlink_and_forwards_target_is_directory(tmp_path, monkeypatch):

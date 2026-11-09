@@ -81,10 +81,10 @@ def run(out_path: Path, settle: float = SETTLE_SECONDS) -> int:
                     argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                     **kwargs)
             except OSError as exc:
-                fh.write(f"CONTROL-SKIP ts={_now()} seq={seq} name={os.path.basename(argv[0])} reason={type(exc).__name__}\n")
+                fh.write(f"CONTROL-SKIP ts={_now()} seq={seq} name={Path(argv[0]).name} reason={type(exc).__name__}\n")
                 fh.flush()
                 continue
-            line = f"CONTROL ts={_now()} seq={seq} flagged={int(flagged)} name={os.path.basename(argv[0])} pid={proc.pid}"
+            line = f"CONTROL ts={_now()} seq={seq} flagged={int(flagged)} name={Path(argv[0]).name} pid={proc.pid}"
             fh.write(line + "\n")
             fh.flush()
             lines.append(line)

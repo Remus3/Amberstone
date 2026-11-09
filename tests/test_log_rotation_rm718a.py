@@ -521,4 +521,4 @@ def test_no_live_log_was_touched_by_this_module():
     live = (_ROOT / "logs").resolve()
     base = Path(agent._FILE_HANDLER.baseFilename).resolve()
     assert live not in base.parents, base
-    assert os.path.basename(base) == "lcu_agent.log"
+    assert base.name == "lcu_agent.log"
