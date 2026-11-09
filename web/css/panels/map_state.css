@@ -1,12 +1,6 @@
-/* Vector overlay (vision_tracker dots + ghost markers) layered on top of
- * the live minimap image. Sized in JS to match the rendered <img> bounds
- * exactly; pointer-events:none so clicks pass through. */
-.mm-vt-overlay {
-  position: absolute;
-  pointer-events: none;
-  z-index: 4;
-  image-rendering: auto;
-}
+/* S144-U-256: the vision-tracker dot canvas that sat over the #minimap
+ * image is retired with its poll (main.js); that panel renders in no
+ * view. */
 .latency-stat {
   padding: 3px 10px;
   border-radius: 999px;

@@ -27,9 +27,14 @@ own at the next tick.
 
 `show_coaching_main` (test_home_minimap_crop_poll_hung_feed.py) lets a
 test render the panel: it adds one rule to the served index.html that
-shows <main> in every view. The two hung-feed tests of these polls use it
-to keep testing the poll mechanics.
-Requests are counted in the page by the caller's stack, as in those tests.
+shows <main> in every view. The crop poll's hung-feed test uses it to keep
+testing the poll mechanics.
+Requests are counted in the page by the caller's stack, as in that test.
+
+S144-U-256 retired the vision-tracker poll (refreshVisionOverlay and the
+#mm-state line it fed), so /api/vision-state is now counted from ANY
+caller here and pinned at zero on the Home view, rendered panel included
+(test_minimap_state_line_retired.py pins the retired markup and names).
 """
 import json
 
@@ -54,8 +59,8 @@ _COUNT_JS = r"""
     let c = null;
     if (url.indexOf('/api/minimap-crop') >= 0
         && stack.indexOf('refreshMinimap') >= 0) c = s.crop;
-    if (url.indexOf('/api/vision-state') >= 0
-        && stack.indexOf('refreshVisionOverlay') >= 0) c = s.vs;
+    // S144-U-256: any caller; the Home view has no vision-state poll.
+    if (url.indexOf('/api/vision-state') >= 0) c = s.vs;
     if (!c) return p;
     c.started += 1;
     c.open += 1;
@@ -187,7 +192,8 @@ def test_a_hidden_panel_sends_neither_poll(mock_server, pw_browser):
 
 def test_a_rendered_panel_polls_and_paints(mock_server, pw_browser):
     """Positive control: the same live game with the panel rendered sends
-    both polls (one request open at a time) and paints the image."""
+    the crop poll (one request open at a time) and paints the image; the
+    retired vision-tracker poll sends nothing even then (S144-U-256)."""
     crop = _Crop("live")
     ctx, page, errors = _open(pw_browser, mock_server, crop, _Game(),
                               shown=True)
@@ -199,8 +205,7 @@ def test_a_rendered_panel_polls_and_paints(mock_server, pw_browser):
     assert got["rendered"], got
     assert got["polls"]["crop"]["started"] >= 8, got["polls"]
     assert got["polls"]["crop"]["max"] == 1, got["polls"]
-    assert got["polls"]["vs"]["started"] >= 8, got["polls"]
-    assert got["polls"]["vs"]["max"] == 1, got["polls"]
+    assert got["polls"]["vs"]["started"] == 0, got["polls"]
     assert not got["hidden"] and got["caption"].startswith("ARAM"), got
     assert got["src"].startswith("blob:"), got
 
@@ -236,7 +241,8 @@ def test_hiding_the_panel_drops_the_open_crop_request(
         _close(page, ctx, mock_server)
     assert not errors, errors[:3]
     assert got["polls"]["crop"]["started"] == sent, got["polls"]
-    # The vision-state poll stops too (it sent on before the fix).
-    assert got["polls"]["vs"]["started"] == vs_sent, got["polls"]
+    # No vision-state request at any point (S144-U-256 retired that poll).
+    assert vs_sent == 0, got["polls"]
+    assert got["polls"]["vs"]["started"] == 0, got["polls"]
     assert got["src"] == "", got
     assert got["hidden"], got

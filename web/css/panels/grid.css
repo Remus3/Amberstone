@@ -36,59 +36,9 @@ main {
  * which renders in no view. body[data-phase] itself stays live. */
 .minimap-body::-webkit-scrollbar { width: 6px; }
 .minimap-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-.minimap-state {
-  font-size: 17px;
-  color: var(--text-dim);
-  padding: 4px 12px;
-  background: var(--surface-alt);
-  border-radius: var(--radius-sm);
-  border-left: 4px solid var(--border);
-  font-weight: 700;
-  text-align: center;
-  /* 2026-04-26: keep pill on its own line, prevent left-clip when text
-   * is longer than the panel width during transient states. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.minimap-state.hidden { display: none; }
-.minimap-state.live {
-  color: var(--good);
-  border-left-color: var(--good);
-  background: var(--good-soft);
-}
-/* Heartbeat dot inside the state line - pulses on every state poll so
- * the user can read "this is live" peripherally instead of staring at
- * static text. The .pulse class is added by JS each render and removed
- * on animationend so the next render re-fires the animation. */
-.minimap-state .mm-heart {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--good);
-  margin: 0 6px 1px 0;
-  vertical-align: middle;
-  opacity: 0.55;
-  transition: opacity 0.2s;
-}
-.minimap-state .mm-heart.pulse {
-  animation: mmHeartPulse 0.9s ease-out;
-}
-@keyframes mmHeartPulse {
-  0%   { transform: scale(1.0); opacity: 1;
-         box-shadow: 0 0 0 0 rgba(127,209,154,0.6); }
-  60%  { transform: scale(1.5); opacity: 0.9;
-         box-shadow: 0 0 0 6px rgba(127,209,154,0); }
-  100% { transform: scale(1.0); opacity: 0.55;
-         box-shadow: 0 0 0 0 rgba(127,209,154,0); }
-}
-.minimap-state .mm-age {
-  margin-left: 6px;
-  color: var(--text-faint);
-  font-weight: 500;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-}
+/* S144-U-256: the MAP STATE heartbeat line (its pill, heart, counts and
+ * age, and their keyframes) is retired: it sat in #minimap, which
+ * renders in no view. */
 .minimap-grid {
   display: flex;
   flex-direction: column;

@@ -422,20 +422,18 @@
         <span class="staleness" data-for="minimap">-</span>
       </div>
       <div class="panel-body minimap-body">
-        <!-- Image + ZOI/position canvas stack. Order (2026-04-24): image
-             first, state chip second (below the image).
-             The minimap is the hero - the state chip ("ZOI - N ally - M
-             enemy") sits under it so the eye lands on the map first. -->
+        <!-- Image + ZOI/position canvas stack. S144-U-256: the MAP
+             STATE heartbeat chip under the image and the vision-tracker
+             dot canvas over it are retired; this panel renders in no
+             view (S144-U-246). -->
         <div class="minimap-img-wrap hidden" id="mm-img-wrap">
           <img id="mm-img" alt="minimap crop" />
-          <canvas id="mm-vt-overlay" class="mm-vt-overlay"></canvas>
           <span class="minimap-img-caption" id="mm-img-caption">-</span>
         </div>
         <div class="mm-canvas-stack hidden" id="mm-canvas-stack">
           <canvas id="mm-zoi-canvas" class="mm-zoi-canvas" width="720" height="720"></canvas>
           <canvas id="mm-pos-canvas" class="mm-pos-canvas" width="720" height="720"></canvas>
         </div>
-        <div class="minimap-state" id="mm-state">awaiting liveclient data...</div>
         <!-- S144-U-255: the item-value bar (#gold-diff) moved to the Active
              Match MAP pane; this panel renders in no view. -->
         <!-- Tower/score/game-time chips removed 2026-04-23 - all three

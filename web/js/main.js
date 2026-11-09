@@ -31,7 +31,7 @@ import { renderCallouts, renderLead } from './panels/callouts.js';
 import { startPersonalContextPolling } from './panels/personal_context.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
-import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
+import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS } from './panels/map_state.js';
 // RM-1211 siblings: both are called below (the self-spell cooldown key and the
 // foreground ZOI redraw) but were never exported or imported - each call threw
 // a ReferenceError. Guard: tests/test_web_js_unimported_calls_s144q43.py.
@@ -6834,9 +6834,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // <main>, which every view hides (header.css, the body[data-view] main
   // list, RM-1552) and the overlay shell hides too (overlay.css
   // main > .panel), so it is never on screen. Its two polls (this one and
-  // refreshVisionOverlay below) still asked the server every 500 ms all
-  // game. Both now send nothing while the panel has no layout box; they
-  // resume by themselves if a view renders it again.
+  // the vision-tracker dot poll, retired by S144-U-256) still asked the
+  // server every 500 ms all game. This one now sends nothing while the
+  // panel has no layout box; it resumes by itself if a view renders it.
   // Guard: tests/snapshot_panels/test_home_minimap_polls_need_rendered_panel.py.
   function _minimapPanelShown() {
     return !!MM.root && MM.root.getClientRects().length > 0;
@@ -6844,7 +6844,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // S144-U-226: a poll request still unanswered after this is aborted and
   // settles as a failure (the image reads STALE). Above both cadences, so
   // a slow answer is not cut off by the next tick (the same 5 s as the
-  // vision-state polls, VT_FETCH_TIMEOUT_MS below).
+  // Active Match vision-state poll, active_match.js _AM_MAP_FETCH_TIMEOUT_MS).
   const MINIMAP_FETCH_TIMEOUT_MS = 5000;
   // The one open /api/minimap-crop request of this poll, or null.
   let minimapInflight = null;
@@ -6963,181 +6963,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   minimapTimer = setInterval(refreshMinimap, minimapInterval);
   refreshMinimap();   // fire once on load
 
-  // -- Vision-tracker overlay on the live minimap ---------------------
-  // Reads /api/vision-state (written by core/vision_tracker), projects
-  // game coords onto the rendered minimap image, draws dots:
-  //   - bright dot at current position when visible
-  //   - faded ghost dot at last_seen_pos with "Xs" label when missing
-  // Skips when no game is running or the minimap image isn't displayed.
-  const VT_OVERLAY = el("mm-vt-overlay");
-  const VT_INTERVAL_MS = 500;
-  // SR / ARAM map sizes in game units (Howling Abyss is smaller than SR).
-  const VT_MAP_SIZE = { CLASSIC: 14800, ARAM: 13800, KIWI: 13800,
-                        URF: 14800, NEXUSBLITZ: 14800, ULTBOOK: 14800 };
-  // Mirror of core/vision_tracker._SHARED_VISION_MODES - modes where the
-  // whole map is visible to both teams and Live Client emits no positions.
-  const VT_SHARED_VISION = new Set(["ARAM", "KIWI"]);
-  // S144-U-225: a poll request still unanswered after this is aborted and
-  // settles as a failure. Above one tick, so a slow answer is not cut off
-  // by the next tick (the Active Match MAP poll uses the same 5 s,
-  // active_match.js _AM_MAP_FETCH_TIMEOUT_MS).
-  const VT_FETCH_TIMEOUT_MS = 5000;
-  // The one open /api/vision-state request of this poll, or null.
-  let vtInflight = null;
-
-  async function refreshVisionOverlay() {
-    if (!VT_OVERLAY) return;
-    if (document.hidden) return;
-    // S144-U-227: the dots and the #mm-state line it paints are both in
-    // the Map State panel; send nothing while it is not rendered.
-    if (!_minimapPanelShown()) return;
-    // S144-U-225: one request open at a time. This poll used to send one
-    // every 500 ms tick, on every view, with no timeout, so a server that
-    // stopped answering collected an open request per tick and a late
-    // answer could paint over a newer one. A tick that finds a request
-    // still open sends nothing; one unanswered after VT_FETCH_TIMEOUT_MS
-    // is aborted (body read included) and settles as a failure, so the
-    // next tick asks again. An answer that lands after its request was
-    // given up on never paints.
-    if (vtInflight) return;
-    const ctl = (typeof AbortController === "function")
-      ? new AbortController() : null;
-    const req = { timer: null };
-    vtInflight = req;
-    // True once, for the request that is still the open one.
-    const settle = () => {
-      if (vtInflight !== req) return false;
-      vtInflight = null;
-      if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
-      return true;
-    };
-    req.timer = setTimeout(() => {
-      req.timer = null;
-      if (!settle()) return;
-      if (ctl) ctl.abort();
-      VT_OVERLAY.style.display = "none";
-    }, VT_FETCH_TIMEOUT_MS);
-    // Fetch first so the shared-vision pill can update even when the
-    // minimap PNG isn't currently visible (image still loading, etc.).
-    let vs;
-    try {
-      const r = await fetch("/api/vision-state",
-        ctl ? { signal: ctl.signal } : undefined);
-      if (!r.ok) {
-        if (settle()) VT_OVERLAY.style.display = "none";
-        return;
-      }
-      vs = await r.json();
-    } catch (_) {
-      if (settle()) VT_OVERLAY.style.display = "none";
-      return;
-    }
-    if (!settle()) return;
-    if (!vs || !vs.enemies || Object.keys(vs.enemies).length === 0) {
-      VT_OVERLAY.style.display = "none";
-      return;
-    }
-    // Shared-vision modes (ARAM/KIWI) - Live Client has no positions, so
-    // the dot-overlay won't draw anything useful, but vision_tracker still
-    // produces a meaningful summary (visible/dead counts, on_bridge zone).
-    // Drive the MAP STATE pill from that summary.
-    const sharedVision = VT_SHARED_VISION.has((vs.game_mode || "").toUpperCase());
-    if (sharedVision && MM.status) {
-      const sum = vs.summary || {};
-      const visibleCount = sum.visible_count | 0;
-      const deadCount = sum.dead_count | 0;
-      const sig = `${visibleCount}|${deadCount}`;
-      if (MM.status._sharedSig !== sig) {
-        _renderMmStateLine(MM.status, `${visibleCount} on bridge · ${deadCount} dead`);
-        MM.status._sharedSig = sig;
-        MM.status.classList.remove("hidden");
-        if (!MM.status.classList.contains("live")) {
-          MM.status.className = "minimap-state live";
-        }
-      } else {
-        // Same summary - refresh the timestamp so "Xs ago" stays at 0
-        // instead of climbing while data is actually fresh.
-        MM.status._lastT = Date.now();
-      }
-    }
-    if (!MM.imgWrap || MM.imgWrap.classList.contains("hidden")) {
-      VT_OVERLAY.style.display = "none";
-      return;
-    }
-    // Size the canvas to the rendered <img> bounds (it's centered in the
-    // wrap with margin auto and padded - getBoundingClientRect gives the
-    // post-layout box we need to align to).
-    const img = MM.img;
-    if (!img.complete || !img.naturalWidth) {
-      VT_OVERLAY.style.display = "none"; return;
-    }
-    const imgRect = img.getBoundingClientRect();
-    const wrapRect = MM.imgWrap.getBoundingClientRect();
-    const w = Math.round(imgRect.width);
-    const h = Math.round(imgRect.height);
-    if (w < 4 || h < 4) { VT_OVERLAY.style.display = "none"; return; }
-    VT_OVERLAY.style.display = "block";
-    VT_OVERLAY.style.left = (imgRect.left - wrapRect.left) + "px";
-    VT_OVERLAY.style.top  = (imgRect.top  - wrapRect.top)  + "px";
-    VT_OVERLAY.style.width  = w + "px";
-    VT_OVERLAY.style.height = h + "px";
-    if (VT_OVERLAY.width !== w)  VT_OVERLAY.width  = w;
-    if (VT_OVERLAY.height !== h) VT_OVERLAY.height = h;
-
-    const ctx = VT_OVERLAY.getContext("2d");
-    ctx.clearRect(0, 0, w, h);
-
-    const mapSize = VT_MAP_SIZE[(vs.game_mode || "").toUpperCase()] || 14800;
-    function project(x, z) {
-      // Game origin = bottom-left, z grows up. Canvas y grows down -> flip.
-      const px = (x / mapSize) * w;
-      const py = h - (z / mapSize) * h;
-      return [px, py];
-    }
-
-    for (const [name, e] of Object.entries(vs.enemies)) {
-      if (e.is_dead) continue;
-      const pos = e.last_seen_pos;
-      if (!pos || typeof pos.x !== "number") continue;
-      const [px, py] = project(pos.x, pos.z);
-
-      if (e.visible) {
-        // Bright current-position dot
-        ctx.beginPath();
-        ctx.arc(px, py, 5, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(240, 126, 139, 0.95)";
-        ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      } else {
-        // Ghost dot at last-seen, fading with missing time
-        const missing = e.missing_for_s || 0;
-        const alpha = Math.max(0.25, 1.0 - missing / 30);
-        ctx.beginPath();
-        ctx.arc(px, py, 5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(240, 126, 139, ${alpha * 0.5})`;
-        ctx.fill();
-        ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = `rgba(240, 126, 139, ${alpha})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // "Xs" missing label above the ghost dot
-        ctx.font = "bold 10px Lato, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const label = `${Math.round(missing)}s`;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
-        ctx.strokeText(label, px, py - 12);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-        ctx.fillText(label, px, py - 12);
-      }
-    }
-  }
-  setInterval(refreshVisionOverlay, VT_INTERVAL_MS);
-  refreshVisionOverlay();
+  // S144-U-256: the vision-tracker overlay poll that lived here is retired.
+  // Every 500 ms it asked /api/vision-state to draw enemy dots over the
+  // minimap image above and, in ARAM / KIWI, to write the MAP STATE line;
+  // both sat in #minimap, which renders in no view, so since S144-U-227
+  // its panel gate kept it from ever sending. The Active Match MAP pane
+  // keeps its own poll of that route (panels/active_match.js).
 
   // Fleet Health sub-view was removed (no markup in index.html since
   // before s171). The dead poll of /api/health/peer + sig-based

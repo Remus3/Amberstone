@@ -11,7 +11,6 @@ state.spellCds = {};
 
 const MM = {
   root: el("minimap"),
-  status: el("mm-state"),
   staleness: document.querySelector('.staleness[data-for="minimap"]'),
   dragon: el("mm-dragon"),
   baron: el("mm-baron"),
@@ -699,86 +698,12 @@ function renderMinimap(p) {
       ? _fmtMMSS(p.game_time_s) : (p.game_time || "-");
   }
 
-  // Live marker when we have ANY real datum; otherwise scaffold.
-  const hasAny = !!(p.dragon_state || p.baron_state || p.herald_state
-                   || p.atakhan_state || p.my_tower_hp != null
-                   || p.towers_us != null || p.game_time);
-  MM.status.className = "minimap-state" + (hasAny ? " live" : "");
-  // Dynamic status line - more actionable than the old dev-y scaffold text.
-  // 2026-04-26: hide the pill entirely when we have liveclient AND the
-  // minimap image is showing - the live cropped minimap is the primary
-  // signal; "waiting on positions" is just noise that overlaps the map
-  // visually. Only show the pill when there's something useful to say
-  // (ZOI populated) or no data at all (offline state).
-  // Shared-vision modes (ARAM/KIWI per core/vision_tracker._SHARED_VISION_MODES)
-  // have no Live Client positions - refreshVisionOverlay populates this
-  // pill from /api/vision-state.summary instead. Don't clobber its text.
-  const sharedVision = state.mode === "aram";
-  if (sharedVision) {
-    if (!hasAny) {
-      MM.status.textContent = "awaiting liveclient data...";
-      MM.status.classList.remove("hidden");
-    }
-    // else: leave whatever the vision-overlay tick last wrote (or empty
-    // until its 500ms tick populates).
-  } else if (hasAny) {
-    // Mode swap can leave a stale shared-vision signature on the pill;
-    // clear so re-entering shared-vision later forces a fresh render.
-    delete MM.status._sharedSig;
-    const allyCount = p.positions?.allies ? Object.keys(p.positions.allies).length : 0;
-    const enemyCount = p.positions?.enemies ? Object.keys(p.positions.enemies).length : 0;
-    if (allyCount || enemyCount) {
-      _renderMmStateLine(MM.status, `${allyCount} ally · ${enemyCount} enemy`);
-      MM.status.classList.remove("hidden");
-    } else {
-      // Liveclient up but no positions yet - hide the pill so it
-      // doesn't sit on top of the minimap image.
-      MM.status.textContent = "";
-      MM.status.classList.add("hidden");
-    }
-  } else {
-    MM.status.textContent = "awaiting liveclient data...";
-    MM.status.classList.remove("hidden");
-  }
+  // S144-U-256: the MAP STATE heartbeat line under the minimap image is
+  // retired. It sat in #minimap, which renders in no view, yet every
+  // envelope rewrote it and restarted its heart through a forced reflow,
+  // and the first one started a 1 s age timer for the page's life.
+  // Guard: tests/snapshot_panels/test_minimap_state_line_retired.py.
   state.lastTouch.minimap = Date.now() / 1000;
-}
-
-// Heartbeat-styled live state line. Builds a <3-pulse + counts +
-// self-aging "Xs ago" suffix so the user reads "this is live" without
-// having to compare numbers across renders. The pulse re-fires every
-// call by removing then re-adding the .pulse class on the next frame.
-// The age suffix is auto-updated by a 1s setInterval (registered once).
-function _renderMmStateLine(host, countText) {
-  if (!host) return;
-  if (!host._wired) {
-    host._wired = true;
-    host.innerHTML = '<span class="mm-heart" aria-hidden="true"></span>'
-      + '<span class="mm-counts">- · -</span>'
-      + '<span class="mm-age">0s ago</span>';
-    // Single global timer; re-uses host._lastT as the source of truth.
-    setInterval(() => {
-      const ageEl = host.querySelector(".mm-age");
-      if (!ageEl || !host._lastT) return;
-      const dt = Math.max(0, Math.round((Date.now() - host._lastT) / 1000));
-      ageEl.textContent = dt + "s ago";
-      // Fade the heartbeat as data goes stale (>15s = no live signal).
-      const heart = host.querySelector(".mm-heart");
-      if (heart) heart.style.opacity = dt > 15 ? "0.18" : (dt > 5 ? "0.4" : "");
-    }, 1000);
-  }
-  host._lastT = Date.now();
-  const counts = host.querySelector(".mm-counts");
-  if (counts) counts.textContent = countText;
-  const age = host.querySelector(".mm-age");
-  if (age) age.textContent = "0s ago";
-  const heart = host.querySelector(".mm-heart");
-  if (heart) {
-    heart.style.opacity = "";
-    heart.classList.remove("pulse");
-    // Force reflow so the next addClass restarts the animation.
-    void heart.offsetWidth;
-    heart.classList.add("pulse");
-  }
 }
 
 // Lightweight ephemeral burst above the KDA pill - kill/assist/death
@@ -822,7 +747,7 @@ export {
   renderMinimap,
   _tickSpellCooldowns, _tickObjectiveCountdowns,
   _updateGameClock, _applyGamePhase,
-  _snapshotSpells, _fmtMMSS, _renderMmStateLine,
+  _snapshotSpells, _fmtMMSS,
   // RM-1211: main.js calls both; unexported, each call threw a ReferenceError.
   _spellKey, renderMinimapCanvases,
   // S144-U-255: test seam for the relocated item-value bar.

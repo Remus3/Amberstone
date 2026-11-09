@@ -2251,8 +2251,8 @@ function _amMapImg(mode) {
   const ver = (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
   return "/data/ddragon/" + ver + "/img/map/" + _AM_MAP_FILE[mode];
 }
-// World-coordinate map sizes. Mirror of main.js's VT_MAP_SIZE so the
-// canvas projection matches the home-view overlay.
+// World-coordinate map sizes (Howling Abyss is smaller than SR). Same
+// values as web/js/panels/replay_minimap.js MAP_WORLD.
 const _AM_MAP_WORLD = {
   CLASSIC:    14800,
   ARAM:       13800,
@@ -2277,8 +2277,8 @@ const _AM_GHOST_MIN_ALPHA = 0.25;
 // old rgba(220, 38, 38, 0.85) fell to 4.05:1 over a near-white patch. This
 // red holds 5.13:1 over white and 8.14:1 over black (AA is 4.5:1).
 const _AM_MAP_ALERT_BG = "rgba(185, 28, 28, 0.85)";
-// Cadence: how often we re-poll /api/vision-state. 500ms matches the
-// home-view's VT_INTERVAL_MS so dot positions don't lag.
+// Cadence: how often we re-poll /api/vision-state. 500ms, so dot
+// positions don't lag.
 const _AM_TICK_MS = 500;
 // S144-U-224: a poll request still unanswered after this is aborted and
 // settles as a failure. Under the 10 s stale cut (_AM_MAP_STALE_S), so a
