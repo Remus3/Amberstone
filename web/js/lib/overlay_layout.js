@@ -62,7 +62,16 @@ const WIDGETS = [
   { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient", label: "Callouts" },
   // w-threat (Threat / CDs, .am-pane-cd) removed 2026-07-05 (operator): the enemy
   // CD ledger guessed at cooldowns the Live Client API does not expose - not needed.
-  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build", tall: true },
+  // S144-U-282: y is a LOWER-HALF flag for this TALL widget, not a top edge.
+  // _applyPos bottom-anchors a tall widget only when y > H * 0.5. The old y 470
+  // was the lower half at H 920 but the UPPER half at the real overlay height
+  // (H 1080, any screen through ovscale), so there it was top-anchored at
+  // --ovx-maxh 594 and the .am-pane clip at y 1064 sliced the THREATS eyebrow
+  // (sr, under the capability-gap chip) and the third Arena enemy row. 600 takes
+  // the bottom-anchored path at every H below 1200: bottom 16 px, growing upward
+  // with its content. tests/test_overlay_default_layout_collision.py models the
+  // grown box and keeps it clear of w-call.
+  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 600, tier: "ambient", label: "Build", tall: true },
   // 2026-07-27 collision sweep (see the registry recheck note below): 430 put
   // this 210px column 52px UNDER w-build's 412px box (right edge 482) for 537px
   // of height, which truncated build text in-game. 490 clears that edge by 8px
