@@ -38,6 +38,10 @@ used.
   D261   /dev: 2026 Season One Gameplay Preview, published 2025-12-01
          https://www.leagueoflegends.com/en-us/news/dev/dev-2026-season-one-gameplay-preview/
          "With Atakhan Ata-gone, Baron will now return to spawning at 20 minutes."
+Baron history: Baron spawned at 25:00 from 25.S1.1 through 25.24 (the
+Atakhan era, the "25m" side of P261's "25m => 20m"); 26.1 restored 20:00.
+Patch 26.1's Swiftplay values are EXCLUDED here: this schedule is the
+Summoner's Rift ranked / normal draft timer set only.
 Patches 26.2 through 26.22 were searched for a later change to these values and
 none was found (26.11 buffed Grub damage only; 26.12 fixed Herald turret damage
 type). That is an absence in search results, not a proof - re-check on a patch
