@@ -74,6 +74,11 @@ slice 20 (S144-P-622) does the same for the next ten ratchet modules no other la
 changed, one site each (furb142_set_add_loop, furb148_furb145_zero, furb154_furb156_zero,
 furb192_prod, global_return_perf, idiom_zero, import_alias_test_code, isc001_same_line_concat,
 isc002_backslash_concat and lambda_assignment);
+slice 21 (S144-P-623) does the same for the next ten ratchet modules no other lane branch had
+changed, one site each (mutable_default_arg, n805_first_arg, nan_selfcompare_prod, noqa_concat,
+perf102, pie810_startswith_tuple, plr1730_minmax, plr5501_collapsible_else_if,
+plw2901_loop_var_overwrite and precedence_and_dead_branch), bar naive_datetime_prod, which
+lane/true-audit changed;
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -119,18 +124,8 @@ _BASELINE = {
     "tests/test_launcher_key_read_rm810.py": 3,
     "tests/test_launcher_update_cycle_pkg6b.py": 1,
     "tests/test_loop_concurrency.py": 1,
-    "tests/test_mutable_default_arg_ratchet_s144p318.py": 1,
-    "tests/test_n805_first_arg_ratchet_s144p238.py": 1,
     "tests/test_naive_datetime_prod_ratchet_s144p340.py": 1,
-    "tests/test_nan_selfcompare_prod_ratchet_s144p173.py": 1,
-    "tests/test_noqa_concat_ratchet_s144p156.py": 1,
     "tests/test_package_portable_atomic_write_rm258.py": 1,
-    "tests/test_perf102_ratchet_s144p178.py": 1,
-    "tests/test_pie810_startswith_tuple_ratchet_s144p150.py": 1,
-    "tests/test_plr1730_minmax_ratchet_s144p127.py": 1,
-    "tests/test_plr5501_collapsible_else_if_ratchet_s144p128.py": 1,
-    "tests/test_plw2901_loop_var_overwrite_ratchet_s144p259.py": 1,
-    "tests/test_precedence_and_dead_branch_ratchet_s144p112.py": 1,
     "tests/test_private_exception_name_ratchet_s144p512.py": 1,
     "tests/test_pt001_fixture_parens_ratchet_s144p234.py": 1,
     "tests/test_pt012_raises_block_ratchet_s144p184.py": 1,
@@ -406,6 +401,16 @@ _FIXED = (
     "tests/test_isc001_same_line_concat_ratchet_s144p507.py",
     "tests/test_isc002_backslash_concat_ratchet_s144p237.py",
     "tests/test_lambda_assignment_ratchet_s144p473.py",
+    "tests/test_mutable_default_arg_ratchet_s144p318.py",
+    "tests/test_n805_first_arg_ratchet_s144p238.py",
+    "tests/test_nan_selfcompare_prod_ratchet_s144p173.py",
+    "tests/test_noqa_concat_ratchet_s144p156.py",
+    "tests/test_perf102_ratchet_s144p178.py",
+    "tests/test_pie810_startswith_tuple_ratchet_s144p150.py",
+    "tests/test_plr1730_minmax_ratchet_s144p127.py",
+    "tests/test_plr5501_collapsible_else_if_ratchet_s144p128.py",
+    "tests/test_plw2901_loop_var_overwrite_ratchet_s144p259.py",
+    "tests/test_precedence_and_dead_branch_ratchet_s144p112.py",
 )
 
 
