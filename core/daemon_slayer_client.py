@@ -70,7 +70,7 @@ class RankedItem:
             item_name=_row_text(d.get("item_name")),
             delta_dps=float(d.get("delta_dps", 0.0)),
             gold=int(d.get("gold", 0)),
-            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            shares_dead_unique=bool(d.get("shares_dead_unique")),
             dead_unique_key=_row_text(d.get("dead_unique_key")),
             unique_passive_key=_row_text(d.get("unique_passive_key")),
             effective_score=float(d.get("effective_score", 0.0)),
@@ -892,7 +892,7 @@ class TankRankedItem:
             item_name=_row_text(d.get("item_name")),
             delta_ehp=float(d.get("delta_ehp", 0.0)),
             gold=int(d.get("gold", 0)),
-            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            shares_dead_unique=bool(d.get("shares_dead_unique")),
             dead_unique_key=_row_text(d.get("dead_unique_key")),
             unique_passive_key=_row_text(d.get("unique_passive_key")),
             delta_team_blended_ehp=float(
@@ -1505,7 +1505,7 @@ class BruiserRankedItem:
             delta_ehp=float(d.get("delta_ehp", 0.0)),
             hybrid_delta_pct=float(d.get("hybrid_delta_pct", 0.0)),
             gold=int(d.get("gold", 0)),
-            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            shares_dead_unique=bool(d.get("shares_dead_unique")),
             dead_unique_key=_row_text(d.get("dead_unique_key")),
             unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
@@ -1720,7 +1720,7 @@ class MageRankedItem:
             delta_ability_dps=float(d.get("delta_ability_dps", 0.0)),
             new_ability_dps=float(d.get("new_ability_dps", 0.0)),
             gold=int(d.get("gold", 0)),
-            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            shares_dead_unique=bool(d.get("shares_dead_unique")),
             dead_unique_key=_row_text(d.get("dead_unique_key")),
             unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
@@ -1925,7 +1925,7 @@ class AssassinRankedItem:
             delta_burst=float(d.get("delta_burst", 0.0)),
             new_burst=float(d.get("new_burst", 0.0)),
             gold=int(d.get("gold", 0)),
-            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            shares_dead_unique=bool(d.get("shares_dead_unique")),
             dead_unique_key=_row_text(d.get("dead_unique_key")),
             unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
@@ -2344,7 +2344,7 @@ class EnchanterRankedItem:
             delta_hps=float(d.get("delta_hps", 0.0)),
             new_hps=float(d.get("new_hps", 0.0)),
             gold=int(d.get("gold", 0)),
-            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            shares_dead_unique=bool(d.get("shares_dead_unique")),
             dead_unique_key=_row_text(d.get("dead_unique_key")),
             unique_passive_key=_row_text(d.get("unique_passive_key")),
         )
@@ -2509,9 +2509,9 @@ class OnhitRankedItem:
             ability_dps=float(d.get("ability_dps", 0.0)),
             auto_dps=float(d.get("auto_dps", 0.0)),
             dps_per_1k_gold=float(d.get("dps_per_1k_gold", 0.0)),
-            is_terminal=bool(d.get("is_terminal", False)),
+            is_terminal=bool(d.get("is_terminal")),
             tags=_str_tags(d.get("tags")),
-            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            shares_dead_unique=bool(d.get("shares_dead_unique")),
             dead_unique_key=_row_text(d.get("dead_unique_key")),
             unique_passive_key=_row_text(d.get("unique_passive_key")),
         )

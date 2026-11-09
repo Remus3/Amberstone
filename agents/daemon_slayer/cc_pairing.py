@@ -259,7 +259,7 @@ def _resolve_enablers(
     teammate. The owner champion is never its own enabler and roster
     order is preserved for a deterministic hint.
     """
-    return tuple(c for c in distinct if c != owner and tool.get(c, False))
+    return tuple(c for c in distinct if c != owner and tool.get(c))
 
 
 def compute_cc_pairing(roster: List[str]) -> CcPairingResult:

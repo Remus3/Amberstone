@@ -608,7 +608,7 @@ def execute_command(cmd: dict) -> dict:
         if not isinstance(cur, dict):
             cur = {"accountId": aid, "itemSets": []}
         sets = list(cur.get("itemSets") or [])
-        if bool(cmd.get("replace_all_rc", False)):
+        if bool(cmd.get("replace_all_rc")):
             sets = [s for s in sets if not str(s.get("uid", "")).startswith("RC-")]
         else:
             sets = [s for s in sets if str(s.get("uid", "")) != set_uid]

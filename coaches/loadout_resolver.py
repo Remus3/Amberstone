@@ -332,7 +332,7 @@ def list_variants(champion: str, mode: str) -> list[dict]:
             "item_names":  items,
             "item_ids":    _resolve_item_ids(items),
             "build_paths": build_paths_out,
-            "_collapsed":  bool(v.get("_collapsed", False)),
+            "_collapsed":  bool(v.get("_collapsed")),
             # The keystone the auto-writer applies (display-match source).
             "auto_keystone":   auto_ks,
             "auto_primary":    auto_pri,
