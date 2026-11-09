@@ -83,6 +83,10 @@ VALID_METRICS: Tuple[str, ...] = (
 # authority on per-cast timing. A caller-supplied sequence overrides this.
 _DEFAULT_COMBO_SEQUENCE: Tuple[str, ...] = ("Q", "AA", "W", "R")
 
+# S144-D-180: the fixed note on a cell whose target profile has an entry that
+# is not a finite number (the cell's value is NaN, so invariant 4 flags it).
+_BAD_PROFILE_NOTE = "target profile not a finite number"
+
 # Floating-point slack for the "non-increasing" / "non-decreasing" tests.
 # Engine values are O(10-1000); 1e-6 absorbs round-trip float noise without
 # masking a real reversal.
@@ -137,13 +141,22 @@ def _coerce_profile(
 
     Missing trailing entries default to 0.0 so a 2-tuple ``(armor, mr)``
     works as well as a 4-tuple. Extra entries past index 3 are ignored.
+
+    S144-D-179: an entry ``float()`` rejects (None, "x", an int too large
+    for a float) reads as NaN instead of raising, so one bad profile fails
+    only its own cells (see ``sweep_scenarios``) and never aborts the sweep.
     """
     vals = list(profile or ())
-    armor = float(vals[0]) if len(vals) > 0 else 0.0
-    mr = float(vals[1]) if len(vals) > 1 else 0.0
-    max_hp = float(vals[2]) if len(vals) > 2 else 0.0
-    bonus_hp = float(vals[3]) if len(vals) > 3 else 0.0
-    return (armor, mr, max_hp, bonus_hp)
+
+    def _at(i: int) -> float:
+        if len(vals) <= i:
+            return 0.0
+        try:
+            return float(vals[i])
+        except (TypeError, ValueError, OverflowError):
+            return math.nan
+
+    return (_at(0), _at(1), _at(2), _at(3))
 
 
 def _score_cell(
@@ -275,11 +288,20 @@ def sweep_scenarios(
     for lv in norm_levels:
         for item_ids in norm_item_sets:
             for (armor, mr, max_hp, bonus_hp) in norm_profiles:
+                profile_ok = all(
+                    math.isfinite(x) for x in (armor, mr, max_hp, bonus_hp)
+                )
                 for mode in norm_modes:
-                    value, note = _score_cell(
-                        snap, champ, lv, item_ids, armor, mr, max_hp,
-                        bonus_hp, mode, metric, sequence, runes,
-                    )
+                    if profile_ok:
+                        value, note = _score_cell(
+                            snap, champ, lv, item_ids, armor, mr, max_hp,
+                            bonus_hp, mode, metric, sequence, runes,
+                        )
+                    else:
+                        # S144-D-180: never reach a scorer. combo /
+                        # mana_bounded_dps fail soft to a FINITE 0.0 that
+                        # passed invariant 4 as a real measurement.
+                        value, note = (math.nan, _BAD_PROFILE_NOTE)
                     cells.append(ScenarioCell(
                         champion=champ,
                         level=lv,
