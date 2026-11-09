@@ -3538,6 +3538,33 @@ survivability flips below cannot roll otherwise.
   3075 structurally unrankable and left half the row's own prediction unobservable. **That first
   evidence was INSUFFICIENT as filed and must not be cited alone.** RF6 rides the SAME flip as RF3.
   REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 140, read at `0a7552d7d`; NOT a tick).** The closing
+  run and the REMAINS line hold. (1) RE-MEASURED in-process (compute half only, the same headless
+  class as the 2026-07-18 close, not live evidence): DS snapshot `16.22.1`, ENGINE `1.291.0`,
+  `ehp.rank_items_by_ehp` at depth `[]`, L13, mode ARAM, top_n 200 evaluates **pool=121** OFF and ON
+  for KSante, whose ON top-6 is `['6662','3075','3143','3083','6665','2504']` - byte-identical to the
+  filed closing run, Iceborn Gauntlet 6662 AND Thornmail 3075; Rell floats `3121` Fimbulwinter to
+  rank 1; Malphite / Ornn / Sion / Zac byte-identical. The partition holds at L6 and L18 (KSante
+  floats 6662 + 3075 into the top 2 at both; Rell floats 3121 to rank 1 at both). RF6 visible in the
+  counts: Rell alone evaluates pool + 1 ON (122), because RF6 INJECTS the non-purchasable 3121 past
+  the purchasable gate (`ehp.py:3725` `inject_ids=`), while KSante's ids are already pooled and only
+  float (RF3). DRIFT, not a correction of the close: the INSUFFICIENT first-filed depth
+  `[3068,3075,3143]` now evaluates pool=118 (filed 117), same partition, KSante 6662 and Rell 3121 to
+  rank 1. (2) STILL DEFAULT-OFF at every layer (`inspect.signature`): `dispatch_for_coach` (23
+  params), `rank_for_primary_archetype` (47), `rank_tank_for` (52) and `ehp.rank_items_by_ehp` (57)
+  all default `prefer_survivability_by_win=False`, and `git grep` finds the key under no file in
+  `coaches/` or `web/`, so the flip has NOT landed. (3) CHAIN, by symbol (the row filed none):
+  `coaches/aram_coach.py:1112` (the `_ds_dispatch_for_coach(...)` call, key absent) ->
+  `coach_integration/archetype_dispatch.py:289` `dispatch_for_coach` (param `:313`, `seams` entry
+  `:441-442`) -> `core/daemon_slayer_client.py:2995` `rank_for_primary_archetype` (param `:3037`;
+  tank branch `:3167`) -> `rank_tank_for` `:907` (param `:922`, body key `:1056-1057`) ->
+  `/rank-tank` (`agents/daemon_slayer/server.py:3237`) -> `_route_rank_tank` `:1202` (parsed per
+  request `:1299`, kwarg `:1483`) -> `ehp.rank_items_by_ehp` `:3194` (param `:3227`, resolve
+  `:3474-3478` via `survivability_item_ids_tank`, inject `:3725`). G3-05's dispatcher-level note
+  applies unchanged: one default flip at `dispatch_for_coach` flips G3-05 / G3-06 / G3-07 together,
+  and the `/api/ds-preview` opt-in (`dashboard/routes_state.py:969` `_DS_PREVIEW_SEAM_BOOLS`,
+  forwarded at `:1053`) has no `web/` sender. Idle this cycle: `:8888` and `:2999` curl status `000`
+  at 2026-11-09 10:44 local; no game.
 - **G3-08** (was C8) F2 `cost_ceiling` flip - **PREMISE DEAD 2026-07-18: re-file as
   CLOSED-STALE-PREMISE, explicitly NOT as a validated flip.** SETTLED HEADLESS, and stronger than the
   row assumed: 223069 Void Immolation is 6000g with `maps {'11':False,'12':True,'21':False,'22':False,
