@@ -557,7 +557,7 @@ def _build_prompt(state: dict) -> str:
         # tft/tft_set.py, never a hard-wired tft_set17_*.json.
         from tft import tft_set as _ts
         _cs = _ts.comp_state()
-        _meta_file = _ts.meta_path(_set_n, pbe=bool(_cs.get("pbe", False)))
+        _meta_file = _ts.meta_path(_set_n, pbe=_ts.pbe_enabled(_cs))
         if _cs and _meta_file.exists():
             _comp_name = _cs.get("selected", "")
             _ignore_emb = _cs.get("ignore_emblems", False)
