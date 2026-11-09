@@ -88,10 +88,9 @@ def _make_db(path, rows, wal=True):
         "mode TEXT NOT NULL, champion TEXT DEFAULT '', game_id INTEGER DEFAULT 0, "
         "raw_data TEXT DEFAULT '')")
     for rid, ts, mode, champ, gid, raw in rows:
-        if not isinstance(raw, str):
-            raw = json.dumps(raw)
+        blob = raw if isinstance(raw, str) else json.dumps(raw)
         conn.execute("INSERT INTO matches VALUES (?,?,?,?,?,?)",
-                     (rid, ts, mode, champ, gid, raw))
+                     (rid, ts, mode, champ, gid, blob))
     conn.commit()
     return conn
 
