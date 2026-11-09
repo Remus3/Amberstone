@@ -27,8 +27,9 @@ and Effective HP is a stock. Mixing the two is exactly the cross-unit mistake
 ``hybrid.py`` needed a whole normalization layer to paper over.
 
 Documented EXCLUSIONS (deliberately NOT priced - with the reason class):
-  - Knight's Vow (3109): "redirect 12% of the pre-mitigation damage they take to
-    you" is an EHP MULTIPLIER ON THE PROTECTED ALLY, not a flat grant, and its
+  - Knight's Vow (3109): "take 14% of the damage they receive" (live DDragon
+    since 16.11.1; Meraki, frozen at content patch 25.15, still prints "redirect
+    12%") is an EHP MULTIPLIER ON THE PROTECTED ALLY, not a flat grant, and its
     magnitude depends on that ally's build - which this seam cannot see. Same
     doctrine that excludes Zilean R / Akshan W in
     ``_passive_ally_grant_overrides`` ("build-dependent on the PROTECTED ALLY,
@@ -42,8 +43,9 @@ Documented EXCLUSIONS (deliberately NOT priced - with the reason class):
   - Solstice Sleigh (3876): hard-denied from the SR candidate pool by
     ``rank._SR_EXCLUDED_ITEM_IDS`` before scoring, so a row would be inert.
 
-Each exclusion is pinned for EVERY id in its family that the 16.14.1 catalog
-actually contains, not just the bare 4-digit id (R144). Knight's Vow and Zeke's
+Each exclusion is pinned for EVERY id in its family that the catalog actually
+contains (re-read at 16.14.1 and still at 16.22.1), not just the bare 4-digit id
+(R144). Knight's Vow and Zeke's
 each carry two mirrors (``223109`` / ``323109``, ``223050`` / ``323050``) and
 Bandlepipes one (``222524``); all were re-read per id and none changed its reason
 class - the Vow mirrors still redirect a percentage of the ally's incoming damage,
@@ -60,7 +62,9 @@ even a missing-key miss: R143 added the mirror rows to ``enchanter_items.json``
 with their per-proc fields deliberately left at 0.0 ("not measured this pass"),
 so the lookup SUCCEEDED and returned a zero grant. Measured live at 16.14.1:
 ``name_to_id("Echoes of Helia", mode="sr")`` returns ``326620``, which priced
-0.0 against 61.12 for the bare ``6620``.
+0.0 against 61.12 for the bare ``6620``. At 16.22.1 the resolver's per-mode index
+is lowest-numeric-id-wins, so the same call now returns the bare ``6620``; the
+table below still prices a 32xxxx id that a caller hands over directly.
 
 Fixed by ENUMERATING the mirrors in ``_ALLY_GRANT_MIRROR_SOURCE``, one id at a
 time, each admitted only because its OWN catalog description states the identical
@@ -78,9 +82,13 @@ but state NO magnitude, on any of them, in DDragon, and their ``effect`` blocks
 carry only cooldowns. Inheriting the base number is not available as a safe
 default here the way it was for the ``_item_health_stack`` 223084 COEFFICIENT:
 Riot demonstrably retuned the absolute numbers on these exact mirrors (Locket 400
-Health vs 200, Mikael's 400 vs 250, Helia 300 vs 200, Redemption amp 12% vs 10%),
+Health vs 200, Mikael's 400 vs 250, Helia 300 vs 200, all still live at 16.22.1),
 so a base-nominal carry would be an invented magnitude on an axis with in-hand
-evidence of divergence - the RM-102 failure mode. Term A ships SR-only and
+evidence of divergence - the RM-102 failure mode. Redemption's Arena amp was a
+fourth example (12% vs 10%) from 16.11.1 through 16.15.1; since 16.18.1 the
+223107 line reads 10% like the base, and ``enchanter_items.json`` already
+carries 0.1. Its heal
+still states no number, so the hold stands for it too. Term A ships SR-only and
 DEFAULT-OFF, so these stay a measured 0.0 until a live Arena magnitude is sourced.
 
 The ``.hps`` import is LAZY (inside the function) so importing this module at

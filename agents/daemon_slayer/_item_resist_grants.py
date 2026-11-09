@@ -44,9 +44,10 @@ disk carries an Arena Light value, so the only way to produce one would be to sc
 the SR 18/21/24 by the Dark pen ratio (Arena 8%/stack vs SR 10%/stack) - inheritance
 by arithmetic, exactly what doctrine B forbids. The id is enumerated in
 ``_ITEM_RESIST_UNSOURCED_MIRRORS`` so the R144 coverage guard can tell a knowing
-exclusion from the silent-0.0 defect class. Sibling suffix sweep: only ``3302``
-(maps 11 / 12 / 21 / 35) and ``223302`` (map 30) exist; map 21 is Nexus Blitz and is
-unwired, so the ONE SR row covers SR + ARAM + Brawl.
+exclusion from the silent-0.0 defect class. Sibling suffix sweep (re-read at
+16.22.1): only ``3302`` (maps 11 / 12 / 453) and ``223302`` (map 30) exist, so the
+ONE base row covers SR, ARAM and the throwback map 453 (added at 16.15.1; maps
+21 / 35 dropped at 16.18.1). The 223302 text above is unchanged at 16.22.1.
 
 Mechanic: two current-patch (16.13.1 Meraki) item COMBAT passives grant bonus
 resists that RAMP to max stacks in combat and are ABSENT from the resolved stat
@@ -79,13 +80,14 @@ through build_champion already ... EHP picks them up automatically":
 MIRROR MAGNITUDES ARE READ, NEVER INHERITED (R133). A mode mirror is a RETUNED
 item, not a re-skin of its base, so every 22xxxx / 66xxxx row carries the value
 parsed from ITS OWN ``description`` in ``data/daemon_slayer/<patch>/items.json``
-(DDragon; Meraki carries no mirror rows, so DDragon is the only source). The four
+(DDragon; Meraki carries none of these four mirror rows - it keys 17 other
+22xxxx ids at 16.22.1 - so DDragon is the only source). The four
 mirror rows below were originally seeded "base nominal" - presence in the item
 index was verified, magnitude was not - and THREE of the four were wrong:
 226665 is 40% not 30% (under-credited), 224401 is 50 flat MR not 70
 (over-credited), and 663059 is 10% not 20% (over-credited). Only 663058 happened
-to match its base. Values verified identical in 16.13.1 and 16.14.1, so this was
-never patch drift.
+to match its base. Values verified identical in 16.13.1 and 16.14.1, and still at
+16.22.1, so this was never patch drift.
 ``agents/daemon_slayer/tests/test_item_resist_mirror_magnitudes_r133.py`` pins
 every row to its own tooltip so a future "base nominal" copy cannot land silently.
 
@@ -95,9 +97,9 @@ enemy immobilizing effects grant 2 extra, one spell adds a stack per second)
 rather than the base's 8-stack Steadfast; those stack economics are deliberately
 NOT modelled and both rows keep the shared at-max-stacks midpoint.
 
-Only base + Arena (22xxxx) mirrors resolve in the DS item index
-(``data/daemon_slayer/16.13.1/items.json``, 706 items) - no 32xxxx copy of
-either exists (that family is map 11 only), so ARAM uses the base id. Each of the four ids was confirmed
+Only base + Arena (22xxxx) mirrors of the two ramping items resolve in the DS
+item index (``data/daemon_slayer/16.22.1/items.json``, 699 items) - no 32xxxx copy
+of either exists (that family is map 11 only), so ARAM uses the base id. Each of the four ids was confirmed
 present in the index before adding.
 
 Why a NEW registry (not the champion ``_passive_resist_overrides``): that registry
@@ -236,8 +238,11 @@ _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
     # Unlike Jak'Sho / FoN (which RAMP to max stacks -> prob 0.5 midpoint), these
     # are innate permanent passives -> conditional_probability=1.0 (EXACT, no
     # amortization). Shield of Molten Stone "Immovable as the Earth": +20% of TOTAL
-    # armor (items.json DDragon 16.13.1; Meraki-absent). The secondary armor-scaled
-    # Block Chance carries no DDragon magnitude and is NOT credited.
+    # armor (items.json DDragon 16.13.1; Meraki carries both rows, 443058 and
+    # 443059, in every vendored dir 16.10.1..16.22.1 with the same 20%). The
+    # secondary armor-scaled Block Chance carries no DDragon magnitude (Meraki,
+    # frozen at 25.15, prints 5% per 200 total armor, up to 50%) and is NOT
+    # credited.
     "443058": ItemResistEntry(
         armor_pct=20.0, pct_base="total", conditional_probability=1.0,
         family="molten_stone",
@@ -254,9 +259,10 @@ _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
              " same percent as base 443058 (items.json DDragon 16.14.1)",
     ),
     # Cloak of Starry Night "Limitless as the Stars": +20% of TOTAL MR (items.json
-    # DDragon 16.13.1; Meraki-absent). The secondary MR-scaled non-AA damage
-    # reduction (up to 50% cap) is a separate scaling axis with no flat magnitude
-    # and is NOT credited here.
+    # DDragon 16.13.1; Meraki agrees, see 443058). The secondary MR-scaled non-AA
+    # damage reduction (up to 50% cap) is a separate scaling axis with no flat
+    # magnitude (DDragon prints none; Meraki prints
+    # 5% per 200 total MR, up to 50%) and is NOT credited here.
     "443059": ItemResistEntry(
         mr_pct=20.0, pct_base="total", conditional_probability=1.0,
         family="starry_night",
