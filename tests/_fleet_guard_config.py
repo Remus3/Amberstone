@@ -90,4 +90,9 @@ EXTRA_IGNORE = (
     # (s<NNN>_reports/<lane>_<run_id>.md), both written mid-suite.
     "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_*_last.json",
     "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_reports/*.md",
+    # Kit v27: fleet_inbox.write_pending_marker rewrites this file whenever the
+    # scheduled inbox tick queues an ORDER / FIX / RULING or a session marks one
+    # done; s156 measured two teardown ERRORs on it during a guard run (a MAIN
+    # ORDER queued 20:12:43, rewritten 20:17:43). Not in the kit IGNORE.
+    "ops/loop/control/inbox_pending_orders.json",
 )

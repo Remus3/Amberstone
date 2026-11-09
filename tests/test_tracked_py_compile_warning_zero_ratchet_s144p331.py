@@ -83,10 +83,15 @@ def test_scanner_is_live():
         assert compile_findings(src), f"scanner missed {label}"
 
 
-@pytest.mark.skipif(sys.version_info < (3, 14), reason="PEP 765 warns only from Python 3.14")
 def test_scanner_reports_a_return_out_of_finally():
+    """PEP 765: the interpreter warns on a return out of finally only from 3.14, so the scanner reports it there
+    and stays quiet before (hosted CI runs 3.12). A version branch, not a skip: a skip gated on the interpreter
+    version is not a capability tests/test_skip_condition_hygiene.py can resolve, and this runs on both."""
     src = "def f():\n    try:\n        pass\n    finally:\n        return 1\n"
-    assert compile_findings(src), "scanner missed return in finally"
+    if sys.version_info >= (3, 14):
+        assert compile_findings(src), "scanner missed return in finally"
+    else:
+        assert not compile_findings(src), "a pre-3.14 compile does not warn on return in finally"
 
 
 def test_scanner_is_quiet_on_clean_source():

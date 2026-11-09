@@ -518,22 +518,6 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "Same citation written without the docs/ prefix.",
     ),
     (
-        "docs/superpowers/plans/2026-07-31-mission-control-s10-decouple.md",
-        "dev.js:778",
-        "HISTORICAL",
-        "CORRECTED 2026-08-06 - the first reason given here was itself wrong, "
-        "which is RM-171's own failure class appearing inside RM-171's "
-        "baseline. It claimed the plan quotes a comment in "
-        "tests/test_interrupt_panel.py that cites dev.js:778. Ground truth at "
-        "HEAD: that file contains ZERO dev.js citations (only mc.js:509 at "
-        ":219) and its line 213 is prose about _mcPaintInterrupt. What the "
-        "plan line actually is: a TO-DO instructing a future implementer to "
-        "re-derive dev.js:168 and dev.js:778, which it states are already "
-        "wrong. So the numbers are a work order, not a claim about HEAD, and "
-        "repairing them would delete the instruction. Baselined as a "
-        "point-in-time plan directive.",
-    ),
-    (
         "docs/qa/LOBBY_QA_2026-07-04.md",
         "ops/runtime/ui_recon/recon.py:40",
         "EXTERNAL",
