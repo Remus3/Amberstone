@@ -16,7 +16,10 @@ the question has to be answered.
 A zero-damage combo is a different thing: it is a resolved walk whose spells
 deal no damage at that level (Taric / Tryndamere / Twitch at L2 learn only
 utility ranks; Aphelios's weapon kit deals 0 per cast in the burst walker,
-and LEDGER 1213 lists him among the 0.0-damage-per-cast champions). It is
+and LEDGER 1213 lists him among the 0.0-damage-per-cast champions; root
+cause measured in S144-D-196: Meraki ships his Q weapon forms and R with no
+leveling payload at all, see
+tests/test_ds_abilities_prose_only_damage_s144d196.py). It is
 pinned as a ratchet: a NEW
 zero-damage champion or band fails, a fixed one passes.
 """
