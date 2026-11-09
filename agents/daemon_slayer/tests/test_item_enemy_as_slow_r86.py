@@ -1,6 +1,6 @@
 """R86 - item-keyed enemy ATTACK-SPEED-SLOW aura into the EHP scorer.
 
-Frozen Heart (SR 3110 / ARAM 323110 / Arena 223110) "Winter's Caress"
+Frozen Heart (SR 3110 / map-11 copy 323110 / Arena 223110) "Winter's Caress"
 reduces the Attack Speed of nearby enemy champions by 20% (DDragon 16.13.1:
 "Reduce the Attack Speed of nearby champions by 20%"). It was registered
 ``defensive_only=True`` with a NOTE only - the DS ranker gave its signature
@@ -42,7 +42,7 @@ from agents.daemon_slayer._effects_types import ItemEffect
 
 SNAP = DataSnapshot.load()
 FROZEN_HEART = "3110"
-FROZEN_HEART_ARAM = "323110"
+FROZEN_HEART_MAP11 = "323110"
 FROZEN_HEART_ARENA = "223110"
 STEELCAPS = "3047"
 RANDUINS = "3143"
@@ -62,9 +62,9 @@ class ItemEnemyAsSlowFieldTests(unittest.TestCase):
             ITEM_EFFECTS[FROZEN_HEART].enemy_attack_speed_slow, AS_SLOW
         )
 
-    def test_frozen_heart_aram_mirror_field_pinned(self):
+    def test_frozen_heart_map11_copy_field_pinned(self):
         self.assertAlmostEqual(
-            ITEM_EFFECTS[FROZEN_HEART_ARAM].enemy_attack_speed_slow, AS_SLOW
+            ITEM_EFFECTS[FROZEN_HEART_MAP11].enemy_attack_speed_slow, AS_SLOW
         )
 
     def test_frozen_heart_arena_mirror_field_pinned(self):
@@ -98,9 +98,9 @@ class ItemEnemyAsSlowMultiplierTests(unittest.TestCase):
         )
         self.assertLess(item_enemy_as_slow_multiplier((FROZEN_HEART,), True), 1.0)
 
-    def test_aram_mirror_same_multiplier(self):
+    def test_map11_copy_same_multiplier(self):
         self.assertAlmostEqual(
-            item_enemy_as_slow_multiplier((FROZEN_HEART_ARAM,), True), self._expected()
+            item_enemy_as_slow_multiplier((FROZEN_HEART_MAP11,), True), self._expected()
         )
 
     def test_arena_mirror_same_multiplier(self):

@@ -31,7 +31,7 @@ DEFAULT-OFF is BYTE-IDENTICAL: ``assume_fimbulwinter_shield=False`` (the
 default) drops 3121/223121/323121's shield from the pool. The per-shield
 arming gate keeps arming one opt-in shield from leaking credit into another.
 
-Fimbulwinter has three mode mirrors: SR 3121, Arena 223121, ARAM 323121 - so
+Fimbulwinter has three ids: SR 3121, Arena 223121, map-11 copy 323121 - so
 arming keys on all three ids.
 
 This credit bumps ENGINE_VERSION to 1.215.0 (the seam changes EHP output when
@@ -49,7 +49,7 @@ from agents.daemon_slayer.ehp import _collect_shields, compute_ehp
 
 _FIMB = "3121"            # SR Everlasting 100 + 4.5% mana generic shield, default-OFF
 _FIMB_ARENA = "223121"    # Arena mirror
-_FIMB_ARAM = "323121"     # ARAM mirror
+_FIMB_MAP11 = "323121"    # map-11 copy
 _SERAPHS = "3040"         # Seraph's generic shield on its OWN seam
 _KAENIC = "2504"          # R92 magic shield on its OWN seam
 _ECLIPSE = "6692"         # R97 generic shield on its OWN seam
@@ -77,19 +77,19 @@ class FimbulwinterShieldFieldTests(unittest.TestCase):
     def test_arena_field_pins(self) -> None:
         self._assert_pins(_FIMB_ARENA)
 
-    def test_aram_field_pins(self) -> None:
-        self._assert_pins(_FIMB_ARAM)
+    def test_map11_field_pins(self) -> None:
+        self._assert_pins(_FIMB_MAP11)
 
     def test_not_lifeline_keyed(self) -> None:
         """Everlasting is a CC-on-enemy trigger, NOT a low-HP lifeline - it must
         not carry the lifeline dedup key (else it would dedup against
         Sterak/Shieldbow/Maw/Seraph's)."""
-        for iid in (_FIMB, _FIMB_ARENA, _FIMB_ARAM):
+        for iid in (_FIMB, _FIMB_ARENA, _FIMB_MAP11):
             self.assertNotEqual(ITEM_EFFECTS[iid].unique_passive_key, "lifeline")
 
     def test_still_defensive_only(self) -> None:
         """The shield add does not turn the item into a DPS proc."""
-        for iid in (_FIMB, _FIMB_ARENA, _FIMB_ARAM):
+        for iid in (_FIMB, _FIMB_ARENA, _FIMB_MAP11):
             self.assertTrue(ITEM_EFFECTS[iid].defensive_only)
 
 
@@ -149,8 +149,8 @@ class FimbulwinterCollectShieldsGateTests(unittest.TestCase):
         self.assertEqual(totals["magical"], 0.0)
         self.assertEqual(totals["true"], 0.0)
 
-    def test_on_credits_arena_and_aram_mirrors(self) -> None:
-        for iid in (_FIMB_ARENA, _FIMB_ARAM):
+    def test_on_credits_arena_and_map11_copies(self) -> None:
+        for iid in (_FIMB_ARENA, _FIMB_MAP11):
             totals, sources = _collect_shields(
                 [iid], level=11, bonus_hp=0.0, bonus_ad=0.0,
                 is_ranged=False, max_hp=3000.0, max_mana=1500.0,

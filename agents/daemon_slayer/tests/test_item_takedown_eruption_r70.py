@@ -23,7 +23,7 @@ compute_dps is untouched.
 
 Variant sweep (16.13.1 DS pool): 6664 (SR) + 226664 (Arena map-30
 mirror, same numbers per mirror convention; NO own Meraki entry). No
-326664 ARAM id exists - guarded absent (R69 323152 precedent).
+326664 map-11 copy exists - guarded absent (R69 323152 precedent).
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ _ITEMS_POOL_PATH = (
 
 _HR = "6664"
 _HR_ARENA = "226664"
-_HR_ARAM_PHANTOM = "326664"  # must NOT exist (R69 323152 precedent)
+_HR_MAP11_PHANTOM = "326664"  # must NOT exist (R69 323152 precedent)
 
 # DSV2 siblings on the same assume_takedown seam - behavior must not move.
 _HUBRIS = "6697"
@@ -210,12 +210,12 @@ class VariantSweep(unittest.TestCase):
         for iid in (_HR, _HR_ARENA):
             self.assertIn(iid, self.pool)
 
-    def test_no_phantom_aram_mirror(self) -> None:
+    def test_no_phantom_map11_copy(self) -> None:
         # 326664 is NOT in the 16.13.1 DS pool - registering it would be a
         # phantom id the ranker can never see (R69 323152 precedent).
-        self.assertNotIn(_HR_ARAM_PHANTOM, self.pool)
-        self.assertNotIn(_HR_ARAM_PHANTOM, ITEM_EFFECTS)
-        self.assertNotIn(_HR_ARAM_PHANTOM, self.meraki)
+        self.assertNotIn(_HR_MAP11_PHANTOM, self.pool)
+        self.assertNotIn(_HR_MAP11_PHANTOM, ITEM_EFFECTS)
+        self.assertNotIn(_HR_MAP11_PHANTOM, self.meraki)
 
     def test_arena_mirror_has_no_own_meraki_entry(self) -> None:
         # 226664 carries NO Meraki entry of its own - its pins copy SR 6664

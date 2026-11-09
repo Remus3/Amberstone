@@ -72,7 +72,7 @@ class ItemManaHealthRegistryTests(unittest.TestCase):
     def test_winters_approach_same_nominal(self) -> None:
         self.assertAlmostEqual(item_mana_health_hp(["3119"], 1000.0), 150.0, places=9)
 
-    def test_arena_and_aram_mirrors_same_nominal(self) -> None:
+    def test_arena_and_map11_copies_same_nominal(self) -> None:
         for iid in ("223119", "223121", "323119", "323121"):
             self.assertAlmostEqual(
                 item_mana_health_hp([iid], 1000.0), 150.0, places=9, msg=iid

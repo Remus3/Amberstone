@@ -515,12 +515,12 @@ class EdgeCaseTests(unittest.TestCase):
         self.assertEqual(r.ally_buff_credit, 0.0)
         self.assertAlmostEqual(r.total_throughput, r.ability_hps_total, places=9)
 
-    def test_aram_mirror_id_not_in_registry_contributes_zero(self) -> None:
-        """ARAM Redemption (323107) is not in the curated registry by id."""
-        r = compute_hps(self.snap, "Soraka", level=11, item_ids=["323107"], mode="ARAM")
+    def test_map11_copy_id_not_in_registry_contributes_zero(self) -> None:
+        """Redemption's map-11 copy (323107) is not in the curated registry by id."""
+        r = compute_hps(self.snap, "Soraka", level=11, item_ids=["323107"], mode="SR")
         # Phase 6 v1 chose "by ID match," so mirrors without registry entries
         # contribute zero ITEM throughput. total_throughput now folds in
-        # ability HPS (V2 enchanter wire; ARAM-scaled), so it equals
+        # ability HPS (V2 enchanter wire), so it equals
         # ability_hps_total - the ITEM side is still exactly 0.
         self.assertEqual(r.direct_throughput, 0.0)
         self.assertEqual(r.ally_buff_credit, 0.0)

@@ -107,7 +107,7 @@ class ItemStasisRegistryTests(unittest.TestCase):
         self.assertAlmostEqual(_ITEM_STASIS_PROB, 0.35, places=9)
 
     def test_dropped_mirror_ids_not_registered(self) -> None:
-        # 323157 (Zhonya ARAM), 222420 / 322420 (Seeker Arena/ARAM) are NOT in the
+        # 323157 (Zhonya map-11), 222420 / 322420 (Seeker Arena / map-11) are NOT in the
         # DS item index -> intentionally dropped.
         self.assertNotIn("323157", _ITEM_SURVIVAL_WINDOW)
         self.assertNotIn("222420", _ITEM_SURVIVAL_WINDOW)

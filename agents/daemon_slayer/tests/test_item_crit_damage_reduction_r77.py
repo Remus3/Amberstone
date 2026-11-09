@@ -62,8 +62,8 @@ class ItemCritDrFieldTests(unittest.TestCase):
         # The DPS side stays a no-op; the field only adds the EHP-side credit.
         self.assertTrue(ITEM_EFFECTS[RANDUINS].defensive_only)
 
-    def test_no_aram_323143_in_pool(self):
-        # The ARAM mirror is absent from the 16.13.1 pool - guard the
+    def test_no_map11_323143_in_pool(self):
+        # The map-11 copy is absent from the 16.13.1 pool - guard the
         # assumption so a future pool add is a loud failure, not silent
         # under-credit.
         self.assertNotIn("323143", ITEM_EFFECTS)

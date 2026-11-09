@@ -124,7 +124,7 @@ class ItemSpellShieldRegistryTests(unittest.TestCase):
             self.assertAlmostEqual(pct, 100.0, places=9, msg=iid)
 
     def test_dropped_mirror_ids_not_registered(self) -> None:
-        # ARAM 32xxxx mirrors + Verdant's Arena mirror are NOT in the DS item index
+        # The map-11 32xxxx copies + Verdant's Arena mirror are NOT in the DS item index
         # -> intentionally dropped.
         for iid in ("323102", "323814", "224632", "324632"):
             self.assertNotIn(iid, _ITEM_SPELL_SHIELD)

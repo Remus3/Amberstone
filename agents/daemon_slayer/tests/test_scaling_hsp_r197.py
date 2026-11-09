@@ -45,7 +45,7 @@ _DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 # per-step magnitude AND its own printed base mana regen (R161 doctrine B).
 _DAWNCORE_SR = "6621"
 _DAWNCORE_ARENA = "226621"
-_DAWNCORE_ARAM = "326621"
+_DAWNCORE_MAP11 = "326621"
 
 # KNOWN-EXCLUDED - HSP CONSUMERS. Byte-similar prose, opposite direction: these
 # read the wielder's HSP and pay out attack speed. A name/substring fold would
@@ -143,7 +143,7 @@ class OffIsByteIdenticalTests(unittest.TestCase):
             [_REDEMPTION, _MIKAEL],
             [_DAWNCORE_SR, _REDEMPTION, _MIKAEL],
             [_DAWNCORE_ARENA, "223107", "223222"],
-            [_DAWNCORE_ARAM, "323107", "323222"],
+            [_DAWNCORE_MAP11, "323107", "323222"],
             [_DAWNCORE_SR, _MOONSTONE, _REDEMPTION],
             [_DAWNCORE_SR] + list(_WHISPERING_CIRCLET),
             list(_SWORD_BLOSSOMING_DAWN) + [_ELEISAS_MIRACLE, _PUPPETEER],
@@ -205,17 +205,17 @@ class DawncoreArmedCharacterizationTests(unittest.TestCase):
             places=12,
         )
 
-    def test_dawncore_aram_mirror_alone_floors_to_one_step(self) -> None:
+    def test_dawncore_map11_copy_alone_floors_to_one_step(self) -> None:
         # 326621 prints 150% Base Mana Regen and grants 2% HSP per 100% step.
         #   steps = floor(150 / 100) = 1   <- the 50% remainder earns NOTHING
         #   scaling = 1 * 0.02 = 0.02
         table = load_base_mana_regen_pct_table()
-        self.assertAlmostEqual(table[_DAWNCORE_ARAM], 150.0, places=6)
-        self.assertAlmostEqual(SCALING_HSP_PER_MANA_REGEN_STEP[_DAWNCORE_ARAM], 0.02)
-        self.assertAlmostEqual(sum_scaling_hsp_pct([_DAWNCORE_ARAM]), 0.02, places=12)
+        self.assertAlmostEqual(table[_DAWNCORE_MAP11], 150.0, places=6)
+        self.assertAlmostEqual(SCALING_HSP_PER_MANA_REGEN_STEP[_DAWNCORE_MAP11], 0.02)
+        self.assertAlmostEqual(sum_scaling_hsp_pct([_DAWNCORE_MAP11]), 0.02, places=12)
         # Total = flat 0.20 + scaling 0.02 = 0.22.
         self.assertAlmostEqual(
-            sum_wielder_hsp_pct([_DAWNCORE_ARAM], assume_scaling_hsp_grants=True),
+            sum_wielder_hsp_pct([_DAWNCORE_MAP11], assume_scaling_hsp_grants=True),
             0.22,
             places=12,
         )
@@ -244,7 +244,7 @@ class DawncoreArmedCharacterizationTests(unittest.TestCase):
             [_DAWNCORE_SR, _REDEMPTION],
             [_DAWNCORE_SR, _MIKAEL, "3504"],
             [_DAWNCORE_ARENA, "223107"],
-            [_DAWNCORE_ARAM, "323107", "323222"],
+            [_DAWNCORE_MAP11, "323107", "323222"],
         ):
             with self.subTest(build=repr(build)):
                 total_regen = sum(table.get(i, 0.0) for i in set(build))
@@ -460,7 +460,7 @@ class BaseManaRegenTableTests(unittest.TestCase):
         for iid, printed in (
             (_DAWNCORE_SR, 100.0),
             (_DAWNCORE_ARENA, 200.0),
-            (_DAWNCORE_ARAM, 150.0),
+            (_DAWNCORE_MAP11, 150.0),
         ):
             with self.subTest(item_id=iid):
                 whole = _BMR_LINE.findall(_plain(dd[iid].get("description") or ""))

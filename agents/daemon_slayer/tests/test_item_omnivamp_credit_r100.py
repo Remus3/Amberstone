@@ -70,7 +70,7 @@ class ItemOmnivampRegistryTests(unittest.TestCase):
     def test_empty_build_yields_zero(self) -> None:
         self.assertEqual(item_omnivamp_fraction([], is_ranged=False), 0.0)
 
-    def test_aram_mirror_id_is_not_registered(self) -> None:
+    def test_map11_copy_id_is_not_registered(self) -> None:
         # 324633 is NOT in the DS item index -> intentionally dropped.
         self.assertNotIn("324633", _ITEM_OMNIVAMP)
 

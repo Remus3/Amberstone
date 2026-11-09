@@ -24,8 +24,8 @@ item tooltip shows Imperial Mandate REWORKED to "Command: On Immobilizing an ene
 champion, mark them as 7% Vulnerable for 4 seconds" (an all-source damage-amp mark;
 passives renamed Control / Command) - the 16.12.1 "Coordinated Fire" 10% current-HP
 detonation is GONE. R41 recorded it as a non-fit handoff; R43 seeded the reworked 7%
-Vulnerable into ``_target_vulnerability_overrides`` (4005 / Arena 224005 / ARAM
-324005) and emptied this seam's non-fit registry.
+Vulnerable into ``_target_vulnerability_overrides`` (4005 / Arena 224005 / map-11
+copy 324005) and emptied this seam's non-fit registry.
 """
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 """RM-808 (b) - Dawncore First Light: the AP half is modeled.
 
 First Light reads "Gain 2% Heal and Shield Power and 15 Ability Power per 100%
-Base Mana Regen" (DDragon 16.21.1 on SR 6621 / ARAM 326621; 3% HSP on Arena
+Base Mana Regen" (DDragon 16.21.1 on SR 6621 / map-11 copy 326621; 3% HSP on Arena
 226621). The HSP half rides the R197 ``_scaling_hsp`` lane. The AP half was
 recorded "not modeled" by RM-804, so every Dawncore build was scored 15 AP (30
 in Arena) short of the item's real stat panel.
@@ -18,7 +18,7 @@ Sources, measured 2026-10-24:
 
 Step rule: the R197 reading, unchanged - ``floor(printed base mana regen /
 100)`` steps from the item's OWN printed ``<stats>`` line (SR 100% -> 1 step,
-Arena 200% -> 2, ARAM 150% -> 1), so the AP half is 15 / 30 / 15. Recorded
+Arena 200% -> 2, map-11 copy 150% -> 1), so the AP half is 15 / 30 / 15. Recorded
 limit: the AP half counts only the item's own regen (the R197 HSP lane also
 counts other items' printed regen); a build stacking a second regen item is
 credited the conservative own-item floor.
@@ -160,7 +160,7 @@ class EngineOutputTests(unittest.TestCase):
                                    item_ids=[iid], mode=mode).ap
 
     def test_soraka_ap_rises_by_the_first_light_ap(self) -> None:
-        for iid, mode in (("6621", "SR"), ("326621", "ARAM"), ("226621", "ARENA")):
+        for iid, mode in (("6621", "SR"), ("326621", "SR"), ("226621", "ARENA")):
             with self.subTest(item_id=iid, mode=mode):
                 with_ap = self._ap(iid, mode, zero_first_light=False)
                 without = self._ap(iid, mode, zero_first_light=True)

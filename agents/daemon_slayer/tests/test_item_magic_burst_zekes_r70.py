@@ -28,8 +28,8 @@ on it; collect_effects passes every registered entry through to
 total_magic_burst_damage), and batch-35/42/43 coverage tests pin it.
 
 Variant sweep (16.13.1 DS pool): exactly three Zeke's ids exist - 3050
-(SR, maps 11/12/21/35), 223050 (Arena map-30 mirror), 323050 (ARAM
-mirror, map-11 flagged in pool data). Only 3050 carries a Meraki entry;
+(SR, maps 11/12/21/35), 223050 (Arena map-30 mirror), 323050 (map-11
+copy, map 11 only in pool data). Only 3050 carries a Meraki entry;
 the mirrors ride the SR truth per the mirror convention. No 443050
 distributed variant exists (guarded absent, R68/R69 phantom-id pattern).
 """
@@ -61,8 +61,8 @@ _ITEMS_POOL_PATH = (
 
 _ZEKES = "3050"
 _ZEKES_ARENA = "223050"
-_ZEKES_ARAM = "323050"
-_ZEKES_ALL = (_ZEKES, _ZEKES_ARENA, _ZEKES_ARAM)
+_ZEKES_MAP11 = "323050"
+_ZEKES_ALL = (_ZEKES, _ZEKES_ARENA, _ZEKES_MAP11)
 _ZEKES_PHANTOM = "443050"  # no distributed variant in the 16.13.1 pool
 
 # R69 carriers + existing DSV6 carrier - sibling guards pin them unchanged.
@@ -147,10 +147,10 @@ class MerakiTruth(unittest.TestCase):
         self.assertNotIn("% AP", self.text)
 
     def test_mirror_ids_have_no_meraki_entry(self) -> None:
-        # Arena/ARAM mirrors carry no Meraki entry; their pins ride the
+        # The Arena and map-11 copies carry no Meraki entry; their pins ride the
         # SR 3050 truth per the mirror convention (R69 223152 pattern).
         self.assertNotIn(_ZEKES_ARENA, self.meraki)
-        self.assertNotIn(_ZEKES_ARAM, self.meraki)
+        self.assertNotIn(_ZEKES_MAP11, self.meraki)
 
     def test_registry_matches_meraki_values(self) -> None:
         total = float(self._parse_total())
@@ -171,7 +171,7 @@ class RegistryPins(unittest.TestCase):
 
     def test_mirrors_match_sr_exactly(self) -> None:
         base = ITEM_EFFECTS[_ZEKES]
-        for iid in (_ZEKES_ARENA, _ZEKES_ARAM):
+        for iid in (_ZEKES_ARENA, _ZEKES_MAP11):
             mirror = ITEM_EFFECTS[iid]
             self.assertAlmostEqual(
                 mirror.magic_burst_base, base.magic_burst_base, msg=iid
@@ -251,7 +251,7 @@ class MagicBurstHelper(unittest.TestCase):
             )
 
     def test_mirror_singles(self) -> None:
-        for iid in (_ZEKES_ARENA, _ZEKES_ARAM):
+        for iid in (_ZEKES_ARENA, _ZEKES_MAP11):
             effs = collect_effects([iid])
             self.assertAlmostEqual(
                 total_magic_burst_damage(effs, 500.0), 150.0, msg=iid

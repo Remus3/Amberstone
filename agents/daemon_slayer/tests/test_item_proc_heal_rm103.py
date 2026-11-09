@@ -13,7 +13,7 @@ Ground truth for every magnitude asserted below:
     post-mitigation damage dealt."
   * ``data/daemon_slayer/16.14.1/items.json`` - exactly TWO ids carry the name
     "Unending Despair": 2502 (maps 11/12/21/35) and 222502 (map 30). There is
-    NO 322502 ARAM mirror; 2502 itself is the ARAM (map 12) item.
+    NO 322502 copy; 2502 itself already carries map 12.
 
 The whole lane is DEFAULT-OFF: with ``assume_item_proc_heal`` absent or False
 every entry point returns exactly 0.0.
@@ -91,7 +91,7 @@ class CoefficientTests(unittest.TestCase):
             set(_ITEM_PROC_HEAL_BONUS_HP_SCALING), {"2502", "222502"}
         )
 
-    def test_no_aram_mirror_322502_registered(self) -> None:
+    def test_no_map11_copy_322502_registered(self) -> None:
         self.assertNotIn("322502", _ITEM_PROC_HEAL_BONUS_HP_SCALING)
 
     def test_arena_mirror_shares_the_sr_coefficient(self) -> None:
