@@ -59,8 +59,8 @@ class ParseHttpOverrideGoodInputTests(unittest.TestCase):
                 self.assertTrue(all(isinstance(v, int) for v in result))
 
     def test_return_order_is_l_t_r_b(self) -> None:
-        l, t, r, b = parse_http_override("10,20,30,40")
-        self.assertEqual((l, t, r, b), (10, 20, 30, 40))
+        left, t, r, b = parse_http_override("10,20,30,40")
+        self.assertEqual((left, t, r, b), (10, 20, 30, 40))
 
     def test_boundary_exact_max_coord(self) -> None:
         result = parse_http_override("0,0,10000,10000")

@@ -99,9 +99,9 @@ def test_every_native_box_stays_inside_halved_frame(monkeypatch):
     _load_native(monkeypatch)
     regions = vt._regions()
     for name, box in regions.items():
-        l, t, r, b = vt._scale_bbox(box, _HALVED_W, _HALVED_H)
-        assert 0 <= l < r <= _HALVED_W, f"{name} x out of halved frame: {(l, t, r, b)}"
-        assert 0 <= t < b <= _HALVED_H, f"{name} y out of halved frame: {(l, t, r, b)}"
+        left, t, r, b = vt._scale_bbox(box, _HALVED_W, _HALVED_H)
+        assert 0 <= left < r <= _HALVED_W, f"{name} x out of halved frame: {(left, t, r, b)}"
+        assert 0 <= t < b <= _HALVED_H, f"{name} y out of halved frame: {(left, t, r, b)}"
 
 
 def test_crop_from_halved_frame_is_nonempty(monkeypatch):

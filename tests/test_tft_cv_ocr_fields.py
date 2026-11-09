@@ -69,17 +69,17 @@ class FakeEngine:
 
 
 def _rect(draw, box, fill):
-    l, t, r, b = box
-    draw.rectangle((l, t, r - 1, b - 1), fill=fill)
+    left, t, r, b = box
+    draw.rectangle((left, t, r - 1, b - 1), fill=fill)
 
 
 def _blocks(draw, box, n, thin=False):
     """``n`` bright glyph-like blocks inside ``box`` (thin = 1-shaped)."""
-    l, t, r, b = box
+    left, t, r, b = box
     h = b - t
     gh = max(3, h // 2)
     gw = max(1, gh // 4) if thin else max(2, int(gh * 0.7))
-    x = l + max(2, (r - l) // 6)
+    x = left + max(2, (r - left) // 6)
     for _ in range(n):
         draw.rectangle((x, t + (h - gh) // 2, x + gw - 1, t + (h - gh) // 2 + gh - 1),
                        fill=(240, 240, 240))

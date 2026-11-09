@@ -128,12 +128,12 @@ class TestAnchorOffsetOnUltrawide(unittest.TestCase):
         box = {"timer": [1857, 4, 1903, 26]}
         src_w = 1903 - 1857
         anchored = vp.derive_anchored_regions(box, _LEGACY_BASE, [5120, 1440])
-        l, _t, r, _b = anchored["timer"]
-        self.assertEqual(int(src_w * (1440 / 1080)), r - l)
+        left, _t, r, _b = anchored["timer"]
+        self.assertEqual(int(src_w * (1440 / 1080)), r - left)
 
         proportional = vp.derive_scaled_regions(box, _LEGACY_BASE, [5120, 1440])
         pl, _, pr, _ = proportional["timer"]
-        self.assertGreater(pr - pl, r - l)
+        self.assertGreater(pr - pl, r - left)
 
     def test_right_anchored_region_keeps_its_distance_from_the_right_edge(self):
         # Tolerance is 1px, not sloppiness: the derived coordinate is
@@ -160,8 +160,8 @@ class TestAnchorOffsetOnUltrawide(unittest.TestCase):
                                               anchors={"hp": ("center", "bottom")})
         # 1px tolerance for the same int() truncation reason as above: both
         # edges truncate downward, so a symmetric pair can land 1px off.
-        l, _t, r, _b = anchored["hp"]
-        self.assertLessEqual(abs((5120 - r) - l), 1)
+        left, _t, r, _b = anchored["hp"]
+        self.assertLessEqual(abs((5120 - r) - left), 1)
 
     def test_never_mutates_the_input_map(self):
         regions = _real_regions()

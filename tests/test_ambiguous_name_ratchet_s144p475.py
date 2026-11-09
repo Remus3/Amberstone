@@ -8,8 +8,12 @@ response variable). ``l`` is the one letter indistinguishable from ``1`` and ``I
 became ``left`` / ``top`` / ``right`` / ``bottom`` (or ``ln`` / ``lean`` / ``msg`` / ``lcu``): agents/_minimap_bbox.py,
 coaches/_base_coach.py, core/aram_comp_verdict.py, core/vision_profiles.py, core/vision_tesseract.py,
 tools/bootstrap_env_check.py, tools/match_monitor.py, tools/screen_agent.py. What is left is held in ``_BASELINE``
-(rel path -> count), which only shrinks: the DS test file and coaches/replay_coach.py belong to another lane branch,
-and the 11 test files are a follow-up slice (S144-P-476).
+(rel path -> count), which only shrinks: the DS test file and coaches/replay_coach.py belong to another lane branch.
+The 11 test files that held 13 hits became ``left`` / ``ln`` in S144-P-485 (tests/fu01_minimap/
+test_http_override.py, test_aram_coach_shadow_choices_native_emit, test_lcu_cmd_payload_schema_rm296a,
+test_minimap_geometry, test_replay_narrative_shadow, test_tft_cv_ocr_fields, test_vision_anchor_model_rm26,
+test_vision_profile_2560_ocr_boxes, test_vision_profile_derive, test_vision_profile_seeds,
+test_vision_tesseract_halved_frame_r98).
 
 The ratchet runs ruff with NO config, so the waiver cannot hide a hit, over the tracked files only:
 
@@ -36,21 +40,10 @@ pytestmark = pytest.mark.skipif(
     reason="ruff is not importable by this interpreter",
 )
 
-# DS test + replay_coach (another lane branch owns them) and the test files of S144-P-476. Only shrinks.
+# DS test + replay_coach (another lane branch owns them). Only shrinks.
 _BASELINE = {
     "agents/daemon_slayer/tests/test_engine_concurrency_p1l15.py": 8,
     "coaches/replay_coach.py": 1,
-    "tests/fu01_minimap/test_http_override.py": 1,
-    "tests/test_aram_coach_shadow_choices_native_emit.py": 1,
-    "tests/test_lcu_cmd_payload_schema_rm296a.py": 1,
-    "tests/test_minimap_geometry.py": 1,
-    "tests/test_replay_narrative_shadow.py": 1,
-    "tests/test_tft_cv_ocr_fields.py": 2,
-    "tests/test_vision_anchor_model_rm26.py": 2,
-    "tests/test_vision_profile_2560_ocr_boxes.py": 1,
-    "tests/test_vision_profile_derive.py": 1,
-    "tests/test_vision_profile_seeds.py": 1,
-    "tests/test_vision_tesseract_halved_frame_r98.py": 1,
 }
 
 

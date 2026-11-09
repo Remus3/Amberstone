@@ -79,8 +79,8 @@ class SeedProfilesTests(unittest.TestCase):
         self.assertEqual(sorted(d["regions"]), sorted(baseline))
         sx, sy = 3440 / 1920, 1440 / 1080
         for name, box in d["regions"].items():
-            l, t, r, b = box
-            self.assertTrue(0 <= l < r <= 3440, f"{name} x out of bounds: {box}")
+            left, t, r, b = box
+            self.assertTrue(0 <= left < r <= 3440, f"{name} x out of bounds: {box}")
             self.assertTrue(0 <= t < b <= 1440, f"{name} y out of bounds: {box}")
             src = baseline[name]
             self.assertEqual(box, [int(src[0] * sx), int(src[1] * sy),

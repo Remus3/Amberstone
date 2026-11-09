@@ -89,7 +89,7 @@ def test_atomic_append_no_leftover_tmp(tmp_path):
 
     # Two distinct matches -> two lines, appended (not overwritten).
     assert len(_read_lines(target)) == 2
-    matches = [json.loads(l)["match_id"] for l in _read_lines(target)]
+    matches = [json.loads(ln)["match_id"] for ln in _read_lines(target)]
     assert matches == ["NA1_A", "NA1_B"]
     # No leftover atomic-write tmp sibling.
     leftovers = list(tmp_path.glob("*.tmp"))

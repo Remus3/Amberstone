@@ -58,6 +58,6 @@ def test_2560_ocr_boxes_are_inside_frame_and_well_formed():
         d = json.loads(open(path, encoding="utf-8").read())
         for name, box in d.get("regions", {}).items():
             assert isinstance(box, list) and len(box) == 4, f"{name} not a 4-tuple"
-            l, t, r, b = box
-            assert 0 <= l < r <= 2560, f"{path}:{name} x out of frame: {box}"
+            left, t, r, b = box
+            assert 0 <= left < r <= 2560, f"{path}:{name} x out of frame: {box}"
             assert 0 <= t < b <= 1440, f"{path}:{name} y out of frame: {box}"

@@ -55,8 +55,8 @@ class DeriveScaledRegionsTests(unittest.TestCase):
         derived = vp.derive_scaled_regions(baseline, [1920, 1080], [2560, 1440])
         self.assertTrue(derived)
         for name, box in derived.items():
-            l, t, r, b = box
-            self.assertTrue(0 <= l < r <= 2560, f"{name} x out of frame: {box}")
+            left, t, r, b = box
+            self.assertTrue(0 <= left < r <= 2560, f"{name} x out of frame: {box}")
             self.assertTrue(0 <= t < b <= 1440, f"{name} y out of frame: {box}")
 
     def test_per_axis_independence_non_16_9(self):
