@@ -21,6 +21,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core import log_rotation
 from core.log_rotation import LFRotatingFileHandler
 from core.polled_json import atomic_write_text
 
@@ -74,6 +75,53 @@ def _resolve_log_root(environ=os.environ) -> Path:
 
 
 LOG_ROOT = _resolve_log_root()
+
+# S144-Q-123 (RM-718 residue): the size cap on LOG_ROOT/agent<N>.log. Nothing
+# else bounds those files - core/log_retention sweeps only the top-level
+# logs/*.log* and prune_task_logs only ages out task-*.log - and agent6.log was
+# measured at 2,078,244 B (15,811 rows since 2026-04-22) on 2026-11-08. Read at
+# call time, so a test can lower it.
+AGENT_LOG_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+AGENT_LOG_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
+
+
+def _rotate_agent_log(path: Path) -> str:
+    """Rotate an agent log BEFORE an append when it is at or over the cap.
+
+    Returns the one-line refusal note to write ahead of the row when the
+    rotation is refused (another process holds the file), else "". Recovers a
+    crashed rotation's scratch even under the cap (this is the writer's open).
+    Never raises: a failing cap must not cost a task its row.
+    """
+    try:
+        log_rotation.recover_orphans(path, AGENT_LOG_BACKUPS)
+        try:
+            oversize = path.stat().st_size >= AGENT_LOG_MAX_BYTES
+        except OSError:
+            return ""
+        if not oversize:
+            return ""
+        err = log_rotation.try_rotate(path, AGENT_LOG_BACKUPS)
+        return "" if err is None else log_rotation.refusal_note(path, err)
+    except Exception:  # noqa: BLE001 - the cap is best effort; the row is not
+        return ""
+
+
+def append_agent_log(path: Path, text: str) -> None:
+    """Append ``text`` (one or more LF-terminated rows) to an agent<N>.log.
+
+    The one writer for the per-agent rollup logs (agents/supervisor.py
+    _run_deterministic, agents/_supervisor_ephemeral.py spawn_ephemeral_llm):
+    creates the dir, rotates at AGENT_LOG_MAX_BYTES keeping AGENT_LOG_BACKUPS
+    generations, then appends LF rows. Only the open / write can raise, as the
+    plain appends it replaces did.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    note = _rotate_agent_log(path)
+    with path.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(note + text)
+
 
 # CAUTION: these resolve at IMPORT time, and tests/test_ports.py asserts the
 # repo-wide port registry equals these two values. Pass the overrides in a

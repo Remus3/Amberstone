@@ -123,6 +123,7 @@ from agents._supervisor_common import (
     _sentinel_path,
     _verify_decisions_version,
     acquire_lock,
+    append_agent_log,
     log,
     refresh_lock,
     release_lock_ownership,
@@ -622,12 +623,13 @@ class Supervisor:
         while new deterministic ops can register handlers here.
         """
         log_path = LOG_ROOT / f"agent{task.owner_agent}.log"
-        with log_path.open("a", encoding="utf-8", newline="\n") as f:
-            f.write(
-                f"{_iso_now()} DETERMINISTIC agent={task.owner_agent} "
-                f"task={task.id} op={task.op} "
-                f"payload={json.dumps(task.payload, default=str)[:400]}\n"
-            )
+        # S144-Q-123: through the capped writer, never a plain append.
+        append_agent_log(
+            log_path,
+            f"{_iso_now()} DETERMINISTIC agent={task.owner_agent} "
+            f"task={task.id} op={task.op} "
+            f"payload={json.dumps(task.payload, default=str)[:400]}\n",
+        )
 
         # Op-specific handlers - grow this registry carefully.
         if task.op == "game-summary":

@@ -30,6 +30,7 @@ from agents._supervisor_common import (
     _PROJECT_ROOT,
     _iso_now,
     _redact_secrets,
+    append_agent_log,
     log,
 )
 
@@ -336,12 +337,13 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     writes_code = "opus" in model.lower()
 
     stamp = _iso_now()
-    with log_path.open("a", encoding="utf-8", newline="\n") as f:
-        f.write(
-            f"{stamp} SPAWN agent={agent} task={task_id} op={op} "
-            f"model={model} budget_usd={budget:.2f} timeout_sec={timeout} "
-            f"charter_bytes={len(charter)} prompt_bytes={len(user_prompt)}\n"
-        )
+    # S144-Q-123: every agent<N>.log row goes through the capped writer.
+    append_agent_log(
+        log_path,
+        f"{stamp} SPAWN agent={agent} task={task_id} op={op} "
+        f"model={model} budget_usd={budget:.2f} timeout_sec={timeout} "
+        f"charter_bytes={len(charter)} prompt_bytes={len(user_prompt)}\n",
+    )
 
     # Spawn - FLEET-KIT-v1 (MAIN order 2026-10-03): ONLY through the fleet
     # kit, which owns the proxy route (fail closed via ops/loop/headless_env.py
@@ -363,14 +365,18 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
             timeout=timeout,
         )
     except fleet_route.RouteRefused as e:
-        with log_path.open("a", encoding="utf-8", newline="\n") as f:
-            f.write(f"{_iso_now()} REFUSED agent={agent} task={task_id} reason={e.reason}\n")
+        append_agent_log(
+            log_path,
+            f"{_iso_now()} REFUSED agent={agent} task={task_id} reason={e.reason}\n",
+        )
         raise EphemeralSpawnFailed(
             f"headless route refused for task {task_id}: {e.reason}"
         ) from e
     except subprocess.TimeoutExpired as e:
-        with log_path.open("a", encoding="utf-8", newline="\n") as f:
-            f.write(f"{_iso_now()} TIMEOUT agent={agent} task={task_id} after={timeout}s\n")
+        append_agent_log(
+            log_path,
+            f"{_iso_now()} TIMEOUT agent={agent} task={task_id} after={timeout}s\n",
+        )
         raise EphemeralSpawnFailed(
             f"claude subprocess timed out after {timeout}s for task {task_id}"
         ) from e
@@ -414,16 +420,16 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
         log.warning("per-task log write failed: %s", e)
 
     if proc.returncode != 0:
-        with log_path.open("a", encoding="utf-8", newline="\n") as f:
-            f.write(
-                f"{_iso_now()} FAIL agent={agent} task={task_id} exit={proc.returncode} "
-                f"stderr={_redact_secrets(proc.stderr[:200])!r}\n"
+        fail_rows = (
+            f"{_iso_now()} FAIL agent={agent} task={task_id} exit={proc.returncode} "
+            f"stderr={_redact_secrets(proc.stderr[:200])!r}\n"
+        )
+        if auth_cause:
+            fail_rows += (
+                f"{_iso_now()} AUTH-CAUSE agent={agent} task={task_id} "
+                f"{auth_cause}\n"
             )
-            if auth_cause:
-                f.write(
-                    f"{_iso_now()} AUTH-CAUSE agent={agent} task={task_id} "
-                    f"{auth_cause}\n"
-                )
+        append_agent_log(log_path, fail_rows)
         if auth_cause:
             log.error("ephemeral spawn auth failure (task %s): %s", task_id, auth_cause)
         if agent == "6":
@@ -454,11 +460,11 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     except json.JSONDecodeError:
         result = {"raw_stdout": proc.stdout.strip()}
 
-    with log_path.open("a", encoding="utf-8", newline="\n") as f:
-        f.write(
-            f"{_iso_now()} OK agent={agent} task={task_id} elapsed={elapsed:.1f}s "
-            f"stdout_bytes={len(proc.stdout)}\n"
-        )
+    append_agent_log(
+        log_path,
+        f"{_iso_now()} OK agent={agent} task={task_id} elapsed={elapsed:.1f}s "
+        f"stdout_bytes={len(proc.stdout)}\n",
+    )
 
     return {
         "ok": True,
