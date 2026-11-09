@@ -696,6 +696,27 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   `state.lcu.config`, so the `main.js:5663` auto-accept pill loses its source when the flag is ON - decide
   at G1-00 whether the dashboard reader should synthesize `config` (main-process `_lcu` auto-accept is
   always ON) or whether the pill moves to a different signal. Flag stays OFF until this check passes.
+  **AGE RE-CHECK (s144 lane gated cycle 135, 2026-11-09, S144-G-122; PREP only, nothing ticked, nothing
+  struck; no game: :8888 curl empty at 2026-11-09T08:12-06:00, RC halted since 2026-10-31).** THIS ROW
+  IS ALREADY CLOSED - DO NOT RE-DRAIN IT. Both CHECKs passed live on 2026-07-20 and are recorded in the
+  DRAIN SESSION 2026-07-20 block at the top of this file (CHECK 1 across all four champ-select shapes,
+  q3140 / q2400 / q1750 / q400; CHECK 2 `champ_select` BYTE-IDENTICAL: True flag-ON vs flag-OFF). The
+  per-gate "G1 6" in the OPEN paragraph never counted it: that line was written 2026-07-18
+  (`2a7010203`), when only G1-01 to G1-06 existed; G1-00 was filed 2026-07-20 (`03409f03b`) and G1-07
+  on 2026-10-27 (`7a16a47a6`). Only this in-place row was never marked; the other closed-that-night
+  rows G2-34 / G2-35 are struck in place. TALLY NOTE (not edited here): G1-00 was filed without raising
+  the 118, and the same night's drain subtracted all six closures including G1-00 (118 -> 112), so
+  that step likely removed one row 118 never held; the per-gate line also sums to 118, not 111.
+  The ADJUDICATED divergence is answered and shipped: the reader CARRIES `config` and `lcu_port`
+  through (`dashboard/_lcu_inprocess.py`, block "config + lcu_port (G1-00 CHECK 2 follow-up,
+  2026-07-20)", landed in `51dfc0cef`; pinned by `tests/rc2_l3/test_lcu_inprocess_config_port_l3.py`).
+  The SEPARATE auto-accept bug (pref file `enabled:true` vs agent `config.auto_accept` false) was fixed
+  by RM-1222 (`5e40fcccc`, 2026-10-31; `tests/test_lcu_agent_auto_accept_pref_sync_rm1222.py`). Both
+  files: 25 passed at HEAD this cycle. NOT done and NOT this row: the flag flip. `RC_LCU_INPROCESS`
+  is still DEFAULT-OFF (`dashboard/_state_builder.py` `_read_lcu_snapshot` reads `== "1"`) and since the
+  2026-10-31 cutover it reaches RC by env inheritance only (see the EXTERNAL-LIFT row that cites
+  `child_environment`); no ROADMAP / BACKLOG row owns a default flip. A drainer in a champ-select
+  spends nothing here.
 - **G1-01** `[CS-CAPTURE]` (was A8) Locked-own-champ champ-select panel captures - **SHRUNK 6 -> 3
   artifacts 2026-07-18; still OPEN at GATE 1.**
   **RE-FILED, GATE 1 -> GATE 2:** ds-sweep / ds-relscore / ds-statcheck are ACTIVE-MATCH panels, not
