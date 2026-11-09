@@ -6889,7 +6889,7 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
 3. `tools/PYTHON_BUNDLING_STRATEGY.md` (2026-04-26) - bundling decision long settled.
 4. `tools/PEER_ROADMAP_SUGGESTIONS.md` (2026-05-18) - Peer bridge decommissioned 2026-06-24 (ADR-012).
 5. `tools/done-peer.md` (2026-05-23) - dead Peer /done ritual mirror.
-7. `tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md` (2026-05-25) - one-shot probe, complete.
+7. **[DONE 2026-11-08, RM-713 (a)]** `docs/_archive/2026-05/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md` (2026-05-25) - one-shot probe, complete; moved out of tools/.
 13. `ops/audit/LOLMATH_VS_DS_SWEEP.md` (2026-06-15) - all-champ sweep at ENGINE 1.120.0 / patch
     16.12.1; stale (engine is now 1.219.0 / 16.14.1).
 15. **[DONE 2026-07-18]** `ops/audit/ds_cross_eval/reports/` - 172 per-champion reports, program

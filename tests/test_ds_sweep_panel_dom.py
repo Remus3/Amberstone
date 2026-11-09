@@ -3,7 +3,7 @@ docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
 Backend dashboard/routes_ds_sweep.py + its engine module
 agents/daemon_slayer/dps_sweep.py ship with their own suites
-(tests/test_routes_ds_sweep.py + tests/test_ds_sweep_2026_05_30.py). This
+(tests/test_routes_ds_sweep.py + tests/test_dps_sweep.py). This
 file pins the frontend wiring that hooks the sparkline card into the
 Active Match view so a future refactor that drops a wire reverts the surface
 to invisible:
