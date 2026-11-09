@@ -100,19 +100,71 @@ def _as_num(value: object) -> float | None:
     """A finite number from an int / float / numeric string, else None.
 
     ``bool`` is rejected (``True >= 6`` is valid Python and silently wrong).
+    An int too large for a float (a 400-digit JSON integer parses to one) is
+    None, not an ``OverflowError``.
     """
     if isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
-        f = float(value)
-    elif isinstance(value, str):
+    if isinstance(value, (int, float, str)):
         try:
             f = float(value)
-        except ValueError:
+        except (ValueError, OverflowError):
             return None
     else:
         return None
     return f if math.isfinite(f) else None
+
+
+_ITEM_ID_MAX_DIGITS = 9
+
+
+def _item_id(value: object) -> int | None:
+    """A positive item id from an int, an integral float or a digit string.
+
+    s144 true-audit: ``int(iid)`` took ``True`` as item 1, truncated 3047.5 to
+    3047, and raised ``OverflowError`` (uncaught) on an ``Infinity`` id, which
+    ``json.loads`` accepts. Anything that is not exactly a positive integer is
+    "no item" (None).
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        n = value
+    elif isinstance(value, float):
+        if not value.is_integer():  # False for nan / inf too
+            return None
+        n = int(value)
+    elif isinstance(value, str):
+        s = value.strip()
+        # Length cap first: int() refuses a digit string past 4300 digits
+        # with ValueError, and no item id comes near nine digits.
+        if not (len(s) <= _ITEM_ID_MAX_DIGITS and s.isascii() and s.isdigit()):
+            return None
+        n = int(s)
+    else:
+        return None
+    return n if n > 0 else None
+
+
+def _champ_key(name: object) -> str:
+    """Lowercase alphanumeric lookup key: "Kai'Sa" -> "kaisa", "Lee Sin" -> "leesin"."""
+    if not isinstance(name, str):
+        return ""
+    return "".join(ch for ch in name.lower() if ch.isalnum())
+
+
+def _catalog_rows(raw: object) -> dict | None:
+    """The ``data`` mapping of a DDragon catalog, or None for a wrong shape."""
+    if not isinstance(raw, dict):
+        return None
+    data = raw.get("data", raw)
+    return data if isinstance(data, dict) else None
+
+
+def _stat(stats: dict, key: str) -> float:
+    """One finite stat value, 0.0 when absent, non-numeric or non-finite."""
+    v = _as_num(stats.get(key))
+    return v if v is not None else 0.0
 
 
 def _riot_growth_multiplier(level: int) -> float:
@@ -128,41 +180,61 @@ def _riot_growth_multiplier(level: int) -> float:
 def _load_champ_index() -> dict[str, dict]:
     """Read ddragon_champions.json -> name -> base armor/MR/HP scaling.
 
-    Returns ``{champ: {"armor","armorperlevel","mr","mrperlevel",
-    "hp","hpperlevel"}}``. Empty dict on any failure (base layer then
+    Returns ``{key: {"armor","armorperlevel","mr","mrperlevel",
+    "hp","hpperlevel"}}``. Empty dict on a failed load (base layer then
     no-ops, preserving the legacy items-only result).
+
+    s144 true-audit: each champion is indexed under its DDragon ``id``, its
+    display ``name`` and its catalog key, each verbatim AND as a
+    :func:`_champ_key`. The Live Client ``championName`` the dashboard passes is
+    the DISPLAY name ("Kai'Sa", "Lee Sin", "Wukong", "Nunu & Willump"); keyed by
+    ``id`` alone those enemies silently got zero base. A malformed row (non-dict
+    entry or ``stats``) is skipped and a non-numeric or non-finite stat reads
+    0.0, so one bad row no longer disables the whole layer. Only an unreadable
+    file, malformed JSON or a wrong top-level shape is a failed load.
     """
     global _CHAMP_INDEX
     if _CHAMP_INDEX is not None:
         return _CHAMP_INDEX
     if not _CHAMP_GATE.should_attempt():
         return {}
-    out: dict[str, dict] = {}
     try:
         raw = json.loads(_CHAMPS_PATH.read_text(encoding="utf-8"))
-        data = raw.get("data", raw)
-        for _key, entry in data.items():
-            if not isinstance(entry, dict):
-                continue
-            name = entry.get("id") or entry.get("name") or _key
-            st = entry.get("stats") or {}
-            out[str(name)] = {
-                "armor":        float(st.get("armor") or 0.0),
-                "armorperlevel": float(st.get("armorperlevel") or 0.0),
-                "mr":           float(st.get("spellblock") or 0.0),
-                "mrperlevel":   float(st.get("spellblockperlevel") or 0.0),
-                "hp":           float(st.get("hp") or 0.0),
-                "hpperlevel":   float(st.get("hpperlevel") or 0.0),
-            }
     except FileNotFoundError:
         if _CHAMP_GATE.record_failure():
             _log.warning("enemy_aware_stats: %s missing - base layer disabled",
                          _CHAMPS_PATH)
         return {}
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError, RecursionError) as exc:
+        # ValueError covers JSONDecodeError and UnicodeDecodeError.
         if _CHAMP_GATE.record_failure():
             _log.warning("enemy_aware_stats: champ index load failed: %s", exc)
         return {}
+    data = _catalog_rows(raw)
+    if data is None:
+        if _CHAMP_GATE.record_failure():
+            _log.warning("enemy_aware_stats: %s has no champion mapping",
+                         _CHAMPS_PATH)
+        return {}
+    out: dict[str, dict] = {}
+    for key, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        st = _as_dict(entry.get("stats"))
+        row = {
+            "armor":         _stat(st, "armor"),
+            "armorperlevel": _stat(st, "armorperlevel"),
+            "mr":            _stat(st, "spellblock"),
+            "mrperlevel":    _stat(st, "spellblockperlevel"),
+            "hp":            _stat(st, "hp"),
+            "hpperlevel":    _stat(st, "hpperlevel"),
+        }
+        for name in (entry.get("id"), entry.get("name"), key):
+            if not isinstance(name, str):
+                continue
+            for k in (name, _champ_key(name)):
+                if k:
+                    out.setdefault(k, row)
     _CHAMP_GATE.record_success()
     _CHAMP_INDEX = out
     return out
@@ -176,9 +248,12 @@ def _champ_base_by_level(champ: str, level: int) -> tuple[float, float, float, f
     growth portion - bonus-HP-scaling items (Giant Slayer, BotRK) key
     off bonus HP, so champion BASE hp is excluded from that field
     (mirrors the engine's bonus-vs-max distinction). Unknown champ -> 0s.
+    ``champ`` may be the DDragon id or the display name.
     """
     idx = _load_champ_index()
-    s = idx.get(str(champ))
+    if not isinstance(champ, str) or not champ:
+        return 0.0, 0.0, 0.0, 0.0
+    s = idx.get(champ) or idx.get(_champ_key(champ))
     if not s:
         return 0.0, 0.0, 0.0, 0.0
     g = _riot_growth_multiplier(level)
@@ -199,32 +274,45 @@ def _load_stat_index() -> dict[str, dict]:
     Item id keys are stored as strings; both 4-digit SR ids (``"3047"``)
     and 6-digit ARAM-skin ids (``"223047"``) live in the catalog so we
     don't need a separate alias map.
+
+    s144 true-audit: a malformed row (non-dict entry or ``stats``) is skipped
+    and a non-numeric or non-finite stat (``json.loads`` accepts ``NaN`` /
+    ``Infinity``) reads 0.0, so one bad row neither disables the index nor
+    poisons ``target_*`` with nan / inf. Only an unreadable file, malformed
+    JSON or a wrong top-level shape is a failed load (not cached).
     """
     global _STAT_INDEX
     if _STAT_INDEX is not None:
         return _STAT_INDEX
     if not _STAT_GATE.should_attempt():
         return {}
-    out: dict[str, dict] = {}
     try:
         raw = json.loads(_ITEMS_PATH.read_text(encoding="utf-8"))
-        data = raw.get("data", raw)
-        for item_id, entry in data.items():
-            stats = entry.get("stats") or {}
-            armor = float(stats.get("FlatArmorMod") or 0.0)
-            mr    = float(stats.get("FlatSpellBlockMod") or 0.0)
-            hp    = float(stats.get("FlatHPPoolMod") or 0.0)
-            if armor or mr or hp:
-                out[str(item_id)] = {"armor": armor, "mr": mr, "hp": hp}
     except FileNotFoundError:
         if _STAT_GATE.record_failure():
             _log.warning("enemy_aware_stats: %s missing - falling back to empty index",
                          _ITEMS_PATH)
         return {}
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError, RecursionError) as exc:
+        # ValueError covers JSONDecodeError and UnicodeDecodeError.
         if _STAT_GATE.record_failure():
             _log.warning("enemy_aware_stats: load failed: %s", exc)
         return {}
+    data = _catalog_rows(raw)
+    if data is None:
+        if _STAT_GATE.record_failure():
+            _log.warning("enemy_aware_stats: %s has no item mapping", _ITEMS_PATH)
+        return {}
+    out: dict[str, dict] = {}
+    for item_id, entry in data.items():
+        if not isinstance(entry, dict):
+            continue
+        stats = _as_dict(entry.get("stats"))
+        armor = _stat(stats, "FlatArmorMod")
+        mr = _stat(stats, "FlatSpellBlockMod")
+        hp = _stat(stats, "FlatHPPoolMod")
+        if armor or mr or hp:
+            out[str(item_id)] = {"armor": armor, "mr": mr, "hp": hp}
     _STAT_GATE.record_success()
     _STAT_INDEX = out
     return out
@@ -272,15 +360,28 @@ def compute_target_stats_from_items(enemy_items_by_player: list[list],
     Slayer / BotRK) key off bonus HP, mirroring the engine's bonus-vs-max
     distinction. Without the base layer the catalog can't split base from
     bonus on items, so the two stay equal (item HP only).
+
+    s144 true-audit: the base layer needs ``enemy_champions`` as a list or
+    tuple and ``level`` as a finite number (int, float or numeric string,
+    never ``bool``); anything else degrades to the item-only path instead of
+    raising out of ``int(level)`` or splitting a ``str`` into letters. Item ids
+    go through :func:`_item_id`, so ``3075``, ``3075.0`` and ``"3075"`` all hit
+    the catalog. ``enemy_items_by_player`` that is not a list or tuple is no
+    data (``_empty_stats()``), and so is a result that is not finite (stats
+    near the float maximum can sum to inf), never a raise or an inf target.
     """
     if aggregator not in ("avg", "max", "top1"):
         aggregator = "avg"
+    if not isinstance(enemy_items_by_player, (list, tuple)):
+        return _empty_stats()
     idx = _load_stat_index()
     if not idx or not enemy_items_by_player:
         return _empty_stats()
 
-    use_base = bool(enemy_champions) and level is not None
-    champ_list = list(enemy_champions) if enemy_champions else []
+    lvl = _as_num(level)
+    champ_list = (list(enemy_champions)
+                  if isinstance(enemy_champions, (list, tuple)) else [])
+    use_base = bool(champ_list) and lvl is not None
 
     # 4-tuple per enemy: (armor, mr, max_hp, bonus_hp). Without the base
     # layer max_hp == bonus_hp == item HP (legacy parity).
@@ -292,7 +393,8 @@ def compute_target_stats_from_items(enemy_items_by_player: list[list],
         enemy_i += 1
         a, m, hp = 0.0, 0.0, 0.0
         for iid in items:
-            stat = idx.get(str(iid))
+            key = _item_id(iid)
+            stat = idx.get(str(key)) if key is not None else None
             if not stat:
                 continue
             a += stat["armor"]
@@ -301,7 +403,7 @@ def compute_target_stats_from_items(enemy_items_by_player: list[list],
         if use_base:
             champ = champ_list[enemy_i] if enemy_i < len(champ_list) else ""
             b_armor, b_mr, b_maxhp, b_growhp = _champ_base_by_level(
-                str(champ), int(level)
+                champ if isinstance(champ, str) else "", int(lvl)
             )
             per_enemy.append((a + b_armor, m + b_mr,
                               hp + b_maxhp, hp + b_growhp))
@@ -326,6 +428,10 @@ def compute_target_stats_from_items(enemy_items_by_player: list[list],
         m        = sum(x[1] for x in per_enemy) / n
         max_hp   = sum(x[2] for x in per_enemy) / n
         bonus_hp = sum(x[3] for x in per_enemy) / n
+
+    if not all(math.isfinite(v) for v in (a, m, max_hp, bonus_hp)):
+        _log.debug("enemy_aware_stats: non-finite target from the catalog - empty")
+        return _empty_stats()
 
     return {
         "target_armor":    round(a, 1),
@@ -377,36 +483,62 @@ def enemy_items_from_liveclient(liveclient_data: dict,
         for it in items:
             if not isinstance(it, dict):
                 continue
-            iid = it.get("itemID") or it.get("itemId") or 0
+            # A junk id (bool, fraction, nan / inf, non-digit string) is "no
+            # item", never an OverflowError from ``int(inf)``.
+            iid = _item_id(it.get("itemID") or it.get("itemId"))
             # An unparseable slot is "slot unknown" (same as absent), never a
             # TypeError from comparing a string to 6.
             slot = _as_num(it.get("slot"))
             # Slot 6 is the trinket - skip; 0-5 are real items.
             if slot is not None and slot >= 6:
                 continue
-            if iid:
-                try: ids.append(int(iid))
-                except (TypeError, ValueError): pass
+            if iid is not None:
+                ids.append(iid)
         out.append(ids)
     return out
 
 
+def _single_team(players: list[dict]) -> str | None:
+    """The one team every matched player is on, else None (none or ambiguous)."""
+    teams = {_as_str(p.get("team")) for p in players}
+    teams.discard("")
+    return teams.pop() if len(teams) == 1 else None
+
+
 def active_player_team(liveclient_data: dict) -> str | None:
     """Return ORDER / CHAOS for the active player so we can exclude
-    their team from enemy lists."""
+    their team from enemy lists.
+
+    s144 true-audit: an EXACT full Riot ID match (a roster ``riotId`` or
+    ``summonerName`` equal to the active player's ``riotId`` /
+    ``summonerName``) wins first. Only without one does the game-name match
+    run, and if game-name matches sit on BOTH teams (a shared game name with a
+    different tag) the answer is None, never the first one found. A team that
+    is not a non-empty string is None too.
+    """
     if not isinstance(liveclient_data, dict):
         return None
     ap = _as_dict(liveclient_data.get("activePlayer"))
     me_name = _as_str(ap.get("summonerName") or ap.get("riotIdGameName"))
     if not me_name:
         return None
-    for p in _as_list(liveclient_data.get("allPlayers")):
-        if not isinstance(p, dict):
-            continue
+    me_full = {me_name, _as_str(ap.get("riotId"))}
+    me_full.discard("")
+    roster = [p for p in _as_list(liveclient_data.get("allPlayers"))
+              if isinstance(p, dict)]
+
+    exact = [p for p in roster
+             if _as_str(p.get("riotId")) in me_full
+             or _as_str(p.get("summonerName")) in me_full]
+    if exact:
+        return _single_team(exact)
+
+    by_game_name = []
+    for p in roster:
         # Match on either summonerName or composed riotId
         rid = _as_str(p.get("riotIdGameName") or p.get("summonerName"))
         if not rid:
             continue
         if rid == me_name or me_name.startswith(rid + "#") or rid == me_name.split("#", 1)[0]:
-            return p.get("team")
-    return None
+            by_game_name.append(p)
+    return _single_team(by_game_name)
