@@ -20,7 +20,7 @@ sys.path.insert(0, str(_HERE.parent))
 
 from coaches.loadout_resolver import (
     _load_loadouts, _load_items_by_name, _load_champ_id_by_name,
-    _norm, resolve, list_variants,
+    _norm, resolve,
 )
 
 

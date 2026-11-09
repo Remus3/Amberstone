@@ -34,7 +34,6 @@ def _load_steer():
     is shared with anything that imported it that way - two copies would mean
     two cursors."""
     try:
-        import importlib
         return importlib.import_module("ops.loop.steer")
     except ImportError:
         pass

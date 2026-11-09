@@ -269,7 +269,7 @@ def _bench_placeholders(td: Path):
 
 def _bench_workers():
     from core.sr_aram_worker import SrAramWorker
-    from core.tft_worker import TftWorker, TftWorkerResult
+    from core.tft_worker import TftWorker
     import core.feature_policy as fp
 
     fp._reload()

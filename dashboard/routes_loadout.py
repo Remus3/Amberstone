@@ -37,7 +37,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import parse_qs, quote, urlparse
 
-from dashboard._dispatch import equals, prefix
+from dashboard._dispatch import equals
 from dashboard._errors import forward_upstream_error
 from dashboard._json_flags import FALSE_TOKENS, TRUE_TOKENS, coerce_json_flag
 

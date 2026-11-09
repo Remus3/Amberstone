@@ -69,7 +69,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 from core.polled_json import atomic_write_json
-from dashboard._dispatch import equals, prefix
+from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
 

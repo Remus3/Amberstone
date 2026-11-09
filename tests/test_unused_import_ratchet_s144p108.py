@@ -26,6 +26,14 @@ tools/lcu_agent.py, dataclasses.field in tools/inbox_responder_runner.py,
 typing.Dict in tools/replay_session.py; none re-exported, none read or patched by
 name, none touched by another lane branch) and moves them from _BASELINE to FIXED.
 
+S144-P-472 cleans nine more modules (ten imports: migration_rewind.db_path, _writers.read_json,
+champion_loadout_align._BOOTS_IDS, ds_wiki_staleness_check.HEADER_UA and
+_AP_WRAPPER_RE, run_phase2_perf.TftWorkerResult, validate_loadouts.list_variants,
+session_steer's redundant local `import importlib`, which shadowed the
+top-level `import importlib.util`, and dashboard._dispatch.prefix in routes_loadout
+and routes_lobby_aux; none re-exported, none read or patched by name,
+none touched by another lane branch) and moves them from _BASELINE to FIXED.
+
 The rest are in the shrinking _BASELINE (rel path -> count): frozen files, files
 another lane branch changed, the DS engine (lane ds), deliberate facades
 (``coaches/adaptation_hint.py`` re-exports its split modules, ``effects.py`` its
@@ -59,6 +67,7 @@ pytestmark = pytest.mark.skipif(
 FIXED = (
     "agents/agent1_lead/scheduler.py",
     "agents/agent2_backend/pipeline/orchestrator.py",
+    "agents/agent2_backend/migration_rewind.py",
     "agents/supervisor.py",
     "coach_integration/_coach.py",
     "coaches/_adaptation_common.py",
@@ -75,7 +84,10 @@ FIXED = (
     "core/rofl_stats_backfill.py",
     "dashboard/_dispatch.py",
     "dashboard/_state_builder.py",
+    "dashboard/_writers.py",
     "dashboard/routes_duo_synergy.py",
+    "dashboard/routes_loadout.py",
+    "dashboard/routes_lobby_aux.py",
     "dashboard/routes_recordings.py",
     "game_reader/poller.py",
     "modes/shared_vision.py",
@@ -88,13 +100,18 @@ FIXED = (
     "scripts/install_hooks.py",
     "scripts/merge_refresh_builds.py",
     "tools/bootstrap_env_check.py",
+    "tools/champion_loadout_align.py",
     "tools/dev_cli.py",
+    "tools/ds_wiki_staleness_check.py",
     "tools/gated_lx01_draft_check.py",
     "tools/inbox_responder_runner.py",
     "tools/lcu_agent.py",
     "tools/live_flip_watcher.py",
     "tools/replay_session.py",
+    "tools/run_phase2_perf.py",
+    "tools/session_steer.py",
     "tools/start_daemon_slayer.py",
+    "tools/validate_loadouts.py",
 )
 
 # Out of scope: test code, audit probes, the byte-pinned vendored kit and package
@@ -103,7 +120,6 @@ _SKIP_PREFIXES = ("tests/", "docs/", "ops/fleet_kit/", "ops/audit/", "agents/age
 
 # rel path -> number of unused imports it may keep. Only shrinks.
 _BASELINE = {
-    "agents/agent2_backend/migration_rewind.py": 1,
     "agents/daemon_slayer/_effects_data.py": 1,
     "agents/daemon_slayer/_effects_types.py": 1,
     "agents/daemon_slayer/_registries.py": 1,
@@ -120,15 +136,7 @@ _BASELINE = {
     "composition_advisor.py": 7,
     "core/build_order_variants.py": 1,
     "core/log_setup.py": 2,
-    "dashboard/_writers.py": 1,
-    "dashboard/routes_loadout.py": 1,
-    "dashboard/routes_lobby_aux.py": 1,
     "tools/build_portable.py": 1,
-    "tools/champion_loadout_align.py": 1,
-    "tools/ds_wiki_staleness_check.py": 2,
-    "tools/run_phase2_perf.py": 1,
-    "tools/session_steer.py": 1,
-    "tools/validate_loadouts.py": 1,
     "web_dashboard.py": 18,
 }
 
