@@ -239,7 +239,9 @@ def test_a_non_bytes_stdin_is_refused_without_spawning(monkeypatch, bad):
 @pytest.mark.parametrize(
     ("given", "sent"),
     [(None, b""), (bytearray(b"ba"), b"ba"), (memoryview(b"mv"), b"mv"), (b"", b"")],
-    ids=repr,
+    # A memoryview's repr carries its address, so each xdist worker would
+    # collect a different id; name it by its bytes instead.
+    ids=lambda v: f"memoryview({bytes(v)!r})" if isinstance(v, memoryview) else repr(v),
 )
 def test_none_and_bytes_like_stdin_are_sent_as_bytes(monkeypatch, given, sent):
     rec = _install(monkeypatch)
