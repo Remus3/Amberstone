@@ -20,6 +20,8 @@ import re
 import urllib.request
 from pathlib import Path
 
+from core import polled_json
+
 log = logging.getLogger("rc.skins")
 
 _APP_DIR = Path(__file__).resolve().parent.parent
@@ -180,10 +182,10 @@ def refresh_cdragon_cache(*, url: str = CDRAGON_URL, cache: Path | None = None,
                    for c in (v.get("chromas") or []) if isinstance(c, dict)]
         slim[str(sid)] = {"name": v.get("name"), "chromas": chromas}
     try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        tmp = target.with_suffix(".tmp")
-        tmp.write_text(json.dumps(slim, separators=(",", ":")), encoding="utf-8")
-        tmp.replace(target)
+        # core.polled_json: per-writer scratch name, fsync, retry, and the
+        # scratch is never left behind (RM-258 / RM-261); bytes, so no CRLF.
+        polled_json.atomic_write_bytes(
+            target, json.dumps(slim, separators=(",", ":")).encode("utf-8"))
     except OSError as exc:
         log.warning("skins: cache write failed: %s", exc)
         return False

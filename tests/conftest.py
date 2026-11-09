@@ -504,7 +504,6 @@ def no_live_game_window(monkeypatch):
     frame = sys.modules.get("vision_server._frame")
     if frame is not None and hasattr(frame, "_game_window"):
         monkeypatch.setattr(frame, "_game_window", lambda: None)
-    yield
 
 
 @pytest.fixture(autouse=True)

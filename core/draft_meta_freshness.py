@@ -89,7 +89,8 @@ def meta_freshness(doc: object, *, current_patch: Optional[str] = None,
 
     age: Optional[int] = None
     if src_date is not None:
-        age = ((today or _dt.date.today()) - src_date).days
+        # Local calendar date from an aware clock (no naive datetime).
+        age = ((today or _dt.datetime.now().astimezone().date()) - src_date).days
 
     stale = not (sp and cp and sp == cp)
     return {

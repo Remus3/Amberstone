@@ -104,6 +104,33 @@ def test_refresh_writes_slim_cache(tmp_path, monkeypatch):
     assert not c.with_suffix(".tmp").exists()
 
 
+def test_refresh_routes_the_write_through_polled_json(tmp_path, monkeypatch):
+    """s156 C9: the cache write goes through core.polled_json (per-writer
+    scratch name, fsync, retry, scratch never left behind), not a hand-rolled
+    destination-derived tmp + rename (RM-258 / RM-261 atomic-write guard)."""
+    import io
+
+    from core import polled_json
+
+    class R(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    body = json.dumps({"1001": {"id": 1001, "name": "A", "chromas": []}}).encode()
+    monkeypatch.setattr(skins.urllib.request, "urlopen", lambda *a, **k: R(body))
+    calls = []
+    real = polled_json.atomic_write_bytes
+    monkeypatch.setattr(polled_json, "atomic_write_bytes",
+                        lambda p, d: (calls.append((p, d)), real(p, d))[1])
+    c = tmp_path / "c.json"
+    assert skins.refresh_cdragon_cache(cache=c) is True
+    assert [p for p, _ in calls] == [c]
+    assert c.read_bytes() == b'{"1001":{"name":"A","chromas":[]}}'
+
+
 def test_route_payload_and_serve(tmp_path):
     d = _detail(tmp_path)
     c = tmp_path / "c.json"

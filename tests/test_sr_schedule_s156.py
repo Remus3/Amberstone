@@ -40,6 +40,11 @@ class ScheduleSourcesTests(unittest.TestCase):
         self.assertEqual(sched.SCHEDULE["atakhan_first"].status,
                          sched.STATUS_REMOVED)
 
+    def test_required_value_of_a_removed_row_raises_a_real_error(self):
+        # s156 C9: a real exception, not an assert that python -O strips.
+        with self.assertRaises(ValueError):
+            sched._req("atakhan_first")
+
     def test_official_rows_cite_a_patch(self):
         for key, row in sched.SCHEDULE.items():
             if row.status == sched.STATUS_OFFICIAL:

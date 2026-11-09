@@ -43,9 +43,9 @@ QUEUE = [
 GSM_ESCAPED = (
     "[2026.11.08-20.31.32:460][987]RGIOPRiotGamesApiInternal: "
     "riot-messaging-service: Got message '{\"payload\":{\"resource\":"
-    "\"lol-gsm-server/v1/gsm/game-update/IN_PROGRESS\",\"service\":\"gsm\","
-    "\"payload\":\"{\\\"id\\\":%d,\\\"gameState\\\":\\\"IN_PROGRESS\\\","
-    "\\\"playerCredentials\\\":{\\\"gameId\\\":%d,\\\"queueId\\\":1090,"
+    '"lol-gsm-server/v1/gsm/game-update/IN_PROGRESS","service":"gsm",'
+    '"payload":"{\\"id\\":%d,\\"gameState\\":\\"IN_PROGRESS\\",'
+    '\\"playerCredentials\\":{\\"gameId\\":%d,\\"queueId\\":1090,'
     "\\\"playerId\\\":%d,\\\"puuid\\\":\\\"p-uuid\\\"}}\"}}'"
 )
 GSM_PLAIN = (

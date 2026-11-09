@@ -230,9 +230,9 @@ def test_tft_profile_regions_land_on_the_windowed_client(monkeypatch):
     box (scaled to 2560x1440) reads the desktop - the reported defect."""
     from tft.cv.profile import load_profile
     prof = load_profile()
-    if prof is None or not prof.boxes:
-        pytest.skip("no TFT region profile in this tree")
-    name = sorted(prof.boxes)[0]
+    # The profile is tracked; its absence is a defect, not a skip.
+    assert prof is not None and prof.boxes, "no TFT region profile in this tree"
+    name = min(prof.boxes)
     l, t, r, b = prof.box(name, (1280, 720))
     game = Image.new("RGB", (1280, 720), (20, 20, 20))
     game.paste(Image.new("RGB", (r - l, b - t), MARK), (l, t))

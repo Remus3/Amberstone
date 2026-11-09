@@ -75,7 +75,7 @@ def _isolated(monkeypatch):
 
 def test_set18_pool_sizes_and_units_are_the_game_data_values():
     assert tft_data.POOL_SIZES == COPIES
-    assert tft_data.UNITS_PER_COST == {c: len(v) for c, v in BAGS.items()}
+    assert {c: len(v) for c, v in BAGS.items()} == tft_data.UNITS_PER_COST
     assert tft_data.UNITS_PER_COST == {1: 14, 2: 13, 3: 14, 4: 14, 5: 10}
 
 

@@ -138,7 +138,8 @@ def value(key: str) -> Optional[float]:
 
 def _req(key: str) -> float:
     v = SCHEDULE[key].value_s
-    assert v is not None, key
+    if v is None:
+        raise ValueError(f"sr_schedule row {key!r} has no spawn value")
     return v
 
 

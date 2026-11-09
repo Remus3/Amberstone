@@ -60,6 +60,8 @@ _SITES = {
     "tools/moon_sync_poller.py": 2,
     "tools/rc_facts.py": 1,
     "tools/screen_agent.py": 1,
+    # s156 S7: _image_of_pid's OpenProcess is closed in its finally (C9 review).
+    "vision_server/_game_window.py": 1,
 }
 
 # (file, function) -> who closes the handle. Every row names a real owner.
