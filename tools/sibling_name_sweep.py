@@ -1804,14 +1804,21 @@ def _git(
     return proc.stdout.decode("utf-8", errors="replace")
 
 
+# S144-P-302: the two short ancestry questions below are bounded. A git that
+# wedges (a held lock, a stuck helper) must not park a pre-push hook forever;
+# a timeout reads as "absent" / "unknown", which scans MORE, never less.
+_SHORT_GIT_TIMEOUT_S = 60
+
+
 def _has_object(root: Path, sha: str) -> bool:
     try:
         proc = subprocess.run(
             ["git", "-C", str(root), "cat-file", "-e", sha + "^{commit}"],
             capture_output=True,
             creationflags=_NO_WINDOW,
+            timeout=_SHORT_GIT_TIMEOUT_S,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return False
     return proc.returncode == 0
 
@@ -1827,8 +1834,9 @@ def _is_ancestor(root: Path, old: str, new: str) -> Optional[bool]:
             ["git", "-C", str(root), "merge-base", "--is-ancestor", old, new],
             capture_output=True,
             creationflags=_NO_WINDOW,
+            timeout=_SHORT_GIT_TIMEOUT_S,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return None
     if proc.returncode == 0:
         return True

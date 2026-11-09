@@ -54,7 +54,7 @@ _SPAWN_ERRORS = (OSError, ValueError, subprocess.SubprocessError)
 # Popen itself also raises TypeError on a junk environment (a non-str key or
 # value), before any child exists. Caught at the Popen call only: everywhere
 # else a TypeError is a programming error and should surface.
-_POPEN_ERRORS = _SPAWN_ERRORS + (TypeError,)
+_POPEN_ERRORS = (*_SPAWN_ERRORS, TypeError)
 
 # The largest timeout popen_capture accepts. The runner's largest is a few
 # minutes; anything near a day is a units mistake, and a value past the

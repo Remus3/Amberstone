@@ -45,7 +45,6 @@ _BASELINE = {
     "tools/perseus_sync.py": 1,
     "tools/rewrite_sha_citations.py": 1,
     "tools/run_packaged_smoke.py": 1,
-    "tools/sibling_name_sweep.py": 1,
     "tools/truth_gate.py": 3,
 }
 

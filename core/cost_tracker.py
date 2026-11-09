@@ -178,8 +178,14 @@ def _purpose_to_gate(purpose: str):
     return None
 
 
+def _local_today() -> date:
+    """The one read of the LOCAL calendar day: spend ledgers are named by
+    the operator's local day on purpose (a naive date is the point here)."""
+    return date.today()
+
+
 def _today_str() -> str:
-    return date.today().isoformat()
+    return _local_today().isoformat()
 
 
 def _empty_ledger() -> dict:
@@ -215,7 +221,7 @@ def _ledger_day() -> Optional[str]:
     """Today's ledger day as YYYY-MM-DD, or None when the clock reads a
     day before SPEND_LEDGER_MIN_DATE (then nothing is booked to disk)."""
     global _misdated_warned
-    today = date.today()
+    today = _local_today()
     if today >= SPEND_LEDGER_MIN_DATE:
         return today.isoformat()
     if not _misdated_warned:
@@ -504,10 +510,12 @@ class CostTracker:
         # Narrowed 2026-07-19; re-checked lane 8 cycle 24. Enumerated raise
         # surface of the block above:
         #   core.polled_json.read_json_dict / daily_spend swallows
-        #     OSError + JSONDecodeError, and since cycle 24 UnicodeDecodeError
+        #     OSError + JSONDecodeError, since cycle 24 UnicodeDecodeError
         #     too - a non-UTF-8 ledger now yields the default instead of
-        #     raising. ValueError stays in the handler below on its own merits
-        #     (the float()/int() coercions), not for this;
+        #     raising - and since cycle 223 any ValueError or RecursionError
+        #     from the decoder (JSONDecodeError is a ValueError). ValueError
+        #     stays in the handler below on its own merits (the float()/int()
+        #     coercions), not for this;
         #   float()/int() over ledger values -> ValueError / TypeError;
         #   matches.append(...) -> AttributeError when a corrupt file stored a
         #     non-list under "matches";

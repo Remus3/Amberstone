@@ -126,8 +126,8 @@ def _parse_items(items_raw: str) -> tuple[list[str] | None, str | None]:
     never reaches the snapshot.
     """
     items: list[str] = []
-    for tok in items_raw.split(","):
-        tok = tok.strip()
+    for raw_tok in items_raw.split(","):
+        tok = raw_tok.strip()
         if not tok:
             continue
         if len(items) >= _MAX_ITEMS:

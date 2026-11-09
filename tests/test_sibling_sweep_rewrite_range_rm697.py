@@ -311,3 +311,19 @@ def test_is_ancestor_reads_git_and_reports_unknown_for_a_missing_sha(rewritten):
     assert sweep._is_ancestor(work, rewritten["old1"], rewritten["old2"]) is True
     assert sweep._is_ancestor(work, rewritten["old2"], rewritten["rw2"]) is False
     assert sweep._is_ancestor(work, "e" * 40, rewritten["rw2"]) is None
+
+
+def test_a_wedged_git_reads_absent_and_unknown_never_a_hang(monkeypatch, tmp_path):
+    """S144-P-302: both ancestry questions pass a timeout, and a TimeoutExpired
+    reads as absent / unknown (the scan-MORE direction), never an exception."""
+    seen = []
+
+    def wedged(cmd, **kw):
+        seen.append(kw.get("timeout"))
+        raise subprocess.TimeoutExpired(cmd, kw.get("timeout"))
+
+    monkeypatch.setattr(sweep.subprocess, "run", wedged)
+    assert sweep._has_object(tmp_path, "a" * 40) is False
+    assert sweep._is_ancestor(tmp_path, "a" * 40, "b" * 40) is None
+    assert seen == [sweep._SHORT_GIT_TIMEOUT_S] * 2
+    assert all(isinstance(t, (int, float)) and t > 0 for t in seen)
