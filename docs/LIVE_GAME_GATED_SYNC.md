@@ -1518,6 +1518,43 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   (compute_antitank 0.0 -> 0.455, shreds_resist True), so this same eyeball surfaces Darius' shred.
   HTTP transport WIRED (OQ18) BUT no dashboard/modes caller POSTs a live build - this is a
   **code+eyeball slice, not a pure flip**. No DS restart on the flip itself.
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 123, 2026-11-09, S144-G-110; NOT a tick, NOT a
+  re-open; no game, read at `279bf6f16`, DS ENGINE 1.291.0, patch 16.22.1).** (1) THE ROW HOLDS: the
+  producer is wired and the consumer is not. `compute_antitank_live`
+  (`agents/daemon_slayer/antitank.py:823`) is reached only through `_route_antitank`
+  (`agents/daemon_slayer/server.py:2696`; the live branch at `:2731-2738` runs when `item_ids` is
+  non-empty; route table `:3258`). No RC module POSTs `/anti-tank` (`git grep` of the literal
+  `/anti-tank`, and of `compute_antitank_live`, in `*.py` / `*.js` / `*.mjs` outside
+  `agents/daemon_slayer/` and `tests/`: 0 hits each), and every RC consumer of the axis calls the
+  STATIC `compute_antitank` (`antitank.py:730`) in-process with no stats: `core/ds_antitank_hint.py:97`
+  (`build_antitank_hint`), reached from `dashboard/_deterministic_coaching.py:1373` (ARAM),
+  `core/ds_coach_shadow.py:45` (the A3 shadow log behind `coaches/_base_coach.py`
+  `_shadow_log_hints`), `core/ds_capability_gap.py:106` and `core/build_order_variants.py:253`; plus
+  `core/comp_coverage.py:219` directly. Nothing in a live game carries a build into this axis, so no
+  game can drain the row today: it is a CODE slice first. (2) SCOPE NARROWED (measured this cycle,
+  in-process, `DataSnapshot.load()`): the Darius clause needs no live build at all.
+  `compute_antitank("Darius")` = 0.455, top_kind PERCENT_PEN, shreds_resist True (R93 reproduces), and
+  `compute_antitank_live(snap, "Darius", 11, ["3071"])` is also 0.455: Darius E carries no caster-stat
+  ratio, so a build cannot move it and the static path already surfaces the shred. Only the
+  seeded-ratio rows move with a build: Gwen 0.85 -> 0.915 (L11, ["3089"]; same in ARAM), Kog'Maw 0.926
+  -> 0.952 (L11, ["3089"]), Vi 1.11 -> 1.1629 and Camille 0.745 -> 0.7918 (L11, ["3071"]); Vayne 0.95 is
+  unchanged (control). (3) PROPOSAL, NOT A MOVE: the "eyeball scaled %max-HP magnitudes" half is a
+  compute over an item list, so any synthetic build answers it headless (the numbers above are that
+  eyeball); it is a candidate for "Not actually live-gated" below, for a human to move. What stays
+  live is TRANSPORT only, and only after a producer lands. PREDICATE (stated now, graded only after a
+  producer lands; the code half is a merger follow-up, not this lane's): in a live SR or ARAM game on
+  a seeded-ratio champion (Gwen / Kog'Maw / Vi / Camille) holding at least one AP or AD item, PASS iff
+  a timestamped record of the request body the producer sent to `/anti-tank` carries `champion` equal
+  to the canonical id of my roster row's `championName` (`/api/state` -> `liveclient.allPlayers[]`,
+  matched to `liveclient.activePlayer` as `tools/gated_g417_onhit_render.py` `_me_row` does), an
+  `item_ids` set equal to `liveclient.owned_item_ids` (fallback: that row's `items[].itemID`) from a
+  `/api/state` read within 10 s of game time of the body, and a `level` equal to
+  `liveclient.activePlayer.level` from that read; and the surface the producer feeds shows the reply's
+  `antitank_score` / `top_kind`. FAIL if `item_ids` is absent or empty while the build is not (the
+  static path ran), or if the set differs. EVIDENCE: the body, the `/api/state` read, both timestamps,
+  `game_time_s`, mode and queue. SUBSTITUTION: a DS reply computed by hand from the live item list
+  answers only whether the axis COMPUTES; it proves nothing about whether RC SENT the build, and a
+  rendered score that equals the static `compute_antitank` value is the static path, not this row.
 - **G2-23** `[NEW ROW 2026-07-18 - 12 seam obligations that had NO checklist row]` Item-side
   survivability/burst seam BATTERY. All twelve shipped default-OFF between 2026-07-10 and 2026-07-14
   with an OWED operator flip-eyeball recorded ONLY in the live-flip ledger below. They share one
