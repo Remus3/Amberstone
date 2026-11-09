@@ -64,6 +64,7 @@ into the same sweep.
 import copy
 from pathlib import Path
 
+from tests import _css_split
 from tests.snapshot_panels.test_lobby_render_stability import (
     _POLL_LCU,
     _TOP8_SEED,
@@ -479,7 +480,9 @@ def test_my_top8_heading_rules_survive_the_friends_retirement():
     with it: web/index.html renders .lv-friends-title and
     .lv-friends-title-text, so both rules stay in header.css."""
     html = (WEB / "index.html").read_text(encoding="utf-8")
-    css = (WEB / "css" / "panels" / "header.css").read_text(encoding="utf-8")
+    # Plan rule 5 (RM-726): read the header.css family, so the check holds
+    # once the split moves the heading rules into a sibling sheet.
+    css = _css_split.family_text("web/css/panels/header.css")
     for cls in ("lv-friends-title", "lv-friends-title-text"):
         assert f'class="{cls}"' in html, f"{cls} no longer rendered"
         assert f".{cls} {{" in css, f".{cls} rule missing from header.css"

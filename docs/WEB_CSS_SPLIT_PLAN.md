@@ -205,8 +205,8 @@ status rules.
 ### HS-2 - Lobby panels
 - File: `web/css/panels/header.css`
 - Target: `lobby_panels.css`
-- Start: `/* ---- s162 v4: Friends / Recently Played panel ---- */`
-- Anchors: `lv-fr-row`, `lv-top8-list`, `lv-top8-name`, `lv-top8-tag`, `lv-top8-reorder-btn`, `lv-top8-search-input`, `lv-member-action`, `lv-mainchamps-tabs`, `lv-mc-tab`, `lv-duosyn-row`
+- Start: `/* ---- s162 v4: Friends / Recently Played panel, now the My Top 8 heading ---- */`
+- Anchors: `lv-top8-list`, `lv-top8-name`, `lv-top8-tag`, `lv-top8-reorder-btn`, `lv-top8-search-input`, `lv-member-action`, `lv-mainchamps-tabs`, `lv-mc-tab`, `lv-duosyn-row`
 - Coupled: `tests/snapshot_panels/test_lobby_hit_targets.py`, `tests/snapshot_panels/test_lobby_mains_tabs.py`, `tests/snapshot_panels/test_lobby_render_stability.py`, `tests/snapshot_panels/test_lobby_top8_search_input.py`, `tests/snapshot_panels/test_lobby_top8_tag_control.py`, `tests/snapshot_panels/test_user_builds_row_actions_hit.py`
 - Views: `lobby`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above, headless, before the commit. Focus: the Friends, My Top 8, Party and Mains cards at both widths (STRUCTURE, no reflow), the Top 8 reorder and tag controls and the party member actions (HIT-TARGETS), and the rank and KP color bands (HIERARCHY).

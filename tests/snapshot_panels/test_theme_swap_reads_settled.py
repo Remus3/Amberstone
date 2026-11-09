@@ -215,7 +215,16 @@ makes), the s144 uiux module of S144-U-245:
     reads the ?debug=1 readout under the Active Match map in one
     evaluate. Nothing it reads transitions, so the sheet is belt and
     braces, not a fix.
-This module pins all fifty-seven verdicts at runtime with each test's own opener,
+Audit (2026-11-09, s144 uiux cycle 245, S144-U-250, the same
+detector), the s144 uiux module of S144-U-250:
+  - test_lobby_queue_fill_text_contrast: flips data-theme in-page on the
+    polled Lobby page and reads the live Find Match / Cancel Queue labels
+    at rest and under a real mouse hover. The queue buttons DO transition
+    background and border colour on a swap and a hover, so its opener adds
+    the transitions-off sheet before the flip, and emulates reduced motion
+    so the searching Find Match pulse (an animation) is a static ring. It
+    joins the contrast pin below on its Searching state.
+This module pins all fifty-eight verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -304,7 +313,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The fifty-seven modules audited above, keyed by file name.
+# The fifty-eight modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_empty_line_contrast.py",
@@ -339,6 +348,7 @@ _COVERED = {
     "test_lobby_mains_recent_cell.py",
     "test_lobby_mains_tabs.py",
     "test_lobby_queue_buttons_focus_ring.py",
+    "test_lobby_queue_fill_text_contrast.py",
     "test_lobby_roster_row_dimming_contrast.py",
     "test_lobby_text_contrast.py",
     "test_match_row_focus_ring.py",
@@ -1153,8 +1163,8 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The twenty-two contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
-# U-242, U-243, U-245):
+# The twenty-three contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# U-242, U-243, U-245, U-250):
 # each one's _measure extra arguments after (mock_server, pw_browser, theme),
 # taken from its own constants (its first viewport, its first mode, the TFT
 # footer state, the mixed Session scenario, its first surface).
@@ -1171,6 +1181,7 @@ _CONTRAST = {
     "test_home_pick_name_contrast": ("vp",),
     "test_last_match_build_wpa_contrast": (),
     "test_lobby_mains_placeholder_contrast": (),
+    "test_lobby_queue_fill_text_contrast": (),
     "test_lobby_roster_row_dimming_contrast": (),
     "test_lobby_text_contrast": ("vp",),
     "test_pgr_text_contrast": ("mode", "vp"),
@@ -1182,7 +1193,7 @@ _CONTRAST = {
     "test_user_builds_text_contrast": ("vp",),
     "test_zoi_debug_readout": ("vp",),
 }
-# The fourteen whose opener adds the sheet before its first interaction.
+# The fifteen whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
@@ -1192,6 +1203,7 @@ _CONTRAST_SHEETED = (
     "test_home_pick_name_contrast",
     "test_last_match_build_wpa_contrast",
     "test_lobby_mains_placeholder_contrast",
+    "test_lobby_queue_fill_text_contrast",
     "test_lobby_roster_row_dimming_contrast",
     "test_pgr_text_contrast",
     "test_replay_match_row_text_contrast",

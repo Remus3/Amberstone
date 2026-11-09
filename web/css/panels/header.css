@@ -1081,9 +1081,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .lq-cancel .lq-btn-line1,
 .lq-cancel .lq-btn-line2 { color: var(--canvas); }
-/* RM-1208: held (aria-disabled) during a queue pop - no hover fill. */
+/* RM-1208: held (aria-disabled) during a queue pop - no hover fill.
+ * S144-U-250: the hover lightens toward --text, the .lq-find:hover
+ * precedent. Mixing toward --canvas darkened the red under the dark label
+ * and dropped it from 4.88 - 5.64:1 at rest to 3.43 - 3.90:1 on hover. */
 .lq-cancel:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: color-mix(in srgb, var(--bad) 80%, var(--canvas));
+  background: color-mix(in srgb, var(--bad) 85%, var(--text));
   border-color: var(--bad);
 }
 
