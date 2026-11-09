@@ -2801,6 +2801,9 @@ def _git_target(here, words):
 # (EXTRA only) also reads that string the way env splits it
 # (_env_split_string: `\_` separates, quotes, escapes, `#`, `\c`), beside
 # the plain reading, for a git command and for a launcher behind env -S.
+# S144-Q-147 (EXTRA only): after `git commit` / merge / rebase / cherry-pick
+# / revert / pull / am / commit-tree, `-S` (gpg-sign) and `-e` (edit) take no
+# next-word value, so `git commit -S -n` counts (_GIT_FLAG_ONLY_IN).
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
@@ -2854,14 +2857,24 @@ _COMMIT_VALUE_SHORTS = frozenset("mFcCtSu")
 # Of those, the ones whose value may be the NEXT word when a cluster ends in
 # them (`-am msg`); -S / -u take only an attached value, -c / -C see above.
 _DATA_SHORTS = frozenset("mFt")
+# S144-Q-147: the subcommands where a _GIT_DATA_OPTS short is a FLAG, so the
+# next word is not its value (measured `git <sub> -h`, git 2.53): `-S` is
+# `--gpg-sign[=<key-id>]` (attached key id only), `-e` is `--edit`.
+# Elsewhere (log / diff pickaxe `-S`, grep `-e`) they still take the next word.
+_GIT_FLAG_ONLY_IN = {
+    "-S": frozenset({"commit", "merge", "rebase", "cherry-pick", "revert",
+                     "pull", "am", "commit-tree"}),
+    "-e": frozenset({"commit", "merge", "cherry-pick", "revert", "tag"}),
+}
 
 
-def _is_data_slot(prev):
-    """True when the word after PREV is an option's value."""
+def _is_data_slot(prev, sub=None):
+    """True when the word after PREV is an option's value. SUB is the git
+    subcommand PREV belongs to (lower case), or None before / without one."""
     if prev is None:
         return False
     if prev in _GIT_DATA_OPTS:
-        return True
+        return sub not in _GIT_FLAG_ONLY_IN.get(prev, ())
     return bool(re.fullmatch(r"-[A-Za-z]+", prev)) and prev[-1] in _DATA_SHORTS
 
 
@@ -2871,7 +2884,7 @@ def _commit_no_verify(words):
     for word in words:
         if word == "--":
             return False
-        if not _is_data_slot(prev) and re.fullmatch(r"-[A-Za-z]+", word):
+        if not _is_data_slot(prev, "commit") and re.fullmatch(r"-[A-Za-z]+", word):
             for letter in word[1:]:
                 if letter == "n":
                     return True
@@ -2889,18 +2902,21 @@ def _git_words_bypass(words):
     if start is None:
         return False
     rest = words[start + 1:]
-    prev = None
-    for word in rest:
-        if not _is_data_slot(prev) and _BYPASS_FLAG_WORD.fullmatch(word):
-            return True
-        prev = word
     i = 0
     while i < len(rest) and rest[i].startswith("-"):
         option, eq, _value = rest[i].partition("=")
         if option in (_GIT_VALUE_OPTS | _GIT_PATH_OPTS) and not eq:
             i += 1
         i += 1
-    return i < len(rest) and rest[i].lower() == "commit" and _commit_no_verify(rest[i + 1:])
+    sub = rest[i].lower() if i < len(rest) else None
+    prev = None
+    for k, word in enumerate(rest):
+        # S144-Q-147: after the subcommand a data slot is judged by it.
+        if not _is_data_slot(prev, sub if k > i else None) \
+                and _BYPASS_FLAG_WORD.fullmatch(word):
+            return True
+        prev = word
+    return sub == "commit" and _commit_no_verify(rest[i + 1:])
 
 
 # S144-Q-136: GNU env's long options (getopt_long takes any unambiguous
