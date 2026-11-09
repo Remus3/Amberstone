@@ -29,7 +29,7 @@ f17a75edbf48a36b44fc4754ef9f68c95c2a3e5e987efb48f0a35c2f0344e2e8  web/css/panels
 
 4b6656bf0b091637cb0b1d42f5cfa844ecafa3831a7f812bc50c645d919f70bf  web/css/panels/coach_choices.css
 
-c066ee1d08c10367cdd254c3a108f29cf72ee566d87d790c4644655a6a2f6d79  web/css/panels/coach_decisions.css
+bed4ba6303f933d09792663308bb8b6bf0714aa2e4aeb9995ede41668da74df2  web/css/panels/coach_decisions.css
 
 b392fbf15143a94c6cd8b9e3f2a9a5c6908db5c3c1d6107573882e76dd575118  web/css/panels/draft_elo.css
 
