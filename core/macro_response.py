@@ -302,6 +302,6 @@ __all__ = [
     "LOST_OBJECTIVE_RESPONSE",
     "STAGNATION_RESPONSE",
     "lost_objective_response",
-    "stagnation_response",
     "macro_response_callout",
+    "stagnation_response",
 ]

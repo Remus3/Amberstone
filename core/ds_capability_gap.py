@@ -452,11 +452,11 @@ def _zero_result(champion: str, mode: str) -> dict:
 
 
 __all__ = [
-    "build_capability_gap",
+    "OBJDMG_ENEMY_MIN",
+    "OBJDMG_HIGH_SCORE",
     "POKE_ENEMY_MIN",
     "SUSTAIN_ENEMY_MIN",
     "SUSTAIN_HIGH_SCORE",
     "ZONE_ENEMY_MIN",
-    "OBJDMG_ENEMY_MIN",
-    "OBJDMG_HIGH_SCORE",
+    "build_capability_gap",
 ]

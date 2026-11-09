@@ -10,9 +10,9 @@ NOT held, each for a named reason (a fixed ``_NOT_HELD`` list, so the exception 
 - ``core/game_snapshot.py``: frozen file (3 ``__slots__`` rows).
 - ``core/metrics_cache.py``: ``MetricsSummary.to_dict`` iterates ``__slots__`` to build its dict, so the order IS the
   serialised key order; sorting it would change the output and the tuple carries comments ruff will not move.
-- ``core/ds_antitank_hint.py``, ``core/ds_capability_gap.py``, ``core/macro_response.py``: edited on the true-audit
-  lane branch awaiting landing, so touching them here would only make the merger resolve a conflict. They join the
-  held set once that branch lands (delete them from ``_NOT_HELD`` and sort them).
+- ``core/ds_antitank_hint.py``, ``core/ds_capability_gap.py``, ``core/macro_response.py``: NOT in this list any more
+  (S144-P-598, 2026-11-09). They were deferred while the true-audit lane branch edited them; that branch carries no
+  unlanded commit on any of the three, so each ``__all__`` is sorted with ruff's own fix and they joined the held set.
 
 The run uses NO config (``--isolated``), so a per-file-ignore cannot hide a finding. The held scope has no baseline.
 """
@@ -38,9 +38,6 @@ _RULES = ("RUF022", "RUF023")
 _NOT_HELD = {
     "core/game_snapshot.py": "frozen",
     "core/metrics_cache.py": "to_dict iterates __slots__, so the order is the output order",
-    "core/ds_antitank_hint.py": "edited on the true-audit lane branch, unlanded",
-    "core/ds_capability_gap.py": "edited on the true-audit lane branch, unlanded",
-    "core/macro_response.py": "edited on the true-audit lane branch, unlanded",
 }
 _FIXED = (
     "core/aram_balance_context.py",
@@ -48,12 +45,15 @@ _FIXED = (
     "core/aram_item_interaction.py",
     "core/arena_augment_playline.py",
     "core/arena_coach_shadow.py",
+    "core/ds_antitank_hint.py",
     "core/ds_calibration_agreement.py",
+    "core/ds_capability_gap.py",
     "core/failed_load_gate.py",
     "core/feature_policy.py",
     "core/focus_board_live.py",
     "core/laning_cv_overrides.py",
     "core/lcu_events.py",
+    "core/macro_response.py",
     "core/objective_playbook.py",
     "core/precomputed_build_coach.py",
     "core/precomputed_laning_coach.py",
