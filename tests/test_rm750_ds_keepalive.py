@@ -262,8 +262,10 @@ class KeepaliveStep(unittest.TestCase):
             made.append(wd)
             return wd
 
+        # A host that registers RC-DaemonSlayer (the relaunch route); the
+        # no-task stand-down is pinned in test_ds_keepalive_hardening_s144t708.
         ka = _ka().DsKeepalive(rc_live=rc_live, stopped=stopped,
-                               make_watchdog=make)
+                               make_watchdog=make, task_registered=lambda: True)
         return ka, made
 
     def test_rc_live_defers_without_probing(self) -> None:
@@ -525,7 +527,8 @@ class WatchdogLaunchIsProcessAware(unittest.TestCase):
     def test_the_keepalive_launch_goes_through_the_same_check(self) -> None:
         rig = _Rescan(state=HUNG, holder=4321, after_kill=999)
         ka = _ka().DsKeepalive(rc_live=lambda: False, stopped=lambda: False,
-                               make_watchdog=rig.watchdog)
+                               make_watchdog=rig.watchdog,
+                               task_registered=lambda: True)
         for _ in range(3):
             ka.step()
         self.assertEqual((rig.kills, rig.spawns), ([4321], 0))
