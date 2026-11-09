@@ -23,6 +23,15 @@ ops/runtime/tft_qa/TFT_CLIENT_PROBE.md):
   (``tft/local_player.py``); when that cannot be told the local player is
   UNKNOWN (no HP / standing / board served), never a guess.
 
+Measured live 2026-11-08 (S156 S7): the Riot Client now launches the TFT
+client directly (its own lobby, queue and parties); the League client stays
+up but IDLE (gameflow phase ``None``, no session, nothing on :2999) for the
+whole match. The client's own Unreal log ``TFT.log`` (beside the per-round
+file) names the match state, the game id and the local player id, so
+``client_log_state`` reads it (bounded offset tail, never the whole file per
+poll) and ``lcu_tft_verdict`` defers to it wherever the LCU cannot speak for
+TFT.
+
 This module turns those signals into an allgamedata-SHAPED dict so the
 existing TFT pipeline (game_reader -> mode_router.tft_minimal_state ->
 mode_from_game_mode_string -> TftWorker -> TftStateReader) runs unchanged,
@@ -72,8 +81,35 @@ _PROC_CACHE_TTL_S = 3.0
 LCU_RELAY_URL = "http://127.0.0.1:8889/latest-lcu"
 LCU_RELAY_MAX_AGE_S = 20.0
 
+# S156 S7: the client's own Unreal log (TFT.log, beside the per-round file).
+# A live match writes it continuously (~24 MB per match), so a log older than
+# this cannot vouch for a live match and reads "unknown".
+CLIENT_LOG_MAX_AGE_S = 300.0
+# Bytes read per call; a fresh RC catching up on a long log reads it over a
+# few calls and stays "unknown" until it reaches the end.
+CLIENT_LOG_READ_CAP = 8 << 20
+# The 2 Hz callers share one read per this interval.
+CLIENT_LOG_MIN_INTERVAL_S = 0.5
+_CLIENT_LOG_HEADER = 64          # rotation fingerprint ("Log file open, <time>")
+_CLIENT_LOG_MAX_CARRY = 1 << 16  # an unterminated line longer than this is dropped
+_CLIENT_LOG_EVENTS = re.compile(
+    rb"Entering LobbyState\[ETFTLobbyState::(?P<lobby>[A-Za-z]{1,40})\]"
+    rb"|UEngine::Browse Started Browse: \"(?P<url>[^\"\r\n]{0,400})\""
+    rb"|\\?\"id\\?\":(?P<gid>\d{1,20}),\\?\"gameState\\?\":\\?\"IN_PROGRESS\\?\""
+    rb"(?P<creds>[^\r\n]{0,300})")
+_CLIENT_LOG_PLAYER = re.compile(rb"\\?\"playerId\\?\":(\d{1,20})")
+# a remote Browse ("<host>:<port>/...") is the client joining a game server
+_REMOTE_URL = re.compile(rb"^[A-Za-z0-9.\-\[\]:]{1,80}:\d{2,5}/")
+
 _cache_lock = threading.Lock()
 _proc_cache: dict = {"ts": 0.0, "running": False, "create_time": None}
+# Offset tail state of TFT.log (client_log_state). ``summoner_id`` is the local
+# player id from the gsm credentials: matched against the per-round file only,
+# never logged or served.
+_CLIENT_LOG_EMPTY = {"header": None, "offset": 0, "carry": b"", "read_ts": None,
+                     "verdict": None, "lobby_state": "", "game_id": "",
+                     "summoner_id": None, "caught_up": False, "fresh": False}
+_client_log: dict = dict(_CLIENT_LOG_EMPTY)
 # (game id, index, basis) already logged by _note_local: one line per game and
 # outcome, not one per 2 Hz tick.
 _local_logged: set = set()
@@ -88,6 +124,8 @@ def _reset_caches_for_tests() -> None:
         _proc_cache.update({"ts": 0.0, "running": False, "create_time": None})
         _local_logged.clear()
         _last_live.update({"game_id": "", "seen": 0.0})
+        _client_log.clear()
+        _client_log.update(_CLIENT_LOG_EMPTY)
 
 
 # -- process detection ---------------------------------------------------------
@@ -194,6 +232,135 @@ def read_eog(now: float | None = None, max_age_s: float = EOG_MAX_AGE_S):
         return None
     d["_mtime"] = st.st_mtime
     return d
+
+
+# -- the client's own log (S156 S7) ----------------------------------------------
+#
+# Measured live 2026-11-08: the Riot Client launches the TFT client directly
+# (its own lobby and queue); the League client stays up but idle (gameflow
+# phase "None", no session), so the LCU cannot speak for a TFT match at all.
+# TFT.log names the match state itself (shapes measured on the s156 logs):
+#   Entering LobbyState[ETFTLobbyState::<state>]  - Frontend / SoloMode /
+#       Matchmaking / InGame / EndOfGameInterstitial / EndOfGameSummary
+#   UEngine::Browse Started Browse: "<host>:<port>/..."  - joining the server
+#   UEngine::Browse Started Browse: "/Mode_Bootstrap/Bootstrap?closed"  - left
+#   UEngine::Browse Started Browse: "/Game/Maps/Empty?GameModeName=Frontend_.."
+#   gsm game-update IN_PROGRESS payload {"id":<game id>,...,"playerId":<id>}
+# The initial Frontend state is not logged as a LobbyState line; the Frontend
+# Browse stands for it.
+
+_client_log_lock = threading.Lock()
+
+
+def client_log_path() -> Path:
+    """TFT.log, beside the per-round file (the same seam: tests/conftest's
+    never-existing per-round path makes this one never exist either)."""
+    return eog_stats_path().with_name("TFT.log")
+
+
+def _open_client_log(path: Path):
+    """Seam: read-only binary open that never blocks the client renaming its
+    own log at launch (FILE_SHARE_DELETE; tft.sources.tft_log owns it)."""
+    from tft.sources.tft_log import _open_shared  # noqa: PLC0415 - imports this module
+    return _open_shared(path)
+
+
+def _client_log_scan(buf: bytes) -> None:
+    """Fold the events in ``buf`` (whole lines) into ``_client_log``, in file
+    order. Caller holds ``_client_log_lock``."""
+    st = _client_log
+    for m in _CLIENT_LOG_EVENTS.finditer(buf):
+        if m["lobby"] is not None:
+            name = m["lobby"].decode("ascii")
+            st["lobby_state"] = name
+            st["verdict"] = name == "InGame"
+        elif m["url"] is not None:
+            url = m["url"]
+            if _REMOTE_URL.match(url):
+                st["verdict"] = True
+            elif b"?closed" in url or b"GameModeName=Frontend" in url:
+                st["verdict"] = False
+            else:  # the startup bootstrap: says nothing yet
+                st["verdict"] = None
+        else:
+            st["game_id"] = m["gid"].decode("ascii")
+            pm = _CLIENT_LOG_PLAYER.search(m["creds"] or b"")
+            st["summoner_id"] = (_lp.real_id(pm.group(1).decode("ascii")) or None
+                                 if pm else None)
+
+
+def _client_log_reset(header) -> None:
+    read_ts = _client_log["read_ts"]
+    _client_log.clear()
+    _client_log.update(_CLIENT_LOG_EMPTY)
+    _client_log.update({"header": header, "read_ts": read_ts})
+
+
+def _client_log_read(now: float) -> None:
+    """One bounded read of the bytes appended since the last one. A rotated
+    log (shorter than the offset, or another header) restarts at 0. Raises
+    OSError when the log cannot be opened. Caller holds the lock."""
+    st = _client_log
+    with _open_client_log(client_log_path()) as fh:
+        fs = os.fstat(fh.fileno())
+        size = fs.st_size
+        head = fh.read(_CLIENT_LOG_HEADER)
+        hdr = st["header"]
+        n = min(len(head), len(hdr or b""))
+        if hdr is None or size < st["offset"] or head[:n] != hdr[:n]:
+            _client_log_reset(head)
+        elif len(head) > len(hdr):
+            st["header"] = head
+        if size > st["offset"]:
+            fh.seek(st["offset"])
+            data = fh.read(min(int(CLIENT_LOG_READ_CAP), size - st["offset"]))
+            st["offset"] += len(data)
+            buf = st["carry"] + data
+            cut = buf.rfind(b"\n")
+            if cut >= 0:
+                _client_log_scan(buf[:cut])
+                buf = buf[cut + 1:]
+            st["carry"] = buf if len(buf) <= _CLIENT_LOG_MAX_CARRY else b""
+    st["caught_up"] = st["offset"] >= size
+    st["fresh"] = 0.0 <= now - fs.st_mtime <= CLIENT_LOG_MAX_AGE_S or (
+        fs.st_mtime > now)
+
+
+def _client_log_view() -> dict:
+    st = _client_log
+    # A verdict only from a log read to its end AND written recently: half a
+    # file, or a crashed client's last line, cannot say "in a match".
+    ok = st["caught_up"] and st["fresh"]
+    return {"verdict": st["verdict"] if ok else None,
+            "lobby_state": st["lobby_state"], "game_id": st["game_id"],
+            "summoner_id": st["summoner_id"], "caught_up": st["caught_up"],
+            "fresh": st["fresh"]}
+
+
+def client_log_state(now: float | None = None, force: bool = False) -> dict:
+    """What the TFT client's own log says about a match:
+    ``{"verdict": True | False | None, "lobby_state", "game_id",
+    "summoner_id", "caught_up", "fresh"}``.
+
+    ``verdict`` True = in a match (InGame, or joining a game server), False =
+    a lobby / end-of-game screen, None = cannot say (no log, a log not yet
+    read to its end, a log not written for ``CLIENT_LOG_MAX_AGE_S``, or one
+    that names no state yet). The callers share one bounded read per
+    ``CLIENT_LOG_MIN_INTERVAL_S`` (``force`` reads now). Never raises; logs
+    no identity (``summoner_id`` is for matching the per-round file only)."""
+    now = time.time() if now is None else now
+    mono = time.monotonic()
+    with _client_log_lock:
+        last = _client_log["read_ts"]
+        if force or last is None or not 0 <= mono - last < CLIENT_LOG_MIN_INTERVAL_S:
+            _client_log["read_ts"] = mono
+            try:
+                _client_log_read(now)
+            except Exception as exc:  # noqa: BLE001 - absent / locked / junk
+                _log.debug("standalone TFT: client log unreadable (%s)",
+                           type(exc).__name__)
+                _client_log_reset(None)
+        return _client_log_view()
 
 
 _DA_PREFIX = re.compile(r"^DA_(?:\d+_)?")
@@ -386,12 +553,26 @@ def relay_lcu_snapshot():
 _UNSET = object()
 
 
-def lcu_tft_verdict(lcu):
-    """What the LCU snapshot says about a live TFT match: True / False, or
-    None when it cannot say (no snapshot / no phase).
+def _client_verdict(client):
+    if client is _UNSET:
+        return client_log_state()["verdict"]
+    return client if client in (True, False) else None
 
-    - A known phase outside ``IN_GAME_PHASES`` is False (lobby, champ select,
-      end of game) so a client left open post-game never reads as live.
+
+def lcu_tft_verdict(lcu, client=_UNSET):
+    """What the LCU snapshot - and, where the LCU cannot speak for TFT, the
+    TFT client's own log - says about a live TFT match: True / False, or
+    None when neither can say.
+
+    - No snapshot / no phase: the client log's verdict (``client_log_state``;
+      ``client`` injects it), None when it has none.
+    - A known phase outside ``IN_GAME_PHASES`` (lobby, champ select, end of
+      game, and the idle ``None``) is False so a client left open post-game
+      never reads as live - UNLESS the TFT client's log says a match is on.
+      S156 S7: the Riot Client launches TFT directly now, League idles in
+      phase ``None`` for the whole match, and that phase alone read every
+      standalone match as not-in-game. The log is a positive-only override
+      here: it never turns a League phase into "in game" on a lobby line.
     - In game, the queue decides when the snapshot carries it:
       ``lcu/snapshot_shape.py`` stamps ``game_queue_mode`` / ``game_queue_id``
       from the gameflow session it already reads at GameStart / InProgress,
@@ -399,10 +580,10 @@ def lcu_tft_verdict(lcu):
       lingers. An older LCU agent omits both keys; the phase then stands.
     """
     if not isinstance(lcu, dict) or lcu.get("phase") is None:
-        return None
+        return _client_verdict(client)
     phase = str(lcu.get("phase") or "")
     if phase not in IN_GAME_PHASES:
-        return False
+        return _client_verdict(client) is True
     qmode = str(lcu.get("game_queue_mode") or "")
     if qmode:
         return "TFT" in qmode.upper()
@@ -539,6 +720,16 @@ def _round_state(lcu, eog, now: float) -> dict:
     game id). A file that is not positively this game's is no file here, so
     no caller (synth_allgamedata, tft_live_status) can serve it."""
     game_id = str((lcu or {}).get("game_id") or "") if isinstance(lcu, dict) else ""
+    summoner_id = _lp.summoner_id_of(lcu)
+    if not game_id:
+        # S156 S7: a match on the Riot-Client-launched TFT client - the idle
+        # League LCU names no game; the client's own log does (its gsm
+        # IN_PROGRESS push), and the local player id with it. Only while
+        # that log says a match is on.
+        client = client_log_state(now=now)
+        if client["verdict"] is True and client["game_id"]:
+            game_id = client["game_id"]
+            summoner_id = summoner_id or client["summoner_id"]
     out = {"eog": False, "eog_match": False, "local": {}, "players_alive": None,
            "players_total": None, "game_length_s": None, "eog_age_s": None,
            "game_id": game_id, "queue_id": None, "set": None, "lobby": [],
@@ -559,7 +750,7 @@ def _round_state(lcu, eog, now: float) -> dict:
     sb = eog.get("statsBlock") if isinstance(eog.get("statsBlock"), dict) else {}
     # S135 N13: by the LCU summoner id, never the first isInteractable entry
     # (a human lobby flags all 8); unknown rather than a stranger.
-    idx, basis = _lp.local_player_index(players, summoner_id=_lp.summoner_id_of(lcu))
+    idx, basis = _lp.local_player_index(players, summoner_id=summoner_id)
     _note_local(game_id, idx, basis)
     local = players[idx] if idx is not None else None
     game_len = _game_length(sb.get("gameLengthSeconds"))
