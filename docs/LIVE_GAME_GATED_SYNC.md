@@ -5101,6 +5101,37 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
       League game has ended since Y-01 / Y-08 shipped, so the writer has never run live.
   - Reverses if: the parsed log lines or logger names change. `tests/test_gated_y01_chain_report.py`
     pins each source literal, and the `matches` schema or the receipt row shape (`v` 1) also counts.
+  **AGE CHECK (lane 9 PREP s144 cycle 131, S144-G-118; source read at local main `d2d4840f1`, no game
+  up (RC :8888 refused at 2026-11-09T06:10); NOT a tick). The READY card above holds unchanged; the
+  writer has STILL never run live.**
+  - Cites, re-read at HEAD: "Game ended", "TFT game end: League rewind live-writer skipped" and
+    "rewind live-writer trigger error" in `app/_game_lifecycle.py` under logger `rc.app.lifecycle`;
+    "rewind_live_writer schedule error" twice in `lib/rewind_live_writer.py` (logger
+    `rc.lib.rewind_live_writer`); "rewind_live_writer: chain %s attempt %d ended %s (%s)" there;
+    "postgame: saved match %s" and "postgame: match %s already stored - skip" in
+    `lcu/lcu_postgame_collector.py` (logger `rc.postgame`). `DEFAULT_DELAY_S` is still 90.0 and
+    `STAGED_DELAYS_S` still (60, 120, 300, 600), so the tool's `CHAIN_WINDOW_S` is still 1290 s
+    (1170 + 120) and "about 19.5 min" still holds. `PIN_PATH`, `RECEIPT_PATH` (`lib/ingest_receipt.py`)
+    and `DB_PATH` are unchanged.
+  - Eight commits touched the five cited source files since READY (`1debadfb0`), none moving a parsed
+    literal. `aa8082af8` (2026-10-30) routes `write_game_end_pin` through `core.polled_json`, same
+    bytes; `9f3845e32` (2026-11-06) makes the tool's `_platform` call
+    `operator_identity.normalize_platform` and read UTF-8 with or without a BOM. The other six
+    (`6d2d1a0d4`, `40dcca458`, `daca8a6b0`, `535679309`, `2708e8aec`, `badd1407d`) touch only
+    `lcu/lcu_postgame_collector.py` and `lib/ingest_receipt.py`: renames, a merged `with`, comment
+    wording and `time.time` to `time.monotonic`. `tests/test_gated_y01_chain_report.py`: 59 passed
+    this cycle.
+  - Post-cutover log route holds: the 2026-10-31 daily log carries `rc.app.*` lines from the rc-shell
+    service host window (19:13 .. 21:17 local), so the `logs/YYYY-MM-DD.log*` source survives the
+    launcher cutover. RC has not run since: no daily log after `2026-10-31.log`, and
+    `ops/runtime/launcher_status.json` reads `state` halted, `reason` stdin_stop.
+  - Idle baseline, 2026-11-09T06:11 local, no `--since`, `--root` the main checkout: INCOMPLETE, exit
+    1, the same five TFT ends of 2026-10-25 and 0 League ends; 0 receipts, pin absent. Zero
+    chain-end lines in any retained log; retention now starts 2026-10-17, not 2026-10-13.
+  - Drain blocker, not a defect: the row needs RC RUNNING (rc-shell `--profile dev`) through five
+    League game ends; the tool reads only what the live process wrote.
+  - Reverses if: a League "Game ended" line appears after 2026-10-31 (re-run the card), or a parsed
+    literal, a delay constant or a source path above changes.
 
 ---
 
