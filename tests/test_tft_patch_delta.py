@@ -421,3 +421,86 @@ def test_default_out_is_under_the_gitignored_tft_tree():
     p = tpd.default_out("TFTSet18", "16.20", "16.21")
     rel = p.relative_to(tpd.ROOT).as_posix()
     assert rel == "data/tft/patch_delta/TFTSet18_16.20_16.21.json"
+
+
+# --- RM-1158: a hash-to-name key resolution is not a value change ---------------
+
+UPGRADE = "UpgradeHealth"
+
+
+def _res_pair(old_effects, new_effects):
+    old = _payload([], [], [_item("DA_Up", effects=old_effects)])
+    new = _payload([], [], [_item("DA_Up", effects=new_effects)])
+    return tpd.diff_set(old, new)
+
+
+def test_pure_resolution_hashed_to_named_is_not_a_change():
+    d = _res_pair({fct.bin_hash(UPGRADE): 250}, {UPGRADE: 250})
+    assert d["items"] == {}
+    assert d["_counts"]["items"] == 0
+    assert d["_counts"]["resolved_keys"] == 1
+    assert d["resolved_keys"]["items"] == {"DA_Up": {UPGRADE: fct.bin_hash(UPGRADE)}}
+
+
+def test_pure_resolution_named_to_hashed_is_not_a_change():
+    d = _res_pair({UPGRADE: 250}, {fct.bin_hash(UPGRADE): 250})
+    assert d["items"] == {}
+    assert d["_counts"]["resolved_keys"] == 1
+
+
+def test_resolution_with_a_new_value_is_one_change_under_the_named_key():
+    d = _res_pair({fct.bin_hash(UPGRADE): 250}, {UPGRADE: 300})
+    assert d["items"]["DA_Up"]["effects"] == {
+        UPGRADE: {"old": 250, "new": 300, "hashed_key": fct.bin_hash(UPGRADE)}}
+    assert fct.bin_hash(UPGRADE) not in d["items"]["DA_Up"]["effects"]
+    assert d["_counts"]["items"] == 1
+    assert d["_counts"]["resolved_keys"] == 0
+
+
+def test_resolution_beside_a_real_change_keeps_only_the_real_change():
+    d = _res_pair({fct.bin_hash(UPGRADE): 250, "Gold": 1}, {UPGRADE: 250, "Gold": 2})
+    assert d["items"]["DA_Up"]["effects"] == {"Gold": {"old": 1, "new": 2}}
+    assert d["_counts"]["resolved_keys"] == 1
+
+
+def test_a_hashed_key_that_is_not_the_hash_of_the_added_name_stays_two_changes():
+    d = _res_pair({"{deadbeef}": 250}, {UPGRADE: 250})
+    assert d["items"]["DA_Up"]["effects"] == {
+        "{deadbeef}": {"old": 250, "new": None}, UPGRADE: {"old": None, "new": 250}}
+    assert d["_counts"]["resolved_keys"] == 0
+
+
+def test_resolution_inside_a_trait_breakpoint_is_dropped_and_counted():
+    key = fct.bin_hash("BonusAS")
+    old = _payload([], [_trait("DA_18_Fae", [(3, 4, {key: 0.1})])], [])
+    new = _payload([], [_trait("DA_18_Fae", [(3, 4, {"BonusAS": 0.1})])], [])
+    d = tpd.diff_set(old, new)
+    assert d["traits"] == {}
+    assert d["_counts"]["traits"] == 0
+    assert d["_counts"]["resolved_keys"] == 1
+    assert d["resolved_keys"]["traits"] == {"DA_18_Fae": {"BonusAS": key}}
+
+
+def test_resolution_inside_unit_stats_is_dropped_and_counted():
+    key = fct.bin_hash("critMultiplier")
+    old = _payload([_champ("DA_18_Kobuko", stats={"hp": 600.0, key: 1.4})], [], [])
+    new = _payload([_champ("DA_18_Kobuko", stats={"hp": 600.0, "critMultiplier": 1.4})], [], [])
+    d = tpd.diff_set(old, new)
+    assert d["units"] == {}
+    assert d["_counts"]["resolved_keys"] == 1
+
+
+def test_a_delta_with_no_resolutions_has_an_empty_map_and_zero_count():
+    old, new = _pair()
+    d = tpd.diff_set(old, new)
+    assert d["_counts"]["resolved_keys"] == 0
+    assert d["resolved_keys"] == {k: {} for k in tpd.SECTIONS}
+
+
+def test_ability_note_counts_trait_bearing_rows_only():
+    champs, traits, items = _base()
+    champs.append(_champ("TFT_BlueGolem", traits=(), variables=[("Damage", [1, 2, 3])]))
+    champs.append(_champ("DA_18_Alune2", variables=[("Damage", [1, 2, 3])]))
+    p = _payload(champs, traits, items)
+    d = tpd.diff_set(p, p)
+    assert d["ability_values"] == "carried for 1 of 4 units; the rest not carried by source"
