@@ -41,6 +41,19 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-07c - session 154: all 27 reds of ci 42427610342 folded locally (C1a/b/c), C6 rune-tabs focus product fix, PRs #30 / #31 re-applied locally (anthropic 2.5.0 declined), STASH-GC decided; gated suite NOT run (RAM line out of reach), NOTHING PUSHED
+
+- **Folds (each CONFIRMED by an independent verifier; LEDGER 2075):** C1a `e09c9860a` `5b344557b` `15d15b253` (snapshot layout, icon stand-in, badge token, mains mock, SF Mono); C1b `af90020e2` `3c2eb9446` (shared `tests/_crlf_text_layer.py`, 13 LF modules); C1c `caa22a035` `9cc7065d3` (RM-2037 xdist subprocess cases, self-scan of 14 spellings).
+- **C6 product fix `6f3c68716`:** `_userBuildsOpenForm` focuses synchronously; Playwright clock regression test; js_main digest re-captured.
+- **C3 `c0c7ee78d`:** websockets 17.4, pytest-asyncio 1.4.1.post1, codeql v4.39.3; anthropic 2.x declined (dependabot ignore ">1.11.0,<3.0.0"). PRs close when the push lands.
+- **STASH-GC:** local `gc.refs/stash.reflogExpire never` + `...ExpireUnreachable never`; 12 stashes.
+- **C7:** lanes parked because the headless account behind the proxy has a payment past due (every call 403); rotator stopped; RM-2048 filed (classifier).
+- **C4 NOT DONE:** gated suite blocked by RAM admission (line 25135 MB; 90 rounds read 24879-25074 MB; kernel pools ~2.8 GB). Adjudicator ruling (a): keep the line, close nothing; suite + push = s155 first act. Pre-checks on `5835bf6f7`: 8 batches 6271 passed 0 failed.
+- **Do NOT redo:** the 27 folds, C6, the C3 re-apply, the stash config, the C7 diagnosis.
+- **Next:** read RAM; if >= 25135 MB run the TIER TABLE gated suite (`--exclusive`) on HEAD; else ONE operator ask (close an app, or order -n 6). Green -> pre-push dry runs -> ask the operator for one push.
+
+---
+
 # 2026-11-07b - session 153: six slices landed (RM-2036 ceilings, RM-2037 RC-FAIL names, NA3 PR #29 re-applied, NA4 ORDER 2215 residue, NA5, NA6 landing sampler); gated run 3 GREEN on 64951a903, PUSHED on the operator's "yes" with a one-time sweep bypass; RM-2033 box half shipped
 
 - **Landed (M1 merger, LEDGER 2067-2073):** RM-2036 `608452f17` (step 110 -> 160, job 125 -> 175, pytest stops at 150 min), RM-2037 `06f1a4521` + `7d4999a16`, NA3 `a2023948b`, NA4 `c9d25376f`, NA5 RM-2030..2032 + 2034..2035, NA6 `tools/landing_sampler.py`; folds `dcaa45684`, `2c926a917`; RM-2038..RM-2043 filed.

@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-11-09b - session 157: RM-723 Linux CI red fixed forward in the TEST (`f5e48a27d`), RM-2075 KIT v20 line reconciled (`f2f40f47f`), NOTHING PUSHED (no operator yes; gated-suite line unmet)
+
+- **C2 RM-723 (LEDGER 2095):** the 4 ids of `tests/test_task_xml_templates_rm723.py` red on Linux CI because the test joined Windows targets onto the host root; now rendered under a fixed Windows root and mapped by parts. Verifier: Linux 0/4 -> 5/0, Windows 28 passed. Renderer and `ops/*.xml` untouched.
+- **C4 RM-2075 (LEDGER 2096):** CLAUDE.md KIT v20 now says only the kit writes the route file and arms a fallback only on the operator's word; byte delta 0; pinned in `tests/test_fleet_kit_v20.py`.
+- **C3 merge:** Tier-1 on the merged tree (5 files + 114 ratchet files) 2111 passed; BACKLOG RM-2075 SHIPPED `edb8ff62c`.
+- **Push:** NONE. Local main = origin `843a79730` + 5 commits (s156 /done, the two fixes, BACKLOG, s157 /done). Origin CI stays red (only the 4 RM-723 ids) until the push. Scheduled codeql 42630670612 on `843a79730` is green, so the push-run 504 is covered.
+- **Dependabot:** #33 closed itself; #32 still OPEN.
+- **Do NOT redo:** the RM-723 test fix, the RM-2075 line, the BACKLOG mark.
+- **Next:** on the operator's yes with RAM >= 25135 MB, League down and lanes idle: gated suite on HEAD, then push; then the lane/repo reconcile; investigate the lane-0 queue timeout_killed at 13:05.
+
+---
+
 # 2026-11-09 - session 156: all seven lanes landed + pushed (push 1 `d86c2e2f5..a2abb3bb7`), CI fix push `a585214c6`, eight s156 slices landed by the C9 merger (DS 16.22.1 / ENGINE 1.291.0, TFT Set 18, SR schedule, skins reader, draft + runes, ROADMAP split), cifix for 8 CI-only reds, gated suite-2 GREEN on `843a79730`, push 2 `a585214c6..843a79730`
 
 - **Landings (LEDGER 2082-2092):** C12 lane landing 272 commits (suite 1 green, 73577 passed); slices C1, S2-S7 and the folded held tails merged by C9; cifix `c922b2491`; merger follow-ups through `843a79730`.
@@ -26,16 +38,3 @@
 - **/done:** commits LOCAL by operator ruling (exactly two pushes approved). New Dependabot PR #32 (pip group) open.
 - **Do NOT redo:** the two suites, the two pushes, the four row closes, RM-1267, the billing probe / rotator restart, the MAIN note.
 - **Next:** the operator's yes for the push of /done's commits (a gated suite on that sha first, LEDGER 2047); a standing -n ruling while lanes run; the lane landing (repo 104, true-audit 50, uiux 49, gated 21, queue 19, research 5).
-
----
-
-# 2026-11-07c - session 154: all 27 reds of ci 42427610342 folded locally (C1a/b/c), C6 rune-tabs focus product fix, PRs #30 / #31 re-applied locally (anthropic 2.5.0 declined), STASH-GC decided; gated suite NOT run (RAM line out of reach), NOTHING PUSHED
-
-- **Folds (each CONFIRMED by an independent verifier; LEDGER 2075):** C1a `e09c9860a` `5b344557b` `15d15b253` (snapshot layout, icon stand-in, badge token, mains mock, SF Mono); C1b `af90020e2` `3c2eb9446` (shared `tests/_crlf_text_layer.py`, 13 LF modules); C1c `caa22a035` `9cc7065d3` (RM-2037 xdist subprocess cases, self-scan of 14 spellings).
-- **C6 product fix `6f3c68716`:** `_userBuildsOpenForm` focuses synchronously; Playwright clock regression test; js_main digest re-captured.
-- **C3 `c0c7ee78d`:** websockets 17.4, pytest-asyncio 1.4.1.post1, codeql v4.39.3; anthropic 2.x declined (dependabot ignore ">1.11.0,<3.0.0"). PRs close when the push lands.
-- **STASH-GC:** local `gc.refs/stash.reflogExpire never` + `...ExpireUnreachable never`; 12 stashes.
-- **C7:** lanes parked because the headless account behind the proxy has a payment past due (every call 403); rotator stopped; RM-2048 filed (classifier).
-- **C4 NOT DONE:** gated suite blocked by RAM admission (line 25135 MB; 90 rounds read 24879-25074 MB; kernel pools ~2.8 GB). Adjudicator ruling (a): keep the line, close nothing; suite + push = s155 first act. Pre-checks on `5835bf6f7`: 8 batches 6271 passed 0 failed.
-- **Do NOT redo:** the 27 folds, C6, the C3 re-apply, the stash config, the C7 diagnosis.
-- **Next:** read RAM; if >= 25135 MB run the TIER TABLE gated suite (`--exclusive`) on HEAD; else ONE operator ask (close an app, or order -n 6). Green -> pre-push dry runs -> ask the operator for one push.
