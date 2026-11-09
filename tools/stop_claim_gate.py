@@ -2900,7 +2900,15 @@ def _is_data_slot(prev, sub=None):
         return False
     if prev in _GIT_DATA_OPTS:
         return sub not in _GIT_FLAG_ONLY_IN.get(prev, ())
-    return (bool(re.fullmatch(r"-[A-Za-z]+", prev)) and prev[-1] in _DATA_SHORTS
+    if not re.fullmatch(r"-[A-Za-z]+", prev):
+        return False
+    # S144-Q-152 (_SUB_VALUE_SHORTS, below): a value letter before the last
+    # one took the rest of the cluster, so the next word is not its value.
+    # Count-only: this only removes data slots.
+    values = _SUB_VALUE_SHORTS.get(sub, frozenset())
+    if any(letter in values for letter in prev[1:-1]):
+        return False
+    return (prev[-1] in _DATA_SHORTS
             and sub not in _GIT_FLAG_ONLY_IN.get("-" + prev[-1], ()))
 
 
@@ -2932,6 +2940,33 @@ _AM_LONG_VALUE_OPTS = frozenset({
     "--quoted-cr", "--whitespace", "--directory", "--exclude", "--include",
     "--patch-format", "--resolvemsg", "--empty",
 })
+
+
+# S144-Q-152: the short options that take a value (required or optional),
+# per subcommand (measured `git <sub> -h`, git 2.53). git gives the rest of a
+# cluster to the FIRST of them, so in `git commit -Cm x` the `-C` takes "m"
+# and `x` is a free word, not a message. A subcommand not listed here reads
+# a cluster by its last letter alone, as before. Integer-only shorts (commit
+# `-U`, cherry-pick / revert `-m` mainline, rebase `-C`, pull `-j`) are left
+# out: git refuses a letter value for them (measured), so a cluster that
+# reaches them never runs. pull `-r` is listed: it takes an abbreviated mode
+# (`-rm` = merges, `-ri` = interactive, measured). am `-C` / `-p` are listed
+# (_AM_VALUE_SHORTS): am hands them to git apply, which takes `-pt`; `-Ct`
+# fails only at the apply stage, after `--no-verify` has already skipped the
+# applypatch-msg hook, so `git am --continue` can land the patch without it
+# (pre-applypatch still runs on --continue; measured). tag is not listed: it
+# has no hook-bypass option to count.
+_SUB_VALUE_SHORTS = {
+    "commit": _COMMIT_VALUE_SHORTS,
+    "merge": frozenset("sXmFS"),
+    "cherry-pick": frozenset("XS"),
+    "revert": frozenset("XS"),
+    "commit-tree": frozenset("pmFS"),
+    "rebase": frozenset("xsXS"),
+    "pull": frozenset("rsXSo"),
+    "push": frozenset("o"),
+    "am": _AM_VALUE_SHORTS | frozenset("S"),
+}
 
 
 def _am_no_verify(words):
