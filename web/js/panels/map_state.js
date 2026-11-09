@@ -1,28 +1,20 @@
-// Map State panel - zone pill, game clock, spell CDs, gold diff.
+// Map State panel - zone pill, game phase, spell CDs, gold diff.
 import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { CHAMPS, SPELLS, ITEM_COSTS, _resolveChampId, _resolveSpell } from '../lib/items_index.js';
 import { teamItemValueDiff } from '../lib/item_value.js';
 
-// State slots initialised here (map_state owns the clock + spell tracking).
-state.gameClock = { startedAt: 0, anchorS: 0, raw: "" };
-state.spellCds = {};
-
 // S144-U-264: the Map State panel shell and its MM handle are retired; the
 // panel rendered in no view and every part it held was already gone.
 // Guard: tests/snapshot_panels/test_minimap_panel_shell_retired.py.
 
-function _updateGameClock(p) {
-  const s = (typeof p.game_time_s === "number") ? p.game_time_s : null;
-  if (s != null) {
-    state.gameClock.startedAt = Date.now();
-    state.gameClock.anchorS = s;
-    state.gameClock.raw = p.game_time || "";
-    _applyGamePhase(s);
-  } else if (p.game_time) {
-    state.gameClock.raw = p.game_time;
-  }
-}
+// S144-U-267: the write-only game-clock state slot and the wrapper that
+// rewrote it every envelope are retired (nothing read it once
+// the game time chip left, S144-U-261); renderMinimap stamps the phase
+// below straight from game_time_s. state.spellCds is initialised once,
+// beside the spell-cooldown helpers further down.
+// Guard: tests/snapshot_panels/test_game_clock_state_retired.py.
+
 // Three phases mapped to body[data-phase] so CSS can tint subtly:
 //   early  < 15:00   (calm blue)
 //   mid    15-25:00  (engaged gold)
@@ -272,7 +264,7 @@ function renderItemValueDiff(p) {
 }
 
 function renderMinimap(p) {
-  _updateGameClock(p);
+  if (typeof p.game_time_s === "number") _applyGamePhase(p.game_time_s);
   // S144-U-262: the Dragon / Baron / Herald rows of this panel, their 1 s
   // countdown tick and the per-envelope raw-text writes that fed it are
   // retired: the panel renders in no view (S144-U-246), so the tick
@@ -338,7 +330,7 @@ function _currentSpellCd(key) {
 export {
   renderMinimap,
   _tickSpellCooldowns,
-  _updateGameClock, _applyGamePhase,
+  _applyGamePhase,
   _snapshotSpells, _fmtMMSS,
   // RM-1211: main.js calls both; unexported, each call threw a ReferenceError.
   _spellKey, renderMinimapCanvases,

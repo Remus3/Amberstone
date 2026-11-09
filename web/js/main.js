@@ -31,7 +31,7 @@ import { renderCallouts, renderLead } from './panels/callouts.js';
 import { startPersonalContextPolling } from './panels/personal_context.js';
 // S144-U-265: the never-rendered NEXT panel module is retired.
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
-import { renderMinimap, _tickSpellCooldowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS } from './panels/map_state.js';
+import { renderMinimap, _tickSpellCooldowns, _snapshotSpells, _fmtMMSS } from './panels/map_state.js';
 // RM-1211: the self-spell cooldown key is called below but was never exported
 // or imported - each call threw a ReferenceError. (Its sibling, the tab-return
 // ZOI redraw, left with the retired minimap canvases, S144-U-258.)
