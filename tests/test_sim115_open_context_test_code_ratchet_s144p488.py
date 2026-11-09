@@ -8,10 +8,11 @@ dependency). Each leaked its handle until the interpreter collected it, which on
 file and fires a ResourceWarning under ``-W error``. They now read inside
 ``with open(...) as fh:`` (same file, mode and encoding, so the same decoded value).
 
-The 15 that stay are deliberate and are the baseline below, which only shrinks:
-- ``tests/test_routes_pickban.py`` (14) and ``tests/test_pickban_systems_p1l2.py`` (1) create a scratch
-  db path with ``tempfile.NamedTemporaryFile(delete=False)`` and close it on the next line; only the name
-  is wanted and ``tearDown`` unlinks it.
+The baseline is EMPTY (S144-P-595). Its last 15 rows, ``tests/test_routes_pickban.py`` (14) and
+``tests/test_pickban_systems_p1l2.py`` (1), created a scratch db path with
+``tempfile.NamedTemporaryFile(delete=False)`` and closed it on the next line (only the name was wanted;
+``tearDown`` unlinks it). They now take ``fd, name = tempfile.mkstemp(suffix=".db")`` and ``os.close(fd)``:
+the same created, empty, closed file at a unique path, with no handle object SIM115 can see. Earlier rows:
 - ``tests/test_log_rotation_rm718a.py`` and ``tests/test_moon_sync_poller.py`` held a handle open ON
   PURPOSE so the code under test meets a locked file (each closed it in a ``finally``). S144-P-561 / -562
   respelled both as ``Path.open``, which SIM115 does not flag, so their rows left the baseline (S144-P-566).
@@ -41,12 +42,12 @@ pytestmark = pytest.mark.skipif(
 
 _RULE = "SIM115"
 _IN_SCOPE = ("tests/", "tools/tests/")
-# file -> finding count that stays (reason in the module docstring). Only shrinks.
-_BASELINE = {
-    "tests/test_pickban_systems_p1l2.py": 1,
-    "tests/test_routes_pickban.py": 14,
-}
+# file -> finding count that stays. EMPTY since S144-P-595 (see the module docstring): it stays as the
+# dict the two tests read, so a future deliberate offender names its reason here. Only shrinks.
+_BASELINE: dict[str, int] = {}
 _FIXED = (
+    "tests/test_pickban_systems_p1l2.py",
+    "tests/test_routes_pickban.py",
     "tests/test_coach_parse_json_fence.py",
     "tests/test_log_rotation_rm718a.py",
     "tests/test_moon_sync_poller.py",

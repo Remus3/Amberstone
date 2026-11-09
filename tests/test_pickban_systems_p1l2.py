@@ -24,6 +24,7 @@ Audit areas:
 """
 from __future__ import annotations
 
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -187,9 +188,9 @@ def _build_db(path: Path, rows: list[dict], with_ts: bool = False) -> None:
 
 class _DbCase(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
