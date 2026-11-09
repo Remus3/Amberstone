@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import statistics
 import sys
@@ -44,13 +45,27 @@ from pathlib import Path
 # sys.path[0] is tools/ and the repo's own packages are invisible.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from core import log_rotation  # noqa: E402
 from core.polled_json import atomic_write_text  # noqa: E402
 
 _APP = Path(__file__).parent.parent
 _HEALTH = _APP / "ops" / "runtime" / "health.json"
 _SPEND_DIR = _APP / "data" / "spend"
 _STATE = _APP / "ops" / "runtime" / "cost_health_watchdog_state.json"
-_LOG = _APP / "logs" / "cost_health_watchdog.log"
+# S144-Q-124: a non-blank RC_COST_HEALTH_WATCHDOG_LOG replaces the default when
+# this module EXECUTES, so every copy of it (one spec-loaded inside a test body
+# included, which no attribute scan can reach) logs where the env says.
+# tests/conftest.py sets it at import; production never does.
+LOG_ENV = "RC_COST_HEALTH_WATCHDOG_LOG"
+_LOG = Path((os.environ.get(LOG_ENV) or "").strip()
+            or _APP / "logs" / "cost_health_watchdog.log")
+# RM-718 (b). `_log_line` appended to this file forever (5.6 MB measured
+# 2026-10-26). One process per fire makes this a one-shot writer, so it takes
+# RM-718 (a)'s rotate-at-open shape (tools/replay_roster_pull.py
+# `_open_log_sink`): about (1 + backups) * max_bytes on disk (each file may
+# end one line past the cap; a refused rotation defers it to a later run).
+_LOG_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+_LOG_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
 
 BREACH_MULT = 1.5
 FLOOR_ABS_USD = 0.50          # below this, never call it a breach (idle noise)
@@ -197,9 +212,11 @@ def iter_day_ledgers(spend_dir: Path) -> list[Path]:
                        3.11+: it also accepts the ISO week date
                        `2026-W01-1` (measured on 3.14.4 -> 2025-12-29), which
                        is likewise 10 chars, so a length check does not
-                       exclude it. `cost_tracker._today_str()` (:183-184,
-                       used at :237) only ever emits `date.today()
-                       .isoformat()`, so anything else is a foreign file.
+                       exclude it. `cost_tracker._ledger_day()` (the day
+                       `CostTracker._spend_path` names) only ever emits
+                       `date.today().isoformat()`, and nothing before
+                       `SPEND_LEDGER_MIN_DATE` (RM-718 (d)), so anything
+                       else is a foreign file.
       fromisoformat    calendar validity, which the regex cannot judge
                        (`2026-02-30`, `2026-13-45`).
     """
@@ -403,10 +420,26 @@ def classify(by_purpose: dict) -> dict:
 
 
 def _log_line(text: str) -> None:
+    """Append one stamped line to `_LOG`, rotating it first when oversize.
+
+    Recovers a crashed rotation's scratch even under the cap (this call is the
+    writer's open). A refused rotation (another process holds the file)
+    normally changes nothing on disk (core/log_rotation.try_rotate rolls back,
+    best effort): the line is appended to the oversize file after a one-line
+    refusal note. An OSError never escapes: the exit code is the alert.
+    """
     try:
         _LOG.parent.mkdir(parents=True, exist_ok=True)
+        log_rotation.recover_orphans(_LOG, _LOG_BACKUPS)
+        try:
+            oversize = _LOG.stat().st_size >= _LOG_MAX_BYTES
+        except OSError:
+            oversize = False
+        err = log_rotation.try_rotate(_LOG, _LOG_BACKUPS) if oversize else None
         stamp = datetime.now(timezone.utc).isoformat()
         with _LOG.open("a", encoding="utf-8", newline="\n") as fh:
+            if err is not None:
+                fh.write(log_rotation.refusal_note(_LOG, err))
             fh.write(stamp + " " + text + "\n")
     except OSError:
         pass

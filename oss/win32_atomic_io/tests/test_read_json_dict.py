@@ -109,3 +109,41 @@ def test_empty_default_is_falsy_and_yields_a_fresh_dict(tmp_path):
     b = read_json_dict(missing, {})
     a["x"] = 1
     assert b == {}
+
+
+# A parse failure is not only JSONDecodeError. The stdlib decoder raises
+# RecursionError on nesting deeper than the interpreter stack allows, and
+# ValueError (NOT its JSONDecodeError subclass) on an integer literal longer
+# than sys.get_int_max_str_digits(). Both used to escape this reader, which
+# promises the default for any file it cannot turn into a dict.
+
+def test_nesting_too_deep_for_the_decoder_returns_default(tmp_path, caplog):
+    target = tmp_path / "deep.json"
+    depth = 200_000
+    target.write_bytes(('{"a": ' + "[" * depth + "]" * depth + "}").encode("ascii"))
+    with caplog.at_level("WARNING", logger="win32_atomic_io"):
+        assert read_json_dict(target, {"d": 1}) == {"d": 1}
+    assert "decode failed" in caplog.text
+
+
+def test_integer_literal_past_the_digit_limit_returns_default(tmp_path, caplog):
+    target = tmp_path / "bigint.json"
+    target.write_bytes(('{"a": 1' + "0" * 5000 + "}").encode("ascii"))
+    with caplog.at_level("WARNING", logger="win32_atomic_io"):
+        assert read_json_dict(target, {"d": 1}) == {"d": 1}
+    assert "decode failed" in caplog.text
+
+
+def test_a_reader_error_that_is_not_a_parse_failure_still_raises(tmp_path, monkeypatch):
+    """The widened handler names two classes; it is not a blanket catch."""
+    from win32_atomic_io import _atomic
+
+    target = tmp_path / "ok.json"
+    target.write_bytes(b'{"a": 1}')
+
+    def _boom(_raw):
+        raise KeyError("not a parse failure")
+
+    monkeypatch.setattr(_atomic.json, "loads", _boom)
+    with pytest.raises(KeyError):
+        read_json_dict(target, {"d": 1})

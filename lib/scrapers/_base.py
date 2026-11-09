@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -60,6 +61,68 @@ class UnacceptableBody(RuntimeError):
     takes the same per-source degradation path an HTTP 500 always did with
     no caller change.
     """
+
+
+class InvalidTarget(ValueError, RuntimeError):
+    """A champion / mode / role / lane a URL or cache name cannot be built from.
+
+    Deliberately BOTH bases. ValueError is what a bad argument is, and what the
+    unsupported-mode refusal always raised. RuntimeError is what ``_scrape_one``
+    in agents/agent2_backend/pipeline/orchestrator.py already catches per
+    source (the ``UnacceptableBody`` precedent above), so one bad roster name
+    degrades that source instead of aborting the whole mode refresh.
+
+    The message never echoes the caller's value: ``_scrape_one`` copies it
+    into the coach-cache bundle it writes.
+    """
+
+
+# S144-T-599. A champion slug is what a URL path segment and a cache file
+# name are built from, so it is checked here, at the one place both are
+# derived. Riot's champion ids (the orchestrator's roster, DDragon
+# champion.json keys) are all ASCII letters and digits, at most 12 long.
+_SLUG_RE = re.compile(r"[a-z0-9]{1,32}")
+# A role / lane query value is passed through unchanged (case kept), so a
+# value that was valid keeps its exact URL and cache key.
+_QUERY_TOKEN_RE = re.compile(r"[A-Za-z]{1,16}")
+
+
+def champion_slug(champ: object) -> str:
+    """The URL / cache-key slug for ``champ``, or ``InvalidTarget``.
+
+    Normalisation is unchanged (strip, lower, drop spaces and apostrophes);
+    the RESULT must be 1-32 ASCII letters / digits. The ASCII check runs
+    first because ``str.lower`` maps some non-ASCII letters to ASCII ones
+    (KELVIN SIGN to "k"). No slug is guessed for a display name such as
+    "Dr. Mundo": it is refused, not rewritten.
+    """
+    if not isinstance(champ, str):
+        raise InvalidTarget("champion must be a str")
+    if not champ.isascii():
+        raise InvalidTarget("champion must be ASCII")
+    slug = champ.strip().lower().replace(" ", "").replace("'", "")
+    if not _SLUG_RE.fullmatch(slug):
+        raise InvalidTarget("champion must be 1-32 ASCII letters or digits")
+    return slug
+
+
+def mode_template(table: dict, mode: object) -> str:
+    """``table[mode]`` for a str key, else ``InvalidTarget``."""
+    if not isinstance(mode, str) or mode not in table:
+        raise InvalidTarget("unsupported mode")
+    return table[mode]
+
+
+def query_token(value: object, name: str) -> str | None:
+    """A role / lane query value: None or "" means none; a str of 1-16 ASCII
+    letters is returned unchanged; anything else is ``InvalidTarget``."""
+    if value is None or (isinstance(value, str) and value == ""):
+        return None
+    # No lower() runs here, so the literal [A-Za-z] class alone keeps a
+    # non-ASCII letter out (no isascii() pre-check is needed, unlike the slug).
+    if not isinstance(value, str) or not _QUERY_TOKEN_RE.fullmatch(value):
+        raise InvalidTarget(f"{name} must be 1-16 ASCII letters")
+    return value
 
 
 def _reject_reason(text: str, body: bytes) -> str | None:
@@ -138,7 +201,10 @@ class ScraperBase:
 
     # ----- cache / stamping -----------------------------------------
     def cache_path(self, name: str, ext: str = "html") -> Path:
-        safe = name.replace("/", "_").replace("\\", "_")
+        # ":" too (S144-T-599): on Windows "c:x.html" joined onto the cache
+        # dir is a DRIVE-RELATIVE path (the write lands outside the cache),
+        # and "a:b.html" names an NTFS alternate data stream of file "a".
+        safe = name.replace("/", "_").replace("\\", "_").replace(":", "_")
         return self._cache_dir / f"{safe}.{ext}"
 
     def stamp_last_fetch(self, key: str, status: str = "ok", **extra: Any) -> None:

@@ -328,9 +328,9 @@ def test_real_orchestration_plan_newest_row_keeps_tail_headroom(lc):
     if len(text) <= lc.PLAN_CTX_CAP:
         # Not a vacuous pass: below the cap the helper returns the text
         # unchanged, so the WHOLE plan reaches the director and there is no
-        # tail boundary to have headroom against. The live plan is ~397KB, so
-        # this branch is unreachable today and is here to fail loudly with the
-        # reason if the plan is ever cut down to size.
+        # tail boundary to have headroom against. RM-712 (2026-11-07) cut the
+        # live plan below PLAN_CTX_CAP, so this is the branch taken today; the
+        # headroom bound below re-arms once appended rounds push it over.
         assert text in capped, "sub-cap plan must pass through verbatim"
         return
     marker = re.search(
@@ -494,13 +494,43 @@ def test_plan_cap_floor_keeps_head_and_tail(lc):
     assert lc.PLAN_CTX_MIN < lc.PLAN_CTX_CAP
 
 
+def test_overflow_is_repaid_from_a_plan_smaller_than_its_slice(lc, tmp_path, monkeypatch):
+    """RM-712 cut the live plan below PLAN_CTX_CAP. The repay used to compute
+    the new plan budget as PLAN_CTX_CAP - overflow, i.e. it assumed the plan
+    filled its whole slice; for a plan shorter than that, the "smaller" budget
+    could still exceed the plan, nothing was cut, and the body stayed over
+    ADJ_STDIN_CAP for cap_stdin's blind middle cut. The repay must come out
+    of the plan bytes actually delivered."""
+    plan_bytes = lc.PLAN_CTX_CAP - 4_000
+    _seed(tmp_path, plan_bytes=plan_bytes, ledger_line_bytes=40)
+    ctl = tmp_path / "ctl"
+    _seed_directive_chain(ctl)
+    natural = len(lc.build_director_body({}, "", root=tmp_path, ctl=ctl))
+    plan_len = len((tmp_path / "docs" / "ORCHESTRATION_PLAN.md").read_text(encoding="utf-8"))
+    assert lc.PLAN_CTX_MIN + 6_000 < plan_len < lc.PLAN_CTX_CAP, plan_len
+    monkeypatch.setattr(lc, "ADJ_STDIN_CAP", natural - 3_000)
+    body = lc.build_director_body({}, "", root=tmp_path, ctl=ctl)
+    assert len(body) <= lc.ADJ_STDIN_CAP, (
+        f"a {plan_len}-byte plan (under PLAN_CTX_CAP {lc.PLAN_CTX_CAP}) left the "
+        f"body at {len(body)} bytes against ADJ_STDIN_CAP {lc.ADJ_STDIN_CAP}: "
+        "the overflow was not repaid"
+    )
+    assert "ORCHESTRATION_PLAN truncated" in body
+    assert "queue-tail-marker" in body, "the repay cut the plan's newest row"
+
+
 def test_explicit_plan_cap_shrinks_only_the_plan(lc, tmp_path):
-    """The injectable plan_cap is the mechanism the overflow path uses."""
+    """The injectable plan_cap is the mechanism the overflow path uses. The
+    plan contributes min(its length, PLAN_CTX_CAP) by default (RM-712 cut the
+    live plan below the cap), and exactly plan_cap once that is smaller."""
+    plan_len = len((_REPO / "docs" / "ORCHESTRATION_PLAN.md").read_text(
+        encoding="utf-8", errors="replace"))
+    assert plan_len > lc.PLAN_CTX_MIN, "the live plan is below PLAN_CTX_MIN"
     small = lc.build_director_context({}, "", root=_REPO, ctl=tmp_path,
                                       plan_cap=lc.PLAN_CTX_MIN)
     big = lc.build_director_context({}, "", root=_REPO, ctl=tmp_path)
     assert len(small) < len(big)
-    assert len(big) - len(small) == lc.PLAN_CTX_CAP - lc.PLAN_CTX_MIN
+    assert len(big) - len(small) == min(plan_len, lc.PLAN_CTX_CAP) - lc.PLAN_CTX_MIN
     for marker in (_COMMITS_MARKER, _DIGEST_MARKER):
         assert marker in small
 

@@ -549,7 +549,13 @@ def _discoverable_scope(root: Path) -> set[str]:
         head, _, name = rel.rpartition("/")
         if f"{head}/" not in _TASK_DEF_DIRS or not name:
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
+        raw = path.read_bytes()
+        # A UTF-16 BOM is honoured (RM-723): `schtasks /Query /XML` exports
+        # UTF-16, which read as UTF-8 matches no marker and no mention.
+        if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
+            text = raw.decode("utf-16", errors="replace")
+        else:
+            text = raw.decode("utf-8", errors="replace")
         if not any(m in text for m in _TASK_DEF_MARKERS):
             continue
         for mention in _PY_MENTION.findall(text):
@@ -632,6 +638,25 @@ def test_completeness_check_catches_a_synthetic_spawn(tmp_path: Path) -> None:
     assert set(found) == {"ops/loop/adjudicator.py", "tools/nightly.py"}, found
     assert _unlisted_spawners(
         tmp_path, {"ops/loop/adjudicator.py", "tools/nightly.py"}) == {}
+
+
+def test_a_utf16_task_definition_is_still_discovered(tmp_path: Path) -> None:
+    # RM-723: `schtasks /Query /XML` exports UTF-16 LE, and three tracked task
+    # XMLs were committed that way. Read as UTF-8, a UTF-16 file has a NUL
+    # between every character, so neither the `<Task ` marker nor a `.py`
+    # mention matches and its target falls out of the scope unseen.
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    (tools / "exported.py").write_text(
+        "import subprocess\nsubprocess.run(['git'])\n", encoding="utf-8")
+    (tmp_path / "ops").mkdir()
+    (tmp_path / "ops" / "RC-Exported.xml").write_bytes(
+        ('<?xml version="1.0" encoding="UTF-16"?>\n'
+         '<Task version="1.2"><Actions><Exec><Arguments>'
+         '"C:\\Example Repo\\tools\\exported.py"</Arguments></Exec></Actions>'
+         "</Task>\n").encode("utf-16"))
+
+    assert set(_unlisted_spawners(tmp_path, set())) == {"tools/exported.py"}
 
 
 def test_pythonw_entry_points_exist() -> None:

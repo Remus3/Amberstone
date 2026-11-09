@@ -255,12 +255,16 @@ class RouteTests(unittest.TestCase):
         # CONTAINED "unknown champ", i.e. it pinned the raiser's text
         # reaching the wire. The scrubbed contract is status 400 plus the
         # generic tag, with no fragment of core.damage_mix' message.
-        h = StubHandler("/api/damage-mix?champ_id=99999&items=3074")
+        # S144-T-595: a key of 5+ digits is now refused by the route's own
+        # shape check (champ_id_invalid) before the snapshot loads, so this
+        # uses a well-shaped 4-digit key no champion has, which still
+        # reaches core.damage_mix.resolve_champ_id.
+        h = StubHandler("/api/damage-mix?champ_id=9998&items=3074")
         routes_damage_mix._serve_damage_mix(h)
         self.assertEqual(h.last_status, 400)
         self.assertEqual(h.parsed()["error"], "invalid_request")
         raw = h.last_body.decode("utf-8")
-        for fragment in ("unknown champ", "99999", "snapshot"):
+        for fragment in ("unknown champ", "9998", "snapshot"):
             self.assertNotIn(fragment, raw)
 
     def test_missing_items_returns_400_items_required(self):
@@ -297,16 +301,20 @@ class RouteTests(unittest.TestCase):
         h = StubHandler(f"/api/damage-mix?champ_id=86&items={items}")
         routes_damage_mix._serve_damage_mix(h)
         self.assertEqual(h.last_status, 400)
-        self.assertEqual(h.parsed()["error"], "invalid_request")
+        # S144-T-595: the route now counts the tokens itself, before the
+        # snapshot loads, and answers with its own fixed code.
+        self.assertEqual(h.parsed()["error"], "too_many_items")
         raw = h.last_body.decode("utf-8")
         for fragment in ("too many items", "> 6"):
             self.assertNotIn(fragment, raw)
 
-    def test_compute_valueerror_400_body_is_scrubbed(self):
-        """RM-239 / RM-242 SITE 2 - the ``except ValueError`` arm around
-        ``compute_damage_mix`` used to call ``_bad(h, str(exc))``, putting
-        the raiser's text on the wire. Drive it with a stubbed raiser so
-        the assertion does not depend on which validation fires first.
+    def test_lookup_valueerror_400_body_is_scrubbed(self):
+        """RM-239 / RM-242 SITE 2 - the ``except ValueError`` arm used to
+        call ``_bad(h, str(exc))``, putting the raiser's text on the wire.
+        Since S144-T-595 that arm wraps only the two lookups that judge the
+        caller's input (``resolve_champ_id`` / ``normalize_items``); drive
+        it with a stubbed raiser so the assertion does not depend on which
+        validation fires first.
 
         Also pins the measured, accepted consequence of routing through
         ``dashboard._errors.send_error``: the body is exactly
@@ -320,13 +328,13 @@ class RouteTests(unittest.TestCase):
         def _boom(*a, **kw):
             raise ValueError(token)
 
-        orig = damage_mix.compute_damage_mix
-        damage_mix.compute_damage_mix = _boom
+        orig = damage_mix.normalize_items
+        damage_mix.normalize_items = _boom
         try:
             h = StubHandler("/api/damage-mix?champ_id=86&items=3074")
             routes_damage_mix._serve_damage_mix(h)
         finally:
-            damage_mix.compute_damage_mix = orig
+            damage_mix.normalize_items = orig
 
         self.assertEqual(h.last_status, 400)
         raw = h.last_body.decode("utf-8")
@@ -335,6 +343,30 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(body["error"], "invalid_request")
         # Measured + accepted: send_error emits {"error": msg} only.
         self.assertEqual(set(body), {"error"})
+
+    def test_compute_valueerror_is_a_scrubbed_500(self):
+        """S144-T-595: a ``ValueError`` from the computation itself (the DS
+        engine) is a server fault. It used to share the lookup arm and read
+        as a client 400 ``invalid_request``; it is now the route's fixed
+        500 line, still without the raiser's text."""
+        token = "LEAKTOKEN_damage_mix_secret_path"  # rc-credential-scan: allow-fixture
+
+        def _boom(*a, **kw):
+            raise ValueError(token)
+
+        orig = damage_mix.compute_damage_mix
+        damage_mix.compute_damage_mix = _boom
+        try:
+            with self.assertLogs("rc.web_dashboard", level="WARNING"):
+                h = StubHandler("/api/damage-mix?champ_id=86&items=3074")
+                routes_damage_mix._serve_damage_mix(h)
+        finally:
+            damage_mix.compute_damage_mix = orig
+
+        self.assertEqual(h.last_status, 500)
+        self.assertNotIn(token, h.last_body.decode("utf-8"))
+        self.assertEqual(h.parsed(), {"ok": False,
+                                      "error": "damage-mix failed - see logs"})
 
     def test_level_out_of_range_returns_400(self):
         h = StubHandler("/api/damage-mix?champ_id=86&items=3074&level=99")

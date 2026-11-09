@@ -71,6 +71,12 @@ avoid. Each class gets its own verdict:
       16.12.1 and 16.13.1 both present. Regenerable, but the DS data seam
       is not this module's to sweep.
 
+  MISDATED_SPEND    (CLASS_MISDATED_SPEND / VERDICT_RECOMMEND_OPERATOR)
+      RM-718 (d). A `spend/YYYY-MM-DD.json` day ledger named for no day
+      on or after core/cost_tracker.py's SPEND_LEDGER_MIN_DATE, e.g. the
+      measured `data/spend/1970-01-12.json`. Real day ledgers stay
+      RETAIN: they are the cost watchdog's baseline history.
+
   RETAIN            (CLASS_RETAIN / VERDICT_RETAIN)
       Everything else, including `data/rewind_history.db` itself. That
       file is 1.87 GB and looks like the second-biggest target, but it has
@@ -159,6 +165,7 @@ CLASS_STALE_BACKUP = "STALE_BACKUP"
 CLASS_UNBOUNDED_CACHE = "UNBOUNDED_CACHE"
 CLASS_APPEND_LOG = "APPEND_LOG"
 CLASS_SUPERSEDED_PATCH = "SUPERSEDED_PATCH"
+CLASS_MISDATED_SPEND = "MISDATED_SPEND"
 CLASS_RETAIN = "RETAIN"
 
 ALL_CLASSES = (
@@ -166,6 +173,7 @@ ALL_CLASSES = (
     CLASS_UNBOUNDED_CACHE,
     CLASS_APPEND_LOG,
     CLASS_SUPERSEDED_PATCH,
+    CLASS_MISDATED_SPEND,
     CLASS_RETAIN,
 )
 
@@ -181,6 +189,7 @@ VERDICTS: dict[str, str] = {
     CLASS_UNBOUNDED_CACHE: VERDICT_ALARM_ONLY,
     CLASS_APPEND_LOG: VERDICT_AUTO_ELIGIBLE,
     CLASS_SUPERSEDED_PATCH: VERDICT_RECOMMEND_OPERATOR,
+    CLASS_MISDATED_SPEND: VERDICT_RECOMMEND_OPERATOR,
     CLASS_RETAIN: VERDICT_RETAIN,
 }
 
@@ -209,6 +218,37 @@ UNBOUNDED_CACHE_NAMES = frozenset({"riot_api_cache.db"})
 # SQLite WAL sidecars are part of their database. They are never candidates
 # on their own - separating them corrupts the DB (RM-153 Windows trap).
 _DB_SIDECAR_SUFFIXES = ("-wal", "-shm", "-journal")
+
+
+# RM-718 (d). A spend day ledger is `<spend dir>/YYYY-MM-DD.json`, written
+# by core/cost_tracker.py. One named for a day before the writer's own
+# floor (cost_tracker.SPEND_LEDGER_MIN_DATE), or for no calendar day at
+# all, is a phantom: the measured case is `data/spend/1970-01-12.json`,
+# minted 2026-08-06 by a test that patched `time.time`. It holds no real
+# spend, but its loss is still an operator call (recommend-operator).
+# Real day ledgers stay RETAIN on purpose: they are the cost history
+# tools/cost_health_watchdog.py takes its trailing baseline from, and
+# scripts/db_size_monitor.py already alarms on data/spend/ past 50 MB.
+SPEND_DIR_NAME = "spend"
+_SPEND_DAY_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})\.json$")
+
+
+def _is_misdated_spend_ledger(parent: str, name: str) -> bool:
+    """True for a day-ledger name under a `spend` dir that names no real
+    day on or after cost_tracker.SPEND_LEDGER_MIN_DATE."""
+    if parent != SPEND_DIR_NAME:
+        return False
+    m = _SPEND_DAY_RE.match(name)
+    if m is None:
+        return False
+    from datetime import date
+
+    from core.cost_tracker import SPEND_LEDGER_MIN_DATE
+    try:
+        day = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    except ValueError:
+        return True
+    return day < SPEND_LEDGER_MIN_DATE
 
 
 def _is_append_log(name: str) -> bool:
@@ -384,7 +424,9 @@ def _age_days(st: os.stat_result, now: float) -> float:
 # -- classification ------------------------------------------------------
 
 
-def _classify_file(name: str) -> str:
+def _classify_file(name: str, parent: str = "") -> str:
+    if _is_misdated_spend_ledger(parent, name):
+        return CLASS_MISDATED_SPEND
     if any(name.endswith(sfx) for sfx in _DB_SIDECAR_SUFFIXES):
         return CLASS_RETAIN
     if _BACKUP_RE.search(name):
@@ -517,7 +559,7 @@ def scan(
                 continue
             out.append(Candidate(
                 path=p,
-                klass=_classify_file(fn),
+                klass=_classify_file(fn, here.name),
                 size_bytes=st.st_size,
                 age_days=_age_days(st, now),
             ))
@@ -603,6 +645,10 @@ def plan(
                 if elig else
                 f"under the {_fmt(max_cache_bytes)} alarm cap"
             )
+        elif c.klass == CLASS_MISDATED_SPEND:
+            elig = True
+            reason = ("spend ledger named for no day on or after the"
+                      " writer's floor (RM-718 (d)); holds no real spend")
         else:  # CLASS_SUPERSEDED_PATCH
             elig = c.eligible
             reason = c.reason

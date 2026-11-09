@@ -47,6 +47,7 @@ API:
 from __future__ import annotations
 
 import copy
+import math
 import re
 import threading
 import time
@@ -95,13 +96,39 @@ _INFLIGHT: "dict[str, threading.Event]" = {}
 
 
 def _now() -> float:
-    """Wall clock, isolated so tests can drive expiry deterministically."""
-    return time.time()
+    """MONOTONIC clock, isolated so tests can drive expiry deterministically.
+
+    Never the wall clock (S144-T-611). A TTL measured on time.time() moves when
+    the clock is stepped (NTP correction, a manual set, a resume from sleep):
+    a forward step past the TTL between a settle and a retry expired the
+    settled answer, and the retry performed the side effect a second time -
+    the exact double fire this module exists to stop. Nothing outside this
+    process ever reads a stored timestamp, so a process-local clock is enough.
+    """
+    return time.monotonic()
 
 
 def is_valid_key(key: Any) -> bool:
     """True when `key` is a well-shaped idempotency key (hex/dash, <= 64)."""
     return isinstance(key, str) and bool(_KEY_RE.match(key))
+
+
+def _checked_ttl(ttl_s: Any) -> float:
+    """Return `ttl_s` as a finite, non-negative float, or raise.
+
+    A NaN TTL made an entry immortal (every comparison against NaN is False,
+    so it never expired); a negative one stored an answer that was already
+    dead, or - as a read-time narrowing - expired every live answer so the
+    caller acted again. Both are programming errors, refused loudly. A bool
+    is refused too: True is an int, and a TTL of one second is never what a
+    caller passing a flag meant.
+    """
+    if isinstance(ttl_s, bool) or not isinstance(ttl_s, (int, float)):
+        raise TypeError("idempotency ttl_s must be a real number of seconds")
+    ttl = float(ttl_s)
+    if not math.isfinite(ttl) or ttl < 0.0:
+        raise ValueError("idempotency ttl_s must be finite and >= 0")
+    return ttl
 
 
 def _expired(stored_at: float, ttl_s: float, now: float) -> bool:
@@ -116,13 +143,14 @@ def seen(key: str, ttl_s: float = DEFAULT_TTL_S) -> Optional[dict]:
     """
     if not is_valid_key(key):
         return None
+    ttl = _checked_ttl(ttl_s)
     now = _now()
     with _LOCK:
         entry = _TABLE.get(key)
         if entry is None:
             return None
         stored_at, entry_ttl, result = entry
-        if _expired(stored_at, min(entry_ttl, float(ttl_s)), now):
+        if _expired(stored_at, min(entry_ttl, ttl), now):
             del _TABLE[key]
             return None
         # Deep copy so a caller decorating the payload (e.g. adding
@@ -130,10 +158,17 @@ def seen(key: str, ttl_s: float = DEFAULT_TTL_S) -> Optional[dict]:
         return copy.deepcopy(result)
 
 
-def _remember_locked(key: str, result: dict, ttl_s: float) -> None:
-    """Insert under an already-held _LOCK. Caller validates the key."""
+def _store_locked(key: str, stored: dict, ttl: float) -> None:
+    """Insert an already-validated, already-copied answer under _LOCK.
+
+    Nothing here can raise on caller input: the TTL was checked and the
+    result deep-copied BEFORE the lock was taken, so the old entry is only
+    ever replaced by a good one. The previous shape popped the old entry
+    first and then raised on a bad TTL or an uncopyable payload, destroying a
+    settled answer it never replaced.
+    """
     _TABLE.pop(key, None)
-    _TABLE[key] = (_now(), float(ttl_s), copy.deepcopy(result))
+    _TABLE[key] = (_now(), ttl, stored)
     while len(_TABLE) > MAX_ENTRIES:
         _TABLE.popitem(last=False)
 
@@ -153,11 +188,28 @@ def remember(key: str, result: dict, ttl_s: float = DEFAULT_TTL_S) -> None:
 
     Also releases any in-flight claim on the key, so a caller that took a claim
     and then used the legacy API to record its answer cannot strand a waiter.
+
+    Raises TypeError for a non-dict `result` (a stored None replayed as
+    ("hit", None) and broke the consumer's dict(value)) and TypeError /
+    ValueError for a bad `ttl_s`; an uncopyable payload raises whatever
+    deepcopy raises. Every one of those raises BEFORE the table is touched, so
+    an existing settled answer survives, AND after releasing any in-flight
+    claim on the key, so a failed settle behaves as abandon(): its waiters
+    wake, re-claim and act, instead of sleeping until their own timeout with
+    the key reserved until the process restarts (S144-T-611).
     """
     if not is_valid_key(key):
         return
+    try:
+        ttl = _checked_ttl(ttl_s)
+        if not isinstance(result, dict):
+            raise TypeError("idempotency result must be a dict")
+        stored = copy.deepcopy(result)
+    except BaseException:
+        abandon(key)
+        raise
     with _LOCK:
-        _remember_locked(key, result, ttl_s)
+        _store_locked(key, stored, ttl)
         ev = _release_locked(key)
     if ev is not None:
         ev.set()
@@ -181,12 +233,13 @@ def claim(key: str, ttl_s: float = DEFAULT_TTL_S):
     """
     if not is_valid_key(key):
         return ("claimed", None)
+    ttl = _checked_ttl(ttl_s)
     now = _now()
     with _LOCK:
         entry = _TABLE.get(key)
         if entry is not None:
             stored_at, entry_ttl, result = entry
-            if not _expired(stored_at, min(entry_ttl, float(ttl_s)), now):
+            if not _expired(stored_at, min(entry_ttl, ttl), now):
                 return ("hit", copy.deepcopy(result))
             del _TABLE[key]
         event = _INFLIGHT.get(key)
@@ -207,7 +260,14 @@ def abandon(key: str) -> None:
     A 400 or a 503 is not an answer to replay, so the next caller of that key
     must be free to act rather than inherit a failure. Also the unwind path
     when the side effect raises.
+
+    An invalid key is a no-op, like every other entry point: claim() never
+    reserves one, so there is nothing to release, and an unhashable key used
+    to raise TypeError out of the dict lookup whenever any claim was in
+    flight - inside an unwind path.
     """
+    if not is_valid_key(key):
+        return
     with _LOCK:
         ev = _release_locked(key)
     if ev is not None:
@@ -215,7 +275,12 @@ def abandon(key: str) -> None:
 
 
 def purge(now: Optional[float] = None) -> int:
-    """Drop every expired entry. Returns how many were dropped."""
+    """Drop every expired entry. Returns how many were dropped.
+
+    An explicit `now` is on the _now() clock (monotonic), never a wall-clock
+    stamp: a time.time() value is decades past any monotonic reading and
+    would expire everything.
+    """
     stamp = _now() if now is None else float(now)
     with _LOCK:
         dead = [k for k, (at, ttl, _r) in _TABLE.items() if _expired(at, ttl, stamp)]

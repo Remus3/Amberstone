@@ -54,7 +54,10 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # is loaded lazily by path, so importing this module stays side-effect free.
 # The headless fixer child still commits with a plain `git commit` inside the
 # dedicated watchdog worktree: its tool allowlist is the execution gate and it
-# carries no project hooks there; routing that commit is the follow-up RM-692.
+# carries no project hooks there. That commit lands only on the throwaway fix
+# branch; main gets the watchdog's own locked squash (land_commit). RM-692
+# narrowed the child's git allow to explicit verbs (_CLAUDE_GIT_VERBS) instead
+# of routing its branch commit through the lock.
 _GITLOCK_OWNER = "ci-watchdog"
 _KIT_DIR = _PROJECT_ROOT / "ops" / "fleet_kit"
 
@@ -108,6 +111,9 @@ POLL_LIMIT = 5
 MAX_ATTEMPTS = 2
 MAX_PR_PER_24H = 3
 _DAY_S = 24 * 3600
+# RM-718 (c): an attempt counter at or below the sentinel is never read again;
+# an armed cycle removes one once it is older than this (prune_attempts).
+ATTEMPTS_MAX_AGE_S = 14 * _DAY_S
 
 # Per-step subprocess timeouts (seconds). The two blocking steps need far more
 # than the 120s default: a headless claude fix runs for minutes, and wait_checks
@@ -120,10 +126,16 @@ _STEP_TIMEOUTS = {"claude_fix": 600, "wait_checks": 900}
 # any tool NOT on --allowedTools is denied silently (no prompt, no hang), so this
 # whitelist - not a flag - is the hard execution gate. Write is disallowed (fixes
 # are Edits to existing files) and git push is reserved for the watchdog itself.
+# RM-692: git is allowed per VERB, never as `Bash(git:*)`. The prefix deny
+# `Bash(git push:*)` does not textually match `git -C <wt> push` or
+# `git -c k=v push`, so a blanket git allow left the push guard resting on how
+# the CLI normalises a command; with explicit verbs no allow covers a push.
+_CLAUDE_GIT_VERBS = ("status", "diff", "log", "show", "add", "commit")
 CI_FIX_PROMPT = _PROJECT_ROOT / "tools" / "ci_watchdog_fix.md"
 _CLAUDE_ALLOWED_TOOLS = (
     "Edit", "Read",
-    "Bash(ruff:*)", "Bash(git:*)",
+    "Bash(ruff:*)",
+    *(f"Bash(git {verb}:*)" for verb in _CLAUDE_GIT_VERBS),
     "Bash(python -m py_compile:*)", "Bash(pytest:*)",
 )
 _CLAUDE_DISALLOWED_TOOLS = ("Write", "Bash(git push:*)")
@@ -227,6 +239,42 @@ def bump_attempts(run_id: int, attempts_dir: Path = ATTEMPTS_DIR) -> int:
     n = attempts_for(run_id, attempts_dir) + 1
     _atomic_write_text(attempts_dir / f"{run_id}.txt", str(n))
     return n
+
+
+def prune_attempts(now_ts: float, last_seen: int,
+                   attempts_dir: Path = ATTEMPTS_DIR,
+                   max_age_s: float = ATTEMPTS_MAX_AGE_S) -> list[Path]:
+    """RM-718 (c): remove dead `<run_id>.txt` attempt counters; return them.
+
+    A counter is read again only for a run newer than the sentinel, and main()
+    advances the sentinel past a run in the same armed branch that bumps its
+    counter. So a counter is removed only when its run id is at or below
+    ``last_seen`` (0 = no sentinel: nothing is removed) AND its mtime is older
+    than ``max_age_s``. Anything that is not a regular `<digits>.txt` file is
+    left alone. A non-positive cap raises ValueError (the RM-161 class); a
+    missing dir or a refused stat / unlink is skipped, never raised.
+    """
+    if not max_age_s > 0:
+        raise ValueError(f"max_age_s must be > 0, got {max_age_s!r}")
+    removed: list[Path] = []
+    try:
+        entries = list(attempts_dir.iterdir())
+    except OSError:
+        return removed
+    for p in sorted(entries):
+        stem, suffix = p.stem, p.suffix
+        if suffix != ".txt" or not stem.isascii() or not stem.isdigit():
+            continue
+        if int(stem) > last_seen:
+            continue
+        try:
+            if not p.is_file() or now_ts - p.stat().st_mtime <= max_age_s:
+                continue
+            p.unlink()
+        except OSError:
+            continue
+        removed.append(p)
+    return removed
 
 
 def should_escalate(run_id: int, attempts_dir: Path = ATTEMPTS_DIR) -> bool:
@@ -741,6 +789,13 @@ def main(arm: bool = False) -> int:
     if is_halted():
         return 0
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    if arm:
+        # RM-718 (c): dead attempt counters age out. Armed only: a dry run
+        # mutates no persistent state. A failure here never stops the poll.
+        try:
+            prune_attempts(time.time(), read_sentinel(SENTINEL), ATTEMPTS_DIR)
+        except (OSError, ValueError):
+            pass
 
     runs = _list_runs()
     if not runs:

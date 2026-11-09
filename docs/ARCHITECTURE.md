@@ -362,8 +362,8 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 0.13 | - | `ops/rc_self_monitor.py:201` | bounded bootstrap window. |
 | 0.3 | - | `ops/rc_self_monitor.py:240` | monotonic timestamp when worker first seen dead (fix 3) |
 | 0.7 | - | `core/metrics_cache.py:448` | supervisor_state added to status.json; tolerate absence in older files |
-| 0.9 | - | `ops/rc_self_monitor.py:342` | _check_health() returns a (state, detail) tuple |
-| 0.9 | - | `ops/rc_self_monitor.py:550` | _check_health() returns 3-value state string instead of plain bool |
+| 0.9 | - | `ops/rc_self_monitor.py:357` | _check_health() returns a (state, detail) tuple |
+| 0.9 | - | `ops/rc_self_monitor.py:565` | _check_health() returns 3-value state string instead of plain bool |
 | 1 step 3 | - | `game_reader/snapshot_normalizer.py:1521` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
 | 1 step 3 | - | `tft/tft_state_reader.py:288` | snapshot factory helper (only path that may produce TftSnapshot) |
 | 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |

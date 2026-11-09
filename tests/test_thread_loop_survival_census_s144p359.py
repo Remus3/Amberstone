@@ -226,6 +226,11 @@ _ROWS = {
         "total-body",
         "process_kill is one broad try (never raises) and _enqueue restarts a worker that is not alive",
     ),
+    ("core/resource_manager.py", "_watchdog_loop"): (
+        "total-tick",
+        "the loop body is one call to _watchdog_tick, which is a single broad try (a probe or remediation "
+        "hook failure is logged as an unmeasurable sample); the only other statement is Event.wait",
+    ),
     ("dashboard/routes_team_context.py", "_fanout_worker"): (
         "finally-settles",
         "a bounded one-run roster walk, not a service loop: the while sits in a try/finally that settles "
@@ -276,6 +281,13 @@ def _check_total_body() -> None:
     )
 
 
+def _check_total_tick() -> None:
+    body = _body_without_docstring(_func("core/resource_manager.py", "_watchdog_tick"))
+    assert len(body) == 1 and isinstance(body[0], ast.Try) and any(_is_broad(h) for h in body[0].handlers), (
+        "resource_manager._watchdog_tick must be a single broad try, or _watchdog_loop can die on a raise"
+    )
+
+
 def _check_finally_settles() -> None:
     fn = _func("dashboard/routes_team_context.py", "_fanout_worker")
     tries = [n for n in _own_nodes(fn) if isinstance(n, ast.Try) and n.finalbody]
@@ -300,6 +312,7 @@ def _check_total_apply() -> None:
 
 _ROW_CHECKS = {
     "total-body": _check_total_body,
+    "total-tick": _check_total_tick,
     "finally-settles": _check_finally_settles,
     "total-apply": _check_total_apply,
 }

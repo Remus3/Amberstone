@@ -2685,6 +2685,73 @@ def record_invocation(
         pass  # a hook must never fail the turn
 
 
+# RM-718 (e): how old a scratch file must be before the start-time sweep may
+# remove it. A live writer holds its scratch for milliseconds (write, fsync,
+# rename); an hour leaves room for a stalled writer and is still far below
+# the days a hard-killed writer's orphan otherwise sits there.
+SCRATCH_MAX_AGE_S = 3600.0
+
+# `<name>.tmp` (legacy mark_inbox_seen / hook-log trim), `<name>.tmp.<pid>`
+# (legacy reported record / inbox report) and core.polled_json's per-writer
+# `<name>.<pid>.<8 hex>.tmp`. The destination name is prefixed per target.
+_SCRATCH_SUFFIX_RE = r"(?:\.tmp|\.tmp\.\d+|\.\d+\.[0-9a-f]{8}\.tmp)"
+
+
+def _own_scratch_targets() -> list[Path]:
+    """Every file this module writes through a scratch-then-rename: the
+    inbox seen store (`mark_inbox_seen`), the reported record
+    (`_save_reported`), the inbox report (`_write_inbox_report`) and the hook
+    log (`_trim_invocation_log`, wherever `RC_HOOK_LOG` points it)."""
+    runtime = _ROOT / "ops" / "runtime"
+    return [
+        runtime / "sync_inbox_seen.json",
+        _reported_path(),
+        runtime / "sync_inbox_report.txt",
+        invocation_log_path(),
+    ]
+
+
+def sweep_stale_scratch(now: float | None = None) -> int:
+    """RM-718 (e): remove THIS module's orphaned scratch files; return how many.
+
+    core.polled_json removes its scratch when a write fails, but a hard kill
+    between the scratch write and the rename cannot be caught, and the
+    legacy-named leftovers from before RM-258 never age out. Only scratch
+    named after one of `_own_scratch_targets()` is a candidate (another
+    writer's scratch, e.g. the supervisor's `health.json.<pid>.<hex>.tmp`, is
+    that writer's to sweep), only regular files, and only those STRICTLY older
+    than `SCRATCH_MAX_AGE_S`, so a concurrent writer's in-flight scratch is
+    never pulled from under its rename. Scratch is regenerable by
+    construction, so it is unlinked rather than recycled. Never raises: this
+    runs inside a hook.
+    """
+    removed = 0
+    try:
+        cutoff = (time.time() if now is None else now) - SCRATCH_MAX_AGE_S
+        by_dir: dict[Path, list[re.Pattern[str]]] = {}
+        for target in _own_scratch_targets():
+            pat = re.compile(re.escape(target.name) + _SCRATCH_SUFFIX_RE)
+            by_dir.setdefault(target.parent, []).append(pat)
+        for folder, pats in by_dir.items():
+            try:
+                entries = list(folder.iterdir())
+            except OSError:
+                continue
+            for entry in entries:
+                if not any(p.fullmatch(entry.name) for p in pats):
+                    continue
+                try:
+                    if not entry.is_file() or entry.stat().st_mtime >= cutoff:
+                        continue
+                    entry.unlink()
+                except OSError:
+                    continue
+                removed += 1
+    except Exception:  # noqa: BLE001 - a hook must never fail the turn
+        pass
+    return removed
+
+
 def _cli(argv: list[str]) -> int:
     """Entrypoint dispatch; returns the process exit code.
 
@@ -2703,6 +2770,8 @@ def _cli(argv: list[str]) -> int:
     if "--inbox-only" in argv:
         record_invocation("UserPromptSubmit", payload, stdin_state=why)
         return report_inbox_only(session=sid)
+    # RM-718 (e): once per session, never per prompt.
+    sweep_stale_scratch()
     record_invocation("SessionStart", payload, stdin_state=why)
     return main(session=sid)
 

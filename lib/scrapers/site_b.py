@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from core import external_sources
-from lib.scrapers._base import ScraperBase
+from lib.scrapers._base import ScraperBase, champion_slug, mode_template, query_token
 
 
 class SiteBScraper(ScraperBase):
@@ -33,12 +33,16 @@ class SiteBScraper(ScraperBase):
         return external_sources.value("site_b_base_url")
 
     def fetch_champion(self, champ: str, mode: str = "sr", role: str | None = None) -> str:
-        champ = champ.strip().lower().replace(" ", "").replace("'", "")
-        tmpl = self.MODE_PATH.get(mode)
-        if tmpl is None:
-            raise ValueError(f"unsupported mode: {mode}")
-        path = tmpl.format(champ=champ)
-        if role and mode == "sr":
-            path += f"?role={role}"
-        cache_key = f"{champ}_{mode}" + (f"_{role}" if role and mode == "sr" else "")
+        """Fetch champion build page HTML for the requested mode.
+
+        ``champ``, ``mode`` and (for sr only) ``role`` are checked by
+        ``lib.scrapers._base`` before any URL or cache name is built from
+        them; a bad one raises ``InvalidTarget`` with no I/O (S144-T-599).
+        """
+        slug = champion_slug(champ)
+        path = mode_template(self.MODE_PATH, mode).format(champ=slug)
+        token = query_token(role, "role") if mode == "sr" else None
+        if token is not None:
+            path += f"?role={token}"
+        cache_key = f"{slug}_{mode}" + (f"_{token}" if token is not None else "")
         return self.fetch(path, cache_key=cache_key, ext="html")

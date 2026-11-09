@@ -37,6 +37,7 @@ import copy
 import json
 import logging
 import os
+import re
 import secrets
 import time
 from pathlib import Path
@@ -112,6 +113,50 @@ def _scratch_path(path: Path) -> Path:
     return path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
 
 
+# The suffix `_scratch_path` appends: `.<pid>.<secrets.token_hex(4)>.tmp`.
+_SCRATCH_SUFFIX_RE = r"\.\d+\.[0-9a-f]{8}\.tmp"
+
+
+def sweep_stale_scratch(
+    dest: Path, max_age_s: float, *, now: Optional[float] = None
+) -> int:
+    """S144-Q-126: remove the scratch a HARD KILL orphaned for `dest`; return
+    how many files went.
+
+    `_write_then_replace` unlinks its scratch on any Python-visible failure,
+    but `taskkill /F` between the scratch write and the rename runs no Python,
+    so the scratch stays for ever. A writer that owns `dest` calls this once
+    at start. Only regular files named `dest.name` plus exactly the
+    `_scratch_path` suffix are candidates (another destination's scratch is
+    that writer's to sweep), and only those STRICTLY older than `max_age_s`,
+    so a concurrent writer's in-flight scratch is never pulled from under its
+    rename. Scratch is regenerable by construction, so it is unlinked, not
+    recycled. Never raises: a sweep must not stop the writer that calls it.
+    """
+    removed = 0
+    try:
+        dest = Path(dest)
+        cutoff = (time.time() if now is None else now) - max_age_s
+        pat = re.compile(re.escape(dest.name) + _SCRATCH_SUFFIX_RE)
+        try:
+            entries = list(dest.parent.iterdir())
+        except OSError:
+            return 0
+        for entry in entries:
+            if not pat.fullmatch(entry.name):
+                continue
+            try:
+                if not entry.is_file() or entry.stat().st_mtime >= cutoff:
+                    continue
+                entry.unlink()
+            except OSError:
+                continue
+            removed += 1
+    except Exception:  # noqa: BLE001 - a sweep never fails its caller
+        _log.debug("sweep_stale_scratch(%s) failed", dest, exc_info=True)
+    return removed
+
+
 def _write_then_replace(path: Path, data: bytes) -> None:
     """Shared body for every public writer: scratch file -> rename, and NEVER
     leave the scratch file behind.
@@ -149,9 +194,18 @@ def atomic_write_json(path: Path, payload: Any, *, indent: int = 2) -> None:
     Windows write_text rewrites LF as CRLF, so an indented payload put more
     bytes on disk than the caller serialized
     (reference_windows_write_text_crlf_byte_count).
+
+    A str holding a lone surrogate - what json.loads yields for an escaped
+    "\\ud800" - has no UTF-8 encoding, so the raw-UTF-8 dump cannot be encoded.
+    That payload alone is re-serialized with ensure_ascii=True: valid JSON,
+    pure ASCII, and it reads back to the same str. Every payload that encodes
+    writes exactly the bytes it always did (lane 8 s144 cycle 223, B).
     """
-    body = json.dumps(payload, indent=indent, ensure_ascii=False)
-    _write_then_replace(Path(path), body.encode("utf-8"))
+    try:
+        data = json.dumps(payload, indent=indent, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError:
+        data = json.dumps(payload, indent=indent, ensure_ascii=True).encode("ascii")
+    _write_then_replace(Path(path), data)
 
 
 def atomic_write_bytes(path: Path, data: bytes) -> None:
@@ -215,7 +269,12 @@ def read_json_dict(path: Path, default: Optional[dict] = None) -> dict:
         return fallback
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError as exc:
+    except (ValueError, RecursionError) as exc:
+        # Lane 8 s144 cycle 223 (A): JSONDecodeError is only one of the ways
+        # the stdlib decoder rejects a file. Nesting past the interpreter
+        # stack raises RecursionError, and an integer literal longer than
+        # sys.get_int_max_str_digits() raises a plain ValueError (the parent
+        # of JSONDecodeError, not it). Both used to escape to the caller.
         _log.warning("polled_json: %s decode failed: %s", path, exc)
         return fallback
     if not isinstance(data, dict):

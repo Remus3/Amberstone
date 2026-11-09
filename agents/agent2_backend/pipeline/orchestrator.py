@@ -55,6 +55,7 @@ from core.polled_json import atomic_write_text
 from lib.ddragon import DDragon, fetch_all as ddragon_fetch_all
 from lib.http import Blocked, CircuitOpen, HttpError
 from lib.scrapers import SiteBScraper, SiteDScraper
+from lib.scrapers._base import champion_slug
 
 logger = logging.getLogger("agent2.pipeline")
 
@@ -220,8 +221,9 @@ class PipelineOrchestrator:
 
 
 def _cache_key(champ: str, mode: str) -> str:
-    """Mirror the cache-key shape the scrapers use internally."""
-    return f"{champ.strip().lower().replace(' ', '').replace(chr(39), '')}_{mode}"
+    """The cache-key shape the scrapers use internally - built by their own
+    slug function, not a hand-kept copy of it (S144-T-599)."""
+    return f"{champion_slug(champ)}_{mode}"
 
 
 def _repo_rel(path) -> str:

@@ -1635,8 +1635,12 @@ def audit(ev):
 
     # 5 - evidence-only check. Requires an actual git invocation: a bypass flag
     # NAMED in prose or a heredoc body is documentation, not a bypass.
-    for command in bash:
-        if EV_BYPASS.search(command) and re.search(r"\bgit\b", command):
+    # RM-698: judged on the RAW command by _has_bypass (the old rule, plus a
+    # bypass inside a quoted `bash -c` / `pwsh -Command` script; see the
+    # block above it); the finding still quotes the stripped command, so the
+    # per-session seen set keys are unchanged.
+    for raw_command, command in zip(ev["bash"], bash):
+        if _has_bypass(raw_command):
             flag("hook_bypass", command, observed=command)
 
     for sentence, line, sentence_turn in _sentences_with_turn(ev["texts"],
@@ -2596,10 +2600,8 @@ def _scan_subagent_file(path, session_start=None):
 def _note_bypass(found, use, cwd=None):
     tid, name, data = use
     command = data.get("command")
-    if name in ("bash", "powershell") and isinstance(command, str):
-        stripped = strip_command_noise(command)
-        if EV_BYPASS.search(stripped) and re.search(r"\bgit\b", stripped):
-            found["bypass"].append((command, cwd, tid))
+    if name in ("bash", "powershell") and isinstance(command, str) and _has_bypass(command):
+        found["bypass"].append((command, cwd, tid))
 
 
 # subagent_hook_bypass SCOPE (operator, 2026-10-09). Measured on session
@@ -2741,23 +2743,245 @@ def _git_target(here, words):
     return target
 
 
-def _bypass_targets(command, cwd):
-    """The directory of each hook-bypassing git statement in COMMAND, None
-    for one that cannot be placed (and [None] when no statement could be
-    picked out of a command the whole-command check flagged)."""
-    if len(command) > COMMAND_PARSE_MAX:
-        return [None]
-    raw = _HEREDOC.sub(" ", command)
+# RM-698: ONE predicate, _has_bypass, decides every hook-bypass count (the
+# Stop-time scan in audit, _note_bypass, and _bypass_targets, which answers []
+# when it says no), so the three call sites cannot disagree. It is the OLD
+# whole-command rule (_bypass_in_text: EV_BYPASS and a git word over the
+# noise-stripped command) OR'd with one addition, so it only ever counts MORE:
+#   MISS closed - strip_command_noise blanks quoted spans, so a bypass inside
+#       a quoted script (`bash -c "git push --no-verify"`, `sh -c '...'`,
+#       `pwsh -Command "..."`) stripped to the bare launcher. Each launcher
+#       script is now judged by the same predicate as a nested command, at
+#       most BYPASS_NEST_MAX levels deep; past that a bypass flag and a git
+#       word anywhere in the raw script count (fail closed).
+# The row's FALSE-HIT half - a flag in ANOTHER statement's argument
+# (`rg --pattern=--no-verify . ; git status`, or an escaped quote that
+# unpairs _QUOTED: `python -c "x = \"--no-verify\""; git status`) - is NOT
+# narrowed, by decision (2026-11-08, s144 queue lane, decision record in the
+# RM-698 LEDGER entry): six independent verifier rounds each found a REAL,
+# executed `git push --no-verify` that a narrowing stopped counting - flag
+# flow through variables, quoting, braces, arrays, `set --`, functions,
+# grouped pipes (`{ echo --no-verify; } | xargs git push`), `printf -v`,
+# `-OutVariable`, `$_`, `@(...)`. Alternatives measured and refuted: per-
+# statement "flag after the git word" with variable tracking (rounds 1-5);
+# sparing only INERT output / search statements (round 6). A false hit costs
+# one advisory line; a false miss hides a hook bypass. Reverses if: the gate
+# gains a real shell parser with measured coverage, or a false hook_bypass
+# on an ordinary command is seen in a real session often enough to matter.
+# Not a shell parser: RM-746's shapes (aliases, heredoc-fed shells, `eval`,
+# a fake git on PATH) stay out; a command over COMMAND_PARSE_MAX keeps the
+# old rule.
+# S144-Q-127 adds a second OR, also count-only: a git statement's own words
+# (quotes removed, _git_words_bypass) that carry a bypass the stripper hid or
+# EV_BYPASS never spelled - a QUOTED flag (`git push '--no-verify'`,
+# `git -c 'core.hooksPath=/dev/null' commit`) and `git commit -n`. A quoted
+# flag that is the VALUE of a message / search option stays data. Past
+# BYPASS_NEST_MAX only an EV_BYPASS flag fails closed (a bare `-n` beside a
+# git word is too common to count blind). Still missed, filed under the same
+# id: a flag from a QUOTED assignment, a git call inside a quoted assignment,
+# `& 'git'`, `cmd /c`, `iex`, `Start-Process`, `env bash -c`, `wsl -e`,
+# `bash --rcfile x -c`, `-EncodedCommand`, an escaped quote in a launcher.
+BYPASS_NEST_MAX = 4
+_SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
+_PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
+_SHELL_VALUE_OPTS = frozenset({"-o", "+o", "-O", "+O"})
+_CONTINUATION = re.compile(r"[\\`]\r?\n")
+_BYPASS_GIT_WORD = re.compile(r"\bgit\b")
+
+
+def _bypass_in_text(text):
+    """The pre-RM-698 rule: a bypass flag and a git word anywhere in TEXT."""
+    stripped = strip_command_noise(text)
+    return bool(EV_BYPASS.search(stripped) and _BYPASS_GIT_WORD.search(stripped))
+
+
+def _head_name(word):
+    """WORD as a command name: basename, lower case, no `.exe`."""
+    head = re.split(r"[\\/]", word)[-1].lower()
+    return head.removesuffix(".exe")
+
+
+# S144-Q-127. A raw-text hint that a short option cluster holding `n`, or a
+# quote-split `'core.hooksPath'=x`, is present, so _has_bypass parses a
+# command whose raw text EV_BYPASS does not match.
+_PARSE_HINT = re.compile(r"(?<![\w-])-[A-Za-z]*n|core\.hooksPath", re.IGNORECASE)
+_BYPASS_FLAG_WORD = re.compile(r"--no-verify|--no-gpg-sign|core\.hooksPath\s*=.*",
+                               re.IGNORECASE | re.DOTALL)
+# Options whose next word is a VALUE (a message, a search string, a file), so
+# a quoted bypass flag there is data, not an option of the git statement.
+# `-c` / `-C` are left out on purpose: before the subcommand they are git's
+# own config / directory options, and `-c 'core.hooksPath=x'` IS the bypass.
+_GIT_DATA_OPTS = frozenset({
+    "-m", "--message", "-F", "--file", "-e", "--grep", "--author",
+    "--committer", "-S", "-G", "--format", "--pretty", "-t", "--template",
+    "--reuse-message", "--reedit-message", "--date", "--trailer",
+    "--fixup", "--squash", "--cleanup", "--pathspec-from-file",
+})
+# `git commit` short options that take a value: the rest of a cluster after
+# one of them is that value (`-mn` is the message "n", not `-n`).
+_COMMIT_VALUE_SHORTS = frozenset("mFcCtSu")
+# Of those, the ones whose value may be the NEXT word when a cluster ends in
+# them (`-am msg`); -S / -u take only an attached value, -c / -C see above.
+_DATA_SHORTS = frozenset("mFt")
+
+
+def _is_data_slot(prev):
+    """True when the word after PREV is an option's value."""
+    if prev is None:
+        return False
+    if prev in _GIT_DATA_OPTS:
+        return True
+    return bool(re.fullmatch(r"-[A-Za-z]+", prev)) and prev[-1] in _DATA_SHORTS
+
+
+def _commit_no_verify(words):
+    """True when WORDS (after `commit`) carry `-n` in a short cluster."""
+    prev = None
+    for word in words:
+        if word == "--":
+            return False
+        if not _is_data_slot(prev) and re.fullmatch(r"-[A-Za-z]+", word):
+            for letter in word[1:]:
+                if letter == "n":
+                    return True
+                if letter in _COMMIT_VALUE_SHORTS:
+                    break
+        prev = word
+    return False
+
+
+def _git_words_bypass(words):
+    """S144-Q-127: True when WORDS (one statement, quotes removed) hold a git
+    word followed by an exact bypass flag that is not an option's value, or
+    are a `git commit` whose options include `-n`."""
+    start = next((i for i, word in enumerate(words) if _head_name(word) == "git"), None)
+    if start is None:
+        return False
+    rest = words[start + 1:]
+    prev = None
+    for word in rest:
+        if not _is_data_slot(prev) and _BYPASS_FLAG_WORD.fullmatch(word):
+            return True
+        prev = word
+    i = 0
+    while i < len(rest) and rest[i].startswith("-"):
+        option, eq, _value = rest[i].partition("=")
+        if option in (_GIT_VALUE_OPTS | _GIT_PATH_OPTS) and not eq:
+            i += 1
+        i += 1
+    return i < len(rest) and rest[i].lower() == "commit" and _commit_no_verify(rest[i + 1:])
+
+
+def _launcher_script(words):
+    """The quoted script of a `bash -c` / `sh -c` / `pwsh -Command` statement
+    (WORDS, quotes removed), or None for any other statement."""
+    # A PowerShell `& pwsh ...` needs no case here: _STATEMENT_BREAK splits
+    # on a bare `&`, so the launcher is already the first word.
+    head = _head_name(words[0])
+    rest = words[1:]
+    if head in _SHELL_LAUNCHERS:
+        i = 0
+        while i < len(rest):
+            word = rest[i]
+            if word in _SHELL_VALUE_OPTS:
+                i += 2
+                continue
+            if word == "--" or not word.startswith(("-", "+")):
+                return None
+            if word.startswith("-") and not word.startswith("--") and "c" in word[1:]:
+                return next((w for w in rest[i + 1:] if not w.startswith("-")), None)
+            i += 1
+        return None
+    if head in _PS_LAUNCHERS:
+        for i, word in enumerate(rest):
+            option = word.lower()
+            if option.startswith("-") and len(option) > 1 and "command".startswith(option[1:]):
+                return " ".join(rest[i + 1:]) or None
+            if option.startswith("-") and len(option) > 1 and "file".startswith(option[1:]):
+                return None  # what follows -File is the script's own arguments
+        return None
+    return None
+
+
+def _statements(raw):
+    """RAW split at statement breaks outside quotes."""
     masked = _QUOTED.sub(lambda m: "x" * len(m.group(0)), raw)
-    here = _host_path(cwd) if cwd else None
-    variables, targets, start = {}, [], 0
-    bounds = [m.span() for m in _STATEMENT_BREAK.finditer(masked)] + [(len(raw), len(raw))]
-    for stop, after in bounds:
-        statement = raw[start:stop].strip().lstrip("({").rstrip(")}").strip()
+    parts, start = [], 0
+    for match in [*_STATEMENT_BREAK.finditer(masked), None]:
+        stop, after = match.span() if match else (len(raw), len(raw))
+        parts.append(raw[start:stop])
         start = after
-        if not statement or _assigned(statement, variables):
+    return parts
+
+
+def _readings(command):
+    """COMMAND without heredoc bodies, as written and (when it differs) with
+    line continuations joined: a bash backslash or a PowerShell backtick
+    before a newline continues a statement, but PowerShell reads that
+    backslash as the end of a path, so both readings are kept."""
+    raw = _HEREDOC.sub(" ", command)
+    joined = _CONTINUATION.sub(" ", raw)
+    return [raw] if joined == raw else [raw, joined]
+
+
+def _has_bypass(command, depth=0, extra=True):
+    """True when COMMAND runs a hook-bypassing git statement (RM-698): the
+    old whole-command rule, or a launcher script that passes this test, or
+    (S144-Q-127, unless EXTRA is False) a statement _git_words_bypass flags.
+    The old rule runs FIRST and alone decides a True, so this can never count
+    less than it did: a raw-text precheck in front of it lost `git -c
+    core.hooksPath""=x`, which only matches once the quotes are stripped."""
+    if _bypass_in_text(command):
+        return True
+    flagged = bool(EV_BYPASS.search(command))
+    hinted = flagged or (extra and bool(_PARSE_HINT.search(command)))
+    if len(command) > COMMAND_PARSE_MAX or not (
+            hinted and _BYPASS_GIT_WORD.search(command)):
+        return False
+    if depth > BYPASS_NEST_MAX:
+        return flagged  # fail closed: the raw script holds a flag and a git word
+    for text in _readings(command):
+        for statement in _statements(text):
+            words = _tokens(statement.strip().lstrip("({").rstrip(")}").strip())
+            if extra and words and _git_words_bypass(words):
+                return True
+            script = _launcher_script(words) if words else None
+            if script is not None and _has_bypass(script, depth + 1, extra):
+                return True
+    return False
+
+
+def _placed(command, here, variables, depth, extra=True):
+    """The directory of each bypass-looking git statement in COMMAND, in
+    every reading (_readings), walking a launcher script with its own copy
+    of HERE and VARIABLES. EXTRA=False is the RM-698 walk without the
+    S144-Q-127 statements (_git_words_bypass)."""
+    if depth > BYPASS_NEST_MAX:
+        return [None]
+    targets = []
+    for text in _readings(command):
+        targets.extend(_placed_reading(text, here, dict(variables), depth, extra=extra))
+    return targets
+
+
+def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
+    """One reading of _placed. LEGACY is the pre-RM-698 walk exactly: no
+    assignment placement, no launcher scripts, no S144-Q-127 statements."""
+    targets = []
+    for text in _statements(raw):
+        statement = text.strip().lstrip("({").rstrip(")}").strip()
+        if not statement:
             continue
         words = _tokens(_expand(statement, variables))
+        stripped = strip_command_noise(statement)
+        hit = bool(EV_BYPASS.search(stripped) and _BYPASS_GIT_WORD.search(stripped))
+        if not hit and not legacy and extra:
+            hit = _git_words_bypass(_tokens(statement))
+        if _assigned(statement, variables):
+            # `$out = git push --no-verify` (PowerShell) RUNS what it assigns.
+            if hit and not legacy:
+                targets.append(_git_target(here, words))
+            continue
         if not words:
             continue
         head = words[0].lower()
@@ -2767,11 +2991,45 @@ def _bypass_targets(command, cwd):
         elif head in ("popd", "pop-location"):
             here = None
         else:
-            stripped = strip_command_noise(statement)
-            if EV_BYPASS.search(stripped) and re.search(r"\bgit\b", stripped):
+            script = None if legacy else _launcher_script(words)
+            if script is not None:
+                targets.extend(_placed(script, here, variables, depth + 1, extra=extra))
+            if hit:
                 # An absolute `git -C` places the statement even when HERE
                 # is unknown; a relative one from an unknown HERE stays None.
                 targets.append(_git_target(here, words))
+    return targets
+
+
+def _bypass_targets(command, cwd):
+    """The directory of each hook-bypassing git statement in COMMAND, None
+    for one that cannot be placed: [] when _has_bypass says COMMAND has none,
+    [None] for a command too long to parse (fail closed).
+
+    A SUPERSET of the pre-RM-698 answer, so _bypass_hits_rc never drops a
+    count it made: _placed's raw reading walks the same statements with the
+    same directory and variables as the legacy walk and only ADDS targets
+    (assignments, launcher scripts), and the legacy fail-closed None is kept
+    whenever the old rule flags COMMAND but the legacy walk places nothing -
+    a new placement landing outside RC must not hide a statement nothing
+    could place, such as `F=--no-verify; ...; git push $F`.
+
+    S144-Q-127 keeps the same promise one level up: when the RM-698
+    predicate alone counts COMMAND and the RM-698 walk places nothing, its
+    fail-closed None stays, so a quoted-flag statement placed outside RC
+    cannot hide a launcher-only bypass nothing could place."""
+    if len(command) > COMMAND_PARSE_MAX:
+        return [None]
+    if not _has_bypass(command):
+        return []
+    here = _host_path(cwd) if cwd else None
+    targets = _placed(command, here, {}, 0)
+    if _bypass_in_text(command) and not _placed_reading(
+            _HEREDOC.sub(" ", command), here, {}, 0, legacy=True):
+        targets.append(None)
+    if (targets and None not in targets and _has_bypass(command, extra=False)
+            and not _placed(command, here, {}, 0, extra=False)):
+        targets.append(None)
     return targets or [None]
 
 

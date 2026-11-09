@@ -19,7 +19,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 
 MOVED = {
-    "docs/_archive/run_lan_bridge.bat": "docs/_archive/2026-06/run_lan_bridge.bat",
+    "docs/_archive/run_lan_bridge.bat": "docs/_archive/2026-04/run_lan_bridge.bat",
     "tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md": "docs/_archive/2026-05/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md",
 }
 

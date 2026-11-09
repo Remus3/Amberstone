@@ -94,6 +94,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 #: Any Windows user home directory, under ANY account name. The account label
@@ -232,11 +234,23 @@ def _findings_in_text(text: str) -> list[tuple[int, str]]:
 
 
 def findings_in(rel: str) -> list[tuple[int, str]]:
-    """``[(line_number, matched_text)]`` for one repo-relative file."""
+    """``[(line_number, matched_text)]`` for one repo-relative file.
+
+    A UTF-16 BOM is honoured (RM-723): read as UTF-8, a UTF-16 file has a NUL
+    between every character and the pattern matches nothing, which is how three
+    task XMLs carried a home path past this guard.
+    """
     try:
-        text = (REPO_ROOT / rel).read_text(encoding="utf-8", errors="replace")
+        raw = (REPO_ROOT / rel).read_bytes()
     except OSError:
         return []
+    if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        text = raw.decode("utf-16", errors="replace")
+    else:
+        text = raw.decode("utf-8", errors="replace")
+    # read_text's universal-newline translation, kept so a CRLF file still
+    # joins across a hard wrap.
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     return _findings_in_text(text)
 
 
@@ -329,6 +343,28 @@ class TestThePatternItselfIsArmed:
         line_no, matched = hits[0]
         assert line_no == 1, f"expected the match attributed to line 1, got {line_no}"
         assert "someone" in matched, f"unexpected matched text: {matched!r}"
+
+    @pytest.mark.parametrize("encoding", ["utf-16", "utf-16-be", "utf-8-sig"])
+    def test_it_fires_in_a_file_stored_with_a_bom(self, tmp_path, monkeypatch,
+                                                  encoding):
+        """RM-723: three tracked task XMLs were UTF-16 exports carrying a home
+        path, and this guard - which lists ``.xml`` as runnable - passed over
+        them, because UTF-16 read as UTF-8 interleaves a NUL between every
+        character and the pattern matches nothing. A clean result from a file
+        the guard cannot read is the same output as a clean file."""
+        planted = tmp_path / "task.xml"
+        text = ("<Command>C:\\Users\\someone\\AppData\\Local\\Programs\\Python\\"
+                "Python314\\pythonw.exe</Command>\n")
+        raw = text.encode(encoding)
+        if encoding == "utf-16-be":
+            raw = b"\xfe\xff" + raw
+        planted.write_bytes(raw)
+        monkeypatch.setattr(
+            __import__(__name__, fromlist=["REPO_ROOT"]), "REPO_ROOT", tmp_path
+        )
+        hits = findings_in("task.xml")
+        assert hits, f"a home path in a {encoding} file was not found"
+        assert "someone" in hits[0][1], hits
 
 
 class TestNoRunnableSurfaceCarriesAHomePath:

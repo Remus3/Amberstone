@@ -65,6 +65,7 @@ dismissed.
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from dataclasses import dataclass, field
@@ -139,10 +140,122 @@ _NON_SIGNAL_ITEM_IDS: frozenset[str] = frozenset({
 # mismatch (Tank pick + Infinity Edge) sits far below this.
 _TOP_N_THRESHOLD: int = 15
 
+# s144 true-audit: the level handed to the dispatcher. League levels are
+# 1..18 in every mode RC coaches; anything else is junk and reads as 1.
+_MIN_LEVEL: int = 1
+_MAX_LEVEL: int = 18
+
+# s144 true-audit: an item id is 1..9 ASCII digits (liveclient ids are
+# 4-6 digit ints). A wider check let "nan", "-5", True and Arabic-Indic
+# digits through as a "first completed item".
+_MAX_ITEM_ID_DIGITS: int = 9
+
+# s144 true-audit: synthetic-session matching. Live Client's gameData
+# carries no gameId, so the per-game dedup token is derived from the
+# game's start estimate (wall clock minus game clock). That estimate
+# jitters by the liveclient sample's age and drifts while a game is
+# paused, so it is matched with a tolerance and FOLLOWED poll by poll,
+# never compared as a minute bucket. A new game with the same champion
+# moves the start by at least the previous game's length (a completed
+# item means minutes in), far beyond the tolerance; a game clock that
+# falls back is a new game too.
+_SYNTH_START_TOLERANCE_S: float = 120.0
+_GAME_CLOCK_BACKSTEP_S: float = 5.0
+
+# s144 true-audit: the cache is keyed by champion name, which reaches it
+# from a LAN-writable champ-select pick; bound it so no input stream can
+# grow it without limit. Oldest entry is evicted first.
+_MAX_CACHED_CHAMPIONS: int = 32
+
 # Module-level dedup cache. Threadlock since the dashboard's HTTP server
 # is multi-threaded.
 _NUDGE_STATE: dict[str, dict] = {}
+# Synthetic-session clock per champion: {"start": float, "game_time": float}.
+# Kept beside the payload cache so the served payload shape is unchanged.
+_SESSION_CLOCK: dict[str, dict] = {}
 _NUDGE_LOCK: threading.Lock = threading.Lock()
+
+
+def _text(value: object) -> str:
+    """``value`` stripped when it is a str, else ``""``.
+
+    The pick, the liveclient summary and the coach dict are all JSON
+    shaped; a list / dict / number where a string belongs is junk and
+    must never become its own ``repr`` (a dict champion used to)."""
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _real(value: object) -> Optional[float]:
+    """A finite int / float (never a bool), else ``None``."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    try:
+        out = float(value)
+    except (OverflowError, ValueError):
+        return None
+    return out if math.isfinite(out) else None
+
+
+def _level(value: object) -> int:
+    """Dispatcher level: a real number clamped to 1..18, junk reads 1."""
+    num = _real(value)
+    if num is None:
+        return _MIN_LEVEL
+    return max(_MIN_LEVEL, min(_MAX_LEVEL, int(num)))
+
+
+def _item_id(raw: object) -> str:
+    """Canonical item id string for ``raw``, or ``""`` when it is not one.
+
+    A positive int (never a bool) or an ASCII-digit string; anything else
+    is not an item id."""
+    if isinstance(raw, bool):
+        return ""
+    if isinstance(raw, int):
+        # Range check BEFORE str(): str() of an int past 4300 digits raises.
+        sid = str(raw) if 0 < raw < 10 ** _MAX_ITEM_ID_DIGITS else ""
+    elif isinstance(raw, str):
+        sid = raw.strip()
+    else:
+        return ""
+    if not (0 < len(sid) <= _MAX_ITEM_ID_DIGITS) or not sid.isascii() or not sid.isdigit():
+        return ""
+    return "" if int(sid) == 0 else sid
+
+
+def _id_list(value: object) -> list:
+    """``value`` when it is a list / tuple, else ``[]``.
+
+    A string or bytes was iterated per character (``"3031"`` read as item
+    "3"), a dict per key and an int raised."""
+    return list(value) if isinstance(value, (list, tuple)) else []
+
+
+def _game_clock(lc: dict) -> Optional[float]:
+    """Positive finite ``game_time_s``, else ``None``.
+
+    0 is the summary's missing default; with a completed item owned it
+    cannot be a real clock, and a token from it changed every wall-clock
+    minute."""
+    gt = _real(lc.get("game_time_s"))
+    return gt if gt is not None and gt > 0 else None
+
+
+def _remember(store: dict, key: str, value: dict) -> None:
+    """Insert ``value`` as the NEWEST entry and evict past the bound."""
+    store.pop(key, None)
+    store[key] = value
+    while len(store) > _MAX_CACHED_CHAMPIONS:
+        store.pop(next(iter(store)))
+
+
+def _copy_entry(entry: dict) -> dict:
+    """A copy of a cache entry that shares no mutable value with it."""
+    out = dict(entry)
+    items = out.get("expected_items")
+    if isinstance(items, list):
+        out["expected_items"] = list(items)
+    return out
 
 
 @dataclass
@@ -179,12 +292,12 @@ def _first_completed_item_id(owned_item_ids: Iterable) -> str:
     ``owned_item_ids`` is a sequence of either ints or strings as they
     appear in liveclient's ``allPlayers[me].items[].itemID``. We coerce
     to ``str`` and skip everything in ``_NON_SIGNAL_ITEM_IDS``.
-    Empty / falsy entries are skipped too.
+    Empty / falsy entries are skipped too, and so is anything that is not
+    an item id (s144: a bool, a float, "nan", a negative, non-ASCII
+    digits); a non-list input is no items.
     """
-    for raw in owned_item_ids or ():
-        if raw in (None, "", 0, "0"):
-            continue
-        sid = str(raw).strip()
+    for raw in _id_list(owned_item_ids):
+        sid = _item_id(raw)
         if not sid or sid in _NON_SIGNAL_ITEM_IDS:
             continue
         return sid
@@ -211,19 +324,19 @@ def _resolve_item_name(
     each display name back to an id, which is both order- and
     length-independent.
     """
-    names = list(owned_names or ())
-    ids = list(owned_item_ids or ())
+    names = _id_list(owned_names)
+    ids = _id_list(owned_item_ids)
 
     if len(names) == len(ids):
         for raw_id, name in zip(ids, names):
-            if str(raw_id).strip() == first_item_id:
-                return str(name)
+            if _item_id(raw_id) == first_item_id and _text(name):
+                return _text(name)
 
     try:
         from core.daemon_slayer_resolver import name_to_id
 
         for name in names:
-            text = str(name).strip()
+            text = _text(name)
             if not text:
                 continue
             if str(name_to_id(text, mode=mode_engine) or "") == first_item_id:
@@ -253,20 +366,54 @@ def _session_token(lc: dict | None, champion: str) -> str:
 
     Returns empty string if no liveclient data - caller can decide to
     skip eval entirely in that case.
+
+    s144 true-audit: ``game_id`` must be a non-empty string (the summary
+    emits a canonical decimal or ""), and the synthetic form needs a
+    positive finite clock (``_game_clock``); 0, True, inf and NaN used to
+    form a token or raise. The synthetic token NAMES a session; whether
+    two polls are the same session is decided by ``_same_synthetic_session``
+    with a tolerance, never by comparing these minute buckets.
+    """
+    return _session_key(lc, champion)[0]
+
+
+def _session_key(lc: dict | None, champion: str) -> tuple[str, Optional[dict]]:
+    """``(token, clock)`` for this poll.
+
+    ``clock`` is ``None`` on the game_id path (exact token match) and
+    ``{"start": float, "game_time": float}`` on the synthetic path, read
+    by ``_same_synthetic_session``. ``("", None)`` = no usable session.
     """
     if not isinstance(lc, dict):
-        return ""
-    gid = lc.get("game_id")
+        return "", None
+    gid = _text(lc.get("game_id"))
     if gid:
-        return str(gid)
-    gt = lc.get("game_time_s")
+        return gid, None
+    gt = _game_clock(lc)
     if gt is None:
-        return ""
-    try:
-        start_floor = int((time.time() - float(gt)) / 60)
-    except (TypeError, ValueError):
-        return ""
-    return f"{champion}@{start_floor}"
+        return "", None
+    start = time.time() - gt
+    return f"{champion}@{int(start / 60)}", {"start": start, "game_time": gt}
+
+
+def _same_synthetic_session(clock: Optional[dict], start: float, game_time: float) -> bool:
+    """True when a poll with derived ``start`` / ``game_time`` continues the
+    synthetic session recorded in ``clock``.
+
+    Same session = the start estimate moved by at most
+    ``_SYNTH_START_TOLERANCE_S`` since the LAST poll (so a pause is
+    followed step by step) and the game clock did not fall back by more
+    than ``_GAME_CLOCK_BACKSTEP_S``.
+    """
+    if not isinstance(clock, dict):
+        return False
+    prev_start = clock.get("start")
+    prev_gt = clock.get("game_time")
+    if not isinstance(prev_start, float) or not isinstance(prev_gt, float):
+        return False
+    if abs(start - prev_start) > _SYNTH_START_TOLERANCE_S:
+        return False
+    return game_time >= prev_gt - _GAME_CLOCK_BACKSTEP_S
 
 
 def _evaluate_dispatcher(
@@ -304,12 +451,20 @@ def _evaluate_dispatcher(
 
     if out is None or not isinstance(out, dict):
         return None
-    ranked = out.get("ranked") or []
-    if not ranked:
+    # s144 true-audit: the DS reply is parsed JSON; a non-list ``ranked``
+    # or a non-dict row raised AttributeError outside the try above. Junk
+    # rows are skipped; no usable row at all is "no signal".
+    ranked = out.get("ranked")
+    rows = [r for r in ranked if isinstance(r, dict)] if isinstance(ranked, list) else []
+    if not rows:
         return None
 
-    top_ids = {str(r.get("item_id", "")) for r in ranked if r.get("item_id")}
-    top_names = [str(r.get("item_name", "")) for r in ranked[:3] if r.get("item_name")]
+    top_ids = {_item_id(r.get("item_id")) for r in rows} - {""}
+    if not top_ids:
+        # Rows without a single item id cannot judge the buy; calling
+        # every item a mismatch against an empty set fired a false nudge.
+        return None
+    top_names = [_text(r.get("item_name")) for r in rows[:3] if _text(r.get("item_name"))]
     is_mismatch = first_item_id not in top_ids
     return (is_mismatch, top_names)
 
@@ -328,7 +483,9 @@ def _engine_mode(lc: dict | None) -> str:
     """Map liveclient.game_mode to the DS engine's mode token."""
     if not isinstance(lc, dict):
         return "SR"
-    gm = (lc.get("game_mode") or "").upper()
+    # s144 true-audit: a non-string game_mode raised AttributeError here;
+    # it is an unknown mode and reads as the SR default like a missing one.
+    gm = _text(lc.get("game_mode")).upper()
     if "ARAM" in gm:
         return "ARAM"
     if "ARENA" in gm or "CHERRY" in gm:
@@ -340,6 +497,9 @@ def _engine_mode(lc: dict | None) -> str:
     # Forbidden modes are now stopped upstream in
     # core.game_snapshot.mode_from_game_mode_string (MODE_UNSUPPORTED); this
     # assert-style guard is the second fence. See docs/OVERLAY_COMPLIANCE_PLAN.md.
+    # s144 true-audit: "" is the fence's verdict, and compute_nudge_payload
+    # now STOPS on it (before it only renamed the mode and still called the
+    # DS dispatcher with mode "" and served the nudge).
     if is_forbidden_game_mode(gm):
         return ""
     return "SR"
@@ -365,26 +525,32 @@ def compute_nudge_payload(
     """
     if not isinstance(cs_archetype_pick, dict) or not cs_archetype_pick:
         return {}
-    primary = (cs_archetype_pick.get("primary") or "").strip().lower()
+    # s144 true-audit: every field read through _text, so a wrong-typed
+    # value is "absent" instead of an AttributeError (primary / source)
+    # or its own repr (a dict champion became "{'name': ...}").
+    primary = _text(cs_archetype_pick.get("primary")).lower()
     if not primary:
         return {}
     # Default DDragon-tag picks aren't operator intent - only fire when
     # the operator explicitly picked or accepted a prior nudge.
-    source = (cs_archetype_pick.get("source") or "").strip().lower()
+    source = _text(cs_archetype_pick.get("source")).lower()
     if source == "default":
         return {}
 
     if not isinstance(lc, dict) or not lc:
         return {}
-    champion = (cs_archetype_pick.get("champion")
-                or (lc.get("champion") if isinstance(lc, dict) else "")
-                or (coach.get("champion") if isinstance(coach, dict) else "")
-                or "")
-    champion = str(champion).strip()
+    # s144 true-audit: the compliance fence STOPS here, before the pending
+    # payload, the cache and the DS dispatcher (it used to pass mode "").
+    mode_engine = _engine_mode(lc)
+    if not mode_engine:
+        return {}
+    champion = (_text(cs_archetype_pick.get("champion"))
+                or _text(lc.get("champion"))
+                or (_text(coach.get("champion")) if isinstance(coach, dict) else ""))
     if not champion:
         return {}
 
-    owned_item_ids = lc.get("owned_item_ids") or []
+    owned_item_ids = _id_list(lc.get("owned_item_ids"))
     first_item_id = _first_completed_item_id(owned_item_ids)
     if not first_item_id:
         # No completed item yet (still on starter / boots only). Stamp a
@@ -396,26 +562,34 @@ def compute_nudge_payload(
             "primary":  primary,
         }
 
-    session_token = _session_token(lc, champion)
+    session_token, clock = _session_key(lc, champion)
     if not session_token:
         return {}
 
     with _NUDGE_LOCK:
         existing = _NUDGE_STATE.get(champion)
-        # If we already evaluated this (champion, session_token) pair,
-        # return the cached decision verbatim.
-        if existing and existing.get("session_token") == session_token:
-            return dict(existing)
+        # If we already evaluated this game for this champion, return the
+        # cached decision verbatim (a copy - the caller may mutate it).
+        if existing:
+            if clock is None:
+                same = existing.get("session_token") == session_token
+            else:
+                same = _same_synthetic_session(
+                    _SESSION_CLOCK.get(champion), clock["start"], clock["game_time"])
+                if same:
+                    # Follow the drift (sample age, pauses) poll by poll.
+                    _SESSION_CLOCK[champion] = clock
+            if same:
+                return _copy_entry(existing)
         # Stale entry (different session) -> fall through to re-evaluate.
 
-    level = int(lc.get("level") or 1)
-    mode_engine = _engine_mode(lc)
+    level = _level(lc.get("level"))
 
     # Resolve item name for the message + payload. Blank is tolerated: the
     # message below falls back to the raw id so the nudge never renders a
     # hole where the item should be.
     first_item_name = _resolve_item_name(
-        lc.get("owned_items") or [],
+        lc.get("owned_items"),
         owned_item_ids,
         first_item_id,
         mode_engine,
@@ -453,8 +627,12 @@ def compute_nudge_payload(
     entry = result.to_dict()
     entry["fired_at"] = time.time()
     with _NUDGE_LOCK:
-        _NUDGE_STATE[champion] = entry
-    return dict(entry)
+        _remember(_NUDGE_STATE, champion, entry)
+        if clock is None:
+            _SESSION_CLOCK.pop(champion, None)
+        else:
+            _remember(_SESSION_CLOCK, champion, clock)
+    return _copy_entry(entry)
 
 
 def dismiss_nudge(champion: str) -> bool:
@@ -462,9 +640,9 @@ def dismiss_nudge(champion: str) -> bool:
     if a nudge entry existed for the champion. Idempotent - re-dismissing
     a dismissed nudge is fine.
     """
+    champion = _text(champion)
     if not champion:
         return False
-    champion = str(champion).strip()
     with _NUDGE_LOCK:
         entry = _NUDGE_STATE.get(champion)
         if not entry:
@@ -478,9 +656,11 @@ def reset_nudge_state() -> None:
     """Drop the entire cache. Test-only helper."""
     with _NUDGE_LOCK:
         _NUDGE_STATE.clear()
+        _SESSION_CLOCK.clear()
 
 
 def get_nudge_state_snapshot() -> dict[str, dict]:
-    """Return a deep-ish copy of the cache for diagnostics / tests."""
+    """Return a copy of the cache for diagnostics / tests (no list in it
+    is shared with the live cache)."""
     with _NUDGE_LOCK:
-        return {k: dict(v) for k, v in _NUDGE_STATE.items()}
+        return {k: _copy_entry(v) for k, v in _NUDGE_STATE.items()}

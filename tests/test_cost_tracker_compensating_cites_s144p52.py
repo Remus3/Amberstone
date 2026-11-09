@@ -107,7 +107,7 @@ HOLDS = (
     (TRACKER, "_purpose_to_gate", 'meta["purposes"]'),
     (POLLED, "read_json_dict", "except OSError"),
     (POLLED, "read_json_dict", "except UnicodeDecodeError"),
-    (POLLED, "read_json_dict", "except json.JSONDecodeError"),
+    (POLLED, "read_json_dict", "except (ValueError, RecursionError)"),
     (POLLED, "atomic_write_json", "json.dumps("),
     (POLLED, "atomic_write_json", "_write_then_replace("),
 )

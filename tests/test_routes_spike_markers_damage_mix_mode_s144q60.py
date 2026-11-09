@@ -26,6 +26,7 @@ web/js/panels/ds_mode_allowlist_s144q60.test.mjs.
 from __future__ import annotations
 
 import json
+import types
 import unittest
 from unittest import mock
 
@@ -178,6 +179,11 @@ class DamageMixModeTests(_ModeContract, unittest.TestCase):
 
         def _fake_snapshot():
             self.snapshot_loads += 1
+            # S144-T-595: the route resolves champ_id / items itself before
+            # the (stubbed) compute, so the stand-in carries both.
+            return types.SimpleNamespace(
+                patch="0.0.0", champions={"Garen": {"key": "86"}},
+                items={"3074": {}})
 
         for patcher in (
             mock.patch("core.damage_mix.compute_damage_mix", _fake),
@@ -204,7 +210,7 @@ class DamageMixModeTests(_ModeContract, unittest.TestCase):
             (f"/api/damage-mix?items=3074&mode={_MARKER}", "champ_id_required"),
             (f"/api/damage-mix?champ_id=Garen&mode={_MARKER}", "items_required"),
             (f"/api/damage-mix?champ_id=Garen&items=3074&level=99&mode={_MARKER}",
-             "level_out_of_range:99"),
+             "level_out_of_range"),
         )
         for path, error in cases:
             with self.subTest(path=path):

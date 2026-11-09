@@ -133,3 +133,37 @@ def test_scratch_file_is_not_left_behind_on_keyboard_interrupt(tmp_path):
             atomic_write_bytes(target, b"data")
     assert rec.attempts >= 1, "the injected KeyboardInterrupt never fired"
     assert list(tmp_path.iterdir()) == []
+
+
+# A str holding a lone surrogate (what json.loads yields for an escaped
+# "\\ud800") has no UTF-8 encoding, so serializing with ensure_ascii=False and
+# encoding used to raise UnicodeEncodeError - a read-modify-write of a file
+# carrying such an escape crashed the writer. The fallback re-serializes with
+# ensure_ascii=True: valid JSON, pure ASCII, and it reads back to the same str.
+
+def test_atomic_write_json_round_trips_a_lone_surrogate(tmp_path):
+    target = tmp_path / "surrogate.json"
+    payload = {"name": "a\ud800b", "nested": ["\udfff"]}
+    atomic_write_json(target, payload)
+    raw = target.read_bytes()
+    raw.decode("ascii")
+    assert json.loads(raw.decode("utf-8")) == payload
+    assert _names_in(tmp_path) == ["surrogate.json"]
+
+
+def test_atomic_write_json_keeps_raw_utf8_when_the_payload_is_encodable(tmp_path):
+    """The fallback must not change the bytes of any payload that encoded fine."""
+    target = tmp_path / "accent.json"
+    atomic_write_json(target, {"name": "caf\u00e9"})
+    assert target.read_bytes() == json.dumps(
+        {"name": "caf\u00e9"}, indent=2, ensure_ascii=False
+    ).encode("utf-8")
+    assert b"\\u00e9" not in target.read_bytes()
+
+
+def test_atomic_write_json_fallback_honours_indent(tmp_path):
+    target = tmp_path / "surrogate_indent.json"
+    atomic_write_json(target, {"a": "\ud800", "b": [1]}, indent=4)
+    assert target.read_bytes() == json.dumps(
+        {"a": "\ud800", "b": [1]}, indent=4, ensure_ascii=True
+    ).encode("ascii")
