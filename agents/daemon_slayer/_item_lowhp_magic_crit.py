@@ -11,6 +11,8 @@ pen, 10 flat against the SR 15), and no
 magic-crit / can-crit path exists anywhere in ``agents/daemon_slayer/``. A live
 delta==0 probe (Xerath L11 + [4645], SR) confirmed ``total_burst_damage`` is
 byte-identical at target ``hp_pct`` 0.41 vs 0.39 today - the +20% never fires.
+(That probe predates the opt-in seam below; with the seam OFF, the default, it
+still holds.)
 
 A genuinely NEW damage-layer axis, distinct from every credited amp:
   * It is GATED on the TARGET's current HP (< 40%) - a NEW gate condition no
@@ -31,9 +33,11 @@ for its keystone / missing-HP amps), so there is no uptime assumption - only the
 magnitude, which is directly DDragon-sourced.
 
 MAGNITUDES (per-id, NOT identical - the SR and Arena mirrors differ, each
-directly DDragon-verified at 16.13.1; no Meraki-vs-DDragon conflict since
-Shadowflame is DDragon-only in the item index):
-  * 4645   - Shadowflame (SR, ``maps.11``; 110 AP / 15 magic pen): +0.20.
+directly DDragon-verified at 16.13.1 and re-verified at 16.22.1, S144-D-371).
+There is no Meraki-vs-DDragon conflict: Meraki carries the base id 4645
+("critically strike for 120% damage against enemies below 40% maximum health",
+the same +20%) and has no row for the Arena mirror:
+  * 4645   - Shadowflame (live on maps 11, 12 and 453; 110 AP / 15 magic pen): +0.20.
   * 224645 - Shadowflame (Arena mirror, ``maps.30``; 90 AP / 10 magic pen): +0.15.
 Both gate at the SAME 40% threshold; the amp value is the ONLY per-id difference.
 
