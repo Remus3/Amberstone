@@ -118,7 +118,7 @@ class _LiveChild:
         if sys.platform.startswith("win"):
             subprocess.run(
                 ["taskkill", "/F", "/PID", str(self._proc.pid)],
-                capture_output=True, timeout=10,
+                capture_output=True, timeout=10, check=False,
             )
         else:
             self._proc.kill()

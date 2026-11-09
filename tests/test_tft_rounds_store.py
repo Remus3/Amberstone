@@ -954,7 +954,7 @@ def test_analysis_exports_default_under_data_tft_exports(store, tmp_path, monkey
 
 def _git(*args):
     return subprocess.run(["git", *args], cwd=str(ROOT), capture_output=True, text=True,
-                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                          check=False, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 def test_data_tft_is_gitignored_and_holds_no_tracked_file():

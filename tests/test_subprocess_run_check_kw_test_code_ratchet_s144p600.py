@@ -31,6 +31,9 @@ through sanitize_agent6_atomic_write_rm258, bar the ratchet modules and rm750_ds
 which lane/true-audit changed, between them); slice 11 (S144-P-611) does the same for the next twelve
 (sanitize_agent6_reports through strip_em_dashes_atomic_write_rm258, bar the ratchet modules, the
 two-site files and status_helper_rc2, which another lane branch changed, between them);
+slice 12 (S144-P-612) does the same for twelve more one-site files (stop_claim_gate_span_scan_rm814
+through truth_gate_git_paths_rm861, bar the ratchet modules, the two-site files and the
+third_party_notices_pkg file, whose subject is the rc-shell lockfile, between them);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -193,23 +196,11 @@ _BASELINE = {
     "tests/test_sorted_first_min_test_code_ratchet_s144p168.py": 1,
     "tests/test_startswith_tuple_and_identity_comprehension_ratchet_s144p114.py": 1,
     "tests/test_status_helper_rc2.py": 1,
-    "tests/test_stop_claim_gate_span_scan_rm814.py": 1,
-    "tests/test_strip_smart_quotes_atomic_write_rm258.py": 1,
-    "tests/test_strip_u2500_atomic_write_rm258.py": 1,
-    "tests/test_suite_tmp_hygiene_rm828.py": 1,
-    "tests/test_supervisor_rc_log_tee_rm909d.py": 1,
-    "tests/test_supervisor_sentinel_selfheal.py": 1,
-    "tests/test_team_planner_sync_no_import_probe_s144p21.py": 1,
     "tests/test_ternary_or_ratchet_s144p143.py": 1,
     "tests/test_test_code_misc_idiom_ratchet_s144p246.py": 1,
     "tests/test_text_first_guard.py": 2,
-    "tests/test_tft_engine_guards.py": 1,
     "tests/test_tft_meta_provenance_rm846.py": 2,
-    "tests/test_tft_rounds_store.py": 1,
-    "tests/test_third_party_notices_atomic_write_rm258.py": 1,
     "tests/test_third_party_notices_pkg.py": 1,
-    "tests/test_truth_gate.py": 1,
-    "tests/test_truth_gate_git_paths_rm861.py": 1,
     "tests/test_try401_sim110_furb171_ratchet_s144p148.py": 1,
     "tests/test_type_ignore_code_needless_lambda_ratchet_s144p149.py": 1,
     "tests/test_u2500_candidate_sweep.py": 1,
@@ -363,6 +354,18 @@ _FIXED = (
     "tests/test_stop_claim_gate_heredoc_summary_scan_rm829.py",
     "tests/test_stop_claim_gate_option_scan_rm765.py",
     "tests/test_strip_em_dashes_atomic_write_rm258.py",
+    "tests/test_stop_claim_gate_span_scan_rm814.py",
+    "tests/test_strip_smart_quotes_atomic_write_rm258.py",
+    "tests/test_strip_u2500_atomic_write_rm258.py",
+    "tests/test_suite_tmp_hygiene_rm828.py",
+    "tests/test_supervisor_rc_log_tee_rm909d.py",
+    "tests/test_supervisor_sentinel_selfheal.py",
+    "tests/test_team_planner_sync_no_import_probe_s144p21.py",
+    "tests/test_tft_engine_guards.py",
+    "tests/test_tft_rounds_store.py",
+    "tests/test_third_party_notices_atomic_write_rm258.py",
+    "tests/test_truth_gate.py",
+    "tests/test_truth_gate_git_paths_rm861.py",
 )
 
 

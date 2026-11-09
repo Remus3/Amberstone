@@ -44,7 +44,8 @@ def _child(code: str, env: dict) -> list:
     proc = subprocess.run(
         [sys.executable, "-c", f"import sys, os, json; sys.path.insert(0, r'{REPO}')\n" + code],
         cwd=str(REPO), env=env, capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=180, creationflags=_FLAGS)
+        encoding="utf-8", errors="replace", timeout=180, check=False,
+        creationflags=_FLAGS)
     assert proc.returncode == 0, f"child failed rc={proc.returncode}:\n{proc.stderr[-1500:]}"
     lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
     assert lines, f"child printed nothing:\n{proc.stderr[-1500:]}"

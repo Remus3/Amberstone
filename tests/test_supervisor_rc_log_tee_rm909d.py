@@ -50,7 +50,8 @@ def _child(code: str, log_dir: Path) -> dict:
     proc = subprocess.run(
         [sys.executable, "-c", f"import sys; sys.path.insert(0, r'{REPO}');\n" + code],
         cwd=str(log_dir), env=env, capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=120, creationflags=_FLAGS)
+        encoding="utf-8", errors="replace", timeout=120, check=False,
+        creationflags=_FLAGS)
     assert proc.returncode == 0, f"child failed rc={proc.returncode}:\n{proc.stderr[-1500:]}"
     lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
     assert lines, f"child printed nothing:\n{proc.stderr[-1500:]}"

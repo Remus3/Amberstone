@@ -127,7 +127,7 @@ def test_check_git_decodes_utf8_under_a_cp1252_locale(tmp_path, git_env):
     )
     env = {k: v for k, v in git_env.items() if k not in ("PYTHONUTF8", "PYTHONIOENCODING")}
     out = subprocess.run([sys.executable, "-X", "utf8=0", "-c", code, str(_TG), str(repo)],
-                         capture_output=True, env=env)
+                         capture_output=True, env=env, check=False)
     assert out.returncode == 0, out.stderr.decode("utf-8", "replace")[-600:]
     obs = json.loads(out.stdout.decode("ascii"))
     assert obs["dirty_files"] == ["?? " + rel]
