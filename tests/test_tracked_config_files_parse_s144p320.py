@@ -19,6 +19,7 @@ Nothing is grandfathered: fix the file, never widen this test.
 from __future__ import annotations
 
 import json
+import sys
 import tomllib
 from pathlib import Path
 
@@ -98,10 +99,21 @@ def _toml_problem(raw: bytes) -> str:
     return ""
 
 
+# A git-LFS pointer stub: what a checkout without the LFS smudge (every hosted CI
+# run: no workflow passes `lfs:` to actions/checkout) holds in place of the file.
+# It is not the file's content, so it is not judged; a smudged checkout reads the
+# real bytes and checks them (s156: hosted docs-guards read 7 LFS laning-scenario
+# pointers as JSONDecodeError).
+_LFS_POINTER = b"version https://git-lfs.github.com/spec/v1\n"
+
+
 def _problems(patterns, check) -> list[str]:
     out = []
     for path in repo_files(REPO_ROOT, patterns):
-        problem = check(Path(path).read_bytes())
+        raw = Path(path).read_bytes()
+        if raw.startswith(_LFS_POINTER):
+            continue
+        problem = check(raw)
         if problem:
             out.append(f"{relative_posix(path)}: {problem}")
     return out
@@ -160,3 +172,17 @@ def test_toml_checker_flags_a_repeated_key_and_a_parse_error():
     assert _toml_problem(b"a = 1\na = 2\n") != ""
     assert _toml_problem(b"a = \n") != ""
     assert _toml_problem(b"a = 1\n[t]\na = 2\n") == ""
+
+
+def test_an_lfs_pointer_is_not_judged_but_its_smudged_content_is(tmp_path, monkeypatch):
+    """Positive control for the pointer skip: only the exact LFS header is skipped,
+    and a broken file that merely mentions it is still flagged."""
+    pointer = _LFS_POINTER + b"oid sha256:" + b"0" * 64 + b"\nsize 12\n"
+    broken = b"{ not json " + _LFS_POINTER
+    (tmp_path / "p.json").write_bytes(pointer)
+    (tmp_path / "b.json").write_bytes(broken)
+    this = sys.modules[__name__]
+    monkeypatch.setattr(this, "repo_files", lambda root, patterns: [tmp_path / "p.json", tmp_path / "b.json"])
+    monkeypatch.setattr(this, "relative_posix", lambda p: Path(p).name)
+    assert _json_problem(pointer) != "", "the pointer is not JSON, so the skip must be what spares it"
+    assert [p.split(":")[0] for p in _problems(("*.json",), _json_problem)] == ["b.json"]
