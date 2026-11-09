@@ -3046,7 +3046,17 @@ def _unwrapped(words):
 # single-quoted value is a literal in both shells, and bash `r=(...)` is an
 # array of words. Only a substitution that is the WHOLE value is read
 # (`x="a $(cmd) b"` is not, filed under S144-Q-127).
-_PS_ASSIGN_HEAD = re.compile(r"\$(?:env:)?\w+\s*\+?=(?!=)\s*", re.IGNORECASE)
+# S144-Q-141: a PowerShell target may carry type literals (`[string]$r`,
+# `[List[string]]$r`, `[ValidateNotNull()][string]$r`), a scope or drive
+# (`$global:r`, `$env:R`), braces (`${r}`, `${my var}`), an index or a
+# member (`$r[0]`, `$o.p`), several targets (`$a, $b`), a compound operator
+# (`-=`, `*=`, `/=`, `%=`, `??=`), and a chain (`$a = $b = cmd`).
+_PS_TYPE = r"\[(?:[^\[\]]|\[(?:[^\[\]]|\[[^\[\]]*\])*\])*\]"
+_PS_TARGET = (rf"(?:{_PS_TYPE}\s*)*(?:\$\{{[^}}]+\}}|\$(?:\w+:)?\w+)"
+              r"(?:\.\w+|\[[^\]]*\])*")
+_PS_ASSIGN_HEAD = re.compile(
+    rf"{_PS_TARGET}(?:\s*,\s*{_PS_TARGET})*\s*(?:[-+*/%]|\?\?)?=(?!=)\s*",
+    re.IGNORECASE)
 _SH_ASSIGN_HEAD = re.compile(
     r"(?:(?:export|local|readonly|declare|typeset)(?:\s+-\w+)*\s+)?[A-Za-z_]\w*\+?=")
 
@@ -3077,6 +3087,8 @@ def _assignment_command(statement):
     ps = _PS_ASSIGN_HEAD.match(text)
     if ps:
         value = text[ps.end():].strip()
+        while (chained := _PS_ASSIGN_HEAD.match(value)) is not None:
+            value = value[chained.end():].strip()  # `$a = $b = cmd`
         body = _substituted(value, powershell=True)
         if body is None and value and value[0] not in "'\"$":
             body = value  # `$r = bash -c '...'`: PowerShell runs it
