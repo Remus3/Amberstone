@@ -182,11 +182,11 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_ascii(self) -> None:
         import agents.daemon_slayer._passive_heal_overrides as m
 
-        src = Path(m.__file__).open(encoding="utf-8").read()
+        src = Path(m.__file__).read_text(encoding="utf-8")
         self.assertTrue(src.isascii())
 
     def test_self_ascii(self) -> None:
-        src = Path(__file__).open(encoding="utf-8").read()
+        src = Path(__file__).read_text(encoding="utf-8")
         self.assertTrue(src.isascii())
 
 

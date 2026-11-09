@@ -7062,7 +7062,7 @@ class Batch55DDragonCoverageTests(unittest.TestCase):
         from pathlib import Path
         items_path = (Path(__file__).absolute().parents[3] / "data"
                       / "daemon_slayer" / "16.10.1" / "items.json")
-        items = json.load(Path(items_path).open())["data"]
+        items = json.loads(Path(items_path).read_text(encoding="utf-8"))["data"]
         covered = set(ITEM_EFFECTS.keys())
         missing = []
         for k, v in items.items():

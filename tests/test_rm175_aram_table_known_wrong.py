@@ -247,7 +247,8 @@ def _table_bytes_or_skip(patch: str) -> Path:
     if not path.is_file():
         reason = f"{path} absent (table not on disk)"
     else:
-        head = path.open("rb").read(64)
+        with path.open("rb") as fh:
+            head = fh.read(64)
         if head.startswith(b"version https://git-lfs"):
             reason = f"{path} is an unfetched git-LFS pointer; run git lfs pull"
     if reason:

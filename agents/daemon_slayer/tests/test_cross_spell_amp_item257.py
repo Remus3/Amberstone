@@ -195,11 +195,11 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_ascii(self):
         import agents.daemon_slayer._ability_amp_overrides as m
 
-        raw = Path(m.__file__).open(encoding="utf-8").read()
+        raw = Path(m.__file__).read_text(encoding="utf-8")
         self.assertEqual(raw, raw.encode("ascii", "replace").decode("ascii"))
 
     def test_test_file_ascii(self):
-        raw = Path(__file__).open(encoding="utf-8").read()
+        raw = Path(__file__).read_text(encoding="utf-8")
         self.assertEqual(raw, raw.encode("ascii", "replace").decode("ascii"))
 
 
