@@ -120,7 +120,7 @@ def test_check_passes_on_the_committed_table(label, tmp_path, monkeypatch, capsy
 def test_check_still_catches_a_content_drift(label, tmp_path, monkeypatch, capsys):
     mod, path, _ = _TABLES[label]
     table = _read(path)
-    champ = sorted(table["champions"])[0]
+    champ = min(table["champions"])
     table["champions"][champ]["items"] = table["champions"][champ]["items"][:-1] or [
         {"id": "1001", "lift": 1.0, "name": "Boots", "rewind_n": 99, "rewind_wr": 50.0}
     ]
@@ -171,7 +171,7 @@ def test_kit_axis_check_keeps_the_committed_stamp(tmp_path, monkeypatch):
     monkeypatch.setattr(kit_b, "build", lambda: copy.deepcopy(fresh))
     out = _copy_table(kit_b._OUT, tmp_path)
     assert _run_check(kit_b, monkeypatch, out) == 0
-    fresh["champions"].pop(sorted(fresh["champions"])[0])
+    fresh["champions"].pop(min(fresh["champions"]))
     assert _run_check(kit_b, monkeypatch, out) == 2
 
 
@@ -314,7 +314,7 @@ def test_the_filter_checkers_are_not_blind(snap):
         i for i, r in snap.items.items()
         if r.get("into") and "Boots" not in (r.get("tags") or [])
     )
-    cluster_a = sorted(rf3_b._EXCLUDE_CHAMPS)[0]
+    cluster_a = min(rf3_b._EXCLUDE_CHAMPS)
     planted = {"champions": {cluster_a: {"axis": "tank", "items": [
         {"id": boots, "name": snap.items[boots]["name"]},
         {"id": comp, "name": "Thornmail"},

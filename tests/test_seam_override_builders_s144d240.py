@@ -119,7 +119,7 @@ def test_check_reports_content_drift(label, tmp_path, monkeypatch, capsys):
     mod, path = _BUILDERS[label]
     out = _copy(path, tmp_path)
     table = _read(out)
-    table["champions"].pop(sorted(table["champions"])[0])
+    table["champions"].pop(min(table["champions"]))
     out.write_text(json.dumps(table, indent=2, ensure_ascii=True) + "\n",
                    encoding="utf-8")
     before = out.read_bytes()

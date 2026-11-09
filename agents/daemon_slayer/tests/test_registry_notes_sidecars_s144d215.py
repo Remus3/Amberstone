@@ -248,7 +248,7 @@ class TestSidecarsWellFormed(_Base):
                 )
 
     def test_dedupe_keys_match_builders(self) -> None:
-        for axis, (_attr, slot_field, key_fields) in _AXES.items():
+        for axis, (_attr, _slot_field, key_fields) in _AXES.items():
             with self.subTest(axis=axis):
                 src = (_TOOLS_DIR / f"ds_{axis}_build.py").read_text(encoding="utf-8")
                 found = re.findall(r"^\s+key = \(([^)]*)\)", src, flags=re.M)
