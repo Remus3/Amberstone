@@ -188,3 +188,106 @@ def test_replay_buffer_hook_is_a_no_op_until_rm637():
     # Named hook for the future SaveReplayBuffer call; must not reach OBS now.
     assert mm.request_replay_buffer_save(
         {"game_id": None, "game_time_s": 1.0, "wall_ts": 2.0}) is False
+
+
+# -- S144-T true-audit (cycle 239): rows the readers reject never get written --
+#
+# read_marks_strict raises MarksUnreadable on ANY line that is not a well-formed
+# mark row, so one bad append poisons every later strict read for good (the
+# RM-640 VOD retention then can never prove a zero mark count). These pin that
+# the write side refuses exactly what the read side rejects.
+
+def test_build_mark_rejects_an_unusable_wall_ts():
+    # Before: None / "x" raised TypeError / ValueError out of build_mark, and
+    # nan / inf produced a row json.dumps writes as NaN / Infinity.
+    for bad in (None, "x", float("nan"), float("inf"), float("-inf"), True):
+        assert mm.build_mark({"gameTime": 5.0}, game_id="7001", wall_ts=bad) is None
+
+
+@pytest.mark.parametrize("bad", [
+    {"game_id": "7001", "game_time_s": float("nan"), "wall_ts": 1.0},
+    {"game_id": "7001", "game_time_s": 1.0, "wall_ts": float("inf")},
+    {"game_id": "7001", "game_time_s": 1.0},
+    {"game_id": "7001", "wall_ts": 1.0},
+    {"game_id": "7001", "game_time_s": None, "wall_ts": 1.0},
+    {"game_id": "7001", "game_time_s": True, "wall_ts": 1.0},
+    ["7001", 1.0, 1.0],
+    None,
+])
+def test_append_refuses_a_row_the_strict_reader_would_reject(tmp_path, bad):
+    p = tmp_path / "m.jsonl"
+    with pytest.raises(ValueError):
+        mm.append_mark(bad, p)
+    assert not p.exists()
+
+
+def test_a_refused_append_leaves_the_strict_read_provable(tmp_path):
+    p = tmp_path / "m.jsonl"
+    mm.append_mark({"game_id": "7001", "game_time_s": 1.0, "wall_ts": 2.0}, p)
+    with pytest.raises(ValueError):
+        mm.append_mark({"game_id": "7001", "game_time_s": float("nan"),
+                        "wall_ts": 3.0}, p)
+    assert mm.read_marks_strict(p) == [
+        {"game_id": "7001", "game_time_s": 1.0, "wall_ts": 2.0}]
+
+
+def test_append_writes_the_canonical_row_only(tmp_path):
+    p = tmp_path / "m.jsonl"
+    mm.append_mark({"game_id": 7001, "game_time_s": 1, "wall_ts": 2.0,
+                    "extra": float("nan")}, p)
+    assert p.read_bytes() == b'{"game_id": "7001", "game_time_s": 1.0, "wall_ts": 2.0}\n'
+    mm.append_mark({"game_id": "junk", "game_time_s": 1.0, "wall_ts": 2.0}, p)
+    assert mm.read_marks_strict(p)[1]["game_id"] is None
+
+
+# -- pins_for_match: a corrupt pin file cannot break the route's JSON ----------
+
+def test_pins_for_match_drops_non_finite_and_malformed_pins(tmp_path):
+    # json.loads accepts NaN / Infinity, and the Replay / PGR routes serialise
+    # the pins with a default json.dumps, which writes them back as bare NaN -
+    # invalid JSON that makes the browser's JSON.parse reject the whole payload.
+    (tmp_path / "7001.json").write_text(
+        '{"game_id": "7001", "pins": ['
+        '{"clock_s": 1, "game_time_s": NaN, "wall_ts": 1.0, "label": "you flagged"},'
+        '{"clock_s": 2, "game_time_s": 2.5, "wall_ts": Infinity, "label": "you flagged"},'
+        '{"clock_s": 3, "game_time_s": "3", "wall_ts": 1.0},'
+        '{"clock_s": 4, "game_time_s": 4.5, "wall_ts": 9.0, "label": "you flagged",'
+        ' "extra": NaN}'
+        ']}', encoding="ascii")
+    pins = mm.pins_for_match("NA1_7001", tmp_path)
+    # The numeric-string pin is kept, rebuilt as numbers (the same _finite rule
+    # every reader here applies); the extra NaN key is dropped with the rebuild.
+    assert pins == [{"clock_s": 3, "game_time_s": 3.0, "wall_ts": 1.0,
+                     "label": "you flagged"},
+                    {"clock_s": 4, "game_time_s": 4.5, "wall_ts": 9.0,
+                     "label": "you flagged"}]
+    json.dumps(pins, allow_nan=False)   # strict JSON round-trips
+
+
+# -- attach window: an implausible game length is clamped ----------------------
+
+def test_attach_clamps_an_implausible_game_length(tmp_path):
+    # Match-V5 gameDuration was MILLISECONDS before patch 11.20; a length in ms
+    # would open a window weeks wide and attach every null-gameId mark ever
+    # pressed. The window's lower edge is capped at MAX_GAME_LENGTH_S.
+    marks = tmp_path / "m.jsonl"
+    ended = 10_000_000.0
+    _seed(marks, [
+        {"game_id": None, "game_time_s": 7.0, "wall_ts": ended - 600.0},
+        {"game_id": None, "game_time_s": 8.0, "wall_ts": ended - 86_400.0 * 3},
+    ])
+    pins = mm.attach_for_game("7001", 1_800_000, ended, marks_file=marks,
+                              out_dir=tmp_path / "o")
+    assert [p["game_time_s"] for p in pins] == [7.0]
+    edge = ended - mm.MAX_GAME_LENGTH_S - mm.ATTACH_SLACK_S
+    _seed(marks, [{"game_id": None, "game_time_s": 9.0, "wall_ts": edge},
+                  {"game_id": None, "game_time_s": 10.0, "wall_ts": edge - 1.0}])
+    pins = mm.attach_for_game("7002", 1e9, ended, marks_file=marks,
+                              out_dir=tmp_path / "o")
+    assert [p["game_time_s"] for p in pins] == [9.0]
+
+
+def test_select_marks_skips_rows_without_a_usable_wall_ts():
+    rows = [{"game_id": None}, "junk", None, {"game_id": None, "wall_ts": "x"},
+            {"game_id": None, "wall_ts": 5.0, "game_time_s": 1.0}]
+    assert mm.select_marks_for_game(rows, "7001", 0.0, 10.0) == [rows[-1]]
