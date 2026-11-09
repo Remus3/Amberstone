@@ -171,8 +171,9 @@ class RegistryInvariantTests(unittest.TestCase):
             self.assertEqual(len(slots), len(set(slots)), champ)
 
     def test_roster_coverage(self):
-        # 10-channel roster fan-out: 56 entries / 45 champions. Re-running
-        # tools/ds_sustain_build.py against a fresh scan updates these pins.
+        # 10-channel roster fan-out: 56 entries / 45 champions.
+        # tools/ds_sustain_build.py is one-shot (S144-D-244): a fresh scan
+        # updates these pins by hand.
         self.assertEqual(len(_SUSTAIN_REGISTRY), 45)
         total = sum(len(v) for v in _SUSTAIN_REGISTRY.values())
         self.assertEqual(total, 56)

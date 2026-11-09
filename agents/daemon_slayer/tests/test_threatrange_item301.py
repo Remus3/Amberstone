@@ -62,8 +62,8 @@ class MechanismValueMathTests(unittest.TestCase):
 
 
 class HandVerifiedChampionTests(unittest.TestCase):
-    # Pinned exact values; re-running tools/ds_threatrange_build.py against a
-    # fresh scan updates them.
+    # Pinned exact values. tools/ds_threatrange_build.py is one-shot
+    # (S144-D-244), so a fresh scan updates them by hand.
     def test_xerath_artillery_identity(self):
         # Xerath: Q/W ARTILLERY POKE + E ARTILLERY CC + R GLOBAL BURST (cond)
         # + BASE MEDIUM SUSTAINED -> 2.28, top ARTILLERY, artillery True.
@@ -221,8 +221,9 @@ class RegistryInvariantTests(unittest.TestCase):
 
     def test_roster_coverage(self):
         # 10-channel roster fan-out: 725 entries / 171 champions (full roster),
-        # 33 GLOBAL + 71 ARTILLERY mechanisms. Re-running
-        # tools/ds_threatrange_build.py against a fresh scan updates these.
+        # 33 GLOBAL + 71 ARTILLERY mechanisms.
+        # tools/ds_threatrange_build.py is one-shot (S144-D-244): a fresh scan
+        # updates these by hand.
         self.assertEqual(len(_THREATRANGE_REGISTRY), 171)
         total = sum(len(v) for v in _THREATRANGE_REGISTRY.values())
         self.assertEqual(total, 725)

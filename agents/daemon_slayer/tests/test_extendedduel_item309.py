@@ -71,8 +71,8 @@ class MechanismValueMathTests(unittest.TestCase):
 
 
 class HandVerifiedChampionTests(unittest.TestCase):
-    # Pinned exact values; re-running tools/ds_extendedduel_build.py against a
-    # fresh scan updates them.
+    # Pinned exact values. tools/ds_extendedduel_build.py is one-shot
+    # (S144-D-244), so a fresh scan updates them by hand.
     def test_kalista_single_ramp(self):
         # Kalista RAMP SUSTAINED 0.65 -> 0.65; top RAMP, ramps True.
         r = compute_extendedduel("Kalista")
@@ -248,8 +248,9 @@ class RegistryInvariantTests(unittest.TestCase):
     def test_roster_coverage(self):
         # Roster fan-out (selective but broad axis - most fighters / skirmishers
         # carry an attrition tool): 283 entries / 111 champions; 63 of them bring a
-        # RAMP mechanism (the ramps set), 81 rows are conditional. Re-running
-        # tools/ds_extendedduel_build.py against a fresh scan updates these.
+        # RAMP mechanism (the ramps set), 81 rows are conditional.
+        # tools/ds_extendedduel_build.py is one-shot (S144-D-244): a fresh scan
+        # updates these by hand.
         self.assertEqual(len(_EXTENDEDDUEL_REGISTRY), 111)
         total = sum(len(v) for v in _EXTENDEDDUEL_REGISTRY.values())
         self.assertEqual(total, 283)
