@@ -8,7 +8,9 @@ response variable). ``l`` is the one letter indistinguishable from ``1`` and ``I
 became ``left`` / ``top`` / ``right`` / ``bottom`` (or ``ln`` / ``lean`` / ``msg`` / ``lcu``): agents/_minimap_bbox.py,
 coaches/_base_coach.py, core/aram_comp_verdict.py, core/vision_profiles.py, core/vision_tesseract.py,
 tools/bootstrap_env_check.py, tools/match_monitor.py, tools/screen_agent.py. What is left is held in ``_BASELINE``
-(rel path -> count), which only shrinks: the DS test file and coaches/replay_coach.py belong to another lane branch.
+(rel path -> count), which only shrinks: coaches/replay_coach.py belongs to another lane branch. The DS test file
+agents/daemon_slayer/tests/test_engine_concurrency_p1l15.py (8 hits, the lambda default ``l=lvl``) became ``lv`` in
+S144-P-491.
 The 11 test files that held 13 hits became ``left`` / ``ln`` in S144-P-485 (tests/fu01_minimap/
 test_http_override.py, test_aram_coach_shadow_choices_native_emit, test_lcu_cmd_payload_schema_rm296a,
 test_minimap_geometry, test_replay_narrative_shadow, test_tft_cv_ocr_fields, test_vision_anchor_model_rm26,
@@ -40,9 +42,8 @@ pytestmark = pytest.mark.skipif(
     reason="ruff is not importable by this interpreter",
 )
 
-# DS test + replay_coach (another lane branch owns them). Only shrinks.
+# replay_coach (the true-audit lane branch changed it). Only shrinks.
 _BASELINE = {
-    "agents/daemon_slayer/tests/test_engine_concurrency_p1l15.py": 8,
     "coaches/replay_coach.py": 1,
 }
 

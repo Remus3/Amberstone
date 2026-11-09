@@ -5,8 +5,10 @@ ruff.toml ignores E731 ("intentional one-liners in RC") for the WHOLE tree. Meas
 (``coaches/aram_team_analyzer.py`` ``norm``, ``core/synergy_external_source.py`` ``_utcnow``, ``tools/drift_guard.py``
 ``_norm``) and the rest test stubs. A named lambda has no ``__name__`` of its own in a traceback (``<lambda>``), and
 the ``_utcnow`` injectable clock is exactly the seam a test patches, so a ``def`` reads better in the one place it
-matters. Those 27 sites in 9 files became ``def`` (or a small factory for the repeated stub shape); the 7 left are
-DS tests another lane branch owns, held in ``_BASELINE`` (rel path -> count), which only shrinks.
+matters. Those 27 sites in 9 files became ``def`` (or a small factory for the repeated stub shape); the last 7, in
+two DS tests (test_build_recommendation_p1l5: six ``delta`` selectors now ``operator.attrgetter``;
+test_engine_robustness_p1l12: one ``sig`` now a nested ``def``), went in S144-P-491, so ``_BASELINE`` (rel path ->
+count) is empty and stays the place a future exception would have to be argued for.
 
 The ratchet runs ruff with NO config, so the waiver cannot hide a hit, over the tracked files only:
 
@@ -33,11 +35,9 @@ pytestmark = pytest.mark.skipif(
     reason="ruff is not importable by this interpreter",
 )
 
-# DS tests (lane/ds owns them while it has unlanded commits). The set only shrinks.
-_BASELINE = {
-    "agents/daemon_slayer/tests/test_build_recommendation_p1l5.py": 6,
-    "agents/daemon_slayer/tests/test_engine_robustness_p1l12.py": 1,
-}
+# Empty since S144-P-491: the last 7 sites (two DS tests) became attrgetter / a nested def.
+# Only shrinks, so it stays empty; a new lambda assignment anywhere fails the ratchet.
+_BASELINE: dict[str, int] = {}
 
 
 def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:

@@ -35,6 +35,7 @@ genuine engine math with no live :8860 server.
 """
 from __future__ import annotations
 
+import operator
 import unittest
 
 from agents.daemon_slayer.ability_dps import rank_items_by_ability_dps
@@ -101,27 +102,27 @@ def _make_adapter(snapshot: DataSnapshot):
         if arch == "tank":
             r = rank_items_by_ehp(snapshot, champion, **common)
             scorer = "ehp"
-            delta = lambda x: x.delta_ehp
+            delta = operator.attrgetter("delta_ehp")
         elif arch == "bruiser":
             r = rank_items_by_hybrid(snapshot, champion, **dmg, **common)
             scorer = "hybrid"
-            delta = lambda x: x.hybrid_delta_pct
+            delta = operator.attrgetter("hybrid_delta_pct")
         elif arch == "mage":
             r = rank_items_by_ability_dps(snapshot, champion, **dmg, **common)
             scorer = "ability"
-            delta = lambda x: x.delta_ability_dps
+            delta = operator.attrgetter("delta_ability_dps")
         elif arch == "assassin":
             r = rank_items_by_burst(snapshot, champion, **dmg, **common)
             scorer = "burst"
-            delta = lambda x: x.delta_burst
+            delta = operator.attrgetter("delta_burst")
         elif arch == "enchanter":
             r = rank_items_by_hps(snapshot, champion, **common)
             scorer = "hps"
-            delta = lambda x: x.delta_hps
+            delta = operator.attrgetter("delta_hps")
         else:
             r = rank_items(snapshot, champion, **common)
             scorer = "dps"
-            delta = lambda x: x.delta_dps
+            delta = operator.attrgetter("delta_dps")
         return {
             "ok": True,
             "scorer": scorer,

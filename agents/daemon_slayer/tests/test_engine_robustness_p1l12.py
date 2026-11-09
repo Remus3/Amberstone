@@ -269,15 +269,17 @@ class BuildChampionRobustnessTests(_SnapBase):
                 build_champion(self.snap, CARRY, level=lv)
 
     def test_determinism(self) -> None:
-        sig = lambda: tuple(
-            sorted(
-                (k, round(v, 9))
-                for k, v in build_champion(
-                    self.snap, CARRY, level=13, item_ids=SIX_AS_ITEMS
-                ).stats.items()
-                if isinstance(v, (int, float))
+        def sig():
+            return tuple(
+                sorted(
+                    (k, round(v, 9))
+                    for k, v in build_champion(
+                        self.snap, CARRY, level=13, item_ids=SIX_AS_ITEMS
+                    ).stats.items()
+                    if isinstance(v, (int, float))
+                )
             )
-        )
+
         self.assertEqual(len({sig() for _ in range(4)}), 1)
 
 
