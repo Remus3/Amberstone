@@ -14,7 +14,6 @@ log no shadow row.
 """
 from __future__ import annotations
 
-import json
 
 from dashboard import _deterministic_coaching as dc
 

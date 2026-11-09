@@ -23,7 +23,6 @@ test_write_status_never_writes_the_destination_directly is.
 
 import json
 import threading
-import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch

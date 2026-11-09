@@ -15,7 +15,6 @@ the same class of bug.
 """
 from __future__ import annotations
 
-import ast
 import pathlib
 import unittest
 

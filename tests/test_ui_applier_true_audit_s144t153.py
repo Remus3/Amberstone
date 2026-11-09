@@ -25,7 +25,6 @@ Findings pinned (RM-1900..RM-1907):
 """
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
