@@ -61,7 +61,9 @@ import threading
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-log = logging.getLogger("rc.web_dashboard")
+from core.draft_meta_freshness import meta_freshness
+
+log =logging.getLogger("rc.web_dashboard")
 
 _BANS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "global_top_bans.json"
 _CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_champions.json"
@@ -272,6 +274,10 @@ def _serve_ban_suggestions(h) -> None:
             "suggestions": suggestions,
             "excluded_count": len(excluded),
             "fell_back": len(suggestions) < top,
+            # s156 S3: the list is hand-curated with no first-party refresh
+            # source; say how old it is vs the live DDragon patch. Additive,
+            # END of dict (core/draft_meta_freshness.py).
+            "freshness": meta_freshness(bans_doc),
         }).encode("utf-8"), "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/champ-select/ban-suggestions: %s", exc)

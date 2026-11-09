@@ -416,6 +416,10 @@ class TestSlotTable:
 
     def test_missing_file_fails_open_and_logs_once(self, monkeypatch, tmp_path, caplog):
         self._reset(monkeypatch, tmp_path / "absent.json")
+        # RM-1378: the writer now has its own legality table; take it away
+        # too so this still measures the fully-unvalidated path.
+        from lcu import lcu_rune_writer
+        monkeypatch.setattr(lcu_rune_writer, "_slot_table", lambda: None)
         with caplog.at_level(logging.WARNING, logger="rc.rune_pages"):
             a = rune_pages.resolve_page("Lethal Tempo", "Precision", "Domination")
             b = rune_pages.resolve_page("Conqueror", "Sorcery", "Precision")

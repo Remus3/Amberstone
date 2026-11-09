@@ -77,6 +77,14 @@ _DMG_SWING = 0.15
 # 101qq external duo-synergy nudge weight when a covered pair is found.
 _DUO_BLEND = 0.30
 
+# RM-1224: what one pair / solo query may legitimately raise. sqlite3.Error
+# covers a locked or malformed corpus; OverflowError is an id outside SQLite's
+# 64-bit INTEGER range at bind time. One bad champion skips only its own
+# pairs, so the other layers (incl. the corpus-free damage_balance and
+# scaling ones) survive. Deliberately NOT Exception: a programming error
+# still reaches the assemble guard and its log line.
+_PAIR_QUERY_ERRORS: tuple[type[BaseException], ...] = (sqlite3.Error, OverflowError)
+
 
 # ======================================================================
 # Pure fusion math (DB-free) - the bulk of the correctness proof.
@@ -168,7 +176,7 @@ def _matchup_layer(conn, ally: list, enemy: Optional[list], qids) -> dict:
         for e in enemy:
             try:
                 _w, g, rate = draft_elo_db.matchup_winrate(conn, a, e, qids)
-            except sqlite3.Error:
+            except _PAIR_QUERY_ERRORS:
                 continue
             rates.append(rate)
             total += g
@@ -187,7 +195,7 @@ def _synergy_layer(conn, ally: list, qids, name_resolver, duo_lookup) -> dict:
             a, b = ally[i], ally[j]
             try:
                 _w, g, rate = draft_elo_db.pair_winrate(conn, a, b, qids, side="ally")
-            except sqlite3.Error:
+            except _PAIR_QUERY_ERRORS:
                 continue
             ext = _duo_rate(a, b, name_resolver, duo_lookup)
             if ext is not None:
@@ -286,7 +294,7 @@ def _base_wr_layer(conn, ally: list, qids) -> dict:
     for c in ally:
         try:
             _w, g, rate = draft_elo_db.solo_winrate(conn, c, qids)
-        except sqlite3.Error:
+        except _PAIR_QUERY_ERRORS:
             continue
         rates.append(rate)
         min_g = g if min_g is None else min(min_g, g)

@@ -52,6 +52,10 @@ _KEYSTONES = {
     # Sorcery
     "Summon Aery":      8214,
     "Arcane Comet":     8229,
+    "Stormraider's Surge": 8230,
+    "Deathfire Touch":  8992,
+    # Legacy pre-rename name of 8230, kept as an alias: champion_loadouts.json
+    # and coaches/sr_draft_profile.py still say "Phase Rush" (RM-1379).
     "Phase Rush":       8230,
     # Resolve
     "Grasp of the Undying": 8437,
@@ -61,6 +65,13 @@ _KEYSTONES = {
     "Glacial Augment":  8351,
     "Unsealed Spellbook": 8360,
     "First Strike":     8369,
+}
+
+# Non-DDragon keystone names accepted above -> their current DDragon name.
+# tests/test_lcu_rune_writer_ddragon_drift_rm1379.py holds every other
+# _KEYSTONES name to a slot-0 rune of data/meta/ddragon_runes.json.
+_KEYSTONE_ALIASES: dict[str, str] = {
+    "Phase Rush": "Stormraider's Surge",
 }
 
 # Primary tree rows 1-3 defaults (ADC-optimised)
@@ -149,6 +160,59 @@ def _perk_by_name() -> dict[str, int]:
     return _PERK_BY_NAME
 
 
+# RM-1378: lazy {perk id: (tree id, slot index)} from the same DDragon file,
+# slot 0 = keystones. None until a read succeeds; a failed read is not cached.
+_SLOT_TABLE: Optional[dict[int, tuple[int, int]]] = None
+
+
+def _slot_table() -> Optional[dict[int, tuple[int, int]]]:
+    """Return the cached slot table, or None when the rune file cannot be
+    read or is not the runesReforged shape. None means "legality unknown":
+    build_perk_ids then behaves exactly as it did before RM-1378."""
+    global _SLOT_TABLE
+    if _SLOT_TABLE is not None:
+        return _SLOT_TABLE
+    table: dict[int, tuple[int, int]] = {}
+    try:
+        p = _APP_DIR / "data" / "meta" / "ddragon_runes.json"
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(doc, list) or not doc:
+            raise ValueError("rune document is not a non-empty list")
+        for tree in doc:
+            tree_id = tree.get("id") if isinstance(tree, dict) else None
+            slots = tree.get("slots") if isinstance(tree, dict) else None
+            if not isinstance(tree_id, int) or not isinstance(slots, list):
+                raise ValueError("rune tree without an int id and slots")
+            for index, slot in enumerate(slots):
+                runes = slot.get("runes") if isinstance(slot, dict) else None
+                if not isinstance(runes, list):
+                    raise ValueError("rune slot without runes")
+                for rune in runes:
+                    rid = rune.get("id") if isinstance(rune, dict) else None
+                    if isinstance(rid, int):
+                        table[rid] = (tree_id, index)
+    except (OSError, ValueError, RecursionError, AttributeError) as exc:
+        _log.debug("rune slot table load failed: %s", exc)
+        return None
+    if not table:
+        return None
+    _SLOT_TABLE = table
+    return table
+
+
+def _legal_minors(ids: list, tree_id: int, rows: int,
+                  table: Optional[dict[int, tuple[int, int]]]) -> bool:
+    """True when ``ids`` are ``rows`` minor runes of ``tree_id``, each from a
+    distinct non-keystone slot (all three slots when rows == 3). Unknown
+    legality (no table) reads as legal, preserving the pre-RM-1378 path."""
+    if table is None:
+        return True
+    slots = [table.get(x) for x in ids]
+    if any(s is None or s[0] != tree_id or s[1] == 0 for s in slots):
+        return False
+    return len({s[1] for s in slots}) == rows
+
+
 # -- Core resolver ---------------------------------------------------------
 
 def _substitute_colliding_secondary(primary_tree: str, secondary_tree: str) -> str:
@@ -225,6 +289,15 @@ def build_perk_ids(
     secondary_tree = _substitute_colliding_secondary(primary_tree, secondary_tree)
     sec_id = _TREES[secondary_tree]
 
+    # RM-1378: League rejects a page whose keystone is not in its primary
+    # tree, and _write_page deletes the RC pages before it posts - so refuse
+    # here. Names logged are keys of the writer's own tables.
+    table = _slot_table()
+    if table is not None and table.get(ks_id) != (pri_id, 0):
+        _log.warning("Keystone %s is not in the %s tree - skipping rune write",
+                     keystone, primary_tree)
+        return None
+
     # Primary rows: look for keystone-specific override, fall back to _default
     pri_rows_map = _PRIMARY_ROWS.get(primary_tree, {})
     pri_rows = pri_rows_map.get(keystone) or pri_rows_map.get("_default", [])
@@ -239,15 +312,26 @@ def build_perk_ids(
 
     # item 212: honor user-chosen minor runes when the full set resolves.
     # Any unresolved name or wrong count keeps the defaults above so we
-    # never push a malformed page.
+    # never push a malformed page. RM-1378: a set that RESOLVES but is not
+    # legal for its tree (wrong tree, two from one slot, a keystone) is
+    # refused outright - the same verdict coaches/rune_pages gives it - rather
+    # than silently pushed with default minors the operator did not choose.
     name_map = _perk_by_name()
     if minor_primary:
         mp = [name_map.get(n) for n in minor_primary]
         if len(mp) == 3 and all(isinstance(x, int) for x in mp):
+            if not _legal_minors(mp, pri_id, 3, table):
+                _log.warning("Illegal primary minor runes for %s - skipping "
+                             "rune write", primary_tree)
+                return None
             pri_rows = mp
     if minor_secondary:
         ms = [name_map.get(n) for n in minor_secondary]
         if len(ms) == 2 and all(isinstance(x, int) for x in ms):
+            if not _legal_minors(ms, sec_id, 2, table):
+                _log.warning("Illegal secondary minor runes for %s - skipping "
+                             "rune write", secondary_tree)
+                return None
             sec_picks = ms
 
     shards = _SHARDS_ARAM if is_aram else _SHARDS_SR
