@@ -1628,6 +1628,57 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   resist/damage swap, and a one-instance credit is not over-credited on a sustained-fight clock. The
   EXACT ones (`apply_item_mana_health`, `apply_item_bonus_hp_amp`) carry no midpoint and are the
   safest to flip first. Full per-seam magnitudes + caveats: the live-flip ledger below.
+
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 125, 2026-11-09, S144-G-112; NOT a tick, NOT a
+  re-open; no game, RC :8888 not answering, read at `d2d4840f1` + this lane, DS ENGINE 1.291.0,
+  patch 16.22.1).** (1) DEFAULTS HOLD: all twelve are still default False. The eleven EHP flags are
+  `compute_ehp` keyword defaults (`agents/daemon_slayer/ehp.py:1418` kaenic, `:1423` eclipse, `:1435`
+  seraphs, `:1441` fimbulwinter, `:1464` omnivamp, `:1473` revive, `:1485` stasis, `:1496`
+  spell_shield, `:1507` mana_health, `:1516` resist_grants, `:1526` bonus_hp_amp), and the burst one
+  is `agents/daemon_slayer/burst.py:542`. CITE DRIFT: the Line column above is stale by about +264
+  (it predates the RM-118 / R194 growth of `compute_ehp`); use these. (2) THE ROW'S ACTION IS STALE:
+  "arm, restart `:8860` once" arms nothing. Every one of these is a per-request body key read by
+  `_opt_bool(body, key, False)` (`agents/daemon_slayer/server.py:542`) with no env or config
+  default, so a DS restart changes no reply; a flip is a CODE change (an engine default or an RC
+  sender), never a restart. (3) TRANSPORT, the row is LARGER than filed: the twelve split three ways.
+  (a) `/ehp` ONLY (6): kaenic, eclipse, seraphs, fimbulwinter, revive, stasis are parsed only by
+  `_route_ehp` (`server.py:1119-1123`, `:1053-1054`); `/rank-tank` does not parse them and the ranker
+  `rank_items_by_ehp` (`ehp.py:3194`) has no such kwarg, so they can never move a RANKED list. (b)
+  RANKER-REACHABLE (5): spell_shield, mana_health, resist_grants, bonus_hp_amp are parsed by `/ehp`,
+  `/rank-tank` (`server.py:1272-1283`), `/hybrid` (`_route_hybrid`, `:1563-1574`) and
+  `/rank-bruiser` (`_route_rank_bruiser`, `:1716-1727`); omnivamp only by `/ehp` and `/rank-tank`
+  (`:1011`, `:1294`) and is SUSTAIN-only, invisible unless `score_by="sustain"` (comment
+  `server.py:1005-1010`; `/rank-bruiser` accepts only blended / cc_blended, `:1698-1700`).
+  spell_shield moves only `cc_blended_ehp` (`ehp.py:1490-1496`), so it is invisible under the
+  default `score_by="blended"` on either ranker's sort order (the bruiser row's `hybrid_score` field
+  does read `cc_blended_ehp` when enemies are sent, `agents/daemon_slayer/hybrid.py:1384-1388`).
+  (c) NO ROUTE (1): `assume_item_lowhp_magic_crit` is named by no route in `server.py` (not
+  `_route_burst` either) and by nothing under `core/` (git grep this cycle); its only consumer is
+  `compute_burst_damage` (`burst.py:542`, `:847`) and `ability_dps.py:1508-1518` keeps it
+  documented-inert, so no served list can ever show it. (4) NO LIVE SENDER for any of the twelve:
+  `ehp_for` (`core/daemon_slayer_client.py:1131`) and `hybrid_for` have no non-test caller, and the
+  three ranker senders forward none of them: the tank branch of `rank_for_primary_archetype`
+  (`/rank-tank`, `:3168-3180`), its bruiser branch (`rank_bruiser_for` -> `/rank-bruiser`,
+  `:3212-3229`) and `recommend_defensive_items_via_ehp` (`/rank-tank`, `core/defensive_picks.py:351`,
+  call `:402`), which itself has no production caller. So a game today shows NONE of the twelve on
+  any surface, ON or OFF, and nothing here is drainable until a producer flips one. READY (graded
+  only after a flip; a merger follow-up, not this lane's): for a flag in group (b), in a live SR game
+  on a champion whose primary archetype is `tank` or `bruiser`
+  (`core.archetype_picks.get_archetype_for`), PASS iff a timestamped record of the matching
+  `/rank-tank` or `/rank-bruiser` request body carries the flipped key `true`, `champion` equal to
+  the canonical id of my roster row's `championName` (`/api/state` -> `liveclient.allPlayers[]`,
+  matched to `liveclient.activePlayer`) and `item_ids` equal to `liveclient.owned_item_ids` from an
+  `/api/state` read within 10 s of game time of the body, AND (omnivamp only, `/rank-tank` only)
+  `score_by` is `"sustain"`, (spell_shield only) `score_by` is `"cc_blended"`. FAIL if the key is
+  absent (the default path ran) or the score_by gate does not match (armed but invisible). The
+  EYEBALL itself is then the human read of the served list, never this predicate. EVIDENCE: the
+  body, the `/api/state` read, both timestamps, `game_time_s`, mode and queue. SUBSTITUTION: a
+  hand-built `/ehp`, `/rank-tank` or `/rank-bruiser` POST with the flag on answers only whether the
+  seam COMPUTES; it proves nothing about whether RC SENT it, and a reply under
+  `score_by="blended"` is not evidence for spell_shield or omnivamp. Groups (a) and (c) have NO
+  predicate: they need a ranker kwarg (a) or a route (c) first, which is DS engine work (Tier-2),
+  not a game. PROPOSAL, NOT A MOVE: a human may file (a) and (c)
+  as DS seam rows and narrow this battery to group (b).
 - **G2-24** (was B47b) R108 `assume_item_general_dr` - item UNTARGETED GENERAL %DR (Celestial
   Opposition 3869 "Blessing" 35% melee / 25% ranged + Crown of the Shattered Queen 664644 "Safeguard"
   40%), the ONLY item DR lane that touches the TRUE denominator. **PARTIAL 2026-07-18.**
