@@ -458,26 +458,6 @@ _OBJ_FACTORY_RE = re.compile(
 _USE_STRICT_FACTORY_RE = re.compile(r'(?<![\w$])[A-Za-z_$][\w$]*=>\{"use strict";')
 
 
-def _extract_obj_factory(chunk: str, marker: str) -> dict:
-    """Pull and parse a Turbopack module whose body starts with
-    ``<id>.exports={...}`` and whose factory contains the given marker.
-    """
-    # Find every "<num>,(<params>)=><id>.exports=" header, look for one whose
-    # following object literal has the marker.
-    for m in _OBJ_FACTORY_RE.finditer(chunk):
-        body_start = m.end()
-        if chunk[body_start] != "{":
-            continue
-        end = _walk_balanced(chunk, body_start)
-        if end < 0:
-            continue
-        body = chunk[body_start:end + 1]
-        if marker not in body[:200]:
-            continue
-        return json5.loads(body)
-    raise RuntimeError(f"no obj-literal factory body containing marker {marker!r}")
-
-
 _ROLE_CLASSES = frozenset({"FIGHTER", "TANK", "MAGE", "ASSASSIN", "MARKSMAN", "SUPPORT"})
 
 

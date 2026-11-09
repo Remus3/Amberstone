@@ -256,18 +256,6 @@ def _load_rune_map() -> dict:
 _ITEM_MAP = {}
 _RUNE_MAP = {}
 
-def _item_name(item_id: int) -> str:
-    global _ITEM_MAP
-    if not _ITEM_MAP:
-        _ITEM_MAP = _load_item_map()
-    return _ITEM_MAP.get(item_id, str(item_id)) if item_id else ""
-
-def _rune_name(rune_id: int) -> str:
-    global _RUNE_MAP
-    if not _RUNE_MAP:
-        _RUNE_MAP = _load_rune_map()
-    return _RUNE_MAP.get(rune_id, str(rune_id)) if rune_id else ""
-
 
 # -- Database ------------------------------------------------------------------
 
