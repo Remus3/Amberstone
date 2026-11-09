@@ -127,7 +127,7 @@ from core.build_order_precompute import (
     DS_MODE_BY_KEY,
     EXIT_EMPTY_TABLE,
     EXIT_NO_ROSTER,
-    SEED_CHAMPIONS,  # re-exported for parity + tests (bov.SEED_CHAMPIONS)
+    SEED_CHAMPIONS as SEED_CHAMPIONS,  # explicit re-export: tests read bov.SEED_CHAMPIONS
     RosterUnavailableError,
     archetype_for,
     engine_version,

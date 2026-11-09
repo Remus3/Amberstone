@@ -40,6 +40,12 @@ the module reads only CHAMPIONS from it, no tracked file reads
 ``composition_advisor.<name>`` or imports one of them from it, and none is patched by
 name) and moves it from _BASELINE to FIXED.
 
+S144-P-500 clears core/build_order_variants.py: its one finding, ``SEED_CHAMPIONS`` imported from
+core.build_order_precompute, is a deliberate re-export (tests/test_build_order_variants.py reads
+``bov.SEED_CHAMPIONS`` to pin parity with HZ-B1), not a leftover. It now carries the explicit
+re-export spelling ``SEED_CHAMPIONS as SEED_CHAMPIONS`` that F401 honours, so the file moves from
+_BASELINE to FIXED with the import and its consumer both intact.
+
 The rest are in the shrinking _BASELINE (rel path -> count): frozen files, files
 another lane branch changed, the DS engine (lane ds), deliberate facades
 (``coaches/adaptation_hint.py`` re-exports its split modules, ``effects.py`` its
@@ -84,6 +90,7 @@ FIXED = (
     "coaches/voice_coach.py",
     "composition_advisor.py",
     "core/benchmarks.py",
+    "core/build_order_variants.py",
     "core/decision_detector.py",
     "core/feature_policy.py",
     "core/metrics_cache.py",
@@ -140,7 +147,6 @@ _BASELINE = {
     "agents/daemon_slayer/server.py": 1,
     "app/_game_lifecycle.py": 2,
     "coaches/adaptation_hint.py": 33,
-    "core/build_order_variants.py": 1,
     "core/log_setup.py": 2,
     "tools/build_portable.py": 1,
     "web_dashboard.py": 18,
