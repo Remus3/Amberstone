@@ -45,9 +45,15 @@
    * pinned 40px height constraint. PRESERVED per item 184 v2.1 audit. */
   font-size: 10px;
   letter-spacing: 0.08em;
-  color: var(--text-faint, #9ca3af);
+  /* S144-U-243: --text-dim at full strength, not --text-faint at opacity
+   * 0.6. The font-size exception above rules on size only; the fade sank
+   * this line to 2.44 (arcane) - 2.61 (terminal):1, and --text-faint
+   * unfaded is still 4.31 - 4.48 on the BUILD pane in four themes (the
+   * S144-U-215 numbers). --text-dim reads 6.37 (hextech) - 8.18
+   * (terminal):1.
+   * Pinned by tests/snapshot_panels/test_am_empty_line_contrast.py. */
+  color: var(--text-dim, #9ab0cc);
   text-transform: uppercase;
-  opacity: 0.6;
 }
 
 /* Phase-strength strip (R81 F1). A compact early/mid/late GREEN/YELLOW/RED

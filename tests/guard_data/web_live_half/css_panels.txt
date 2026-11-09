@@ -117,11 +117,11 @@ be0085f4552fabac1f772b510ddf636a3b1b974b2ed52b3ac6fc3c309d0e19ea  web/css/panels
 
 e08f3828508476b86b28a4cf68b087bcb0c801d956fcb3a2be3f661c5d7e5bee  web/css/panels/snowball_elasticity.css
 
-67df835d80f7021bb0fde8ee9d44c91bcb11b1023533eb09ac7d2999b392ece1  web/css/panels/spike_curve.css
+9f6104935f34c114c1ff0eac53a43abd68f7cf36d90116641ee4889aebf7cd11  web/css/panels/spike_curve.css
 
 860ab3563709822dd020aa99906f74b8008300dc1bfec0af3f1e99f128bffc52  web/css/panels/spike_markers.css
 
 bc1af3dba2070731780a4a440d01d3f81509ddf64e509a02800b08c4bb65a06f  web/css/panels/team_context.css
 
-465dce1ed0461aa7c2fec2d3e366dbaedd87594cc7603a41f7b581135b842e51  web/css/panels/ward_heat.css
+24fac064e6358868dafd4bfec177800be22ce230466922665122fc884882aec2  web/css/panels/ward_heat.css
 

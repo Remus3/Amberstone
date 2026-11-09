@@ -198,7 +198,15 @@ makes), the s144 uiux module of S144-U-242:
     hover on each row and after a click picks each row. The rows DO
     transition their background (120ms) on hover and pick, so the sheet is
     what settles those reads.
-This module pins all fifty-five verdicts at runtime with each test's own opener,
+Audit (2026-11-09, s144 uiux cycle 238, S144-U-243, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-243:
+  - test_am_empty_line_contrast: boot-stamped (?theme=), never swaps
+    in-page; it waits for the mode's Active Match empty lines (the spike
+    curve's and, outside aram, the ward heat strip's), adds the
+    transitions-off sheet, then reads them in one evaluate. Nothing it
+    reads transitions, so the sheet is belt and braces, not a fix.
+This module pins all fifty-six verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -287,9 +295,10 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The fifty-five modules audited above, keyed by file name.
+# The fifty-six modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
+    "test_am_empty_line_contrast.py",
     "test_am_map_roster_state_contrast.py",
     "test_build_insights_chart_text_contrast.py",
     "test_build_insights_sort_header_hover.py",
@@ -1134,12 +1143,13 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The twenty contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
-# U-242):
+# The twenty-one contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# U-242, U-243):
 # each one's _measure extra arguments after (mock_server, pw_browser, theme),
 # taken from its own constants (its first viewport, its first mode, the TFT
 # footer state, the mixed Session scenario, its first surface).
 _CONTRAST = {
+    "test_am_empty_line_contrast": ("mode", "vp"),
     "test_am_map_roster_state_contrast": (),
     "test_build_insights_chart_text_contrast": ("vp",),
     "test_champ_select_ban_phase_over_head_contrast": (),
@@ -1161,8 +1171,9 @@ _CONTRAST = {
     "test_ui_mock_active_match_complete": (),
     "test_user_builds_text_contrast": ("vp",),
 }
-# The twelve whose opener adds the sheet before its first interaction.
+# The thirteen whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
+    "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
     "test_champ_select_ban_phase_over_head_contrast",
     "test_champ_select_personal_build_contrast",
