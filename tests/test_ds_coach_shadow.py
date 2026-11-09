@@ -5,7 +5,6 @@ core.ds_scaling_hint) are NOT imported here - they may be absent in this slice.
 """
 
 import json
-import pytest
 
 
 # ---------------------------------------------------------------------------

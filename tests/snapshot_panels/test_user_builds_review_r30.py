@@ -20,7 +20,6 @@ Drive path: /?ui_mock=1#user-builds -> _userBuildsFetchAndRender loads
 /data/ui_mock/user_builds.json (Tristana, 5 builds). Landing signal: a
 .ub-build-row appears.
 """
-import pytest
 from pathlib import Path
 
 SCREENSHOTS = Path(__file__).parent / "screenshots"

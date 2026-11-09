@@ -18,7 +18,6 @@ Fixtures are grounded against live scorer output (probed 2026-06-26):
 """
 from __future__ import annotations
 
-import pytest
 
 from agents.daemon_slayer.threatrange import compute_threatrange
 from core.archetype_picks import get_archetype_for
