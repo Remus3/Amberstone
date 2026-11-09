@@ -46,7 +46,7 @@ _NAME_RE = re.compile(r"[A-Za-z0-9]{1,40}")
 _READ_ERRORS = (OSError, ValueError, RecursionError)
 # http.client.HTTPException (IncompleteRead, BadStatusLine, LineTooLong) is
 # NOT an OSError, so a truncated or malformed response needs naming here.
-_FETCH_ERRORS = _READ_ERRORS + (http.client.HTTPException,)
+_FETCH_ERRORS = (*_READ_ERRORS, http.client.HTTPException)
 # A DDragon patch directory name: dot-separated ASCII digit groups. The old
 # ``[0-9.]{1,12}`` admitted "..", which resolved outside the DDragon root.
 _VERSION_RE = re.compile(r"[0-9]{1,4}(?:\.[0-9]{1,4}){0,3}")
