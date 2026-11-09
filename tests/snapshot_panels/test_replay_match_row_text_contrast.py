@@ -202,3 +202,44 @@ def test_verdicts_keep_their_result_hue(theme, measured, mock_server,
     # Anchor: rest (1 L + 4 queues) + 4 hovers + 4 picks (1 L + 1 queue
     # where the lost row took the state, 1 queue on each other row).
     assert checked == 5 + 5 + 5, checked
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+def test_no_result_verdict_reads_as_metadata(theme, measured, mock_server,
+                                             pw_browser):
+    """S144-U-249: the no-result verdict "-" (no tracked win / loss) is an
+    absence, not a result. It used to inherit the row's full --text, as
+    bright as the champion and brighter than a real "W" / "L". It now takes
+    the queue label's tone in every state (--text-faint at rest, --text-dim
+    hovered or picked), stays under the champion, and at rest sits under
+    every real W and L (--text-dim at rest was measured and still out-shone
+    them in terminal)."""
+    got = _got(measured, mock_server, pw_browser, theme)
+    reads = [got["rest"]] + list(got["hover"]) + list(got["active"])
+    results = [r for r in got["rest"]["texts"]
+               if "replay-match-verdict" in r["cls"] and r["text"] in "WL"]
+    # Anchor: the mock carries two W rows and one L row.
+    assert sorted(r["text"] for r in results) == ["L", "W", "W"], results
+    checked = 0
+    for n, read in enumerate(reads):
+        by_row = {}
+        for r in read["texts"]:
+            by_row.setdefault(r["row"], []).append(r)
+        for lines in by_row.values():
+            dash = [r for r in lines if "replay-match-verdict" in r["cls"]
+                    and r["text"] == "-"]
+            if not dash:
+                continue
+            champ = [r for r in lines if "replay-match-champ" in r["cls"]]
+            queue = [r for r in lines if "replay-match-queue" in r["cls"]]
+            assert len(dash) == len(champ) == len(queue) == 1, lines
+            d, c, q = dash[0]["fg"], champ[0]["fg"], queue[0]["fg"]
+            assert all(abs(x - y) <= 1 for x, y in zip(d[:3], q[:3])), (
+                theme, "dash", d, "queue label", q)
+            assert _lum(d) < _lum(c), (theme, "dash", d, "champion", c)
+            if n == 0:
+                for r in results:
+                    assert _lum(d) < _lum(r["fg"]), (theme, "dash", d, r)
+            checked += 1
+    # Anchor: the one no-result row at rest, hovered once and picked once.
+    assert checked == 3, checked
