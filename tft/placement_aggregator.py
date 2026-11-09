@@ -78,9 +78,9 @@ def _valid_positions(raw) -> dict:
             continue
         if not isinstance(cell, str):
             continue
-        cell = cell.strip().upper()
-        if _CELL_RE.fullmatch(cell):
-            out[unit.strip()] = cell
+        norm = cell.strip().upper()
+        if _CELL_RE.fullmatch(norm):
+            out[unit.strip()] = norm
     return out
 
 
