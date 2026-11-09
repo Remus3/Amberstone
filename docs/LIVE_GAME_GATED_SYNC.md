@@ -5437,6 +5437,41 @@ Rides on top of whatever gate is already running. No separate game needed.
   presses came in bursts 0.5-2s apart, which reads equally as deliberate toggling or as mashing because
   nothing visibly happened - so ONE deliberate press with eyes on the overlay IS the test. Requires
   G6-01 (rc-shell MAIN up) FIRST. SOURCE: LEDGER 598; memory `reference_overlay_ingame_hotkey_win32`.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 121, 2026-11-09, S144-G-108; NOT a tick, NOT a re-open).**
+  Status: the DRAIN SESSION 2026-07-20 record at the top of this file PASSED this row; the PARTIAL tag
+  above is the older 2026-07-18 state. This block only refreshes the cites and the residual predicate
+  for any future re-confirmation. (1) Every `rc-shell/src/main.js` cite above has drifted (file now
+  2809 lines; RM-1272 commits `9198ca1d8` / `bdb583474` touched it 2026-11-04/05). Current homes:
+  `doToggleActive` at `:1871-1875` (flips `overlayClickThrough`, calls `applyClickThrough()`, then
+  `scheduleActiveRevert()`); the "Ctrl+Shift+A NOT registered in Electron" comment at `:1961-1965`
+  inside `registerHotkeys`; the Alt+Shift+A fallback registration at `:1991-1995`
+  (`ov.OVERLAY_DEFAULTS.hotkeyActiveAlt`, `rc-shell/src/overlay_state.js:45`); the Win32 signal
+  watcher `startActiveToggleWatch` at `:1924-1926` (`watchSignal("activeToggle", doToggleActive)` at
+  `:1925`). `ovscale` is no longer computed at `main.js:569-573`: `ov.resolveOverlayMetrics`
+  (`overlay_state.js:425`, called at `main.js:767` / `:897`) yields the scale and `ov.overlayUrl`
+  (`overlay_state.js:203-216`) bakes it in at `main.js:835`. Listener side: the "overlay ACTIVE toggle
+  signaled" log line is `tools/hotkey_listener.py:216`, `_SLOT_OVERLAY_TOGGLE = 3` at `:339`, and the
+  sole non-test caller of `signal_overlay_active_toggle` is `_dispatch_one` at `:482` (was `:359`;
+  `git grep` outside `tests/` finds no other). Still no re-rank: nothing in `doToggleActive` reaches
+  ranking code. (2) PREDICATE DEFECT, the 20s is a SETTING now: `scheduleActiveRevert`
+  (`main.js:1228-1245`) times out after `overlaySettings.activeRevertSec * 1000`, read by
+  `overlaySettingsFrom` (`overlay_state.js:692-700`) from `overlay.settings.activeRevertSec` in
+  `<appData>/Amberstone Shell/rc-shell-state.json`, clamped to [3, 120] (`:548-556`), default 20
+  (`:51`, `:521`) when absent or not a finite number. A future re-confirm that waits a fixed 20s
+  false-FAILS the moment the operator moves that setting. Baseline read this cycle (idle, read-only):
+  the field is present and reads 20 (file mtime 2026-10-31T21:17 local). (3) Behavior added since
+  the PASS: `applyClickThrough` (`main.js:1200-1220`) now also calls
+  `overlayWindow.setFocusable(ov.effectiveFocusable(overlayClickThrough))` (S134 N9), so ACTIVE makes
+  the overlay window focusable, and the glow is `ind.activeIndicatorSetJS(!overlayClickThrough)`.
+  RE-CONFIRM PROBE (stated before any game): before the press, read `activeRevertSec` = N from the
+  state file above (absent -> 20). With League FOREGROUND, ONE Ctrl+Shift+A. PREDICATE: PASS iff
+  (a) a new "overlay ACTIVE toggle signaled" line lands in `logs/hotkey_listener.log*` (rotating;
+  path at `tools/hotkey_listener.py:118`) within 1s of the press, (b) the edge glow appears and a widget body drags, and (c) the glow clears N s (+/- 2 s)
+  later with no further press; and League still takes keys after the revert. FAIL on any miss.
+  EVIDENCE: the log line and its timestamp, N with its source, the observed revert interval, game
+  mode and game_time. SUBSTITUTION CHECK: the log line alone proves DELIVERY to the listener only
+  (already settled above); it is not evidence the overlay flipped. The glow plus a drag, seen on
+  screen, is the only flip evidence; a G6-01 PASS is a precondition, never a stand-in.
 - **G6-03** (was E4) **CLOSED 2026-08-02 - PASS, but read the scope fence before citing it.** Live ARAM on
   Legion, real match end, OBS 32.1.2 / obs-websocket 5.7.3 driven entirely over `127.0.0.1:4455` (the
   scene JSON was never edited - it is stale since 2026-05-29 and OBS rewrites it on exit). **RECEIPT:**
