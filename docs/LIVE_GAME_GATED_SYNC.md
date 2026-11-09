@@ -5192,6 +5192,25 @@ waits on the RM-875 wiring.)
   `:141`. `agents/daemon_slayer/tests/test_r144_mirror_slice_b.py:255`
   (`test_ddragon_and_meraki_still_disagree_on_444644`) and
   `agents/daemon_slayer/_effects_data.py:3292-3297` hold.
+  **RE-CHECK 2026-11-08 (lane 9 s144 cycle 118, S144-G-105, read at `a9da7c32f`; NOT a tick).** DS
+  moved to **16.22.1** (`a14fc853e`, RM-1338; `data/daemon_slayer/current.txt`). The 444644 record is
+  byte-for-byte the same at 16.22.1 as at 16.21.1 in BOTH feeds (parsed-dict equality, read-only):
+  DDragon `data/daemon_slayer/16.22.1/items.json` still reads maps.30 only, 2750 g, "reducing incoming
+  champion damage by 90%", "persists for 1.25 seconds after taking champion damage. (0s)" (the
+  malformed cooldown stands), and `items_meraki.json` still reads 50% / "lingering for 3 seconds",
+  with the manifest's `meraki_items.content_patch` still 25.15. The SR row 664644 still reads 40% /
+  3 s, and 3869 Celestial Opposition is still maps 11 / 453 with no Arena mirror. So the 90 / 50
+  conflict, the name correction (1) and the CANDIDATE stand; the CANDIDATE's "CommunityDragon 16.21"
+  now means the current DS patch (16.22). RM-871 is still open (`[ ]` in ROADMAP NOW). Cites:
+  `_item_general_dr.py:140` / `:141` and `test_r144_mirror_slice_b.py:255` hold (that test reads the
+  CURRENT patch and passed this cycle, so the disagreement is re-derived at 16.22.1);
+  `_effects_data.py:3292-3297` is now `:3295-3304` (line number only). Observation, not a defect
+  filed: that entry's `note` paraphrases Safeguard as "90% until first champion damage taken",
+  which omits DDragon's 1.25 s persistence; it is `defensive_only`, so no DS number reads it. The
+  tooltip CHECK and its predicate are unchanged. G5-09's re-check cites (`:474`, `:715`, `:936`,
+  `:988`, `:1037`, `:1058`; `rank.py:364` / `:367` / `:408`) also hold at `a9da7c32f`: the only
+  later commit to `coaches/arena_coach.py`, `81c26322c`, did not move them. Nothing ticked; no count
+  moved.
 - **G5-09** DS ranged-only Runaan's melee-gate made augment-aware for "Draw Your Sword" (augment id
   134, ranged->melee; `38b5e1eb`, LEDGER 856) - **PARTIAL 2026-07-18.** SETTLED HEADLESS: the gate is
   exact and does not over-filter. On **all 8** corpus champions that actually took augment 134
