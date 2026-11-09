@@ -25,7 +25,6 @@ import sys
 import warnings
 from pathlib import Path
 
-import pytest
 
 from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
 

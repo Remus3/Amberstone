@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from dashboard import routes_draft_elo
 from tests._draft_elo_fixture import DraftEloFixtureMixin

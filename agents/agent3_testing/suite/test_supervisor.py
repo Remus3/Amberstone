@@ -1,7 +1,6 @@
 """Smoke tests: supervisor starts, WS+web ports open, DBs exist, migration ran."""
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import shutil

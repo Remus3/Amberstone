@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import pathlib
 
-import pytest
 
 from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
 from tests.test_tracked_writer_lf_sweep import (
