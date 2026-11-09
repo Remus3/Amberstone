@@ -25,7 +25,7 @@ import {
 import { isSpaceActivated, isTypingTarget } from './panels/review_player_model.js';
 
 // -- Panel modules ---------------------------------------------------------
-import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
+import { RN, renderRightNow, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
 import { renderCoachChoices } from './panels/coach_choices.js';
 import { renderCallouts, renderLead } from './panels/callouts.js';
 import { startPersonalContextPolling } from './panels/personal_context.js';
@@ -1706,7 +1706,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (_VIEW.current === "champ-select") renderChampSelectView(_csResolveLcu());
     renderStats(p);
     renderGameSense(p);
-    renderWhatWent(p);
     renderDigest(p);
     maybeRefreshAdaptation(p);
   }

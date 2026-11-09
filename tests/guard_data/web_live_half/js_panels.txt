@@ -115,7 +115,7 @@ f3587a627ebe71a69cf0cedd646c91da5de8441fa6820eccb59ab15f8828a3cb  web/js/panels/
 
 39c791ee5589d59710e88889571b66f2c052a798becdee117ba580abb9183fb9  web/js/panels/review_player_model.js
 
-e84993b4511a2ccc74c2f8b901e7a863f0b61690cea0eff7e5e0083ca8e318b1  web/js/panels/right_now.js
+a4a16f9d8ad9b4978a1429644ac7d60dd16728fab06f7910f7c04f6d41608dfe  web/js/panels/right_now.js
 
 00214afbcdae737517478920a9c19e1bc858ac6a09cd2fc7ccf2d2d095e879c6  web/js/panels/screen_read.js
 

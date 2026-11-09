@@ -286,61 +286,11 @@ body[data-mode="client"] .panel-right-now {
   grid-row: 1 / span 2;
 }
 
-/* MAP STATE panel body swap (queue #3 aftergame reassignment).
- * In-game shows the objectives grid; client/aftergame shows WHAT WENT. */
-#mm-whatwent-view { display: none; }
+/* MAP STATE panel: the objectives grid is in-game only. S144-U-260 retired
+ * the client-mode aftergame bullets view it used to swap in here; the panel
+ * renders in no view (S144-U-246). */
 body[data-mode="client"] #mm-objectives-view { display: none; }
-body[data-mode="client"] #mm-whatwent-view   { display: block; }
 
-.what-went-view {
-  padding: 10px 12px 6px 12px;
-}
-.what-went-section { margin-bottom: 14px; }
-.what-went-section:last-child { margin-bottom: 0; }
-.what-went-title {
-  font-size: 14px;
-  letter-spacing: 0.16em;
-  font-weight: 700;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.what-went-good .what-went-title { color: var(--good); border-bottom-color: var(--good-soft); }
-.what-went-bad  .what-went-title { color: var(--bad);  border-bottom-color: var(--bad-soft); }
-.what-went-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.what-went-list li {
-  padding: 5px 0 5px 18px;
-  position: relative;
-  font-size: 15px;
-  line-height: 1.4;
-  color: var(--text);
-}
-.what-went-good .what-went-list li::before {
-  content: "+";
-  position: absolute;
-  left: 2px;
-  top: 5px;
-  color: var(--good);
-  font-weight: 900;
-}
-.what-went-bad .what-went-list li::before {
-  content: "−";
-  position: absolute;
-  left: 2px;
-  top: 5px;
-  color: var(--bad);
-  font-weight: 900;
-}
-.what-went-list li.ww-empty {
-  color: var(--text-faint);
-  font-style: italic;
-}
-.what-went-list li.ww-empty::before { content: ""; }
 /* STATS view (in-game) vs ADAPTATION view (client/aftergame).
  * Mode-toggled visibility - in-game shows STATS, other modes keep the
  * legacy ADAPTATION markup. */

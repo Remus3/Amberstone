@@ -785,6 +785,41 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         "main.js is 8400 lines after S144-U-258 removed two dead blocks, so "
         "the sha-qualified range runs past the end of today's file.",
     ),
+) + tuple(
+    # 2026-11-09, S144-U-260 (session 144 uiux lane). The never-rendered
+    # WHAT WENT view was retired, so right_now.js shrank from 577 lines to
+    # 552 and web/index.html from 2513 to 2501. The RM-125 census rows below
+    # are the same dated read as the S144-U-258 entry above ("measured at
+    # 35c6730f"): their glyph lines already sat elsewhere before this cut
+    # (today 474-477), so re-pointing them would make the census claim a
+    # line it never read.
+    (doc, raw, "HISTORICAL",
+     "An RM-125 live-glyph census cite into right_now.js as measured at "
+     "35c6730f; the module is 552 lines after S144-U-260 retired the WHAT "
+     "WENT render.")
+    for doc, raw in (
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:563"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:563-565"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:564"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:565"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:566"),
+    )
+) + (
+    # Same cut: docs/PACKAGING_PLAN.md S15 is a LIVING doc whose second
+    # inline <script> now sits at web/index.html:2494, so this one IS
+    # repairable - but the plan is main-session-owned in s144 (lane
+    # exclusions). Merger follow-up: re-point it to :2494, then delete this
+    # entry (the guard reports it as no longer broken).
+    (
+        "docs/PACKAGING_PLAN.md",
+        "web/index.html:2507",
+        "ROT",
+        "S15's CSP blocker cites the second inline <script>, which is at "
+        "web/index.html:2494 (it was already at 2506, not 2507, before "
+        "S144-U-260 cut the file to 2501 lines and pushed the cite past the "
+        "end); the plan is the main session's in s144, so a lane cannot "
+        "re-point it.",
+    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

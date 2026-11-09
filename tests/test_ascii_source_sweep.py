@@ -71,7 +71,8 @@ _BASELINE: dict[str, tuple[str, ...]] = {
     "tests/snapshot_panels/fixtures/tft.json": ("U+00B7", "U+2605"),
     "web/css/panels/header.css": ("U+26A0", "U+2715", "U+27F3"),
     "web/css/panels/input_activity.css": ("U+203A",),
-    "web/css/panels/map_state.css": ("U+2212", "U+27E8", "U+27E9"),
+    # map_state.css lost its U+2212 with the retired WHAT WENT view (S144-U-260).
+    "web/css/panels/map_state.css": ("U+27E8", "U+27E9"),
     "web/index.html": (
         "U+00B7", "U+00D7", "U+0394", "U+1F507", "U+2191", "U+2192", "U+2193",
         "U+21BB", "U+25BE", "U+2665", "U+2715", "U+2795"),

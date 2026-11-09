@@ -440,20 +440,8 @@
           <!-- Atakhan removed 2026-04-23: not present in the live season. -->
           <!-- Ally/Enemy team strips removed 2026-04-23: giving minimap panel more visual space. -->
         </div>
-        <!-- WHAT WENT view (client/aftergame mode). Bullets of positives
-             (what went well) + negatives (what went wrong) so the reader
-             gets a 30-second readback of the match. Populated by
-             renderWhatWent() from p.what_went_good / p.what_went_bad. -->
-        <div class="what-went-view" id="mm-whatwent-view">
-          <div class="what-went-section what-went-good">
-            <div class="what-went-title">WHAT WENT GOOD</div>
-            <ul class="what-went-list" id="ww-good"><li class="ww-empty">-</li></ul>
-          </div>
-          <div class="what-went-section what-went-bad">
-            <div class="what-went-title">WHAT WENT BAD</div>
-            <ul class="what-went-list" id="ww-bad"><li class="ww-empty">-</li></ul>
-          </div>
-        </div>
+        <!-- S144-U-260 retired the client-mode aftergame bullets view and
+             its per-envelope list rebuild; this panel renders in no view. -->
       </div>
     </section>
 
