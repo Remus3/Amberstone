@@ -388,7 +388,7 @@ class PanelRenderTests(_Stubbed):
             + "})();\n"
         )
         proc = subprocess.run([NODE, "-e", program], capture_output=True,
-                              text=True, timeout=60, encoding="utf-8")
+                              text=True, timeout=60, encoding="utf-8", check=False)
         if proc.returncode != 0:
             raise AssertionError(f"node exited {proc.returncode}\n"
                                  f"{proc.stdout}\n{proc.stderr}")
@@ -483,7 +483,7 @@ class PanelRenderTests(_Stubbed):
             + "})();\n"
         )
         proc = subprocess.run([NODE, "-e", program], capture_output=True,
-                              text=True, timeout=60, encoding="utf-8")
+                              text=True, timeout=60, encoding="utf-8", check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         got = json.loads(proc.stdout.strip())
         unstyled = {r: got.get(r) for r in universe if got.get(r) not in styled}

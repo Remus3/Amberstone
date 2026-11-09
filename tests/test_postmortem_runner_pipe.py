@@ -115,7 +115,7 @@ def _run_driver(driver: pathlib.Path, timeout: float) -> subprocess.CompletedPro
         [_powershell(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(driver)],
         capture_output=True,
         text=True,
-        timeout=timeout,
+        timeout=timeout, check=False,
     )
 
 
@@ -343,7 +343,7 @@ def test_script_parses_cleanly_under_powershell_51():
         [ps, "-NoProfile", "-Command", command],
         capture_output=True,
         text=True,
-        timeout=90,
+        timeout=90, check=False,
     )
     assert proc.returncode == 0, f"parser probe failed: {proc.stdout}\n{proc.stderr}"
     assert "PARSE_OK" in proc.stdout, f"script does not parse:\n{proc.stdout}\n{proc.stderr}"

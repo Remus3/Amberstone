@@ -170,7 +170,7 @@ def _run(tmp_path: Path, body: list[str], script_dir: Path, startup: Path):
     bat.write_bytes(("\r\n".join(head + body) + "\r\n").encode("ascii"))
     return subprocess.run(["cmd.exe", "/d", "/c", str(bat)], cwd=bat.parent,
                           env=_env(tmp_path), capture_output=True, timeout=120,
-                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False)
 
 
 def _read_back(tmp_path: Path, lnk: Path) -> list[str]:
@@ -180,7 +180,7 @@ def _read_back(tmp_path: Path, lnk: Path) -> list[str]:
           "$s.TargetPath; $s.Arguments; $s.WorkingDirectory; [string]$s.WindowStyle")
     proc = subprocess.run([str(_POWERSHELL), "-NoProfile", "-Command", ps],
                           env=env, capture_output=True, text=True, timeout=120,
-                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     return proc.stdout.splitlines()
 

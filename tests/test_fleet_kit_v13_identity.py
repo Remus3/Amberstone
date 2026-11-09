@@ -64,7 +64,7 @@ def test_pre_push_identity_gate_runs_first_on_the_captured_refs():
 def test_gitignore_names_the_identity_log():
     assert "ops/loop/control/identity.jsonl" in _text(".gitignore").splitlines()
     r = subprocess.run(["git", "-C", str(ROOT), "check-ignore", "-q",
-                        "ops/loop/control/identity.jsonl"])
+                        "ops/loop/control/identity.jsonl"], check=False)
     assert r.returncode == 0
 
 
@@ -73,7 +73,7 @@ def test_kit_commit_msg_strip_end_to_end(tmp_path):
     msg.write_bytes(b"fix: a thing\n\nbody line\n\nClaude-Session: x\n"
                     b"Co-Authored-By: Claude <noreply@anthropic.com>\n")
     r = subprocess.run([sys.executable, str(KIT / "fleet_identity.py"), "commit-msg",
-                        str(msg)], cwd=str(tmp_path), capture_output=True)
+                        str(msg)], cwd=str(tmp_path), capture_output=True, check=False)
     assert r.returncode == 0
     assert msg.read_bytes() == b"fix: a thing\n\nbody line\n"
 

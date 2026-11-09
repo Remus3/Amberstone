@@ -61,7 +61,7 @@ def _degraded_probe() -> dict:
     proc = subprocess.run(
         [sys.executable, "-c", code, "coach_integration", json.dumps(names)],
         cwd=str(ROOT), capture_output=True, text=True, timeout=180,
-        encoding="utf-8", creationflags=_NO_WINDOW)
+        encoding="utf-8", creationflags=_NO_WINDOW, check=False)
     assert proc.returncode == 0, proc.stdout[-2000:] + proc.stderr[-4000:]
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
@@ -113,7 +113,7 @@ print(json.dumps({n: sum(isinstance(f, ScrubFilter)
 def test_the_normal_boot_attaches_one_filter_per_logger():
     proc = subprocess.run([sys.executable, "-c", _COUNT], cwd=str(ROOT),
                           capture_output=True, text=True, timeout=180,
-                          creationflags=_NO_WINDOW)
+                          creationflags=_NO_WINDOW, check=False)
     assert proc.returncode == 0, proc.stderr[-4000:]
     counts = json.loads(proc.stdout.strip().splitlines()[-1])
     assert counts and set(counts.values()) == {1}, counts

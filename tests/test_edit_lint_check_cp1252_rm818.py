@@ -54,7 +54,7 @@ def _legacy_env() -> dict:
 def _child_encoding(cwd: Path) -> str:
     probe = subprocess.run(
         [sys.executable, "-c", "import locale; print(locale.getencoding())"],
-        capture_output=True, timeout=30, env=_legacy_env(), cwd=str(cwd))
+        capture_output=True, timeout=30, env=_legacy_env(), cwd=str(cwd), check=False)
     return probe.stdout.decode("ascii", errors="replace").strip()
 
 
@@ -73,7 +73,7 @@ def _run_legacy(target: Path, content: str, cwd: Path):
     target.write_text(content, encoding="utf-8")
     proc = subprocess.run(
         [sys.executable, str(HOOK)], input=_payload(target, content, cwd),
-        capture_output=True, timeout=60, env=_legacy_env(), cwd=str(cwd))
+        capture_output=True, timeout=60, env=_legacy_env(), cwd=str(cwd), check=False)
     return encoding, proc
 
 

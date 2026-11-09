@@ -8,9 +8,11 @@ behaviour are identical; the keyword only records that the test reads ``returnco
 (or deliberately ignores them) itself.
 
 Measured 2026-11-09 with ``ruff check --isolated`` (target py39) over the tracked ``tests/`` tree:
-361 findings in 299 files. Slice 1 (this one) states ``check=False`` at 35 sites in ten files (the
-ten with the most sites that no other lane branch had changed, none of them launcher / packaging
-test files); every other offending file sits in ``_BASELINE`` below, which only shrinks. A row
+361 findings in 299 files. Slice 1 stated ``check=False`` at 35 sites in ten files (the ten with
+the most sites that no other lane branch had changed, none of them launcher / packaging test
+files); slice 2 (S144-P-602) states it at 24 sites in twelve more (every two-site file no other
+lane branch had changed, bar the gated-lane, launcher and held sibling-sweep files); every other
+offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
 a finding beyond the baseline fails ``test_no_new_findings``; a ``_FIXED`` file that offends again
 fails ``test_fixed_file_stays_clean``.
@@ -43,7 +45,6 @@ _BASELINE = {
     "tests/_repo_walk.py": 1,
     "tests/_ruff_version.py": 1,
     "tests/phase_b_champ_select/test_champ_select_shape_rc2.py": 1,
-    "tests/snapshot_panels/test_overlay_phase_surfaces.py": 2,
     "tests/snapshot_panels/test_xss_escaping.py": 1,
     "tests/test_a001_test_code_idiom_ratchet_s144p182.py": 1,
     "tests/test_agent3_suite_idiom_ratchet_s144p231.py": 1,
@@ -55,7 +56,6 @@ _BASELINE = {
     "tests/test_aram_coach_cites_s144p51.py": 1,
     "tests/test_aram_comp_verdict_variants_rm850.py": 1,
     "tests/test_aram_item_interaction_snapshot_tracked.py": 1,
-    "tests/test_aram_mayhem_augment_reco_rm860.py": 2,
     "tests/test_arena_coach_shadow_ts_cites_s144p51.py": 1,
     "tests/test_ascii_escape_py_atomic_write_rm258.py": 1,
     "tests/test_ascii_source_sweep.py": 2,
@@ -114,11 +114,9 @@ _BASELINE = {
     "tests/test_docs_ds_calibration_pipeline_s134d12.py": 1,
     "tests/test_download_aram_icons_no_import_probe_s144p22.py": 1,
     "tests/test_ds_engine_logger_boot_order_s144d59.py": 1,
-    "tests/test_ds_engine_logger_main_backstop_s144d60.py": 2,
     "tests/test_ds_engine_logger_scrub_s144d58.py": 1,
     "tests/test_ds_extract_import_no_log_rm828b.py": 1,
     "tests/test_ds_pick_consumption_p1l11.py": 1,
-    "tests/test_edit_lint_check_cp1252_rm818.py": 2,
     "tests/test_edit_lint_check_stdin_payload.py": 1,
     "tests/test_env_name_case_prod_ratchet_s144p215.py": 1,
     "tests/test_exception_chain_ratchet_s144p153.py": 1,
@@ -126,8 +124,6 @@ _BASELINE = {
     "tests/test_fetch_cdragon_pbe_no_import_fetch_s144p23.py": 1,
     "tests/test_first_element_slice_test_code_ratchet_s144p167.py": 1,
     "tests/test_fleet_kit_v12_race_guards.py": 1,
-    "tests/test_fleet_kit_v13_identity.py": 2,
-    "tests/test_fleet_kit_v19.py": 2,
     "tests/test_fleet_kit_v26.py": 1,
     "tests/test_furb105_print_empty_string_ratchet_s144p133.py": 1,
     "tests/test_furb140_starmap_zero_ratchet_s144p521.py": 1,
@@ -147,7 +143,6 @@ _BASELINE = {
     "tests/test_global_return_perf_ratchet_s144p117.py": 1,
     "tests/test_headless_env.py": 1,
     "tests/test_hook_log_live_isolation.py": 1,
-    "tests/test_hook_output_channel.py": 2,
     "tests/test_hz_mismatch_diagnose_atomic_write_rm258.py": 1,
     "tests/test_idempotent_stream_gate.py": 1,
     "tests/test_idiom_zero_ratchet_s144p180.py": 1,
@@ -157,7 +152,6 @@ _BASELINE = {
     "tests/test_input_parser_redos_codeql.py": 1,
     "tests/test_install_bat_embedded_pins_rm764.py": 1,
     "tests/test_install_bat_key_stage_rm779.py": 1,
-    "tests/test_install_startup_shortcut_rm826.py": 2,
     "tests/test_isc001_same_line_concat_ratchet_s144p507.py": 1,
     "tests/test_isc002_backslash_concat_ratchet_s144p237.py": 1,
     "tests/test_kit_v10_spawn_routes.py": 1,
@@ -172,11 +166,8 @@ _BASELINE = {
     "tests/test_legacy_lcu_panel_phase_rm382.py": 1,
     "tests/test_live_log_isolation_rm812.py": 1,
     "tests/test_liveclient_shape_audit_rm601.py": 1,
-    "tests/test_local_hosts_config.py": 2,
-    "tests/test_log_scrub_residuals_rm811b.py": 2,
     "tests/test_logger_leak_census.py": 1,
     "tests/test_loop_concurrency.py": 1,
-    "tests/test_loop_executor.py": 2,
     "tests/test_match_metrics_true_audit_s144.py": 1,
     "tests/test_mcp_mc_hardening_rm811.py": 1,
     "tests/test_md_guard_selector_bound_argv_s144q40b.py": 1,
@@ -208,7 +199,6 @@ _BASELINE = {
     "tests/test_plw2901_loop_var_overwrite_ratchet_s144p259.py": 1,
     "tests/test_polled_json_lane8_cycle24.py": 1,
     "tests/test_polled_json_resolver_cites_s144p51.py": 1,
-    "tests/test_postmortem_runner_pipe.py": 2,
     "tests/test_precedence_and_dead_branch_ratchet_s144p112.py": 1,
     "tests/test_precommit_gate_cp1252_rm818.py": 2,
     "tests/test_precommit_gate_message_file.py": 2,
@@ -341,6 +331,18 @@ _FIXED = (
     "tests/test_loop_status_route_lane8_cycle68.py",
     "tests/test_postmortem_task_hidden_launch.py",
     "tests/test_tracked_json_producers_emit_lf_bytes.py",
+    "tests/snapshot_panels/test_overlay_phase_surfaces.py",
+    "tests/test_aram_mayhem_augment_reco_rm860.py",
+    "tests/test_ds_engine_logger_main_backstop_s144d60.py",
+    "tests/test_edit_lint_check_cp1252_rm818.py",
+    "tests/test_fleet_kit_v13_identity.py",
+    "tests/test_fleet_kit_v19.py",
+    "tests/test_hook_output_channel.py",
+    "tests/test_install_startup_shortcut_rm826.py",
+    "tests/test_local_hosts_config.py",
+    "tests/test_log_scrub_residuals_rm811b.py",
+    "tests/test_loop_executor.py",
+    "tests/test_postmortem_runner_pipe.py",
 )
 
 

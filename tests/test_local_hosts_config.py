@@ -66,10 +66,10 @@ def test_example_template_is_tracked_and_carries_no_real_value():
 
 def test_real_config_is_gitignored_and_untracked():
     rel = "ops/local_hosts.json"
-    ignored = subprocess.run(["git", "-C", str(REPO), "check-ignore", "-q", "--", rel])
+    ignored = subprocess.run(["git", "-C", str(REPO), "check-ignore", "-q", "--", rel], check=False)
     assert ignored.returncode == 0, "ops/local_hosts.json must be gitignored"
     tracked = subprocess.run(["git", "-C", str(REPO), "ls-files", "--error-unmatch", "--", rel],
-                             capture_output=True)
+                             capture_output=True, check=False)
     assert tracked.returncode != 0, "ops/local_hosts.json must never be tracked"
 
 

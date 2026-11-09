@@ -219,7 +219,7 @@ def _kit_launch_runs_the_registered_stub(monkeypatch: pytest.MonkeyPatch):
             raise FileNotFoundError(argv[0])
         return subprocess.run(stub, input=kw.get("input"), cwd=kw.get("cwd"),
                               capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", timeout=kw.get("timeout"))
+                              errors="replace", timeout=kw.get("timeout"), check=False)
 
     monkeypatch.setattr(fleet_route, "_launch", _launch)
     yield
@@ -482,7 +482,7 @@ def _configured_hooks_path(root: Path) -> str:
     """core.hooksPath as GIT reports it - read independently of the module under
     test, so the expectation is not derived from the same code path it judges."""
     r = subprocess.run(["git", "-C", str(root), "config", "--get", "core.hooksPath"],
-                       capture_output=True, text=True, timeout=60)
+                       capture_output=True, text=True, timeout=60, check=False)
     return (r.stdout or "").strip() if r.returncode == 0 else ""
 
 
