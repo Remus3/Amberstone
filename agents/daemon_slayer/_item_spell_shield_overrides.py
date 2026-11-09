@@ -127,7 +127,18 @@ def item_spell_shield_fraction(item_ids: Iterable[str | int]) -> float:
     all-damage void on the numerator). The default-OFF gating lives in
     ``compute_ehp`` (this function is only called when ``apply_item_spell_shield``
     is True), mirroring ``_item_survival_window``.
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-151).
     """
+    # A bare "3102" was read character by character and lost Banshee's Veil; a
+    # bare int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     remaining = 1.0
     for iid in item_ids:
         block_pct = _ITEM_SPELL_SHIELD.get(str(iid))

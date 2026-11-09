@@ -115,7 +115,18 @@ def item_survival_window_fraction(
     the reference 6.0s window (division guard). Duplicate ids stack per occurrence
     (the build planner enforces the inventory cap + unique-passive doctrine
     separately).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-152).
     """
+    # A bare "3157" was read character by character and lost Zhonya's; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     fw = float(fight_window_s) if fight_window_s and fight_window_s > 0 else 6.0
     total = 0.0
     for iid in item_ids:

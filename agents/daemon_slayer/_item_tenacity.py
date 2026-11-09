@@ -95,7 +95,18 @@ def total_item_tenacity(item_ids: Iterable[str | int]) -> float:
     Items not in the registry contribute 0 (no reduction). Duplicate ids stack
     per occurrence per League's stat-stack rules (the build planner enforces the
     inventory cap + unique-passive doctrine separately).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-153).
     """
+    # A bare "3111" was read character by character and lost Mercury's Treads;
+    # a bare int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     remaining = 1.0
     for iid in item_ids:
         pct = _ITEM_TENACITY.get(str(iid), 0.0)

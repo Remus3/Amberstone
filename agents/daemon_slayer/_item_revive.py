@@ -102,7 +102,18 @@ def item_revive_max_hp_fraction(
     ``<= 0.0`` guard; ``1e308 / 1e-308`` overflows) or a negative ratio (negative
     ``base_hp``) credits 0.0: a revive never lowers the multiplier below 1.0 and
     never returns inf or NaN (S144-D-108).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-150).
     """
+    # A bare "3026" was read character by character and lost Guardian Angel; a
+    # bare int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     if total_hp <= 0.0:
         return 0.0
     ratio = float(base_hp) / float(total_hp)

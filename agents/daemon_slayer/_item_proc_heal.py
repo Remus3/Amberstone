@@ -178,10 +178,21 @@ def item_proc_heal_hp(
 
     Returns:
         Total self-heal HP over the modeled fight window, floored at 0.0.
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-148); the DEFAULT-OFF gate still returns 0.0 first.
     """
     if not assume_item_proc_heal:
         return 0.0
 
+    # A bare "2502" was read character by character and lost Anguish; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     coefficient = 0.0
     for item_id in item_ids:
         scaling = _ITEM_PROC_HEAL_BONUS_HP_SCALING.get(str(item_id))

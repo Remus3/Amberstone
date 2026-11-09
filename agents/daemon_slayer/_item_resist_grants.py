@@ -384,7 +384,18 @@ def item_resist_grants(
     champion ``bonus_armor`` / ``bonus_mr``. The default-OFF gating lives in
     ``compute_ehp`` (this function is only called when ``apply_item_resist_grants``
     is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-149).
     """
+    # A bare "6665" was read character by character and lost Jak'Sho; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     bonus_armor = 0.0
     bonus_mr = 0.0
     seen_families: set[str] = set()
