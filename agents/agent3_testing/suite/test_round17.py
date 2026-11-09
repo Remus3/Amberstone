@@ -1,8 +1,6 @@
 """Round 17 - champ-select warm-prime coverage."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from tests._asyncio_isolation import run_coro

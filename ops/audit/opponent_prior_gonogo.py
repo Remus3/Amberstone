@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import collections
 import json
-import os
 import sqlite3
 import statistics
 from pathlib import Path

@@ -6,8 +6,6 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
-
 
 def _init(tmp_path: Path, monkeypatch) -> Path:
     """Seed an aram DB + monkeypatch the cooldown file into tmp_path."""
@@ -116,7 +114,6 @@ def test_cooldown_prevents_duplicate_file(tmp_path: Path, monkeypatch) -> None:
 def test_cooldown_expires_after_window(tmp_path: Path, monkeypatch) -> None:
     from agents.agent4_coach_mentor.cold_streak_detector import detect_and_file
     _init(tmp_path, monkeypatch)
-    import agents.agent4_coach_mentor.cold_streak_detector as det
     _seed_cold(tmp_path / "aram.db", "Jinx", delta=-1.5)
 
     # Pre-seed cooldown with a stale timestamp (25 h ago).

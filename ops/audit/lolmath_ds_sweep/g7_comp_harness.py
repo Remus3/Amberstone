@@ -32,7 +32,6 @@ Usage: python g7_comp_harness.py [PATCH]
 """
 from __future__ import annotations
 
-import collections
 import json
 import sys
 from pathlib import Path
