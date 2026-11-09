@@ -179,7 +179,7 @@ def owner_alive(root: Path):
     marker = root / MARKER_NAME
     if os.name == "nt":
         try:
-            os.unlink(marker)
+            marker.unlink()
         except FileNotFoundError:
             return None
         except OSError:

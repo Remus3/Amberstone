@@ -184,7 +184,7 @@ def _plant_and_report(base, monkeypatch):
         tracer.nodeid = _NODEID_ATOMIC
         with open(atomic_tmp, "w", encoding="ascii") as handle:
             handle.write(_ATOMIC_PAYLOAD)
-        evidence["atomic_tmp_on_disk"] = os.path.getsize(atomic_tmp)
+        evidence["atomic_tmp_on_disk"] = atomic_tmp.stat().st_size
         os.replace(atomic_tmp, atomic_dst)
 
         # POSITIVE arm 3 - pathlib, which reaches io.open rather than
@@ -192,11 +192,11 @@ def _plant_and_report(base, monkeypatch):
         tracer.nodeid = _NODEID_PATHLIB
         pathlib_path.write_text(_PATHLIB_PAYLOAD, encoding="ascii")
 
-        evidence["append_on_disk"] = os.path.getsize(append_path)
-        evidence["atomic_dst_on_disk"] = os.path.getsize(atomic_dst)
-        evidence["pathlib_on_disk"] = os.path.getsize(pathlib_path)
-        evidence["negative_unwatched_on_disk"] = os.path.getsize(negative_unwatched)
-        evidence["negative_outside_on_disk"] = os.path.getsize(negative_outside)
+        evidence["append_on_disk"] = append_path.stat().st_size
+        evidence["atomic_dst_on_disk"] = atomic_dst.stat().st_size
+        evidence["pathlib_on_disk"] = pathlib_path.stat().st_size
+        evidence["negative_unwatched_on_disk"] = negative_unwatched.stat().st_size
+        evidence["negative_outside_on_disk"] = negative_outside.stat().st_size
         evidence["watched_root_files"] = sum(
             1 for _ in (root / "data").iterdir()
         )
