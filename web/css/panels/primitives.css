@@ -218,7 +218,14 @@ body > header { transition: height 180ms ease; }
   font-weight: 900; letter-spacing: 0.05em;
 }
 .replay-match-verdict.won  { color: var(--good); }
-.replay-match-verdict.lost { color: var(--bad);  }
+/* S144-U-242: the lost "L" takes the RM-1550 red-text lift (70 percent
+ * red toward --text in oklab). Bare --bad read 4.44 arcane / 4.48 moonlit
+ * at rest, 3.28 to 3.79 on a hovered row and 3.89 to 4.45 on the picked
+ * row, in five of six themes (measured headless). The 3px row stripe
+ * keeps the bare red, so a lost row still reads by hue. */
+.replay-match-verdict.lost {
+  color: color-mix(in oklab, var(--bad) 70%, var(--text));
+}
 .replay-match-champ {
   color: var(--text); font-weight: 700;
 }
@@ -226,6 +233,14 @@ body > header { transition: height 180ms ease; }
   margin-left: auto; font-size: var(--fs-xs);
   color: var(--text-faint); letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+/* S144-U-242: on the hover (--surface-alt) and picked (--surface-head)
+ * fills --text-faint read 3.64 to 3.94 (five themes) and 4.31 to 4.48
+ * (four), under AA; the label steps up to --text-dim there, the tone of
+ * the date line under it. At rest it keeps --text-faint (4.88 to 5.35 on
+ * the panel). */
+.replay-match-row:is(:hover, .active) .replay-match-queue {
+  color: var(--text-dim);
 }
 .replay-match-bot {
   display: block;

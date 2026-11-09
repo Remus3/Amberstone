@@ -105,7 +105,7 @@ c2300909f54b4394e5ba2c61d94042b8eb0833b70e11d533482abf675355cb2d  web/css/panels
 
 ef16d5e1d85d05da4f8d056b34b17cc2f8d161767f168921c5a685475c0eaae0  web/css/panels/playstyle_labels.css
 
-221e6390912298df6e58a7e79b4d12dc3dc8aeaa7785625ebc9d411b22495c5b  web/css/panels/primitives.css
+a45ff423779749d470130ba49f362a6981036f320b0ee533bdfa85341d8ffd48  web/css/panels/primitives.css
 
 ece991bae676f1905ec0d60796217afbd24a97d2507a54766a188cd737561a58  web/css/panels/replay_events.css
 
