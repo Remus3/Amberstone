@@ -13,10 +13,10 @@
 //   Next             ~8s refresh                  -> ~16s / ~48s.
 //   Item Build:      event-driven                 -> 90s / 5min.
 
-import { _to12, el, fmtList, safe, fitText, logLine, isArenaPayload, classifyAction, _opGlyph, _formatRelativeAge, htmlToText, renderTooltipHtml } from './lib/helpers.js';
+import { _to12, el, safe, logLine, _opGlyph, htmlToText, renderTooltipHtml } from './lib/helpers.js';
 import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
-import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
-import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
+import { ITEMS, CHAMPS, DDRAGON_FALLBACK_VERSION, _resolveItemId, _resolveChampId, _resolveSpell } from './lib/items_index.js';
+import { makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
 import {
   armScrollAway, dismissStrandedLayers, modalClosing, modalLayerRendered,
@@ -30,15 +30,15 @@ import { renderCoachChoices } from './panels/coach_choices.js';
 import { renderCallouts, renderLead } from './panels/callouts.js';
 import { startPersonalContextPolling } from './panels/personal_context.js';
 // S144-U-265: the never-rendered NEXT panel module is retired.
-import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
-import { renderMinimap, _tickSpellCooldowns, _snapshotSpells, _fmtMMSS } from './panels/map_state.js';
+import { IB, renderItemBuild } from './panels/item_build.js';
+import { renderMinimap, _fmtMMSS } from './panels/map_state.js';
 // RM-1211: the self-spell cooldown key is called below but was never exported
 // or imported - each call threw a ReferenceError. (Its sibling, the tab-return
 // ZOI redraw, left with the retired minimap canvases, S144-U-258.)
 // Guard: tests/test_web_js_unimported_calls_s144q43.py.
 import { _spellKey } from './panels/map_state.js';
 import { renderAugmentReco } from './panels/augment_reco.js';
-import { handleChampSelect, renderChampSelectCoach, renderChampSelectView, csMockFixtureUrl } from './panels/champ_select.js';
+import { handleChampSelect, renderChampSelectView, csMockFixtureUrl } from './panels/champ_select.js';
 import { csAdaptationRequest } from './lib/cs_adaptation.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderScreenRead } from './panels/screen_read.js';
@@ -68,8 +68,10 @@ import { refreshBranchReview } from './panels/branch_review.js';
 // clobbers the live PGR.
 import { wireHistoricalPgrOnce, renderHistoricalPgr } from './panels/historical_pgr.js';
 import { createLobbyDuoSynergy, lobbyDuoSynergyHtml } from './panels/lobby_duo_synergy.js';
-import { renderCoachDecisions, renderRecentCoachCalls } from './panels/coach_decisions.js';
-import { _settingsRefresh, renderSpendGates, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
+// S144-U-268: loaded for its module-scope /api/decisions poll; main.js calls
+// none of its exports (guard: tests/test_web_js_unused_named_imports_s144u268.py).
+import './panels/coach_decisions.js';
+import { _settingsRefresh, renderSpendGates, _replayViewWireOnce, _replayViewRefresh } from './panels/dev.js';
 import { renderBuildInsights } from './panels/build_insights.js';
 // HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
 import { initOverlayPulse } from './overlay_pulse.js';
@@ -501,7 +503,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
 
   // state, CADENCE imported from lib/state.js
-  // (spellCds is added to state at runtime below)
 
   // -- Helpers ---------------------------------------------------------
   // The visible connection state now lives in the heartbeat pill's color:
@@ -1249,7 +1250,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
   }
 
-  // fmtList, safe, fitText, logLine, isArenaPayload, classifyAction imported from lib/helpers.js
 
 
   // -- WHAT WENT view (aftergame Map State replacement) --------------
@@ -1493,7 +1493,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   const champPill = el("champion-pill");
   let championPillState = { name: null, source: null };
 
-  // CHAMPS, SPELLS, _resolveChampId, _resolveSpell imported from lib/items_index.js.
 
   function setChampionPill(name, source) {
     if (!champPill) return;

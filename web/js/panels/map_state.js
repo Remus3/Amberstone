@@ -1,7 +1,7 @@
 // Map State panel - zone pill, game phase, spell CDs, gold diff.
-import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
+import { el, safe } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
-import { CHAMPS, SPELLS, ITEM_COSTS, _resolveChampId, _resolveSpell } from '../lib/items_index.js';
+import { ITEM_COSTS } from '../lib/items_index.js';
 import { teamItemValueDiff } from '../lib/item_value.js';
 
 // S144-U-264: the Map State panel shell and its MM handle are retired; the
@@ -11,8 +11,8 @@ import { teamItemValueDiff } from '../lib/item_value.js';
 // S144-U-267: the write-only game-clock state slot and the wrapper that
 // rewrote it every envelope are retired (nothing read it once
 // the game time chip left, S144-U-261); renderMinimap stamps the phase
-// below straight from game_time_s. state.spellCds is initialised once,
-// beside the spell-cooldown helpers further down.
+// below straight from game_time_s. state.spellCds is created by
+// lib/state.js, not here (S144-U-268).
 // Guard: tests/snapshot_panels/test_game_clock_state_retired.py.
 
 // Three phases mapped to body[data-phase] so CSS can tint subtly:
@@ -296,8 +296,8 @@ function renderMinimap(p) {
 
 // Live spell-cooldown state. Each key is champion|spell, value is
 // {remaining: seconds, anchor: Date.now()}. On state re-emit we
-// snapshot, on tick we recompute visible remaining time.
-state.spellCds = {};
+// snapshot, on tick we recompute visible remaining time. lib/state.js
+// creates state.spellCds; it is not re-assigned here (S144-U-268).
 function _spellKey(champ, spell) {
   return (champ || "") + "|" + (spell || "");
 }

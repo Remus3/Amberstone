@@ -25,9 +25,9 @@ d5247ab1b73693e40ee7f9a215ed31eb27d31b8e5e979b8a2d9f86cfa7657b92  web/js/panels/
 
 f41861da536c4bf13ffca118dab04e833a61636c7d983029d41cbf1a019fc297  web/js/panels/coach_choices.js
 
-1cdfc27f8e351e702d0b0b6188a5072bf7a1334325b00a66ab77e760defb3b4b  web/js/panels/coach_decisions.js
+d864ad293a48f36278f999c6bfa6abe3311778dd23a4d164691cc5213ee9d7fa  web/js/panels/coach_decisions.js
 
-1e9865ac94653a1c91a3f7c80ddc61485cae787d368fa45eb947ad52c2c5211b  web/js/panels/dev.js
+9d09b8464ddb77b5a42cf5e8b5e1e054716dda26c61d6188f8df63ca4c69325c  web/js/panels/dev.js
 
 7dd55b0dcf03acc31d15f108c2739067467d6626507e5d61e5f30909badb4f44  web/js/panels/draft_elo.js
 
@@ -55,13 +55,13 @@ a2a349dc5faec89c7f80a70b42acb052af39f0cefe8029169f5e90a59d01acdf  web/js/panels/
 
 fd11a5fce98b2e3c10733a0a167cc80769a9d860aa3d3705bddfb89aa2f16ece  web/js/panels/historical_pgr.js
 
-41074b6955340a12804a06e35296360767ba0af7ec7aba25f024287a2ddf55b3  web/js/panels/item_build.js
+1515670f62f8306d930c6c57d82aca9f1d20bd7ddefaa6227fb04bb9e1480e33  web/js/panels/item_build.js
 
 0400592f999febbb3d03718a94ac255539cf3d52c39f33820003ae421e186fc9  web/js/panels/last_match.js
 
 0bb7ed5f80c5996f8cabccfa5e78317d8b5393cccbfe896ad01bb3193063ea40  web/js/panels/lobby_duo_synergy.js
 
-2314312943f8fe211b7d6fa44bf688e29c1bb6a9b9367f863fc8f5d044146898  web/js/panels/map_state.js
+888d8aeb4e0cec94675b34b3a71077e4c14539f597149d0a183dc903b3d46caf  web/js/panels/map_state.js
 
 d9d4065b05235618c6e1bfda607aabe23998d191f41ca550085e737849ba5e53  web/js/panels/minimap_rect.js
 
@@ -113,7 +113,7 @@ f3587a627ebe71a69cf0cedd646c91da5de8441fa6820eccb59ab15f8828a3cb  web/js/panels/
 
 39c791ee5589d59710e88889571b66f2c052a798becdee117ba580abb9183fb9  web/js/panels/review_player_model.js
 
-0bce917ae0cfe438d06fe8f91a15037da4632a172b0c0c6b6f9279f336714c75  web/js/panels/right_now.js
+9e8a0300e30c32e8c6f6d43076261cab8dacdc3a7244fc2bb414ec979df9a814  web/js/panels/right_now.js
 
 00214afbcdae737517478920a9c19e1bc858ac6a09cd2fc7ccf2d2d095e879c6  web/js/panels/screen_read.js
 

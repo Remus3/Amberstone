@@ -1,7 +1,6 @@
 // Dev panel - Settings view (incl. spend gates), replay scrubber + past-match minimap.
-import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
-import { state } from '../lib/state.js';
-import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
+import { el } from '../lib/helpers.js';
+import { ITEMS, _resolveChampId } from '../lib/items_index.js';
 import { applyTheme, saveTheme, readStoredTheme, queryTheme, DEFAULT_THEME } from '../lib/theme.js';
 // s220 PGR S5: Match-V5 timeline event ribbon for the Replay view.
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.

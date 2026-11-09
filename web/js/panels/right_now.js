@@ -1,5 +1,5 @@
 // Right Now panel - immediate coaching actions, game-sense, stats, digest.
-import { el, safe, fmtList, classifyAction, isArenaPayload, logLine, _formatRelativeAge } from '../lib/helpers.js';
+import { el, safe, classifyAction, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_priority.js';
 import { isFightCue, makeCombatLatch } from '../lib/combat_mode.js';
