@@ -90,6 +90,7 @@ def test_fixture_really_ignores_the_decoys(repo):
         capture_output=True,
         text=True,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        check=False,
     )
     assert sorted(out.stdout.split()) == sorted(_IGNORED)
 

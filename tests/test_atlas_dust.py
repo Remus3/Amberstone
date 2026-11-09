@@ -230,6 +230,7 @@ def test_main_script_block_parses_under_node(html: str) -> None:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
     finally:
         Path(path).unlink()

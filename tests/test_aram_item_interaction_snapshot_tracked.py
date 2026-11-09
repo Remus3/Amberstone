@@ -65,7 +65,8 @@ _SNAPSHOT = _ROOT / _REL
 
 def _git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ("git", *args), cwd=str(_ROOT), capture_output=True, text=True, timeout=60
+        ("git", *args), cwd=str(_ROOT), capture_output=True, text=True, timeout=60,
+        check=False,
     )
 
 

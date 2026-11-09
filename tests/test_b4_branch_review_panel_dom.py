@@ -76,7 +76,7 @@ class RenderTests(unittest.TestCase):
             + "})();\n"
         )
         proc = subprocess.run([NODE, "-e", program], capture_output=True,
-                              text=True, timeout=60)
+                              text=True, timeout=60, check=False)
         if proc.returncode != 0:
             raise AssertionError(f"node exited {proc.returncode}\n"
                                  f"{proc.stdout}\n{proc.stderr}")

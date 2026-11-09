@@ -172,7 +172,7 @@ class TestDiagnosticsSurvivePythonw:
             "print(r._LOG_FILE)"
         )
         out = subprocess.run([sys.executable, "-c", probe], capture_output=True,
-                             text=True, timeout=60, cwd=str(_REPO))
+                             text=True, timeout=60, cwd=str(_REPO), check=False)
         assert out.returncode == 0, f"probe failed: {out.stderr[-400:]}"
         log_path = Path(out.stdout.strip().splitlines()[-1])
         assert log_path.exists(), (

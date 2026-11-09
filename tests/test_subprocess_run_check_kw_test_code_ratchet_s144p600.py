@@ -11,7 +11,9 @@ Measured 2026-11-09 with ``ruff check --isolated`` (target py39) over the tracke
 361 findings in 299 files. Slice 1 stated ``check=False`` at 35 sites in ten files (the ten with
 the most sites that no other lane branch had changed, none of them launcher / packaging test
 files); slice 2 (S144-P-602) states it at 24 sites in twelve more (every two-site file no other
-lane branch had changed, bar the gated-lane, launcher and held sibling-sweep files); every other
+lane branch had changed, bar the gated-lane, launcher and held sibling-sweep files); slice 3
+(S144-P-603) states it at twelve one-site files no other lane branch had changed (none a ratchet
+module, helper or launcher file); every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
 a finding beyond the baseline fails ``test_no_new_findings``; a ``_FIXED`` file that offends again
@@ -48,24 +50,12 @@ _BASELINE = {
     "tests/snapshot_panels/test_xss_escaping.py": 1,
     "tests/test_a001_test_code_idiom_ratchet_s144p182.py": 1,
     "tests/test_agent3_suite_idiom_ratchet_s144p231.py": 1,
-    "tests/test_agent_relay_audit.py": 1,
     "tests/test_ambiguous_name_ratchet_s144p475.py": 1,
-    "tests/test_anthropic_key_true_audit_s144.py": 1,
-    "tests/test_anvil_shadow_probe_rm873.py": 1,
-    "tests/test_aram_balance_fetch_failure.py": 1,
-    "tests/test_aram_coach_cites_s144p51.py": 1,
-    "tests/test_aram_comp_verdict_variants_rm850.py": 1,
-    "tests/test_aram_item_interaction_snapshot_tracked.py": 1,
-    "tests/test_arena_coach_shadow_ts_cites_s144p51.py": 1,
     "tests/test_ascii_escape_py_atomic_write_rm258.py": 1,
     "tests/test_ascii_source_sweep.py": 2,
     "tests/test_async_blocking_prod_ratchet_s144p213.py": 1,
     "tests/test_asyncsleep_camelalias_ratchet_s144p239.py": 1,
-    "tests/test_atlas_dust.py": 1,
-    "tests/test_audit_api_surface_gitignored_s144d13.py": 1,
-    "tests/test_b4_branch_review_panel_dom.py": 1,
     "tests/test_b4_client_directive_gate.py": 1,
-    "tests/test_base_coach_dclass_cites_s144p51.py": 1,
     "tests/test_batch_embed_stamp_gate_a45b.py": 1,
     "tests/test_batch_set_p_clears_first_rm826.py": 1,
     "tests/test_batch_system_tools_rm826.py": 1,
@@ -343,6 +333,18 @@ _FIXED = (
     "tests/test_log_scrub_residuals_rm811b.py",
     "tests/test_loop_executor.py",
     "tests/test_postmortem_runner_pipe.py",
+    "tests/test_agent_relay_audit.py",
+    "tests/test_anthropic_key_true_audit_s144.py",
+    "tests/test_anvil_shadow_probe_rm873.py",
+    "tests/test_aram_balance_fetch_failure.py",
+    "tests/test_aram_coach_cites_s144p51.py",
+    "tests/test_aram_comp_verdict_variants_rm850.py",
+    "tests/test_aram_item_interaction_snapshot_tracked.py",
+    "tests/test_arena_coach_shadow_ts_cites_s144p51.py",
+    "tests/test_atlas_dust.py",
+    "tests/test_audit_api_surface_gitignored_s144d13.py",
+    "tests/test_b4_branch_review_panel_dom.py",
+    "tests/test_base_coach_dclass_cites_s144p51.py",
 )
 
 

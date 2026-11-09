@@ -348,7 +348,7 @@ def test_a_runpy_load_still_works_standalone_and_prints_nothing_else(tmp_path):
          str(anthropic_key.REPO_ROOT / "core" / "anthropic_key.py"),
          str(good), FILE_KEY, str(junk)],
         env=env, stdin=subprocess.DEVNULL, capture_output=True, timeout=60,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False)
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.decode("ascii").split() == ["GOOD", "JUNK", "TEMPLATE"]
     assert proc.stderr == b"", proc.stderr
