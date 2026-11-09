@@ -43,7 +43,7 @@ def _cmd_stats(args: argparse.Namespace) -> int:
     try:
         snap = DataSnapshot.load(patch=args.patch, data_root=Path(args.data_root) if args.data_root else None)
     except SnapshotNotFound as e:
-        logger.error(f"error: {e}")
+        logger.error("error: %s", e)
         return 2
 
     item_ids: list[str] = []
@@ -64,7 +64,7 @@ def _cmd_stats(args: argparse.Namespace) -> int:
             augments=augments,
         )
     except (KeyError, ValueError) as e:
-        logger.error(f"error: {e}")
+        logger.error("error: %s", e)
         return 2
 
     if args.json:
@@ -78,7 +78,7 @@ def _cmd_dps(args: argparse.Namespace) -> int:
     try:
         snap = DataSnapshot.load(patch=args.patch, data_root=Path(args.data_root) if args.data_root else None)
     except SnapshotNotFound as e:
-        logger.error(f"error: {e}")
+        logger.error("error: %s", e)
         return 2
 
     item_ids: list[str] = []
@@ -97,7 +97,7 @@ def _cmd_dps(args: argparse.Namespace) -> int:
             phase=args.phase,
         )
     except (KeyError, ValueError) as e:
-        logger.error(f"error: {e}")
+        logger.error("error: %s", e)
         return 2
 
     if args.json:
@@ -111,7 +111,7 @@ def _cmd_rank(args: argparse.Namespace) -> int:
     try:
         snap = DataSnapshot.load(patch=args.patch, data_root=Path(args.data_root) if args.data_root else None)
     except SnapshotNotFound as e:
-        logger.error(f"error: {e}")
+        logger.error("error: %s", e)
         return 2
 
     item_ids: list[str] = []
@@ -140,7 +140,7 @@ def _cmd_rank(args: argparse.Namespace) -> int:
             sort_by=args.sort,
         )
     except (KeyError, ValueError) as e:
-        logger.error(f"error: {e}")
+        logger.error("error: %s", e)
         return 2
 
     if args.json:
@@ -154,7 +154,7 @@ def _cmd_beam(args: argparse.Namespace) -> int:
     try:
         snap = DataSnapshot.load(patch=args.patch, data_root=Path(args.data_root) if args.data_root else None)
     except SnapshotNotFound as e:
-        logger.error(f"error: {e}")
+        logger.error("error: %s", e)
         return 2
 
     item_ids: list[str] = []
@@ -184,7 +184,7 @@ def _cmd_beam(args: argparse.Namespace) -> int:
             boots_unique=not args.no_boots_unique,
         )
     except (KeyError, ValueError) as e:
-        logger.error(f"error: {e}")
+        logger.error("error: %s", e)
         return 2
 
     if args.json:

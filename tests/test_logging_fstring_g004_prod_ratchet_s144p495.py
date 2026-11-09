@@ -14,9 +14,11 @@ now empty and stays a dict that only shrinks. A baseline row that stops offendin
 ``test_baseline_is_exact`` until it is dropped; a new finding anywhere fails
 ``test_no_new_findings``.
 
-Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer`` (its
-``cli.py`` carries 8 more), the vendored ``ops/fleet_kit`` and the ``agents/agent3_testing/suite``
-suite are out of scope. The run uses NO config (``--isolated``) so a per-file-ignore cannot hide
+``agents/daemon_slayer/cli.py`` (8 more, the only DS module with a finding; no lane branch touched
+it) followed in S144-P-505 and the DS package is now in scope.
+
+Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory (so the DS test tree too), the
+vendored ``ops/fleet_kit`` and the ``agents/agent3_testing/suite`` suite are out of scope. The run uses NO config (``--isolated``) so a per-file-ignore cannot hide
 a finding.
 """
 from __future__ import annotations
@@ -41,13 +43,13 @@ _RULE = "G004"
 _OUT_OF_SCOPE = (
     "tests/",
     "tools/tests/",
-    "agents/daemon_slayer/",
     "agents/agent3_testing/suite/",
     "ops/fleet_kit/",
 )
 # file -> finding count that stays. Only shrinks; empty since S144-P-499.
 _BASELINE: dict[str, int] = {}
 _FIXED = (
+    "agents/daemon_slayer/cli.py",
     "core/aftergame_summary.py",
     "core/build_order_precompute.py",
     "core/build_order_variants.py",
