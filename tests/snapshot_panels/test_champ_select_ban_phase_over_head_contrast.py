@@ -32,6 +32,9 @@ from tests.snapshot_panels.test_ds_cards_muted_text_contrast import _HELPERS
 from tests.snapshot_panels.test_ds_matchup_text_contrast import _lum, _ratio
 
 _THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
+# S144-U-241: the theme is flipped in-page, so every transition is off first
+# (RM-1132); without it the reads straddle the swap in five themes.
+_SHEET = "*, *::before, *::after { transition: none !important; }"
 
 _MEASURE = """async () => {
   await document.fonts.ready;
@@ -72,6 +75,7 @@ _MEASURE = """async () => {
 def _measure(mock_server, pw_browser, theme):
     ctx, page, errors = _open_champ_select(pw_browser, mock_server, "sr")
     try:
+        page.add_style_tag(content=_SHEET)
         page.evaluate(
             "(t) => { document.documentElement.dataset.theme = t; }", theme)
         page.wait_for_function(

@@ -73,7 +73,7 @@ _EYEBROW_JS = """() => {
 }"""
 
 
-def _eyebrows(mock_server, pw_browser, surface, theme):
+def _measure(mock_server, pw_browser, theme, surface):
     ctx, page, errors = _open(pw_browser, mock_server, "sr",
                               _SURFACES[surface] + f"&theme={theme}")
     try:
@@ -90,7 +90,7 @@ def _eyebrows(mock_server, pw_browser, surface, theme):
 @pytest.mark.parametrize("surface", sorted(_SURFACES))
 def test_build_row_eyebrows_reach_aa_and_keep_the_headline(
         surface, theme, mock_server, pw_browser):
-    booted, rows, errors = _eyebrows(mock_server, pw_browser, surface, theme)
+    booted, rows, errors = _measure(mock_server, pw_browser, theme, surface)
     assert booted == theme, f"booted on the wrong theme, not {theme}"
     assert [r["text"] for r in rows] == _LABELS, rows
     for r in rows:

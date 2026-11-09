@@ -166,7 +166,30 @@ makes), the s144 uiux module of S144-U-240:
     re-classes the hidden zone pill through its stale zone classes inside
     the same evaluate. The sheet covers the zone pill's colour and the
     hidden rule drops its pulse, so nothing runs at that read.
-This module pins all forty-seven verdicts at runtime with each test's own opener,
+Audit (2026-11-08, s144 uiux cycle 236, S144-U-241, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the seven s144 uiux modules of S144-U-233..239, landed on
+lane/uiux with no row here:
+  - test_champ_select_ban_phase_over_head_contrast,
+    test_champ_select_personal_build_contrast: flip dataset.theme in-page
+    on the booted champ-select page and read at once. In five of six
+    themes (all but arcane) the swap left transitions running at the read
+    (the view trigger's colours, the heartbeat and title caret colour, the
+    rune-save button, build-path rows and items, bench cells): 10 of 12
+    runs straddled. Settled now because both openers add the sheet before
+    the swap; every contrast verdict in both modules still holds.
+  - test_last_match_build_wpa_contrast,
+    test_lobby_mains_placeholder_contrast,
+    test_lobby_roster_row_dimming_contrast,
+    test_session_hygiene_inert_contrast: boot-stamped (?theme=), never
+    swap in-page; each opener adds the sheet before its read (the roster
+    module reads again after a real mouse hover, the Lobby mains one after
+    a tab click), and nothing runs at their reads with it.
+  - test_ui_mock_active_match_build_eyebrows: boot-stamped, never swaps
+    in-page, no sheet and no sleep; nothing runs anywhere in the page at
+    its read. Its reader is now _measure(mock_server, pw_browser, theme,
+    surface) so the pin drives it with its first surface.
+This module pins all fifty-four verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -255,7 +278,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The forty-seven modules audited above, keyed by file name.
+# The fifty-four modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_map_roster_state_contrast.py",
@@ -263,9 +286,11 @@ _COVERED = {
     "test_build_insights_sort_header_hover.py",
     "test_champ_select_arena_augment_options.py",
     "test_champ_select_arena_pane_contrast.py",
+    "test_champ_select_ban_phase_over_head_contrast.py",
     "test_champ_select_enemy_wr_slot_contrast.py",
     "test_champ_select_enemy_wr_slot_stale_cue.py",
     "test_champ_select_lock_button_focus.py",
+    "test_champ_select_personal_build_contrast.py",
     "test_ds_cards_muted_text_contrast.py",
     "test_ds_combo_controls_hit_floor.py",
     "test_ds_knob_inputs_focus_ring.py",
@@ -279,23 +304,28 @@ _COVERED = {
     "test_home_history_nav_focus_ring.py",
     "test_home_muted_text_contrast.py",
     "test_home_pick_name_contrast.py",
+    "test_last_match_build_wpa_contrast.py",
     "test_last_match_review_nav_hover.py",
     "test_lm_hero_stats_disclosure.py",
     "test_lobby_lane_popup_keyboard.py",
+    "test_lobby_mains_placeholder_contrast.py",
     "test_lobby_mains_recent_cell.py",
     "test_lobby_mains_tabs.py",
     "test_lobby_queue_buttons_focus_ring.py",
+    "test_lobby_roster_row_dimming_contrast.py",
     "test_lobby_text_contrast.py",
     "test_match_row_focus_ring.py",
     "test_match_row_grade_chip_contrast.py",
     "test_ops_page_state_text_contrast.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_pgr_text_contrast.py",
+    "test_session_hygiene_inert_contrast.py",
     "test_session_text_contrast.py",
     "test_settings_checkbox_hit_targets.py",
     "test_tab_bars_selected_state.py",
     "test_theme_signal_prim_hue.py",
     "test_theme_soft_token_hue.py",
+    "test_ui_mock_active_match_build_eyebrows.py",
     "test_ui_mock_active_match_complete.py",
     "test_user_builds_rune_cells_focus_ring.py",
     "test_user_builds_rune_tabs.py",
@@ -1094,29 +1124,43 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The nine S144-U-214 contrast modules and S144-U-215's: each one's _measure
-# extra arguments after (mock_server, pw_browser, theme), taken from its own
-# constants (its first viewport, its first mode, the TFT footer state).
+# The nineteen contrast modules (S144-U-214, U-215, U-223, U-240, U-241):
+# each one's _measure extra arguments after (mock_server, pw_browser, theme),
+# taken from its own constants (its first viewport, its first mode, the TFT
+# footer state, the mixed Session scenario, its first surface).
 _CONTRAST = {
     "test_am_map_roster_state_contrast": (),
     "test_build_insights_chart_text_contrast": ("vp",),
+    "test_champ_select_ban_phase_over_head_contrast": (),
+    "test_champ_select_personal_build_contrast": (),
     "test_footer_mode_pill_contrast": ("fixture",),
     "test_header_placeholder_pill_contrast": ("vp",),
     "test_historical_pgr_text_contrast": ("mode", "vp"),
     "test_home_muted_text_contrast": ("vp",),
     "test_home_pick_name_contrast": ("vp",),
+    "test_last_match_build_wpa_contrast": (),
+    "test_lobby_mains_placeholder_contrast": (),
+    "test_lobby_roster_row_dimming_contrast": (),
     "test_lobby_text_contrast": ("vp",),
     "test_pgr_text_contrast": ("mode", "vp"),
+    "test_session_hygiene_inert_contrast": ("vp", "scenario"),
     "test_session_text_contrast": ("vp",),
+    "test_ui_mock_active_match_build_eyebrows": ("surface",),
     "test_ui_mock_active_match_complete": (),
     "test_user_builds_text_contrast": ("vp",),
 }
-# The five whose opener adds the sheet before its first interaction.
+# The eleven whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_build_insights_chart_text_contrast",
+    "test_champ_select_ban_phase_over_head_contrast",
+    "test_champ_select_personal_build_contrast",
     "test_header_placeholder_pill_contrast",
     "test_home_pick_name_contrast",
+    "test_last_match_build_wpa_contrast",
+    "test_lobby_mains_placeholder_contrast",
+    "test_lobby_roster_row_dimming_contrast",
     "test_pgr_text_contrast",
+    "test_session_hygiene_inert_contrast",
     "test_user_builds_text_contrast",
 )
 
@@ -1245,7 +1289,8 @@ def _contrast_run(mock_server, pw_browser, name, theme, **opts):
 
     mod = importlib.import_module(f"tests.snapshot_panels.{name}")
     pick = {"vp": lambda: mod._VIEWPORTS[0], "mode": lambda: mod._MODES[0],
-            "fixture": lambda: "tft"}
+            "fixture": lambda: "tft", "scenario": lambda: "mixed",
+            "surface": lambda: sorted(mod._SURFACES)[0]}
     extra = [pick[axis]() for axis in _CONTRAST[name]]
     rec = {"reads": 0, "running": [], "reclass_running": [], "reclassed": 0,
            "dropped": 0,
