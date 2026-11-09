@@ -111,6 +111,7 @@ heal-only or shield-only amp items stay representable.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
@@ -171,6 +172,12 @@ def _armor_factor(resist: float) -> float:
     return 2.0 - 100.0 / (100.0 - resist)
 
 
+def _finite_or(value: float, default: float) -> float:
+    """``float(value)`` when finite, else ``default`` (S144-D-164/165)."""
+    number = float(value)
+    return number if math.isfinite(number) else default
+
+
 def _clamp_pct(value: float) -> float:
     """Clamp a percent-fraction input to ``[0.0, 0.99]``.
 
@@ -179,9 +186,11 @@ def _clamp_pct(value: float) -> float:
     WHAT line of docs/_archive/COMPETITOR_LIFT_2026-06-08.md) so a single
     source can never fully zero a resist (mirrors League's 99% shred/pen
     practical ceiling). Negative inputs floor at 0.0 (a percent term
-    cannot heal a resist back upward).
+    cannot heal a resist back upward). S144-D-166: NaN reads as 0.0 (no pen);
+    both comparisons are False for NaN, so it used to pass through and read
+    as MORE than the 0.99 cap.
     """
-    if value <= 0.0:
+    if not value > 0.0:
         return 0.0
     if value >= 0.99:
         return 0.99
@@ -2220,8 +2229,10 @@ def compute_ehp(
     # - a GENERIC external add (compute_ehp scores the PROTECTED ally; the grant
     # rides in from a teammate). Folded into the SAME armor/MR denominator as the
     # self resist grant. Default 0.0 -> byte-identical to 1.101.0.
-    ext_armor = max(0.0, float(external_resist_armor))
-    ext_mr = max(0.0, float(external_resist_mr))
+    # S144-D-164: a non-finite add reads as the 0.0 default (+inf divided by
+    # zero in the resist curve; NaN only read as 0.0 through max's arg order).
+    ext_armor = max(0.0, _finite_or(external_resist_armor, 0.0))
+    ext_mr = max(0.0, _finite_or(external_resist_mr, 0.0))
     # ENGINE 1.199.0 (R106, 2026-07-11): item-side conditional RESIST-GRANT credit -
     # the ITEM analog of resist_grants above (a clean EHP-DENOMINATOR bonus armor/MR
     # add). Jak'Sho 6665 Voidborn (+30% BONUS armor+MR at 5 combat stacks) + Force of
@@ -2287,7 +2298,8 @@ def compute_ehp(
     # protected ally's own shield/heal amp - the granter's value is final), so it
     # adds RAW to every per-type numerator and rides the SAME armor/MR curve.
     # Default 0.0 -> byte-identical. Negative clamped (never lowers EHP).
-    ext_flat_hp = max(0.0, float(external_flat_hp))
+    # S144-D-165: non-finite reads as the 0.0 default (+inf made EHP NaN).
+    ext_flat_hp = max(0.0, _finite_or(external_flat_hp, 0.0))
 
     # T1-F3 (2026-06-09, docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F3):
     # OPT-IN enemy-penetration seam. The five enemy_* kwargs default to 0.0
@@ -2356,7 +2368,8 @@ def compute_ehp(
     # caller sources it from ``ally_revive_multiplier`` and passes the > 1.0
     # multiplier as ``external_revive_multiplier`` (composes multiplicatively with
     # any self revive - two independent second lives). Default 1.0 -> unchanged.
-    ext_revive = max(1.0, float(external_revive_multiplier))
+    # S144-D-165: non-finite reads as the 1.0 default (+inf made EHP NaN).
+    ext_revive = max(1.0, _finite_or(external_revive_multiplier, 1.0))
     # ENGINE 1.105.0 (item 293): GAP-2 GUARANTEED-SURVIVAL WINDOW - the SECOND
     # EHP-NUMERATOR term (sibling of the revive). A SELF untargetable / stasis /
     # invulnerable window (Tryndamere R / Kindred R / Taric R / Kayle R self /
