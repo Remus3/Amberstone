@@ -2700,13 +2700,51 @@ def _assigned(statement, variables):
         value = ps.group(2) if ps.group(2) is not None else (
             words[2] if len(words) == 3 else _UNSET)
         variables[ps.group(1).lower()] = _expand(value, variables)
+        _held_kind(variables, ps.group(1).lower(), powershell=True)
         return True
     pairs = [_BASH_ASSIGN.fullmatch(word) for word in words]
     if not all(pairs):
         return False
     for pair in pairs:
         variables[pair.group(1).lower()] = _expand(pair.group(2), variables)
+        _held_kind(variables, pair.group(1).lower(), powershell=False)
     return True
+
+
+# S144-Q-157: the names a PowerShell assignment set, kept in VARIABLES under
+# a key no `$NAME` can spell (_VAR_REF names are \w+, so _expand never reads
+# it). PowerShell passes a variable as ONE argument; bash splits an unquoted
+# one into words, so _held_words expands the two differently.
+_PS_HELD = "\x00ps-held\x00"
+_HELD_SPLIT = re.compile(r"""[\s'"]""")
+
+
+def _held_kind(variables, name, powershell):
+    names = set(variables.get(_PS_HELD, ()))
+    if powershell:
+        names.add(name)
+    else:
+        names.discard(name)
+    variables[_PS_HELD] = frozenset(names)
+
+
+def _held_words(statement, variables):
+    """S144-Q-157: STATEMENT's words after expansion, a PowerShell variable
+    (_PS_HELD; `$env:NAME = ...` is one too) kept as one word, a bash one
+    split."""
+    powershell = variables.get(_PS_HELD, frozenset())
+
+    def sub(match):
+        name = match.group(1) or match.group(2)
+        if name is None:
+            return match.group(0)
+        value = variables.get(name.lower(), _UNSET)
+        if name.lower() in powershell and _HELD_SPLIT.search(value):
+            # Quoted so _tokens keeps it one word; a value with no space or
+            # quote is one word as it is (also inside "..." in PowerShell).
+            return "'" + value.replace("'", "") + "'"
+        return value
+    return _tokens(_VAR_REF.sub(sub, statement))
 
 
 def _join(base, path):
@@ -3852,52 +3890,102 @@ def _readings(command):
     return [raw] if joined == raw else [raw, joined]
 
 
-def _has_bypass(command, depth=0, extra=True):
+# S144-Q-157: a variable reference (`$F`, `${F}`, `$env:F`), so _has_bypass
+# also walks a command whose bypass flag is held in a variable.
+_VAR_USE = re.compile(r"\$(?:\{\w+\}|(?:env:)?\w+)", re.IGNORECASE)
+
+
+def _has_bypass(command, depth=0, extra=True, expand=True):
     """True when COMMAND runs a hook-bypassing git statement (RM-698): the
     old whole-command rule, or a launcher script that passes this test, or
     (S144-Q-127, unless EXTRA is False) a statement _git_words_bypass flags.
     The old rule runs FIRST and alone decides a True, so this can never count
     less than it did: a raw-text precheck in front of it lost `git -c
-    core.hooksPath""=x`, which only matches once the quotes are stripped."""
+    core.hooksPath""=x`, which only matches once the quotes are stripped.
+
+    S144-Q-157 (EXTRA and EXPAND only): each reading's assignments are
+    recorded (_assigned) and a statement whose words change under _expand
+    is walked again on the expanded words (`F=-n; git commit $F`). The raw
+    walk is unchanged and runs exactly when it did, so this only adds. A
+    launcher script is walked with no variables: a child shell does not
+    see the parent's unexported assignments (`bash -c '... $F'`)."""
     if _bypass_in_text(command):
         return True
     flagged = bool(EV_BYPASS.search(command))
     hinted = flagged or (extra and bool(_PARSE_HINT.search(command)))
     git_word = _BYPASS_GIT_WORD.search(command) or (
         extra and _ENV_SPLIT_GIT_WORD.search(command))
-    if len(command) > COMMAND_PARSE_MAX or not (hinted and git_word):
+    parsed = bool(hinted and git_word)
+    held = bool(extra and expand and git_word and _VAR_USE.search(command))
+    if len(command) > COMMAND_PARSE_MAX or not (parsed or held):
         return False
     if depth > BYPASS_NEST_MAX:
         return flagged  # fail closed: the raw script holds a flag and a git word
     for text in _readings(command):
+        variables = {}
         for statement in _statements(text):
-            words = _tokens(statement.strip().lstrip("({").rstrip(")}").strip())
-            if extra and words and (_git_words_bypass(words)
-                                    or _env_split_bypass(words)):
+            bare = statement.strip().lstrip("({").rstrip(")}").strip()
+            words = _tokens(bare)
+            if parsed and _raw_words_bypass(statement, words, depth, extra, expand):
                 return True
-            for script in _launcher_scripts(words, extra) if words else ():
-                if _has_bypass(script, depth + 1, extra):
-                    return True
-            body = _assignment_command(statement) if extra else None
-            if body is not None and _has_bypass(body, depth + 1, extra):
+            if not held:
+                continue
+            expanded = _held_words(bare, variables)
+            if expanded != words and (
+                    _held_bypass(words, expanded)
+                    or any(_has_bypass(script, depth + 1, extra)
+                           for script in _launcher_scripts(expanded, extra))):
                 return True
+            _assigned(bare, variables)
     return False
 
 
-def _placed(command, here, variables, depth, extra=True):
+def _held_bypass(words, expanded):
+    """S144-Q-157: True when EXPANDED (a statement's words after
+    _held_words; WORDS are its raw words) is a bypass the raw words hide.
+    The git word must be the statement's own (in WORDS) or its expanded head
+    (`C="git commit -n"; $C`), so a held string handed to another command
+    (`m="git commit -n"; echo $m`) is data, not a git statement.
+    Returns "git", "split" (only an `env -S` string, placed None like
+    S144-Q-143) or "" for none."""
+    if not expanded or expanded == words:
+        return ""
+    own_git = (_head_name(expanded[0]) == "git"
+               or any(_head_name(word) == "git" for word in words))
+    if own_git and _git_words_bypass(expanded):
+        return "git"
+    return "split" if _env_split_bypass(expanded) else ""
+
+
+def _raw_words_bypass(statement, words, depth, extra, expand):
+    """One statement of _has_bypass's raw walk: its own words (EXTRA), the
+    launcher scripts they name, and (EXTRA) the command an assignment runs."""
+    if extra and words and (_git_words_bypass(words) or _env_split_bypass(words)):
+        return True
+    for script in _launcher_scripts(words, extra) if words else ():
+        if _has_bypass(script, depth + 1, extra, expand):
+            return True
+    body = _assignment_command(statement) if extra else None
+    return body is not None and _has_bypass(body, depth + 1, extra, expand)
+
+
+def _placed(command, here, variables, depth, extra=True, expand=True):
     """The directory of each bypass-looking git statement in COMMAND, in
     every reading (_readings), walking a launcher script with its own copy
     of HERE and VARIABLES. EXTRA=False is the RM-698 walk without the
-    S144-Q-127 statements (_git_words_bypass)."""
+    S144-Q-127 statements (_git_words_bypass); EXPAND=False is the walk
+    without the S144-Q-157 expanded-word statements."""
     if depth > BYPASS_NEST_MAX:
         return [None]
     targets = []
     for text in _readings(command):
-        targets.extend(_placed_reading(text, here, dict(variables), depth, extra=extra))
+        targets.extend(_placed_reading(text, here, dict(variables), depth,
+                                       extra=extra, expand=expand))
     return targets
 
 
-def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
+def _placed_reading(raw, here, variables, depth, legacy=False, extra=True,
+                    expand=True):
     """One reading of _placed. LEGACY is the pre-RM-698 walk exactly: no
     assignment placement, no launcher scripts, no S144-Q-127 statements."""
     targets = []
@@ -3909,20 +3997,29 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
         stripped = strip_command_noise(statement)
         hit = bool(EV_BYPASS.search(stripped) and _BYPASS_GIT_WORD.search(stripped))
         split = False
+        raw_words = _tokens(statement)
         if not hit and not legacy and extra:
-            raw_words = _tokens(statement)
             hit = _git_words_bypass(raw_words)
             if not hit and _env_split_bypass(raw_words):
                 # S144-Q-143: a git command split out of `env -S "..."` is
                 # placed None (fail closed, the S144-Q-136 decision), never
                 # by a git word _git_target finds elsewhere in the statement.
                 hit = split = True
+        # S144-Q-157: a statement flagged only on its expanded words is a
+        # hit too; it never suppresses the assignment-body walk below, so
+        # a target the walk without expansion found is still found.
+        held = ""
+        if not hit and not legacy and extra and expand:
+            held = _held_bypass(raw_words, _held_words(statement, variables))
+            split = held == "split"
         body = None if legacy or not extra or hit else _assignment_command(text)
+        hit = hit or bool(held)
         if body is not None:
             # S144-Q-135: the command an assignment runs, walked like a
             # launcher script (its own copy of HERE and VARIABLES). A HIT
             # statement is already placed from its own words below.
-            targets.extend(_placed(body, here, variables, depth + 1, extra=extra))
+            targets.extend(_placed(body, here, variables, depth + 1, extra=extra,
+                                   expand=expand))
         if _assigned(statement, variables):
             # `$out = git push --no-verify` (PowerShell) RUNS what it assigns.
             if hit and not legacy:
@@ -3949,7 +4046,8 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
             here = None
         else:
             for script in () if legacy else _launcher_scripts(words, extra):
-                targets.extend(_placed(script, here, variables, depth + 1, extra=extra))
+                targets.extend(_placed(script, here, variables, depth + 1,
+                                       extra=extra, expand=expand))
             if hit:
                 # An absolute `git -C` places the statement even when HERE
                 # is unknown; a relative one from an unknown HERE stays None.
@@ -3979,7 +4077,11 @@ def _bypass_targets(command, cwd):
     if not _has_bypass(command):
         return []
     here = _host_path(cwd) if cwd else None
-    targets = _placed(command, here, {}, 0)
+    # S144-Q-157: the expanded-word statements are placed only for a command
+    # that the walk without them does not count, so every command counted
+    # before keeps exactly the targets it had.
+    expand = not _has_bypass(command, expand=False)
+    targets = _placed(command, here, {}, 0, expand=expand)
     if _bypass_in_text(command) and not _placed_reading(
             _HEREDOC.sub(" ", command), here, {}, 0, legacy=True):
         targets.append(None)
