@@ -69,6 +69,10 @@ _ALLOWED_TEST_FILES = {
     # enabler-equivalence check of compute_cc_pairing. No SOURCE import of
     # cc_conditional is added; cc_pairing reaches it as before.
     "test_cc_pairing_fail_soft_s144t577.py",
+    # S144-D-129 (ds lane). A TEST read, not a consumer wire: it pins that the
+    # two public getters never raise on a non-string champion. No SOURCE file
+    # gains an import of cc_conditional.
+    "test_axis_nonstr_champion_s144d127.py",
     "test_cc_conditional_forward_marker.py",
     "test_cc_conditional_wave1.py",
     "test_cc_conditional_wave2.py",
