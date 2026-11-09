@@ -382,11 +382,11 @@ def test_comment_checker_catches_planted_defects(live_items):
         '    "999999": 1.0,  # Nothing\n'
         '    "3075": 1.0,\n'
     )
-    rows = [("x.py", *row) for row in comment_rows(text)]
+    rows = [("planted", *row) for row in comment_rows(text)]
     assert [r[2] for r in rows] == ["3075", "3076", "226660", "999999"]
     assert comment_problems(rows, live_items) == [
-        "x.py:1 3075: comment 'Bramble Vest' != live 'Thornmail'",
-        "x.py:4 999999: not a live item",
+        "planted:1 3075: comment 'Bramble Vest' != live 'Thornmail'",
+        "planted:4 999999: not a live item",
     ]
 
 
