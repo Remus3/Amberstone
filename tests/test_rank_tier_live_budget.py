@@ -732,6 +732,31 @@ def _chain_names(expr):
     return names, expr
 
 
+# S144-Q-91: the literal displays. Their value is always an instance of the
+# builtin type itself, never of a class the module defines, and a builtin
+# type takes no new attribute, so an attribute off one is the builtin's own.
+# An f-string is one unless it is exactly one field (`_builtin_receiver`).
+_BUILTIN_DISPLAYS = (ast.Constant, ast.List, ast.Tuple, ast.Set, ast.Dict,
+                     ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+
+
+def _builtin_receiver(expr) -> bool:
+    """S144-Q-91: `expr` is a literal display (`', '.join`, `[1].count`,
+    `f'at {u}'.strip`), so no class attribute mark (`_ATTR_MARKS`) is read
+    off it, whatever its name. An f-string that is ONE field and nothing
+    else (`f'{u}'`, `f'{u:>3}'`, `f'{u!s}'`) is not one: its value is
+    what the field's `__format__` returns, which may be an instance of a
+    `str` subclass the module defines (verifier, measured on 3.14); joining
+    a literal part or a second field always builds a plain `str`. Every
+    other receiver - a name, a call, an operator - may be an instance of
+    the class that made the mark, so it stays read: the safe side.
+    Residual: a name bound only to a literal (`s = 'x'; s.strip()`) is
+    still read, since the marks carry no receiver type."""
+    if isinstance(expr, ast.JoinedStr):
+        return len(expr.values) != 1 or isinstance(expr.values[0], ast.Constant)
+    return isinstance(expr, _BUILTIN_DISPLAYS)
+
+
 def _is_logger_expr(expr, tainted=frozenset()) -> bool:
     """`expr` may evaluate to a logger OBJECT (RM-1563): a log-ish name
     anywhere along its chain (`log`, `self.log`, `get_logger()`,
@@ -747,6 +772,8 @@ def _is_logger_expr(expr, tainted=frozenset()) -> bool:
         if _LOGOBJ + root.id in tainted:
             return True
         attrs = names[:-1]
+    elif _builtin_receiver(root) and names:
+        attrs = names[:-1]    # S144-Q-91: the first attribute is the builtin's
     else:
         attrs = names
     if any(_LOGOBJATTR + n in tainted for n in attrs):
@@ -851,7 +878,8 @@ _LOGOBJ = "logobj:"
 # then read as one - off `self`, `cls`, the class or an instance (`self.p(m)`,
 # `self.lg.info(m)`). The receiver is not checked, and the marks flow out of
 # the class with the rest of its state, so `o.p(m)` after the class is a sink
-# whatever `o` is: the safe side.
+# whatever `o` is: the safe side. S144-Q-91: except off a literal display
+# (`'{}'.p(m)`, `_builtin_receiver`), whose attribute is the builtin's own.
 _LOGATTR = "logattr:"
 _LOGOBJATTR = "logobjattr:"
 # RM-1786: a WRAPPER (`_SINKFN`) the class body binds at its own level - a
@@ -865,7 +893,8 @@ _LOGOBJATTR = "logobjattr:"
 # `inst:<class>` binds it unless the receiver is the class name itself
 # (`C.g(o, url)` is unbound). On a call that binds it, the first parameter
 # of a plain method is the receiver itself (`_RECV`). As with `_LOGATTR`, the
-# receiver is otherwise not checked: the safe side.
+# receiver is otherwise not checked: the safe side. S144-Q-91: except that no
+# attribute mark is read off a literal display (`_builtin_receiver`).
 _SINKATTR = "sinkattr:"
 # RM-1790: a def that puts one parameter's value INTO the object another
 # parameter names (`def h(q, v): q.append(v)`, `def h(self, v): self.q = v`)
@@ -902,7 +931,10 @@ _MUT_ALWAYS = "*"
 # the scope around it (`_shadow_aliases`), as a lambda's parameters and a
 # comprehension's targets do in their view (`_call_views`), and a def's
 # locals' marks do not flow out (`_drop_locals`). Like `_LOGFN` the marks
-# carry no value.
+# carry no value. S144-Q-113 (c): an object STORED into a container
+# (`a.append(k)`, `a.x = k`, `b = [k]`, a mutating helper) is a part of it
+# too, marked `_ALIAS + k + " " + a` (`_held_marks`), so a value put into
+# `k` later is in `a`.
 _ALIAS = "alias:"
 
 
@@ -950,9 +982,13 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # one, and a re-wrap by name (`g = staticmethod(g)`), judged before the
     # binding drops the target's own wrapper. A tuple target is split as a
     # logging alias is (`_wrapper_bindings`: `h, k = g, fetch`, `h, k = k, h`).
-    wrapper = _value_wrapper_specs(value, tainted, late) if plain else set()
     wrappers = ([b for t in targets for b in _wrapper_bindings(t, value, tainted, late)]
                 if plain else [])
+    # S144-Q-96: a mutating helper is bound the same ways (`k = h`,
+    # `h = lambda q, v: q.append(v)`).
+    muts = ([b for t in targets
+             for b in _wrapper_bindings(t, value, tainted, late, _value_mut_specs)]
+            if plain else [])
     # RM-1563: `self.p = log.info` stores the alias in an attribute, as a
     # class body's `p = log.info` does, so it makes the same mark. Add-only:
     # one store does not replace what another instance or the class holds.
@@ -960,22 +996,50 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
     # read off the receiver and the value (`_attr_store_kinds`). RM-1563:
     # a store off any receiver but `self` may land on a class
     # (`C.g = lambda self, m: ...`, `cls.g = ...`), which binds `self`.
+    # S144-Q-96: so is a mutating helper (`_MUTATTR`, `_attr_store_marks`).
     attr_marks = set()
     for target in targets if plain else []:
         if isinstance(target, ast.Attribute):
-            if _is_log_callable(value, tainted):
-                attr_marks.add(_LOGATTR + target.attr)
-            if _is_logger_expr(value, tainted):
-                attr_marks.add(_LOGOBJATTR + target.attr)
-            if wrapper:
-                attr_marks.update(
-                    f"{_SINKATTR}{target.attr} {kind} {spec}"
-                    for kind in _attr_store_kinds(target.value, value)
-                    for spec in wrapper)
+            attr_marks |= _attr_store_marks(target.attr, target.value, value,
+                                            tainted, late)
     tainted |= attr_marks
     # RM-1794: the object marks the binding makes, judged before it ends
     # the targets' own marks (`a = a.q` still reaches what `a` did).
     joined = _new_alias_marks(targets, value, tainted) if plain else set()
+    # S144-Q-113 (c): what the binding stores into a container is a part of
+    # it (`b = [k]`, `a.x = k`, and `a += [k]` in place), judged before the
+    # targets are re-bound, as the alias marks are. A store into an
+    # attribute or element of an object the binding did not re-bind first
+    # is applied before the re-binding too, so one that ends a held name or
+    # the container's own ends the mark with it (`d.x, a = a, []` holds the
+    # old `a`). A name bound to a new container, and a store into an
+    # object an earlier target re-bound (`a, a.x = C(), k`: `_held_pairs`
+    # `late`), is applied with the alias marks, after the old marks end;
+    # there a held name the binding re-binds (`a = [a]`, `b, k = [k], []`)
+    # was read before it was, so it stands for what reached its OLD object
+    # (`j = k` before: `j`), as `_new_alias_marks` reads `a = a.q`.
+    # Residuals: a `for` / `with` target store (`for a.x in [k]`) holds
+    # nothing; and (the safe side) a container emptied or a part replaced
+    # (`a.clear()`, `a.pop()`, `a[0] = []` after `a[0] = k`) still holds
+    # what it held.
+    if plain:
+        bound = set()
+        pairs = [p for t in targets for p in _held_pairs(t, value, bound)]
+    else:
+        bound = set()
+        pairs = [(_chain_root(sub), _held_roots(value), False)
+                 for sub in _in_place_targets(stmt.target, stmt)]
+    early = set()
+    for container, held, after in pairs:
+        if not after:
+            early |= _held_marks(container, held)
+            continue
+        joined |= _held_marks(container, held - bound)
+        old = held & bound
+        if old:
+            joined |= {_alias_mark(s, container) for s, d in _alias_edges(tainted)
+                       if d in old and s != container}
+    tainted |= early
     for target in targets:
         # `m += "!"` keeps whatever `m` already carried (RM-1443): only a
         # plain re-binding to a clean value clears a name.
@@ -990,6 +1054,8 @@ def _retaint(stmt, tainted, late=frozenset()) -> None:
         _bind_log_alias(name, is_alias, tainted, is_obj)
     for name, specs in wrappers:
         _bind_wrapper(name, specs, tainted)
+    for name, pairs in muts:
+        _bind_mut(name, pairs, tainted)
 
 
 _METHOD_WRAPPERS = ("staticmethod", "classmethod")
@@ -1004,24 +1070,58 @@ def _method_wrapped(value):
     return None
 
 
-def _value_wrapper_specs(value, tainted, late=frozenset()):
+def _value_wrapper_specs(value, tainted, late=frozenset(), mark=None):
     """The `_SINKFN` specs of the callable `value` evaluates to, judged with
     `tainted` as it stands: a lambda's own (RM-1563), the one a staticmethod
     / classmethod wraps (RM-1786), and RM-1563: a name already bound to
     a wrapper (`h = g`, and `g = staticmethod(g)` through the wrapper call)
-    and either arm of a conditional. Empty for any other value."""
+    and either arm of a conditional. Empty for any other value.
+    S144-Q-96: with `mark=_MUTFN` the same read gives the `_MUTFN` pairs
+    of a mutating helper (`_value_mut_specs`)."""
+    mark = mark or _SINKFN
     inner = _method_wrapped(value)
     if inner is not None:
-        return _value_wrapper_specs(inner, tainted, late)
+        return _value_wrapper_specs(inner, tainted, late, mark)
     if isinstance(value, ast.Lambda):
-        return set(_sink_specs(value, tainted, late))
+        judge = _mut_specs if mark == _MUTFN else _sink_specs
+        return set(judge(value, tainted, late))
     if isinstance(value, ast.Name):
-        prefix = _SINKFN + value.id + " "
+        prefix = mark + value.id + " "
         return {e[len(prefix):] for e in tainted if e.startswith(prefix)}
     if isinstance(value, ast.IfExp):
-        return (_value_wrapper_specs(value.body, tainted, late)
-                | _value_wrapper_specs(value.orelse, tainted, late))
+        return (_value_wrapper_specs(value.body, tainted, late, mark)
+                | _value_wrapper_specs(value.orelse, tainted, late, mark))
     return set()
+
+
+def _value_mut_specs(value, tainted, late=frozenset()):
+    """S144-Q-96: the `_MUTFN` pairs of the callable `value` evaluates to,
+    read as `_value_wrapper_specs` reads a wrapper: a lambda's own, the
+    one a staticmethod / classmethod wraps, a name already bound to a
+    mutating helper (`k = h`) and either arm of a conditional."""
+    return _value_wrapper_specs(value, tainted, late, _MUTFN)
+
+
+def _attr_store_marks(attr, recv, value, tainted, late=frozenset()):
+    """RM-1563 / RM-1786: the marks a store of `value` on attribute `attr`
+    of `recv` from outside a class body makes (`self.p = log.info`,
+    `self.g = lambda m: log.info(m)`): `_LOGATTR` / `_LOGOBJATTR` for a
+    logging function or logger object, and a method mark per kind
+    (`_attr_store_kinds`) and spec for a wrapper (`_SINKATTR`) and,
+    S144-Q-96, a mutating helper (`_MUTATTR`). Shared by `_retaint` and
+    a `setattr` with a literal name (`_bind_setattr_marks`)."""
+    marks = set()
+    if _is_log_callable(value, tainted):
+        marks.add(_LOGATTR + attr)
+    if _is_logger_expr(value, tainted):
+        marks.add(_LOGOBJATTR + attr)
+    for attr_mark, specs in ((_SINKATTR, _value_wrapper_specs(value, tainted, late)),
+                             (_MUTATTR, _value_mut_specs(value, tainted, late))):
+        if specs:
+            marks.update(f"{attr_mark}{attr} {kind} {spec}"
+                         for kind in _attr_store_kinds(recv, value)
+                         for spec in specs)
+    return marks
 
 
 def _value_kinds(value):
@@ -1199,6 +1299,153 @@ def _new_alias_marks(targets, value, tainted):
     return marks
 
 
+_DISPLAYS = (ast.List, ast.Tuple, ast.Set)
+
+
+def _held_roots(value):
+    """S144-Q-113 (c): the root names of the objects a container that
+    stores `value` then HOLDS: what `value` may be (`_alias_roots`: `k`,
+    `k.q`, either arm of a conditional, both sides of a walrus) and every
+    element of a list, tuple, set or dict display in it, nested displays
+    and a dict's keys included (`[k]`, `{'x': [k]}`). A call, an operator,
+    a slice or a comprehension is read as a new object holding none of
+    them (`list(k)`, `k[:]`, `[x for x in k]`). Residuals: one may still
+    hold `k` (`[k] + []`, `[k] * 2`, `list([k])`, `dict(x=k)`, `W(k)`,
+    `[k for _ in xs]`, and `a = a + [k]`, `a += (k,)`) or a shallow copy
+    `k`'s PARTS (`a.append(k[:]); k[0].append(url)`), and a later fill is
+    missed there; and (the safe side) a
+    root stands for its whole object, so a part (`a.append(k.q)`) or the
+    items a starred element or an `extend` / `update` argument copies
+    (`[*k]`, `a.extend(k)`) are read as `k` itself, and a later fill of
+    `k` is read as reaching the container."""
+    if isinstance(value, _DISPLAYS):
+        return set().union(*(_held_roots(e) for e in value.elts))
+    if isinstance(value, ast.Dict):
+        return set().union(*(_held_roots(e) for e in (*value.keys, *value.values)
+                             if e is not None))
+    if isinstance(value, ast.IfExp):
+        return _held_roots(value.body) | _held_roots(value.orelse)
+    if isinstance(value, ast.BoolOp):
+        return set().union(*(_held_roots(v) for v in value.values))
+    if isinstance(value, ast.NamedExpr):
+        return _held_roots(value.value) | {value.target.id}
+    return {root for root, _ in _alias_roots(value)}
+
+
+def _contained_roots(value):
+    """S144-Q-113 (c): the root names of the objects a NEW container that
+    `value` builds holds (`[k]`, `{'x': k}`, through either arm of a
+    conditional, every operand of an `or` / `and` and a walrus's value):
+    a name bound to it holds them. The value itself, when it is a name or
+    a part of one, is an alias, not a container (`_alias_roots`)."""
+    if isinstance(value, (*_DISPLAYS, ast.Dict)):
+        return _held_roots(value)
+    if isinstance(value, ast.IfExp):
+        return _contained_roots(value.body) | _contained_roots(value.orelse)
+    if isinstance(value, ast.BoolOp):
+        return set().union(*(_contained_roots(v) for v in value.values))
+    if isinstance(value, ast.NamedExpr):
+        return _contained_roots(value.value)
+    return set()
+
+
+def _held_marks(container, held):
+    """S144-Q-113 (c): the `_ALIAS` marks `held -> container`: an object a
+    container holds is a PART of it, so a value put into it later is in
+    the container (`a.append(k); k.append(url)` fills `a`). One-way, as a
+    part read out is: a value put into the container does not reach what
+    it holds. A container that hangs off no name (`f().append(k)`) gets
+    no mark: no name could reach it (a guard against a mark to `None`,
+    which no program can read)."""
+    if container is None:
+        return set()
+    return {_alias_mark(r, container) for r in held if r != container}
+
+
+def _held_pairs(target, value, bound):
+    """S144-Q-113 (c): (container root, `_held_roots`, late) for every
+    object `target = value` stores into a container: a plain name bound to
+    a new container holds what the display holds (`b = [k]`:
+    `_contained_roots`), and an attribute or element store puts the value
+    itself into the target's root (`a.x = k`, `a['x'] = [k]`:
+    `_held_roots`). A tuple target is paired element by element with a
+    tuple value of the same length and no starred part; any other
+    unpacking stores a PART of the value into each attribute or element
+    target (read as the whole: the safe side) and binds each name to a
+    part (`_alias_pairs`). A starred name is a new list of parts
+    (residual: not a container here); a starred attribute or element
+    (`*a.x, b = p`) holds them as any store does. Python stores the targets left to
+    right, so `bound` collects the names re-bound so far, and `late` says
+    the store lands in an object bound by this binding: a name's new
+    container, or an attribute or element of a root an earlier target
+    re-bound (`a, a.x = C(), k` fills the new `a`)."""
+    if isinstance(target, ast.Name):
+        bound.add(target.id)
+        return [(target.id, _contained_roots(value), True)]
+    if isinstance(target, (ast.Attribute, ast.Subscript)):
+        root = _chain_root(target)
+        return [(root, _held_roots(value), root in bound)]
+    if not isinstance(target, (ast.Tuple, ast.List)):
+        return []
+    elts = target.elts
+    if (isinstance(value, (ast.Tuple, ast.List)) and len(value.elts) == len(elts)
+            and not any(isinstance(e, ast.Starred) for e in (*elts, *value.elts))):
+        return [p for t, v in zip(elts, value.elts) for p in _held_pairs(t, v, bound)]
+    # A part of the value goes to each target: an attribute or element
+    # store holds it (read as the whole value), a name only binds it.
+    held = _held_roots(value)
+    out = []
+
+    def walk(t):
+        if isinstance(t, ast.Starred):
+            walk(t.value)
+        elif isinstance(t, (ast.Tuple, ast.List)):
+            for e in t.elts:
+                walk(e)
+        elif isinstance(t, ast.Name):
+            bound.add(t.id)
+        elif isinstance(t, (ast.Attribute, ast.Subscript)):
+            root = _chain_root(t)
+            out.append((root, held, root in bound))
+    for t in elts:
+        walk(t)
+    return out
+
+
+def _call_held_marks(call, view):
+    """S144-Q-113 (c): the `_ALIAS` marks a call that stores its arguments
+    into an object makes (`_held_marks`): the receiver of a `_MUTATORS`
+    call, the object of `setattr` or an unbound dunder store
+    (`_mutated_exprs`) holds every argument (`a.append(k)`,
+    `a.insert(0, k)`, `d.setdefault('x', k)`, `setattr(o, 'x', k)`), and a
+    mutating helper's destination holds its source argument (`h(a, k)`
+    with `def h(q, v): q.append(v)`: `_mut_pairs`, read from `view`).
+    Residuals: a key is read as held too (`d.__setitem__(k, v)`, the safe
+    side); a helper pair says only that the source's VALUE reaches the
+    destination, so `def h(q, v): q.append(str(v))` is read as holding
+    `v` (the safe side); a receiver, or a held name, re-bound by a walrus
+    later in the same call (`a.append((a := n) or k)`,
+    `a.extend([k, (k := [])])`, `h(a, k, (k := []))`) is marked at its
+    new object, so a fill of the old one is missed (so is a display that
+    re-binds its own element: `a = [k, (k := [])]`); and a destination
+    passed starred from a display (`h(*[a], k)`) hangs off no name, so
+    it gets no mark."""
+    marks = set()
+    targets = _mutated_exprs(call)
+    if targets:
+        held = set().union(*(_held_roots(a) for a in
+                             (*call.args, *(kw.value for kw in call.keywords))))
+        for target in targets:
+            marks |= _held_marks(_chain_root(target), held)
+    for dst, src in _mut_pairs(call, view):
+        if src == _MUT_ALWAYS:
+            continue
+        held = set().union(*(_held_roots(a) for a in _spec_args(call, {src})))
+        for arg in _spec_args(call, {dst}):
+            marks |= _held_marks(_chain_root(arg), held)
+    return marks
+
+
 def _drop_aliases(name, tainted) -> None:
     """RM-1794: a re-binding of `name` ends the `_ALIAS` marks it is in;
     what reached it still reaches what it reached (`a = m; b = a; a = []`
@@ -1231,10 +1478,40 @@ def _drop_target_aliases(target, tainted) -> None:
 
 def _shadow_aliases(entries, names):
     """RM-1794: `entries` without the `_ALIAS` marks about a name in
-    `names` (the same object when nothing is dropped)."""
+    `names` (the same object when nothing is dropped). S144-Q-108: what
+    reached a hidden name still reaches what it reached (`a = m; b = a;
+    def h(a): b.append(url)` fills `m`), so the chains through `names` are
+    bridged (`_alias_bridges`), as `_drop_aliases` bridges a re-binding."""
     drop = {e for e in entries if e.startswith(_ALIAS)
             and not names.isdisjoint(e[len(_ALIAS):].split(" ", 1))}
-    return entries - drop if drop else entries
+    if not drop:
+        return entries
+    return (entries - drop) | _alias_bridges(_alias_edges(drop), names)
+
+
+def _alias_bridges(edges, hidden):
+    """S144-Q-108: the `_ALIAS` marks `src -> d` for every `src` and `d`
+    not in `hidden` where `src` reaches `d` through `edges` by way of
+    names in `hidden` only. A scope that cannot see the names in `hidden`
+    still holds the objects they linked."""
+    adj = {}
+    for src, dst in edges:
+        adj.setdefault(src, set()).add(dst)
+    marks = set()
+    for src, dsts in adj.items():
+        if src in hidden:
+            continue
+        stack = [d for d in dsts if d in hidden]
+        seen = set(stack)
+        while stack:
+            for d in adj.get(stack.pop(), ()):
+                if d in hidden:
+                    if d not in seen:
+                        seen.add(d)
+                        stack.append(d)
+                elif d != src:
+                    marks.add(_alias_mark(src, d))
+    return marks
 
 
 def _taint_aliases(expr, tainted, view=None) -> None:
@@ -1470,25 +1747,48 @@ def _mutated_exprs(call):
     return out
 
 
-def _bind_mutators(nodes, tainted, late=frozenset()) -> None:
+def _bind_mutators(sub, seen, tainted, late=frozenset(), recv=None) -> None:
     """`q.append(url)` leaves `q` carrying the url for the rest of the scope.
     Applied with the walrus bindings, before the statement's sinks.
     RM-1563: each call is judged with the view `_call_views` gives it, so
     one in a comprehension sees the comprehension's targets
     (`[q.append(x) for x in [url]]`). RM-1794: so does `setattr(q, 'u',
     url)` and a dunder store (`_mutated_exprs`), and the value reaches
-    every alias of the object (`_taint_aliases`)."""
-    for node in nodes:
-        calls = []
-        _call_views(node, tainted, late, calls)
-        for sub, seen in calls:
-            targets = _mutated_exprs(sub)
-            if targets:
-                args = list(sub.args) + [kw.value for kw in sub.keywords]
-                if any(_is_tainted(a, seen, late) for a in args):
-                    for target in targets:
-                        _bind_names(target, True, tainted, clear=False)
-                        _taint_aliases(target, tainted, seen)
+    every alias of the object (`_taint_aliases`). S144-Q-108: one call
+    `sub` read with view `seen`, in `_bind_in_order`'s order.
+    S144-Q-110: `recv`, when given, holds the `_ALIAS` marks as they stood
+    when each part of the call was read (`_bind_in_order`); the aliases of
+    the object filled are read where it was (`_operand_view`: a receiver
+    before the arguments, a `setattr` object before the later ones), so
+    `a.append((a := n) or url)` fills what `a` named before the walrus.
+    Its own names are still bound (the safe side)."""
+    targets = _mutated_exprs(sub)
+    if targets:
+        args = list(sub.args) + [kw.value for kw in sub.keywords]
+        if any(_is_tainted(a, seen, late) for a in args):
+            for target in targets:
+                _bind_names(target, True, tainted, clear=False)
+                _taint_aliases(target, tainted,
+                               _operand_view(sub, target, recv, seen))
+
+
+def _bind_setattr_marks(call, seen, tainted, late=frozenset()) -> None:
+    """S144-Q-96: `setattr(o, 'cb', h)` with a literal name stores `h` on
+    an attribute as `o.cb = h` does, so it makes the same marks
+    (`_attr_store_marks`: a logging function, a wrapper, a mutating
+    helper). Add-only, as every attribute store is; each call is judged
+    with the view `_call_views` gives it. A non-literal name is not
+    tracked (residual). S144-Q-108: one call, in `_bind_in_order`'s
+    order."""
+    f, args = call.func, call.args
+    if (isinstance(f, ast.Name) and f.id == "setattr" and len(args) == 3
+            and not call.keywords
+            and not any(isinstance(a, ast.Starred) for a in args)
+            and isinstance(args[1], ast.Constant)
+            and isinstance(args[1].value, str)
+            and args[1].value.isidentifier()):
+        tainted |= _attr_store_marks(args[1].value, args[0], args[2],
+                                     seen, late)
 
 
 # RM-1557: the binding forms this walk added - `for` targets, `with ... as`
@@ -1502,27 +1802,154 @@ def _bind_mutators(nodes, tainted, late=frozenset()) -> None:
 # on the side of a miss, so the precision is given up. Plain `=` keeps its
 # RM-1443 clearing rule (`_retaint`).
 
-def _bind_walrus(nodes, tainted, late=frozenset()) -> None:
+def _bind_walrus(sub, seen, tainted, late=frozenset(), *, drop=True,
+                 join=True) -> None:
     """`(m := url)` binds `m` for the rest of the scope. Applied BEFORE a
     statement's sinks are checked: a sink in the same expression may run
     after the walrus (`log.info(m) if (m := url) else None`).
     RM-1563: the value is judged with the view `_call_views` gives it, so
     a walrus in a comprehension sees the comprehension's targets
-    (`[(m := x) for x in [url]]`); it still binds the enclosing scope."""
+    (`[(m := x) for x in [url]]`); it still binds the enclosing scope.
+    S144-Q-102: a walrus read with the enclosing state itself makes the
+    `_ALIAS` marks `=` makes (`if (a := m): a.append(url)` fills `m`),
+    judged before it ends the target's own. One read with a copied view (a
+    comprehension, a generator, a lambda body or default) makes none, as
+    a comprehension's value may name its own target, not the enclosing
+    name (residual: a walrus there over an enclosing name, a lambda
+    default's included, is not an alias).
+    S144-Q-107: `drop=False` (a walrus that may not run, or any walrus on
+    a re-pass) ends none of the target's marks, so the binding only ADDS.
+    S144-Q-108: one walrus `sub` read with view `seen`, in
+    `_bind_in_order`'s order. S144-Q-109: `join=False` (a re-pass of
+    `_Flow._expr_step`'s fixed point) makes no `_ALIAS` marks: the first
+    pass made them where the walrus stands, and a re-pass reads the marks
+    of the later walruses too, so a rotation
+    (`g((t := a), (a := b), (b := t))`) made every name reach every
+    source."""
+    is_alias = _is_log_callable(sub.value, seen)
+    is_obj = _is_logger_expr(sub.value, seen)
+    wrapper = _value_wrapper_specs(sub.value, seen, late)
+    muts = _value_mut_specs(sub.value, seen, late)    # S144-Q-96
+    joined = (_new_alias_marks([sub.target], sub.value, tainted)
+              if join and seen is tainted else set())    # S144-Q-102
+    if drop:
+        _drop_aliases(sub.target.id, tainted)    # RM-1794
+    tainted |= joined
+    _bind_names(sub.target, _is_tainted(sub.value, seen, late),
+                tainted, clear=False)
+    _bind_log_alias(sub.target, is_alias, tainted, is_obj)
+    # RM-1563: `(h := g)` makes `h` a wrapper, add-only like the rest of
+    # the walrus binding. S144-Q-96: so does `(k := h)` a mutating helper.
+    _bind_wrapper(sub.target.id, wrapper, tainted)
+    _bind_mut(sub.target.id, muts, tainted)
+
+
+def _bind_in_order(nodes, tainted, late=frozenset(), *, drop=True,
+                   recv=None) -> bool:
+    """S144-Q-108: apply the binding sites of `nodes` - every walrus
+    (`_bind_walrus`) and every call that fills a receiver, a helper's
+    argument or an attribute (`_bind_mutators`, `_bind_mut_calls`,
+    `_bind_setattr_marks`) - one at a time in EVALUATION order
+    (`_call_views` with `post=True`: a site after the parts it reads, in
+    `_eval_children` order). Binding every walrus first ended an alias
+    before an earlier fill read it, so
+    `a = m; g(a.append(url), (a := n)); raise E(m)` was missed.
+    Each site is judged with the view `_call_views` gave it when the sites
+    of its node (one of `nodes`) were collected: a copied view (a
+    comprehension, a generator, a lambda) does not see a binding made
+    later in the same pass, which the fixed point of `_Flow._expr_step`
+    re-reads on its next pass (it only adds), nor an alias an earlier
+    walrus ended, so `g((a := n), [a.append(url) for _ in xs])` still
+    fills `a`'s old source (the safe side).
+    A walrus that may not run (`_maybe_skipped`) ends no alias: the path
+    that skips it keeps the old ones (the RM-1557 rule, the safe side).
+    `drop=False` (a re-pass) ends and makes no walrus `_ALIAS` marks
+    (S144-Q-109).
+    S144-Q-110: a call's receiver is read before its arguments, and each
+    argument before the next, but the call is applied after them all, so
+    the `_ALIAS` marks are kept as they stand after each part
+    (`_PreCall`, a receiver's or argument's own walrus included) and a
+    fill reaches what the object named then (`_operand_view`):
+    `a.append((a := n) or url)` and `h(a, (a := n) or url)` fill `a`'s old
+    object. They are kept in `recv` (by call and part) on the first pass
+    and read from it on a re-pass, whose marks are those the first pass
+    ended on. A copied view does not change within a pass, so it is its
+    own record.
+    S144-Q-113 (c): a call that stores an object into another makes it a
+    part of that one (`_call_held_marks`), on the first pass only (a
+    re-pass would read a name a later walrus re-bound) and only with the
+    enclosing state itself, as a walrus's alias marks are (residual: a
+    store in a comprehension, generator or lambda makes none).
+    Returns whether any walrus ran with `drop` on, so may have ended marks
+    (`_Flow._expr_step` then always re-passes)."""
+    ended = False
+    recv = {} if recv is None else recv
     for node in nodes:
         sites = []
-        _call_views(node, tainted, late, sites, kinds=ast.NamedExpr)
+        _call_views(node, tainted, late, sites,
+                    kinds=(ast.NamedExpr, ast.Call), post=True)
+        skipped = set()
+        _maybe_skipped(node, skipped)
         for sub, seen in sites:
-            is_alias = _is_log_callable(sub.value, seen)
-            is_obj = _is_logger_expr(sub.value, seen)
-            wrapper = _value_wrapper_specs(sub.value, seen, late)
-            _drop_aliases(sub.target.id, tainted)    # RM-1794
-            _bind_names(sub.target, _is_tainted(sub.value, seen, late),
-                        tainted, clear=False)
-            _bind_log_alias(sub.target, is_alias, tainted, is_obj)
-            # RM-1563: `(h := g)` makes `h` a wrapper, add-only like the
-            # rest of the walrus binding.
-            _bind_wrapper(sub.target.id, wrapper, tainted)
+            if isinstance(sub, _PreCall):
+                if drop and seen is tainted:
+                    recv[(id(sub.call), id(sub.part))] = {
+                        e for e in tainted if e.startswith(_ALIAS)}
+                continue
+            if isinstance(sub, ast.NamedExpr):
+                ends = drop and id(sub) not in skipped
+                ended = ended or ends
+                _bind_walrus(sub, seen, tainted, late, drop=ends, join=drop)
+                continue
+            _bind_mutators(sub, seen, tainted, late, recv)
+            _bind_mut_calls(sub, seen, tainted, late, recv)
+            _bind_setattr_marks(sub, seen, tainted, late)    # S144-Q-96
+            if drop and seen is tainted:
+                tainted |= _call_held_marks(sub, seen)    # S144-Q-113 (c)
+    return ended
+
+
+def _maybe_skipped(node, out, maybe=False) -> None:
+    """S144-Q-108: add to `out` the `id` of every walrus in `node` that may
+    not run where it stands: an operand of `and` / `or` after the first, a
+    link of a chained comparison after the first two operands, an arm of a
+    conditional (not its test), any part of a comprehension or
+    generator but its first iterable (the loop may run zero times), a
+    lambda body (it runs later, if at all) and an `assert` (its message
+    runs only when it fails, and under `python -O` none of it runs)."""
+    if isinstance(node, ast.NamedExpr) and maybe:
+        out.add(id(node))
+    if isinstance(node, ast.BoolOp):
+        for i, value in enumerate(node.values):
+            _maybe_skipped(value, out, maybe or i > 0)
+        return
+    if isinstance(node, ast.IfExp):
+        _maybe_skipped(node.test, out, maybe)
+        _maybe_skipped(node.body, out, True)
+        _maybe_skipped(node.orelse, out, True)
+        return
+    if isinstance(node, ast.Compare):
+        _maybe_skipped(node.left, out, maybe)
+        for i, value in enumerate(node.comparators):
+            _maybe_skipped(value, out, maybe or i > 0)
+        return
+    if isinstance(node, _COMPREHENSIONS):
+        first = node.generators[0].iter
+        _maybe_skipped(first, out, maybe)
+        eager = {id(sub) for sub in ast.walk(first)}
+        out |= {id(sub) for sub in ast.walk(node)
+                if isinstance(sub, ast.NamedExpr) and id(sub) not in eager}
+        return
+    if isinstance(node, ast.Lambda):
+        out |= {id(sub) for sub in ast.walk(node.body)
+                if isinstance(sub, ast.NamedExpr)}
+        a = node.args
+        for d in a.defaults + [d for d in a.kw_defaults if d is not None]:
+            _maybe_skipped(d, out, maybe)
+        return
+    maybe = maybe or isinstance(node, ast.Assert)
+    for child in ast.iter_child_nodes(node):
+        _maybe_skipped(child, out, maybe)
 
 
 # Context managers whose __enter__ hands back the object they were given.
@@ -1616,7 +2043,8 @@ def _is_log_callable(expr, tainted=frozenset()) -> bool:
     spelling that keeps a plain function from binding `self`."""
     if isinstance(expr, ast.Name) and _LOGFN + expr.id in tainted:
         return True
-    if isinstance(expr, ast.Attribute) and _LOGATTR + expr.attr in tainted:
+    if (isinstance(expr, ast.Attribute) and _LOGATTR + expr.attr in tainted
+            and not _builtin_receiver(expr.value)):    # S144-Q-91
         return True
     if isinstance(expr, ast.IfExp):
         return (_is_log_callable(expr.body, tainted)
@@ -1717,7 +2145,8 @@ def _iter_alias_bindings(target, iterable, tainted):
     return [b for item in items for b in _alias_bindings(target, item, tainted)]
 
 
-def _wrapper_bindings(target, value, tainted, late=frozenset()):
+def _wrapper_bindings(target, value, tainted, late=frozenset(),
+                      judge=_value_wrapper_specs):
     """RM-1563: (name, `_SINKFN` specs) for every plain name `target`
     binds from `value`, split as `_alias_bindings` splits a logging alias:
     a bare name takes the whole value's specs (`_value_wrapper_specs`), a
@@ -1725,24 +2154,26 @@ def _wrapper_bindings(target, value, tainted, late=frozenset()):
     same length and no starred element (`h, k = g, fetch` makes only `h` a
     wrapper), and any other split of a literal value gives EVERY name the
     union of its leaves' specs: the safe side. A non-literal value
-    (`h, k = pair()`) is not tracked (residual)."""
+    (`h, k = pair()`) is not tracked (residual). S144-Q-96: `judge` reads
+    the specs (`_value_mut_specs` for a mutating helper's pairs)."""
     if isinstance(target, ast.Name):
-        return [(target.id, _value_wrapper_specs(value, tainted, late))]
+        return [(target.id, judge(value, tainted, late))]
     if (isinstance(target, (ast.Tuple, ast.List))
             and isinstance(value, (ast.Tuple, ast.List))
             and len(target.elts) == len(value.elts)
             and not any(isinstance(e, ast.Starred)
                         for e in target.elts + value.elts)):
         return [b for t, v in zip(target.elts, value.elts)
-                for b in _wrapper_bindings(t, v, tainted, late)]
+                for b in _wrapper_bindings(t, v, tainted, late, judge)]
     leaves = _literal_elts(value)
     if not leaves:
         return []
-    specs = set().union(*(_value_wrapper_specs(e, tainted, late) for e in leaves))
+    specs = set().union(*(judge(e, tainted, late) for e in leaves))
     return [(n.id, specs) for n in _target_names(target)]
 
 
-def _iter_wrapper_bindings(target, iterable, tainted, late=frozenset()):
+def _iter_wrapper_bindings(target, iterable, tainted, late=frozenset(),
+                           judge=_value_wrapper_specs):
     """RM-1563: what a `for` or comprehension target binds as a wrapper
     from each item of a literal iterable (`for h in (g,)`), unioned over the
     items as `_iter_alias_bindings` does. Non-literal: not tracked."""
@@ -1755,7 +2186,7 @@ def _iter_wrapper_bindings(target, iterable, tainted, late=frozenset()):
         else:
             items.append(elt)
     return [b for item in items
-            for b in _wrapper_bindings(target, item, tainted, late)]
+            for b in _wrapper_bindings(target, item, tainted, late, judge)]
 
 
 def _log_args(call, tainted=frozenset()):
@@ -1799,6 +2230,9 @@ def _default_bindings(fn, state, late=frozenset()):
             bound.add(_LOGOBJ + arg.arg)
         for spec in _value_wrapper_specs(default, state, late):
             bound.add(f"{_SINKFN}{arg.arg} {spec}")
+        # S144-Q-96: and a mutating helper's pairs (`def f(r, k=h)`).
+        for pair in _value_mut_specs(default, state, late):
+            bound.add(f"{_MUTFN}{arg.arg} {pair}")
     return bound
 
 
@@ -1901,10 +2335,14 @@ def _mutated_names(fn):
 def _add_alias_edges(node, edges) -> None:
     """RM-1794: the alias edges (`_alias_pairs`) a plain assignment
     `node` makes into `edges` (name -> the names a value put into its
-    object reaches), as `_new_alias_marks` makes them."""
+    object reaches), as `_new_alias_marks` makes them. S144-Q-102: a
+    walrus makes them too, wherever it stands (flow-insensitive, as the
+    edges are: the safe side for flow-out)."""
     if isinstance(node, ast.Assign):
         targets, value = node.targets, node.value
     elif isinstance(node, ast.AnnAssign) and node.value is not None:
+        targets, value = [node.target], node.value
+    elif isinstance(node, ast.NamedExpr):
         targets, value = [node.target], node.value
     else:
         return
@@ -1934,9 +2372,15 @@ def _alias_closure(found, edges):
 
 def _chain_root(expr):
     """The name an attribute / element chain hangs off (`a` for `a.b[c].d`),
-    or None if it hangs off anything else (a call, a literal)."""
+    or None if it hangs off anything else (a call, a literal).
+    S144-Q-114: a walrus hands back the object it binds, so a chain off one
+    hangs off its target (`t` for `(t := a).q`), which its `_ALIAS` marks
+    tie to what it was bound from: `(t := a).append(url)` fills `a`'s
+    object. Before, it hung off nothing, so the fill reached no alias."""
     while isinstance(expr, (ast.Attribute, ast.Subscript, ast.Starred)):
         expr = expr.value
+    if isinstance(expr, ast.NamedExpr):
+        expr = expr.target
     return expr.id if isinstance(expr, ast.Name) else None
 
 
@@ -2013,6 +2457,12 @@ def _mut_pairs(call, view):
             if entry.startswith(prefix):
                 dst, src = entry[len(prefix):].split(">", 1)
                 pairs.add((dst, src))
+    elif isinstance(f, ast.Lambda):
+        # S144-Q-96: a lambda called in place is judged where it stands,
+        # as `_wrapper_args` judges a wrapper.
+        for pair in _mut_specs(f, view):
+            dst, src = pair.split(">", 1)
+            pairs.add((dst, src))
     elif isinstance(f, ast.Attribute):
         prefix = _MUTATTR + f.attr + " "
         for entry in view:
@@ -2052,25 +2502,25 @@ def _call_mutated_names(fn, view):
     return found
 
 
-def _bind_mut_calls(nodes, tainted, late=frozenset()) -> None:
+def _bind_mut_calls(call, seen, tainted, late=frozenset(), recv=None) -> None:
     """RM-1790: a call through a mutating helper whose source argument is
     tainted leaves its destination argument's names carrying the value, as
     `q.append(url)` leaves `q` (`_bind_mutators`): `h(q, url)` with
     `def h(q, v): q.append(v)` taints `q`, and `self.h(url)` with
     `def h(self, v): self.q.append(v)` taints `self`. Add-only; each call
-    is judged with the view `_call_views` gives it."""
-    for node in nodes:
-        calls = []
-        _call_views(node, tainted, late, calls)
-        for call, seen in calls:
-            for dst, src in _mut_pairs(call, seen):
-                # RM-1793: an always pair needs no tainted argument.
-                if src == _MUT_ALWAYS or any(
-                        _is_tainted(a, seen, late) for a in _spec_args(call, {src})):
-                    for arg in _spec_args(call, {dst}):
-                        _bind_names(arg, True, tainted, clear=False)
-                        # RM-1794: and every alias of its object.
-                        _taint_aliases(arg, tainted, seen)
+    is judged with the view `_call_views` gives it. S144-Q-108: one call,
+    in `_bind_in_order`'s order. S144-Q-110: a destination's aliases are
+    read where it was (`_operand_view`), before the later arguments:
+    `h(a, (a := n) or url)` fills what `a` named before the walrus."""
+    for dst, src in _mut_pairs(call, seen):
+        # RM-1793: an always pair needs no tainted argument.
+        if src == _MUT_ALWAYS or any(
+                _is_tainted(a, seen, late) for a in _spec_args(call, {src})):
+            for arg in _spec_args(call, {dst}):
+                _bind_names(arg, True, tainted, clear=False)
+                # RM-1794: and every alias of its object.
+                _taint_aliases(arg, tainted,
+                               _operand_view(call, arg, recv, seen))
 
 
 def _param_specs(fn):
@@ -2147,7 +2597,7 @@ def _param_base(fn, names, state, late):
     own = names if isinstance(fn, ast.Lambda) else names | _def_locals(fn)
     base = frozenset(e for e in _shadow_aliases(base, own) if not shadowed(e))
     return base | {e for e in _default_bindings(fn, state, late)
-                   if e.startswith((_LOGFN, _LOGOBJ, _SINKFN))}
+                   if e.startswith((_LOGFN, _LOGOBJ, _SINKFN, _MUTFN))}
 
 
 def _mut_specs(fn, state, late=frozenset()):
@@ -2161,11 +2611,15 @@ def _mut_specs(fn, state, late=frozenset()):
     one walk per parameter (memoised, so the walks `_sink_specs` already
     made are reused), into a throwaway report. What `dst` carries is read
     from every state the body may leave it in (fall-through, `return` and
-    every state inside, as the def arm's flow-out is). Residuals: a lambda,
-    an alias (`k = h`) and a helper stored on an attribute from outside a
-    class body (by `=` or `setattr`) make no pair (RM-1794: a helper
-    that stores INTO its parameter through `setattr(q, 'u', v)` makes
-    one); a parameter mutated
+    every state inside, as the def arm's flow-out is). S144-Q-96: a
+    lambda is judged the same way, and a helper is bound as a wrapper is
+    (`_value_mut_specs`: an alias `k = h`, a conditional, a tuple, a
+    walrus, a `for` or comprehension target over a literal, a default, a
+    staticmethod over one, a store on an attribute by `=` or by `setattr`
+    with a literal name: `_attr_store_marks`). Residuals: a `setattr`
+    with a non-literal name makes no mark, and a re-bound helper keeps
+    its old pairs through the late view, the rule a wrapper follows (the
+    safe side); a parameter mutated
     and then re-bound (`q.append('x'); q = [v]`) is read as still carrying
     `v`, the RM-1788 safe side.
 
@@ -2370,8 +2824,11 @@ def _attr_specs(f, tainted):
 def _attr_ways(kind, recv):
     """How a call off receiver `recv` binds the first parameter of a method
     mark of kind `kind` (`_attr_specs`): `plain` (unbound), `bound` (off
-    the receiver) or `cls` (off the receiver's class), one or more of them."""
+    the receiver) or `cls` (off the receiver's class), one or more of them.
+    S144-Q-91: none off a literal display (`_builtin_receiver`)."""
     owner = kind[len("inst:"):]
+    if _builtin_receiver(recv):
+        return ()    # S144-Q-91: the builtin's own method, never the mark's
     if kind == "static":
         return ("plain",)
     if kind == "any":
@@ -2399,6 +2856,8 @@ def _comp_bind(gen, view, late):
     found = _is_tainted(gen.iter, view, late)
     aliases = _iter_alias_bindings(gen.target, gen.iter, view)
     wrappers = _iter_wrapper_bindings(gen.target, gen.iter, view, late)
+    muts = _iter_wrapper_bindings(gen.target, gen.iter, view, late,
+                                  _value_mut_specs)    # S144-Q-96
     inner = set(view)
     # RM-1794: the target is the comprehension's own name.
     _drop_target_aliases(gen.target, inner)
@@ -2407,6 +2866,8 @@ def _comp_bind(gen, view, late):
         _bind_log_alias(name, is_alias, inner, is_obj)
     for name, specs in wrappers:
         _bind_wrapper(name, specs, inner)
+    for name, pairs in muts:
+        _bind_mut(name, pairs, inner)
     return inner
 
 
@@ -2417,9 +2878,12 @@ def _late_view(view, late):
     return set(view) | {e for e in late if not e.startswith(_ALIAS)}
 
 
-def _call_views(node, view, late, out, kinds=ast.Call) -> None:
+def _call_views(node, view, late, out, kinds=ast.Call, post=False) -> None:
     """Append (call, state the call reads) for every call in `node` (every
-    node of type `kinds`: `_bind_walrus` asks for `ast.NamedExpr`).
+    node of type `kinds`: `_bind_in_order` asks for `ast.NamedExpr` too).
+    S144-Q-108: `post=True` appends a node after its parts, in
+    `_eval_children` order, so the list is in evaluation order; the
+    default is pre-order (a sink check does not depend on the order).
 
     RM-1563: a comprehension's parts read its targets. Each generator's
     iterable reads the view before its own target is bound (the first one
@@ -2441,32 +2905,101 @@ def _call_views(node, view, late, out, kinds=ast.Call) -> None:
     if isinstance(node, _COMPREHENSIONS):
         inner = _late_view(view, late) if isinstance(node, _DEFERRED) else view
         for gen in node.generators:
-            _call_views(gen.iter, inner, late, out, kinds)
+            _call_views(gen.iter, inner, late, out, kinds, post)
             inner = _comp_bind(gen, inner, late)
-            _call_views(gen.target, inner, late, out, kinds)
+            _call_views(gen.target, inner, late, out, kinds, post)
             for cond in gen.ifs:
-                _call_views(cond, inner, late, out, kinds)
+                _call_views(cond, inner, late, out, kinds, post)
         parts = ((node.key, node.value) if isinstance(node, ast.DictComp)
                  else (node.elt,))
         for part in parts:
-            _call_views(part, inner, late, out, kinds)
+            _call_views(part, inner, late, out, kinds, post)
         return
     if isinstance(node, ast.Lambda):
         late_view = _late_view(view, late)
         a = node.args
         for d in a.defaults + [d for d in a.kw_defaults if d is not None]:
-            _call_views(d, late_view, late, out, kinds)
+            _call_views(d, late_view, late, out, kinds, post)
         body_view = late_view | _default_bindings(node, view, late)
         # RM-1794: a parameter is the lambda's own name, so the
         # enclosing scope's `_ALIAS` marks about it do not hold inside.
         for name, _ in _param_specs(node):
             _drop_aliases(name, body_view)
-        _call_views(node.body, body_view, late, out, kinds)
+        _call_views(node.body, body_view, late, out, kinds, post)
         return
-    if isinstance(node, kinds):
+    if isinstance(node, kinds) and not post:
         out.append((node, view))
-    for child in ast.iter_child_nodes(node):
-        _call_views(child, view, late, out, kinds)
+    for child in _eval_children(node) if post else ast.iter_child_nodes(node):
+        _call_views(child, view, late, out, kinds, post)
+        if post and isinstance(node, ast.Call):
+            out.append((_PreCall(node, child), view))    # S144-Q-110
+    if isinstance(node, kinds) and post:
+        out.append((node, view))
+
+
+class _PreCall:
+    """S144-Q-110: the point in `_call_views`'s `post=True` order where
+    `part` of call `call` (its callee, an argument or a keyword) has been
+    read and the parts after it not yet (`_bind_in_order` keeps the
+    `_ALIAS` marks there)."""
+
+    __slots__ = ("call", "part")
+
+    def __init__(self, call, part):
+        self.call = call
+        self.part = part
+
+
+def _operand_view(call, expr, recv, seen):
+    """S144-Q-110: the view the aliases of `expr`, an object `call` fills,
+    are read from: the `_ALIAS` marks `recv` kept just after the part of
+    `call` holding it was read (the callee for a receiver, else the
+    argument or keyword), or `seen` where none was kept (a copied view)."""
+    part = None
+    if isinstance(call.func, ast.Attribute) and expr is call.func.value:
+        part = call.func
+    for arg in call.args:
+        if expr is arg or (isinstance(arg, ast.Starred) and expr is arg.value):
+            part = arg
+    for kw in call.keywords:
+        if expr is kw.value:
+            part = kw
+    if recv is None or part is None:
+        return seen
+    return recv.get((id(call), id(part)), seen)
+
+
+def _eval_children(node):
+    """S144-Q-108: the child nodes of `node` in the order Python evaluates
+    them. `ast.iter_child_nodes` already gives it for a call, a
+    conditional (test first) and an operator; an assignment evaluates its
+    value before its targets, a dict display each key just before its
+    value (`**m` has no key), and a parameter list its positional defaults
+    before its keyword-only ones (the annotations last: they may run lazily
+    or never). A def's or class's decorators run before its defaults and
+    bases (`_def_parts`). A call's receiver is read before its arguments
+    but the call is applied after them, so `_call_views` marks the point
+    after each part (`_PreCall`, S144-Q-110)."""
+    if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
+        return [node.value] + [c for c in ast.iter_child_nodes(node)
+                               if c is not node.value]
+    if isinstance(node, ast.Dict):
+        return [c for k, v in zip(node.keys, node.values)
+                for c in (k, v) if c is not None]
+    if isinstance(node, ast.arguments):
+        first = node.defaults + [d for d in node.kw_defaults if d is not None]
+        return first + [c for c in ast.iter_child_nodes(node)
+                        if not any(c is d for d in first)]
+    return list(ast.iter_child_nodes(node))
+
+
+def _def_parts(stmt):
+    """S144-Q-108: the expression-level parts of a def or class statement
+    (`_own_nodes`) in evaluation order: its decorators first, then its
+    parameter list or bases and keywords."""
+    decorators = list(stmt.decorator_list)
+    return decorators + [n for n in _own_nodes(stmt)
+                         if not any(n is d for d in decorators)]
 
 
 def _check_sinks(nodes, stmt, tainted, report, late=frozenset()) -> None:
@@ -2530,12 +3063,23 @@ def _entry_name(entry):
 
 def _readable(entries, names):
     """The entries a scope whose strings are `names` can read. An entry whose
-    name is not an identifier is an unknown shape and is always kept."""
+    name is not an identifier is an unknown shape and is always kept.
+    S144-Q-108: an `_ALIAS` chain from a name the scope reads runs on
+    through names it does not (`b -> a -> k`, the scope reading only `b`),
+    so every `_ALIAS` mark from a name reachable from one it reads is kept
+    (`_alias_closure`): a value the scope puts into `b` still reaches `k`."""
     out = set()
     for entry in entries:
         name = _entry_name(entry)
         if name in names or not name.isidentifier():
             out.add(entry)
+    edges = {}
+    for src, dst in _alias_edges(entries):
+        edges.setdefault(src, set()).add(dst)
+    if edges:
+        reach = _alias_closure({s for s in edges if s in names}, edges)
+        out |= {e for e in entries
+                if e.startswith(_ALIAS) and _entry_name(e) in reach}
     return frozenset(out)
 
 
@@ -2869,17 +3413,40 @@ class _Flow:
         """Check the sinks in `nodes` and apply their walrus bindings."""
         state = set(state)
         nodes = list(nodes)
-        # Both binding kinds only ADD taint, so they are run to a fixed point:
-        # within one statement a walrus may read a container a later mutator
-        # fills (`g(q.append(url), m := q[0])`), or one mutator a container
-        # another fills after it (RM-1558).
+        # The bindings are run to a fixed point: within one statement a
+        # walrus may read a container a later mutator fills
+        # (`g(q.append(url), m := q[0])`), or one mutator a container
+        # another fills after it (RM-1558). S144-Q-107: a walrus also ENDS
+        # its target's `_ALIAS` marks (`_drop_aliases`), so it ends them on
+        # the first pass only; a re-pass that ended them again would rotate
+        # them (`g((t := a), (a := b), (b := t))` flipped between two
+        # states of one size and stopped on the wrong one), so the first
+        # pass compares the set itself. S144-Q-109: a re-pass makes no
+        # walrus `_ALIAS` marks either: it would read the marks of the
+        # walruses after it, so a rotation made every name reach every
+        # source. Every later pass only ADDS, so there an unchanged size
+        # is an unchanged state. S144-Q-108: within a pass every binding
+        # site runs in evaluation order (`_bind_in_order`), so a fill before
+        # a walrus in source order (`g(b.append(url), (b := n), (n := a))`)
+        # is read before the walrus ends its alias. S144-Q-110: a call's
+        # receiver is read before its arguments and each argument before the
+        # next, so the aliases of an object a call fills are the marks kept
+        # where it was read on the first pass (`recv`), on every pass.
+        # A first pass in which any walrus ran with `drop` on is always
+        # re-passed (S144-Q-108 verifier round 2): a first pass may end an
+        # alias and put it back, ending on the state it began with. Kept as
+        # the safe side: since `recv` no known program needs it (the
+        # S144-Q-110 verifier's `setattr` and helper cases no longer do).
+        first = frozenset(state)
+        drop = True
+        recv = {}
         while True:
             before = len(state)
-            _bind_walrus(nodes, state, self.ever)
-            _bind_mutators(nodes, state, self.ever)
-            _bind_mut_calls(nodes, state, self.ever)
-            if len(state) == before:
+            ended = _bind_in_order(nodes, state, self.ever, drop=drop,
+                                   recv=recv)
+            if (state == first and not ended) if drop else len(state) == before:
                 break
+            drop = False
         _check_sinks(nodes, stmt, state, self.report, self.ever)
         for node in nodes:
             for sub in ast.walk(node):
@@ -2931,8 +3498,9 @@ class _Flow:
             # other statement's do (`_expr_step`). Annotations and type
             # parameter bounds may run lazily (Python 3.14) or never; they
             # are read as run here, the safe side. The sinks were
-            # checked here before, the bindings were not.
-            state = self._expr_step(list(_own_nodes(stmt)), stmt, state)
+            # checked here before, the bindings were not. S144-Q-108: the
+            # decorators first, as they run (`_def_parts`).
+            state = self._expr_step(_def_parts(stmt), stmt, state)
             # RM-1794: a def's parameters and locals are not the
             # enclosing scope's names, so the `_ALIAS` marks about them do
             # not reach into its body (`a = m; def f(a): a.append(url)`
@@ -3092,6 +3660,8 @@ class _Flow:
         found = _is_tainted(stmt.iter, state, self.ever)
         aliases = _iter_alias_bindings(stmt.target, stmt.iter, state)
         wrappers = _iter_wrapper_bindings(stmt.target, stmt.iter, state, self.ever)
+        muts = _iter_wrapper_bindings(stmt.target, stmt.iter, state, self.ever,
+                                      _value_mut_specs)    # S144-Q-96
 
         def run_pass(entry):
             # The target is assigned once per item, so a sink in it
@@ -3105,6 +3675,8 @@ class _Flow:
                 _bind_log_alias(name, is_alias, body_in, is_obj)
             for name, specs in wrappers:
                 _bind_wrapper(name, specs, body_in)
+            for name, pairs in muts:
+                _bind_mut(name, pairs, body_in)
             return entry, self.block(stmt.body, body_in)
 
         exhausted, breaks = self._loop(state, run_pass)
@@ -4535,6 +5107,469 @@ _CHECKER_SAMPLES = (
      "a = m\ndef f(url, a):\n    a.append(url)\nraise E(m)\n", False),
     ("an alias made inside a def does not flow out of it",
      "def g():\n    a = G\nG.append(url)\nraise E(a)\n", False),
+    # S144-Q-102: a walrus binds an alias as `=` does (`_bind_walrus`).
+    ("a walrus alias filled in place fills its source",
+     "def f(url):\n    m = []\n    if (a := m):\n        a.append(url)\n    raise E(m)\n",
+     True),
+    ("a walrus alias of a part fills its source",
+     "def f(url):\n    m = C()\n    if (a := m.q):\n        a.append(url)\n    raise E(m)\n",
+     True),
+    ("a source filled in place is read through its walrus alias",
+     "def f(url):\n    m = []\n    if (a := m):\n        pass\n    m.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a parameter filled through a walrus alias reaches a later def",
+     "def g(m):\n    if (a := m):\n        a.append(url)\ndef f(m):\n    raise E(m)\n", True),
+    ("a walrus over a walrus aliases both names",
+     "def f(url):\n    m = []\n    if (a := (b := m)):\n        a.append(url)\n"
+     "    raise E(m)\n", True),
+    ("a walrus re-binding a name to a part of itself still reaches the old object",
+     "def f(url):\n    m = []\n    a = m\n    if (a := a[0]):\n        a.append(url)\n"
+     "    raise E(m)\n", True),
+    ("a walrus bound to a copy is not an alias",
+     "def f(url):\n    m = []\n    if (a := list(m)):\n        a.append(url)\n    raise E(m)\n",
+     False),
+    ("a walrus alias re-bound before the fill does not taint the source",
+     "def f(url):\n    m = []\n    if (a := m):\n        a = []\n        a.append(url)\n"
+     "    raise E(m)\n", False),
+    ("a walrus in a comprehension does not alias the enclosing name of its target",
+     "def f(url, xs):\n    x = []\n    [(a := x) for x in xs]\n    a.append(url)\n"
+     "    raise E(x)\n", False),
+    # S144-Q-107: the walrus aliases of one statement are ended once, in
+    # source order, as separate `=` statements end them; a re-pass of the
+    # fixed point must not rotate them again, and a fill before a walrus is
+    # read through the aliases it ends.
+    ("a walrus rotation leaves the last name aliasing the first source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    b.append(url)\n    raise E(m)\n", True),
+    ("a walrus rotation leaves the middle name aliasing the second source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    a.append(url)\n    raise E(n)\n", True),
+    ("a walrus rotation leaves the temporary aliasing the first source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    t.append(url)\n    raise E(m)\n", True),
+    ("a fill before a walrus chain in one statement still reaches its source",
+     "def f(url):\n    a = []\n    b = a\n    n = []\n"
+     "    g(b.append(url), (b := n), (n := a))\n    raise E(a)\n", True),
+    ("a walrus cycle with a fill in one statement reaches a fixed point",
+     "def f(url):\n    a = []\n    b = []\n    c = a\n    t = []\n    n = []\n"
+     "    g(c.append(url), (n := t), (b := t), (t := c), (c := n))\n"
+     "    b.append(url)\n    raise E(a)\n", True),
+    # A first pass that ends as many marks as it adds still changed the
+    # state, so it is re-run: here it fills `q`, ends `a`'s two marks and
+    # taints `z`, and only a re-pass reads the filled `q` into `k`.
+    ("a walrus re-reads a filled container after a size-neutral first pass",
+     "def f(url):\n    m = []\n    q = []\n    a = m\n"
+     "    g((k := q[0] + ''), q.append(url), (a := ''), (z := url + ''))\n"
+     "    raise E(k)\n", True),
+    # S144-Q-109: a re-pass makes no walrus `_ALIAS` marks, so a name does
+    # not keep the aliases it had before its own walrus in one statement
+    # (a re-pass re-joined them: each row below was flagged).
+    ("a walrus rotation does not leave the last name aliasing the second source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    b.append(url)\n    raise E(n)\n", False),
+    ("a walrus rotation does not leave the middle name aliasing the first source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    a.append(url)\n    raise E(m)\n", False),
+    ("a walrus rotation does not leave the temporary aliasing the second source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b), (b := t))\n    t.append(url)\n    raise E(n)\n", False),
+    ("a walrus swap does not leave the re-bound name aliasing its old source",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n    b = n\n"
+     "    g((t := a), (a := b))\n    a.append(url)\n    raise E(m)\n", False),
+    # S144-Q-108: the bindings of one statement run in evaluation order, so
+    # a fill before a walrus that re-binds its alias reaches the old source,
+    # whatever binds it (a mutator, a helper, setattr, a comprehension), and
+    # where evaluation order is not source order (a conditional's test, an
+    # assignment's value, a dict display's pairs) evaluation order wins.
+    ("a fill before a walrus re-binding its alias in one statement",
+     "def f(url):\n    m = []\n    a = m\n    n = []\n    g(a.append(url), (a := n))\n"
+     "    raise E(m)\n", True),
+    ("a helper fill before a walrus re-binding its alias in one statement",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    m = []\n    a = m\n    n = []\n"
+     "    g(h(a, url), (a := n))\n    raise E(m)\n", True),
+    ("a setattr before a walrus re-binding its alias in one statement",
+     "def f(url):\n    m = C()\n    a = m\n    g(setattr(a, 'x', url), (a := C()))\n"
+     "    raise E(m)\n", True),
+    ("a comprehension fill before a walrus re-binding its alias",
+     "def f(url, xs):\n    m = []\n    a = m\n    n = []\n"
+     "    g([a.append(url) for _ in xs], (a := n))\n    raise E(m)\n", True),
+    ("a conditional test fill runs before the walrus in its body",
+     "def f(url):\n    m = []\n    a = m\n    n = []\n"
+     "    g((a := n) if a.append(url) is None else 0)\n    raise E(m)\n", True),
+    ("an assignment value fill runs before a walrus in its target",
+     "def f(url):\n    m = []\n    a = m\n    n = []\n    d = {}\n"
+     "    d[(a := n)] = a.append(url)\n    raise E(m)\n", True),
+    ("a dict display pair runs before the next pair's walrus key",
+     "def f(url):\n    m = []\n    a = m\n    n = []\n"
+     "    g({1: a.append(url), (a := n): 0})\n    raise E(m)\n", True),
+    ("a walrus re-binding an alias before the fill in one statement",
+     "def f(url):\n    m = []\n    a = m\n    n = []\n    g((a := n), a.append(url))\n"
+     "    raise E(m)\n", False),
+    ("a dict display walrus key before the next pair's fill",
+     "def f(url):\n    m = []\n    a = m\n    n = []\n"
+     "    g({(a := n): 0, 1: a.append(url)})\n    raise E(m)\n", False),
+    # A walrus that may not run ends no alias (`_maybe_skipped`): the path
+    # that skips it keeps the old ones. Found by the S144-Q-108 verifier:
+    # evaluation order moved such a walrus ahead of the read that needs the
+    # old alias (an assignment value, an earlier dict pair).
+    ("a walrus after `and` may not run, so a later read keeps the old alias",
+     "def f(url, c):\n    m = []\n    a = m\n    g(c and (m := []), (n := m))\n"
+     "    n.append(url)\n    raise E(a)\n", True),
+    ("a walrus after `or` may not run, so a later read keeps the old alias",
+     "def f(url, c):\n    m = []\n    a = m\n    g(c or (m := []), (n := m))\n"
+     "    n.append(url)\n    raise E(a)\n", True),
+    ("a walrus in a conditional arm may not run",
+     "def f(url, c):\n    m = []\n    a = m\n    g((m := []) if c else 0, (n := m))\n"
+     "    n.append(url)\n    raise E(a)\n", True),
+    ("a walrus in a comprehension may not run",
+     "def f(url, xs):\n    m = []\n    a = m\n    g([(m := x) for x in xs], (n := m))\n"
+     "    n.append(url)\n    raise E(a)\n", True),
+    ("a walrus in an assert message may not run",
+     "def f(url, c):\n    m = []\n    a = m\n    assert c, (m := [])\n    n = m\n"
+     "    n.append(url)\n    raise E(a)\n", True),
+    ("a walrus that may not run in an assignment value",
+     "def f(url, c):\n    m = []\n    a = m\n    d = {}\n"
+     "    d[id(n := m)] = (c.append(c) and (m := []))\n    n.append(url)\n    raise E(a)\n",
+     True),
+    ("a walrus that may not run in an earlier dict pair",
+     "def f(url, c):\n    m = []\n    a = m\n"
+     "    g({1: (c.append(c) and (m := [])), id(n := m): 0})\n    n.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a walrus in the first operand of `and` always runs",
+     "def f(url, c):\n    m = []\n    a = m\n    g((m := []) and c, (n := m))\n"
+     "    n.append(url)\n    raise E(a)\n", False),
+    ("a walrus in a conditional test always runs",
+     "def f(url, c):\n    m = []\n    a = m\n    g(0 if (m := []) else 1, (n := m))\n"
+     "    n.append(url)\n    raise E(a)\n", False),
+    ("a walrus past the first link of a chained comparison may not run",
+     "def f(url, c, d):\n    m = []\n    a = m\n    g(c < d < (m := []), (n := m))\n"
+     "    n.append(url)\n    raise E(a)\n", True),
+    ("a walrus in the first link of a chained comparison always runs",
+     "def f(url, c, d):\n    m = []\n    a = m\n    g(c < (m := []) < d, (n := m))\n"
+     "    n.append(url)\n    raise E(a)\n", False),
+    # Decorators run before a def's defaults or a class's bases, and
+    # positional defaults before keyword-only ones (`_def_parts`,
+    # `_eval_children`). A fill between walruses that end and restore its
+    # alias reaches the old source on the first pass.
+    ("a decorator fill runs before a default's walrus",
+     "def f(url, n):\n    m = []\n    a = m\n    @deco(a.append(url))\n"
+     "    def h(z=(a := n)):\n        pass\n    raise E(m)\n", True),
+    ("a decorator fill runs before a base's walrus",
+     "def f(url, n):\n    m = []\n    a = m\n    @deco(a.append(url))\n"
+     "    class K(base((a := n))):\n        pass\n    raise E(m)\n", True),
+    ("a positional default fill runs before a keyword-only default's walrus",
+     "def f(url, n):\n    m = []\n    a = m\n"
+     "    def h(x=a.append(url), *, z=(a := n)):\n        pass\n    raise E(m)\n", True),
+    ("a lambda positional default fill runs before a keyword-only default's walrus",
+     "def f(url, n):\n    m = []\n    a = m\n"
+     "    h = lambda x=a.append(url), *, z=(a := n): 0\n    raise E(m)\n", True),
+    ("a default fill between walruses that end and restore its alias",
+     "def f(url, n):\n    m = []\n    a = m\n"
+     "    def h(x=a.append(url), y=(a := m), *, z=(a := n)):\n        pass\n"
+     "    raise E(m)\n", True),
+    ("a decorator fill between walruses that end and restore its alias",
+     "def f(url, n):\n    m = []\n    a = m\n    @deco(a.append(url), (a := m))\n"
+     "    def h(z=(a := n)):\n        pass\n    raise E(m)\n", True),
+    # A def body reads the enclosing marks through the names it holds
+    # (`_readable`), and a parameter hides the enclosing name
+    # (`_shadow_aliases`); a chain through a name it cannot see is kept
+    # (`_readable`: its whole closure) or bridged (`_shadow_aliases`).
+    # Evaluation order and a walrus that may not run leave more such
+    # chains than binding every walrus first did (verifier round 3).
+    ("a def body fills a name three links from the target",
+     "def f(url):\n    m = []\n    a = m\n    x = a\n    b = x\n"
+     "    def inner():\n        b.append(url)\n    inner()\n    raise E(m)\n", True),
+    ("a def body fills a name reaching the target through a name it does not read",
+     "def f(url):\n    m = []\n    a = m\n    b = m\n    g((k := (m := a)))\n"
+     "    def inner():\n        b.append(url)\n    inner()\n    raise E(k)\n", True),
+    ("a def body fills a name aliased through one a walrus may re-bind",
+     "def f(url, c):\n    m = []\n    k = []\n    a = m\n    b = a\n    g(c and (a := k))\n"
+     "    def inner():\n        b.append(url)\n    inner()\n    raise E(m)\n", True),
+    ("a def body fills a name aliased through one its parameter hides",
+     "def f(url):\n    m = []\n    a = m\n    b = a\n"
+     "    def inner(a):\n        b.append(url)\n    inner(0)\n    raise E(m)\n", True),
+    ("a parameter hiding an alias does not alias it to itself",
+     "def f(url):\n    m = []\n    a = m\n    b = []\n"
+     "    def inner(a):\n        b.append(url)\n    inner(0)\n    raise E(m)\n", False),
+    # Here every other mark the statement makes is already there, so the
+    # first pass ends on the state it began with; the receiver's aliases
+    # are read before its arguments (S144-Q-110), so that pass fills `m`.
+    ("a receiver fill between walruses that end and restore its alias",
+     "def f(url):\n    m = []\n    n = []\n    n.append(url)\n    a = n\n"
+     "    a.append(url)\n    g((a := m))\n"
+     "    g(a.append((a := n) and url), (a := m))\n    raise E(m)\n", True),
+    # S144-Q-110: a call's receiver is read before its arguments, so a
+    # mutator fills the object its receiver named then, though a walrus in
+    # the arguments re-binds the name (`_bind_in_order`: `_PreCall`).
+    ("a receiver is filled though a walrus in its arguments re-binds it",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    a.append((a := n) or url)\n    raise E(m)\n", True),
+    ("a walrus in a receiver's arguments does not make it fill the new object",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    a.append((a := n) or url)\n    raise E(n)\n", False),
+    ("a receiver re-bound by an earlier walrus is filled though a later one re-binds it",
+     "def f(url):\n    m = []\n    n = []\n    a = n\n"
+     "    g((a := m), a.append((a := n) or url))\n    raise E(m)\n", True),
+    ("a walrus receiver is filled though a walrus in its arguments re-binds it",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    (a := m).append((a := n) or url)\n    raise E(m)\n", True),
+    ("a walrus receiver's arguments do not make it fill the new object",
+     "def f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    (a := m).append((a := n) or url)\n    raise E(n)\n", False),
+    # A re-pass reads a container a later call fills into an earlier one
+    # (`g(b.append(k), k.append(url))`: `b` holds `k`); the receiver is
+    # still the object it named on the first pass, not where the
+    # statement left the name.
+    ("a container filled later reaches the old object of an earlier receiver",
+     "def f(url):\n    m = []\n    k = []\n    b = m\n"
+     "    g(b.append(k), (b := []), k.append(url))\n    raise E(m)\n", True),
+    # A `setattr` object or a helper destination is read before the later
+    # arguments too, also on a first pass that adds nothing and ends on
+    # the state it began with (S144-Q-110 verifier).
+    ("a setattr object re-bound by a later argument is filled at its old object",
+     "def f(url, c):\n    z = C()\n    a = z\n    n = [url]\n    g(c or (a := url + ''))\n"
+     "    g(setattr(a, 'u', (a := n) or url))\n    raise E(z)\n", True),
+    ("a helper destination re-bound by a later argument is filled at its old object",
+     "def h(q, x):\n    q.append(x)\ndef f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    h(a, (a := n) or url)\n    raise E(m)\n", True),
+    ("a keyword helper destination re-bound by a later keyword is filled at its old object",
+     "def h(q, x):\n    q.append(x)\ndef f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    h(q=a, x=(a := n) or url)\n    raise E(m)\n", True),
+    ("a walrus in a later argument does not make a helper fill the new object",
+     "def h(q, x):\n    q.append(x)\ndef f(url):\n    m = []\n    n = []\n    a = m\n"
+     "    h(a, (a := n) or url)\n    raise E(n)\n", False),
+    ("a setattr object re-bound and restored by later arguments",
+     "def f(url, c):\n    z = C()\n    a = z\n    n = [url]\n    g(c or (a := url + ''))\n"
+     "    g(setattr(a, 'u', (a := n) or url), (a := z))\n    raise E(z)\n", True),
+    ("a helper destination re-bound and restored by later arguments",
+     "def h(q, x):\n    q.append(x)\ndef f(url, c):\n    z = []\n    a = z\n    n = [url]\n"
+     "    g(c or (a := url + ''))\n    g(h(a, (a := n) or url), (a := z))\n    raise E(z)\n",
+     True),
+    # S144-Q-114: a walrus hands back the object it binds, so a fill off one
+    # reaches what it was bound from (`_chain_root`).
+    ("a walrus receiver fills the object it was bound from",
+     "def f(url):\n    m = []\n    a = m\n    (t := a).append(url)\n    raise E(m)\n", True),
+    ("a walrus setattr object fills the object it was bound from",
+     "def f(url):\n    m = C()\n    a = m\n    setattr((t := a), 'u', url)\n    raise E(m)\n",
+     True),
+    ("a walrus helper destination fills the object it was bound from",
+     "def h(q, x):\n    q.append(x)\ndef f(url):\n    m = []\n    a = m\n"
+     "    h((t := a), url)\n    raise E(m)\n", True),
+    ("a walrus receiver in an outer receiver's arguments fills its own object",
+     "def f(url):\n    m = []\n    a = m\n    t = []\n    t.append((t := a).append(url))\n"
+     "    raise E(m)\n", True),
+    ("a walrus receiver bound to a new object does not fill an old one",
+     "def f(url):\n    m = []\n    a = m\n    (a := []).append(url)\n    raise E(m)\n", False),
+    # S144-Q-113 (c): an object stored into a container is a part of it,
+    # so a value put into the object later is in the container
+    # (`_held_marks`); a value put into the container does not reach it.
+    ("an appended object filled later is in its container",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    k.append(url)\n    raise E(a)\n",
+     True),
+    ("an inserted object filled later is in its container",
+     "def f(url):\n    a = []\n    k = []\n    a.insert(0, k)\n    k.append(url)\n    raise E(a)\n",
+     True),
+    ("a setdefault object filled later is in its dict",
+     "def f(url):\n    a = {}\n    k = []\n    a.setdefault('x', k)\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an added object given an attribute later is in its set",
+     "def f(url):\n    a = set()\n    k = C()\n    a.add(k)\n    k.u = url\n"
+     "    raise E(a)\n", True),
+    ("an element store holds an object filled later",
+     "def f(url):\n    a = {}\n    k = []\n    a['x'] = k\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an attribute store holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    a.x = k\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a self attribute store holds an object filled later",
+     "class C:\n    def f(self, url):\n        k = []\n        self.q = k\n        k.append(url)\n"
+     "        raise E(self)\n", True),
+    ("a setattr store holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    setattr(a, 'x', k)\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a paired tuple store holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    a.x, b = k, []\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a list display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [k]\n    k.append(url)\n    raise E(a)\n", True),
+    ("a nested dict display holds an object filled later",
+     "def f(url):\n    k = []\n    a = {'x': [k]}\n    k.append(url)\n    raise E(a)\n", True),
+    ("an in-place += display holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a += [k]\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a mutating helper's destination holds its source filled later",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    a = []\n    k = []\n    h(a, k)\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a mutating method's receiver holds its source filled later",
+     "class C:\n    def __init__(self):\n        self.q = []\n    def h(self, v):\n"
+     "        self.q.append(v)\n    def f(self, url):\n        k = []\n        self.h(k)\n"
+     "        k.append(url)\n        raise E(self)\n", True),
+    ("a helper that stores a local then fills it mutates its parameter",
+     "def w(q, v):\n    k = []\n    q.append(k)\n    k.append(v)\ndef f(url):\n    a = []\n"
+     "    w(a, url)\n    raise E(a)\n", True),
+    ("an object held two levels down filled later",
+     "def f(url):\n    a = []\n    b = []\n    k = []\n    a.append(b)\n    b.append(k)\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("an alias of a held object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    j = k\n    j.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an object appended through a container alias filled later",
+     "def f(url):\n    a = []\n    b = a\n    k = []\n    b.append(k)\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an object held by a container that is then re-bound still reaches its alias",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    b = a\n    a = []\n"
+     "    k.append(url)\n    raise E(b)\n", True),
+    ("an object appended under a walrus is filled through the walrus name",
+     "def f(url):\n    a = []\n    k = []\n    a.append((j := k))\n    j.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a new object appended under a walrus is filled through the walrus name",
+     "def f(url):\n    a = []\n    a.append((j := []))\n    j.append(url)\n    raise E(a)\n", True),
+    ("a display in a conditional arm appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append([k] if k is not None else [])\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a display in an and operand appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k is not None and [k])\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a name bound to a conditional display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [k] if k is not None else []\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a name bound to an or display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [] or [k]\n    k.append(url)\n    raise E(a)\n", True),
+    ("a name bound to a walrus display holds an object filled later",
+     "def f(url):\n    k = []\n    a = (j := [k])\n    k.append(url)\n    raise E(a)\n", True),
+    ("a container re-bound to a display of itself still holds its old parts",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    a = [a]\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a store of a name the same binding re-binds holds the old object",
+     "def f(url):\n    d = C()\n    a = []\n    d.x, a = a, []\n    a.append(url)\n"
+     "    raise E(d)\n", False),
+    ("a new display appended under a walrus holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append((j := [k]))\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an else arm display appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append([] if k is None else [k])\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a first or operand display appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append([k] or [])\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a name bound to an else arm display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [] if k is None else [k]\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a name bound to a first or operand display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [k] or []\n    k.append(url)\n    raise E(a)\n", True),
+    ("a dict key given an attribute later is in its dict",
+     "def f(url):\n    k = C()\n    a = {k: 1}\n    k.u = url\n    raise E(a)\n", True),
+    ("a keyword argument stored by update is in its dict",
+     "def f(url):\n    a = {}\n    k = []\n    a.update(x=k)\n    k.append(url)\n    raise E(a)\n",
+     True),
+    ("an unpacked part stored on an attribute holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    p = [k, []]\n    a.x, b = p\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a store into a name an earlier target re-bound fills the new object",
+     "def f(url):\n    k = []\n    a, a.x = C(), k\n    k.append(url)\n    raise E(a)\n", True),
+    ("a store into a name a later target re-binds fills the old object",
+     "def f(url):\n    a = C()\n    k = []\n    a.x, a = k, C()\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a part appended and then filled is in the container",
+     "def f(url):\n    k = C()\n    k.q = []\n    a = []\n    a.append(k.q)\n    k.q.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a nested list display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [[k]]\n    k.append(url)\n    raise E(a)\n", True),
+    ("a tuple display holds an object filled later",
+     "def f(url):\n    k = []\n    a = (k,)\n    k.append(url)\n    raise E(a)\n", True),
+    ("a set display holds an object given an attribute later",
+     "def f(url):\n    k = C()\n    a = {k}\n    k.u = url\n    raise E(a)\n", True),
+    ("a middle or operand display holds an object filled later",
+     "def f(url):\n    k = []\n    a = [] or [k] or []\n    k.append(url)\n    raise E(a)\n", True),
+    ("a starred attribute target of a paired value holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    *a.x, b = k, []\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a starred attribute target of an unpacked name holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    p = [k, []]\n    *a.x, b = p\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a nested attribute target of an unpacked name holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    p = [[k, 1], 2]\n    (a.x, c), b = p\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("an unpacked store into a name an earlier target re-bound fills the new object",
+     "def f(url):\n    k = []\n    p = [C(), k]\n    a, a.x = p\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("an unpacked store into a name a later target re-binds fills the old object",
+     "def f(url):\n    o = C()\n    a = o\n    k = []\n    p = [k, C()]\n    a.x, a = p\n"
+     "    k.append(url)\n    raise E(o)\n", True),
+    ("a chained store into a name the first target re-bound leaves the old object",
+     "def f(url):\n    o = C()\n    a = o\n    k = C()\n    a = a.x = k\n    k.u = url\n"
+     "    raise E(o)\n", False),
+    ("an in-place += of a name copies items, not the object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a += k\n    k.append(url)\n    raise E(a)\n", False),
+    ("a helper destination holds only its source argument",
+     "def h(q, v, w):\n    q.append(v)\ndef f(url):\n    a = []\n    k = []\n    j = []\n"
+     "    h(a, k, j)\n    j.append(url)\n    raise E(a)\n", False),
+    ("an object appended to an attribute container is in its root",
+     "def f(url):\n    a = C()\n    a.items = []\n    k = []\n    a.items.append(k)\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a dict key stored by setdefault is in its dict",
+     "def f(url):\n    d = {}\n    k = C()\n    d.setdefault(k, None)\n    k.u = url\n"
+     "    raise E(d)\n", True),
+    ("an in-place += of a name holds the objects that name holds",
+     "def f(url):\n    k2 = []\n    k = [k2]\n    a = C()\n    a.x = []\n    a.x += k\n"
+     "    k2.append(url)\n    raise E(a)\n", True),
+    ("a helper storing its starred parameter holds every later argument",
+     "def h(q, *vs):\n    q.extend(vs)\ndef f(url):\n    a = []\n    k = []\n    j = []\n"
+     "    h(a, k, j)\n    j.append(url)\n    raise E(a)\n", True),
+    ("a middle or operand display appended holds an object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append([] or [k] or [])\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a list-shaped target store holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    [a.x, b] = k, []\n    k.append(url)\n"
+     "    raise E(a)\n", True),
+    ("a nested list target store of an unpacked name holds an object filled later",
+     "def f(url):\n    a = C()\n    k = []\n    p = [[k, 1], 2]\n    [a.x, c], b = p\n"
+     "    k.append(url)\n    raise E(a)\n", True),
+    ("a list display value is paired element by element",
+     "def f(url):\n    a = C()\n    k = []\n    n = []\n    a.x, b = [n, k]\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a display of a name the binding re-binds holds the old object",
+     "def f(url):\n    k = []\n    j = k\n    b, k = [k], []\n    j.append(url)\n    raise E(b)\n",
+     True),
+    ("a display of a name the binding re-binds does not hold the new object",
+     "def f(url):\n    k = []\n    b, k = [k], []\n    k.append(url)\n    raise E(b)\n", False),
+    ("a helper with several destinations holds its source in each",
+     "def h(v, *qs):\n    qs[1].append(v)\ndef f(url):\n    a = []\n    b = []\n    k = []\n"
+     "    h(k, a, b)\n    k.append(url)\n    raise E(b)\n", True),
+    ("a container appended to itself is not reached through a re-bound name",
+     "def f(url):\n    a = []\n    a.append(a)\n    b = a\n    a = []\n    b.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a comprehension target appended is not the enclosing name",
+     "def f(url, xs):\n    x = []\n    a = []\n    [a.append(x) for x in xs]\n    x.append(url)\n"
+     "    raise E(a)\n", False),
+    ("an object held by a module container filled in a function",
+     "G = []\ndef f(url):\n    k = []\n    G.append(k)\n    k.append(url)\ndef g():\n"
+     "    log.info(G)\n", True),
+    ("an object appended in a loop filled later in the body",
+     "def f(url, xs):\n    a = []\n    for x in xs:\n        k = []\n        a.append(k)\n"
+     "        k.append(url)\n    raise E(a)\n", True),
+    ("a held object re-bound before the fill is not in the container",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    k = []\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a held object re-bound by a later walrus in the statement is not filled",
+     "def f(url):\n    a = []\n    k = []\n    g(a.append(k), (k := []))\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a value put into a container does not reach the object it holds",
+     "def f(url):\n    k = []\n    a = [k]\n    a.append(url)\n    raise E(k)\n", False),
+    ("a container re-bound before the fill holds nothing",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k)\n    a = []\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a slice copy appended is not the object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append(k[:])\n    k.append(url)\n    raise E(a)\n",
+     False),
+    ("a call over an object appended is not the object filled later",
+     "def f(url):\n    a = []\n    k = []\n    a.append(len(k))\n    k.append(url)\n"
+     "    raise E(a)\n", False),
+    ("a copy built by a call holds nothing filled later",
+     "def f(url):\n    k = []\n    a = list(k)\n    k.append(url)\n    raise E(a)\n", False),
+    ("a paired tuple store holds only its own element",
+     "def f(url):\n    a = C()\n    k = []\n    n = []\n    a.x, b = n, k\n    k.append(url)\n"
+     "    raise E(a)\n", False),
     # Every binding form re-binds the name, not only `=`, and a lambda's
     # parameters and a comprehension's targets are its own names.
     ("a for target re-binding an alias does not fill its source",
@@ -5099,6 +6134,135 @@ _CHECKER_SAMPLES = (
     ("a literal getattr re-binds nothing, the dict builtin is logged",
      "y = getattr(o, 'x')\ndef h(q, v):\n    q.append(v)\ndef f(url, x):\n"
      "    h(dict(), url)\n    log.info(isinstance(x, dict))\n", False),
+    # S144-Q-96: a mutating helper is bound the way a wrapper is - a
+    # lambda, an alias (`k = h`, a conditional, a tuple, a walrus, a `for`
+    # or comprehension target over a literal, a default), a staticmethod
+    # over one in a class body, one stored on an attribute from outside a
+    # class body, and one stored by `setattr` with a literal name (which
+    # stores a wrapper and a logging function too). The clean rows keep it
+    # tied to the value: a clean source, and an alias re-bound before the
+    # call.
+    ("lambda mutating helper, the caller logs it",
+     "def f(url):\n    h = lambda q, v: q.append(v)\n    r = []\n    h(r, url)\n"
+     "    log.info(r)\n", True),
+    ("module lambda mutating helper",
+     "h = lambda q, v: q.append(v)\ndef f(url):\n    r = []\n    h(r, url)\n"
+     "    log.info(r)\n", True),
+    ("lambda mutating helper called in place",
+     "def f(url):\n    r = []\n    (lambda q, v: q.append(v))(r, url)\n"
+     "    log.info(r)\n", True),
+    ("alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    k = h\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", True),
+    ("module alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\nk = h\ndef f(url):\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", True),
+    ("conditional alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url, c):\n    k = h if c else g\n"
+     "    r = []\n    k(r, url)\n    log.info(r)\n", True),
+    ("conditional alias, the mutating helper in the else arm",
+     "def h(q, v):\n    q.append(v)\ndef f(url, c):\n    k = g if c else h\n"
+     "    r = []\n    k(r, url)\n    log.info(r)\n", True),
+    ("tuple alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    k, j = h, 1\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", True),
+    ("walrus alias of a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    (k := h)\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", True),
+    ("for target over a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    r = []\n"
+     "    for k in (h,):\n        k(r, url)\n    log.info(r)\n", True),
+    ("comprehension target over a mutating helper",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    r = []\n"
+     "    [k(r, url) for k in (h,)]\n    log.info(r)\n", True),
+    ("mutating helper as a parameter default",
+     "def h(q, v):\n    q.append(v)\ndef f(url, k=h):\n    r = []\n    k(r, url)\n"
+     "    log.info(r)\n", True),
+    ("wrapper calling a mutating helper default, the caller logs it",
+     "def h(q, v):\n    q.append(v)\ndef w(q, v, k=h):\n    k(q, v)\ndef f(url):\n"
+     "    r = []\n    w(r, url)\n    log.info(r)\n", True),
+    ("staticmethod over a mutating helper in a class body",
+     "def h(q, v):\n    q.append(v)\nclass C:\n    cb = staticmethod(h)\n"
+     "def f(c, url):\n    r = []\n    c.cb(r, url)\n    log.info(r)\n", True),
+    ("mutating helper stored on an attribute",
+     "def h(q, v):\n    q.append(v)\ndef f(o, url):\n    o.cb = h\n    r = []\n"
+     "    o.cb(r, url)\n    log.info(r)\n", True),
+    ("mutating lambda stored on self, another method calls it",
+     "class C:\n    def __init__(self):\n        self.cb = lambda q, v: q.append(v)\n"
+     "    def f(self, url):\n        r = []\n        self.cb(r, url)\n"
+     "        log.info(r)\n", True),
+    ("mutating helper stored by setattr",
+     "def h(q, v):\n    q.append(v)\ndef f(o, url):\n    setattr(o, 'cb', h)\n"
+     "    r = []\n    o.cb(r, url)\n    log.info(r)\n", True),
+    ("wrapper stored by setattr",
+     "def w(v):\n    log.info(v)\ndef f(o, url):\n    setattr(o, 'cb', w)\n"
+     "    o.cb(url)\n", True),
+    ("logging function stored by setattr",
+     "def f(o, url):\n    setattr(o, 'p', log.info)\n    o.p(url)\n", True),
+    ("lambda mutating helper called with a clean source",
+     "def f(url):\n    h = lambda q, v: q.append(v)\n    r = []\n    h(r, 'x')\n"
+     "    log.info(r)\n", False),
+    ("alias of a mutating helper called with a clean source",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    k = h\n    r = []\n"
+     "    k(r, 'x')\n    log.info(r)\n", False),
+    ("alias of a mutating helper re-bound before the call",
+     "def h(q, v):\n    q.append(v)\ndef f(url):\n    k = h\n    k = g\n    r = []\n"
+     "    k(r, url)\n    log.info(r)\n", False),
+    ("mutating helper stored by setattr, called with a clean source",
+     "def h(q, v):\n    q.append(v)\ndef f(o, url):\n    setattr(o, 'cb', h)\n"
+     "    r = []\n    o.cb(r, 'x')\n    log.info(r)\n", False),
+    # Stored on `self` by `setattr`, the lambda binds no receiver (the
+    # store lands on the instance), so the url goes into the url, not self.
+    ("mutating lambda stored on self by setattr, self is logged",
+     "class C:\n    def f(self, url):\n"
+     "        setattr(self, 'cb', lambda q, v: q.append(v))\n        r = []\n"
+     "        self.cb(url, r)\n        log.info(self)\n", False),
+    ("lambda that stores a literal, not its source",
+     "def f(url):\n    h = lambda q, v: q.append('x')\n    r = []\n    h(r, url)\n"
+     "    log.info(r)\n", False),
+    # S144-Q-91: a call off a literal display (`_builtin_receiver`) runs the
+    # builtin type's own method, never a method a class body defines, so no
+    # attribute mark of that name is read off it. A name or call receiver
+    # may be an instance of the class, so it stays read as before.
+    ("str literal receiver of a method wrapper",
+     "class F:\n    def join(self, xs):\n        log.info(xs)\ndef f(url):\n"
+     "    ', '.join(url)\n", False),
+    ("f-string receiver of a method wrapper that logs self",
+     "class C:\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    f'at {url}'.strip()\n", False),
+    ("two-field f-string receiver of a method wrapper that logs self",
+     "class C:\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    f'{url}{url}'.strip()\n", False),
+    # A one-field f-string is what `__format__` returns: a str subclass may
+    # define the method (verifier counterexample), so it stays read.
+    ("one-field f-string receiver of a str subclass method stays flagged",
+     "class S(str):\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    f'{url}'.strip()\n", True),
+    ("one-field formatted f-string receiver stays flagged",
+     "class S(str):\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    f'{url:>3}'.strip()\n", True),
+    ("list display receiver of a method wrapper",
+     "class C:\n    def count(self, v):\n        log.info(v)\ndef f(url):\n"
+     "    [1].count(url)\n", False),
+    ("f-string receiver of a mutating method",
+     "class C:\n    def format(self, q):\n        q.append(self)\ndef f(url):\n"
+     "    r = []\n    f'at {url}'.format(r)\n    log.info(r)\n", False),
+    ("str literal receiver of a class logging attribute",
+     "class C:\n    format = log.info\ndef f(url):\n    '{}'.format(url)\n", False),
+    ("str literal receiver of a class logger object attribute",
+     "class C:\n    upper = logging.getLogger('x')\ndef f(url):\n"
+     "    'x'.upper.info(url)\n", False),
+    ("name receiver of a method wrapper stays flagged",
+     "class C:\n    def strip(self):\n        log.info(self)\ndef f(url):\n"
+     "    url.strip()\n", True),
+    ("call receiver of a mutating method stays flagged",
+     "class C:\n    def format(self, q):\n        q.append(self)\ndef f(url):\n"
+     "    r = []\n    g(url).format(r)\n    log.info(r)\n", True),
+    ("name receiver of a class logging attribute stays flagged",
+     "class C:\n    format = log.info\ndef f(o, url):\n    o.format(url)\n", True),
+    ("name receiver of a class logger object attribute stays flagged",
+     "class C:\n    upper = logging.getLogger('x')\ndef f(o, url):\n"
+     "    o.upper.info(url)\n", True),
 )
 
 
