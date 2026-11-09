@@ -183,7 +183,11 @@ def test_live_absent_champions_report_absent():
         assert M.champion_ability_data_status(cid) != M.ABILITY_DATA_ABSENT
 
 
-# RE-PINNED 2026-10-22 (RM-766 DS batch 16.20.1 -> 16.21.1), per the policy
+# RE-PINNED 2026-11-08 (RM-1338 DS batch 16.21.1 -> 16.22.1), per the policy
+# below. Re-measured on the 16.22.1 snapshot: champions.json 173 ids,
+# champion_abilities.json 171 (Meraki bulk, content patch 25.15; Meraki 404 for
+# exactly Locke and Zaahen again), so the absent set is still ["Locke", "Zaahen"].
+# PREVIOUSLY 2026-10-22 (RM-766 DS batch 16.20.1 -> 16.21.1), per the policy
 # below. Re-measured on the 16.21.1 snapshot, not copied forward: champions.json
 # carries 173 ids, champion_abilities.json 171 (Meraki bulk, content patch
 # 25.15; the extractor logged Meraki 404 for exactly Locke and Zaahen), so the
@@ -191,7 +195,7 @@ def test_live_absent_champions_report_absent():
 # PREVIOUSLY 2026-10-09 (RM-700, RM-680 batch 16.19.1 -> 16.20.1), same set;
 # before that the value was "16.14.1" and the test skipped on every run since
 # the 16.15.1 bump.
-_RM95_PINNED_PATCH = "16.21.1"
+_RM95_PINNED_PATCH = "16.22.1"
 
 
 def test_locke_and_zaahen_are_the_absent_set_at_the_pin():

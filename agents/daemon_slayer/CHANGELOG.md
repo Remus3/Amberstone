@@ -1331,6 +1331,21 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.291.0 (2026-11-08) - RM-1338 patch 16.21.1 -> 16.22.1 + lolmath 26.21
+changelog (2026-10-27 .. 2026-11-04).
+- data: fresh extract at 16.22.1 (DDragon 173 champions / 699 items, lolmath
+  chunks re-discovered by content after the rename, Meraki not forced);
+  CDragon 16.22 spell stats + ability ratios re-extracted; cherry and Mayhem
+  augments refetched; wiki_stats / wiki_ability_stats / ability_staleness
+  copied forward and restamped (wiki fetches refused, RM-1227).
+- deltas: Overlord's Bloodmail 2501 AD 30 -> 40; Doran's Bow 1086 AD 8 -> 7;
+  Mel / Thresh / Viktor base stats; lolmath cooldowns Kayle Q/R, Mel W/R,
+  Zaahen Q; skill orders 21 champions; damage_distribution drift 173.
+- engine: 2501 Retribution missing_hp_ad_amp_max_pct 0.12 -> 0.10 (DDragon
+  "up to 10%" wins over frozen Meraki 25.15, RM-808); 1086 note restated.
+- lolmath 11-04 state-leak fixes (Back To Basics ult values, no-items
+  baseline) are NOT shared by DS - guarded in test_patch_16_22_1_rm1338.py.
+
 1.290.0 (2026-10-24) - RM-808 (a)-(d) item passives off Meraki 25.15, lolmath
 26.21 refresh at 16.21.1, RM-841 focus board.
 - engine (RM-808a): Hubris (6697 / 126697 / 226697) Eminence follows the
