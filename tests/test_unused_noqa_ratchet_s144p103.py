@@ -143,7 +143,7 @@ def _ruff_diagnostics(*target: str, stdin: str | None = None) -> list[dict]:
         [sys.executable, "-m", "ruff", "check", "--extend-select", "RUF100",
          "--no-fix", "--no-cache", "--output-format", "json", *target],
         cwd=REPO_ROOT, input=stdin, capture_output=True, text=True, timeout=300,
-        **kwargs,
+        check=False, **kwargs,
     )
     # ruff exits 1 when it reports anything; 2 is a real failure.
     assert proc.returncode in (0, 1), proc.stderr[-400:]

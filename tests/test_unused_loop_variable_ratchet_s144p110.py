@@ -81,7 +81,7 @@ def _findings_by_file() -> dict[str, int]:
     proc = subprocess.run(
         [sys.executable, "-m", "ruff", "check", "--select", "B007",
          "--no-fix", "--no-cache", "--output-format", "json", "."],
-        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, **kwargs,
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, check=False, **kwargs,
     )
     # ruff exits 1 when it reports anything; 2 is a real failure.
     assert proc.returncode in (0, 1), proc.stderr[-400:]
