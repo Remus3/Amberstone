@@ -48,6 +48,7 @@ So the A1 verdict is keyed on the rune push, which is exactly what A1 covers.
 """
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -63,6 +64,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from core import operator_notify  # noqa: E402 - needs the repo root on sys.path
+from core.polled_json import atomic_write_text  # noqa: E402 - same
 
 _LOG_DIR = _ROOT / "logs"
 _RUNTIME = _ROOT / "ops" / "runtime"
@@ -115,79 +117,109 @@ def _finalize(window: dict, verdicts: list, close: str) -> None:
     })
 
 
-def classify_events(lines: Iterable[str]) -> list[dict]:
-    """Classify a stream of log lines into A1 verdict records (PURE).
+class A1Classifier:
+    """Incremental A1 classifier: feed one log line at a time (PURE, no I/O).
 
     A restart = a connect on a DIFFERENT port than last seen, OR a 'lockfile
     rotated' reconnect, OR a 'lockfile not found' gap followed by any connect.
     The FIRST 'champ select entered' after a restart is the A1 test case; a
     champ-select with no preceding restart is NOT a test case (stays quiet).
 
-    Returns one record per test case, in order. Record keys: verdict
-    (PASS/FAIL/PENDING), restart_reason, port_before, port_after, champion,
-    mode, matched (list of the log lines that drove the verdict).
+    S144-T-705: the live loop used to keep EVERY line read since start and
+    re-run the whole classification over that buffer on every 2 s poll -
+    memory and CPU without bound for a watcher meant to run for days. State is
+    now O(1) between lines (the open window's matched lines aside), and each
+    line is classified exactly once.
     """
-    last_port: int | None = None
-    gap_pending = False
-    restart: dict | None = None   # armed restart, not yet consumed by a CS-enter
-    window: dict | None = None    # currently-open A1 test-case window
-    verdicts: list[dict] = []
 
-    for raw in lines:
+    def __init__(self) -> None:
+        self._last_port: int | None = None
+        self._gap_pending = False
+        self._restart: dict | None = None  # armed restart, not yet consumed by a CS-enter
+        self._window: dict | None = None   # currently-open A1 test-case window
+        self.window_seq = 0                # bumps each time a window opens
+
+    def has_open_window(self) -> bool:
+        return self._window is not None
+
+    def _close(self, close: str) -> list[dict]:
+        out: list[dict] = []
+        if self._window is not None:
+            _finalize(self._window, out, close=close)
+            self._window = None
+        return out
+
+    def flush(self) -> list[dict]:
+        """End of input: the open window (if any) as a PENDING record, closed."""
+        return self._close("eof")
+
+    def expire(self) -> list[dict]:
+        """Live window timeout: close the open window as FAIL (timeout=True).
+
+        A push logged after this belongs to a closed window and is ignored."""
+        out = self._close("eof")
+        for rec in out:
+            if rec["verdict"] == "PENDING":
+                rec["verdict"] = "FAIL"
+                rec["timeout"] = True
+        return out
+
+    def feed(self, raw: str) -> list[dict]:
+        """Classify one line; return the records it finalized (usually none)."""
         line = raw.rstrip("\r\n")
 
         # --- restart signals ---
         m = _RE_RECONNECT_ROTATED.search(line)
         if m:
             port_after = int(m.group(1))
-            restart = {"reason": "lockfile_rotated",
-                       "port_before": last_port, "port_after": port_after}
-            last_port = port_after
-            gap_pending = False
-            continue
+            self._restart = {"reason": "lockfile_rotated",
+                             "port_before": self._last_port, "port_after": port_after}
+            self._last_port = port_after
+            self._gap_pending = False
+            return []
         m = _RE_CONNECT.search(line)
         if m:
             port_after = int(m.group(1))
-            if gap_pending:
-                restart = {"reason": "lockfile_gap",
-                           "port_before": last_port, "port_after": port_after}
-            elif last_port is not None and port_after != last_port:
-                restart = {"reason": "port_change",
-                           "port_before": last_port, "port_after": port_after}
+            if self._gap_pending:
+                self._restart = {"reason": "lockfile_gap",
+                                 "port_before": self._last_port, "port_after": port_after}
+            elif self._last_port is not None and port_after != self._last_port:
+                self._restart = {"reason": "port_change",
+                                 "port_before": self._last_port, "port_after": port_after}
             # else: first connect (initial arm) or same-port RC reconnect -> not a restart
-            last_port = port_after
-            gap_pending = False
-            continue
+            self._last_port = port_after
+            self._gap_pending = False
+            return []
         if _RE_LOCKFILE_GAP.search(line):
-            gap_pending = True
-            continue
+            self._gap_pending = True
+            return []
 
         # --- champ select enter (opens a test-case window IF a restart is armed) ---
         if _RE_CS_ENTER.search(line):
-            if window is not None:
-                _finalize(window, verdicts, close="reopened")
-                window = None
-            if restart is not None:
-                window = {**restart, "champion": None, "mode": None,
-                          "applied": False, "wrote": False, "failed": False,
-                          "matched": [line]}
-                restart = None  # consume it - only the FIRST enter after a restart counts
-            continue
+            out = self._close("reopened")
+            if self._restart is not None:
+                self._window = {**self._restart, "champion": None, "mode": None,
+                                "applied": False, "wrote": False, "failed": False,
+                                "matched": [line]}
+                self._restart = None  # consume it - only the FIRST enter after a restart counts
+                self.window_seq += 1
+            return out
 
         # --- everything below only matters inside an open window ---
+        window = self._window
         if window is None:
-            continue
+            return []
         m = _RE_APPLYING.search(line)
         if m:
             window["applied"] = True
             window["champion"] = m.group(1)
             window["mode"] = m.group(2)
             window["matched"].append(line)
-            continue
+            return []
         if _RE_WROTE.search(line):
             window["wrote"] = True
             window["matched"].append(line)
-            continue
+            return []
         m = _RE_FAIL.search(line)
         if m:
             window["failed"] = True
@@ -195,23 +227,30 @@ def classify_events(lines: Iterable[str]) -> list[dict]:
                 window["champion"] = m.group(1)
                 window["mode"] = m.group(2)
             window["matched"].append(line)
-            _finalize(window, verdicts, close="failure")
-            window = None
-            continue
+            return self._close("failure")
         if _RE_GAVEUP.search(line):
             window["failed"] = True
             window["matched"].append(line)
-            _finalize(window, verdicts, close="failure")
-            window = None
-            continue
+            return self._close("failure")
         if _RE_CS_END.search(line):
             window["matched"].append(line)
-            _finalize(window, verdicts, close="cs_end")
-            window = None
-            continue
+            return self._close("cs_end")
+        return []
 
-    if window is not None:  # still open at end of input -> PENDING
-        _finalize(window, verdicts, close="eof")
+
+def classify_events(lines: Iterable[str]) -> list[dict]:
+    """Classify a stream of log lines into A1 verdict records (PURE).
+
+    See A1Classifier for the restart / test-case rules. Returns one record per
+    test case, in order; a window still open at end of input is PENDING.
+    Record keys: verdict (PASS/FAIL/PENDING), restart_reason, port_before,
+    port_after, champion, mode, matched (the log lines that drove the verdict).
+    """
+    clf = A1Classifier()
+    verdicts: list[dict] = []
+    for raw in lines:
+        verdicts.extend(clf.feed(raw))
+    verdicts.extend(clf.flush())
     return verdicts
 
 
@@ -242,30 +281,60 @@ def render_verdict_md(record: dict) -> str:
 
 
 # =============================================================================
-# THIN WRAPPERS - side-effecting (tail / toast / network / disk). Not unit-tested.
+# THIN WRAPPERS - side-effecting (tail / toast / network / disk). Tested with
+# tmp files and stubs in tests/test_lcu_push_watcher_true_audit_s144t705.py.
 # =============================================================================
+def _say(msg: str) -> None:
+    """Console line that never raises on an unencodable character.
+
+    S144-T-705: a cp1252 console raised UnicodeEncodeError on a non-ASCII notify
+    detail, and the print sat BEFORE the verdict-file writes, so both files
+    were skipped (the LEDGER 1564 residual). Retry ASCII-escaped instead."""
+    try:
+        print(msg)
+    except (UnicodeEncodeError, ValueError, OSError):
+        try:
+            print(msg.encode("ascii", "backslashreplace").decode("ascii"))
+        except (UnicodeEncodeError, ValueError, OSError):
+            pass  # no usable console (closed stream); the files carry the verdict
+
+
 def _fetch_state() -> dict | None:
-    """Best-effort read of /api/state for champ/mode context (READ-ONLY)."""
+    """Best-effort read of /api/state for champ/mode context (READ-ONLY).
+
+    None when the dashboard is down or mid-restart, or the body is not a JSON
+    object. S144-T-705: a list body used to crash _emit (list.get), and the
+    old bare `except Exception` also hid programming errors - only network,
+    HTTP and decode failures are expected here."""
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     try:
         with urllib.request.urlopen(_STATE_URL, timeout=5, context=ctx) as r:
-            return json.loads(r.read().decode("utf-8"))
-    except Exception:  # noqa: BLE001 - dashboard down / mid-restart -> no context
+            doc = json.loads(r.read().decode("utf-8"))
+    except (OSError, ValueError, http.client.HTTPException):
         return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _str_or_none(value) -> str | None:
+    return value if isinstance(value, str) and value else None
 
 
 def _emit(record: dict) -> None:
     """Toast + append jsonl + overwrite md for one finalized verdict record."""
     record.setdefault("timestamp", time.strftime("%Y-%m-%dT%H:%M:%S"))
-    if not record.get("champion"):  # best-effort context fill (read-only)
-        state = _fetch_state()
+    if not record.get("champion") or not record.get("mode"):
+        state = _fetch_state()  # best-effort context fill (read-only)
         if state:
-            coach = state.get("coach") or {}
-            record.setdefault("mode", state.get("mode_key"))
-            if coach.get("champion"):
-                record["champion"] = coach.get("champion")
+            # S144-T-705: this was record.setdefault("mode", ...), a no-op -
+            # _finalize always sets the key (to None), so the mode was never
+            # filled. Only a non-empty string is taken from the payload.
+            if not record.get("mode"):
+                record["mode"] = _str_or_none(state.get("mode_key"))
+            coach = state.get("coach")
+            if not record.get("champion") and isinstance(coach, dict):
+                record["champion"] = _str_or_none(coach.get("champion"))
 
     v = record["verdict"]
     champ = record.get("champion") or "?"
@@ -278,21 +347,26 @@ def _emit(record: dict) -> None:
                 "reproduced. Check RuneWriter LCU view.")
     else:
         body = "Restart + champ-select seen; awaiting push."
-    # Y-02: one notify path (escaped toast, jsonl floor); never raises, so the
-    # verdict file below always lands.
-    _ok, _detail = operator_notify.notify(title, body, tags=("lcu-push", v))
-    print(f"[lcu-push-watcher] notify: {_detail}")
+    # Y-02: one notify path (escaped toast, jsonl floor); never raises.
+    _ok, detail = operator_notify.notify(title, body, tags=("lcu-push", v))
 
+    # The verdict files land BEFORE any console output, each on its own, so a
+    # failure of one never costs the other. The markdown is overwritten
+    # atomically (S144-T-705: it was an in-place write_text, so a reader could
+    # see it torn); the jsonl is an append-only history.
     try:
         with _VERDICT_JSONL.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(json.dumps(record) + "\n")
-        _VERDICT_MD.write_text(render_verdict_md(record), encoding="utf-8",
-                               newline="\n")
-    except Exception as exc:  # noqa: BLE001
-        print(f"[lcu-push-watcher] verdict-file write failed: {exc}")
-    print(f"[lcu-push-watcher] {v}: champ={champ} "
-          f"restart={record.get('restart_reason')} "
-          f"port {record.get('port_before')}->{record.get('port_after')}")
+    except OSError as exc:
+        _say(f"[lcu-push-watcher] verdict jsonl write failed: {exc}")
+    try:
+        atomic_write_text(_VERDICT_MD, render_verdict_md(record))
+    except OSError as exc:
+        _say(f"[lcu-push-watcher] verdict md write failed: {exc}")
+    _say(f"[lcu-push-watcher] notify: {detail}")
+    _say(f"[lcu-push-watcher] {v}: champ={champ} "
+         f"restart={record.get('restart_reason')} "
+         f"port {record.get('port_before')}->{record.get('port_after')}")
 
 
 def _log_path_for_today() -> Path:
@@ -360,76 +434,164 @@ def _open_shared(path: Path, seek_end: bool):
         return None
 
 
+def _close_quietly(handle) -> None:
+    try:
+        handle.close()
+    except OSError:
+        pass
+
+
+class DayLogTailer:
+    """Follow RC's day-log across size rotations and midnight rollovers.
+
+    ``poll()`` returns the complete lines written since the last poll. The
+    first open after arm starts at the END (pre-existing history is ignored);
+    every later open - a file created after arm, the new day's file, the fresh
+    file after a size rotation - starts at its beginning, because all of its
+    content is new.
+
+    S144-T-705, three defects of the old inline loop:
+      * size rotation: core/log_setup.py DailyRotatingFileHandler renames the
+        live YYYY-MM-DD.log to .log.1 at 3 MB and opens a fresh
+        YYYY-MM-DD.log. The loop kept reading the renamed file forever, so it
+        went deaf after the day's first rotation (the 2026-10-25 day-log
+        rotated three times). Now the open handle's identity is compared with
+        the path's on every poll; on a change the old handle is drained to its
+        end, closed, and the new file read from its start.
+      * midnight: the old day's unread tail was dropped (closed without a
+        final read), and a new day's file first seen after the switch was
+        opened at its END. Both fixed: drain, then read the new file from 0.
+      * a read error raised out of the loop and killed the watcher; now the
+        handle is closed and reopened at the end on the next poll (lines are
+        lost rather than duplicated - a replayed 'champ select entered' could
+        manufacture a false FAIL).
+    """
+
+    def __init__(self, path_for_today=None, opener=None) -> None:
+        self._path_for_today = path_for_today or _log_path_for_today
+        self._opener = opener or _open_shared
+        self._path = self._path_for_today()
+        self._fh = None
+        self._partial = ""
+        self._seek_end_next = True  # only the very first open skips history
+        self._open()                # arm now: history before this point is ignored
+
+    def close(self) -> None:
+        if self._fh is not None:
+            _close_quietly(self._fh)
+            self._fh = None
+
+    def _split(self, data: str) -> list[str]:
+        parts = (self._partial + data).split("\n")
+        self._partial = parts[-1]
+        return parts[:-1]
+
+    def _read(self) -> list[str]:
+        try:
+            data = self._fh.read()
+        except OSError:
+            self.close()
+            self._seek_end_next = True
+            self._open()  # at the end now, so the next poll sees what follows
+            return []
+        return self._split(data) if data else []
+
+    def _drain_and_close(self) -> list[str]:
+        """Read what is left of a FINISHED file, flush its last partial line."""
+        lines = self._read() if self._fh is not None else []
+        self.close()
+        if self._partial:
+            lines.append(self._partial)
+            self._partial = ""
+        return lines
+
+    def _replaced(self) -> bool:
+        """True when the path now names a different file than the open handle."""
+        try:
+            held = os.fstat(self._fh.fileno())
+            now = os.stat(self._path)
+        except FileNotFoundError:
+            return True  # renamed away, fresh file not created yet
+        except OSError:
+            return False  # cannot tell; a broken handle surfaces in _read
+        return not os.path.samestat(held, now)
+
+    def _open(self) -> None:
+        if not self._path.exists():
+            self._seek_end_next = False  # whatever appears later is all new
+            return
+        self._fh = self._opener(self._path, seek_end=self._seek_end_next)
+        if self._fh is not None:
+            self._seek_end_next = False
+
+    def poll(self) -> list[str]:
+        lines: list[str] = []
+        today = self._path_for_today()
+        if today != self._path:            # midnight rollover
+            lines.extend(self._drain_and_close())
+            self._path = today
+            self._seek_end_next = False
+        elif self._fh is not None and self._replaced():  # size rotation
+            lines.extend(self._drain_and_close())
+            self._seek_end_next = False
+        if self._fh is None:
+            self._open()
+        if self._fh is not None:
+            lines.extend(self._read())
+        return lines
+
+
+class Watcher:
+    """One poll tick: new lines -> classifier -> emitted verdicts, plus the
+    wall-clock window timeout (a restart-preceded enter with no push for
+    _WINDOW_TIMEOUT_S becomes FAIL)."""
+
+    def __init__(self, tailer: DayLogTailer, emit=None) -> None:
+        self._tailer = tailer
+        self._emit = emit or _emit
+        self._clf = A1Classifier()
+        self._pending: tuple[int, float] | None = None  # (window_seq, first seen)
+
+    def close(self) -> None:
+        self._tailer.close()
+
+    def tick(self, now: float) -> None:
+        for line in self._tailer.poll():
+            for rec in self._clf.feed(line):
+                self._emit(rec)
+        if not self._clf.has_open_window():
+            self._pending = None
+            return
+        seq = self._clf.window_seq
+        if self._pending is None or self._pending[0] != seq:
+            self._pending = (seq, now)  # a new window: its own clock
+        if now - self._pending[1] >= _WINDOW_TIMEOUT_S:
+            for rec in self._clf.expire():
+                self._emit(rec)
+            self._pending = None
+
+
 def main() -> int:
     _RUNTIME.mkdir(parents=True, exist_ok=True)
     if _STOP.exists():
         try:
             _STOP.unlink()
-        except Exception:  # noqa: BLE001
+        except OSError:
             pass
-    print(f"[lcu-push-watcher] armed (READ-ONLY); tailing {_LOG_DIR}\\<today>.log "
-          f"every {_POLL_S:g}s. Stop: drop {_STOP.name}")
+    _say(f"[lcu-push-watcher] armed (READ-ONLY); tailing {_LOG_DIR}\\<today>.log "
+         f"every {_POLL_S:g}s. Stop: drop {_STOP.name}")
 
-    cur_path = _log_path_for_today()
-    fh = None
-    partial = ""
-    buffer: list[str] = []       # only NEW lines since start (seek-to-end)
-    emitted = 0                  # count of finalized verdicts already toasted
-    pending_since: float | None = None
-
-    if cur_path.exists():
-        fh = _open_shared(cur_path, seek_end=True)
-
-    while not _STOP.exists():
-        # midnight rollover: switch to the new day's file (read from its start)
-        today = _log_path_for_today()
-        if today != cur_path:
-            if fh is not None:
-                fh.close()
-            cur_path = today
-            fh = _open_shared(cur_path, seek_end=False) if cur_path.exists() else None
-            partial = ""
-        if fh is None and cur_path.exists():
-            fh = _open_shared(cur_path, seek_end=True)
-
-        if fh is not None:
-            data = fh.read()
-            if data:
-                combined = partial + data
-                parts = combined.split("\n")
-                partial = parts[-1]
-                buffer.extend(parts[:-1])
-
-        verdicts = classify_events(buffer)
-        now = time.monotonic()
-        i = emitted
-        while i < len(verdicts):
-            rec = verdicts[i]
-            is_last = i == len(verdicts) - 1
-            if rec["verdict"] == "PENDING" and is_last:
-                if pending_since is None:
-                    pending_since = now
-                if now - pending_since >= _WINDOW_TIMEOUT_S:
-                    rec["verdict"] = "FAIL"
-                    rec["timeout"] = True
-                    _emit(rec)
-                    emitted = i + 1
-                    pending_since = None
-                break  # nothing can follow a trailing PENDING
-            _emit(rec)
-            emitted = i + 1
-            if is_last:
-                pending_since = None
-            i += 1
-
-        time.sleep(_POLL_S)
-
-    if fh is not None:
-        fh.close()
-    print("[lcu-push-watcher] STOP file seen; exiting")
+    watcher = Watcher(DayLogTailer())
+    try:
+        while not _STOP.exists():
+            watcher.tick(time.monotonic())
+            time.sleep(_POLL_S)
+    finally:
+        watcher.close()
+    _say("[lcu-push-watcher] STOP file seen; exiting")
     try:
         _STOP.unlink()
-    except Exception:  # noqa: BLE001
+    except OSError:
         pass
     return 0
 
