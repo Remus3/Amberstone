@@ -102,7 +102,7 @@ def load_records(path: Path | str | None = None) -> list[dict]:
     out: list[dict] = []
     bad = 0
     try:
-        with open(src, encoding="utf-8") as fh:
+        with src.open(encoding="utf-8") as fh:
             for raw_line in fh:
                 line = raw_line.strip()
                 if not line:

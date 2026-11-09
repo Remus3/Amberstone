@@ -463,7 +463,7 @@ def read_rows(path: Optional[Path] = None) -> list[dict]:
     p = Path(path) if path is not None else DEFAULT_RECAPS_PATH
     out: list[dict] = []
     try:
-        with open(p, encoding="utf-8") as f:
+        with p.open(encoding="utf-8") as f:
             for raw_line in f:
                 line = raw_line.strip()
                 if not line:

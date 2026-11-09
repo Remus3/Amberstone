@@ -144,7 +144,7 @@ def _log(root, row):
     path = Path(root) / LOG_REL
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "a", encoding="ascii", errors="replace", newline="\n") as f:
+        with path.open("a", encoding="ascii", errors="replace", newline="\n") as f:
             f.write(json.dumps(row, sort_keys=True) + "\n")
     except OSError:
         pass

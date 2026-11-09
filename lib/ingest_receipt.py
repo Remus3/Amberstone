@@ -180,7 +180,7 @@ def read_receipts(path: Path | None = None,
     p = Path(path) if path is not None else RECEIPT_PATH
     out: deque[dict[str, Any]] = deque(maxlen=max(1, int(limit)))
     try:
-        with open(p, encoding="utf-8", errors="replace") as fh:
+        with p.open(encoding="utf-8", errors="replace") as fh:
             for raw_line in fh:
                 raw = raw_line.strip()
                 if not raw:

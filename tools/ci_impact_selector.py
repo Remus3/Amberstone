@@ -372,7 +372,7 @@ def changed_paths(root: Path, base: str, head: str) -> Optional[List[str]]:
 def _write(path: Optional[str], text: str, *, append: bool = False) -> None:
     if not path:
         return
-    with open(path, "a" if append else "w", encoding="utf-8", newline="\n") as fh:
+    with Path(path).open(mode="a" if append else "w", encoding="utf-8", newline="\n") as fh:
         fh.write(text)
 
 

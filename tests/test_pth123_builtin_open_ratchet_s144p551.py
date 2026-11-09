@@ -71,17 +71,14 @@ _BASELINE: dict[str, int] = {
     "tools/stop_claim_gate.py": 4,
     # unconverted: binary / exclusive-create / handle-held opens and writers that other ratchets (RM-481 LF, RM-258 atomic) read by shape, plus plain reads not yet swept
     "coaches/_base_coach.py": 1,
-    "core/death_patterns_loader.py": 1,
-    "core/death_recap.py": 2,
-    "core/ds_calibration_agreement.py": 1,
+    "core/death_recap.py": 1,
     "core/hud_settings.py": 1,
     "core/league_settings.py": 1,
     "core/live_session_recorder.py": 2,
-    "core/rofl_stats_backfill.py": 1,
     "dashboard/routes_diag.py": 1,
     "dashboard/routes_recordings.py": 1,
     "dashboard/routes_static.py": 1,
-    "lib/ingest_receipt.py": 2,
+    "lib/ingest_receipt.py": 1,
     "ops/audit/p2w5_partition.py": 2,
     "ops/audit/p2w5h2_partition.py": 3,
     "ops/loop/headless_env.py": 1,
@@ -100,9 +97,7 @@ _BASELINE: dict[str, int] = {
     "tests/test_tracked_writer_lf_sweep.py": 1,
     "tft/rounds/store.py": 1,
     "tft/sources/tft_log.py": 1,
-    "tools/bot_merge_check.py": 1,
     "tools/build_portable.py": 1,
-    "tools/ci_impact_selector.py": 1,
     "tools/det_coach_shadow_report.py": 1,
     "tools/inbox_responder_runner.py": 2,
     "tools/landing_sampler.py": 2,
@@ -215,6 +210,12 @@ _FIXED = (
     "tests/test_log_rotation_rm718a.py",
     "tests/test_queue_loop.py",
     "tests/test_repin_subagent_cli_rm795.py",
+    # S144-P-563: five files fully clean (three plain reads, two LF writes with keyword newline); core/death_recap.py and lib/ingest_receipt.py each gave up one plain read and keep one baselined append writer
+    "core/death_patterns_loader.py",
+    "core/ds_calibration_agreement.py",
+    "core/rofl_stats_backfill.py",
+    "tools/bot_merge_check.py",
+    "tools/ci_impact_selector.py",
 )
 
 
