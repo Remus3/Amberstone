@@ -4093,3 +4093,78 @@ def _build_per_spell_cc_conditional_forms() -> (
 
     return registry
 ```
+
+## Post-A3 hand-added entries (recorded per the rule at the top)
+
+Rows added to `cc_conditional_registry.json` after the item-245 A3
+externalization. Each is recorded here in the same construction form as the
+verbatim builders above, so this file stays the record of every entry it
+ships (guard: `tests/test_cc_conditional_registry_integrity_s144d220.py`,
+S144-D-223, which parses every `ConditionalCcEntry(...)` call in this file and
+compares it field for field with the JSON).
+
+Ashe R was added at R14 (ENGINE 1.150.0, the `durations_floor_s` schema lift,
+commit `74c6f1b63`) and was the one registry row with no record here until
+S144-D-223 (measured 2026-11-09, patch 16.22.1, ENGINE 1.291.0).
+
+```python
+    # Ashe R Enchanted Crystal Arrow: distance-gated stun, 1.0s close-range
+    # floor to 3.5s at max distance. Same-slot coexistence with the
+    # unconditional Ashe R 1.5s baseline in _PER_SPELL_CC_DURATIONS (MAX rule).
+    registry.setdefault("Ashe", {})["R"] = ConditionalCcEntry(
+        champion="Ashe",
+        spell="R",
+        cc_kind="stun",
+        durations_s=(3.5,),
+        condition=COND_RANGE_GATED,
+        probability=_p("Ashe", "R", 0.4),
+        notes=(
+            "R Enchanted Crystal Arrow distance-gated stun: Ashe fires a "
+            "global cross-map arrow that stuns the first champion hit for "
+            "1.0 : 3.5 seconds based on distance traveled (Meraki 16.12.1 "
+            "effects_descriptions 'stunning them for 1 : 3.5 (based on "
+            "distance traveled) seconds'; _PER_SPELL_CC_RANGE Ashe R = "
+            "(1.0, 3.5)). Encoded at MAX-distance 3.5s with "
+            "COND_RANGE_GATED tag; durations_floor_s=1.0 is the "
+            "guaranteed close-range minimum (R14 ENGINE 1.150.0 "
+            "durations_floor_s schema lift). "
+            "coexists_with_unconditional=True declares same-slot "
+            "coexistence with the unconditional Ashe R 1.5s flat baseline "
+            "in `_PER_SPELL_CC_DURATIONS` (_per_spell_cc.py). Consumer "
+            "math: at include_conditional=True the MAX rule credits the "
+            "larger of unconditional 1.5s or the conditional "
+            "contribution; default-OFF apply_cc_floor gives conditional "
+            "3.5 * 0.4 = 1.4s (< 1.5, unconditional wins, byte-identical "
+            "to pre-R14). With apply_cc_floor ON the floor-aware credit "
+            "is 1.0 + 0.4 * (3.5 - 1.0) = 2.0s (> 1.5, conditional wins). "
+            "Probability midpoint 0.4 matches Maokai R / Hecarim R "
+            "range_gated precedent - operator must commit to a long arrow "
+            "to reach the far band. FIRST Ashe cc_conditional entry "
+            "anywhere (R baseline stun already in "
+            "`_PER_SPELL_CC_DURATIONS`). Mirrors the Maokai R + Hecarim R "
+            "distance-gated coexistence pattern."
+        ),
+        coexists_with_unconditional=True,
+        durations_floor_s=1.0,
+    )
+```
+
+## durations_floor_s seeds (R14, ENGINE 1.150.0)
+
+The guaranteed-minimum CC floor the default-OFF `apply_cc_floor` seam in
+`cc_pressure` reads (`durations_s` keeps the max-payoff value for the three
+distance-scaled rows; KSante W and Sion R store a 1.0s channel midpoint, per
+their own notes). The builders
+above pre-date the field, so the seeded floors are recorded here; the
+S144-D-223 guard asserts this table equals the JSON's non-null
+`durations_floor_s` values exactly.
+
+```python
+DURATIONS_FLOOR_S = {
+    ("Ashe", "R"): 1.0,  # distance traveled, 1.0 : 3.5
+    ("Hecarim", "R"): 0.75,  # distance traveled, 0.75 : 1.5
+    ("KSante", "W"): 0.5,  # channel time, 0.5 : 1.75
+    ("Maokai", "R"): 0.75,  # distance traveled, 0.75 : 2.25
+    ("Sion", "R"): 0.25,  # channel time, 0.25 : 1.75
+}
+```
