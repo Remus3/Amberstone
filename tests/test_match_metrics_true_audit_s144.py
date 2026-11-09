@@ -151,7 +151,7 @@ class TestVanishedDbHeals:
         raise "no such table" forever, re-queueing until the cap."""
         rec.record(match_id="m1", key="k", value=1)
         rec.flush()
-        os.remove(mm.DB_PATH)
+        Path(mm.DB_PATH).unlink()
         rec.record(match_id="m2", key="k", value=2)
         assert rec.flush() == 1
         assert rec.buffered() == 0
@@ -163,8 +163,8 @@ class TestVanishedDbHeals:
         r = mm.Recorder()
         r.record(match_id="m1", key="k", value=1)
         r.flush()
-        os.remove(db)
-        os.rmdir(db.parent)
+        db.unlink()
+        db.parent.rmdir()
         r.record(match_id="m2", key="k", value=2)
         assert r.flush() == 1
         assert [x[0] for x in _rows(db)] == ["m2"]
@@ -192,7 +192,7 @@ class TestVanishedDbHeals:
     def test_heal_is_logged(self, rec, caplog):
         rec.record(match_id="m1", key="k", value=1)
         rec.flush()
-        os.remove(mm.DB_PATH)
+        Path(mm.DB_PATH).unlink()
         rec.record(match_id="m2", key="k", value=2)
         with caplog.at_level(logging.WARNING, logger="rc.match_metrics"):
             rec.flush()

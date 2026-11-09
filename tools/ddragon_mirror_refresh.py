@@ -722,7 +722,7 @@ def prune_stale_versions(current: str, *, retain: int = RETAIN_VERSIONS,
             # mirror had 16.9.1 -> 16.8.1); rmtree refuses reparse points,
             # so unlink the link itself and leave its target alone.
             if d.is_symlink() or d.is_junction():
-                os.rmdir(d)
+                d.rmdir()
             else:
                 shutil.rmtree(d)
             logger.info("pruned stale mirror dir %s", d)

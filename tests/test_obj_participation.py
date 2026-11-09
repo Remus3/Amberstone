@@ -19,7 +19,6 @@ Closes the item-132 carry-forward (c). Validates:
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 import sqlite3
 import sys
@@ -323,11 +322,11 @@ class MathTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -458,11 +457,11 @@ class ClampTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -517,11 +516,11 @@ class FailSoftTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -700,11 +699,11 @@ class HeraldEnrichmentMathTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -1028,11 +1027,11 @@ class VoidMonsterTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -1324,7 +1323,7 @@ class VoidMonsterTests(unittest.TestCase):
             conn.close()
 
         # Now bump both rows by the same void count.
-        os.remove(self.db_path)
+        self.db_path.unlink()
         rows_after = [
             {
                 "match_id": "V_SYM_B", "team_id": 100, "puuid": "SELF",
@@ -1462,11 +1461,11 @@ class TurretTakedownsTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -1648,11 +1647,11 @@ class ReadOnlyConnectionTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
