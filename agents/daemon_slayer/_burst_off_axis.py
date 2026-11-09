@@ -37,6 +37,7 @@ the narrowest matching set and widening only on test evidence:
 """
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 # Mirrors core.archetype_picks._AXIS_DOMINANT_MIN / _AXIS_MARGIN_MIN. Kept as
@@ -57,22 +58,50 @@ _MAGIC_OFFENSE_KEYS: tuple[str, ...] = (
 )
 
 
+def _finite_number(value) -> Optional[float]:
+    """``value`` as a finite float, or ``None`` for anything that is not one.
+
+    ``None`` / a falsy value reads as ``0.0`` (a missing share or stat is a
+    zero, the pre-hardening behaviour). A bool is rejected rather than read as
+    0 / 1, and so is a value ``float()`` refuses (``TypeError`` /
+    ``ValueError``), cannot hold (``OverflowError``, an int past 1e308) or
+    returns non-finite (``nan`` / ``inf``, including the strings "nan" and
+    "inf"): a ``float()`` guard alone admits exactly the two values it exists
+    to stop (S144-T-687).
+    """
+    if isinstance(value, bool):
+        return None
+    if not value:
+        return 0.0
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
+
+
 def champion_burst_axis(champ_rec: Optional[dict]) -> Optional[str]:
     """Return ``"ad"`` / ``"ap"`` for a decisive kit damage split, else ``None``.
 
     Reads ``lolmath.damage_distribution`` off the snapshot's own champion
-    record. Fail-soft: a missing record, a missing block or a non-numeric
-    entry all return ``None``, which makes the caller a no-op.
+    record. Fail-soft: a missing record, a missing or non-mapping block, or a
+    share that is not a finite number in [0, 1] (non-numeric, bool, nan, inf,
+    an int too large for a float, negative, or above 1) all return ``None``,
+    which makes the caller a no-op. A missing share reads as 0.0.
     """
     if not isinstance(champ_rec, dict):
         return None
-    dist = (champ_rec.get("lolmath") or {}).get("damage_distribution") or {}
+    lolmath = champ_rec.get("lolmath") or {}
+    if not isinstance(lolmath, dict):
+        return None
+    dist = lolmath.get("damage_distribution") or {}
     if not isinstance(dist, dict):
         return None
-    try:
-        magical = float(dist.get("magical") or 0.0)
-        physical = float(dist.get("physical") or 0.0)
-    except (TypeError, ValueError):
+    magical = _finite_number(dist.get("magical"))
+    physical = _finite_number(dist.get("physical"))
+    if magical is None or physical is None:
+        return None
+    if not (0.0 <= magical <= 1.0 and 0.0 <= physical <= 1.0):
         return None
     dominant, other, label = (
         (magical, physical, "ap") if magical >= physical else (physical, magical, "ad")
@@ -83,13 +112,15 @@ def champion_burst_axis(champ_rec: Optional[dict]) -> Optional[str]:
 
 
 def _offense(stats: dict, keys: tuple[str, ...]) -> bool:
-    """True iff the stat block carries a positive value on any of ``keys``."""
+    """True iff the stat block carries a positive FINITE value on any of ``keys``.
+
+    A junk value (non-numeric, bool, nan, inf, or an int too large for a float)
+    on one key is no offense on that key and never hides the next key.
+    """
     for key in keys:
-        try:
-            if float(stats.get(key) or 0.0) > 0.0:
-                return True
-        except (TypeError, ValueError):
-            continue
+        value = _finite_number(stats.get(key))
+        if value is not None and value > 0.0:
+            return True
     return False
 
 
