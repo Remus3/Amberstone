@@ -6,7 +6,6 @@ core.game_host.GAME_HOST (default 127.0.0.1), NOT a hardcoded legacy LAN IP.
 """
 import importlib
 import os
-import re
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent

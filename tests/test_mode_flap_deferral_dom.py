@@ -20,7 +20,6 @@ that trip if a future refactor drops the wiring.
 """
 from __future__ import annotations
 
-import re
 import unittest
 from pathlib import Path
 from tests import _css_split

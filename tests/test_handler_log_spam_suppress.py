@@ -11,7 +11,6 @@ elsewhere in the handler are unaffected.
 
 from __future__ import annotations
 
-import logging
 import unittest
 from pathlib import Path
 from unittest.mock import patch
