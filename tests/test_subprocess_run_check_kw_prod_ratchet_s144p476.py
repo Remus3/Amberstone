@@ -7,7 +7,9 @@ Python default, so the bytes run and the behaviour are identical; the keyword on
 intent. Measured 2026-11-08 with ``ruff check --isolated`` (target py39) over the tracked
 production tree: 78 findings in 50 files. Slice 1 states ``check=False`` at the 20 sites in
 eight modules whose code reads ``returncode`` (or deliberately ignores it) itself; slice 2
-(S144-P-477) does the same for eleven more tools/ modules; the rest sit in the baseline below,
+(S144-P-477) does the same for eleven more tools/ modules; slice 3 (S144-P-478) for five more
+(gated_b29_window_parity, gated_lx11_minimap_check, p3_ascii_census, scheduled_boot_verify,
+sibling_sweep_ci); the rest sit in the baseline below,
 which only shrinks. Held back on purpose: ``tools/credential_history_scan.py`` and
 ``tools/sibling_name_sweep.py`` (another lane branch changed them), the packaging files, and the
 gated one-shot probes not yet audited. A baseline row that stops offending fails
@@ -73,14 +75,9 @@ _BASELINE = {
     "tools/build_installer.py": 1,
     "tools/build_portable.py": 1,
     "tools/credential_history_scan.py": 1,
-    "tools/gated_b29_window_parity.py": 1,
-    "tools/gated_lx11_minimap_check.py": 1,
-    "tools/p3_ascii_census.py": 1,
     "tools/package_portable.py": 1,
     "tools/run_packaged_smoke.py": 6,
-    "tools/scheduled_boot_verify.py": 1,
     "tools/sibling_name_sweep.py": 2,
-    "tools/sibling_sweep_ci.py": 1,
 }
 _FIXED = (
     "dashboard/_vision_watchdog.py",
@@ -92,13 +89,18 @@ _FIXED = (
     "tools/claude_quota_watch.py",
     "tools/dev_cli.py",
     "tools/drift_guard.py",
+    "tools/gated_b29_window_parity.py",
+    "tools/gated_lx11_minimap_check.py",
     "tools/gen_archmap.py",
     "tools/inbox_responder_procs.py",
+    "tools/p3_ascii_census.py",
     "tools/perseus_sync.py",
     "tools/precommit_gate.py",
     "tools/rc_facts.py",
     "tools/replay_chain_watch.py",
     "tools/repo_insights.py",
+    "tools/scheduled_boot_verify.py",
+    "tools/sibling_sweep_ci.py",
     "tools/timeline_ingest.py",
     "tools/truth_gate.py",
     "tools/upstream_drift_check.py",

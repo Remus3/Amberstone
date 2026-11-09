@@ -42,7 +42,7 @@ def excluded(rel):
 def tracked():
     # RM-830: -z (no C-quoted non-ASCII names), decoded UTF-8.
     out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"], capture_output=True,
-                         text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+                         text=True, encoding="utf-8", errors="replace", timeout=60, check=False).stdout
     return [p for p in out.split("\0") if p]
 
 

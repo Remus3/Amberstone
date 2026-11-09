@@ -189,7 +189,8 @@ def run_node_model(match: dict, w: int, h: int, node: str = "node") -> dict:
     try:
         proc = subprocess.run([node, "--input-type=module", "-e", _NODE_SRC],
                               input=payload, capture_output=True, text=True,
-                              encoding="utf-8", timeout=120, creationflags=flags)
+                              encoding="utf-8", timeout=120, creationflags=flags,
+                              check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise InputError(f"node did not run: {type(exc).__name__}") from exc
     if proc.returncode != 0:
