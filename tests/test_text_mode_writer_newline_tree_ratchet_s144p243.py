@@ -12,6 +12,10 @@ excluded): 10 offending calls in 6 files, ALL in files this lane may not edit - 
 ``ops/loop/slots.py`` - byte-pinned across repos, ``tools/run_packaged_smoke.py``). They are the baseline below, which
 only shrinks. Any other file with such a call fails ``test_no_new_default_newline_text_writer``.
 
+Cycle 462 widened the shapes to ``gzip`` / ``bz2`` / ``lzma`` ``.open(p, "wt")`` and the stock ``logging`` file
+handlers (``FileHandler`` and its rotating siblings, which take no ``newline``): measured over the same tree,
+zero production calls of either shape, so the baseline did not move.
+
 A scan is a claim about its own pattern, so ``test_scanner_is_live`` proves each shape is reported and each LF-safe
 spelling is quiet. ``tools/run_phase2_smoke.py`` wraps ``sys.stdout.buffer`` in ``io.TextIOWrapper`` (console, not a
 file) and is deliberately not a writer shape here.
@@ -39,6 +43,12 @@ _BASELINE = {
     "tools/run_packaged_smoke.py": 1,
 }
 
+# gzip / bz2 / lzma .open(file, "wt") wrap a TextIOWrapper with the same default newline translation as open().
+_COMPRESSION_MODULES = ("gzip", "bz2", "lzma")
+# The stock logging file handlers open their stream with the default newline and take no newline argument, so a
+# plain one is always CRLF on Windows. core.log_rotation's LF* classes are different names and stay quiet.
+_STOCK_FILE_HANDLERS = ("FileHandler", "RotatingFileHandler", "TimedRotatingFileHandler", "WatchedFileHandler")
+
 _OUT_OF_SCOPE_PREFIXES = ("tests/", "ops/fleet_kit/", "agents/agent3_testing/")
 
 
@@ -63,6 +73,9 @@ def scan_source(src: str) -> list[tuple[int, str]]:
             if "newline" not in kws:
                 hits.append((node.lineno, "write_text"))
             continue
+        if name in _STOCK_FILE_HANDLERS:
+            hits.append((node.lineno, name))
+            continue
         if name in ("open", "fdopen", "NamedTemporaryFile", "TemporaryFile", "SpooledTemporaryFile"):
             mode = _const_str(kws.get("mode"))
             if mode is None and node.args:
@@ -73,6 +86,9 @@ def scan_source(src: str) -> list[tuple[int, str]]:
                     mode = _const_str(node.args[pos])
             if (mode and _MODE_RE.match(mode) and "b" not in mode and any(c in mode for c in _WRITE_CHARS)
                     and "newline" not in kws):
+                if (isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name)
+                        and fn.value.id in _COMPRESSION_MODULES and "t" not in mode):
+                    continue  # gzip / bz2 / lzma "w" / "a" are BINARY there; only "wt" / "at" translate
                 hits.append((node.lineno, f"{name} {mode}"))
             continue
         if (name in ("writer", "DictWriter") and isinstance(fn, ast.Attribute)
@@ -84,7 +100,7 @@ def scan_source(src: str) -> list[tuple[int, str]]:
 
 def _is_module_name(node: ast.AST) -> bool:
     """``io.open`` / ``os.fdopen``-style receivers take (file, mode); a Path receiver takes (mode)."""
-    return isinstance(node, ast.Name) and node.id in ("io", "os", "codecs", "tempfile")
+    return isinstance(node, ast.Name) and node.id in ("io", "os", "codecs", "tempfile", *_COMPRESSION_MODULES)
 
 
 def _tree_counts() -> dict[str, int]:
@@ -131,6 +147,12 @@ def test_scanner_is_live():
         "NamedTemporaryFile": "import tempfile\ntempfile.NamedTemporaryFile(mode='w')",
         "csv.writer": "import csv\ncsv.writer(f)",
         "csv.DictWriter": "import csv\ncsv.DictWriter(f, fieldnames=[])",
+        "gzip.open wt": "import gzip\ngzip.open(p, 'wt')",
+        "bz2.open at": "import bz2\nbz2.open(p, mode='at')",
+        "lzma.open wt": "import lzma\nlzma.open(p, 'wt')",
+        "logging.FileHandler": "import logging\nlogging.FileHandler(p)",
+        "RotatingFileHandler": "from logging.handlers import RotatingFileHandler\nRotatingFileHandler(p)",
+        "TimedRotatingFileHandler": "import logging.handlers as h\nh.TimedRotatingFileHandler(p)",
     }
     for label, src in bad.items():
         assert scan_source(src), f"scanner missed {label}"
@@ -147,6 +169,13 @@ def test_scanner_is_live():
         "import csv\ncsv.writer(f, lineterminator='\\n')",
         "import tempfile\ntempfile.NamedTemporaryFile(mode='wb')",
         "import tempfile\ntempfile.NamedTemporaryFile()",
+        "import gzip\ngzip.open(p, 'wb')",
+        "import gzip\ngzip.open(p, 'w')",
+        "import bz2\nbz2.open(p, mode='a')",
+        "import gzip\ngzip.open(p, 'rt')",
+        "import gzip\ngzip.open(p, 'wt', newline='\\n')",
+        "from core.log_rotation import LFRotatingFileHandler\nLFRotatingFileHandler(p)",
+        "from core.log_rotation import LFFileHandler\nLFFileHandler(p)",
     ]
     for src in good:
         assert not scan_source(src), f"scanner flagged an LF-safe spelling: {src!r}"
