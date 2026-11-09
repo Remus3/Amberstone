@@ -328,7 +328,7 @@ def _int_array(v: Any) -> Optional[list[int]]:
         n = _num(x)
         if n is None:
             return None
-        out.append(int(round(n)))
+        out.append(round(n))
     return out
 
 

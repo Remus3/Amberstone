@@ -321,7 +321,7 @@ def _stat_field_for(mstat: Any, data_value_name: Optional[str]) -> Optional[str]
     si = _num(mstat)
     if si is None:
         return None
-    enum = int(round(si))
+    enum = round(si)
     if enum in _STAT_FIELD:
         return _STAT_FIELD[enum]
     if enum == _STAT_MAX_HP_ENUM:

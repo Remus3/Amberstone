@@ -31,8 +31,14 @@ Slice 4 (S144-P-503) drops the cast at the 13 sites in nine files (ops/audit/ds_
 ops/loop/lane_progress, scripts/postmortem_analyze (two), tools/gated_g239_wave_clock (two),
 tools/gated_g241_ocr_native, tools/gated_lx04_cast_check, tools/gated_lx11_minimap_check (three,
 two on one line), tools/repair_spend_ledger, tools/run_phase2_perf); no other lane branch
-changed any of them. The baseline keeps only the files below: agents/supervisor.py (another lane
-branch changed it) and the two lane/ds extractors.
+changed any of them. The baseline then kept agents/supervisor.py (another lane branch changed it)
+and the two cdragon extractors (slice 5 below clears the extractors).
+
+Slice 5 (S144-P-506) drops the cast at the last two sites outside ``agents/supervisor.py``:
+``tools/daemon_slayer_cdragon_ratio_extract.py`` (``enum = round(si)``) and
+``tools/daemon_slayer_cdragon_spell_extract.py`` (``out.append(round(n))``); both ``_num`` helpers return a
+``float``, so the NaN / infinity failure mode is unchanged. No lane branch changes either file (measured
+``git log main..lane/<x> --`` over every lane), so the baseline keeps one row: ``agents/supervisor.py``.
 
 Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the
 vendored ``ops/fleet_kit`` and the ``agents/agent3_testing/suite`` suite are out of scope. The run
@@ -67,8 +73,6 @@ _OUT_OF_SCOPE = (
 # file -> finding count that stays (module docstring). Only shrinks.
 _BASELINE = {
     "agents/supervisor.py": 1,
-    "tools/daemon_slayer_cdragon_ratio_extract.py": 1,
-    "tools/daemon_slayer_cdragon_spell_extract.py": 1,
 }
 _FIXED = (
     "coach_integration/archetype_dispatch.py",
@@ -110,6 +114,8 @@ _FIXED = (
     "tft/tft_scouting.py",
     "tft/tft_vision_reader.py",
     "tools/vision_atlas_validate.py",
+    "tools/daemon_slayer_cdragon_ratio_extract.py",
+    "tools/daemon_slayer_cdragon_spell_extract.py",
 )
 
 
