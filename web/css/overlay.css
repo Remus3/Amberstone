@@ -197,14 +197,25 @@ body[data-shell="overlay"] #view-active-match .am-tft-stat-label {
 body[data-shell="overlay"] #view-active-match .am-tft-stat-value {
   font-size: var(--fs-ov-call);
 }
-/* GPU-light: canvas / sparkline / DS-analysis widgets off. */
+/* GPU-light: canvas / sparkline / DS-analysis widgets off. S144-U-280: the
+ * three cards QA 2026-07-03 B20/B22 relocated onto the BUILD pane after this
+ * rule was written (eight-axis profile, fight-model card, Stat Sandbox form)
+ * are off too. w-build is the next-item rerank (doctrine section 4), and
+ * w-ovds is the overlay's own fight-model pane. Painted, the fight-model card
+ * and the Stat Sandbox took 504 px of the 594 px clipped widget, so
+ * #am-build-body (flex 1 1 auto, min-height 0) was squeezed to 28 px and the
+ * Daemon Slayer ranks, the Meta / Ultimate rows, the shaper strip and the
+ * THREATS strip all sat below the widget's clip. */
 body[data-shell="overlay"] #am-spike-curve,
 body[data-shell="overlay"] #am-spike-markers,
 body[data-shell="overlay"] #am-ward-heat,
 body[data-shell="overlay"] .am-pane-build .ds-sweep,
 body[data-shell="overlay"] .am-pane-build .ds-matchup,
 body[data-shell="overlay"] .am-pane-build .ds-combo,
-body[data-shell="overlay"] .am-pane-build .ds-relscore {
+body[data-shell="overlay"] .am-pane-build .ds-relscore,
+body[data-shell="overlay"] .am-pane-build .ds-profile,
+body[data-shell="overlay"] .am-pane-build .ds-knobs,
+body[data-shell="overlay"] .am-pane-build .ds-statcheck {
   display: none !important;
 }
 

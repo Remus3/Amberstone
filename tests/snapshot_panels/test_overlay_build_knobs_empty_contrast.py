@@ -24,6 +24,12 @@ w-build 6.98 live / 5.24 idle; w-ovds unchanged at 6.37 / 4.69. The
 dashboard champ-select copy of the card (#csv-ds-knobs) shares the rule and
 only gains contrast.
 
+S144-U-280 SUPERSEDES THE w-build HALF. The overlay BUILD pane no longer
+paints the fight-model card (the card and the Stat Sandbox squeezed the
+rerank module out of the widget's clip; test_overlay_build_rerank_clip.py
+pins it). The w-ovds lines stay pinned here. The .dsk-empty --text-dim
+ink stands on the dashboard champ-select copy of the card.
+
 Contrast pair (the S144-U-275 / S144-U-278 method): the ink, with any
 opacity inside the widget folded in, over the backgrounds of the line and
 of every ancestor up to its widget whose box contains the line, then the
@@ -41,9 +47,9 @@ _MODES = ["sr", "aram", "mayhem", "arena"]
 _AA = 4.5
 _SHEET = "*, *::before, *::after { transition: none !important; }"
 # The lines read, as (widget id, class): the mock never resolves a fight
-# model, so every field shows both panes in their empty state.
+# model, so every field shows the pane in its empty state (w-build's card
+# is off in the overlay since S144-U-280).
 _TARGETS = [
-    ("w-build", "dsk-empty"),
     ("w-ovds", "ovds-empty"),
     ("w-ovds", "ovset-cap"),
 ]
@@ -151,12 +157,11 @@ def test_every_fight_model_empty_line_reaches_aa_live_and_idle(
 
 
 @pytest.mark.parametrize("theme", ["hextech", "arcane"])
-def test_the_recede_is_real_and_both_empty_lines_share_one_tier(
+def test_the_recede_is_real_and_the_empty_line_reads_its_tier(
         theme, measured, mock_server, pw_browser):
-    # The idle pair is honest only if the widgets really recede and the
-    # line has a backing to read against; the two "resolving fight
-    # model..." lines (build widget and fight-model pane) are one ink
-    # tier, at the --fs-xs body size, with a real box.
+    # The idle pair is honest only if the widget really recedes and the
+    # line has a backing to read against; the "resolving fight model..."
+    # line sits at the --fs-xs body size, with a real box.
     got = _get(measured, mock_server, pw_browser, theme, "sr")
     live = {(x["id"], x["cls"]): x for x in got["live"]}
     idle = {(x["id"], x["cls"]): x for x in got["idle"]}
@@ -167,8 +172,5 @@ def test_the_recede_is_real_and_both_empty_lines_share_one_tier(
         assert x["inner"] == 1.0, (key, x["inner"])
         assert x["size"] == 16.0, (key, x["size"])
         assert x["w"] > 0 and x["h"] > 0, (key, x)
-    dsk = live[("w-build", "dsk-empty")]
     ovds = live[("w-ovds", "ovds-empty")]
-    assert dsk["text"] == ovds["text"] == "resolving fight model...", (
-        dsk["text"], ovds["text"])
-    assert dsk["color"] == ovds["color"], (dsk["color"], ovds["color"])
+    assert ovds["text"] == "resolving fight model...", ovds["text"]

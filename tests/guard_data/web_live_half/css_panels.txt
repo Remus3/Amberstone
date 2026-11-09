@@ -45,7 +45,7 @@ eeadcd295dbc4f939bfaf5d7ec512da71d46912eed7c236307829213b475ef79  web/css/panels
 
 62fee7335fbbb1b9a56a499f0b1ca401029e520603e382360b1119df435549a9  web/css/panels/ds_relscore.css
 
-fc94ba9c8e05c87aaca8d88abe7871573587d40d6a6a2bf4aa1ca1216c4fd1db  web/css/panels/ds_shaper.css
+79a4a64b350a80bea1f17642f11947928a27cd4a5fa8a988935c9aed09f28763  web/css/panels/ds_shaper.css
 
 eba52bbd85e885940d71506b0d1495f46d1cf63a87bb976863e78944e8f36da0  web/css/panels/ds_skill_order.css
 

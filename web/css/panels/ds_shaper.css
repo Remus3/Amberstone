@@ -101,8 +101,13 @@
 /* RM-1143: 0.45 measured 4.26-4.39:1 on the row surface (5 of 6 themes),
  * below AA; 0.55 is the muted tint the other DS cards use and stays dimmer
  * than the landed preview lines. Guard:
- * tests/snapshot_panels/test_ds_cards_muted_text_contrast.py. */
+ * tests/snapshot_panels/test_ds_cards_muted_text_contrast.py.
+ * S144-U-280: 0.55 read 4.18 - 4.37:1 on five themes in the overlay BUILD
+ * widget's idle recede (widget opacity 0.85); 0.60 reads 4.65:1 idle at worst (arcane)
+ * and still sits below the preview lines and the axis labels on the
+ * dashboard (the hierarchy pin in that guard; 0.62 broke it). Guard:
+ * tests/snapshot_panels/test_overlay_build_rerank_clip.py. */
 .bm-shaper-note {
   font-size: var(--fs-xs, 16px);
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.60);
 }
