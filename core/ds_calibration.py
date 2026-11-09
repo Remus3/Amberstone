@@ -7,25 +7,48 @@ tools/ds_calibration_report.py), joins the log against rewind_history.db
 EXACTLY on the Riot game id (``game_id``, else a ``live_<gameId>``
 ``match_key``) to compare DS-recommended items vs. actually purchased items vs.
 win/loss outcome; it takes the earliest tick that recommended each unowned
-item, per (game, item, scorer). Non-fatal: any write failure is silently
-swallowed so calibration logging never breaks coach operation.
+item, per (game, item, scorer).
+
+Non-fatal: ``log_ds_run`` does not raise on wrong-shaped input or on a
+failed write. Junk input is coerced (a None or bare value where a list was
+expected, a value JSON cannot encode, a NaN / inf float, which is written as
+``null`` so every line stays strict JSON); an encode or write failure is
+caught and logged at WARNING once per process PER failure kind (S144-T-666;
+it used to be swallowed without a trace), so a writer that stops can still
+say why. When an argument's OWN ``__str__``, ``__bool__`` or iteration
+raises, a ``TypeError`` / ``ValueError`` / ``RecursionError`` drops the row
+with the encode WARNING; any other exception is a caller bug and propagates
+(every live caller wraps the call in ``except Exception`` anyway).
 """
 from __future__ import annotations
 
 import json
+import logging
+import math
+import os
 import time
 from pathlib import Path
 from typing import Optional
 
+log = logging.getLogger(__name__)
+
 _LOG_PATH = Path(__file__).parent.parent / "data" / "ds_calibration.jsonl"
 
-# EnemyStats field -> the fallback dispatch_for_coach uses when it builds the
-# DS request (coach_integration/archetype_dispatch.py: target_* default 0.0,
-# enemy_*_share default 0.5), so the summary records the values actually sent.
-_ENEMY_STATS_FIELDS = (
-    ("armor", 0.0), ("mr", 0.0), ("max_hp", 0.0), ("bonus_hp", 0.0),
-    ("ad_share", 0.5), ("ap_share", 0.5),
-)
+# Failure kinds already logged, so a broken log path costs one WARNING per
+# process, not one per ~30 s tick, and an earlier encode failure never hides a
+# later write failure.
+_WARNED: set = set()
+
+# The EnemyStats fields a calibration row records, in record order.
+_ENEMY_STATS_FIELDS = ("armor", "mr", "max_hp", "bonus_hp")
+
+
+def _warn_once(kind: str, what: str, exc: BaseException) -> None:
+    if kind in _WARNED:
+        return
+    _WARNED.add(kind)
+    log.warning("ds_calibration: %s (%s: %s); further failures are not logged",
+                what, type(exc).__name__, exc)
 
 
 def enemy_stats_summary(enemy_stats) -> Optional[dict]:
@@ -34,15 +57,28 @@ def enemy_stats_summary(enemy_stats) -> Optional[dict]:
     ``enemy_stats`` is a ``coach_integration.enemy_stats.EnemyStats`` (or any
     object with those attributes). ``None`` in, ``None`` out, so a caller with
     no enemy context writes no ``enemy_stats`` key at all.
+
+    The values are the ones the DS request actually carried: they are read
+    through the dispatcher's own ``coach_integration.archetype_dispatch``
+    ``_stat`` / ``_shares`` (one source, not a copy), so a real 0.0 damage
+    share stays 0.0 and a NaN / inf / bool stat reads as the 0.0 the request
+    sent (S144-T-666: a local ``float(x or default)`` read logged an all-AD
+    comp as ap_share 0.5 and a NaN armor as NaN). If the dispatcher cannot be
+    imported the row records no ``enemy_stats`` rather than guessed values.
     """
     if enemy_stats is None:
         return None
-    out: dict = {}
-    for name, default in _ENEMY_STATS_FIELDS:
-        try:
-            out[name] = float(getattr(enemy_stats, name, default) or default)
-        except (TypeError, ValueError):
-            out[name] = default
+    try:
+        from coach_integration.archetype_dispatch import (  # noqa: PLC0415
+            _shares,
+            _stat,
+        )
+    except ImportError as exc:
+        _warn_once("import", "enemy_stats_summary cannot import the dispatcher",
+                   exc)
+        return None
+    out = {name: _stat(enemy_stats, name) for name in _ENEMY_STATS_FIELDS}
+    out["ad_share"], out["ap_share"] = _shares(enemy_stats)
     return out
 
 
@@ -60,6 +96,67 @@ def current_engine_version() -> str:
     return str(ENGINE_VERSION)
 
 
+def _as_list(values) -> list:
+    """None -> [], a bare str / bytes or non-iterable -> [value], else list."""
+    if values is None:
+        return []
+    if isinstance(values, (str, bytes)):
+        return [values]
+    try:
+        return list(values)
+    except TypeError:
+        return [values]
+
+
+def _json_key(key):
+    """A dict key ``json.dumps`` encodes itself (str, int, bool, None, a
+    finite float) kept as-is, so it serializes exactly as before; any other
+    key as its ``str``."""
+    if key is None or isinstance(key, (str, int)):
+        return key
+    if isinstance(key, float) and math.isfinite(key):
+        return key
+    return str(key)
+
+
+def _jsonable(value):
+    """``value`` with every non-finite float as None and every value JSON
+    cannot encode as its ``str``, so the line is strict JSON (no bare NaN /
+    Infinity token, which ``jq`` and ``JSON.parse`` reject)."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, dict):
+        return {_json_key(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    return str(value)
+
+
+def _append_line(path: Path, data: bytes) -> None:
+    """Append ``data`` (one LF-terminated line) as BYTES, in one write.
+
+    Binary mode keeps the row LF on Windows (the prune rewrites this file as
+    LF, RM-481 residual, RM-1697). If the file's last byte is not a newline
+    (a crash or a full disk tore the previous row), a newline goes first, so
+    the new row is not fused onto the torn one and dropped with it by the
+    consumer.
+    """
+    with open(path, "a+b", buffering=0) as fh:
+        end = fh.seek(0, os.SEEK_END)
+        if end:
+            fh.seek(end - 1)
+            if fh.read(1) != b"\n":
+                data = b"\n" + data
+        view = memoryview(data)
+        while view:
+            written = fh.write(view)
+            if not written:
+                raise OSError("short write appending ds_calibration row")
+            view = view[written:]
+
+
 def log_ds_run(
     champion: str,
     mode: str,
@@ -73,13 +170,14 @@ def log_ds_run(
     engine_version: Optional[str] = None,
     apply_mode_modifiers: Optional[bool] = None,
 ) -> None:
-    """Append one DS observation to the calibration log.
+    """Append one DS observation to the calibration log (non-fatal, see module).
 
     Args:
         champion:    champion name (e.g. "Ahri")
         mode:        coaching mode string (e.g. "ARAM", "SR", "ARENA", "BRAWL")
         level:       current champion level
-        owned_items: item IDs currently in inventory (list of str or int)
+        owned_items: item IDs currently in inventory (list of str or int);
+                     None -> [], a bare value -> [value]
         ds_picks:    list of dicts with keys item_id, item_name, delta_dps, gold
         game_id:     optional Riot match/game id for exact cross-reference
         match_key:   stable per-match key from ``core.live_metrics.match_key``
@@ -103,28 +201,30 @@ def log_ds_run(
         + enemy_stats / augments / engine_version / apply_mode_modifiers
                      <- RM-875; each present only when supplied
     """
-    entry = {
-        "ts": time.time(),
-        "champion": champion,
-        "mode": mode,
-        "level": level,
-        "owned_items": [str(i) for i in owned_items],
-        "ds_picks": ds_picks,
-        "game_id": game_id,
-        "match_key": match_key or game_id,
-    }
-    if enemy_stats is not None:
-        entry["enemy_stats"] = enemy_stats
-    if augments is not None:
-        entry["augments"] = [str(a) for a in augments]
-    if engine_version is not None:
-        entry["engine_version"] = str(engine_version)
-    if apply_mode_modifiers is not None:
-        entry["apply_mode_modifiers"] = bool(apply_mode_modifiers)
     try:
-        # newline="\n": LF on Windows too, matching the prune's LF rewrite of
-        # this same file (RM-481 residual, RM-1697).
-        with open(_LOG_PATH, "a", encoding="utf-8", newline="\n") as f:
-            f.write(json.dumps(entry) + "\n")
-    except OSError:
-        pass
+        entry = {
+            "ts": time.time(),
+            "champion": champion,
+            "mode": mode,
+            "level": level,
+            "owned_items": [str(i) for i in _as_list(owned_items)],
+            "ds_picks": ds_picks,
+            "game_id": game_id,
+            "match_key": match_key or game_id,
+        }
+        if enemy_stats is not None:
+            entry["enemy_stats"] = enemy_stats
+        if augments is not None:
+            entry["augments"] = [str(a) for a in _as_list(augments)]
+        if engine_version is not None:
+            entry["engine_version"] = str(engine_version)
+        if apply_mode_modifiers is not None:
+            entry["apply_mode_modifiers"] = bool(apply_mode_modifiers)
+        line = json.dumps(_jsonable(entry), allow_nan=False) + "\n"
+    except (TypeError, ValueError, RecursionError) as exc:
+        _warn_once("encode", "a calibration row could not be encoded", exc)
+        return
+    try:
+        _append_line(Path(_LOG_PATH), line.encode("utf-8"))
+    except OSError as exc:
+        _warn_once("write", f"appending to {_LOG_PATH} failed", exc)
