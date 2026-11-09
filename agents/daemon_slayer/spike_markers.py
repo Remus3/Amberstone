@@ -144,9 +144,15 @@ class SpikeMarkersResult:
 
 
 def _clamp_level(level: int) -> int:
-    """Champion levels are 1..18. Out-of-range collapses to the bound."""
+    """Champion levels are 1..18. Out-of-range collapses to the bound.
+
+    S144-D-119: +inf reads as 18 and -inf as 1 (``int(inf)`` raised
+    OverflowError out of :func:`compute_spike_markers`); NaN / junk read as 1.
+    """
     try:
         lv = int(level)
+    except OverflowError:
+        return 18 if level > 0 else 1
     except (TypeError, ValueError):
         return 1
     if lv < 1:
@@ -253,6 +259,9 @@ def compute_spike_markers(
     else:
         try:
             items_done = max(0, int(item_count_done))
+        except OverflowError:
+            # S144-D-119: +inf crosses every item spike, -inf none.
+            items_done = n_item_thresh if item_count_done > 0 else 0
         except (TypeError, ValueError):
             items_done = 0
 

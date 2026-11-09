@@ -307,6 +307,9 @@ def compute_self_shred_uplift(
     """
     try:
         lvl = int(level)
+    except OverflowError:
+        # S144-D-121: int(+-inf) raised out of this NEVER-raises surface.
+        lvl = 18 if level > 0 else 1
     except (TypeError, ValueError):
         lvl = 1
     if lvl < 1:

@@ -211,6 +211,26 @@ def _burst_notes(burst) -> Tuple[str, ...]:
         return ()
 
 
+def _coerce_level(level) -> int:
+    """``int(level)``, fail-soft (S144-D-122).
+
+    Every int-convertible level is returned unchanged (a finite out-of-range
+    level still reaches the burst walker, whose range note answers it);
+    +inf reads as 18, -inf as 1, and NaN / junk / None as 1 - the
+    fight_report / self_shred convention. Before this, each ``int(level)``
+    sat outside the fail-soft wrap and raised out of :func:`compute_combo`.
+    """
+    try:
+        return int(level)
+    except OverflowError:
+        try:
+            return 18 if level > 0 else 1
+        except Exception:
+            return 1
+    except (TypeError, ValueError):
+        return 1
+
+
 def _normalize_sequence(sequence: Optional[Sequence[str]]) -> List[str]:
     """Clean + cap the authored action list.
 
@@ -263,6 +283,7 @@ def compute_combo(
     seconds (calc.gg's stated limits). Fail-soft: unknown champion /
     empty sequence yields an empty ``hits`` list with a note.
     """
+    level = _coerce_level(level)
     champ = str(champion or "").strip()
     seq = _normalize_sequence(sequence)
     snap = snapshot if snapshot is not None else DataSnapshot.load()

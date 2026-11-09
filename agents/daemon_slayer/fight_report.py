@@ -214,6 +214,9 @@ def compute_fight_report(
     )
     try:
         lvl = int(level)
+    except OverflowError:
+        # S144-D-120: int(+-inf) raised out of this NEVER-raises surface.
+        lvl = 18 if level > 0 else 1
     except (TypeError, ValueError):
         lvl = 1
     if lvl < 1:
