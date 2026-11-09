@@ -608,7 +608,7 @@ def read_back(root: Path, qa: list[dict]) -> dict:
         zero = c.execute("SELECT COUNT(*) FROM matches WHERE mode='TFT' AND game_id=0").fetchone()[0]
     last = _last_tft(root)
     return {"games": games, "tft_rows": tft_total, "tft_rows_game_id_0": zero,
-            "last_tft": {k: last.get(k) for k in _LAST_KEYS + ("timestamp",)}}
+            "last_tft": {k: last.get(k) for k in (*_LAST_KEYS, "timestamp")}}
 
 
 def verify(root: Path, qa: list[dict], p: dict, plans: dict, rb: dict) -> list[str]:

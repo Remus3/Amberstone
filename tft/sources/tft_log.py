@@ -189,7 +189,7 @@ def _epoch(m) -> Optional[float]:
         datetime.datetime(*parts)  # validates the calendar date / clock
     except ValueError:
         return None
-    return calendar.timegm(parts + (0, 0, 0)) + int(m["ms"]) / 1000.0
+    return calendar.timegm((*parts, 0, 0, 0)) + int(m["ms"]) / 1000.0
 
 
 def parse_line(line) -> Optional[LogEvent]:

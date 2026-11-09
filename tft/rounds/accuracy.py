@@ -52,7 +52,7 @@ from tft.rounds.ground_truth import GT_SOURCE_ORDER
 GRADED_SRCS = frozenset({"ocr", "icon", "geom", "derived"})
 PHASE_ORDER = ("planning_end", "planning_start", "combat")
 BOARD_FIELDS = ("final_board_units", "final_board_stars", "final_board_items")
-FIELDS = BOARD_FIELDS + ("final_level", "final_gold", "placement")
+FIELDS = (*BOARD_FIELDS, "final_level", "final_gold", "placement")
 
 
 def _int(v) -> Optional[int]:

@@ -42,7 +42,7 @@ VERDICTS = ("win", "loss", "draw", "pve_win", "pve_loss")  # section 1.4 row 15
 UNIT_PHASES = ("planning_start", "planning_end", "combat", "carousel")
 # frames / raw obs may also come from a mid-planning shop capture or an augment
 # overlay (section 3.2 step 1), so they take a slightly wider phase set
-CAPTURE_PHASES = UNIT_PHASES + ("planning", "augment")
+CAPTURE_PHASES = (*UNIT_PHASES, "planning", "augment")
 ZONES = ("board", "bench", "carousel")
 REFRESH_CAUSES = ("round_start", "reroll", "locked", "unknown")
 OFFER_KINDS = ("champion", "special", "empty")

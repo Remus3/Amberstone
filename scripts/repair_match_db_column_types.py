@@ -91,8 +91,8 @@ def repair(db_path: Path, apply: bool = False) -> dict:
         for row in rows:
             row_id = row[0]
             payload.append(
-                tuple(coerce_numeric(c, row[i + 1]) for i, c in enumerate(cols))
-                + (row_id,))
+                (*(coerce_numeric(c, row[i + 1]) for i, c in enumerate(cols)),
+                 row_id))
         # One transaction: a crash mid-repair leaves the DB untouched rather
         # than half-converted.
         with conn:
