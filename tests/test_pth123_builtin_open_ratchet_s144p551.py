@@ -177,21 +177,14 @@ _BASELINE: dict[str, int] = {
     "tft/sources/tft_log.py": 1,
     "tools/bot_merge_check.py": 1,
     "tools/build_portable.py": 1,
-    "tools/build_python_embed.py": 1,
     "tools/ci_impact_selector.py": 1,
     "tools/det_coach_shadow_report.py": 1,
-    "tools/ds_cc_conditional_to_json.py": 2,
-    "tools/hz_shadow_arena_contamination.py": 2,
     "tools/inbox_responder_runner.py": 2,
     "tools/landing_sampler.py": 2,
-    "tools/live_write_tracer.py": 2,
-    "tools/logger_leak_census.py": 2,
     "tools/moon_sync_poller.py": 3,
     "tools/phase_watcher.py": 1,
-    "tools/precommit_gate.py": 1,
     "tools/pytest_guard.py": 1,
     "tools/shadow_archive_split.py": 1,
-    "tools/truth_gate.py": 1,
 }
 _FIXED = (
     "ops/audit/lolmath_ds_sweep/g2_remeasure_probe.py",
@@ -211,6 +204,14 @@ _FIXED = (
     "tools/tests/test_cdragon_spell_extract.py",
     "tools/tests/test_wiki_ability_extract.py",
     "tools/tests/test_wiki_stats_extract.py",
+    # S144-P-553: eleven more tools/ opens (binary hash / line reads, plain JSON reads, five LF writes with keyword newline)
+    "tools/build_python_embed.py",
+    "tools/ds_cc_conditional_to_json.py",
+    "tools/hz_shadow_arena_contamination.py",
+    "tools/live_write_tracer.py",
+    "tools/logger_leak_census.py",
+    "tools/precommit_gate.py",
+    "tools/truth_gate.py",
 )
 
 

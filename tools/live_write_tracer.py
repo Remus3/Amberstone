@@ -432,7 +432,7 @@ def merge_reports(paths):
     replaced_by = {}
     opened_only = {}
     for path in paths:
-        with open(path, encoding="utf-8") as handle:
+        with Path(path).open(encoding="utf-8") as handle:
             report = json.load(handle)
         for key, value in report.get("wrote_units", {}).items():
             wrote_units[key] = wrote_units.get(key, 0) + value
@@ -592,7 +592,7 @@ def main(argv=None):
         parser.error(f"no reports found under {args.merge}")
     payload = json.dumps(merge_reports(files), indent=2, sort_keys=True)
     if args.out:
-        with open(args.out, "w", encoding="ascii", newline="\n") as handle:
+        with Path(args.out).open("w", encoding="ascii", newline="\n") as handle:
             handle.write(payload)
         print(f"merged {len(files)} report(s) -> {args.out}")
     else:

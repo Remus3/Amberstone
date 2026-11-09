@@ -259,7 +259,7 @@ def scan(corpus: Path) -> dict:
         "arena_flagged": 0,
         "arena_unflagged_sr": 0,
     }
-    with open(corpus, "rb") as handle:
+    with Path(corpus).open("rb") as handle:
         for raw in handle:
             line = raw.strip()
             if not line:
@@ -311,7 +311,7 @@ def flag_rows(src: Path, dst: Path, backup: Optional[Path] = None) -> dict:
     tagged = 0
     already = 0
     untouched = 0
-    with open(src, "rb") as fsrc:
+    with Path(src).open("rb") as fsrc:
         for raw in fsrc:
             line = raw.strip()
             row = None

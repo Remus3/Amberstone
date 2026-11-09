@@ -246,7 +246,7 @@ def run_suite_fresh(cmd, out_path, owner=None):
         return obs
     run_argv = gate_argv(argv, owner)
     gated = run_argv != argv
-    with open(out_path, "w", encoding="utf-8", errors="replace", newline="\n") as fh:
+    with Path(out_path).open("w", encoding="utf-8", errors="replace", newline="\n") as fh:
         try:
             rc = subprocess.run(run_argv, cwd=str(ROOT),
                                 stdout=fh, stderr=subprocess.STDOUT,

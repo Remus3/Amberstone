@@ -350,7 +350,7 @@ def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
     for rel in pyfiles:
         path = os.path.join(root, rel)
         try:
-            with open(path, "rb") as fh:
+            with pathlib.Path(path).open("rb") as fh:
                 source = fh.read()
         except OSError:
             continue

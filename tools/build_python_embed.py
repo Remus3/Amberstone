@@ -144,7 +144,7 @@ class EmbedOptions:
 # --------------------------------------------------------------------------- #
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
-    with open(path, "rb") as fh:
+    with Path(path).open("rb") as fh:
         for block in iter(lambda: fh.read(_CHUNK), b""):
             h.update(block)
     return h.hexdigest()
