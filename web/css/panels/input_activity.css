@@ -582,7 +582,7 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr 1fr;
   }
-  .panel-minimap    { grid-row: 1 / span 3; grid-column: 1; }
+  /* S144-U-264: the retired Map State shell's col-1 placement is gone. */
   .panel-right-now  { grid-column: 2; grid-row: 1; }
   .panel-next       { grid-column: 2; grid-row: 2; }
   .panel-item-build { grid-column: 2; grid-row: 3; }

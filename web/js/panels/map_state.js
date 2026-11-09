@@ -8,10 +8,9 @@ import { teamItemValueDiff } from '../lib/item_value.js';
 state.gameClock = { startedAt: 0, anchorS: 0, raw: "" };
 state.spellCds = {};
 
-const MM = {
-  root: el("minimap"),
-  staleness: document.querySelector('.staleness[data-for="minimap"]'),
-};
+// S144-U-264: the Map State panel shell and its MM handle are retired; the
+// panel rendered in no view and every part it held was already gone.
+// Guard: tests/snapshot_panels/test_minimap_panel_shell_retired.py.
 
 function _updateGameClock(p) {
   const s = (typeof p.game_time_s === "number") ? p.game_time_s : null;
@@ -296,7 +295,8 @@ function renderMinimap(p) {
   // envelope rewrote it and restarted its heart through a forced reflow,
   // and the first one started a 1 s age timer for the page's life.
   // Guard: tests/snapshot_panels/test_minimap_state_line_retired.py.
-  state.lastTouch.minimap = Date.now() / 1000;
+  // S144-U-264: the staleness stamp for the retired shell's sweep row is
+  // gone with the shell (main.js applyStaleness sweeps the kept three).
 }
 
 // Lightweight ephemeral burst above the KDA pill - kill/assist/death
@@ -336,7 +336,6 @@ function _currentSpellCd(key) {
 
 
 export {
-  MM,
   renderMinimap,
   _tickSpellCooldowns,
   _updateGameClock, _applyGamePhase,

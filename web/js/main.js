@@ -31,7 +31,7 @@ import { renderCallouts, renderLead } from './panels/callouts.js';
 import { startPersonalContextPolling } from './panels/personal_context.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
-import { MM, renderMinimap, _tickSpellCooldowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS } from './panels/map_state.js';
+import { renderMinimap, _tickSpellCooldowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS } from './panels/map_state.js';
 // RM-1211: the self-spell cooldown key is called below but was never exported
 // or imported - each call threw a ReferenceError. (Its sibling, the tab-return
 // ZOI redraw, left with the retired minimap canvases, S144-U-258.)
@@ -615,22 +615,22 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // !driveNow for client/sr-without-coach-data). Coach ticks for
     // in-game modes overwrite this with "RC - <champ> - <MODE> - <t>".
     try { document.title = "RC · " + (tag || "client").toUpperCase(); } catch (_) {}
-    // Mode-aware CSS hook for minimap panel (SR underlay only on SR).
-    const mmPanel = document.querySelector(".panel-minimap");
-    if (mmPanel) mmPanel.className = "panel panel-minimap mode-" + tag;
+    // S144-U-264: the Map State panel's mode class hook is retired with the
+    // never-rendered panel shell.
     // body[data-mode] drives mode-scoped layout rules (in-game Adaptation
     // shrink, aftergame panel reassignment, TFT map-state swap, etc.).
     document.body.dataset.mode = tag;
     // Panel title swaps per mode (queue #3 aftergame reassignment).
     //   in-game (sr/aram/arena/brawl/tft):
-    //     MAP STATE / RIGHT NOW / NEXT / STATS
+    //     RIGHT NOW / NEXT / STATS
     //   client (lobby + aftergame):
-    //     WHAT WENT / SESSION SUMMARY / ADVICE / GAME SENSE
+    //     SESSION SUMMARY / ADVICE / GAME SENSE
+    // S144-U-264: the Map State title (MAP STATE / WHAT WENT) is retired
+    // with its never-rendered panel shell.
     const inGame = ["sr","aram","arena","brawl","tft"].includes(tag);
     const titles = inGame
-      ? { mm: "MAP STATE", rn: "RIGHT NOW", nx: "NEXT", adapt: "STATS" }
-      : { mm: "WHAT WENT", rn: "SESSION SUMMARY", nx: "ADVICE", adapt: "GAME SENSE" };
-    const mmT    = el("mm-panel-title");    if (mmT)    mmT.textContent    = titles.mm;
+      ? { rn: "RIGHT NOW", nx: "NEXT", adapt: "STATS" }
+      : { rn: "SESSION SUMMARY", nx: "ADVICE", adapt: "GAME SENSE" };
     const rnT    = el("rn-panel-title");    if (rnT)    rnT.textContent    = titles.rn;
     const nxT    = el("nx-panel-title");    if (nxT)    nxT.textContent    = titles.nx;
     const adaptT = el("adapt-panel-title"); if (adaptT) adaptT.textContent = titles.adapt;
@@ -1760,7 +1760,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       ["right_now",  RN.staleness, RN.root],
       ["next",       NX.staleness, NX.root],
       ["item_build", IB.staleness, IB.root],
-      ["minimap",    MM.staleness, MM.root],
+      // S144-U-264: the never-rendered Map State shell's row is retired.
     ]) {
       const touched = state.lastTouch[panelKey];
       if (!touched) {

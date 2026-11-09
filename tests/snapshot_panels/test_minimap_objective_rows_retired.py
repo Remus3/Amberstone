@@ -31,6 +31,10 @@ staleness tag (MM.root / MM.staleness feed the CADENCE sweep), the spell
 cooldown tick that feeds the header summoner-spell pill, renderMinimap's
 live half (body[data-phase], state.lastTouch.minimap), the shared .obj-ico
 rule the header vision pill uses.
+
+S144-U-264 retired the shell itself and its lastTouch stamp; those two
+controls became the subject of test_minimap_panel_shell_retired.py, and
+the anchor below reads the kept #right-now neighbour instead.
 """
 import re
 from pathlib import Path
@@ -78,11 +82,8 @@ _DRIVE = r"""async () => {
   out.before = document.querySelectorAll(sel).length;
   out.rowRects = Array.from(document.querySelectorAll(sel))
     .reduce((n, e) => n + e.getClientRects().length, 0);
-  out.panel = !!document.getElementById('minimap');
-  out.staleness = !!document.querySelector('.staleness[data-for="minimap"]');
   out.exportsTick = ('_tickObjectiveCountdowns' in m);
   out.exportsSpellTick = (typeof m._tickSpellCooldowns === 'function');
-  s.state.lastTouch.minimap = 0;
   // Count only records whose target is (inside) a retired row node.
   out.rowMutations = 0;
   const obs = new MutationObserver((list) => {
@@ -108,7 +109,6 @@ _DRIVE = r"""async () => {
   await new Promise((r) => setTimeout(r, 1250));
   obs.disconnect();
   out.phase = document.body.dataset.phase ?? null;
-  out.touched = s.state.lastTouch.minimap > 0;
   // CSSOM walk through dashboard.css's @import chain.
   out.rules = [];
   out.sheets = 0;
@@ -196,11 +196,9 @@ def test_counter_control_the_cssom_walk_reads_the_kept_icon_rule(drive):
     assert drive["visPillRule"] is True, drive
 
 
-def test_positive_control_the_shell_and_live_half_stay(drive):
-    assert drive["panel"] and drive["staleness"], drive
+def test_positive_control_the_live_half_stays(drive):
     assert drive["exportsSpellTick"] is True, drive
     assert drive["phase"] == "mid", drive
-    assert drive["touched"] is True, drive
 
 
 def _live_web_text():
@@ -232,8 +230,8 @@ def test_anchor_the_name_scan_reads_real_files():
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
     html = files["web/index.html"]
-    assert 'id="minimap"' in html
-    assert 'data-for="minimap"' in html
+    assert 'id="right-now"' in html
+    assert 'data-for="right-now"' in html
     assert 'class="obj-ico"' in html
     ms = files["web/js/panels/map_state.js"]
     assert "setInterval(_tickSpellCooldowns, 1000);" in ms

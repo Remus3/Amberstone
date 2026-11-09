@@ -111,7 +111,8 @@ def _open(mock_server, pw_browser, overlay: bool):
     ("right_now", "right-now", 4, 12),
     ("next", "next", 16, 48),
     ("item_build", "item-build", 90, 300),
-    ("minimap", "minimap", 4, 12),
+    # S144-U-264: the never-rendered #minimap shell and its sweep row are
+    # retired (test_minimap_panel_shell_retired.py).
 ])
 def test_dashboard_panel_dim_is_gentle_and_badged(
         mock_server, pw_browser, key, pid, stale_at, severe_at):

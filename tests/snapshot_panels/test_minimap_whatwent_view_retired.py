@@ -23,9 +23,10 @@ no rendered surface; that payload is left as is and filed as a FUTURE row
 for the Post Game Review reframe rather than relocated here by taste.
 
 The objective rows stayed here; S144-U-262 retired them separately
-(test_minimap_objective_rows_retired.py). The panel shell stays (the
-CADENCE sweep reads MM.root). The positive controls pin that the
-neighbouring Right Now renders are untouched.
+(test_minimap_objective_rows_retired.py). The panel shell stayed until
+S144-U-264 retired it too (test_minimap_panel_shell_retired.py). The
+positive controls pin that the neighbouring Right Now renders are
+untouched.
 """
 from pathlib import Path
 
@@ -73,8 +74,6 @@ _DRIVE = r"""async () => {
     '#mm-whatwent-view, .what-went-view, .what-went-section, '
     + '.what-went-title, .what-went-list, #ww-good, #ww-bad, .ww-empty'
   ).length;
-  out.panel = !!document.getElementById('minimap');
-  out.staleness = !!document.querySelector('.staleness[data-for="minimap"]');
   return out;
 }"""
 
@@ -121,11 +120,6 @@ def test_positive_control_the_neighbour_renders_are_untouched(drive):
     assert drive["statsExported"] is True, drive
 
 
-def test_positive_control_the_panel_shell_stays(drive):
-    assert drive["panel"] is True, drive
-    assert drive["staleness"] is True, drive
-
-
 _NAMES = (
     "renderWhatWent", "mm-whatwent-view", "what-went-view",
     "what-went-section", "what-went-title", "what-went-list",
@@ -155,7 +149,7 @@ def test_anchor_the_name_scan_reads_real_files():
     # files by finding the live neighbours of the retired parts.
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
-    assert 'id="minimap"' in files["web/index.html"]
+    assert 'id="right-now"' in files["web/index.html"]
     assert "function renderGameSense(" in files["web/js/panels/right_now.js"]
     assert "renderGameSense(p);" in files["web/js/main.js"]
     assert "#stats-view { display: none; }" in files[

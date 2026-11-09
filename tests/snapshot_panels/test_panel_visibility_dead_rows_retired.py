@@ -48,6 +48,11 @@ KEPT = [
     "am-spike-curve", "am-spike-markers", "am-ward-heat",
     "aram-balance-panel",
 ]
+# S144-U-264 retired the #minimap node itself
+# (test_minimap_panel_shell_retired.py); the premise reads the rest, and
+# pins that minimap is not served at all. RETIRED still drives the row and
+# old-blob cases below.
+SERVED_RETIRED = [i for i in RETIRED if i != "minimap"]
 CONTEXTS = ["in-game-sr", "in-game-aram", "in-game-arena", "in-game-tft",
             "out-game"]
 
@@ -99,7 +104,8 @@ def test_premise_the_retired_ids_render_in_no_view(settings_page):
       const { VIEW_IDS } = await import('/js/lib/state.js');
       const b = document.body;
       const keep = { view: b.dataset.view, mode: b.dataset.mode };
-      const out = { views: VIEW_IDS.length, inMain: {}, boxes: {} };
+      const out = { views: VIEW_IDS.length, inMain: {}, boxes: {},
+                    minimapNode: !!document.getElementById('minimap') };
       for (const id of ids) {
         const n = document.getElementById(id);
         out.inMain[id] = !!n && !!n.closest('body > main');
@@ -119,11 +125,12 @@ def test_premise_the_retired_ids_render_in_no_view(settings_page):
       if (keep.mode === undefined) delete b.dataset.mode;
       else b.dataset.mode = keep.mode;
       return out;
-    }""", RETIRED)
+    }""", SERVED_RETIRED)
     assert not errors, errors[:3]
     assert got["views"] >= 12, got
-    assert got["inMain"] == {i: True for i in RETIRED}, got["inMain"]
-    assert got["boxes"] == {i: 0 for i in RETIRED}, got["boxes"]
+    assert got["minimapNode"] is False, got
+    assert got["inMain"] == {i: True for i in SERVED_RETIRED}, got["inMain"]
+    assert got["boxes"] == {i: 0 for i in SERVED_RETIRED}, got["boxes"]
 
 
 def test_every_tab_lists_only_the_panels_a_view_can_show(settings_page):

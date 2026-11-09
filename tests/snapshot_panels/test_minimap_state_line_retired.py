@@ -30,6 +30,10 @@ poll (active_match.js), which this does not touch.
 The zone-pill assertions are the positive control: they fail if
 renderMinimap stops reaching _updateZone, so the retirement cannot pass by
 breaking the live half.
+
+S144-U-264 retired the panel shell and the lastTouch stamp that the
+CADENCE sweep read for it (test_minimap_panel_shell_retired.py); the
+kept per-render writes are the zone pill and body[data-phase].
 """
 from pathlib import Path
 
@@ -47,7 +51,6 @@ _DRIVE = r"""async () => {
   if (!url || !surl) return {err: 'map_state.js or state.js not loaded'};
   const m = await import(url);
   const s = await import(surl);
-  s.state.lastTouch.minimap = 0;
   const desc = Object.getOwnPropertyDescriptor(
     HTMLElement.prototype, 'offsetWidth');
   let reads = 0;
@@ -92,7 +95,7 @@ _DRIVE = r"""async () => {
   const pill = document.getElementById('zone-pill');
   out.pillClass = pill ? pill.className : null;
   out.pillText = (document.getElementById('zone-label') || {}).textContent;
-  out.touched = s.state.lastTouch.minimap > 0;
+  out.phase = document.body.dataset.phase ?? null;
   return out;
 }"""
 
@@ -146,10 +149,11 @@ def test_positive_control_the_zone_pill_still_reads_your_position(drive):
     assert drive["pillText"] == "\u2713 SAFE", drive
 
 
-def test_positive_control_render_minimap_still_stamps_its_panel(drive):
-    # S144-U-262 retired the objective rows this used to read; the
-    # CADENCE sweep's freshness stamp is the kept per-render write.
-    assert drive["touched"] is True, drive
+def test_positive_control_render_minimap_still_stamps_the_phase(drive):
+    # S144-U-262 retired the objective rows this used to read and
+    # S144-U-264 the CADENCE stamp after them; body[data-phase] is the
+    # kept per-render write besides the zone pill.
+    assert drive["phase"] == "early", drive  # game_time_s 600 < 900
 
 
 _NAMES = (
@@ -183,7 +187,7 @@ def test_anchor_the_name_scan_reads_real_files():
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
     assert 'id="zone-pill"' in files["web/index.html"]
-    assert 'data-for="minimap"' in files["web/index.html"]
+    assert 'data-for="right-now"' in files["web/index.html"]
     assert "function _updateZone(" in files["web/js/panels/map_state.js"]
     assert "(function setupMinimapPoller()" in files["web/js/main.js"]
     assert "/api/vision-state" in files["web/js/panels/active_match.js"]

@@ -73,7 +73,8 @@ def test_anchor_the_scans_read_real_files():
     # files by finding the live neighbours of the retired parts.
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
-    assert 'data-for="minimap"' in files["web/index.html"]
+    # S144-U-264 retired the #minimap shell; the kept neighbours anchor.
+    assert 'data-for="right-now"' in files["web/index.html"]
     assert 'id="zone-pill"' in files["web/index.html"]
     assert "function renderMinimapCanvases(" in files[
         "web/js/panels/map_state.js"]
@@ -89,6 +90,7 @@ _DOM = r"""() => {
   return {
     panel: !!p,
     staleness: !!document.querySelector('.staleness[data-for="minimap"]'),
+    neighbour: !!document.querySelector('.staleness[data-for="right-now"]'),
     retired: document.querySelectorAll(
       '#mm-img-wrap, #mm-img, #mm-img-caption, .minimap-img-wrap, '
       + '.minimap-img-caption, #minimap img').length,
@@ -115,7 +117,9 @@ def test_the_served_page_has_no_crop_image(mock_server, pw_browser, mode):
         page.close()
         ctx.close()
     assert not errors, errors[:3]
-    # Positive control: the panel and its staleness tag are served
-    # (S144-U-262 retired its objective rows).
-    assert got["panel"] and got["staleness"], got
+    # The panel and its staleness tag were the positive control until
+    # S144-U-264 retired the shell (test_minimap_panel_shell_retired.py);
+    # the selector count is anchored by the kept neighbour below.
+    assert got["panel"] is False and got["staleness"] is False, got
     assert got["retired"] == 0, got
+    assert got["neighbour"] is True, got

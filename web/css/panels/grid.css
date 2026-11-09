@@ -16,26 +16,16 @@ main {
 /* Explicit grid placement (post-swap):
  *   col 1 (left)   : NEXT (row 1) + STATS (row 2)
  *   col 2 (center) : RIGHT NOW (row 1) + ITEM BUILD (row 2)
- *   col 3 (right)  : MAP STATE (spans both rows) */
+ *   col 3 (right)  : empty - S144-U-264 retired the never-rendered MAP
+ *                    STATE panel shell (its placement, its body's flex
+ *                    column and scrollbar rules) with its markup. */
 .panel-next       { grid-column: 1; grid-row: 1; }
 .panel-adaptation { grid-column: 1; grid-row: 2; }
 .panel-right-now  { grid-column: 2; grid-row: 1; }
 .panel-item-build { grid-column: 2; grid-row: 2; }
-.panel-minimap    { grid-column: 3; grid-row: 1 / span 2; }
-
-.minimap-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;     /* left-column panel spans 2 rows - content can exceed height */
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
 
 /* The match-phase strip (S144-U-254) is retired: it sat in #minimap,
  * which renders in no view. body[data-phase] itself stays live. */
-.minimap-body::-webkit-scrollbar { width: 6px; }
-.minimap-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 /* S144-U-256: the MAP STATE heartbeat line (its pill, heart, counts and
  * age, and their keyframes) is retired: it sat in #minimap, which
  * renders in no view. */

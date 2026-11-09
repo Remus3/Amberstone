@@ -9,7 +9,6 @@ export const state = {
     right_now: 0,
     next: 0,
     item_build: 0,
-    minimap: 0,
   },
   latest: {},          // mode -> latest coaching payload cache
   lastSseTs: 0,        // ms timestamp of last SSE event (dedup vs. HTTP fallback)
@@ -27,7 +26,7 @@ export const CADENCE = {
   right_now:  { stale: 4,   severe: 12 },
   next:       { stale: 16,  severe: 48 },
   item_build: { stale: 90,  severe: 300 },
-  minimap:    { stale: 4,   severe: 12 },
+  // S144-U-264: the retired Map State shell's minimap key is gone.
 };
 
 // All navigable view IDs (matches data-view attribute and URL hash).

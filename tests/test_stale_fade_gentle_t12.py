@@ -87,9 +87,12 @@ def test_cadence_thresholds_unchanged():
         for m in re.finditer(
             r"^\s*(\w+):\s*\{\s*stale:\s*(\d+),\s*severe:\s*(\d+)\s*\}", js, re.M)
     }
+    # S144-U-264: the never-rendered Map State shell's minimap key is
+    # retired with the shell (tests/snapshot_panels/
+    # test_minimap_panel_shell_retired.py); the kept three are unchanged.
     assert got == {
         "right_now": (4, 12), "next": (16, 48),
-        "item_build": (90, 300), "minimap": (4, 12),
+        "item_build": (90, 300),
     }
 
 

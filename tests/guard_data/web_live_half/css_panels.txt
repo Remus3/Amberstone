@@ -55,17 +55,17 @@ c821d26812fc587f8f7552032be97a5bcbf8341fa412db19659ef80c5d8f07e2  web/css/panels
 
 d9d3565c5af511fa7260b82b684af5a8d85d15a66ceb9a62995670010075a2b5  web/css/panels/duration_winrate.css
 
-bdbcc6b72508198299bf6b30ecf7327d5de64de8b2d1ba9f075b3b23a979bdcf  web/css/panels/grid.css
+f27aa6fd978c006b61a5c78374e1920cfbb75adc47d095e9069c7c325e8f254a  web/css/panels/grid.css
 
 8b17234b566b78c7bec8a5b0f369cf171b471d6f5a75c2a8443b8b756af659b0  web/css/panels/home.css
 
-390c8807d61957d78e0b4750a4ea4439a812ab71b6c560f7fd138eb2e2e2dfb0  web/css/panels/input_activity.css
+ca1e033122eeb38b8de1dde9ac2e01a774aece8e7db3aafb7e29bff4b871a3fe  web/css/panels/input_activity.css
 
 f3c612820c3774e3d0e28c4e80417b6a4e6216e2801c809eaa07a57a19422222  web/css/panels/item_build.css
 
 af0ddbca08ae5bfa096546c59c86d809f385efab058ad9556fbd4718984fc218  web/css/panels/last_match.css
 
-e32e5481666bc9076606d98b275c415c6a49b976d278fc0f704f527c8e245c70  web/css/panels/map_state.css
+e0e885f10e07a2c0f05ffa61401787b803ce9a6edbf246b04c5b0455c9466f89  web/css/panels/map_state.css
 
 5b2ac2ccaf32b94c2616a9034118e8cded2c8dce8c250f71fbbc7efbb735dbb5  web/css/panels/next.css
 

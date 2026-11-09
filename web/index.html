@@ -416,29 +416,14 @@
   </section>
 
   <main aria-label="Coaching panels">
-    <section id="minimap" class="panel panel-minimap">
-      <div class="panel-head">
-        <span class="panel-title" id="mm-panel-title">MAP STATE</span>
-        <span class="staleness" data-for="minimap">-</span>
-      </div>
-      <div class="panel-body minimap-body">
-        <!-- S144-U-256 retired the MAP STATE heartbeat chip and the
-             vision-tracker dot canvas, S144-U-257 the live crop image and
-             its caption, and S144-U-258 the ZOI / position canvases; this
-             panel renders in no view (S144-U-246). The header zone pill
-             keeps the ZOI read. -->
-        <!-- S144-U-255: the item-value bar (#gold-diff) moved to the Active
-             Match MAP pane; this panel renders in no view. -->
-        <!-- Tower/score/game-time chips removed 2026-04-23 - all three
-             signals live on the header row 2 group already, no value in
-             duplicating them inside the map panel. -->
-        <!-- S144-U-262 retired the Dragon / Baron / Herald objective rows
-             and their 1 s countdown tick; this panel renders in no view.
-             The overlay objective chips carry the countdowns. -->
-        <!-- S144-U-260 retired the client-mode aftergame bullets view and
-             its per-envelope list rebuild; this panel renders in no view. -->
-      </div>
-    </section>
+    <!-- S144-U-264: the Map State panel shell (MAP STATE title, staleness
+         tag, empty body) is retired. It sat here in <main>, which renders
+         in no view and not in the overlay shell (S144-U-246), and every
+         part it held had been retired by S144-U-254..U-262: the item-value
+         bar moved to the Active Match MAP pane (U-255), the header zone
+         pill keeps the ZOI read, the overlay objective chips keep the
+         countdowns. Guard:
+         tests/snapshot_panels/test_minimap_panel_shell_retired.py. -->
 
     <section id="right-now" class="panel panel-right-now">
       <div class="panel-head">

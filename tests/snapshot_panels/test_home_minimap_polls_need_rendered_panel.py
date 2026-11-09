@@ -29,6 +29,13 @@ test_minimap_crop_image_retired.py). So this module now pins:
 - a positive control: the counter does count a fetch of either route, so
   a zero above is not a blind counter.
 Requests are counted in the page from ANY caller by wrapping window.fetch.
+
+S144-U-264 retired the #minimap shell itself
+(test_minimap_panel_shell_retired.py). The premise now reads the panel's
+parent: no node is served, the top-level <main> has no layout box in any
+VIEW_ID, and in the overlay shell it only wraps the #right-now widget
+mounts; "rendered" below means that <main> has a box (forced by
+show_coaching_main).
 """
 import json
 
@@ -117,7 +124,8 @@ _COUNT_JS = r"""
 _PANEL_JS = r"""
 () => ({
   view: document.body.dataset.view,
-  rendered: document.getElementById('minimap').getClientRects().length > 0,
+  panel: !!document.getElementById('minimap'),
+  rendered: document.querySelector('body > main').getClientRects().length > 0,
   polls: Object.assign({}, window.__mmPolls),
 })
 """
@@ -175,33 +183,41 @@ def _close(page, ctx, mock_server):
 def test_no_view_and_no_shell_renders_the_map_state_panel(
     mock_server, pw_browser
 ):
-    """The premise: #minimap has no layout box in any VIEW_ID or in the
-    overlay shell. If a view starts rendering it, re-decide what the
-    panel shows; update this pin."""
+    """The premise: #minimap is not served (S144-U-264), the <main> it
+    sat in has no layout box in any VIEW_ID, and in the overlay shell
+    <main> is only the wrapper for the #right-now widget mounts (no other
+    panel in it has a box). If a view starts rendering <main>, re-decide
+    what it shows; update this pin."""
     ctx, page, errors, _crop, _vs_hits = _open(pw_browser, mock_server,
                                                shown=False)
     try:
         got = page.evaluate("""async () => {
           const { VIEW_IDS } = await import('/js/lib/state.js');
-          const p = document.getElementById('minimap');
+          const p = document.querySelector('body > main');
           const b = document.body;
           const keep = b.dataset.view;
-          const out = {};
+          const out = {views: {}};
+          out.panelNode = !!document.getElementById('minimap');
           for (const v of VIEW_IDS) {
             b.dataset.view = v;
-            out[v] = p.getClientRects().length;
+            out.views[v] = p.getClientRects().length;
           }
           b.dataset.view = keep;
           b.dataset.shell = 'overlay';
-          out.overlay_shell = p.getClientRects().length;
+          out.overlayPanels = Array.from(p.children)
+            .filter((e) => e.getClientRects().length > 0)
+            .map((e) => e.id);
           delete b.dataset.shell;
           return out;
         }""")
     finally:
         _close(page, ctx, mock_server)
     assert not errors, errors[:3]
-    assert len(got) >= 13, got  # 12 views + the overlay shell
-    assert all(n == 0 for n in got.values()), got
+    assert got["panelNode"] is False, got
+    assert len(got["views"]) >= 12, got
+    rendered = {k: n for k, n in got["views"].items() if n}
+    assert rendered == {}, rendered
+    assert got["overlayPanels"] == ["right-now"], got
 
 
 def test_a_hidden_panel_sends_neither_poll(mock_server, pw_browser):
@@ -228,7 +244,7 @@ def test_a_rendered_panel_sends_neither_poll_either(mock_server, pw_browser):
     finally:
         _close(page, ctx, mock_server)
     assert not errors, errors[:3]
-    assert got["rendered"], got
+    assert got["rendered"] and got["panel"] is False, got
     assert got["polls"] == {"crop": 0, "vs": 0}, got
     assert crop.hits == 0 and vs.hits == 0, (crop.hits, vs.hits)
 

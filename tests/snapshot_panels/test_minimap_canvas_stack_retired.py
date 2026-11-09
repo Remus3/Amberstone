@@ -77,8 +77,7 @@ def test_anchor_the_scans_read_real_files():
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
     html = files["web/index.html"]
-    assert 'id="minimap"' in html
-    assert 'data-for="minimap"' in html
+    # S144-U-264 retired the #minimap shell; the kept neighbours anchor.
     assert 'id="zone-pill"' in html
     assert 'class="mm-zoi-canvas" id="am-zoi-canvas"' in html
     ms = files["web/js/panels/map_state.js"]
@@ -127,18 +126,20 @@ def test_the_served_page_has_no_canvas_stack(mock_server, pw_browser, mode):
         page.close()
         ctx.close()
     assert not errors, errors[:3]
-    # Positive controls: the panel shell, its staleness tag (S144-U-262
-    # retired its objective rows) and the overlay ZOI canvas (shared
-    # class) are still served.
-    assert got["panel"] and got["staleness"] and got["amZoi"], got
+    # Positive control: the overlay ZOI canvas (shared class) is still
+    # served. S144-U-264 retired the panel shell and its staleness tag
+    # (test_minimap_panel_shell_retired.py), so no panel canvas can exist.
+    assert got["amZoi"], got
+    assert got["panel"] is False and got["staleness"] is False, got
     assert got["retired"] == 0, got
-    assert got["panelCanvases"] == 0, got
+    assert got["panelCanvases"] == -1, got
 
 
 # Drives renderMinimapCanvases with a deep-enemy value shape (three enemies
 # stacked on you, one ally far away) and counts every canvas the call
 # creates or opens. `forceShown` forces the #minimap panel on screen, so on
-# the pre-fix tree the paint ran; `tabHidden` reports document.hidden true,
+# the pre-fix tree the paint ran (S144-U-264 removed the panel node, so it
+# now forces only the hidden <main> on); `tabHidden` reports document.hidden true,
 # so on the pre-fix tree the call deferred before the zone pill.
 _DRIVE = """async ({forceShown, tabHidden}) => {
   const url = performance.getEntriesByType('resource')

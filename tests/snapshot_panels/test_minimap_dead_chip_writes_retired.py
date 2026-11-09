@@ -159,8 +159,7 @@ def test_anchor_the_scans_read_the_live_neighbours():
     js = MAP_STATE.read_text(encoding="utf-8")
     css = ITEM_BUILD.read_text(encoding="utf-8")
     html = (REPO / "web/index.html").read_text(encoding="utf-8")
-    assert "staleness: document.querySelector(" in js
     assert "setInterval(_tickSpellCooldowns, 1000);" in js
     assert "function renderMinimap(p)" in js
     assert ".obj-ico {" in css
-    assert 'id="minimap"' in html
+    assert 'id="right-now"' in html

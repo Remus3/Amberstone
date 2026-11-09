@@ -147,14 +147,14 @@ body[data-zen="1"] #activity-strip,
 body[data-zen="1"] #input-bar {
   display: none;
 }
-/* Re-pin the three surviving panels so the 2-col zen grid actually places
+/* Re-pin the surviving panels so the 2-col zen grid actually places
  * them. The non-zen layout puts NEXT+ADAPT in col 1, RIGHT NOW+ITEM BUILD
  * in col 2, MAP in col 3 - but in zen we only have 2 columns, so MAP at
  * col 3 fell into an auto-created narrow third column and the freed col 1
  * sat empty. (2026-04-26 user-flipped layout regression.) */
 body[data-zen="1"] .panel-right-now  { grid-column: 1; grid-row: 1; }
 body[data-zen="1"] .panel-item-build { grid-column: 1; grid-row: 2; }
-body[data-zen="1"] .panel-minimap    { grid-column: 2; grid-row: 1 / span 2; }
+/* S144-U-264: the retired Map State shell's zen col-2 placement is gone. */
 /* Zen headline can go to 90px; 2 lines at 90 x 1.1 ~ 198. */
 body[data-zen="1"] .panel-right-now .action { max-height: 210px; }
 /* (2026-04-24) DEV PREVIEW banner keeps identical dimensions across zen
@@ -232,7 +232,6 @@ body[data-zone="deep"] .panel-right-now {
 }
 .panel-right-now  .panel-title { color: var(--gold); font-size: 17px; letter-spacing: 0.22em; }
 .panel-next       .panel-title { color: var(--info); }
-.panel-minimap    .panel-title { color: var(--text-dim); }
 .panel-item-build .panel-title { color: var(--text-dim); }
 .panel-adaptation .panel-title { color: var(--text-faint); }
 /* Compact empty state - don't eat vertical space for placeholder em-dashes. */
