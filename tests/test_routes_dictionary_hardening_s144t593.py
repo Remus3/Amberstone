@@ -430,8 +430,8 @@ class RealDataUnchangedTests(unittest.TestCase):
 
     def test_real_items_and_runes_served_verbatim(self):
         for path in (rd._ITEMS_PATH, rd._RUNES_PATH):
-            if not path.is_file():
-                self.skipTest(f"{path.name} not mirrored in this checkout")
+            # Tracked in git: a missing mirror must FAIL (skip-hygiene guard).
+            self.assertTrue(path.is_file(), f"{path.name} is missing from the checkout")
             h = _Handler()
             rd._serve_file(h, path)
             self.assertEqual(h.status, 200, path.name)
@@ -440,8 +440,8 @@ class RealDataUnchangedTests(unittest.TestCase):
     def test_real_augment_icons_all_pass_the_shape_check(self):
         h = _Handler()
         rd._serve_augments(h)
-        if h.status == 404:
-            self.skipTest("cherry_augments.json not present")
+        # cherry_augments.json is tracked: a 404 here must FAIL (skip-hygiene guard).
+        self.assertNotEqual(h.status, 404, "cherry_augments.json is missing")
         self.assertEqual(h.status, 200)
         patch = rd._current_ds_patch()
         raw = json.loads((rd._DS_DATA_DIR / patch / "cherry_augments.json")
@@ -459,8 +459,8 @@ class RealDataUnchangedTests(unittest.TestCase):
             self.assertEqual(out[str(aid)]["rarity"], row.get("rarity") or "")
 
     def test_real_champion_ratings_in_range(self):
-        if not rd._CHAMPS_PATH.is_file():
-            self.skipTest("ddragon_champions.json not mirrored")
+        # Tracked in git: a missing mirror must FAIL (skip-hygiene guard).
+        self.assertTrue(rd._CHAMPS_PATH.is_file(), "ddragon_champions.json is missing")
         h = _Handler()
         rd._serve_champion_tags(h)
         self.assertEqual(h.status, 200)

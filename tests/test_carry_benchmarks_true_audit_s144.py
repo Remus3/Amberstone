@@ -409,8 +409,8 @@ def test_f9_undecodable_or_deep_file_reads_empty(bench_file, raw):
 def test_real_committed_json_resolves_finite_strict_json():
     real = Path(cb.__file__).resolve().parent.parent / "data" / \
         "coach_reference" / "carry_benchmarks.json"
-    if not real.exists():
-        pytest.skip("committed carry_benchmarks.json absent")
+    # Tracked in git, so present in every checkout: absent must FAIL (skip-hygiene guard).
+    assert real.exists(), "committed carry_benchmarks.json is missing"
     with mock.patch.object(cb, "CARRY_BENCHMARKS_PATH", real), \
             mock.patch.object(cb, "_cache", cb._Cache()):
         for role in ("TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY", None):
