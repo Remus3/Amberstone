@@ -473,7 +473,7 @@ def main():
     window = list(range(WINDOW_LO, WINDOW_HI + 1))
     missing = [e for e in window if e not in set(covered)]
     w(f"4. window coverage: {len(covered):d} of {len(window):d} entries carry at least one event")
-    w("   entries with ZERO events: %s" % (missing if missing else "none"))
+    w("   entries with ZERO events: %s" % (missing or "none"))
     percentry = Counter(entries)
     w(f"   events per entry (min/median/max): {min(percentry.values()):d} / "
       f"{sorted(percentry.values())[len(percentry) // 2]:d} / {max(percentry.values()):d}")
