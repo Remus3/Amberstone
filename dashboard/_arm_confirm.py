@@ -449,11 +449,6 @@ def armed_count() -> int:
         return len(_ARMED)
 
 
-def consumed_count() -> int:
-    with _LOCK:
-        return len(_CONSUMED)
-
-
 def clear() -> None:
     """Drop everything. Test isolation and a hard reset.
 
