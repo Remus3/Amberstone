@@ -1322,7 +1322,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: var(--fs-xs);  /* E11 audit: 14 -> --fs-xs (16) floor */
   min-height: 30px;
 }
-.lv-top8-row.is-placeholder { opacity: 0.5; border: 1px dashed var(--border-soft); }
+/* S144-U-237: the empty slot dropped `opacity: 0.5`. Folded over its
+ * "-" cells (--text) it read 3.93:1 arcane to 4.80 terminal, under AA
+ * 4.5 in five of six themes, and this program rejects dimming text by
+ * opacity. The dashed border still marks the slot as empty; the "-"
+ * paints --text-dim, the same secondary mark as the unranked line and
+ * the party roster's empty slot, still under the --text names. */
+.lv-top8-row.is-placeholder { border: 1px dashed var(--border-soft); }
+.lv-top8-row.is-placeholder .lv-top8-cell { color: var(--text-dim); }
 /* RM-980: the row carried `cursor: pointer`, but no handler is bound
  * to it (_wireTop8Actions wires only [data-action] descendants), so the
  * name / games / role / rank cells showed a hand and did nothing. The
@@ -1333,15 +1340,19 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * without overpowering. is-in-party (green) wins if both apply.
  * RC2 Hextech reskin: lower-priority (offline) member context is also
  * pushed to --dim so it recedes from the glance hierarchy - the online
- * roster reads at full --text weight, offline names sit back at --dim. */
+ * roster reads at full --text weight, offline names sit back at --dim.
+ * S144-U-237: the row dropped `opacity: 0.72` (and its 0.92 hover).
+ * Stacked on the --dim cells it sank the offline name, games, role and
+ * tag to 3.31-4.13:1 and its unranked line to 2.36-2.78, under AA in
+ * every theme, and its icon buttons to 3.98-4.26 in five. The red
+ * tint plus --dim alone keep an offline friend reading dimmer than an
+ * online one: 4.91-6.54 after. */
 .lv-top8-row.is-offline {
   background: color-mix(in srgb, var(--bad) 12%, var(--surface-alt));
-  opacity: 0.72;
 }
 .lv-top8-row.is-offline .lv-top8-name,
 .lv-top8-row.is-offline .lv-top8-cell { color: var(--dim); }
 .lv-top8-row.is-offline:hover {
-  opacity: 0.92;
   border-color: var(--bad);
 }
 .lv-top8-search {
@@ -1402,10 +1413,13 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 /* s162 v16: unranked Top 8 entries fall back to "LVL ### : Unranked"
  * - same italic dim treatment as PARTY's .lv-party-empty so the two
- * panels read consistently when a friend hasn't placed yet. */
+ * panels read consistently when a friend hasn't placed yet.
+ * S144-U-237: --text-dim, not --text-faint, matching the S144-U-202
+ * lift of .lv-party-empty it mirrors: --text-faint read 3.64:1 arcane
+ * to 4.59 terminal on the Top 8 row, under AA in five of six themes. */
 .lv-top8-rank-empty {
   font-size: var(--fs-xs);  /* E11 audit: 14 -> --fs-xs (16) floor */
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-style: italic;
   font-weight: 600;
   letter-spacing: 0;
@@ -1805,12 +1819,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lobby-members-list .lobby-member-row.is-selected {
   border-color: var(--text);
 }
-/* s162 v13: empty PARTY slots - dashed border + 50% opacity, mirroring
+/* s162 v13: empty PARTY slots - dashed border (was + 50% opacity), mirroring
  * the Top 8 placeholder treatment. The renderer always emits 5 row
  * slots; unfilled slots show this style and auto-populate when a
- * member joins (LCU push) or depopulate when they leave. */
+ * member joins (LCU push) or depopulate when they leave.
+ * S144-U-237: `opacity: 0.5` removed. Over the --text-dim "-" mark it
+ * read 2.69:1 hextech to 2.97 terminal; the dashed border and the
+ * transparent fill still mark the slot as empty. */
 .lobby-members-list .lobby-member-row.is-placeholder {
-  opacity: 0.5;
   border: 1px dashed var(--border-soft);
   background: transparent;
   cursor: default;
