@@ -92,6 +92,11 @@ slice 24 (S144-P-626) does the same for the next ten ratchet modules no other la
 changed, one site each (ret505_plr1714_plr0402, return_nan_idiom, return, ruf005_core,
 ruf012_classvar_prod, ruf050_ruf070, ruf056_falsy_dict_get, s324_hash_usedforsecurity_prod,
 sim102_nested_if and sim103), bar rm750_ds_keepalive, which lane/true-audit changed;
+slice 25 (S144-P-627) does the same for the next ten ratchet modules no other lane branch had
+changed, one site each (sim108_ternary, sim115_open_context_prod, small_idiom,
+sorted_all_and_slots_core, sorted_all_and_slots, sorted_all_and_slots_rest,
+sorted_first_min_test_code, startswith_tuple_and_identity_comprehension, ternary_or and
+test_code_misc_idiom);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -140,16 +145,6 @@ _BASELINE = {
     "tests/test_naive_datetime_prod_ratchet_s144p340.py": 1,
     "tests/test_package_portable_atomic_write_rm258.py": 1,
     "tests/test_rm750_ds_keepalive.py": 1,
-    "tests/test_sim108_ternary_ratchet_s144p252.py": 1,
-    "tests/test_sim115_open_context_prod_ratchet_s144p210.py": 1,
-    "tests/test_small_idiom_ratchet_s144p122.py": 1,
-    "tests/test_sorted_all_and_slots_core_ratchet_s144p249.py": 1,
-    "tests/test_sorted_all_and_slots_ratchet_s144p248.py": 1,
-    "tests/test_sorted_all_and_slots_rest_ratchet_s144p250.py": 1,
-    "tests/test_sorted_first_min_test_code_ratchet_s144p168.py": 1,
-    "tests/test_startswith_tuple_and_identity_comprehension_ratchet_s144p114.py": 1,
-    "tests/test_ternary_or_ratchet_s144p143.py": 1,
-    "tests/test_test_code_misc_idiom_ratchet_s144p246.py": 1,
     "tests/test_third_party_notices_pkg.py": 1,
     "tests/test_try401_sim110_furb171_ratchet_s144p148.py": 1,
     "tests/test_type_ignore_code_needless_lambda_ratchet_s144p149.py": 1,
@@ -424,6 +419,16 @@ _FIXED = (
     "tests/test_s324_hash_usedforsecurity_prod_ratchet_s144p212.py",
     "tests/test_sim102_nested_if_ratchet_s144p254.py",
     "tests/test_sim103_ratchet_s144p145.py",
+    "tests/test_sim108_ternary_ratchet_s144p252.py",
+    "tests/test_sim115_open_context_prod_ratchet_s144p210.py",
+    "tests/test_small_idiom_ratchet_s144p122.py",
+    "tests/test_sorted_all_and_slots_core_ratchet_s144p249.py",
+    "tests/test_sorted_all_and_slots_ratchet_s144p248.py",
+    "tests/test_sorted_all_and_slots_rest_ratchet_s144p250.py",
+    "tests/test_sorted_first_min_test_code_ratchet_s144p168.py",
+    "tests/test_startswith_tuple_and_identity_comprehension_ratchet_s144p114.py",
+    "tests/test_ternary_or_ratchet_s144p143.py",
+    "tests/test_test_code_misc_idiom_ratchet_s144p246.py",
 )
 
 
