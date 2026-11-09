@@ -45,8 +45,6 @@ from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer import cc_pressure
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.ehp import (
-    _CC_EFFECTIVENESS_FACTOR,
-    _FIGHT_WINDOW_S,
     compute_ehp,
 )
 

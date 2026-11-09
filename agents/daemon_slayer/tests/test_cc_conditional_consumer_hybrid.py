@@ -50,7 +50,6 @@ from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.ehp import compute_ehp
 from agents.daemon_slayer.hybrid import (
-    HybridResult,
     compute_hybrid,
     rank_items_by_hybrid,
 )
@@ -283,7 +282,6 @@ class ConditionalCcAffectsHybridScoreTests(unittest.TestCase):
         # cc_blended_ehp (conditional CC erosion). hybrid_score scales
         # with cc_blended_ehp when enemy_champions is non-empty.
         from dataclasses import replace
-        from agents.daemon_slayer.ehp import EhpResult
 
         # Use a real compute_ehp run as the baseline shape, then
         # synthesize the conditional-on variant by lowering

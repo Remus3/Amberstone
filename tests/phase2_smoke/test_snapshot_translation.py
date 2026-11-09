@@ -84,7 +84,7 @@ class TestGameEnvelopeTypes(unittest.TestCase):
         )
 
     def test_client_snapshot_default(self):
-        from core.game_snapshot import ClientSnapshot, GameEnvelope, MODE_CLIENT
+        from core.game_snapshot import GameEnvelope, MODE_CLIENT
         env = GameEnvelope.client()
         self.assertEqual(env.mode, MODE_CLIENT)
 

@@ -50,9 +50,7 @@ import unittest
 
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer._effects_types import (
-    ANY,
     ItemHeal,
-    MAGICAL,
 )
 from agents.daemon_slayer.effects import ITEM_EFFECTS
 from agents.daemon_slayer.ehp import (

@@ -108,10 +108,6 @@ Coverage classes:
 
 from __future__ import annotations
 
-import importlib
-import inspect
-import json
-import os
 import unittest
 from pathlib import Path
 
@@ -120,18 +116,10 @@ from agents.daemon_slayer import cc_conditional as cc
 from agents.daemon_slayer.ability_dps import _PER_SPELL_CC_DURATIONS
 from agents.daemon_slayer.cc_conditional import (
     COND_CHANNEL_COMPLETION,
-    COND_DEVOUR_TARGET,
-    COND_DREAM_STACK,
-    COND_DUAL_ENEMY,
-    COND_FRENZY_STATE,
-    COND_GOLD_CARD,
-    COND_MODE_GATED,
     COND_NTH_HIT,
     COND_RANGE_GATED,
     COND_TARGET_DEBUFFED,
-    COND_TARGET_HP_BELOW,
     COND_TERRAIN,
-    COND_TRAVERSE,
     REGISTRY_TOTAL_CHAMPIONS,
     REGISTRY_TOTAL_ENTRIES,
     ConditionalCcEntry,
