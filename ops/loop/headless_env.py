@@ -113,7 +113,7 @@ def _log_refusal(caller: str, reason: str) -> None:
            "reason": reason, "pid": os.getpid()}
     try:
         REFUSAL_LOG.parent.mkdir(parents=True, exist_ok=True)
-        with open(REFUSAL_LOG, "a", encoding="utf-8", newline="\n") as fh:
+        with REFUSAL_LOG.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(json.dumps(row, sort_keys=True) + "\n")
     except OSError:
         pass

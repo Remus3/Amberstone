@@ -498,7 +498,7 @@ def _append_line(path: Path, line: str) -> None:
     the file disagree with every other .jsonl in this tree (memory
     reference_windows_write_text_crlf_byte_count).
     """
-    with open(path, "a", encoding="utf-8", newline="\n") as fh:
+    with path.open("a", encoding="utf-8", newline="\n") as fh:
         fh.write(line)
 
 

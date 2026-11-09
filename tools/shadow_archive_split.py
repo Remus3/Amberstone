@@ -210,7 +210,7 @@ def probe_game_live(fetch: Optional[Callable[[], object]] = None) -> bool:
 
 
 def _write_tmp(path: Path, data: bytes) -> None:
-    with open(path, "wb") as fh:
+    with path.open("wb") as fh:
         fh.write(data)
         fh.flush()
         os.fsync(fh.fileno())

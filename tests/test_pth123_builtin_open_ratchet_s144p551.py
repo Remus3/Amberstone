@@ -70,17 +70,12 @@ _BASELINE: dict[str, int] = {
     "tools/sibling_name_sweep.py": 1,
     "tools/stop_claim_gate.py": 2,
     # unconverted: binary / exclusive-create / handle-held opens and writers that other ratchets (RM-481 LF, RM-258 atomic) read by shape, plus plain reads not yet swept
-    "coaches/_base_coach.py": 1,
-    "core/death_recap.py": 1,
     "core/hud_settings.py": 1,
     "core/live_session_recorder.py": 2,
     "dashboard/routes_diag.py": 1,
     "dashboard/routes_recordings.py": 1,
     "lib/ingest_receipt.py": 1,
-    "ops/loop/headless_env.py": 1,
-    "ops/loop/queue_loop.py": 1,
     "ops/loop/slots.py": 1,
-    "ops/loop/steer.py": 1,
     "tests/_basetemp_guard.py": 1,
     "tests/test_coach_trace_lf_s144p186.py": 1,
     "tests/test_ds_calibration_log_lf_s144p185.py": 1,
@@ -93,10 +88,8 @@ _BASELINE: dict[str, int] = {
     "tft/sources/tft_log.py": 1,
     "tools/build_portable.py": 1,
     "tools/inbox_responder_runner.py": 2,
-    "tools/landing_sampler.py": 2,
     "tools/moon_sync_poller.py": 3,
     "tools/phase_watcher.py": 1,
-    "tools/shadow_archive_split.py": 1,
 }
 _FIXED = (
     "ops/audit/lolmath_ds_sweep/g2_remeasure_probe.py",
@@ -218,6 +211,14 @@ _FIXED = (
     "ops/loop/lane_run_ledger.py",
     "ops/loop/lanes.py",
     "tools/det_coach_shadow_report.py",
+    # S144-P-566: seven files fully clean (five LF or binary appenders and one binary tmp write on Path objects, one child-log append handle): the module-level open name is patched by no test of any of them; core/death_recap.py and coaches/_base_coach.py give up their last baselined row
+    "coaches/_base_coach.py",
+    "core/death_recap.py",
+    "ops/loop/headless_env.py",
+    "ops/loop/queue_loop.py",
+    "ops/loop/steer.py",
+    "tools/landing_sampler.py",
+    "tools/shadow_archive_split.py",
 )
 
 

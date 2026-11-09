@@ -191,7 +191,7 @@ def record(text, *, tier=DEFAULT_TIER, key=None, source="dashboard") -> dict:
     with winmutex.hold(_MUTEX_NAME, timeout=_MUTEX_TIMEOUT_S):
         rec["id"] = _next_id()
         line = (json.dumps(rec, ensure_ascii=True) + "\n").encode("utf-8")
-        with open(STEER_LOG, "ab") as fh:
+        with STEER_LOG.open("ab") as fh:
             fh.write(line)
             fh.flush()
             os.fsync(fh.fileno())

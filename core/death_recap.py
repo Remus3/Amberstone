@@ -450,7 +450,7 @@ def append_row(row: Mapping, path: Optional[Path] = None) -> bool:
         line = json.dumps(row, ensure_ascii=True, separators=(",", ":")) + "\n"
         with _write_lock:
             p.parent.mkdir(parents=True, exist_ok=True)
-            with open(p, "a", encoding="utf-8", newline="\n") as f:
+            with p.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(line)
                 f.flush()
         return True
