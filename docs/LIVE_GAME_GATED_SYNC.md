@@ -800,6 +800,86 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   PARTY / MY TOP-8; if empty, capture the agent's live `/lol-lobby/v2/lobby` read + `_slim_lobby_member`
   output) + eyeball the overlay surface gate `bc4625d8` (companion in lobby/CS, lean HUD once
   liveclient populates). SOURCE: ledger 2026-06-20.
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 122, 2026-11-09, S144-G-109; NOT a tick, NOT a
+  re-open).** Status: the DRAIN SESSION 2026-07-20 record at the top of this file ("ADVANCED WITH
+  RECORDED EVIDENCE") evidenced the lobby payload and the three list renders (queue 1750). Two halves
+  are still owed: (i) the overlay surface-gate eyeball, which no record in this file shows as seen; (ii)
+  a render re-confirm, because RM-326 (LEDGER 1324, 2026-09-04) put a signature gate on the party-list
+  render AFTER that evidence. (1) CITE DRIFT: `bc4625d8` above (and `b9cb0092` on G1-04) do not resolve
+  at HEAD (`git cat-file -t` fails; neither string is in `<git common dir>/filter-repo/commit-map`;
+  cause not measured). Matched by date + subject + files, an inference and not a map: `3439a028c`
+  (2026-06-20, "fix(rc-shell): overlay HUD only on a live game, not a pre-flipped lobby mode_key";
+  touches `rc-shell/src/main.js`, `overlay_state.js`, `test/overlay_state.test.js`; an ancestor of
+  HEAD). For G1-04 the LOBBY1 fix is `a890a5524` (2026-06-08, same method). Current homes: the gate
+  `liveGameFromState` at `rc-shell/src/overlay_state.js:137` (true when `liveclient` is a non-empty,
+  non-array object, OR, since S134 T1 at `:150-157`, when `mode_key` is "tft" and `lcu.phase` is
+  "InProgress": a TFT match leaves `liveclient` empty), `surfaceForMode` `:113`, `resolveSurface`
+  `:119`, `GAME_MODES` `:35-37` (sr, aram, arena, tft, brawl, game); `rc-shell/src/main.js` `pollState`
+  polls `/api/state` (4000 ms socket idle timeout, `:1659`), sets `lastInGame` at `:1667` and calls
+  `refreshSurface` (`:1629-1631`), which reaches `applySurface` (`:1574`). Payload:
+  `lcu/snapshot_shape.py:500-537` builds `state["lobby"]` from `_slim_lobby_member` (`:195`, wire dict
+  at `:248`); `/api/state` carries that snapshot as `lcu` (`dashboard/_state_builder.py:1086`), so the
+  field path is `lcu.lobby.members[]`. Render mounts: `web/index.html:945` `#lv-members-list`, `:987`
+  `#lv-mainchamps-list`, `:1000` `#lv-top8-list`; `_renderPartyMembers` `web/js/main.js:5169` (empty
+  text "no members visible - LCU agent needs to forward lcu.lobby.members[]" at `:5180`, signature
+  `ul.dataset.lvPartySig`), `_renderMainChamps` `:4897`, `_renderTop8` `:6345`. (2) PREDICATE DEFECT,
+  the June "flips to the lean HUD" is no longer the whole rule: `applySurface` layers two persisted
+  settings over the surface. `keepCompanion` (`overlay_state.js:322`, default false `:529`) keeps the
+  companion SHOWN in game, and the overlay content toggle (`overlay.toggle.visible`,
+  `rc-shell/src/overlay_toggle.js:129-137`, applied at `:324-331`) keeps the HUD HIDDEN when OFF. Both
+  live in `<appData>/Amberstone Shell/rc-shell-state.json` (one path, no space before the file name) as
+  `overlay.settings.keepCompanion` and `overlay.toggle.visible`. Baseline read this cycle (idle,
+  read-only): keepCompanion false, toggle.visible true (file mtime 2026-10-31T21:17 local). A re-confirm
+  that does not read them first false-FAILS the moment the operator moves either. (3) OVERLAP: RM-1384
+  (GATE 2, an operator DECISION owed: the overlay window in champ select and loading) may change the
+  champ-select half; if RM-1384 lands a code change, re-read `liveGameFromState` before using the CS
+  half below. PROBE (stated before any game; all reads): before the lobby, read keepCompanion = K and
+  toggle.visible = V from the state file above (absent -> false / true). In a real LCU lobby (phase
+  Lobby), `curl -sk https://127.0.0.1:8888/api/state` -> `lcu.phase`, `lcu.lobby.queue_id`,
+  `len(lcu.lobby.members)`, `lcu.lobby.party_size`, and the KEY NAMES of `lcu.lobby.members[0]`; in the
+  same minute, a DOM read of the lobby view (the rc-shell companion, or headless Chromium on the same
+  origin) -> count of `#lv-members-list li.lobby-member-row:not(.is-placeholder)` (with members
+  non-empty the render always draws `PARTY_MAX_SLOTS` = 5 rows, `web/js/main.js:5033`, and an empty slot
+  is `lobby-member-row is-placeholder`, `:5246-5250`) and whether `#lv-mainchamps-list` /
+  `#lv-top8-list` hold rows. Then the rc-shell window state in lobby, in champ select, and once
+  `liveGameFromState` turns true; from game start until the surface flips, sample the `/api/state`
+  response time every 2 s (`curl -sk -o /dev/null -w "%{time_total}"`). PREDICATE: PASS iff (a) members
+  is non-empty (`party_size` is `len(members)` at `lcu/snapshot_shape.py:535`, so it is no separate
+  check); (b) the non-placeholder row count equals len(members), and the "no members visible" text is
+  ABSENT while members is non-empty; (c) in lobby and champ select (`liveclient` empty and `lcu.phase`
+  not InProgress in the same poll) the companion is shown and the overlay HUD is not; (d) once
+  `liveGameFromState` turns true (`liveclient` non-empty; in TFT, `lcu.phase` InProgress instead), the
+  HUD shows iff V is true, the companion stays shown iff K is true, AND the overlay ON/OFF icon window
+  shows (it shows on the OVERLAY surface whatever V is, `overlay_toggle.js:330`; without it, K true + V
+  false would look exactly like the lobby state and a shell that never flips would pass), within the
+  bound below. BOUND for (d), measured from the code, not a guess: about 10 s when the poll that
+  straddles game start succeeds (up to 4000 ms in flight - a socket idle timeout, `main.js:1659`, not a
+  hard cap - then the base `pollMs` 2000 ms wait, `overlay_state.js:48`, then up to 4000 ms more); about
+  12 s after one failed poll (`nextPollDelay(1, 2000)` = 4000 ms, `overlay_state.js:270-281`); about 24
+  s after two (the wait doubles); and NO fixed ceiling while polls keep failing (each further failure
+  adds up to 4 s in flight plus a wait capped at `pollMaxMs` 15000, `:49`). A just-created overlay
+  window also waits for its ready-to-show before the first show, and that window is created lazily at
+  the flip (`createOverlayWindow`'s one call site, `main.js:1597`), so the first game after a shell
+  launch pays its first paint too. RULE: the row asks whether the surface flips, not how fast, so (d)
+  PASSES on the expected state and records the delay. A timing FAIL needs the surface still wrong 30 s
+  after `liveGameFromState` turns true with every sampled `/api/state` time 4 s or less (30 s covers two
+  failed polls, about 24 s, plus that first paint). If any sample is over 4 s there is no fixed bound: a
+  late flip is the 2026-07-11 slow-poll class, recorded with its delay, NOT a FAIL of this gate; a
+  surface that NEVER flips before the game ends is a miss either way. Halves (c) and (d) both assume no
+  panic hide is active (`resolveSurface` `:119-123` hides both windows), and (d) assumes `mode_key` is
+  in `GAME_MODES`; record both. A lobby of more than 5 members (TFT or custom) is out of scope for half
+  (b): the render draws at most `PARTY_MAX_SLOTS` rows. FAIL on any miss, and on (c) with the HUD up
+  while `mode_key` is pre-flipped and `liveGameFromState` is false (the exact bug `3439a028c` fixed).
+  EVIDENCE CONTRACT: per read, the value (counts, key names, queue_id, surface), the source
+  (`/api/state`, DOM read, window state), an ISO timestamp, and the context (LCU phase, K, V). Record
+  KEY NAMES and COUNTS only, never a `puuid`, `riot_id` or summoner name value (RM-906). SUBSTITUTION
+  CHECK: NOT evidence - the `ui_mock` lobby snapshot (`tests/snapshot_panels/test_lobby_view.py`), the
+  shell unit tests (`rc-shell/test/overlay_state.test.js`,
+  `rc-shell/test/overlay_phase_contract.test.js`), a payload read with no render read, a render read
+  from a different minute than the payload, a `mode_key` value alone (it pre-flips in the lobby), or a
+  browser tab standing in for the rc-shell window on half (c)/(d). Half (c)/(d) is a window-state
+  question, so the glance or a window enumeration IS the test; the compute half answers the wrong
+  question.
 - **G1-03** `[RE-FILED 2026-10-24: CS-SCENARIO -> CS-CAPTURE, draft lobby only]` (was A3) CC-conditional
   pairing UI renders on champ-select (`a685a530`) - ~~needs a CC-pairing lobby to roll; never rolled
   2026-07-04. Rides every champ-select at any gate.~~ **MIS-FILED TAG (lane 9 PREP s133, source read at
