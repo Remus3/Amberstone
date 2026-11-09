@@ -23,10 +23,10 @@ per-cast damage through the full mitigation pipeline.
     burst scorer. NO scoring math is duplicated or moved here.
   * Cast-time / cooldown clock: per-spell ``cast_time`` + per-rank
     ``cooldown`` lists from the patch-pinned
-    ``data/daemon_slayer/<patch>/champion_abilities.json`` (same loader
-    pattern as ``cooldown_watch.py``). The clock starts at 0; each action
-    is stamped with its start time ``t``; the clock advances by the
-    action's cast time after it resolves.
+    ``data/daemon_slayer/<patch>/champion_abilities.json`` (patch from
+    ``current.txt``; ``_load_abilities``). The clock starts at 0; each
+    action is stamped with its start time ``t``; the clock advances by
+    the action's cast time after it resolves.
 
 v1 scope (per the DEPTH spec, which itself flags "not all features
 implemented" on calc.gg):
@@ -50,7 +50,7 @@ implemented" on calc.gg):
   * CAP: the sequence is capped at 60 actions AND the clock at 60s,
     mirroring calc.gg's stated limit. Actions past either cap are dropped.
 
-Fail-soft contract (mirrors ``cooldown_watch`` + the burst walker):
+Fail-soft contract (the same as the burst walker's):
 unknown champion / champion absent from the abilities snapshot yields an
 empty ``hits`` list with a note rather than raising. An empty / all-blank
 sequence yields empty ``hits``.
@@ -156,7 +156,7 @@ class ComboResult:
 def _load_abilities() -> Dict[str, dict]:
     """Read patch + champion_abilities.json once; return the ``data`` map.
 
-    Mirrors ``cooldown_watch._load_abilities`` exactly: read ``current.txt``
+    Patch-pinned and read once at import: read ``current.txt``
     for the patch, then ``<patch>/champion_abilities.json``, return its
     ``data`` dict (champion id -> {slot: [form, ...]}). Fail-soft to ``{}``
     so a missing file degenerates to "use fallback cast times" rather than

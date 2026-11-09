@@ -10,8 +10,8 @@ and resolving cooldowns between actions. NO new scoring math (combo.py
 composes ``compute_burst_damage`` + the patch-pinned cast/cooldown data);
 NO ENGINE_VERSION bump; NO schema lift.
 
-Sibling of ``routes_cooldown_watch.py`` - same cache + fail-soft + status
-discipline. Where the cooldown-watch card surfaces enemy CC windows, this
+Sibling of ``routes_cc_conditional_pressure.py`` - same cache + fail-soft
++ status discipline. Where that chip weighs ally vs enemy CC, this
 route turns RC's single aggregate burst into a per-hit timeline for the
 operator's OWN champion (calc.gg's Action Queue).
 
@@ -72,7 +72,7 @@ Failure modes:
          raises despite the engine's fail-soft contract.
 
 5-min TTL in-process cache keyed on the full normalized request tuple.
-Mirrors routes_cooldown_watch cache discipline, bounded at ``_CACHE_MAX``
+Mirrors routes_cc_conditional_pressure cache discipline, bounded at ``_CACHE_MAX``
 entries with expired entries dropped on write (RM-1329: the key carries
 free-form floats, so it is not a closed set).
 
@@ -84,8 +84,8 @@ Don't-redo:
     cast/cooldown JSON. Do NOT bump ENGINE_VERSION for this route (no
     scoring math moved) and do NOT restart DS :8860 (the engine server
     does not consume this module; the route imports combo in-process on
-    the :8888 dashboard, same as routes_cooldown_watch imports
-    cooldown_watch).
+    the :8888 dashboard, same as routes_cc_conditional_pressure imports
+    cc_pressure).
 """
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ log = logging.getLogger("rc.web_dashboard")
 # label as if it had applied. Same set as routes_ds_sweep (RM-1327).
 _SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
-# 5-min response TTL mirrors routes_cooldown_watch exactly.
+# 5-min response TTL mirrors routes_cc_conditional_pressure exactly.
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()

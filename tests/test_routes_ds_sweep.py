@@ -1,7 +1,7 @@
 """Tests for dashboard/routes_ds_sweep.py - DS stat-sweep graph (competitor
 lift #3, docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
-Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
+Sibling of test_routes_cc_conditional_pressure.py; mirrors its StubHandler pattern.
 The route is a thin wire over
 agents.daemon_slayer.dps_sweep.compute_dps_sweep (covered by
 tests/test_dps_sweep.py); these tests pin the HTTP contract:

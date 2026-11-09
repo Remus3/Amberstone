@@ -14,7 +14,7 @@ shared files; their drift guard lives elsewhere). Here we only guard:
     class + control-strip + rows classes + uses a semantic token.
 
 Grep-based smoke checks - cheap, fast, enough to catch a missing export or
-a renamed id. Mirrors test_cooldown_watch_panel_dom.py.
+a renamed id. Mirrors test_cc_conditional_pressure_panel_dom.py.
 """
 from __future__ import annotations
 

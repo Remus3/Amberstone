@@ -1,7 +1,7 @@
 """Tests for dashboard/routes_ds_knobs.py - DS engine-knobs control panel
 (competitor lift #1, docs/_archive/COMPETITOR_LIFT_2026-05-30.md "Lift 1").
 
-Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
+Sibling of test_routes_cc_conditional_pressure.py; mirrors its StubHandler pattern.
 The route is a thin wire over agents.daemon_slayer.rank.rank_items (the
 in-process DPS scorer, covered by the DS suite); these tests pin the HTTP
 contract: param validation, payload shape, knob echo, budget filter, cache.

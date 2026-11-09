@@ -22,7 +22,7 @@ to invisible:
   - web/css/panels/ds_sweep.css is @import'd into dashboard.css.
 
 Grep-based smoke checks - cheap, fast, enough to catch a missing wire.
-Mirrors test_cooldown_watch_panel_dom.py.
+Mirrors test_cc_conditional_pressure_panel_dom.py.
 
 The orchestrator owns the shared-file wiring (index.html / dashboard.css /
 champ_select.js). The OwnFilesTests below pin THIS agent's own deliverables

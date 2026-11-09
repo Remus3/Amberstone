@@ -110,7 +110,7 @@ from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
 
-# 5-min response TTL mirrors routes_ds_knobs / routes_cooldown_watch.
+# 5-min response TTL mirrors routes_ds_knobs / routes_cc_conditional_pressure.
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()

@@ -1,6 +1,6 @@
 """Tests for dashboard/routes_cc_pairing.py - ally CC-pairing card (CS1).
 
-Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
+Sibling of test_routes_cc_conditional_pressure.py; mirrors its StubHandler pattern.
 The route is a thin wire over agents.daemon_slayer.cc_pairing.compute_cc_pairing
 (covered by agents/daemon_slayer/tests/test_cc_pairing.py); these tests pin
 the HTTP contract: param validation, payload shape, top_n cap, cache.
