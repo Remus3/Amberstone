@@ -161,8 +161,8 @@ def _scale_bbox(bbox, frame_w: int, frame_h: int) -> tuple:
         return tuple(bbox)
     sx = frame_w / base_w
     sy = frame_h / base_h
-    l, t, r, b = bbox
-    return (int(l * sx), int(t * sy), int(r * sx), int(b * sy))
+    left, top, right, bottom = bbox
+    return (int(left * sx), int(top * sy), int(right * sx), int(bottom * sy))
 
 
 def reload_regions() -> None:

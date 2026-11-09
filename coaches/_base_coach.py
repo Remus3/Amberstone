@@ -187,7 +187,7 @@ def parse_fields(text: str, keys: list) -> dict:
     text = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', text)
     text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
     fields: dict = {}
-    raw_lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+    raw_lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
     for line in raw_lines:
         for key in keys:
             if line.lower().startswith(key + ":"):

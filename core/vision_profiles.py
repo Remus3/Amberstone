@@ -498,8 +498,8 @@ def derive_scaled_regions(regions: dict, src_base, dst_base) -> dict:
     for name, box in regions.items():
         if not isinstance(box, (list, tuple)) or len(box) != 4:
             continue
-        l, t, r, b = box
-        out[name] = [int(l * sx), int(t * sy), int(r * sx), int(b * sy)]
+        left, top, right, bottom = box
+        out[name] = [int(left * sx), int(top * sy), int(right * sx), int(bottom * sy)]
     return out
 
 
@@ -613,12 +613,12 @@ def derive_anchored_regions(regions: dict, src_base, dst_base,
             horiz, vert = anchors[name]
         else:
             horiz, vert = classify_anchor(name, box, (src_w, src_h))
-        l, t, r, b = box
+        left, top, right, bottom = box
         out[name] = [
-            _anchor_x(l, horiz, s, src_w, dst_w),
-            _anchor_y(t, vert, s, src_h, dst_h),
-            _anchor_x(r, horiz, s, src_w, dst_w),
-            _anchor_y(b, vert, s, src_h, dst_h),
+            _anchor_x(left, horiz, s, src_w, dst_w),
+            _anchor_y(top, vert, s, src_h, dst_h),
+            _anchor_x(right, horiz, s, src_w, dst_w),
+            _anchor_y(bottom, vert, s, src_h, dst_h),
         ]
     return out
 

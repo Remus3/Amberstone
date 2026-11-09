@@ -387,8 +387,8 @@ def main() -> int:
         print("Bootstrap check: ALL PASS")
         return 0
 
-    errors   = [l for (k, l) in _issues if k in ("ERROR", "MISS")]
-    warnings = [l for (k, l) in _issues if k == "WARN"]
+    errors   = [msg for (k, msg) in _issues if k in ("ERROR", "MISS")]
+    warnings = [msg for (k, msg) in _issues if k == "WARN"]
 
     if warnings and not errors:
         print(f"Bootstrap check: {len(warnings)} WARNING(s) -- app may still run")
