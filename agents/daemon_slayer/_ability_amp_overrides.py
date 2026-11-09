@@ -82,7 +82,7 @@ Two amp bases:
   Jayce W f1 = a per-AA "% AD" modifier mostly BELOW 1.0xAD whose real value is
   the +360% bonus AS the consumer cannot model; Sivir W = an extra-target bounce
   + AS; Nidalee Q f1 = an AA-replacement that converts the AA to a magic
-  missing-HP formula, gated behind a Cougar-form Q recast). Each entry's note
+  missing-HP formula, gated behind a Cougar-form Q cast). Each entry's note
   documents the precise non-fit reason.
 
 Two amp gatings (via ``_amp_multiplier``):
@@ -281,8 +281,9 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
     # Nidalee Q form1 Takedown (Cougar form): empowers the next AA to deal MODIFIED
     # MAGIC damage with a missing-HP scaling (damage_block Min/Max Magic Damage,
     # 75:206% total AD + 40:110% AP). notes: the AA's damage is CONVERTED to magic +
-    # the empowered hit is gated behind a Cougar-form Q recast (not the sustained
-    # physical-AA rotation). This REPLACES the AA's physical damage with a magic
+    # the empowered hit is gated behind a Cougar-form Q cast - Takedown IS that
+    # cast, empowering the next AA within 10 s (not the sustained physical-AA
+    # rotation). This REPLACES the AA's physical damage with a magic
     # formula - it is not a multiplier ON the physical base-AA the consumer scales.
     # INERT: AA-replacement / damage-type conversion, gated off-rotation; belongs in
     # an ability-cast seam, not the base-AA physical damage factor.
@@ -290,7 +291,7 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
         amp_per_rank=(0.0,),
         base="aa",
         note="Takedown CONVERTS the AA to a magic missing-HP formula (not a physical "
-             "base-AA multiplier), gated behind a Cougar-form Q recast; INERT.",
+             "base-AA multiplier), gated behind a Cougar-form Q cast; INERT.",
     ),
 }
 

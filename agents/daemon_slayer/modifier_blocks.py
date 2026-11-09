@@ -40,8 +40,10 @@ Taxonomy (``classify_modifier_kind``):
 * ``target_shred``   - reduces the TARGET's armor / MR / resistances / AD
                        (Nasus E, Corki E, Briar Q, KogMaw Q, JarvanIV Q,
                        Trundle Q). The ONE class with real unconditional
-                       champion-DPS impact that RC does not yet model -
-                       flagged as a future engine slice (its own ENGINE
+                       champion-DPS impact that the damage scorers do not
+                       apply - RC models it only as the fight report's
+                       self-shred uplift (``self_shred``); folding it into
+                       a scorer is a future engine slice (its own ENGINE
                        bump + DS validation), NOT applied here.
 * ``defensive_self`` - damage reduction / bonus resistance on the caster
                        or an ally (Garen W, Alistar R, Galio W, Braum E,

@@ -6,8 +6,8 @@ abilities that reduce a TARGET's own armor / MR (Nasus E, Corki E,
 JarvanIV Q, Wukong Q, Yorick E, Briar Q, Evelynn W, Rumble E, KogMaw Q,
 Renekton E, Rengar R). The classifier makes those blocks queryable but
 computes NOTHING - it deliberately stops short of the DPS impact (see its
-docstring: "the ONE class with real unconditional champion-DPS impact
-that RC does not yet model").
+docstring: "The ONE class with real unconditional champion-DPS impact
+that the damage scorers do not apply").
 
 This module is that deliberate self-shred-DPS slice. Given a champion +
 level + a fixed target armor/MR + the champion's OWN physical/magic DPS
@@ -31,10 +31,12 @@ target to true 0 armor, not into the negative-armor amp branch - that
 branch is for lethality / flat-pen, a different mechanic).
 
 PURELY ADDITIVE + fail-soft: nothing in the live DPS / EHP / ability-DPS
-scorer path imports this. It is the substrate a future deliberate engine
-slice (its own ENGINE bump + DS validation) or a coach surface would
-build on. A champion with no ``target_shred`` block yields a 0.0 uplift
-with an explanatory note and NEVER raises.
+scorer path imports this. Its one importer is ``fight_report`` (served
+on /v2/fight-report), which reports the uplift beside the scorer numbers
+without changing them. Folding it into a scorer is a future deliberate
+engine slice (its own ENGINE bump + DS validation). A champion with no
+``target_shred`` block yields a 0.0 uplift with an explanatory note and
+NEVER raises.
 
 Source-of-truth: the committed abilities snapshot
 ``data/daemon_slayer/<patch>/champion_abilities.json`` via
