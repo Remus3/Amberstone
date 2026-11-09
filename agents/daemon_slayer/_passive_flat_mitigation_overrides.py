@@ -96,7 +96,9 @@ _ASSUMED_FLAT_DR_INSTANCES = 6.0
 # carry a per-rank flat tuple). Mid-game representative: a core defensive spell
 # is typically rank 3-5 by a teamfight; rank 4 (index 3) is the conservative
 # representative pick (NOT max rank). Clamped to the tuple bounds in
-# ``_value_at_level``. Flat (non-rank-scaled) entries ignore it.
+# ``_value_at_level``. Flat (non-rank-scaled) entries ignore it. Kept equal to
+# ``_passive_mitigation_overrides._ASSUMED_ABILITY_RANK`` (guard
+# ``test_assumed_ability_rank_sync_s144d269.py``): retune both or neither.
 _ASSUMED_ABILITY_RANK = 4
 
 
