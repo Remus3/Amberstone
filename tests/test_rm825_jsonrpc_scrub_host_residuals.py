@@ -81,7 +81,7 @@ def _usage(*lines: str, timeout: float = 30.0) -> tuple[int, list[dict], str]:
     proc = subprocess.run(
         [NODE, str(USAGE_JS)], input="".join(f"{ln}\n" for ln in lines),
         capture_output=True, text=True, encoding="utf-8", timeout=timeout,
-        cwd=str(ROOT), env=env,
+        cwd=str(ROOT), env=env, check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     replies = [json.loads(ln) for ln in proc.stdout.splitlines() if ln.strip()]
     return proc.returncode, replies, proc.stderr
@@ -226,7 +226,7 @@ def _js_scrub(text: str) -> str:
     proc = subprocess.run(
         [NODE, "-e", probe, str(USAGE_JS)], input=json.dumps(text),
         capture_output=True, text=True, encoding="utf-8", timeout=30,
-        cwd=str(ROOT),
+        cwd=str(ROOT), check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert proc.returncode == 0, proc.stderr[-400:]
     return json.loads(proc.stdout)

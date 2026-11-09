@@ -54,7 +54,7 @@ def _run_message_file(text: str) -> subprocess.CompletedProcess:
         tmp.write_text(text, encoding="utf-8")
         return subprocess.run(
             [sys.executable, str(GATE), "--message-file", str(tmp)],
-            capture_output=True, text=True, cwd=str(REPO), timeout=120,
+            capture_output=True, text=True, cwd=str(REPO), timeout=120, check=False,
         )
     finally:
         tmp.unlink(missing_ok=True)
@@ -84,7 +84,7 @@ class MessageFileModeTests(unittest.TestCase):
         """A hook that explodes on its own bug must not wedge every commit."""
         r = subprocess.run(
             [sys.executable, str(GATE), "--message-file", "does-not-exist.msg"],
-            capture_output=True, text=True, cwd=str(REPO), timeout=60,
+            capture_output=True, text=True, cwd=str(REPO), timeout=60, check=False,
         )
         self.assertEqual(r.returncode, 0, "an unreadable message file must fail OPEN")
 

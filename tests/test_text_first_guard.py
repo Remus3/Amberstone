@@ -72,7 +72,7 @@ def _run(stdin: str, tmp_path: Path, **env_over: str) -> subprocess.CompletedPro
     return subprocess.run(
         [sys.executable, str(root / "tools" / SCRIPT.name)], input=stdin,
         cwd=tmp_path, env=_env(**env_over),
-        capture_output=True, text=True, encoding="utf-8", timeout=30,
+        capture_output=True, text=True, encoding="utf-8", timeout=30, check=False,
     )
 
 
@@ -154,7 +154,7 @@ def test_bom_payload_is_read_under_a_cp1252_console(tmp_path):
     proc = subprocess.run(
         [sys.executable, str(root / "tools" / SCRIPT.name)], input=raw, cwd=tmp_path,
         env=_env(PYTHONIOENCODING="cp1252", PYTHONUTF8="0"), capture_output=True,
-        timeout=30)
+        timeout=30, check=False)
     assert proc.returncode == 0, proc.stderr
     lines = proc.stdout.decode("ascii").splitlines()
     assert len(lines) == 1, proc.stdout

@@ -68,12 +68,12 @@ def _staged(tmp_path: Path, name: str, text: str) -> Path:
 def test_a_staged_smart_quote_is_named_under_a_legacy_locale(tmp_path):
     repo = _staged(tmp_path, "q.md", "say " + _RDQUO + "hi" + _RDQUO + "\n")
     probe = subprocess.run([sys.executable, "-c", "import locale; print(locale.getencoding())"],
-                           capture_output=True, timeout=30, env=_legacy_env())
+                           capture_output=True, timeout=30, env=_legacy_env(), check=False)
     encoding = probe.stdout.decode("ascii", errors="replace").strip()
     if encoding.replace("-", "").lower() in ("utf8", ""):
         pytest.skip(f"this host's legacy child still decodes {encoding or 'nothing'}")
     proc = subprocess.run([sys.executable, str(GATE)], input=b"git commit", cwd=str(repo),
-                          env=_legacy_env(), capture_output=True, timeout=120)
+                          env=_legacy_env(), capture_output=True, timeout=120, check=False)
     err = proc.stderr.decode("ascii", errors="replace")
     assert "itself failed" not in err and "Traceback" not in err, (encoding, err[-1500:])
     assert proc.returncode == 2, (encoding, proc.returncode, err[-1500:])

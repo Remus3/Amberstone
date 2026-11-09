@@ -48,6 +48,10 @@ fleet_kit_v12_race_guards, phase3_setup_rerun_bytes_rm820, rewrite_sha_citations
 rm875_apply_mode_modifiers_archetype_dispatch, sibling_sweep_prefilter_f2 and
 sibling_sweep_run_record_rm688); loop_concurrency (it carries the SHARED_SHA256 pin) and
 package_portable_atomic_write stay in the baseline;
+slice 15 (S144-P-617) does the same for the seven two-site files no other lane branch had changed
+(precommit_gate_cp1252_rm818, precommit_gate_message_file, rm825_jsonrpc_scrub_host_residuals,
+rm830_quoted_path_sweep, session_intents_true_audit_s144t169, text_first_guard and
+tft_meta_provenance_rm846), 14 sites in all;
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -152,8 +156,6 @@ _BASELINE = {
     "tests/test_plr5501_collapsible_else_if_ratchet_s144p128.py": 1,
     "tests/test_plw2901_loop_var_overwrite_ratchet_s144p259.py": 1,
     "tests/test_precedence_and_dead_branch_ratchet_s144p112.py": 1,
-    "tests/test_precommit_gate_cp1252_rm818.py": 2,
-    "tests/test_precommit_gate_message_file.py": 2,
     "tests/test_private_exception_name_ratchet_s144p512.py": 1,
     "tests/test_pt001_fixture_parens_ratchet_s144p234.py": 1,
     "tests/test_pt012_raises_block_ratchet_s144p184.py": 1,
@@ -178,14 +180,11 @@ _BASELINE = {
     "tests/test_return_nan_idiom_ratchet_s144p172.py": 1,
     "tests/test_return_ratchet_s144p144.py": 1,
     "tests/test_rm750_ds_keepalive.py": 1,
-    "tests/test_rm825_jsonrpc_scrub_host_residuals.py": 2,
-    "tests/test_rm830_quoted_path_sweep.py": 2,
     "tests/test_ruf005_core_ratchet_s144p271.py": 1,
     "tests/test_ruf012_classvar_prod_ratchet_s144p211.py": 1,
     "tests/test_ruf050_ruf070_ratchet_s144p516.py": 1,
     "tests/test_ruf056_falsy_dict_get_ratchet_s144p520.py": 1,
     "tests/test_s324_hash_usedforsecurity_prod_ratchet_s144p212.py": 1,
-    "tests/test_session_intents_true_audit_s144t169.py": 2,
     "tests/test_sibling_name_sweep.py": 6,
     "tests/test_sim102_nested_if_ratchet_s144p254.py": 1,
     "tests/test_sim103_ratchet_s144p145.py": 1,
@@ -200,8 +199,6 @@ _BASELINE = {
     "tests/test_status_helper_rc2.py": 1,
     "tests/test_ternary_or_ratchet_s144p143.py": 1,
     "tests/test_test_code_misc_idiom_ratchet_s144p246.py": 1,
-    "tests/test_text_first_guard.py": 2,
-    "tests/test_tft_meta_provenance_rm846.py": 2,
     "tests/test_third_party_notices_pkg.py": 1,
     "tests/test_try401_sim110_furb171_ratchet_s144p148.py": 1,
     "tests/test_type_ignore_code_needless_lambda_ratchet_s144p149.py": 1,
@@ -380,6 +377,13 @@ _FIXED = (
     "tests/test_rm875_apply_mode_modifiers_archetype_dispatch.py",
     "tests/test_sibling_sweep_prefilter_f2.py",
     "tests/test_sibling_sweep_run_record_rm688.py",
+    "tests/test_precommit_gate_cp1252_rm818.py",
+    "tests/test_precommit_gate_message_file.py",
+    "tests/test_rm825_jsonrpc_scrub_host_residuals.py",
+    "tests/test_rm830_quoted_path_sweep.py",
+    "tests/test_session_intents_true_audit_s144t169.py",
+    "tests/test_text_first_guard.py",
+    "tests/test_tft_meta_provenance_rm846.py",
 )
 
 

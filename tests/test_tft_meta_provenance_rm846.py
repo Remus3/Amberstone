@@ -366,12 +366,12 @@ def test_raw_external_fetch_target_is_gitignored():
     rel = fetch.RAW_OUT.relative_to(REPO_ROOT).as_posix()
     assert rel == "data/meta/tft_set17_external_raw.json", rel
     proc = subprocess.run(["git", "check-ignore", "-v", rel], cwd=REPO_ROOT,
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, check=False)
     assert proc.returncode == 0, f"{rel} is not gitignored"
     # The tracked .gitignore, not a local exclude a fresh clone lacks.
     assert proc.stdout.startswith(".gitignore:"), proc.stdout
     pattern = proc.stdout.split("\t", 1)[0].split(":", 2)[2]
     assert not pattern.startswith("!"), proc.stdout
     tracked = subprocess.run(["git", "ls-files", "--", rel], cwd=REPO_ROOT,
-                             capture_output=True, text=True).stdout.strip()
+                             capture_output=True, text=True, check=False).stdout.strip()
     assert tracked == "", f"{rel} is tracked"
