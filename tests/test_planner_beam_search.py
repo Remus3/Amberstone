@@ -38,7 +38,6 @@ from pathlib import Path
 
 from core.build_planner.planner import (
     BuildPlan,
-    PlannedItem,
     plan_build,
 )
 from core.build_planner.scoring import (

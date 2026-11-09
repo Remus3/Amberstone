@@ -17,7 +17,6 @@ from __future__ import annotations
 import sqlite3
 import unittest
 
-from core import draft_score
 from core.draft_score import BAND_HI, BAND_LO, WEIGHTS, compute_draft_score, fuse_layers
 
 
