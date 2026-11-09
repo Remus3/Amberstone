@@ -7,8 +7,8 @@ beside it and routed by set key (tier_odds_for_set). XP to the next level:
 Set 18 (S134, in-client measured at L4-L9) beside the Set 14 table, routed by
 xp_to_next_level. Pool sizes and units per cost: Set 18 from the game's own
 shop data (S156, POOL_SIZES_SOURCE), the Set 14 transcription kept beside
-them. The other tables below (rounds, items) are still the Set 14
-transcription and no module reads them (see the dead-table note below).
+them. The Set 14 guide tables (rounds, tempo, items) were removed in S156
+(see the note at the end of the file).
 """
 
 # -- Set declaration ----------------------------------------------------------
@@ -124,10 +124,6 @@ UNITS_PER_COST = {1: 14, 2: 13, 3: 14, 4: 14, 5: 10}
 POOL_SIZES_SET14 = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
 UNITS_PER_COST_SET14 = {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
 
-# -- Econ thresholds ----------------------------------------------------------
-INTEREST_BRACKETS = [10, 20, 30, 40, 50]   # gold thresholds for interest
-INTEREST_PER_10   = 1                        # +1g per 10g held
-
 # XP to the next level. Every table here is {CURRENT level: XP needed at that
 # level to reach the next}, the denominator of the HUD level box
 # ("Lvl. 8  60/68" = 68 at L8). Read it through xp_to_next_level only: the
@@ -186,71 +182,13 @@ def xp_to_next_level(level, set_number=None):
 # Gold cost to buy XP
 XP_BUY_COST = 4   # 4g = +4 XP
 
-# -- Stage / round structure --------------------------------------------------
-# (stage, round): event
-ROUND_EVENTS = {
-    (1, 1): "carousel",
-    (1, 3): "krugs",  # PvE
-    (2, 1): "carousel",
-    (2, 5): "wolves",
-    (3, 1): "carousel",
-    (3, 5): "raptors",
-    (4, 1): "carousel",
-    (4, 5): "herald",
-    (5, 1): "carousel",
-    (5, 5): "baron",
-    (6, 1): "carousel",
-    (6, 5): "baron",
-    (7, 1): "carousel",
-}
-PVE_ROUNDS = {(1,3), (2,5), (3,5), (4,5), (5,5), (6,5)}
-
-# -- Key tempo milestones -----------------------------------------------------
-TEMPO_MILESTONES = {
-    "2-1":  "First PvP - roll to 50g if needed for strong 2-star opener",
-    "2-5":  "Wolves PvE - save roll-down gold, plan econ after",
-    "3-1":  "Carousel - pick item component or 2-cost for comp",
-    "3-2":  "Mid-game pivot point - evaluate contested units, decide comp direction",
-    "4-1":  "Carousel - target BiS item component or 4-cost carry",
-    "4-2":  "Consider level 8 push for 4-costs if health permits",
-    "5-1":  "Level 9 decision - fast 9 or hyper-roll for 5-cost?",
-    "6-1":  "Late game - stabilise board, push level 9-10",
-}
-
-# -- Item tier list -----------------------------------------------------------
-ITEM_TIERS = {
-    "Sunfire Cape":              "S",
-    "Rabadon's Deathcap":        "S",
-    "Guinsoo's Rageblade":       "S",
-    "Infinity Edge":             "S",
-    "Bloodthirster":             "S",
-    "Jeweled Gauntlet":          "S",
-    "Blue Buff":                 "S",
-    "Shojin":                    "S",
-    "Titan's Resolve":           "A",
-    "Dragon's Claw":             "A",
-    "Gargoyle Stoneplate":       "A",
-    "Warmog's Armor":            "A",
-    "Redemption":                "A",
-    "Locket of the Iron Solari": "A",
-    "Zephyr":                    "A",
-    "Shroud of Stillness":       "A",
-    "Bramble Vest":              "B",
-    "Ionic Spark":               "B",
-    "Runaan's Hurricane":        "B",
-    "Last Whisper":              "B",
-    "Giant Slayer":              "B",
-    "Hand of Justice":           "B",
-    "Statikk Shiv":              "C",
-    "Rapid Firecannon":          "C",
-}
-
-COMPONENTS = {
-    "BF Sword", "Chain Vest", "Giant's Belt",
-    "Needlessly Large Rod", "Negatron Cloak",
-    "Recurve Bow", "Sparring Gloves", "Spatula", "Tear of the Goddess",
-}
-
-EMBLEM_TRAITS = {}
-
-AUGMENT_TIERS = {"prismatic": 3, "gold": 2, "silver": 1}
+# -- Removed guide tables (S156) -----------------------------------------------
+# ROUND_EVENTS, PVE_ROUNDS, TEMPO_MILESTONES, ITEM_TIERS, COMPONENTS,
+# EMBLEM_TRAITS, AUGMENT_TIERS, INTEREST_BRACKETS and INTEREST_PER_10 were the
+# Set 14 transcription. No module read them (tests/test_tft_engine_guards.py
+# bans the engine from naming them), the round tables contradict the Set 18
+# StageRoundData (carousel X-4, PvE X-7; the measured schedule is
+# tft/tft_state_reader.py _SET18_EVENTS), and ITEM_TIERS was a third-party-
+# shaped S/A/B tier list of Set 14 items. Item and round facts come from the
+# ingested game data (tft/tft_set.py, data/meta/tft_set18_cdragon.json).
+# Guard: tests/test_tft_strategy_review_s156.py.

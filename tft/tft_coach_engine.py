@@ -377,7 +377,9 @@ def _build_prompt(state: dict) -> str:
     _set_n = _resolved_set()
 
     round_type = "CAROUSEL" if is_car else ("PVE" if event == "pve" else "PVP")
-    max_level_for_stage = {1: 3, 2: 5, 3: 6, 4: 8, 5: 9, 6: 9, 7: 9}.get(stage, 9)
+    # S156: the client's level cap is 10 (Set 18 HUD showed L10 as the max
+    # state, QA 20261025-081234), so the late stages no longer say 9.
+    max_level_for_stage = {1: 3, 2: 5, 3: 6, 4: 8, 5: 9, 6: 10, 7: 10}.get(stage, 10)
 
     # S136 T9: the state dict is the authority (see _LIVE_DATA_FILE); the
     # vision file fills only what the reader lacks.
@@ -530,7 +532,7 @@ def _build_prompt(state: dict) -> str:
             coord_signals = {}
         lines += [
             "",
-            "MODE: DOUBLE UP (PBE)  -  Playing with a partner. Shared HP pool.",
+            "MODE: DOUBLE UP  -  Playing with a partner. Shared HP pool.",
             "Coordination: ONE player AD carry, ONE player AP carry. Do not contest partner reroll targets.",
             "Donation rule: Send overflow units + 2nd tank if partner HP < 30.",
         ]
