@@ -75,9 +75,13 @@ main {
 /* S144-U-258: the #minimap panel's ZOI / position canvas stack (its map
  * backdrop, fade-in, vignette and the dot layer) is retired; the panel
  * renders in no view. This class rule stays: the overlay ZOI canvas
- * #am-zoi-canvas carries the class, and panels/minimap_zoi.js sets its
- * opacity inline when it paints. */
-.mm-zoi-canvas { pointer-events: none; z-index: 2; opacity: 0; transition: opacity 300ms ease; }
+ * #am-zoi-canvas carries the class.
+ * S144-U-259: the rule no longer sets opacity 0 or the 300ms opacity
+ * fade the retired stack used. It was the computed-opacity-0 cause item
+ * 688 hit on #am-zoi-canvas in the live overlay; the canvas is now
+ * visible by its own CSS, and the ZOI's faintness stays the 2D alpha cap
+ * in panels/minimap_zoi.js (MAX_ALPHA), never element opacity. */
+.mm-zoi-canvas { pointer-events: none; z-index: 2; }
 /* S144-U-257: the live minimap crop image (its wrap, caption and STALE
  * caption suffix) is retired with the main.js poll that fed it; #minimap
  * renders in no view. */

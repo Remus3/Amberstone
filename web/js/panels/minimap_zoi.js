@@ -38,9 +38,10 @@
 // -- tunables ----------------------------------------------------------
 // DEBUG (resolved 2026-06-30): the ZOI shading never appeared in the live overlay
 // because the canvas was rendering at computed opacity 0 - the fill drew correctly
-// but was fully transparent. NOT a data / sizing / paint bug. Root-caused with an
+// but was fully transparent. NOT a data / sizing / paint bug. Found with an
 // on-canvas probe + an on-screen numeric readout; fixed by forcing
-// canvas.style.opacity = "1" in renderMinimapZoi. Flip this to true to stroke a
+// canvas.style.opacity = "1" in renderMinimapZoi, and at the source in S144-U-259
+// (the grid.css .mm-zoi-canvas class rule set opacity 0). Flip this to true to stroke a
 // bright magenta border + fill over the ZOI canvas after the normal paint (a
 // ground-truth probe: magenta on the minimap => canvas opaque + sized + painting).
 // Ships OFF.
@@ -763,14 +764,15 @@ export function renderMinimapZoi(zoi) {
   if (canvas.height !== h) canvas.height = h;
   canvas.style.width = w + "px";
   canvas.style.height = h + "px";
-  // THE bug (root-caused 2026-06-30 via an on-canvas probe): the ZOI canvas was
+  // THE bug (found 2026-06-30 via an on-canvas probe): the ZOI canvas was
   // rendering at computed opacity 0 in the live Electron overlay, so the shading
   // drew correctly but was fully transparent and NEVER appeared in-game - even
-  // though the data + box + paint were all right. No CSS/JS rule set it (most
-  // likely a Chromium quirk for an absolutely-positioned child inside the
-  // position:fixed + zoomed #am-mmrect). Force the element opaque. The ZOI's
-  // intended faintness is the 2D globalAlpha cap (MAX_ALPHA), NOT element opacity,
-  // so pinning this to 1 is correct.
+  // though the data + box + paint were all right. The cause was the shared
+  // .mm-zoi-canvas class rule in css/panels/grid.css (opacity 0, written for the
+  // retired #minimap stack's fade-in); S144-U-259 removed that declaration, so
+  // the canvas is opaque by its own CSS. This inline pin stays as belt and
+  // braces. The ZOI's intended faintness is the 2D globalAlpha cap (MAX_ALPHA),
+  // NOT element opacity, so pinning this to 1 is correct.
   canvas.style.opacity = "1";
 
   const { bubbles, demarc, settled } = _advanceEma(z);

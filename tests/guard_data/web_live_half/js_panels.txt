@@ -65,7 +65,7 @@ fbab2421598cdbde7371f4879eb0a013e09ca2c4afcab58e4fee1cdc61b50a10  web/js/panels/
 
 d9d4065b05235618c6e1bfda607aabe23998d191f41ca550085e737849ba5e53  web/js/panels/minimap_rect.js
 
-8edfa41013fd08b613e5fe28cdb803cca4646e35bf6874bb3617ac128bc5341d  web/js/panels/minimap_zoi.js
+4613650899bf004149a8acefd303e7418939cf0749924e4f065c5d5187ab89ee  web/js/panels/minimap_zoi.js
 
 f0b07a4950435d18f5ec5542512870c024a8deb231731b26617c83c2d9b7d8cc  web/js/panels/next.js
 
