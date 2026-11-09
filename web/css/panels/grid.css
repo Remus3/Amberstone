@@ -72,12 +72,6 @@ main {
   color: var(--text-faint);
 }
 
-.minimap-img-wrap {
-  position: relative;
-  background: var(--surface-alt);
-  border-radius: var(--radius-sm);
-  padding: 6px;
-}
 .mm-canvas-stack {
   position: relative;
   width: 100%;
@@ -145,38 +139,7 @@ main {
   );
 }
 .mm-pos-canvas { pointer-events: none; z-index: 3; }
-.minimap-img-wrap.hidden { display: none; }
-#mm-img {
-  display: block;
-  width: 100%;
-  max-width: 460px;    /* matches .mm-canvas-stack - kept in sync 2026-04-24 */
-  margin: 0 auto;
-  image-rendering: pixelated;
-  border-radius: var(--radius-sm);
-}
-/* (2026-04-26) After bumping ARAM/Brawl max-width 460->580 the live
- * screenshot crop started looking blocky under image-rendering:
- * pixelated. Use bilinear (auto) for ARAM/Brawl where the upscale
- * factor exceeds 1.0; SR keeps pixelated since 460 <= source size. */
-body[data-mode="aram"]  #mm-img,
-body[data-mode="brawl"] #mm-img { image-rendering: auto; }
-.minimap-img-caption {
-  display: block;
-  margin-top: 8px;
-  font-size: 15px;
-  color: var(--text-faint);
-  text-align: center;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-}
-/* Failed minimap refresh (main.js refreshMinimap adds .stale). s136-T12: was
- * opacity 0.5 + grayscale(0.5); now a light desaturation only, and the caption
- * says it in words. No own opacity: the image already sits inside #minimap
- * .panel-body, which the CADENCE sweep dims to 0.89 / 0.85 (map_state.css), so
- * a second dim here would compound below the 0.85 floor. */
-.minimap-img-wrap.stale #mm-img { filter: grayscale(0.15); }
-.minimap-img-wrap.stale .minimap-img-caption::after {
-  content: " - STALE";
-  color: var(--gold);
-}
+/* S144-U-257: the live minimap crop image (its wrap, caption and STALE
+ * caption suffix) is retired with the main.js poll that fed it; #minimap
+ * renders in no view. */
 

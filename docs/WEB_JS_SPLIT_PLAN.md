@@ -179,7 +179,7 @@ alignment helpers. That is roughly 1,300 lines.
 ### MJ-10 - background pollers
 - File: `web/js/main.js`
 - Target: `web/js/lib/pollers.js`
-- Anchors: `setupHttpFallback`, `setupStateStream`, `setupLcuPoller`, `setupMinimapPoller`, `setupVoiceToggle`, `refreshMinimap` (the vision-tracker poll was retired by S144-U-256)
+- Anchors: `setupHttpFallback`, `setupStateStream`, `setupLcuPoller`, `setupMinimapPoller`, `setupVoiceToggle` (the vision-tracker poll was retired by S144-U-256 and the minimap crop image poll by S144-U-257)
 - Coupled: `tests/test_overlay_poller_mode_gate.py`, `tests/test_overlay_minimap_clear_on_exit.py`, `tests/snapshot_panels/conftest.py`, `tests/snapshot_panels/test_tft_active_match_view.py`
 - Views: `active-match`, `lobby`, `champ-select`
 - UI audit: STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY on the views above and the `?overlay=1` shell, headless, before the commit. Focus: the overlay minimap and vision panes still update and still clear on game exit; no pane flashes at boot (STRUCTURE).

@@ -6817,155 +6817,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   refreshEnv();
   setInterval(refreshEnv, 15000);
 
-  // -- Minimap image polling ------------------------------------------
-  // Polls /api/minimap-crop on a fast cadence when the dedicated Legion
-  // minimap stream is live (5-10Hz pre-cropped JPEGs on source=minimap),
-  // otherwise the supervisor falls back to crop-from-full-frame which is
-  // bounded by the 2s full-frame upload cadence - pointless to poll
-  // faster than that. We pick the interval based on which path served
-  // the last response: JPEG = fast stream, PNG = slow re-crop.
-  const MINIMAP_MODES = new Set(["sr", "aram", "brawl"]);
-  const MINIMAP_INTERVAL_FAST = 500;    // 2Hz when fast stream is live
-  const MINIMAP_INTERVAL_SLOW = 2000;   // 0.5Hz fallback
-  let minimapTimer = null;
-  let minimapInterval = MINIMAP_INTERVAL_SLOW;
-  let lastMinimapMode = null;
-  // S144-U-227: the Map State panel (#minimap) sits in the top-level
-  // <main>, which every view hides (header.css, the body[data-view] main
-  // list, RM-1552) and the overlay shell hides too (overlay.css
-  // main > .panel), so it is never on screen. Its two polls (this one and
-  // the vision-tracker dot poll, retired by S144-U-256) still asked the
-  // server every 500 ms all game. This one now sends nothing while the
-  // panel has no layout box; it resumes by itself if a view renders it.
-  // Guard: tests/snapshot_panels/test_home_minimap_polls_need_rendered_panel.py.
-  function _minimapPanelShown() {
-    return !!MM.root && MM.root.getClientRects().length > 0;
-  }
-  // S144-U-226: a poll request still unanswered after this is aborted and
-  // settles as a failure (the image reads STALE). Above both cadences, so
-  // a slow answer is not cut off by the next tick (the same 5 s as the
-  // Active Match vision-state poll, active_match.js _AM_MAP_FETCH_TIMEOUT_MS).
-  const MINIMAP_FETCH_TIMEOUT_MS = 5000;
-  // The one open /api/minimap-crop request of this poll, or null.
-  let minimapInflight = null;
-
-  // Give up on the open request, if any: its answer will never paint.
-  function _dropMinimapInflight() {
-    const req = minimapInflight;
-    if (!req) return;
-    minimapInflight = null;
-    if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
-    if (req.ctl) req.ctl.abort();
-  }
-
-  async function refreshMinimap() {
-    if (document.hidden) return;
-    if (!MINIMAP_MODES.has(state.mode)) {
-      _dropMinimapInflight();
-      MM.imgWrap.classList.add("hidden");
-      lastMinimapMode = null;
-      return;
-    }
-    // item 281: minimap-crop crops a LIVE game frame; with no game running
-    // the vision server has no frame and every poll 502s (spammed the
-    // console every 2s in an idle ARAM lobby). Gate on a live game.
-    const _lcMM = (state.latest && state.latest.liveclient) || null;
-    if (!_lcMM || !Object.keys(_lcMM).length) {
-      _dropMinimapInflight();
-      MM.imgWrap.classList.add("hidden");
-      lastMinimapMode = null;
-      return;
-    }
-    // S144-U-227: nothing to show it in. Give up on the open request too,
-    // so its answer never paints.
-    if (!_minimapPanelShown()) {
-      _dropMinimapInflight();
-      return;
-    }
-    // S144-U-226: one request open at a time. This poll used to send one
-    // every tick (500 ms on the fast stream) with no timeout, so a server
-    // that stopped answering collected an open request per tick, the
-    // image never read STALE, and a request still open when the game
-    // ended could land later and show the minimap again. A tick that
-    // finds a request still open sends nothing; one unanswered after
-    // MINIMAP_FETCH_TIMEOUT_MS is aborted (body read included) and
-    // settles as a failure, so the next tick asks again; leaving the game
-    // or the minimap modes gives up on it (above). An answer that lands
-    // after its request was given up on never paints.
-    // A request sent for another minimap mode (SR -> ARAM) is given up on:
-    // its image is the old map.
-    if (minimapInflight && minimapInflight.mode !== state.mode) {
-      _dropMinimapInflight();
-    }
-    if (minimapInflight) return;
-    const ctl = (typeof AbortController === "function")
-      ? new AbortController() : null;
-    const req = { timer: null, ctl, mode: state.mode };
-    minimapInflight = req;
-    // True once, for the request that is still the open one.
-    const settle = () => {
-      if (minimapInflight !== req) return false;
-      minimapInflight = null;
-      if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
-      return true;
-    };
-    req.timer = setTimeout(() => {
-      req.timer = null;
-      if (!settle()) return;
-      if (ctl) ctl.abort();
-      MM.imgWrap.classList.add("stale");
-    }, MINIMAP_FETCH_TIMEOUT_MS);
-    const tNow = Date.now();
-    const bust = tNow - (tNow % minimapInterval);
-    let painting = false;
-    try {
-      const resp = await fetch(`/api/minimap-crop?mode=${state.mode}&_=${bust}`,
-        ctl ? { signal: ctl.signal } : undefined);
-      if (!resp.ok) {
-        if (settle()) MM.imgWrap.classList.add("hidden");
-        return;
-      }
-      const blob = await resp.blob();
-      if (!settle()) return;
-      // The mode moved on while this answer was on its way: the next tick
-      // asks for the new map instead.
-      if (req.mode !== state.mode) return;
-      // From here on this answer is the current one; a throw while
-      // painting it still marks the image STALE (catch below).
-      painting = true;
-      if (blob.type !== "image/png" && blob.type !== "image/jpeg") {
-        MM.imgWrap.classList.add("hidden");
-        return;
-      }
-      // Adapt the polling cadence to which path served us. JPEG comes
-      // from the fast Legion minimap stream; PNG from the slow re-crop.
-      const desired = (blob.type === "image/jpeg")
-        ? MINIMAP_INTERVAL_FAST : MINIMAP_INTERVAL_SLOW;
-      if (desired !== minimapInterval) {
-        minimapInterval = desired;
-        if (minimapTimer) clearInterval(minimapTimer);
-        minimapTimer = setInterval(refreshMinimap, minimapInterval);
-      }
-      // Revoke previous blob URL to avoid leaks.
-      const prev = MM.img.dataset.blobUrl;
-      if (prev) { try { URL.revokeObjectURL(prev); } catch (_) {} }
-      const url = URL.createObjectURL(blob);
-      MM.img.dataset.blobUrl = url;
-      MM.img.src = url;
-      const size = (blob.size / 1024).toFixed(1);
-      MM.imgCaption.textContent = `${state.mode.toUpperCase()} · ${size} KB · ${_to12(new Date())}`;
-      MM.imgWrap.classList.remove("hidden", "stale");
-      lastMinimapMode = state.mode;
-    } catch (e) {
-      if (settle() || painting) MM.imgWrap.classList.add("stale");
-    }
-  }
-  minimapTimer = setInterval(refreshMinimap, minimapInterval);
-  refreshMinimap();   // fire once on load
+  // S144-U-257: the minimap image poll that lived here is retired. It
+  // asked the supervisor's minimap crop route (500 ms on the fast
+  // stream, 2 s otherwise) for the live crop image of the Map State panel (#minimap), which
+  // renders in no view, so since S144-U-227 its panel gate kept it from
+  // ever sending. The Active Match MAP pane keeps its own base-image
+  // fallback to that route (panels/active_match.js), an <img> src.
+  // Guard: tests/snapshot_panels/test_minimap_crop_image_retired.py.
 
   // S144-U-256: the vision-tracker overlay poll that lived here is retired.
   // Every 500 ms it asked /api/vision-state to draw enemy dots over the
-  // minimap image above and, in ARAM / KIWI, to write the MAP STATE line;
+  // minimap image (retired by S144-U-257) and, in ARAM / KIWI, to write the MAP STATE line;
   // both sat in #minimap, which renders in no view, so since S144-U-227
   // its panel gate kept it from ever sending. The Active Match MAP pane
   // keeps its own poll of that route (panels/active_match.js).

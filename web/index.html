@@ -422,14 +422,10 @@
         <span class="staleness" data-for="minimap">-</span>
       </div>
       <div class="panel-body minimap-body">
-        <!-- Image + ZOI/position canvas stack. S144-U-256: the MAP
-             STATE heartbeat chip under the image and the vision-tracker
-             dot canvas over it are retired; this panel renders in no
-             view (S144-U-246). -->
-        <div class="minimap-img-wrap hidden" id="mm-img-wrap">
-          <img id="mm-img" alt="minimap crop" />
-          <span class="minimap-img-caption" id="mm-img-caption">-</span>
-        </div>
+        <!-- ZOI/position canvas stack. S144-U-256 retired the MAP STATE
+             heartbeat chip and the vision-tracker dot canvas, and
+             S144-U-257 the live crop image and its caption; this panel
+             renders in no view (S144-U-246). -->
         <div class="mm-canvas-stack hidden" id="mm-canvas-stack">
           <canvas id="mm-zoi-canvas" class="mm-zoi-canvas" width="720" height="720"></canvas>
           <canvas id="mm-pos-canvas" class="mm-pos-canvas" width="720" height="720"></canvas>

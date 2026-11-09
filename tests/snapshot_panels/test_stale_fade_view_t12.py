@@ -131,20 +131,8 @@ def test_dashboard_panel_dim_is_gentle_and_badged(
         ctx.close()
 
 
-def test_minimap_image_stale_is_light_and_captioned(mock_server, pw_browser):
-    ctx, page = _open(mock_server, pw_browser, overlay=False)
-    try:
-        got = page.evaluate("""() => {
-          const w = document.getElementById('mm-img-wrap');
-          w.classList.remove('hidden'); w.classList.add('stale');
-          const img = getComputedStyle(document.getElementById('mm-img'));
-          const cap = getComputedStyle(document.getElementById('mm-img-caption'), '::after');
-          return { opacity: img.opacity, filter: img.filter, after: cap.content }; }""")
-        assert got == {"opacity": "1", "filter": "grayscale(0.15)",
-                       "after": '" - STALE"'}, got
-    finally:
-        page.close()
-        ctx.close()
+# S144-U-257: the minimap crop image's own STALE dim (and its test here)
+# is retired with the image; #minimap renders in no view.
 
 
 def test_overlay_stale_tag_replaces_the_dim(mock_server, pw_browser):

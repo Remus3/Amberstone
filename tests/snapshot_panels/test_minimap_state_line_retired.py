@@ -178,8 +178,8 @@ def test_anchor_the_name_scan_reads_real_files():
     files = dict(_live_web_text())
     assert len(files) > 20, len(files)
     assert 'id="zone-pill"' in files["web/index.html"]
-    assert 'id="mm-img-wrap"' in files["web/index.html"]
+    assert 'id="mm-canvas-stack"' in files["web/index.html"]
     assert "function _updateZone(" in files["web/js/panels/map_state.js"]
-    assert "async function refreshMinimap(" in files["web/js/main.js"]
+    assert "(function setupMinimapPoller()" in files["web/js/main.js"]
     assert "/api/vision-state" in files["web/js/panels/active_match.js"]
-    assert ".minimap-img-wrap {" in files["web/css/panels/grid.css"]
+    assert ".mm-canvas-stack {" in files["web/css/panels/grid.css"]

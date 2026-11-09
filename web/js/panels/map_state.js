@@ -18,9 +18,6 @@ const MM = {
   towers: el("mm-towers"),
   score: el("mm-score"),
   gameTime: el("mm-gametime"),
-  imgWrap: el("mm-img-wrap"),
-  img: el("mm-img"),
-  imgCaption: el("mm-img-caption"),
 };
 
 function _updateGameClock(p) {
