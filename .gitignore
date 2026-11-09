@@ -504,3 +504,6 @@ data/daemon_slayer/*/mayhem_augment_stats.json
 # RM-135: data backup snapshots (tools/backup_irreplaceable.py). Copies of
 # live databases - never tracked. Excluded from deploy rollback (ops/backups/).
 ops/backups/data/
+
+# s156 S4: runtime-fetched CommunityDragon skins cache (names/ids only, regenerable)
+data/cache/cdragon_skins.json
