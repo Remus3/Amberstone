@@ -54,7 +54,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 #   Variant B: c3 a2 e2 82 ac e2 80 9d  (orig: U+2014 em-dash)
 _MOJIBAKE_SIG = b"\xc3\xa2\xe2\x80\x9d\xe2\x82\xac"
 _MOJIBAKE_SIG_B = b"\xc3\xa2\xe2\x82\xac\xe2\x80\x9d"
-_MOJIBAKE_SIGS: tuple[bytes, ...] = (_MOJIBAKE_SIG, _MOJIBAKE_SIG_B)
 
 # Exclusions mirrored from tools/repair_mojibake.py
 _SKIP_DIR_PARTS = {"_archive", "node_modules", "__pycache__", ".git"}

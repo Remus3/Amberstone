@@ -1154,9 +1154,6 @@ def test_no_em_dashes_or_smart_quotes():
 # same async-import page-eval pattern the rest of this file uses (no node runner).
 # ---------------------------------------------------------------------------
 
-_ZOI_IMPORT = "async () => (await import('/js/panels/minimap_zoi.js')).__test"
-
-
 def _zoi_eval(page, body):
     """Run `body` (a JS expression using `t` = the __test namespace) in the
     overlay page and return the JSON result."""

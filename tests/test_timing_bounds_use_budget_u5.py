@@ -42,8 +42,6 @@ TESTS_DIR = Path(__file__).resolve().parent
 
 _CLOCK_ATTRS = {"monotonic", "perf_counter", "monotonic_ns", "perf_counter_ns"}
 _TIME_ATTRS = {"time", "time_ns"}
-_ASSERT_CALLS = {"assertLess", "assertLessEqual", "assertGreater",
-                 "assertGreaterEqual", "assertTrue"}
 
 
 def _is_clock_call(node: ast.AST) -> bool:

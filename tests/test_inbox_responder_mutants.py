@@ -2110,8 +2110,6 @@ GATE_MUTANTS = {
 GATE_STATEMENT_LINES = 4
 
 _A_BY_TAG = {row[0]: row for row in A_ARMS}
-_B_BY_TAG = {row[0]: row for row in B_ARMS}
-_MAIN_BY_TAG = {row[0]: row for row in MAIN_ARMS}
 
 
 def _gate_statement(tag: str) -> str:
