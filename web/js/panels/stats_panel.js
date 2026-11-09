@@ -16,6 +16,9 @@
 // Header  = the auto-derived game-time bracket label + the provenance/tier badge.
 // Rows    = mode-specific. SR + ARAM: LVL / CS / KDA / KP. Arena: LVL / KDA
 //           (no CS), gated to "no benchmark" (there is no Arena seed yet).
+//           Brawl (URF / ARURF / One for All / Nexus Blitz): the SR rows,
+//           also gated to "no benchmark" - the seed covers SR + ARAM only, and
+//           an SR average beside a URF game is not a benchmark (S144-U-274).
 //           You cell = live ground truth; Bench cell = the rank-tier average
 //           from GET /api/rank-tier-bench. LVL has no bench producer (the seed
 //           carries cs/kda/kp only), so its honest "-" is a reserved slot,
@@ -53,7 +56,12 @@ const _ROWS_BY_MODE = {
   SR: ["lvl", "cs", "kda", "kp"],
   ARAM: ["lvl", "cs", "kda", "kp"],
   ARENA: ["lvl", "kda"],
+  BRAWL: ["lvl", "cs", "kda", "kp"],
 };
+// Bench modes the rank-tier seed does not cover (core/rank_tier_bench.py
+// VALID_MODES is SR + ARAM): no route fetch, every Avg cell "-", the badge
+// reads "no benchmark".
+const _NO_SEED_MODES = { ARENA: 1, BRAWL: 1 };
 // Metrics the seed can fill the benchmark column with (the route's stats keys).
 const _BENCH_METRICS = { cs: 1, kda: 1, kp: 1 };
 // Human tier labels for the provenance badge (mirrors the DS Settings options).
@@ -64,8 +72,13 @@ const _TIER_LABELS = {
 };
 
 // rc mode string (lowercase) -> rank-tier bench mode. Unknown/unset -> SR (the
-// overlay is SR-centric); Arena has no seed so the route returns "no benchmark".
-const _MODE_MAP = { sr: "SR", classic: "SR", aram: "ARAM", arena: "ARENA", cherry: "ARENA" };
+// overlay is SR-centric). Arena and Brawl have no seed, so they paint "no
+// benchmark" without asking the route. "brawl" is the rc mode every Brawl-routed
+// queue reaches (dashboard/view_router_state.py IN_GAME_MODES); before
+// S144-U-274 it fell to the SR default and a URF game was badged "Gold estimate".
+const _MODE_MAP = {
+  sr: "SR", classic: "SR", aram: "ARAM", arena: "ARENA", cherry: "ARENA", brawl: "BRAWL",
+};
 
 let _role = "mid";        // seeded from the detected lane/class; the DS Settings override wins
 let _roleUserSet = false; // true once the operator sets the role override in DS Settings
@@ -239,8 +252,8 @@ function _paintBadge(mount, benchMode, tier, data) {
   if (!sb) return;
   if (!tier) { sb.textContent = "set rank"; return; }
   const label = _TIER_LABELS[tier] || tier;
-  // Arena (and any mode the seed does not cover) comes back mode:"" / n:0.
-  if (benchMode === "ARENA" || (data && !data.mode)) { sb.textContent = "no benchmark"; return; }
+  // Arena / Brawl (and any mode the seed does not cover) come back mode:"" / n:0.
+  if (_NO_SEED_MODES[benchMode] || (data && !data.mode)) { sb.textContent = "no benchmark"; return; }
   if (data && data.n === 0) { sb.textContent = label + " -"; return; }
   const prov = data && data.source === "live" ? "live avg" : "estimate";
   sb.textContent = label + " " + prov;
@@ -249,8 +262,8 @@ function _paintBadge(mount, benchMode, tier, data) {
 function _fetchBench(mount, benchMode, tier) {
   // Reflect whatever is cached right now (blanks to "-" on a miss).
   _paintBench(mount, benchMode, tier);
-  // Off (no tier) or a mode with no seed (Arena) does not hit the route.
-  if (!tier || benchMode === "ARENA") return;
+  // Off (no tier) or a mode with no seed (Arena, Brawl) does not hit the route.
+  if (!tier || _NO_SEED_MODES[benchMode]) return;
   const key = tier + "|" + benchMode + "|" + _bracket;
   const now = Date.now();
   if (_cache[key] && _ts[key] && (now - _ts[key]) < _TTL_MS) return;
@@ -333,4 +346,6 @@ export function _resetStatsPanel() {
   }
 }
 
-export const __test = { _detectRole, _POS_ROLE, _CLASS_ROLE, _benchMode, _bracketFor, _kpPct };
+export const __test = {
+  _detectRole, _POS_ROLE, _CLASS_ROLE, _benchMode, _bracketFor, _kpPct, _NO_SEED_MODES,
+};

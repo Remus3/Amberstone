@@ -125,7 +125,7 @@ c7ad9651f34b2daf3679dd1fdc0096f8f909a182839338d62d3843769b6343c5  web/js/panels/
 
 88c6997ddbc67174b65ed541c3f90c0e15047dace266ecb025449abd25e9b1ce  web/js/panels/spike_markers.js
 
-2e4175ccbe2260462fbabe613250047b66bcc4c1ab5e3441c4adabaf6e74ff38  web/js/panels/stats_panel.js
+ea864e8773c4600f9fbdc9073f38277ea336c7cb46fb3da95eea6b8e38e22b7d  web/js/panels/stats_panel.js
 
 44cd21164d6e45c3dc0f5a930fb2bdcc2ae489f06e69f020644a17c002013344  web/js/panels/team_context.js
 
