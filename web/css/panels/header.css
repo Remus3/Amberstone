@@ -75,6 +75,23 @@ header .self-spells.hidden {
   display: inline-flex !important;
   opacity: 0.55;   /* faded rather than gone - still readable at a glance */
 }
+/* S144-U-240: the 0.55 fade sank the zone pill's 16px "-" (not WCAG large
+ * text) to 2.99 - 3.36:1 in every theme and the CS pill's 21px "CS" label
+ * to 2.99:1 in hextech. These two placeholders drop the fade instead: their
+ * text, the CS value included, is --text-faint at full strength (5:1 or
+ * more) on --surface at 55 percent, the look the fade gave the fill. A
+ * stale zone class left on a hidden pill (map_state.js keeps it) paints no
+ * red / green / gold call and does not pulse. The vision and heartbeat
+ * placeholders are 21px / 900 large text and keep the fade (3:1 or more). */
+header .zone-pill.hidden,
+header .cs-pill.hidden {
+  opacity: 1;
+  color: var(--text-faint);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  animation: none;
+  box-shadow: none;
+}
+header .cs-pill.hidden b { color: var(--text-faint); }
 /* (2026-04-26) Hide the WIN pill in CLIENT mode per user - "client panel
  * does not need the hp,mana, win% pills". Visual-only hide; JS still
  * populates #win-pct-val so any future ALT-tab indicator or aftergame

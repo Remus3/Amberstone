@@ -157,7 +157,16 @@ makes), the s144 uiux module of S144-U-223:
     and the row under them on a live feed, then again after the page clock
     runs the feed past its stale cut and the rows re-class to "no feed".
     Nothing runs anywhere in the page at either read, so none is needed.
-This module pins all forty-six verdicts at runtime with each test's own opener,
+Audit (2026-11-08, s144 uiux cycle 235, S144-U-240, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-240:
+  - test_header_placeholder_pill_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the zone and CS placeholders, adds the
+    transitions-off sheet, then reads the Active Match header's text and
+    re-classes the hidden zone pill through its stale zone classes inside
+    the same evaluate. The sheet covers the zone pill's colour and the
+    hidden rule drops its pulse, so nothing runs at that read.
+This module pins all forty-seven verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -246,7 +255,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The forty-six modules audited above, keyed by file name.
+# The forty-seven modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_map_roster_state_contrast.py",
@@ -262,6 +271,7 @@ _COVERED = {
     "test_ds_knob_inputs_focus_ring.py",
     "test_ds_matchup_text_contrast.py",
     "test_footer_mode_pill_contrast.py",
+    "test_header_placeholder_pill_contrast.py",
     "test_historical_pgr_text_contrast.py",
     "test_history_result_marks_contrast.py",
     "test_history_row_hover_marks_contrast.py",
@@ -1091,6 +1101,7 @@ _CONTRAST = {
     "test_am_map_roster_state_contrast": (),
     "test_build_insights_chart_text_contrast": ("vp",),
     "test_footer_mode_pill_contrast": ("fixture",),
+    "test_header_placeholder_pill_contrast": ("vp",),
     "test_historical_pgr_text_contrast": ("mode", "vp"),
     "test_home_muted_text_contrast": ("vp",),
     "test_home_pick_name_contrast": ("vp",),
@@ -1100,9 +1111,10 @@ _CONTRAST = {
     "test_ui_mock_active_match_complete": (),
     "test_user_builds_text_contrast": ("vp",),
 }
-# The four whose opener adds the sheet before its first interaction.
+# The five whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_build_insights_chart_text_contrast",
+    "test_header_placeholder_pill_contrast",
     "test_home_pick_name_contrast",
     "test_pgr_text_contrast",
     "test_user_builds_text_contrast",
