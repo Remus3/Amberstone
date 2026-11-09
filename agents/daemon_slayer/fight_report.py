@@ -190,6 +190,30 @@ def _finite_knob(value, default: float, name: str, notes: List[str]) -> float:
     return default
 
 
+def _item_strs(item_ids) -> Tuple[List[str], str]:
+    """The caller's item ids as strings, plus a note when they were unusable.
+
+    S144-D-183: a bare ``str`` / ``int`` id is ONE id (``[str(i) for i in
+    item_ids]`` read a bare "3089" as '3', '0', '8', '9' and raised TypeError
+    out of this NEVER-raises report on a bare int). A falsy page is empty, as
+    before. A page that cannot be read as ids (a ``bool``, any other
+    non-iterable, an id whose ``str()`` raises) is scored as no items, with
+    one fixed note that carries no part of the value (RM-835).
+    """
+    if not item_ids:
+        return [], ""
+    if isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
+    try:
+        if isinstance(item_ids, bool):
+            raise TypeError("bool is not an item id page")
+        return [str(i) for i in item_ids], ""
+    except Exception:  # noqa: BLE001 - NEVER raises; a fixed note instead
+        return [], "item_ids: not a list of item ids - scored with no items"
+
+
 def compute_fight_report(
     champion: str,
     level: int = 1,
@@ -217,7 +241,7 @@ def compute_fight_report(
     (int or str). ``sequence`` defaults to ``_DEFAULT_SEQUENCE`` when None.
     """
     snap = snapshot if snapshot is not None else DataSnapshot.load()
-    items: List[str] = [str(i) for i in (item_ids or [])]
+    items, items_note = _item_strs(item_ids)
     runes_list: List[int] = []
     for r in (runes or []):
         try:
@@ -239,6 +263,8 @@ def compute_fight_report(
 
     champ = str(champion or "").strip()
     notes: List[str] = []
+    if items_note:
+        notes.append(items_note)
 
     # S144-D-176..178: a target knob or recharge window that is not a finite
     # number reads as its own default, and one note names the knob. Before,

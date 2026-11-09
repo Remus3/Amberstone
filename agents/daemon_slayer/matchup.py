@@ -214,13 +214,20 @@ def _can_full_combo(
     burst scored (passed in so the two agree 1:1). A manaless / energy champion
     is never gated, so ``casts_allowed == casts_requested`` and the combo is
     always full. Imported function-level to avoid a module import cycle.
+
+    Returns ``(can_full_combo, casts_allowed, gate_ran)``. S144-D-185: a walk
+    that failed soft (``casts_requested == 0`` with the walker-failed note)
+    used to read as "nothing to gate", so a combo whose mana was never checked
+    counted as affordable and could make the verdict ``all_in``. It now reads
+    as NOT confirmed (``False, 0, False``); the caller notes that the gate did
+    not run.
     """
-    from .mana_sim import compute_mana_bounded_combo  # noqa: PLC0415 - cycle break
+    from . import mana_sim  # noqa: PLC0415 - cycle break
 
     seq = list(resolved_sequence)
     if not seq:
-        return True, 0
-    mana = compute_mana_bounded_combo(
+        return True, 0, True
+    mana = mana_sim.compute_mana_bounded_combo(
         attacker_id,
         level,
         item_ids=item_ids,
@@ -231,8 +238,14 @@ def _can_full_combo(
     # A 0-requested walk means the rotation had no resolvable casts; treat as
     # full (nothing to gate) rather than a false "out of mana".
     if mana.casts_requested <= 0:
-        return True, int(mana.casts_allowed)
-    return mana.casts_allowed >= mana.casts_requested, int(mana.casts_allowed)
+        if mana_sim.WALKER_FAILED_NOTE in mana.notes:
+            return False, 0, False
+        return True, int(mana.casts_allowed), True
+    return (
+        mana.casts_allowed >= mana.casts_requested,
+        int(mana.casts_allowed),
+        True,
+    )
 
 
 def _classify(
@@ -324,21 +337,31 @@ def compute_matchup(
     pct_a_removed = 1.0 if a_hp_eff <= 0 else min(1.0, dmg_b_to_a / a_hp_eff)
     net_swing = pct_b_removed - pct_a_removed
 
-    a_can_full_combo, a_casts_allowed = _can_full_combo(
+    a_can_full_combo, a_casts_allowed, a_gate_ran = _can_full_combo(
         champ_a_id, level_a, item_ids_a, mode, burst_a.combo_sequence, snapshot,
     )
-    b_can_full_combo, b_casts_allowed = _can_full_combo(
+    b_can_full_combo, b_casts_allowed, b_gate_ran = _can_full_combo(
         champ_b_id, level_b, item_ids_b, mode, burst_b.combo_sequence, snapshot,
     )
 
     verdict = _classify(net_swing, pct_a_removed, pct_b_removed, a_can_full_combo)
 
-    if not a_can_full_combo:
+    if not a_gate_ran:
+        notes.append(
+            f"{burst_a.champion_name}: mana gate did not run (mana walk "
+            f"failed) - full combo not confirmed, see logs"
+        )
+    elif not a_can_full_combo:
         notes.append(
             f"{burst_a.champion_name} cannot afford its full combo "
             f"({a_casts_allowed} of {len(burst_a.combo_sequence)} casts)"
         )
-    if not b_can_full_combo:
+    if not b_gate_ran:
+        notes.append(
+            f"{burst_b.champion_name}: mana gate did not run (mana walk "
+            f"failed) - full combo not confirmed, see logs"
+        )
+    elif not b_can_full_combo:
         notes.append(
             f"{burst_b.champion_name} cannot afford its full combo "
             f"({b_casts_allowed} of {len(burst_b.combo_sequence)} casts)"

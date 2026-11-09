@@ -231,6 +231,24 @@ def _coerce_level(level) -> int:
         return 1
 
 
+def _item_page(item_ids) -> List[str | int]:
+    """The caller's item ids as a list; a bare ``str`` / ``int`` id is ONE id.
+
+    S144-D-181: ``list(item_ids or [])`` read a bare "3089" as the ids
+    '3', '0', '8', '9' and a bare int raised TypeError, so the burst walker
+    failed and the result was the fail-soft zero. A falsy page is empty, as
+    before; a ``bool`` is never an id and still fails inside the walker's
+    fail-soft wrap, as does any other non-iterable.
+    """
+    if not item_ids:
+        return []
+    if isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        return [item_ids]
+    return list(item_ids)
+
+
 def _normalize_sequence(sequence: Optional[Sequence[str]]) -> List[str]:
     """Clean + cap the authored action list.
 
@@ -309,7 +327,7 @@ def compute_combo(
     # layers the clock + cooldown skip on top of that per-cast damage.
     try:
         burst = compute_burst_damage(
-            snap, champ, int(level), item_ids=list(item_ids or []),
+            snap, champ, int(level), item_ids=_item_page(item_ids),
             mode=mode, target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
             combo_sequence=seq, runes=runes,

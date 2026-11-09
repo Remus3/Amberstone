@@ -130,7 +130,20 @@ class InvariantViolation:
 
 
 def _coerce_item_set(item_set: Sequence[str | int]) -> Tuple[str, ...]:
-    """Normalize one item-id tuple to a tuple of str ids."""
+    """Normalize one item-id tuple to a tuple of str ids.
+
+    S144-D-184: a bare ``str`` / ``int`` id is a ONE-item set. Before, a bare
+    "3089" was read as ('3', '0', '8', '9') (``burst`` NaN, ``combo`` a finite
+    0.0 that read like a real value) and a bare int raised TypeError, which
+    aborted the whole sweep. A ``bool`` is never an id, and a falsy set
+    ("", 0, None, empty) is the empty set, as before.
+    """
+    if not item_set:
+        return ()
+    if isinstance(item_set, str) or (
+        isinstance(item_set, int) and not isinstance(item_set, bool)
+    ):
+        return (str(item_set),)
     return tuple(str(i) for i in (item_set or ()))
 
 
