@@ -126,6 +126,7 @@ from agents._supervisor_common import (
     append_agent_log,
     log,
     refresh_lock,
+    release_lock_files,
     release_lock_ownership,
     smb_credential_present,
 )
@@ -185,6 +186,7 @@ __all__ = [
     "log",
     "main",
     "refresh_lock",
+    "release_lock_files",
     "release_lock_ownership",
     "shutil",
     "smb_credential_present",
@@ -448,13 +450,11 @@ class Supervisor:
             # _sentinel_path() rather than a second STATE_DIR-based literal:
             # the two derivations are identical by default but DIVERGE under a
             # LOCKFILE-only relocation, which is exactly the footgun class this
-            # row exists to close.
+            # row exists to close. S144-Q-132: each file goes only while it
+            # carries THIS process's claim (release_lock_files); an unlink by
+            # path deleted another supervisor's live claim.
             release_lock_ownership()
-            for p in (LOCKFILE, _sentinel_path()):
-                try:
-                    p.unlink(missing_ok=True)
-                except OSError:
-                    pass
+            release_lock_files()
             log.info("supervisor stopped")
         finally:
             logging.raiseExceptions = _prev_raise
