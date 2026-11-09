@@ -62,7 +62,8 @@ def find_archive(dist_dir: Path = DIST_DIR) -> Optional[Path]:
 def _build_archive(dist_dir: Path, runner: Optional[Callable]) -> Optional[Path]:
     cmd = [sys.executable, str(_PROJECT_ROOT / "tools" / "package_portable.py"),
            "--output", str(dist_dir)]
-    rc = runner(cmd) if runner else subprocess.run(cmd, cwd=str(_PROJECT_ROOT)).returncode
+    rc = (runner(cmd) if runner
+          else subprocess.run(cmd, cwd=str(_PROJECT_ROOT), check=False).returncode)
     if rc != 0:
         _err(f"package_portable.py failed: exit {rc}")
         return None

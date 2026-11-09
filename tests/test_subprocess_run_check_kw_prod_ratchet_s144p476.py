@@ -9,7 +9,10 @@ production tree: 78 findings in 50 files. Slice 1 states ``check=False`` at the 
 eight modules whose code reads ``returncode`` (or deliberately ignores it) itself; slice 2
 (S144-P-477) does the same for eleven more tools/ modules; slice 3 (S144-P-478) for five more
 (gated_b29_window_parity, gated_lx11_minimap_check, p3_ascii_census, scheduled_boot_verify,
-sibling_sweep_ci); slice 4 (S144-P-480) for ten more modules outside tools/ (voice_coach,
+sibling_sweep_ci); slice 5 (S144-P-481) for the four modules left outside the loop and the
+frozen / packaging files (audit_api_surface, install_hooks, build_installer, package_portable;
+the last two spell the call on the right of a conditional ``runner`` expression and read
+``.returncode`` at once); slice 4 (S144-P-480) for ten more modules outside tools/ (voice_coach,
 daemon_slayer_client, data_retention, operator_notify, game_reader/poller, audit/p0_inventory and
 the loop's claude_stub, done_sentinel, interrupt and repo_review, whose two sites read
 ``returncode`` or take ``.stdout`` of a best-effort git call); the rest sit in the baseline below,
@@ -63,12 +66,8 @@ _BASELINE = {
     "ops/loop/queue_loop.py": 3,
     "ops/rc_dev_runtime.py": 1,
     "ops/rc_supervisor.py": 3,
-    "scripts/audit_api_surface.py": 1,
-    "scripts/install_hooks.py": 1,
-    "tools/build_installer.py": 1,
     "tools/build_portable.py": 1,
     "tools/credential_history_scan.py": 1,
-    "tools/package_portable.py": 1,
     "tools/run_packaged_smoke.py": 6,
     "tools/sibling_name_sweep.py": 2,
 }
@@ -84,8 +83,11 @@ _FIXED = (
     "ops/loop/done_sentinel.py",
     "ops/loop/interrupt.py",
     "ops/loop/repo_review.py",
+    "scripts/audit_api_surface.py",
+    "scripts/install_hooks.py",
     "tools/bootstrap_env_check.py",
     "tools/bot_merge_check.py",
+    "tools/build_installer.py",
     "tools/build_rank_baselines.py",
     "tools/ci_impact_selector.py",
     "tools/ci_watchdog.py",
@@ -97,6 +99,7 @@ _FIXED = (
     "tools/gen_archmap.py",
     "tools/inbox_responder_procs.py",
     "tools/p3_ascii_census.py",
+    "tools/package_portable.py",
     "tools/perseus_sync.py",
     "tools/precommit_gate.py",
     "tools/rc_facts.py",

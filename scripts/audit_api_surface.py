@@ -122,6 +122,7 @@ def _git_ignored() -> tuple[frozenset[str], frozenset[str]]:
              "--exclude-standard", "--directory"],
             capture_output=True,
             timeout=60,
+            check=False,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except (OSError, subprocess.SubprocessError):

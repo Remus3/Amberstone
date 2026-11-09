@@ -64,7 +64,8 @@ def _err(msg: str) -> None:
 def _rebuild(staged_dir: Path, python_exe: str, runner: Optional[Callable]) -> bool:
     cmd = [python_exe, str(_PROJECT_ROOT / "tools" / "build_portable.py"),
            "--output", str(staged_dir)]
-    rc = runner(cmd) if runner else subprocess.run(cmd, cwd=str(_PROJECT_ROOT)).returncode
+    rc = (runner(cmd) if runner
+          else subprocess.run(cmd, cwd=str(_PROJECT_ROOT), check=False).returncode)
     if rc != 0:
         _err(f"build_portable.py failed with exit code {rc}")
         return False
