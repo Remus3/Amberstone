@@ -15,7 +15,6 @@ The record written back = the RM-640 retention reader's death_reel.path
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from pathlib import Path
 
@@ -398,7 +397,7 @@ def test_record_is_what_retention_reads_back(tmp_path):
     doc = json.loads(p.read_text(encoding="ascii"))
     reel = doc.get("death_reel")
     reel_path = reel.get("path") if isinstance(reel, dict) else None
-    size = os.stat(str(reel_path)).st_size if reel_path else None
+    size = Path(reel_path).stat().st_size if reel_path else None
     assert bool(size) and size > 0
 
 

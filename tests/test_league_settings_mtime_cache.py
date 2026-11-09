@@ -112,7 +112,7 @@ def test_cache_refreshes_on_mtime_bump(tmp_path):
     # Overwrite with scale 1.00 (SAME byte length) then bump mtime deterministically
     # so the test does not depend on wall-clock / filesystem timestamp resolution.
     Path(p).write_text(_SAMPLE_SCALE_1, encoding="utf-8")
-    new_ns = os.stat(p).st_mtime_ns + 1_000_000_000
+    new_ns = Path(p).stat().st_mtime_ns + 1_000_000_000
     os.utime(p, ns=(new_ns, new_ns))
 
     s2 = read_hud_settings(p)

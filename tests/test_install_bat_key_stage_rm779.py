@@ -130,12 +130,12 @@ _EXACT = FAKE_KEY.encode("ascii") + b"\r\n"
 def test_step4_rewrites_the_key_file_in_place_with_no_temp_stage(tmp_path, raw):
     key = tmp_path / KEY_FILE
     key.write_bytes(raw)
-    file_id = os.stat(key).st_ino
+    file_id = key.stat().st_ino
     out = _run_step4(tmp_path)
     assert "STEP4=PASS" in out, out
     assert "rewritten as one line" in out
     assert key.read_bytes() == _EXACT
-    assert os.stat(key).st_ino == file_id, "a replaced key file loses its ACL"
+    assert key.stat().st_ino == file_id, "a replaced key file loses its ACL"
     assert _left_behind(tmp_path) == set()
 
 
@@ -148,7 +148,7 @@ def test_step4_leaves_an_exact_key_file_untouched(tmp_path):
     assert "STEP4=PASS" in out, out
     assert "already holds the key - unchanged" in out
     assert key.read_bytes() == _EXACT
-    assert os.stat(key).st_mtime_ns == 1_000_000_000_000_000_000
+    assert key.stat().st_mtime_ns == 1_000_000_000_000_000_000
     assert _left_behind(tmp_path) == set()
 
 
