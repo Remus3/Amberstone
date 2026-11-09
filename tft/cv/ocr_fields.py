@@ -36,6 +36,7 @@ import logging
 import os
 import re
 import shutil
+import string
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -70,7 +71,7 @@ FIELD_CONF = {
     "scoreboard": 0.9, "traits": 0.98,
 }
 
-DIGITS = "0123456789"
+DIGITS = string.digits
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'"
 
 # A crop whose brightest text-channel percentile stays under this has no glyphs:

@@ -41,6 +41,7 @@ import json
 import logging
 import math
 import re
+import string
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -141,7 +142,7 @@ LLM_ALLOWED_OPS: frozenset[str] = frozenset({
 # -- LLM reply validation (true-audit s144) ----------------------------
 
 # The agents the scheduler can route to.
-_AGENT_IDS: frozenset[str] = frozenset("01234567")
+_AGENT_IDS: frozenset[str] = frozenset(string.octdigits)
 _LLM_DEFAULT_PRIORITY = 50
 # Lower is more urgent. The rule path files the operator's own explicit
 # orders at 0 (audit), 5 (destructive) and 20 (direct order); a model's

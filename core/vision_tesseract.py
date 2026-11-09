@@ -20,6 +20,7 @@ import io
 import json
 import logging
 import os.path
+import string
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -288,7 +289,7 @@ def _apply_color_correction(img, color: dict):
         return img
 
 
-def _ocr_int(img, allowlist: str = "0123456789") -> Optional[int]:
+def _ocr_int(img, allowlist: str = string.digits) -> Optional[int]:
     import pytesseract
     s = pytesseract.image_to_string(
         _preprocess(img),

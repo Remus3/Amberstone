@@ -500,9 +500,7 @@ def _publish(snapshot: dict, gen: int) -> None:
     The TTL stamp is still refreshed so the retry lands one TTL later rather
     than on every single read.
     """
-    global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
-    global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT
-    global _LAST_GOOD_AT, _FAILED_REFRESHES, _DEGRADED_SINCE
+    global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS, _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT, _LAST_GOOD_AT, _FAILED_REFRESHES, _DEGRADED_SINCE
     with _CACHE_LOCK:
         if gen != _CACHE_GEN:
             return
@@ -649,9 +647,7 @@ def _reset_cache() -> None:
     Bumps the generation so a refresh still out on the network cannot
     republish the data this call just dropped.
     """
-    global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS
-    global _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT, _CACHE_GEN
-    global _LAST_GOOD_AT, _FAILED_REFRESHES, _DEGRADED_SINCE
+    global _LOADED, _LOADED_AT, _SOURCE, _ID_TO_NAME, _NAME_TO_ID, _DUO_RECS, _PAIR_INDEX, _BOTS_BY_SUP, _SUPS_BY_BOT, _CACHE_GEN, _LAST_GOOD_AT, _FAILED_REFRESHES, _DEGRADED_SINCE
     with _CACHE_LOCK:
         _CACHE_GEN += 1
         _LOADED = False
