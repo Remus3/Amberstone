@@ -17,7 +17,6 @@ These lock the two properties that make a seed safe to ship:
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import tempfile
 import unittest
@@ -26,7 +25,7 @@ from pathlib import Path
 from core import vision_profiles as vp
 
 _ROOT = str(Path(__file__).absolute().parents[1])
-_BASELINE_FILE = os.path.join(_ROOT, "data", "vision_regions.json")
+_BASELINE_FILE = str(Path(_ROOT) / "data" / "vision_regions.json")
 
 
 def _baseline() -> dict:

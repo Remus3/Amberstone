@@ -21,7 +21,6 @@ the JSON; the dataclass ``__post_init__`` still validates them at load.
 import argparse
 import dataclasses
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -29,9 +28,9 @@ sys.path.insert(0, str(Path(__file__).absolute().parents[1]))
 
 from agents.daemon_slayer import cc_conditional as c  # noqa: E402
 
-_OUT = os.path.join(
-    str(Path(__file__).absolute().parents[1]),
-    "agents", "daemon_slayer", "cc_conditional_registry.json",
+_OUT = str(
+    Path(__file__).absolute().parents[1]
+    / "agents" / "daemon_slayer" / "cc_conditional_registry.json"
 )
 
 _NOTE = (

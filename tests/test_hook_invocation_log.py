@@ -116,7 +116,7 @@ def test_record_carries_no_prompt_text_and_no_paths(tmp_path):
     # test_no_hardcoded_home_path.py red - a test asserting a home path is not
     # LOGGED, which hardcoded one to say so. The runtime value is unchanged, so
     # the assertion below is exactly as strong as it was.
-    fake_cwd = os.path.join("C:" + os.sep, "Users", "SOMEONE", "private")
+    fake_cwd = str(Path("C:" + os.sep, "Users", "SOMEONE", "private"))
     record_invocation(
         "UserPromptSubmit",
         {"prompt": "SECRETPROMPT", "cwd": fake_cwd, "session_id": "s1"},

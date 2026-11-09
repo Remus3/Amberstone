@@ -330,7 +330,7 @@ class StrictJsonSummaryTests(_Base):
 # ---------------------------------------------------------------- F5
 class CatchAllLoggingTests(_Base):
     def test_unexpected_error_logs_a_traceback_but_replies_generically(self):
-        secret = os.path.join(str(self.tmp), "private", "x.mp4")
+        secret = str(self.tmp / "private" / "x.mp4")
 
         def boom(_raw):
             raise RuntimeError(f"cannot read {secret}")

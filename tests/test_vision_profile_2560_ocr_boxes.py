@@ -14,13 +14,12 @@ drift. Every box must sit inside the 2560x1440 frame with left<right, top<bottom
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
 
 _ROOT = str(Path(__file__).absolute().parents[1])
-_PROFILES = os.path.join(_ROOT, "data", "vision_profiles")
+_PROFILES = str(Path(_ROOT) / "data" / "vision_profiles")
 
 # scalar OCR fields that were previously absent from the 2560 profiles
 _REQUIRED_OCR = {

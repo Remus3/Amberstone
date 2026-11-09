@@ -11,7 +11,6 @@ data/vision_regions.json (there is no gitignored per-machine profile dependency)
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 import unittest
 
@@ -19,7 +18,7 @@ from core import vision_profiles as vp
 from core import vision_tesseract
 
 _ROOT = str(Path(__file__).absolute().parents[1])
-_BASELINE_FILE = os.path.join(_ROOT, "data", "vision_regions.json")
+_BASELINE_FILE = str(Path(_ROOT) / "data" / "vision_regions.json")
 
 
 def _baseline() -> dict:

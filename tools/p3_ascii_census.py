@@ -20,7 +20,6 @@ Usage:
   python tools/p3_ascii_census.py --bom      # BOM + ps1-risk report only
 """
 import collections
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -65,7 +64,7 @@ def main():
         ext = Path(rel).suffix.lower()
         if ext not in AUTH_EXT or excluded(rel):
             continue
-        with open(os.path.join(ROOT, rel), 'rb') as fh:
+        with open(Path(ROOT) / rel, 'rb') as fh:
             raw = fh.read()
         if raw[:3] == b'\xef\xbb\xbf':
             bom8.append(rel)

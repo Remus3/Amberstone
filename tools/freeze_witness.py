@@ -43,8 +43,8 @@ def _walk(root: Path):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS
                              and not (Path(dirpath) / d).is_symlink())
         for name in filenames:
-            full = os.path.join(dirpath, name)
-            if Path(full).is_file() and not Path(full).is_symlink():
+            full = Path(dirpath) / name
+            if full.is_file() and not full.is_symlink():
                 out.append(os.path.relpath(full, root).replace("\\", "/"))
     return sorted(out)
 
