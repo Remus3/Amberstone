@@ -256,7 +256,9 @@ def _clamp01(value: float) -> float:
         number = float(value)
     except (TypeError, ValueError):
         return 0.0
-    if number <= 0.0:
+    # S144-D-167: ``not >`` so NaN reads as 0.0; ``<=`` let it through, and a
+    # NaN crit_chance read as full penetration (target armor 0.0).
+    if not number > 0.0:
         return 0.0
     return 1.0 if number >= 1.0 else number
 
