@@ -1154,6 +1154,29 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   Tool: `tools/gated_rm881_duo_lobby.py` (tests `tests/test_gated_rm881_duo_lobby.py`; trace lines built
   by the real `Handler.log_message` through the day log's own format, the SR set parsed from the real
   `main.js`).
+  **AGE RE-CHECK (s144 lane gated cycle 134, S144-G-121; PREP only, nothing ticked; no game:
+  :8888 and :2999 curl 000 at 2026-11-09T07:42-06:00).** NOT stale; the probe and both predicates
+  stand. Cite drift: `a503ce413` is not on main; the landed commit is `6c7dd2030` (same subject).
+  RM-1089 HAS LANDED on main as `730c76523`, and the `rc:champs-ready` listener in `main.js` calls
+  `_lvDuoRender(_LV.duo.state())`. That makes the PORTRAITS paragraph's "NOT landed" clause stale: a
+  page served from main runs the fix, so tiles still blank 10 s after the block first rendered are
+  the separate finding, never a FAIL. The AUTO-RELOAD caveat about unlanded web commits now means
+  whatever is unlanded at drain time; read the two before / after pairs exactly as written.
+  NEW PRECONDITION: RC must be RUNNING. `ops/runtime/launcher_status.json` read `state` `halted`,
+  `reason` `stdin_stop` (last written 2026-10-31 21:17 local), while the stale
+  `ops/runtime/health.json` still read `alive: true`, so health.json alone does not show RC is up.
+  Check that :8888 answers and that the drain day's `logs/<day>.log` exists before `<since>`. There
+  is no day log after 2026-10-31 because RC has not run since then; the log path did not move. The
+  2026-10-31 log holds request-trace lines written at 21:16-21:17 local, after the service host's
+  recorded start (`launcher_status.json` `services[].started` 2026-11-01T00:13Z). Their format is
+  `<peer> HTTP "GET <path> HTTP/1.1" <status> -`, with the peer prefix written by `Handler._peer`.
+  PARSE CHECK, NOT EVIDENCE: the grader was given a hand-built duo-lobby state (no lobby existed)
+  and the window 21:16:00-21:17:20 of that log. It counted 31 trace lines, the same as a grep
+  count, and printed `sent FAIL` / `no GET /api/duo-synergy`, so it reads the post-cutover format.
+  Still true at HEAD: `/api/ui-version` and `/api/asset-stamp` are in `_SUPPRESS_LOG_PATHS`, and
+  `/api/duo-synergy` is not. `TOP_N` is 4, `UTILITY` maps to `sup`, and the `DUO PICKS`,
+  `loading duo picks...` and `duo picks unavailable right now` strings are unchanged.
+  `tests/test_gated_rm881_duo_lobby.py`: 14 passed at HEAD.
 
 ---
 
