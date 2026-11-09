@@ -6,7 +6,6 @@ The route layer is covered separately by tests/test_routes_draft_elo.py.
 from __future__ import annotations
 
 import math
-import sqlite3
 import unittest
 
 from core import draft_elo, draft_elo_db

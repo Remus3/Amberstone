@@ -24,10 +24,9 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
-import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 _REPO = Path(__file__).resolve().parents[1]
 _WATCHER_PATH = _REPO / "tools" / "phase_watcher.py"
