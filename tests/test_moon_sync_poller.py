@@ -886,7 +886,7 @@ def test_write_status_survives_a_reader_holding_the_target(state: Path):
     P.write_status({}, 1.0, 300, rows=[])
     target = state / "status.md"
     before = target.read_bytes()
-    handle = open(target, encoding="utf-8")
+    handle = target.open(encoding="utf-8")
     try:
         P.write_status({}, 2.0, 300, rows=[])
     finally:

@@ -9,6 +9,8 @@ ops/audit baseline, so the guard's `audit_unclassified` area is retired.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from ops.audit.ds_perm_swarm import live_flip_eyeball, run_consolidate, run_harness
@@ -47,6 +49,5 @@ def test_goes_through_polled_json(mod, tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("mod", MODS, ids=IDS)
 def test_no_destination_derived_scratch_is_left_in_the_module(mod):
-    with open(mod.__file__, "rb") as fh:
-        src = fh.read().decode("utf-8")
+    src = Path(mod.__file__).read_bytes().decode("utf-8")
     assert ".tmp" not in src and "os.replace" not in src

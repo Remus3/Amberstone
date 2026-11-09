@@ -275,7 +275,7 @@ def test_the_real_os_still_share_locks_a_held_control_file(ctldir):
     stop.write_text("previous reason", encoding="utf-8")
     scratch = ctldir / "STOP.os_probe"
     scratch.write_text("halt", encoding="utf-8")
-    with open(stop, encoding="utf-8"):
+    with stop.open(encoding="utf-8"):
         with pytest.raises(PermissionError):
             os.replace(scratch, stop)
     scratch.unlink()

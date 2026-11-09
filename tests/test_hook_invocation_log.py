@@ -432,7 +432,7 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
     # expected exactly when DEVNULL is not a tty. Either way it never reaches
     # the live log; tests/test_hook_log_live_isolation.py proves the redirect
     # with an empty pipe, which is a non-tty on every OS.
-    with open(os.devnull, "rb") as nul:
+    with Path(os.devnull).open("rb") as nul:
         devnull_is_tty = nul.isatty()
     assert (tmp_path / "redirected.jsonl").exists() is (not devnull_is_tty), (
         "the redirect did not take effect, or a tty hand run was recorded")
