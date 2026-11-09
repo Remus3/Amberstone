@@ -81,7 +81,7 @@ a5c03c160aa9ce1b00f5dbcab81d3d1caac9b615ec3c3189c1c3d93ac5962d2b  web/js/panels/
 
 51af9ecf54afc7178bcee14a15be4e414d31ed0af7c15192ea0b0012dda8a3de  web/js/panels/overlay_ds_controls.js
 
-73fe6d7301f15a54fce04824172a33750b82f24cb5864dde9915423044c53a62  web/js/panels/panel_visibility.js
+9c9e58e8f505533dbe4f1d451309998a1ebf596f6b3fba8f7f7ddfd94d87211d  web/js/panels/panel_visibility.js
 
 53ccf4f124d0e27f23102c1d6cd32d18aa19917027376858c788ec1b287c6cd0  web/js/panels/patch_impact.js
 

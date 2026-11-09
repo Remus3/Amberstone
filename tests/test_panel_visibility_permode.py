@@ -54,16 +54,22 @@ class RegistryTests(unittest.TestCase):
         missing = [i for i in self.ids if f'id="{i}"' not in self.html]
         self.assertEqual(missing, [], f"phantom panel ids (not in index.html): {missing}")
 
-    def test_registry_expanded_beyond_legacy_five(self):
-        self.assertGreaterEqual(len(self.ids), 17, self.ids)
-        for pid in [
-            "minimap", "right-now", "next", "item-build", "adaptation",
-            "coach-decisions", "rn-lead", "rn-choices", "rn-callouts",
-            "personal-context-section", "session-trend", "lm-tc-table",
+    def test_registry_lists_only_panels_a_view_can_show(self):
+        # S144-U-263: the legacy 5 <main> panels and the Right Now children
+        # sit in the top-level <main>, which no view renders, so their rows
+        # were dead checkboxes. The rendered contract is pinned by
+        # tests/snapshot_panels/test_panel_visibility_dead_rows_retired.py.
+        self.assertEqual(self.ids, [
+            "coach-decisions", "session-trend", "lm-tc-table",
             "hpgr-tc-table", "am-spike-curve", "am-spike-markers",
             "am-ward-heat", "aram-balance-panel",
+        ])
+        for pid in [
+            "minimap", "right-now", "next", "item-build", "adaptation",
+            "rn-lead", "rn-choices", "rn-callouts",
+            "personal-context-section",
         ]:
-            self.assertIn(pid, self.ids, pid)
+            self.assertNotIn(pid, self.ids, pid)
 
     def test_registry_ids_unique(self):
         self.assertEqual(len(set(self.ids)), len(self.ids))

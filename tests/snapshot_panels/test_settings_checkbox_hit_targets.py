@@ -14,7 +14,8 @@ Measured in headless Chromium under /?ui_mock=1#settings, 1920x920 and
   in label.settings-row, 51px tall;
 - the JS-built spend gates (web/js/panels/dev.js renderSpendGates) use
   label.settings-row spend-gate-row, 81px tall with a two-line explain;
-- the 17 PANEL VISIBILITY cells (web/js/panels/panel_visibility.js) use
+- the PANEL VISIBILITY cells (web/js/panels/panel_visibility.js; 17 then,
+  8 since S144-U-263 retired the never-rendered <main> rows) use
   label.pv-cell, 42px tall;
 - a real pointer click at the far edge of each label, outside the box,
   toggled its checkbox (every one, both widths);
@@ -165,7 +166,7 @@ def test_every_settings_checkbox_label_clears_hit_min(mock_server, pw_browser, v
     kinds = _kinds(boxes)
     assert kinds["settings-row"] == 8, f"static settings rows: {kinds}"
     assert kinds["spend-gate-row"] == 2, f"spend-gate rows: {kinds}"
-    assert kinds["pv-cell"] >= 10, f"panel-visibility cells: {kinds}"
+    assert kinds["pv-cell"] >= 8, f"panel-visibility cells: {kinds}"
     bad = [b for b in boxes if b["kind"] == "(no label)"]
     assert not bad, f"checkbox without a <label> wrapper: {bad[:3]}"
     for b in boxes:
@@ -230,7 +231,7 @@ def test_click_on_label_outside_the_box_toggles(mock_server, pw_browser, vp):
     finally:
         page.close()
         ctx.close()
-    assert clicked >= 20, f"only {clicked} checkboxes clicked"
+    assert clicked >= 17, f"only {clicked} checkboxes clicked"
     assert not failures, failures[:5]
     assert not errors, f"JS errors: {errors[:3]}"
 
@@ -261,7 +262,7 @@ def test_every_settings_checkbox_shows_a_focus_ring(mock_server, pw_browser, vp)
     finally:
         page.close()
         ctx.close()
-    assert len(rings) >= 20, f"only {len(rings)} checkboxes measured"
+    assert len(rings) >= 18, f"only {len(rings)} checkboxes measured"
     bad = [r for r in rings if not r["fv"] or "0px 0px 0px 2px" not in r["shadow"]]
     assert not bad, f"checkbox without a 2px focus ring: {bad[:3]}"
     assert not errors, f"JS errors: {errors[:3]}"
@@ -325,7 +326,7 @@ def test_every_settings_checkbox_draws_the_one_system_focus_ring(
         kinds = _kinds(rings)
         assert kinds["settings-row"] == 8, f"{theme}: {kinds}"
         assert kinds["spend-gate-row"] == 2, f"{theme}: {kinds}"
-        assert kinds["pv-cell"] >= 10, f"{theme}: {kinds}"
+        assert kinds["pv-cell"] >= 8, f"{theme}: {kinds}"
         assert all(r["fv"] for r in rings), f"{theme}: not :focus-visible"
         shadows = {r["shadow"] for r in rings}
         off = [r for r in rings if r["shadow"] != token]
@@ -384,7 +385,7 @@ def test_every_settings_checkbox_keeps_its_square_box_at_every_width(
     kinds = _kinds(sizes)
     assert kinds["settings-row"] == 8, f"static settings rows: {kinds}"
     assert kinds["spend-gate-row"] == 2, f"spend-gate rows: {kinds}"
-    assert kinds["pv-cell"] >= 10, f"panel-visibility cells: {kinds}"
+    assert kinds["pv-cell"] >= 8, f"panel-visibility cells: {kinds}"
     assert any(s["id"] == "set-dev-mode" for s in sizes), sizes[:3]
     rows = [s for s in sizes if "settings-row" in s["kind"]]
     off = [s for s in rows if s["w"] != 24 or s["h"] != 24]

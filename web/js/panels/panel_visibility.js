@@ -40,24 +40,20 @@
 
 // -- PURE CORE ----------------------------------------------------------------
 
-// All operator-facing main-dashboard panels (web/index.html), expanded from
-// the legacy 5 <main> sections to every togglable id'd block the QA ruling
-// covers. id is the element id; label is the human name in the settings UI.
+// The operator-facing main-dashboard panels (web/index.html) a view can
+// show. id is the element id; label is the human name in the settings UI.
 // A panel id absent from this registry is simply never hidden (fail-open).
+// S144-U-263: the legacy 5 <main> panels (minimap, right-now, next,
+// item-build, adaptation) and the Right Now children (rn-lead, rn-choices,
+// rn-callouts, personal-context-section) are NOT listed: they sit in the
+// top-level <main>, which header.css hides for every VIEW_ID, and the
+// overlay shell where the rn-* mounts render is exempt from this gate, so
+// their rows were dead checkboxes. A stored pref for one is dropped on read
+// like any unknown id.
 const PANELS = Object.freeze([
-  // the legacy 5 <main> game panels
-  Object.freeze({ id: "minimap", label: "Map State" }),
-  Object.freeze({ id: "right-now", label: "Right Now" }),
-  Object.freeze({ id: "next", label: "Next" }),
-  Object.freeze({ id: "item-build", label: "Item Build" }),
-  Object.freeze({ id: "adaptation", label: "Adaptation" }),
-  // main-surface feature blocks (each renderer-gated via [hidden]; the
-  // pv gate layers on top without fighting the renderer)
+  // main-surface feature block (renderer-gated via [hidden]; the pv gate
+  // layers on top without fighting the renderer)
   Object.freeze({ id: "coach-decisions", label: "Coach Decisions" }),
-  Object.freeze({ id: "rn-lead", label: "Macro Lead" }),
-  Object.freeze({ id: "rn-choices", label: "Coach Choices" }),
-  Object.freeze({ id: "rn-callouts", label: "Callouts" }),
-  Object.freeze({ id: "personal-context-section", label: "Personal Context" }),
   // session / post-game-review blocks
   Object.freeze({ id: "session-trend", label: "Session Summary" }),
   Object.freeze({ id: "lm-tc-table", label: "Team Context (Last Match)" }),

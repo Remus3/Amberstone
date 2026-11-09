@@ -31,16 +31,25 @@ import {
   isPanelVisible,
 } from "./panel_visibility.js";
 
-// The legacy 5 - must survive the expansion (prefs for them keep working).
-const LEGACY_IDS = ["minimap", "right-now", "next", "item-build", "adaptation"];
-
-// Named expansion panels the QA ruling called out explicitly.
-const EXPANSION_IDS = [
-  "coach-decisions",
+// S144-U-263: the legacy 5 <main> panels and the Right Now children sit in
+// the top-level <main>, which no view renders, so their settings rows were
+// dead checkboxes. They are out of the registry, and a stored pref for one
+// is dropped on read like any unknown id.
+const RETIRED_IDS = [
+  "minimap",
+  "right-now",
+  "next",
+  "item-build",
+  "adaptation",
   "rn-lead",
   "rn-choices",
   "rn-callouts",
   "personal-context-section",
+];
+
+// The panels a view can show, in registry (= settings row) order.
+const KEPT_IDS = [
+  "coach-decisions",
   "session-trend",
   "lm-tc-table",
   "hpgr-tc-table",
@@ -98,15 +107,36 @@ test("contextForMode: Object.prototype names are not modes (no proto leak)", () 
 
 // -- panel registry ----------------------------------------------------------
 
-test("PANELS: expanded registry keeps the legacy 5 and adds the QA set", () => {
+test("PANELS: lists exactly the panels a view can show (S144-U-263)", () => {
   const ids = PANELS.map((p) => p.id);
-  for (const id of LEGACY_IDS) {
-    assert.ok(ids.includes(id), `legacy panel missing: ${id}`);
+  assert.deepStrictEqual(ids, KEPT_IDS);
+  for (const id of RETIRED_IDS) {
+    assert.ok(!ids.includes(id), `never-rendered panel listed: ${id}`);
   }
-  for (const id of EXPANSION_IDS) {
-    assert.ok(ids.includes(id), `expansion panel missing: ${id}`);
+});
+
+test("readVisibility: a stored pref for a retired id is dropped (S144-U-263)", () => {
+  const blob = JSON.stringify({
+    "in-game": { minimap: false },
+    "in-game-sr": { "right-now": false, "rn-lead": false },
+    "out-game": { next: false, "session-trend": false },
+  });
+  const v = readVisibility(blob);
+  for (const ctx of CONTEXTS) {
+    assert.deepStrictEqual(Object.keys(v[ctx]), KEPT_IDS, ctx);
   }
-  assert.ok(ids.length >= 17, `expected >= 17 panels, got ${ids.length}`);
+  assert.strictEqual(v["out-game"]["session-trend"], false);
+  const out = JSON.parse(serializeVisibility(v));
+  for (const ctx of CONTEXTS) {
+    for (const id of RETIRED_IDS) {
+      assert.ok(!(id in out[ctx]), `${ctx}/${id} survived a write`);
+    }
+  }
+  // a retired id is a no-op target, like any unknown id
+  assert.deepStrictEqual(
+    readVisibility(setPanelVisible("{}", "in-game-sr", "minimap", false)),
+    defaultVisibility()
+  );
 });
 
 test("PANELS: ids unique, labels human + ASCII-only", () => {
@@ -145,54 +175,54 @@ test("readVisibility: missing / garbage blob -> all-visible default", () => {
 });
 
 test("readVisibility: non-boolean panel values fall back to true", () => {
-  const blob = JSON.stringify({ "in-game-sr": { minimap: "no", next: 0 } });
+  const blob = JSON.stringify({ "in-game-sr": { "am-ward-heat": "no", "am-spike-curve": 0 } });
   const v = readVisibility(blob);
-  assert.strictEqual(v["in-game-sr"].minimap, true);
-  assert.strictEqual(v["in-game-sr"].next, true);
+  assert.strictEqual(v["in-game-sr"]["am-ward-heat"], true);
+  assert.strictEqual(v["in-game-sr"]["am-spike-curve"], true);
 });
 
 test("readVisibility: unknown panel ids + unknown contexts are dropped", () => {
   const blob = JSON.stringify({
-    "in-game-sr": { minimap: false, bogus: false },
-    "zzz-context": { minimap: false },
+    "in-game-sr": { "am-ward-heat": false, bogus: false },
+    "zzz-context": { "am-ward-heat": false },
   });
   const v = readVisibility(blob);
   assert.ok(!("bogus" in v["in-game-sr"]));
   assert.ok(!("zzz-context" in v));
-  assert.strictEqual(v["in-game-sr"].minimap, false);
+  assert.strictEqual(v["in-game-sr"]["am-ward-heat"], false);
 });
 
 // -- legacy-blob migration ---------------------------------------------------
 
 test("migration: legacy in-game prefs copy to every in-game-* context", () => {
   const legacy = JSON.stringify({
-    "in-game": { minimap: false, "rn-callouts": false },
-    "out-game": { next: false },
+    "in-game": { "am-ward-heat": false, "am-spike-markers": false },
+    "out-game": { "am-spike-curve": false },
   });
   const v = readVisibility(legacy);
   for (const ctx of IN_GAME_CONTEXTS) {
-    assert.strictEqual(v[ctx].minimap, false, ctx);
-    assert.strictEqual(v[ctx]["rn-callouts"], false, ctx);
+    assert.strictEqual(v[ctx]["am-ward-heat"], false, ctx);
+    assert.strictEqual(v[ctx]["am-spike-markers"], false, ctx);
     // untouched panels stay visible
-    assert.strictEqual(v[ctx]["item-build"], true, ctx);
+    assert.strictEqual(v[ctx]["lm-tc-table"], true, ctx);
   }
   // out-game carries over directly, and does NOT inherit in-game prefs
-  assert.strictEqual(v["out-game"].next, false);
-  assert.strictEqual(v["out-game"].minimap, true);
+  assert.strictEqual(v["out-game"]["am-spike-curve"], false);
+  assert.strictEqual(v["out-game"]["am-ward-heat"], true);
   // the legacy key itself does not survive as a context
   assert.ok(!("in-game" in v));
 });
 
 test("migration: explicit per-mode prefs override migrated legacy values", () => {
   const blob = JSON.stringify({
-    "in-game": { minimap: false },
-    "in-game-aram": { minimap: true },
+    "in-game": { "am-ward-heat": false },
+    "in-game-aram": { "am-ward-heat": true },
   });
   const v = readVisibility(blob);
-  assert.strictEqual(v["in-game-sr"].minimap, false);
-  assert.strictEqual(v["in-game-arena"].minimap, false);
-  assert.strictEqual(v["in-game-tft"].minimap, false);
-  assert.strictEqual(v["in-game-aram"].minimap, true); // explicit wins
+  assert.strictEqual(v["in-game-sr"]["am-ward-heat"], false);
+  assert.strictEqual(v["in-game-arena"]["am-ward-heat"], false);
+  assert.strictEqual(v["in-game-tft"]["am-ward-heat"], false);
+  assert.strictEqual(v["in-game-aram"]["am-ward-heat"], true); // explicit wins
 });
 
 test("migration: corrupt legacy sub-blob never breaks boot (fail-open)", () => {
@@ -207,12 +237,12 @@ test("migration: corrupt legacy sub-blob never breaks boot (fail-open)", () => {
 });
 
 test("migration: serialize drops the legacy key (one-way upgrade)", () => {
-  const blob = JSON.stringify({ "in-game": { minimap: false } });
+  const blob = JSON.stringify({ "in-game": { "am-ward-heat": false } });
   const out = serializeVisibility(readVisibility(blob));
   const parsed = JSON.parse(out);
   assert.ok(!("in-game" in parsed));
   for (const ctx of IN_GAME_CONTEXTS) {
-    assert.strictEqual(parsed[ctx].minimap, false, ctx);
+    assert.strictEqual(parsed[ctx]["am-ward-heat"], false, ctx);
   }
 });
 
@@ -220,10 +250,10 @@ test("migration: serialize drops the legacy key (one-way upgrade)", () => {
 
 test("matrix: hiding a panel in one context leaves the other 4 visible", () => {
   const checks = [
-    ["in-game-sr", "minimap"],
+    ["in-game-sr", "am-ward-heat"],
     ["in-game-aram", "aram-balance-panel"],
-    ["in-game-arena", "rn-choices"],
-    ["in-game-tft", "item-build"],
+    ["in-game-arena", "am-spike-markers"],
+    ["in-game-tft", "lm-tc-table"],
     ["out-game", "session-trend"],
   ];
   for (const [ctx, id] of checks) {
@@ -238,15 +268,15 @@ test("matrix: hiding a panel in one context leaves the other 4 visible", () => {
 });
 
 test("setPanelVisible: re-showing persists true; unknowns are no-ops", () => {
-  let blob = setPanelVisible("{}", "in-game-tft", "adaptation", false);
-  assert.strictEqual(readVisibility(blob)["in-game-tft"].adaptation, false);
-  blob = setPanelVisible(blob, "in-game-tft", "adaptation", true);
-  assert.strictEqual(readVisibility(blob)["in-game-tft"].adaptation, true);
+  let blob = setPanelVisible("{}", "in-game-tft", "hpgr-tc-table", false);
+  assert.strictEqual(readVisibility(blob)["in-game-tft"]["hpgr-tc-table"], false);
+  blob = setPanelVisible(blob, "in-game-tft", "hpgr-tc-table", true);
+  assert.strictEqual(readVisibility(blob)["in-game-tft"]["hpgr-tc-table"], true);
   // unknown panel / context / legacy context name are all no-ops
   for (const [ctx, id] of [
     ["in-game-sr", "bogus"],
-    ["zzz", "minimap"],
-    ["in-game", "minimap"],
+    ["zzz", "am-ward-heat"],
+    ["in-game", "am-ward-heat"],
   ]) {
     assert.deepStrictEqual(
       readVisibility(setPanelVisible("{}", ctx, id, false)),
@@ -257,29 +287,29 @@ test("setPanelVisible: re-showing persists true; unknowns are no-ops", () => {
 });
 
 test("setPanelVisible: garbage prev blob starts fresh, does not throw", () => {
-  const next = setPanelVisible("not json", "in-game-arena", "next", false);
-  assert.strictEqual(readVisibility(next)["in-game-arena"].next, false);
+  const next = setPanelVisible("not json", "in-game-arena", "am-spike-curve", false);
+  assert.strictEqual(readVisibility(next)["in-game-arena"]["am-spike-curve"], false);
 });
 
 test("isPanelVisible: per-context resolve, fail-open on unknowns", () => {
-  const blob = setPanelVisible("{}", "in-game-aram", "item-build", false);
-  assert.strictEqual(isPanelVisible(blob, "in-game-aram", "item-build"), false);
-  assert.strictEqual(isPanelVisible(blob, "in-game-sr", "item-build"), true);
-  assert.strictEqual(isPanelVisible(blob, "out-game", "item-build"), true);
+  const blob = setPanelVisible("{}", "in-game-aram", "lm-tc-table", false);
+  assert.strictEqual(isPanelVisible(blob, "in-game-aram", "lm-tc-table"), false);
+  assert.strictEqual(isPanelVisible(blob, "in-game-sr", "lm-tc-table"), true);
+  assert.strictEqual(isPanelVisible(blob, "out-game", "lm-tc-table"), true);
   assert.strictEqual(isPanelVisible(blob, "in-game-aram", "bogus"), true);
-  assert.strictEqual(isPanelVisible(blob, "in-game", "item-build"), true);
+  assert.strictEqual(isPanelVisible(blob, "in-game", "lm-tc-table"), true);
 });
 
 test("round-trip: several contexts stay independent through serialize", () => {
   let blob = "{}";
-  blob = setPanelVisible(blob, "in-game-sr", "minimap", false);
-  blob = setPanelVisible(blob, "in-game-aram", "minimap", false);
+  blob = setPanelVisible(blob, "in-game-sr", "am-ward-heat", false);
+  blob = setPanelVisible(blob, "in-game-aram", "am-ward-heat", false);
   blob = setPanelVisible(blob, "out-game", "coach-decisions", false);
   const v = readVisibility(serializeVisibility(readVisibility(blob)));
-  assert.strictEqual(v["in-game-sr"].minimap, false);
-  assert.strictEqual(v["in-game-aram"].minimap, false);
-  assert.strictEqual(v["in-game-arena"].minimap, true);
-  assert.strictEqual(v["in-game-tft"].minimap, true);
+  assert.strictEqual(v["in-game-sr"]["am-ward-heat"], false);
+  assert.strictEqual(v["in-game-aram"]["am-ward-heat"], false);
+  assert.strictEqual(v["in-game-arena"]["am-ward-heat"], true);
+  assert.strictEqual(v["in-game-tft"]["am-ward-heat"], true);
   assert.strictEqual(v["out-game"]["coach-decisions"], false);
 });
 
