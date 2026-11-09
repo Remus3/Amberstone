@@ -2303,7 +2303,10 @@
                am- prefix avoids colliding with champ-select's
                csv-sugg-capability-gap mount (both views live in the DOM).
                Styling inherits from web/css/panels/capability_gap.css. -->
-          <div class="capability-gap" id="am-sugg-capability-gap" hidden></div>
+          <!-- S144-U-283: data-ovx-drop makes the chip the LAST section the
+               overlay fit drops (overlay_layout._fitDropGroups), after the
+               build body's THREATS, COUNTER and DEFENSE. -->
+          <div class="capability-gap" id="am-sugg-capability-gap" data-ovx-drop="capgap" hidden></div>
           <div class="ds-combo" id="csv-sugg-ds-combo" hidden></div>
           <div class="ds-relscore" id="csv-ds-relscore" hidden></div>
           <!-- QA 2026-07-03 B20/B22: ds-profile / ds-knobs / ds-statcheck

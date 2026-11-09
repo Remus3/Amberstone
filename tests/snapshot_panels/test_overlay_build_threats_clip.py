@@ -51,11 +51,14 @@ _READ = """(wsel) => {
   const body = w.querySelector('#am-build-body');
   const kids = body ? [...body.children].map((k) => ({
     cls: k.className, text: (k.textContent || '').trim().slice(0, 24),
+    shown: k.checkVisibility(),
     box: box(k.getBoundingClientRect())})) : [];
   let eyebrow = null;
+  let eyebrowShown = false;
   for (const k of (body ? body.children : [])) {
     if ((k.textContent || '').trim().startsWith('THREATS')) {
       eyebrow = box(k.getBoundingClientRect());
+      eyebrowShown = k.checkVisibility();
       break;
     }
   }
@@ -68,8 +71,9 @@ _READ = """(wsel) => {
     others.push({id: o.dataset.ovxId, box: box(r)});
   }
   return {clip: clip, wbox: box(wr), vh: window.innerHeight,
-          kids: kids, eyebrow: eyebrow,
+          kids: kids, eyebrow: eyebrow, eyebrowShown: eyebrowShown,
           strip: strip ? box(strip.getBoundingClientRect()) : null,
+          stripShown: strip ? strip.checkVisibility() : false,
           enemies: strip ? strip.querySelectorAll('.threat-row').length : 0,
           others: others};
 }"""
@@ -137,6 +141,13 @@ def test_the_threats_strip_sits_inside_the_widget_clip(
     assert got["eyebrow"], f"{mode} {height}: no THREATS eyebrow"
     assert got["strip"], f"{mode} {height}: no .threat-strip"
     assert got["enemies"] == (10 if mode == "arena" else 5), got["enemies"]
+    if height != 1080 and not got["eyebrowShown"]:
+        # S144-U-283: at the headless-only 920 the box stops under w-call, so
+        # THREATS (the last section) may be dropped - but only WHOLE. At the
+        # real overlay height 1080 it must show.
+        assert not got["stripShown"], f"{mode} {height}: strip without eyebrow"
+        return
+    assert got["eyebrowShown"] and got["stripShown"], (mode, height)
     bad = []
     for name in ("eyebrow", "strip"):
         b = got[name]
@@ -155,9 +166,12 @@ def test_no_build_body_row_is_cut_by_the_clip(
     # strip) paints whole: none is sliced or hidden by the widget edge.
     got = _get(measured, mock_server, pw_browser, mode, height)
     assert len(got["kids"]) >= 3, got["kids"]
+    # A section the S144-U-283 fit dropped whole paints nothing, so it is not
+    # a cut row; every row that IS shown must be whole.
     cut = [f"{k['cls'] or k['text']!r} {k['box']['top']:.0f}-"
            f"{k['box']['bottom']:.0f}"
-           for k in got["kids"] if not _inside(got["clip"], k["box"])]
+           for k in got["kids"]
+           if k["shown"] and not _inside(got["clip"], k["box"])]
     assert not cut, (f"{mode} {height}: cut at clip bottom"
                      f" {got['clip']['bottom']:.0f}: " + "; ".join(cut))
 

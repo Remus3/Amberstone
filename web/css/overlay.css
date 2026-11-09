@@ -602,6 +602,14 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .am-pane-head {
   display: none !important;
 }
 
+/* S144-U-283: a trailing build section the capped widget cannot hold is
+ * dropped WHOLE (overlay_layout._fitDropGroups stamps data-ovx-dropped on its
+ * eyebrow and strip), never sliced by the clip. !important because the strips
+ * carry an inline display:flex, which would beat a plain rule. */
+body[data-shell="overlay"] .ovx-widget [data-ovx-dropped] {
+  display: none !important;
+}
+
 /* B-OVL-4 (2026-09-01): the draft-elo chip row. The chip used to be mounted
  * inside the pane head hidden just above, so in-game it computed every tick and
  * painted a 0x0 box; it now lives in its own .am-pane-chips row (a direct child

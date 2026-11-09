@@ -1035,8 +1035,15 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     const surface = (bt >= 5) || (at >= 7) || (pt >= 7);
     if (surface) {
       const defLabel = `DEFENSE - ${threat.summary || "threat detected"}`;
-      build.appendChild(_line(defLabel, ""));
+      // S144-U-283: each trailing data section (eyebrow + strip) carries one
+      // data-ovx-drop key, so the overlay fit (overlay_layout._fitDropGroups)
+      // drops it WHOLE, last section first, when the capped widget cannot hold
+      // it - instead of the widget clip slicing it. Inert on the dashboard.
+      const defLine = _line(defLabel, "");
+      defLine.dataset.ovxDrop = "defense";
+      build.appendChild(defLine);
       const defStrip = document.createElement("div");
+      defStrip.dataset.ovxDrop = "defense";
       defStrip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
       defensive.slice(0, 3).forEach((r) => {
         defStrip.appendChild(_defIcon(r, ownedSet));
@@ -1052,9 +1059,12 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // vs gap (buy toward it); high severity gets a stronger border.
   const _ch = (_BUILD_PLAN && Array.isArray(_BUILD_PLAN.counterHints)) ? _BUILD_PLAN.counterHints : null;
   if (_ch && _ch.length) {
-    build.appendChild(_line("COUNTER", ""));
+    const cLine = _line("COUNTER", "");
+    cLine.dataset.ovxDrop = "counter"; // S144-U-283, see DEFENSE above
+    build.appendChild(cLine);
     const cStrip = document.createElement("div");
     cStrip.className = "counter-strip";
+    cStrip.dataset.ovxDrop = "counter";
     _ch.forEach((h) => cStrip.appendChild(_counterChip(h)));
     build.appendChild(cStrip);
   }
@@ -1065,9 +1075,12 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
     const enemies = _amThreatEnemies(lc);
     if (enemies.length) {
-      build.appendChild(_line("THREATS", ""));
+      const tLine = _line("THREATS", "");
+      tLine.dataset.ovxDrop = "threats"; // S144-U-283, see DEFENSE above
+      build.appendChild(tLine);
       const strip = document.createElement("div");
       strip.className = "threat-strip";
+      strip.dataset.ovxDrop = "threats";
       strip.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;align-items:center;";
       enemies.forEach((pl) => strip.appendChild(_threatRow(pl, mode, level)));
       build.appendChild(strip);

@@ -129,7 +129,7 @@ by the same work-area scale rc-shell sizes the window by (RC2 4.1 ovscale).
 | `w-callouts`     | objective + spike ETAs      | Ambient -> Urgent     | 1486, past minimap 780 | left edge of the minimap (eye rests) | yes      |
 | `w-lead`         | macro lead ahead/behind     | Ambient               | 786, 44       | top-center, under the score bar          | yes           |
 | `w-threat`       | enemy threat / CD ledger    | Urgent                | 1604, 560     | directly above the minimap               | no (reveal)   |
-| `w-build`        | next-item rerank            | Ambient               | 70, 600 (lower half: bottom-anchored, grows up) | bottom-left corner, out of the play space | no (reveal)   |
+| `w-build`        | next-item rerank            | Ambient               | 70, 600 (lower half: bottom-anchored, grows up to 12 px under w-call; trailing sections drop whole) | bottom-left corner, out of the play space | no (reveal)   |
 | `w-ovds`         | DS fight-model / rel-score  | Ambient               | 20, 780       | left-edge column, out of the play space  | no (reveal: build) |
 | `w-spike`        | spike-crossed cue           | Urgent (one-shot)     | 360, 840      | bottom-left, near champion stats         | yes (transient)|
 | `w-trinket`      | trinket / control-ward ready| Urgent make-aware     | 920, 540      | small glyph, offset from the avatar      | yes (glyph)   |

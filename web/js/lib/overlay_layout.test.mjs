@@ -57,3 +57,33 @@ test("only the tall BUILD panel carries the bottom-snap flag", () => {
   const flagged = WIDGETS.filter((w) => w.tall).map((w) => w.id);
   assert.deepStrictEqual([...TALL_IDS].sort(), flagged.sort());
 });
+
+// S144-U-283: the floor a bottom-anchored tall widget stops at, under a visible
+// primary widget (w-call) sharing its column. Boxes are design px.
+test("_tallFloorTop stops the grown box TALL_FLOOR_GAP below a primary widget in its column", () => {
+  const { _tallFloorTop, TALL_FLOOR_GAP } = _internals;
+  assert.strictEqual(TALL_FLOOR_GAP, 12);
+  // w-build x 70..482, bottom anchor 1064; w-call x 180..390, y 130..320.
+  const call = { left: 180, right: 390, top: 130, bottom: 320 };
+  assert.strictEqual(_tallFloorTop(70, 482, 1064, [call]), 332);
+  // The lowest of several primary boxes wins.
+  const lower = { left: 100, right: 200, top: 300, bottom: 400 };
+  assert.strictEqual(_tallFloorTop(70, 482, 1064, [call, lower]), 412);
+});
+
+test("_tallFloorTop ignores a primary widget outside the column, below the anchor, or too low to leave room", () => {
+  const { _tallFloorTop, TALL_MIN_H } = _internals;
+  // Another column (w-call dragged right of w-build's 482 edge).
+  assert.strictEqual(_tallFloorTop(70, 482, 1064, [{ left: 482, right: 692, top: 130, bottom: 320 }]), null);
+  // Starts below the anchor.
+  assert.strictEqual(_tallFloorTop(70, 482, 1064, [{ left: 180, right: 390, top: 1070, bottom: 1075 }]), null);
+  // Leaves less than TALL_MIN_H of room: the operator put it there, ignore it.
+  const low = { left: 180, right: 390, top: 700, bottom: 1064 - TALL_MIN_H - 12 + 1 };
+  assert.strictEqual(_tallFloorTop(70, 482, 1064, [low]), null);
+  // Exactly TALL_MIN_H of room still counts.
+  const edge = { left: 180, right: 390, top: 700, bottom: 1064 - TALL_MIN_H - 12 };
+  assert.strictEqual(_tallFloorTop(70, 482, 1064, [edge]), 1064 - TALL_MIN_H);
+  // No boxes / junk entries: no floor.
+  assert.strictEqual(_tallFloorTop(70, 482, 1064, []), null);
+  assert.strictEqual(_tallFloorTop(70, 482, 1064, [null, undefined]), null);
+});

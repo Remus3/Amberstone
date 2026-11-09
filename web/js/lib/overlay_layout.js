@@ -254,6 +254,88 @@ let _inited = false;
 // corner. See _applyPos.
 const TALL_IDS = new Set(WIDGETS.filter((w) => w.tall).map((w) => w.id));
 
+// S144-U-283: a bottom-anchored TALL widget grows upward with its content, and
+// live w-build adds two data-gated sections no fixture painted (the s171.6
+// DEFENSE row, the R102 COUNTER row): measured headless at 1920x1080 they grew
+// the sr box to top 59, over w-call (130 - 320), the doctrine's ONE primary
+// widget. So the grown box stops TALL_FLOOR_GAP design px below any visible
+// PRIMARY widget that shares its column (_tallFloorTop), and _fitDropGroups
+// drops the trailing [data-ovx-drop] sections whole until the content fits.
+// A primary widget too low to leave TALL_MIN_H of room is ignored: the operator
+// put it there, and capping under it would collapse the build to nothing.
+const TALL_FLOOR_GAP = 12;
+const TALL_MIN_H = 140;
+const PRIMARY_WIDGETS = WIDGETS.filter((w) => w.tier === "primary");
+
+// Pure: the top edge (design px) a bottom-anchored tall widget spanning
+// [left, right] with its bottom edge at `anchor` may grow up to, given the
+// design-px boxes of the visible primary widgets; null when none applies.
+function _tallFloorTop(left, right, anchor, boxes, gap = TALL_FLOOR_GAP) {
+  let floor = null;
+  for (const b of boxes || []) {
+    if (!b || !(Math.min(right, b.right) - Math.max(left, b.left) > 0)) continue;
+    const top = b.bottom + gap;
+    if (!(b.top < anchor) || top > anchor - TALL_MIN_H) continue;
+    if (floor === null || top > floor) floor = top;
+  }
+  return floor;
+}
+
+// Design-px boxes of the visible primary widgets other than `el`.
+function _primaryBoxes(el, z) {
+  const out = [];
+  for (const w of PRIMARY_WIDGETS) {
+    const p = document.querySelector(w.sel);
+    if (!p || p === el || p.classList.contains("ovx-hidden")) continue;
+    if (typeof p.checkVisibility === "function" && !p.checkVisibility()) continue;
+    const r = p.getBoundingClientRect();
+    if (!(r.height >= 1)) continue;
+    out.push({ left: r.left / z, right: r.right / z, top: r.top / z, bottom: r.bottom / z });
+  }
+  return out;
+}
+
+// True when `el` clips content: its own box, or a direct child that clips (the
+// .am-pane widgets are flex columns, so #am-build-body shrinks to the cap and
+// overflows inside its own overflow box while the widget itself reads full).
+function _overflows(el) {
+  if (el.scrollHeight > el.clientHeight) return true;
+  for (const k of el.children) {
+    if (!(k.clientHeight > 0) || k.scrollHeight <= k.clientHeight) continue;
+    if (getComputedStyle(k).overflowY !== "visible") return true;
+  }
+  return false;
+}
+
+// S144-U-283: all-or-nothing trailing sections. The tall widget's clip used to
+// slice whatever ran past its max-height (S144-U-282 measured the THREATS
+// eyebrow cut through). Every node carrying data-ovx-drop="<key>" belongs to
+// the section <key>; sections are dropped (data-ovx-dropped, display:none in
+// overlay.css) from the LAST one in document order up, until the content fits
+// the clip. Unmarked content (the rerank module) is never dropped. Recomputed
+// from scratch on every _applyPos, which the layout observer re-runs 150 ms
+// after any re-render, so a section comes back as soon as it fits again.
+function _fitDropGroups(el) {
+  for (const n of el.querySelectorAll("[data-ovx-dropped]")) n.removeAttribute("data-ovx-dropped");
+  if (el.classList.contains("ovx-hidden") || !_overflows(el)) return 0;
+  const groups = new Map();
+  for (const n of el.querySelectorAll("[data-ovx-drop]")) {
+    const k = n.dataset.ovxDrop;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(n);
+  }
+  const keys = [...groups.keys()];
+  let dropped = 0;
+  for (let i = keys.length - 1; i >= 0 && _overflows(el); i--) {
+    const nodes = groups.get(keys[i]);
+    // A section that paints nothing (its renderer hid it) frees no room.
+    if (!nodes.some((n) => n.getBoundingClientRect().height > 0)) continue;
+    for (const n of nodes) n.setAttribute("data-ovx-dropped", "");
+    dropped += 1;
+  }
+  return dropped;
+}
+
 // Keep at least this many design-px of a widget's top-left corner (where the drag
 // handle lives) on-screen so a drag - or a stale saved position - can NEVER strand
 // a panel off-screen / fully behind the minimap with no grabbable handle (operator
@@ -370,10 +452,17 @@ function _applyPos(el, p) {
   // clears `bottom` while moving and re-applies this on drop. Recomputed on resize.
   const isTall = TALL_IDS.has(el.dataset && el.dataset.ovxId);
   if (isTall && p.y > H * 0.5) {
-    el.style.left = _scalePos(_clampXY(p.x, 0, W, H).x, p.scale) + "px";
+    const left = _clampXY(p.x, 0, W, H).x;
+    el.style.left = _scalePos(left, p.scale) + "px";
     el.style.top = "auto";
     el.style.bottom = _scalePos(16, p.scale) + "px";
-    el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(H - 32)) + "px");
+    // S144-U-283: stop below a primary widget in the same column. The cap is a
+    // screen distance, so it is divided by the panel scale (zoom multiplies it).
+    const s = Number.isFinite(p.scale) && p.scale > 0 ? p.scale : 1;
+    const right = left + el.getBoundingClientRect().width / z;
+    const floor = _tallFloorTop(left, right, H - 16, _primaryBoxes(el, z));
+    const room = floor === null ? Infinity : (H - 16 - floor) / s;
+    el.style.setProperty("--ovx-maxh", Math.max(TALL_MIN_H, Math.round(Math.min(H - 32, room))) + "px");
   } else {
     const c = _clampXY(p.x, p.y, W, H);
     el.style.left = _scalePos(c.x, p.scale) + "px";
@@ -395,6 +484,7 @@ function _applyPos(el, p) {
     el.style.opacity = ""; // standard prop - clearing the string removes it
   }
   el.classList.toggle("ovx-hidden", p.hidden || p.modeOff === true || p.phaseOff === true);
+  if (isTall) _fitDropGroups(el);
 }
 
 function _bodyZoom() {
@@ -1338,6 +1428,11 @@ export const _internals = {
   LAUNCHER,
   PANEL_SETS,
   TALL_IDS,
+  TALL_FLOOR_GAP,
+  TALL_MIN_H,
+  _tallFloorTop,
+  _fitDropGroups,
+  _overflows,
   _clampXY,
   _effectiveXY,
   MIN_VISIBLE,
