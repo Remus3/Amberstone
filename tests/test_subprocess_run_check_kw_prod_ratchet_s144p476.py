@@ -9,7 +9,10 @@ production tree: 78 findings in 50 files. Slice 1 states ``check=False`` at the 
 eight modules whose code reads ``returncode`` (or deliberately ignores it) itself; slice 2
 (S144-P-477) does the same for eleven more tools/ modules; slice 3 (S144-P-478) for five more
 (gated_b29_window_parity, gated_lx11_minimap_check, p3_ascii_census, scheduled_boot_verify,
-sibling_sweep_ci); the rest sit in the baseline below,
+sibling_sweep_ci); slice 4 (S144-P-480) for ten more modules outside tools/ (voice_coach,
+daemon_slayer_client, data_retention, operator_notify, game_reader/poller, audit/p0_inventory and
+the loop's claude_stub, done_sentinel, interrupt and repo_review, whose two sites read
+``returncode`` or take ``.stdout`` of a best-effort git call); the rest sit in the baseline below,
 which only shrinks. Held back on purpose: ``tools/credential_history_scan.py`` and
 ``tools/sibling_name_sweep.py`` (another lane branch changed them), the packaging files, and the
 gated one-shot probes not yet audited. A baseline row that stops offending fails
@@ -52,22 +55,12 @@ _OUT_OF_SCOPE = (
 )
 # file -> finding count that stays (reason in the module docstring). Only shrinks.
 _BASELINE = {
-    "coaches/voice_coach.py": 1,
-    "core/daemon_slayer_client.py": 1,
-    "core/data_retention.py": 1,
-    "core/operator_notify.py": 1,
     "dashboard/routes_loop_status.py": 1,
-    "game_reader/poller.py": 1,
-    "ops/audit/p0_inventory.py": 1,
-    "ops/loop/claude_stub.py": 1,
-    "ops/loop/done_sentinel.py": 1,
     "ops/loop/drain_waves_2_3.py": 1,
     "ops/loop/executor.py": 4,
-    "ops/loop/interrupt.py": 1,
     "ops/loop/lane_launcher.py": 2,
     "ops/loop/loop_controller.py": 2,
     "ops/loop/queue_loop.py": 3,
-    "ops/loop/repo_review.py": 2,
     "ops/rc_dev_runtime.py": 1,
     "ops/rc_supervisor.py": 3,
     "scripts/audit_api_surface.py": 1,
@@ -80,7 +73,17 @@ _BASELINE = {
     "tools/sibling_name_sweep.py": 2,
 }
 _FIXED = (
+    "coaches/voice_coach.py",
+    "core/daemon_slayer_client.py",
+    "core/data_retention.py",
+    "core/operator_notify.py",
     "dashboard/_vision_watchdog.py",
+    "game_reader/poller.py",
+    "ops/audit/p0_inventory.py",
+    "ops/loop/claude_stub.py",
+    "ops/loop/done_sentinel.py",
+    "ops/loop/interrupt.py",
+    "ops/loop/repo_review.py",
     "tools/bootstrap_env_check.py",
     "tools/bot_merge_check.py",
     "tools/build_rank_baselines.py",

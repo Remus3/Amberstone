@@ -434,7 +434,7 @@ class _PollerMixin:
                 ["wmic", "process", "where",
                  "name='LeagueClientUx.exe'", "get", "commandline"],
                 capture_output=True, text=True, errors="replace", timeout=5,
-                creationflags=0x08000000
+                creationflags=0x08000000, check=False,
             )
             port = re.search(r"--app-port=(\d+)", result.stdout)
             token = re.search(r"--remoting-auth-token=([\w_-]+)", result.stdout)

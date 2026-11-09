@@ -330,7 +330,7 @@ _SCHTASKS_TIMEOUT_S = 15.0
 def _schtasks(*args: str) -> int:
     return subprocess.run(
         ["schtasks", *args], capture_output=True,
-        timeout=_SCHTASKS_TIMEOUT_S, creationflags=_NO_WINDOW,
+        timeout=_SCHTASKS_TIMEOUT_S, creationflags=_NO_WINDOW, check=False,
     ).returncode
 
 

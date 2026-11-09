@@ -176,7 +176,7 @@ class WinToastNotifier(Notifier):
                  "-EncodedCommand", enc],
                 capture_output=True, text=True, errors="replace",
                 timeout=self.timeout_s,
-                creationflags=CREATE_NO_WINDOW,
+                creationflags=CREATE_NO_WINDOW, check=False,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             return False, f"spawn failed: {type(exc).__name__}: {exc}"

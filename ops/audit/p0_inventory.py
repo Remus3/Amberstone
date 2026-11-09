@@ -56,6 +56,7 @@ def main() -> int:
         subprocess.run(
             ["git", "-C", str(ROOT), "ls-files", "-z"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
+            check=False,
         ).stdout.split("\0")
     )
     tracked.discard("")

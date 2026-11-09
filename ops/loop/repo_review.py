@@ -258,7 +258,7 @@ def _kit():
 
 def _git_bytes(*args: str, cwd: Path | None = None) -> bytes:
     proc = subprocess.run(["git", *args], cwd=str(cwd or ROOT), capture_output=True,
-                          timeout=900, creationflags=_NO_WINDOW)
+                          timeout=900, creationflags=_NO_WINDOW, check=False)
     if proc.returncode != 0:
         raise RuntimeError(f"git {' '.join(args[:3])} failed rc={proc.returncode}")
     return proc.stdout
@@ -431,7 +431,8 @@ def build_manifest(root: Path = ROOT) -> dict:
         # `git check-ignore` answers the few files git never listed itself.
         proc = subprocess.run(["git", "check-ignore", "--no-index", "--stdin", "-z"],
                               cwd=str(root), input="\0".join(leftovers).encode("utf-8"),
-                              capture_output=True, timeout=300, creationflags=_NO_WINDOW)
+                              capture_output=True, timeout=300, creationflags=_NO_WINDOW,
+                              check=False)
         ign = {p for p in proc.stdout.decode("utf-8", "replace").split("\0") if p}
         for r in rows:
             if r["st"] == "?":

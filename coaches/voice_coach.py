@@ -121,7 +121,7 @@ def is_available() -> bool:
              "Add-Type -AssemblyName System.Speech;"
              "(New-Object System.Speech.Synthesis.SpeechSynthesizer).GetInstalledVoices().Count"],
             capture_output=True, text=True, errors="replace", timeout=5,
-            creationflags=0x08000000,
+            creationflags=0x08000000, check=False,
         )
         n = int((r.stdout or "0").strip() or "0")
         return n > 0
