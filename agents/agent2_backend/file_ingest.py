@@ -5,7 +5,7 @@ is retired - this Legion-local file watcher is now the steady-state
 path, ADR-011.)
 
 The supervisor owns one ``FileIngest`` instance. It polls a small set of
-known files every ``POLL_SEC`` seconds; when an mtime advances it reads,
+known files every ``POLL_SEC`` seconds; when a file's version changes it reads,
 parses, and calls ``WSServer.broadcast_push({...})``.
 
 Broadcast envelope::
@@ -22,14 +22,25 @@ Health snapshots are distinct::
 
     {"type": "health", "mtime": ..., "payload": { ...health.json... }}
 
-Failure modes: missing file = skipped silently; bad JSON = logged at
-WARNING + skipped that tick; file unchanged = no broadcast (noise-free).
+Failure modes: missing file = skipped silently; bad, hostile or oversize
+JSON = logged at WARNING ONCE per file version (DEBUG on the retries) and
+retried every tick; file unchanged = no broadcast (noise-free). A version
+is (st_mtime_ns, st_size), so a same-mtime rewrite of a new size still
+counts as a change. A version is marked delivered only after the broadcast
+returns, so a fanout that raises is retried next tick instead of lost. One
+source failing never stops the others: each is checked in its own guard.
+NaN / Infinity / -Infinity and overflowing floats (1e999) become null,
+because the dashboard's JSON.parse rejects the bare tokens json.dumps
+would re-emit and would drop the whole envelope. The read is capped at
+MAX_PAYLOAD_BYTES even if the file grew after the stat; a UTF-8 BOM is
+accepted.
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import math
 import os
 from pathlib import Path
 from typing import Any
@@ -84,9 +95,44 @@ def _stat_blocking(path: Path) -> os.stat_result:
     return path.stat()
 
 
+class PayloadTooLarge(Exception):
+    """The file holds more than MAX_PAYLOAD_BYTES at read time."""
+
+
 def _read_text_blocking(path: Path) -> str:
-    """UTF-8 read of ``path``; _check_one runs it in the default executor, never on the loop."""
-    return path.read_text(encoding="utf-8")
+    """UTF-8 (BOM tolerated) read of ``path``, at most MAX_PAYLOAD_BYTES.
+
+    _check_one runs it in the default executor, never on the loop. The stat
+    size cap alone is a check-then-use race: a file that grows after the stat
+    would otherwise be read whole, so the read itself is bounded and raises
+    PayloadTooLarge past the cap.
+    """
+    with path.open("rb") as fh:
+        raw = fh.read(MAX_PAYLOAD_BYTES + 1)
+    if len(raw) > MAX_PAYLOAD_BYTES:
+        raise PayloadTooLarge(f"more than {MAX_PAYLOAD_BYTES} bytes at read time")
+    return raw.decode("utf-8-sig")
+
+
+def _null_constant(_token: str) -> None:
+    """json parse_constant: NaN / Infinity / -Infinity are not JSON; read as null."""
+    return None
+
+
+def _finite_float(text: str) -> float | None:
+    """json parse_float: a literal that overflows to +-inf (1e999) reads as null."""
+    value = float(text)
+    return value if math.isfinite(value) else None
+
+
+def _parse_json(text: str) -> Any:
+    """Strict-JSON-safe parse: the result always re-serialises with allow_nan=False."""
+    return json.loads(text, parse_constant=_null_constant, parse_float=_finite_float)
+
+
+# What a malformed or hostile payload can raise from read + parse. JSONDecodeError
+# and the int-digit limit are ValueErrors; deep nesting is a RecursionError.
+_PARSE_ERRORS = (ValueError, RecursionError, OSError, PayloadTooLarge)
 
 
 class FileIngest:
@@ -96,7 +142,11 @@ class FileIngest:
         warm Agent 7 session (charter: "warm starts when game begins").
         """
         self._ws = ws_server
-        self._mtimes: dict[str, float] = {}
+        # source -> (st_mtime_ns, st_size) of the version last DELIVERED.
+        self._versions: dict[str, tuple[int, int]] = {}
+        # source -> key of the failure last logged at WARNING (log once
+        # per file version / error, DEBUG on the 0.5 s retries).
+        self._warned: dict[str, object] = {}
         self._last_mode: str | None = None
         self._on_mode_transition = on_mode_transition
         self._stop = asyncio.Event()
@@ -128,11 +178,28 @@ class FileIngest:
 
     async def _tick(self) -> None:
         # Health first - panels need current mode before anything else.
-        await self._check_one(HEALTH_PATH, "health", mode="any",
-                              envelope_type="health")
-        for label, path, mode in WATCHED:
-            await self._check_one(path, label, mode=mode,
-                                  envelope_type="state")
+        # Each source in its own guard: one raising source must not starve
+        # the rest of the tick (a health.json fault used to silence every
+        # coaching file for as long as it lasted).
+        sources = [(HEALTH_PATH, "health", "any", "health")]
+        sources += [(path, label, mode, "state") for label, path, mode in WATCHED]
+        for path, source, mode, envelope_type in sources:
+            try:
+                await self._check_one(path, source, mode=mode,
+                                      envelope_type=envelope_type)
+            except Exception as e:  # noqa: BLE001 - isolate one source's fault
+                self._warn_once(source, ("check", type(e), str(e)),
+                                "check %s raised: %r", source, e,
+                                exc_info=True)
+
+    def _warn_once(self, source: str, key: object, msg: str, *args: Any,
+                   exc_info: bool = False) -> None:
+        """WARNING the first time ``key`` is seen for ``source``, DEBUG after."""
+        if self._warned.get(source) == key:
+            logger.debug(msg, *args)
+            return
+        self._warned[source] = key
+        logger.warning(msg, *args, exc_info=exc_info)
 
     async def _check_one(self, path: Path, source: str, *,
                          mode: str, envelope_type: str) -> None:
@@ -144,21 +211,23 @@ class FileIngest:
         except OSError as e:
             logger.debug("stat %s: %s", path, e)
             return
+        version = (st.st_mtime_ns, st.st_size)
         if st.st_size > MAX_PAYLOAD_BYTES:
-            logger.warning("skip %s: size %d > cap %d",
-                           source, st.st_size, MAX_PAYLOAD_BYTES)
+            self._warn_once(source, ("size", version),
+                            "skip %s: size %d > cap %d",
+                            source, st.st_size, MAX_PAYLOAD_BYTES)
             return
-        mtime = st.st_mtime
-        prev = self._mtimes.get(source)
-        if prev is not None and mtime == prev:
+        if self._versions.get(source) == version:
             return    # no change
+        mtime = st.st_mtime
 
         try:
-            data = json.loads(await loop.run_in_executor(None, _read_text_blocking, path))
-        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
-            logger.warning("parse %s: %s", source, e)
+            data = _parse_json(
+                await loop.run_in_executor(None, _read_text_blocking, path))
+        except _PARSE_ERRORS as e:
+            self._warn_once(source, ("parse", version),
+                            "parse %s: %s: %s", source, type(e).__name__, e)
             return
-        self._mtimes[source] = mtime
 
         # s157: mirror the LCU lobby/CS pre-flip into health envelopes so
         # the dashboard's onHealth tag resolution agrees with onState. Run
@@ -189,7 +258,18 @@ class FileIngest:
             "mode": mode,
             "payload": data,
         }
-        await self._ws.broadcast_push(envelope)
+        # The version is recorded only once the fanout returns: recording it
+        # first (the old order) turned one raising fanout into a lost update,
+        # since the file then read as unchanged on every later tick.
+        try:
+            await self._ws.broadcast_push(envelope)
+        except Exception as e:  # noqa: BLE001 - retried next tick
+            delivered = False
+            self._warn_once(source, ("push", version, type(e)),
+                            "push %s failed, retrying: %r", source, e,
+                            exc_info=True)
+        else:
+            delivered = True
 
         # Game-start trigger (charter): health.json.mode transition
         # client -> game/in_progress fires the mode-transition hook.
@@ -219,6 +299,10 @@ class FileIngest:
                     except Exception as e:               # noqa: BLE001
                         logger.warning("on_mode_transition raised: %s", e)
 
+        if delivered:
+            self._versions[source] = version
+            self._warned.pop(source, None)
+
     @staticmethod
     def _compute_effective_mode(health: dict, lcu_phase: str | None) -> str | None:
         """Combine health.mode + LCU phase into an effective mode tag.
@@ -230,8 +314,13 @@ class FileIngest:
         (Pre-1PC this gap came from Legion not seeing Game-PC's LCU
         lockfile; post-1PC ADR-011 LCU is local, so this overlay is now a
         defensive fallback rather than load-bearing.)
+
+        Only a str mode counts: str() of a bool / number / container
+        (mode=True read as "true") would fire a bogus mode transition. A
+        non-str phase already matches no branch (== / tuple membership).
         """
-        health_mode = str(health.get("mode") or "").lower() or None
+        raw_mode = health.get("mode")
+        health_mode = (raw_mode.lower() or None) if isinstance(raw_mode, str) else None
         if health_mode in ("game", "in_progress"):
             return health_mode
         if lcu_phase == "ChampSelect":

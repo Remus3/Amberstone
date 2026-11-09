@@ -23,8 +23,13 @@ a one-line pointer, so nobody mistakes the silence for a green suite.
 The hook spawns no process at all (tests/test_pytest_guard.py pins that), which
 is also why it left HOOK_SPAWNERS in tests/test_no_console_flash_scheduled_tools.py.
 
-Docs-only edits (*.md / *.txt / docs/ tree) skip everything. Always exits 0
-(informational, never blocks the tool).
+Docs-only edits (*.md / *.txt / docs/ tree) skip everything, but a Python
+source file (*.py / *.pyw) is never docs-only, wherever it lives: eight tracked
+scripts sit under docs/, and a checkout path with a docs/ segment used to skip
+every edit (true-audit S144-T-544). A SyntaxWarning (an invalid escape, a
+return in finally) is not a crash, so compile() runs with warnings ignored:
+silent on stderr, and never a false failure under PYTHONWARNINGS=error
+(S144-T-545). Always exits 0 (informational, never blocks the tool).
 
 OUTPUT (MAIN FIX 1254 #2; fleet UI/UX standard section 5, FLEET-COMMON item
 15). Silent unless there is something to say. Then ONE stdout line
@@ -39,8 +44,10 @@ from __future__ import annotations
 import json
 import os
 import sys
+import warnings
 
 CODE_SKIP_SUFFIXES = (".md", ".txt")
+PY_SUFFIXES = (".py", ".pyw")
 _MAX_CONTEXT_CHARS = 2000
 
 RETIRED_SUITE_NOTE = (
@@ -49,7 +56,13 @@ RETIRED_SUITE_NOTE = (
 )
 
 
+def _is_python(path: str) -> bool:
+    return path.replace("\\", "/").lower().endswith(PY_SUFFIXES)
+
+
 def _is_docs_only(path: str) -> bool:
+    if _is_python(path):
+        return False  # S144-T-544: a source file is code wherever it lives
     p = path.replace("\\", "/").lower()
     if p.endswith(CODE_SKIP_SUFFIXES):
         return True
@@ -57,17 +70,20 @@ def _is_docs_only(path: str) -> bool:
 
 
 def _collect_paths(payload: dict) -> list:
-    ti = payload.get("tool_input") or {}
-    paths = []
+    """Edited paths named by the payload, in order, each once (S144-T-546/547)."""
+    ti = payload.get("tool_input")
+    if not isinstance(ti, dict):
+        return []
+    found = []
     for key in ("file_path", "notebook_path"):
-        v = ti.get(key)
-        if isinstance(v, str) and v:
-            paths.append(v)
+        found.append(ti.get(key))
     edits = ti.get("edits")
     if isinstance(edits, list):
-        for e in edits:
-            if isinstance(e, dict) and isinstance(e.get("file_path"), str):
-                paths.append(e["file_path"])
+        found.extend(e.get("file_path") for e in edits if isinstance(e, dict))
+    paths = []
+    for v in found:
+        if isinstance(v, str) and v and v not in paths:
+            paths.append(v)
     return paths
 
 
@@ -83,7 +99,12 @@ def _syntax_error(path: str) -> str | None:
     except OSError:
         return None  # vanished or unreadable: nothing to say
     try:
-        compile(source, path, "exec", dont_inherit=True)
+        # S144-T-545: a SyntaxWarning is not a crash. Ignored, it neither
+        # leaks to stderr nor (under PYTHONWARNINGS=error) becomes a false
+        # SyntaxError report.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            compile(source, path, "exec", dont_inherit=True)
     except SyntaxError as exc:
         line = exc.lineno or 0
         msg = " ".join(str(exc.msg or "invalid syntax").split())[:160]
@@ -141,7 +162,7 @@ def _run() -> int:
     if os.environ.get("RC_FULL_SUITE") == "1":
         notes.append(RETIRED_SUITE_NOTE)
 
-    py_files = [p for p in paths if p.replace("\\", "/").lower().endswith(".py")]
+    py_files = [p for p in paths if _is_python(p)]
     errors = [e for e in (_syntax_error(f) for f in py_files) if e]
     if errors:
         notes.insert(0, "SYNTAX CHECK FAILED (a syntax error crashes silently under "

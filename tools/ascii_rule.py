@@ -21,6 +21,8 @@ when they exist on disk (MAIN FIX 1254 #14).
 
 from __future__ import annotations
 
+import os
+import posixpath
 from pathlib import Path
 
 # The six glyphs with a name. Spelled as chr() so this file stays ASCII.
@@ -62,10 +64,34 @@ _HELPER_DIR = Path(__file__).resolve().parent
 _HELPERS = ("strip_em_dashes.py", "strip_smart_quotes.py")
 
 
-def is_exempt(path: str) -> bool:
-    """True when `path` (repo-relative) is a surface the rule does not reach."""
-    p = (path or "").replace("\\", "/")
-    if any(part in p for part in EXEMPT_PARTS):
+def _normalised(path) -> str:
+    """`path` as a normalised POSIX string; "" when there is no path.
+
+    Accepts str or os.PathLike. Backslashes become "/" and "." / ".." segments
+    collapse, so "data/../tools/x.py" is judged as tools/x.py (it was exempt
+    through the "data/" prefix) and "./data/x.json" as data/x.json.
+    """
+    if not path:
+        return ""
+    p = os.fspath(path).replace("\\", "/")
+    p = posixpath.normpath(p)
+    return "" if p == "." else p
+
+
+def is_exempt(path) -> bool:
+    """True when `path` (repo-relative) is a surface the rule does not reach.
+
+    EXEMPT_PARTS match WHOLE path components, anywhere in the path: "logs/"
+    exempts logs/x and ops/logs/x, never catalogs/x or dialogs/x (a raw
+    substring test exempted every directory whose name ENDS in "logs", and
+    "docs/_archive/" exempted mydocs/_archive/). EXEMPT_PREFIXES anchor at the
+    start, EXEMPT_FILES are exact, EXEMPT_SUFFIXES are case-sensitive.
+    """
+    p = _normalised(path)
+    if not p:
+        return False
+    anchored = "/" + p
+    if any("/" + part in anchored for part in EXEMPT_PARTS):
         return True
     if p.endswith(EXEMPT_SUFFIXES):
         return True
@@ -74,18 +100,49 @@ def is_exempt(path: str) -> bool:
     return p.startswith(EXEMPT_PREFIXES)
 
 
+def _require_str(text) -> str:
+    if not isinstance(text, str):
+        raise TypeError(
+            f"ascii_rule reads decoded text (str), not {type(text).__name__}")
+    return text
+
+
+def split_lines(text: str) -> list[str]:
+    r"""`text` split the way git counts lines: on "\n" only.
+
+    One trailing "\r" per line is dropped (CRLF), and a final "\n" opens no
+    extra empty line, so plain LF / CRLF text splits exactly as
+    `str.splitlines()` does. Unlike splitlines(), U+0085 / U+2028 / U+2029 and
+    the ASCII controls \x0b \x0c \x1c-\x1e (and a lone "\r") stay INSIDE
+    their line: splitlines() consumed a separator glyph as a line break, so a
+    U+2028 was never reported by any arm, and the controls shifted line
+    numbers off the edit hook's own count of "\n". Every hook arm that walks
+    lines for this rule splits through here.
+    """
+    _require_str(text)
+    if not text:
+        return []
+    lines = text.split("\n")
+    if text.endswith("\n"):
+        lines.pop()
+    return [ln[:-1] if ln.endswith("\r") else ln for ln in lines]
+
+
 def hits(text: str, path: str = "") -> list[str]:
     """Sorted, de-duplicated names of every codepoint > 127 in `text`.
 
     The six NAMED glyphs report by name; anything else as
     `non-ascii U+XXXX (escape)`. An exempt `path` reports nothing - the six
     included: a DDragon champion name like Cho'Gath carries U+2019 upstream.
+    `text` must be a str (TypeError otherwise): a list of str used to pass
+    as clean and bytes raised deep inside ord().
 
     History (the commit gate, WIDENED 2026-07-28): the six-glyph set let
     U+00D7 reach a committed agent6 health report and turned the suite red
     through a gate working exactly as written. The catch-all closed that.
     """
-    if is_exempt(path):
+    _require_str(text)
+    if is_exempt(path) or text.isascii():
         return []
     found = {NAMED[c] for c in text if c in NAMED}
     found |= {
@@ -97,11 +154,16 @@ def hits(text: str, path: str = "") -> list[str]:
 
 
 def line_hits(text: str, path: str = "") -> list[tuple[int, list[str]]]:
-    """(1-based line number, hits) for every line of `text` with a hit."""
+    """(1-based line number, hits) for every line of `text` with a hit.
+
+    Lines are counted by `split_lines` (LF only), so the number matches
+    git's and the edit hook's, and a separator glyph is reported on its line.
+    """
+    _require_str(text)
     if is_exempt(path):
         return []
     out: list[tuple[int, list[str]]] = []
-    for lineno, line in enumerate(text.splitlines(), start=1):
+    for lineno, line in enumerate(split_lines(text), start=1):
         if not line.isascii():
             out.append((lineno, hits(line)))
     return out

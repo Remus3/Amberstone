@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -213,8 +214,10 @@ class DegradedDbTests(unittest.TestCase):
         routes_player_profile._reset_caches()
 
     def test_compute_failure_returns_503(self):
+        # A DB-unavailable error is the 503; a non-DB exception (a bug) is
+        # the 500 (tests/test_routes_player_profile_hardening_s144.py).
         with patch("dashboard.routes_player_profile._compute",
-                   side_effect=RuntimeError("db missing")):
+                   side_effect=sqlite3.OperationalError("db missing")):
             h = _RouteHarness("")
             routes_player_profile._serve_player_profile(h)
         self.assertEqual(h.sent_status, 503)

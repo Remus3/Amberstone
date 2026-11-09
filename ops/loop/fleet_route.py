@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import math
 import re
 import subprocess
 import sys
@@ -350,6 +351,103 @@ def write_idle(next_tick_s: Optional[float] = DEFAULT_TICK_S, root=None) -> None
     _idle(k, Path(root) if root is not None else _kit_root(k), nt)
 
 
+EXIT_USAGE = 2
+# The CLI's options (s144 true-audit cycle 178). A value flag CONSUMES the
+# next token, so a value that looks like a flag ("--prompt --prompt-stdin")
+# is only a value; the old membership test over the whole argv read it as
+# the flag too. Anything else before `--` is a usage error, never ignored: a
+# typo such as --prompt_stdin used to be dropped and the run went ahead
+# without it.
+_VALUE_FLAGS = frozenset(("--caller", "--prompt", "--prompt-file", "--note", "--timeout",
+                          "--kind", "--model", "--effort", "--cwd", "--root", "--last"))
+_BOOL_FLAGS = frozenset(("--writes-code", "--prompt-stdin", "--usage-failures"))
+
+
+class _UsageError(ValueError):
+    """A malformed command line; the message names the option, never a value
+    read from a file."""
+
+
+def _parse(args: Sequence[str]) -> dict:
+    """{flag: value or True}; raises _UsageError on an unknown, repeated or
+    value-less flag."""
+    opts: dict = {}
+    i = 0
+    while i < len(args):
+        tok = args[i]
+        if tok not in _VALUE_FLAGS and tok not in _BOOL_FLAGS:
+            raise _UsageError(f"unknown argument {tok!r}")
+        if tok in opts:
+            raise _UsageError(f"{tok} given more than once")
+        if tok in _BOOL_FLAGS:
+            opts[tok] = True
+            i += 1
+            continue
+        if i + 1 >= len(args):
+            raise _UsageError(f"{tok} needs a value")
+        opts[tok] = args[i + 1]
+        i += 2
+    return opts
+
+
+def _timeout_s(raw: str) -> float:
+    """--timeout as a finite positive number of seconds. nan, inf, zero and a
+    negative are refused here rather than handed to the kit's process wait."""
+    try:
+        value = float(raw)
+    except ValueError:
+        raise _UsageError("--timeout must be a number of seconds") from None
+    if not math.isfinite(value) or value <= 0:
+        raise _UsageError("--timeout must be a finite number of seconds above zero")
+    return value
+
+
+def _last_n(raw: str) -> int:
+    try:
+        value = int(raw)
+    except ValueError:
+        raise _UsageError("--last must be a whole number") from None
+    if value < 0:
+        raise _UsageError("--last must not be negative")
+    return value
+
+
+def _read_prompt(path: str) -> str:
+    """The prompt file as text. A UTF-8 BOM (PowerShell 5.1 writes one) is
+    dropped rather than sent to the model. A read or decode failure names the
+    file and the problem only: a decode error's own text quotes the bytes."""
+    try:
+        return Path(path).read_bytes().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise _UsageError(f"prompt file {path!r} is not UTF-8 text") from None
+    except ValueError:  # a NUL in the path (a direct main(argv=) caller)
+        raise _UsageError(f"prompt file {path!r} is not a usable path") from None
+    except OSError as exc:
+        raise _UsageError(f"prompt file {path!r} cannot be read "
+                          f"({exc.strerror or type(exc).__name__})") from None
+
+
+def _write(stream, text: str) -> None:
+    """Write text the stream's encoding may not carry. A python whose stdout
+    is a pipe writes the ANSI code page (cp1252 here) unless the caller sets
+    PYTHONIOENCODING, and only run_lane.ps1 does: a result holding U+2192
+    raised UnicodeEncodeError AFTER the run had finished (exit 1, result
+    lost). Such a character is written as a backslash escape instead."""
+    try:
+        stream.write(text)
+    except UnicodeEncodeError:
+        enc = getattr(stream, "encoding", None) or "utf-8"
+        stream.write(text.encode(enc, "backslashreplace").decode(enc, "replace"))
+
+
+def _result_text(line, proc) -> str:
+    text = line.get("result") if isinstance(line, dict) else None
+    if text is None:
+        out = getattr(proc, "stdout", None)
+        return out if isinstance(out, str) else ""
+    return text if isinstance(text, str) else json.dumps(text)
+
+
 def main(argv=None) -> int:
     """CLI for the PowerShell runners.
 
@@ -360,67 +458,76 @@ def main(argv=None) -> int:
            fleet_route.py --usage-failures [--root DIR] [--last N]
 
     `--model` / `--effort` are the kit's own parameters, passed through only
-    when given. `--cwd` is the child's working directory (the budget, status
-    and usage files stay under this tree's root). `--prompt-stdin` sends the
-    whole prompt on stdin (the kit's stdin=True); a prompt longer than the
-    kit's ARGV_PROMPT_MAX goes there anyway, exactly as the kit's own CLI does.
+    when given (an empty value, like an empty --cwd / --kind, is "not given").
+    `--cwd` is the child's working directory (the budget, status and usage
+    files stay under this tree's root). `--prompt-stdin` sends the whole
+    prompt on stdin (the kit's stdin=True); a prompt longer than the kit's
+    ARGV_PROMPT_MAX goes there anyway, exactly as the kit's own CLI does.
     `-- EXTRA` reaches the kit's `extra=` (the kit's own CLI has no such door).
+    `--timeout` is a finite number of seconds above zero (default 3600).
 
-    Prints the run's result text to stdout and the child's stderr to stderr.
-    Exit: the child's code, 3 when the route or the kit refused, 4 when the
-    kit's timeout killed the run (the kit CLI's codes).
+    Prints the run's result text to stdout and the child's stderr to stderr;
+    a character the stream's encoding cannot carry is written as a backslash
+    escape. Exit: the child's code (1 when the kit reports no integer code),
+    2 for a usage error (an unknown, repeated or value-less option, a bad
+    number, an unreadable or non-UTF-8 prompt file, an empty prompt; nothing
+    starts), 3 when
+    the route or the kit refused, 4 when the kit's timeout killed the run
+    (the kit CLI's codes).
     """
     args = list(sys.argv[1:] if argv is None else argv)
     extra: list = []
     if "--" in args:
         i = args.index("--")
         args, extra = args[:i], args[i + 1:]
-
-    def _opt(flag, default=None):
-        if flag in args:
-            j = args.index(flag)
-            if j + 1 < len(args):
-                return args[j + 1]
-        return default
-
-    if "--usage-failures" in args:
-        # Read-only (RC-5): the failure count; starts nothing, needs no route.
-        doc = usage_failures(root=_opt("--root"), last=int(_opt("--last", "300")))
-        sys.stdout.write(json.dumps(doc, indent=1, sort_keys=True) + "\n")
-        return 0
-    caller = _opt("--caller")
-    prompt = _opt("--prompt")
-    pfile = _opt("--prompt-file")
-    if not caller or (prompt is None) == (pfile is None):
-        sys.stderr.write(main.__doc__ or "")
-        return 2
-    if pfile is not None:
-        prompt = Path(pfile).read_text(encoding="utf-8")
-    on_stdin = "--prompt-stdin" in args or len(prompt) > kit().ARGV_PROMPT_MAX
     try:
-        line, proc = spawn(prompt, caller=caller, note=_opt("--note", "") or "",
-                           writes_code="--writes-code" in args, extra=extra,
-                           timeout=float(_opt("--timeout", "3600")),
-                           kind=_opt("--kind"), model=_opt("--model"),
-                           effort=_opt("--effort"), cwd=_opt("--cwd"),
-                           prompt_on_stdin=on_stdin)
+        opts = _parse(args)
+        if opts.get("--usage-failures"):
+            # Read-only (RC-5): the failure count; starts nothing, needs no route.
+            last = _last_n(opts.get("--last", "300"))
+            doc = usage_failures(root=opts.get("--root"), last=last)
+            _write(sys.stdout, json.dumps(doc, indent=1, sort_keys=True) + "\n")
+            return 0
+        caller = opts.get("--caller")
+        prompt = opts.get("--prompt")
+        pfile = opts.get("--prompt-file")
+        if not caller or (prompt is None) == (pfile is None):
+            raise _UsageError("--caller and exactly one of --prompt / --prompt-file "
+                              "are required")
+        timeout = _timeout_s(opts.get("--timeout", "3600"))
+        if pfile is not None:
+            prompt = _read_prompt(pfile)
+        if not prompt.strip():
+            # An empty prompt would still spend one of the tree's 24 h runs.
+            raise _UsageError("the prompt is empty")
+    except _UsageError as exc:
+        _write(sys.stderr, f"fleet_route: {exc}\n")
+        _write(sys.stderr, main.__doc__ or "")
+        return EXIT_USAGE
+    on_stdin = bool(opts.get("--prompt-stdin")) or len(prompt) > kit().ARGV_PROMPT_MAX
+    try:
+        line, proc = spawn(prompt, caller=caller, note=opts.get("--note") or "",
+                           writes_code=bool(opts.get("--writes-code")), extra=extra,
+                           timeout=timeout, kind=opts.get("--kind") or None,
+                           model=opts.get("--model") or None,
+                           effort=opts.get("--effort") or None,
+                           cwd=opts.get("--cwd") or None, prompt_on_stdin=on_stdin)
     except RouteRefused as exc:
-        sys.stderr.write(f"{exc}\n")
+        _write(sys.stderr, f"{exc}\n")
         return EXIT_REFUSED
     except subprocess.TimeoutExpired:
         # The kit has killed the whole process tree and written the usage line
         # (error "timeout"); the runner gets the kit CLI's timeout code, not a
         # traceback.
-        sys.stderr.write("headless run timed out; the kit killed the process tree\n")
+        _write(sys.stderr, "headless run timed out; the kit killed the process tree\n")
         return EXIT_TIMEOUT
-    text = line.get("result")
-    if text is None and proc is not None:
-        text = proc.stdout
-    sys.stdout.write((text or "") + "\n")
-    if proc is not None and proc.stderr:
-        sys.stderr.write(proc.stderr)
-    rc = line.get("rc")
-    return rc if isinstance(rc, int) else 1
+    _write(sys.stdout, _result_text(line, proc) + "\n")
+    err = getattr(proc, "stderr", None)
+    if isinstance(err, str) and err:
+        _write(sys.stderr, err)
+    rc = line.get("rc") if isinstance(line, dict) else None
+    # A bool is an int to isinstance; it is not an exit code.
+    return rc if type(rc) is int else 1
 
 
 if __name__ == "__main__":

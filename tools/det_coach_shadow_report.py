@@ -39,7 +39,17 @@ score:
     versa).
 
 READ-ONLY: no engine, no network, no write. Fail-soft - a missing / empty /
-malformed log yields zeroed sections, never an exception.
+malformed log yields zeroed sections, never an exception: the log is read as
+BYTES one line at a time and each line is decoded on its own, so a line that is
+not UTF-8, not JSON, too deeply nested for the parser or torn by a concurrent
+append is skipped alone (s144 true-audit: before, one bad byte anywhere raised
+UnicodeDecodeError out of the whole report). A UTF-8 BOM and CRLF endings are
+accepted.
+
+BOUNDED MEMORY: the live log is the largest RC shadow log (110 MB / 60721 rows
+measured 2026-11-06). build_report streams it and keeps only the fields the
+report reads (``_slim``), never the whole text, a splitlines copy or the
+callouts / lead_projection payloads (669 MB peak working set before).
 
 USAGE
     python tools/det_coach_shadow_report.py            # human summary
@@ -53,7 +63,7 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 _ROOT = Path(__file__).resolve().parent.parent
 _DATA = _ROOT / "data"
@@ -67,26 +77,86 @@ _MIN_WITHIN_TRADE = 0.70
 _MIN_TRADE_SAMPLE = 50
 
 
-def load_jsonl(path: Path) -> list[dict]:
-    """Read a jsonl file into a list of dicts (fail-soft to []).
+_BOM = b"\xef\xbb\xbf"
 
-    A missing file or any unreadable / malformed LINE is skipped, never raised -
-    the same robustness the shadow writer itself promises."""
-    out: list[dict] = []
+
+def iter_jsonl(path: Path) -> Iterator[dict]:
+    """Yield each dict row of a jsonl file, streaming (fail-soft).
+
+    Read as bytes, one line at a time; each line is decoded on its own, so a
+    non-UTF-8 line, a malformed or torn line, a line too deeply nested for the
+    JSON parser (RecursionError, not a ValueError) and a non-dict row are each
+    skipped alone. A missing / unreadable file, or a read error part-way, ends
+    the stream - never raised. A UTF-8 BOM on the first line is dropped."""
     try:
-        text = Path(path).read_text(encoding="utf-8")
-    except OSError:
-        return out
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            rec = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(rec, dict):
-            out.append(rec)
+        fh = open(path, "rb")  # noqa: SIM115 - closed in the finally below
+    except (OSError, ValueError):  # ValueError: an embedded NUL in the path
+        return
+    try:
+        first = True
+        while True:
+            try:
+                raw = fh.readline()
+            except OSError:
+                return
+            if not raw:
+                return
+            if first:
+                first = False
+                if raw.startswith(_BOM):
+                    raw = raw[len(_BOM):]
+            try:
+                line = raw.decode("utf-8").strip()
+            except UnicodeDecodeError:
+                continue
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except (ValueError, RecursionError):
+                continue
+            if isinstance(rec, dict):
+                yield rec
+    finally:
+        fh.close()
+
+
+def load_jsonl(path: Path) -> list[dict]:
+    """Read a jsonl file into a list of FULL dict rows (fail-soft to []).
+
+    The same line rules as ``iter_jsonl``. build_report does not use this (it
+    streams and slims); it stays for callers that want whole rows."""
+    return list(iter_jsonl(path))
+
+
+# The only row fields the report reads, and the only choice fields.
+_ROW_FIELDS: tuple[str, ...] = (
+    "mode", "replaced", "engine_version", "my_champion",
+)
+_CHOICE_FIELDS: tuple[str, ...] = ("key", "source_tag", "label")
+
+
+def _slim_choices(choices):
+    """A choice list reduced to the fields the report reads.
+
+    Positions are kept (a non-dict element becomes None) so the A-choice
+    fallback to element 0 is unchanged; a non-list becomes None, which is
+    never both-present either way."""
+    if not isinstance(choices, list):
+        return None
+    return [
+        {k: ch[k] for k in _CHOICE_FIELDS if k in ch}
+        if isinstance(ch, dict) else None
+        for ch in choices
+    ]
+
+
+def _slim(rec: dict) -> dict:
+    """A row reduced to what every summarize_* / coverage block reads; the
+    report over slim rows equals the report over full rows (pinned by test)."""
+    out = {k: rec[k] for k in _ROW_FIELDS if k in rec}
+    out["det_choices"] = _slim_choices(rec.get("det_choices"))
+    out["native_choices"] = _slim_choices(rec.get("native_choices"))
     return out
 
 
@@ -95,6 +165,15 @@ def _normalize_text(text: str) -> str:
     so "All-in!" and "ALL IN" both normalize to "all in"."""
     chars = [ch if ch.isalnum() else " " for ch in text.lower()]
     return " ".join("".join(chars).split())
+
+
+def _has_word_start(norm: str, phrase: str) -> bool:
+    """True when ``phrase`` occurs in normalized text starting at a WORD START.
+
+    A keyword never matches mid-word ("rush" is not in "brush", "even" is not
+    in "seven", "cs" is not in "tactics", "hold" is not in "threshold"), but a
+    longer word still matches ("trades", "items", "buying")."""
+    return (" " + phrase) in (" " + norm)
 
 
 # Domain classification, keyed PRIMARILY off source_tag (empirically grounded
@@ -110,12 +189,13 @@ _TRADE_TAGS: frozenset = frozenset(
 _BUILD_TAGS: frozenset = frozenset({"ds-build", "earlybuy"})
 
 # Small label-keyword fallback, used ONLY when source_tag is missing/blank.
-# Multi-word phrases first; trade-verdict words before the generic macro net.
+# Build keywords are checked first, then trade; each matches at a word start
+# only (_has_word_start), never mid-word.
 _LABEL_TRADE_KW: tuple[str, ...] = (
     "trade", "all in", "allin", "poke", "harass", "back off", "back away",
     "fall back", "play safe", "freeze", "farm safe",
 )
-_LABEL_BUILD_KW: tuple[str, ...] = ("buy ", "rush ", "build ", "item")
+_LABEL_BUILD_KW: tuple[str, ...] = ("buy", "rush", "build", "item")
 
 
 def classify_domain(source_tag, label=None) -> Optional[str]:
@@ -141,16 +221,17 @@ def classify_domain(source_tag, label=None) -> Optional[str]:
     norm = _normalize_text(label)
     if not norm:
         return None
-    if any(kw.strip() in norm for kw in _LABEL_BUILD_KW):
+    if any(_has_word_start(norm, kw) for kw in _LABEL_BUILD_KW):
         return "build"
-    if any(kw in norm for kw in _LABEL_TRADE_KW):
+    if any(_has_word_start(norm, kw) for kw in _LABEL_TRADE_KW):
         return "trade"
     return None
 
 
 # Coarse trade-verdict table - multi-word phrases FIRST, then single tokens,
-# the more-specific ahead of any token they contain as a substring, so
-# "back off" never reads as "all in" and "farm" stays farm. First hit wins.
+# the more-specific ahead of any token they contain, so "back off" never reads
+# as "all in" and "farm" stays farm. First hit wins; each phrase matches at a
+# word start only (_has_word_start).
 # Mirrors hz_shadow_report._VERDICT_PHRASES intent on the det label vocabulary
 # ("Trade now"/"Trade even"/"All in now"/"Back off").
 _VERDICT_PHRASES: tuple[tuple[str, str], ...] = (
@@ -174,7 +255,6 @@ _VERDICT_PHRASES: tuple[tuple[str, str], ...] = (
     ("freeze", "farm"),
     ("hold", "hold"),
     ("wait", "hold"),
-    ("even", "hold"),
 )
 
 
@@ -191,7 +271,7 @@ def classify_trade_verdict(text) -> Optional[str]:
     if not norm:
         return None
     for phrase, verdict in _VERDICT_PHRASES:
-        if phrase in norm:
+        if _has_word_start(norm, phrase):
             return verdict
     return None
 
@@ -267,17 +347,29 @@ def _native_build_labels(choices) -> list[str]:
     return out
 
 
+def _has_choice(choices) -> bool:
+    """A choice LIST holding at least one choice dict. A truthy non-list ("x",
+    a bare dict) or a list of non-dicts cannot be compared, so it is not a
+    present surface (s144 true-audit: it used to sit in every denominator)."""
+    return isinstance(choices, list) and any(
+        isinstance(ch, dict) for ch in choices
+    )
+
+
 def _both_present(rec: dict) -> bool:
     """True when the record carries BOTH det_choices and native_choices - the
     only rows where the deterministic surface can be compared to Haiku."""
-    return bool(rec.get("det_choices")) and bool(rec.get("native_choices"))
+    return _has_choice(rec.get("det_choices")) and _has_choice(
+        rec.get("native_choices")
+    )
 
 
 def _coverage_block(records: list[dict]) -> dict:
     """Total / replaced / both-present + by-mode + top-15 per-champion both-
-    present + engine-version distribution."""
+    present + engine-version distribution. ``replaced`` counts only a real
+    ``True`` (the writer stores a bool; a string "false" is not a replace)."""
     total = len(records)
-    replaced = sum(1 for r in records if r.get("replaced"))
+    replaced = sum(1 for r in records if r.get("replaced") is True)
     both = sum(1 for r in records if _both_present(r))
     by_mode: dict[str, dict] = {}
     by_champ_both: Counter = Counter()
@@ -456,8 +548,11 @@ def _flip_hint(coverage: dict, alignment: dict, within_trade: dict) -> str:
 
 
 def build_report(path: Path) -> dict:
-    """Assemble the full det_coach_shadow report dict from the log path."""
-    records = load_jsonl(path)
+    """Assemble the full det_coach_shadow report dict from the log path.
+
+    Streams the log and keeps slim rows only (bounded memory, see module
+    docstring); the result equals the summarize_* functions over full rows."""
+    records = [_slim(rec) for rec in iter_jsonl(path)]
     coverage = _coverage_block(records)
     alignment = summarize_domain_alignment(records)
     within_trade = summarize_within_trade(records)
@@ -472,12 +567,21 @@ def build_report(path: Path) -> dict:
     }
 
 
+def _out(text: str) -> None:
+    """Print one human-summary line as ASCII. Mode / champion / engine strings
+    come from the log, and a valid JSON row can carry a lone surrogate or a
+    character the console code page lacks; either raised UnicodeEncodeError
+    out of main (s144 true-audit). Non-ASCII is backslash-escaped instead.
+    (--json output is ASCII already: json.dumps escapes it.)"""
+    print(text.encode("ascii", "backslashreplace").decode("ascii"))
+
+
 def _print_human(report: dict) -> None:
     cov = report.get("coverage") or {}
     al = report.get("domain_alignment") or {}
     wt = report.get("within_trade") or {}
     bo = report.get("build_overlap") or {}
-    print(
+    _out(
         f"[coverage] total={cov.get('total', 0)} "
         f"replaced={cov.get('replaced', 0)} "
         f"both_present={cov.get('both_present', 0)}"
@@ -487,17 +591,17 @@ def _print_human(report: dict) -> None:
             f"{m}: {s.get('both', 0)}/{s.get('total', 0)}"
             for m, s in cov["by_mode"].items()
         )
-        print(f"    by-mode (both/total): {modes}")
+        _out(f"    by-mode (both/total): {modes}")
     if cov.get("by_engine_version"):
         eng = ", ".join(
             f"{v} x{n}" for v, n in cov["by_engine_version"].items()
         )
-        print(f"    engine: {eng}")
+        _out(f"    engine: {eng}")
     if cov.get("by_champion_both_top15"):
-        print("    top champions (both-present):")
+        _out("    top champions (both-present):")
         for champ, n in cov["by_champion_both_top15"].items():
-            print(f"        {champ} x{n}")
-    print(
+            _out(f"        {champ} x{n}")
+    _out(
         f"[domain-alignment] {al.get('aligned', 0)}/"
         f"{al.get('both_present', 0)} aligned "
         f"(rate {al.get('alignment_rate', 0.0)})"
@@ -506,11 +610,11 @@ def _print_human(report: dict) -> None:
         nd = ", ".join(
             f"{k} x{v}" for k, v in al["native_domain_dist"].items()
         )
-        print(f"    native-A domain: {nd}")
+        _out(f"    native-A domain: {nd}")
     if al.get("det_domain_dist"):
         dd = ", ".join(f"{k} x{v}" for k, v in al["det_domain_dist"].items())
-        print(f"    det-A domain: {dd}")
-    print(
+        _out(f"    det-A domain: {dd}")
+    _out(
         f"[within-trade] {wt.get('agree', 0)}/{wt.get('comparable', 0)} agree "
         f"(rate {wt.get('agreement_rate', 0.0)}), "
         f"{wt.get('domain_divergence', 0)} domain-divergence (excluded), "
@@ -518,16 +622,16 @@ def _print_human(report: dict) -> None:
     )
     mism = [c for c in (wt.get("confusion") or []) if not c["agree"]]
     for c in mism[:6]:
-        print(
+        _out(
             f"    MISMATCH det={c['det']} -> native={c['native']} x{c['n']}"
         )
-    print(
+    _out(
         f"[build-overlap] {bo.get('overlap', 0)}/{bo.get('comparable', 0)} "
         f"item-name overlap (rate {bo.get('overlap_rate', 0.0)}), "
         f"det_build_rows={bo.get('det_build_rows', 0)}, "
         f"native_build_rows={bo.get('native_build_rows', 0)}"
     )
-    print(f"hint: {report.get('flip_ready_hint')}")
+    _out(f"hint: {report.get('flip_ready_hint')}")
 
 
 def main(argv: Optional[list[str]] = None) -> int:

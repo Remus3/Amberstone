@@ -93,16 +93,36 @@ by raw ``delta_dps`` and discarded this knob. The Collector / Yun Tal
 crit-execute core stays buried (~#8-13) at the TANKY target even with
 fight_length engaged - fully surfacing it needs the squishy-carry target
 scenario (lever L4), which is out of L3 scope.
+
+Input contract (true-audit s144 cycle 186)
+------------------------------------------
+``champion_fight_length`` is TOTAL: it never raises. A non-``str`` champion
+(an int key, bytes, a float, any other object), an empty or punctuation-only
+name, a name containing ANY non-ASCII character, or a name longer than
+``_MAX_NAME_LEN`` resolves to ``None`` - the byte-identical default ranking.
+Every authored key and every DDragon champion id is ASCII, so a non-ASCII
+spelling is a localized or lookalike name this map never calibrated. Before
+this contract "JINX" spelt with U+0130 (Turkish dotted capital I, which lowers
+to an ASCII i plus a combining dot) and "Jhin" with a combining accent or a
+zero-width space folded onto a calibrated key and silently engaged the burst
+blend plus the squishy-target swap, while ``202`` / ``b"Jhin"`` raised
+``AttributeError`` out of the fail-soft :8860 client.
 """
 from __future__ import annotations
 
-from typing import Optional
+from types import MappingProxyType
+from typing import Mapping, Optional
+
+# Longest real champion name is 14 characters ("Nunu & Willump"); anything past
+# this cap is not a champion and is refused without a per-character scan.
+_MAX_NAME_LEN = 64
 
 # champion (normalized, see ``_norm``) -> fight_length seconds for the carry /
 # ds.dps blend. GATED allow-map: a champion ABSENT here resolves to ``None`` ->
 # byte-identical default ranking (no burst term paid). Six entries: the Jhin
-# pilot + the five L3 crit-burst marksmen (see the module docstring).
-_CHAMPION_FIGHT_LENGTH: dict[str, float] = {
+# pilot + the five L3 crit-burst marksmen (see the module docstring). Read-only
+# (MappingProxyType) so no caller can re-calibrate the policy process-wide.
+_CHAMPION_FIGHT_LENGTH: Mapping[str, float] = MappingProxyType({
     # Jhin Whisper (AS-locked lethality-crit burst carry). 0.5s re-verified on
     # the AS-lock baseline ENGINE 1.204.0 - see the module docstring.
     "jhin": 0.5,
@@ -118,26 +138,38 @@ _CHAMPION_FIGHT_LENGTH: dict[str, float] = {
     "twitch": 0.5,
     "caitlyn": 0.5,
     "jinx": 0.5,
-}
+})
 
 
-def _norm(champion: str) -> str:
-    """Case/format-insensitive champion key: lowercase, alphanumerics only.
+def _norm(champion: object) -> str:
+    """Case/format-insensitive champion key: lowercase ASCII alphanumerics only.
 
     Maps ``"Jhin"`` / ``"JHIN"`` / ``"jhin"`` -> ``"jhin"`` and
     ``"Kog'Maw"`` -> ``"kogmaw"`` so a coach-supplied display id, DDragon id, or
     lower-cased name all resolve identically. A numeric champion key (e.g.
     ``"202"``) simply will not match any authored entry -> ``None``.
+
+    Returns ``""`` (never a match) for a non-``str``, a name longer than
+    ``_MAX_NAME_LEN`` and a name holding any non-ASCII character. The ``str``
+    methods are called unbound so a ``str`` subclass cannot redirect the key.
     """
-    return "".join(ch for ch in (champion or "").lower() if ch.isalnum())
+    if not isinstance(champion, str) or str.__len__(champion) > _MAX_NAME_LEN:
+        return ""
+    if not str.isascii(champion):
+        return ""
+    return "".join(ch for ch in str.lower(champion) if ch.isalnum())
 
 
-def champion_fight_length(champion: str) -> Optional[float]:
+def champion_fight_length(champion: object) -> Optional[float]:
     """Return the per-champion carry ``fight_length``, or ``None`` if unmapped.
 
-    ``None`` (the default for every champion absent from the allow-map) means
-    the carry / ds.dps ranking is byte-identical to the no-knob path - no burst
-    compute is paid. A positive float engages ``rank_items``' fight-length
-    reweight blend for that champion only.
+    ``None`` (the default for every champion absent from the allow-map, and for
+    any input outside the module docstring's input contract) means the carry /
+    ds.dps ranking is byte-identical to the no-knob path - no burst compute is
+    paid. A positive float engages ``rank_items``' fight-length reweight blend
+    for that champion only. Never raises.
     """
-    return _CHAMPION_FIGHT_LENGTH.get(_norm(champion))
+    key = _norm(champion)
+    if not key:
+        return None
+    return _CHAMPION_FIGHT_LENGTH.get(key)

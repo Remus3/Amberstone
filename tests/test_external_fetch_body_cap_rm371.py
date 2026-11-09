@@ -42,11 +42,12 @@ def serve(monkeypatch):
     def _install(size):
         resp = _Resp(size)
         holder["resp"] = resp
-        # Each fetcher's own urllib only (core/riot_api.py `_http_get`,
-        # core/sgp_client.py `_urllib_transport`), never the shared module
-        # (tests/_module_view.py, RM-801).
-        for mod in (riot_api, sgp_client):
-            bind_urlopen(monkeypatch, mod, lambda req, timeout=None: resp)
+        # Each fetcher's own urllib only (core/riot_api.py `_http_get`), never
+        # the shared module (tests/_module_view.py, RM-801). core/sgp_client.py
+        # opens through its own no-redirect opener since S144-T-586, so its
+        # `_open` seam is the one faked.
+        bind_urlopen(monkeypatch, riot_api, lambda req, timeout=None: resp)
+        monkeypatch.setattr(sgp_client, "_open", lambda req, timeout=None: resp)
         return resp
 
     return _install

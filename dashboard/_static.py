@@ -6,8 +6,10 @@ the legacy index/manifest/icon files, compute the asset hash that
 fingerprints css+js+html for cache-busting, and resolve paths under
 the icon directory while blocking traversal attempts.
 """
+import hashlib
 import logging
 import os
+import re
 import time
 from pathlib import Path
 
@@ -17,8 +19,13 @@ log = logging.getLogger("rc.web_dashboard")
 
 
 # Cache for the asset hash so back-to-back index requests don't re-stat
-# every file. 2 s TTL - same window /api/ui-version uses.
-_ASSET_HASH_CACHE: dict = {"hash": "", "mtime": 0.0}
+# every file. 2 s TTL - same window /api/ui-version uses. "at" is a
+# time.monotonic() stamp (s144 true-audit cycle 175, F2): the wall clock it
+# used before can step backwards, and a negative age passed the "< TTL" test,
+# freezing the reload signal for as long as the step lasted. An empty "hash"
+# always forces a recompute, which is what the tests reset.
+_ASSET_HASH_TTL_S = 2.0
+_ASSET_HASH_CACHE: dict = {"hash": "", "at": 0.0}
 
 # Y-11 (external reference L2): the ONE fileset behind every reload signal
 # (the ?v= rewrite, /api/ui-version and /api/asset-stamp). It is a glob of the
@@ -60,34 +67,47 @@ def compute_asset_hash() -> str:
     serves out of web/. Cached for 2 s so repeated index requests don't
     re-stat. The same files drive /api/ui-version and /api/asset-stamp
     (all three go through asset_fileset(), Y-11) so reload behaviour stays
-    consistent."""
-    import hashlib as _hashlib
-    now = time.time()
-    if _ASSET_HASH_CACHE.get("hash") and (now - _ASSET_HASH_CACHE["mtime"]) < 2.0:
-        return _ASSET_HASH_CACHE["hash"]
+    consistent.
+
+    Each file is keyed on st_mtime_ns AND st_size (s144 true-audit cycle 175,
+    F1): the whole-second int(st_mtime) it used before left the hash unchanged
+    for a second save inside the same second, so that edit never reloaded the
+    page or the overlay. A file that vanishes between the walk and the stat
+    hashes as `rel:0:0`, which still differs from its live key."""
+    now = time.monotonic()
+    cached = _ASSET_HASH_CACHE.get("hash")
+    age = now - _ASSET_HASH_CACHE.get("at", 0.0)
+    if cached and 0.0 <= age < _ASSET_HASH_TTL_S:
+        return cached
     parts = []
     for rel, p in asset_fileset():
         try:
-            parts.append(f"{rel}:{int(p.stat().st_mtime)}")
+            st = p.stat()
         except OSError:
-            parts.append(f"{rel}:0")
-    h = _hashlib.sha1("|".join(parts).encode("utf-8"), usedforsecurity=False).hexdigest()[:10]
-    _ASSET_HASH_CACHE["hash"] = h
-    _ASSET_HASH_CACHE["mtime"] = now
+            parts.append(f"{rel}:0:0")
+            continue
+        parts.append(f"{rel}:{st.st_mtime_ns}:{st.st_size}")
+    h = hashlib.sha1("|".join(parts).encode("utf-8"), usedforsecurity=False).hexdigest()[:10]
+    # One update call: a concurrent reader never pairs a new hash with an
+    # old stamp from a half-written cache.
+    _ASSET_HASH_CACHE.update({"hash": h, "at": now})
     return h
+
+
+# The `?v=` value stops at the attribute's quote, a following query
+# parameter, a fragment, whitespace or the tag end (F3: the old `[^"']+`
+# tail swallowed `&theme=dark` and anything after it).
+_ASSET_QUERY_RE = re.compile(r"(\.(?:css|js))\?v=[^\"'&#\s>]+")
 
 
 def inject_asset_hash(html: bytes) -> bytes:
     """Rewrite hardcoded `?v=YYYYMMDDNN` cache-bust queries on css/js refs
     in index.html with a freshly computed asset hash. Touches only the
-    href/src attributes that already carry a `?v=...` so unrelated query
-    strings aren't disturbed."""
-    import re as _re
+    `v` value of refs that already carry a `?v=...`, so other query
+    parameters and unrelated query strings aren't disturbed."""
     h = compute_asset_hash()
     text = html.decode("utf-8", errors="replace")
-    text = _re.sub(r'(\.(?:css|js))\?v=[^"\']+',
-                   lambda m: f"{m.group(1)}?v={h}",
-                   text)
+    text = _ASSET_QUERY_RE.sub(lambda m: f"{m.group(1)}?v={h}", text)
     return text.encode("utf-8")
 
 
@@ -102,7 +122,10 @@ def resolve_safe_icon(root: Path, rel: str) -> Path | None:
     try:
         candidate = (root / rel).resolve()
         root_resolved = root.resolve()
-    except Exception:  # noqa: BLE001
+    except (OSError, ValueError, RuntimeError):
+        # What resolve really raises: an OS refusal, a bad name (embedded
+        # null), a symlink loop. Anything else is a bug and reaches the
+        # route's logged 500 instead of a silent 404 (cycle 175, F4).
         return None
     try:
         candidate.relative_to(root_resolved)
@@ -113,34 +136,43 @@ def resolve_safe_icon(root: Path, rel: str) -> Path | None:
     return candidate
 
 
+# Cached bytes of the three fixed static responses, keyed by path and
+# re-read whenever the file's (st_mtime_ns, st_size) changes (cycle 175, F5):
+# the process-lifetime cache this replaced never served an edit to the
+# fallback UI, the manifest or the icon until RC restarted. A missing file
+# raises FileNotFoundError on every call, as before; a failure is never
+# cached. A stat-then-read race at worst caches new bytes under the old key,
+# and the next call's stat re-reads them.
+_FILE_CACHE: dict[Path, tuple[tuple[int, int], bytes]] = {}
+
+
+def _read_cached(path: Path) -> bytes:
+    st = path.stat()
+    key = (st.st_mtime_ns, st.st_size)
+    hit = _FILE_CACHE.get(path)
+    if hit is not None and hit[0] == key:
+        return hit[1]
+    data = path.read_bytes()
+    _FILE_CACHE[path] = (key, data)
+    return data
+
+
 _LEGACY_INDEX_PATH = APP_DIR / "web" / "legacy_index.html"
-_LEGACY_INDEX_CACHE: bytes | None = None
 
 
 def legacy_index_html() -> bytes:
-    global _LEGACY_INDEX_CACHE
-    if _LEGACY_INDEX_CACHE is None:
-        _LEGACY_INDEX_CACHE = _LEGACY_INDEX_PATH.read_bytes()
-    return _LEGACY_INDEX_CACHE
+    return _read_cached(_LEGACY_INDEX_PATH)
 
 
 _MANIFEST_PATH = APP_DIR / "web" / "manifest.json"
-_MANIFEST_CACHE: bytes | None = None
 
 
 def manifest_bytes() -> bytes:
-    global _MANIFEST_CACHE
-    if _MANIFEST_CACHE is None:
-        _MANIFEST_CACHE = _MANIFEST_PATH.read_bytes()
-    return _MANIFEST_CACHE
+    return _read_cached(_MANIFEST_PATH)
 
 
 _ICON_SVG_PATH = APP_DIR / "web" / "icon.svg"
-_ICON_SVG_CACHE: bytes | None = None
 
 
 def icon_svg_bytes() -> bytes:
-    global _ICON_SVG_CACHE
-    if _ICON_SVG_CACHE is None:
-        _ICON_SVG_CACHE = _ICON_SVG_PATH.read_bytes()
-    return _ICON_SVG_CACHE
+    return _read_cached(_ICON_SVG_PATH)

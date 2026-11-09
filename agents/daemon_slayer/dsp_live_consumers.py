@@ -20,12 +20,26 @@ than none, so the wire is validated against a real game before it is taken.
                                       resist grants folded in (also the item-321
                                       ally-resist producer surface)
 
-Contract: fail-soft (never raises). ASCII only.
+Contract: fail-soft on the LIVE CONTEXT inputs (S144-T-570). DSP5 and DSP6
+never raise and always return finite numbers: a junk id (non-numeric string,
+None, bool, fractional or non-finite float, any other object) is dropped and
+the rest of the set still counts; a bare scalar is ONE id, never iterated per
+character ("14" is Ignite, not Cleanse + Flash); a non-finite or non-number
+``level`` is the default 1.0; a non-finite or non-number HP is 0.0;
+``antiheal_present`` is armed only by True, a non-zero finite number or a
+"true" / "yes" / "on" / "1" word. DSP7 is fail-soft on its GRANT inputs the
+same way (a malformed ``granter_resists`` value or slot is absent, a bare
+string granter is one champion); ``champion_id`` / ``level`` / ``item_ids`` /
+``mode`` errors still raise (KeyError / ValueError from ``compute_ehp``, which
+``/ally-protected-ehp`` maps to 404 / 422; the route validates ``level``). Well-formed input is
+byte-identical to the pre-hardening module. ASCII only.
 """
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Iterable, Optional, Sequence
+from typing import Any, Iterable, Optional, Sequence
 
 from ._passive_ally_grant_overrides import ally_flat_hp_grant, ally_resist_grant
 from .data_loader import DataSnapshot
@@ -51,6 +65,90 @@ __all__ = [
     "enemy_rune_threat",
     "ally_protected_ehp",
 ]
+
+
+# --- input coercion (S144-T-570) ----------------------------------------------
+
+_TRUE_WORDS = frozenset({"1", "true", "yes", "on"})
+
+
+def _finite_or(value: Any, default: float) -> float:
+    """``value`` as a finite float, else ``default``.
+
+    bool is not a number here (``True`` would read as 1.0); a numeric string
+    is read, as the DS routes' ``_finite_float`` reads one.
+    """
+    if isinstance(value, bool):
+        return default
+    try:
+        f = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return f if math.isfinite(f) else default
+
+
+def _one_id(value: Any) -> Optional[int]:
+    """One Riot id, or None when ``value`` is not an integral id."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if math.isfinite(value) and value.is_integer() else None
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+def _id_list(values: Any) -> list[int]:
+    """Riot ids from an id set; a bare scalar is ONE id, junk ids drop."""
+    if values is None:
+        return []
+    if isinstance(values, (str, int, float)):
+        values = (values,)
+    try:
+        items = list(values)
+    except TypeError:
+        return []
+    return [i for i in (_one_id(v) for v in items) if i is not None]
+
+
+def _flag(value: Any) -> bool:
+    """A strict boolean: garbage, NaN and every other word read False."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return math.isfinite(value) and value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in _TRUE_WORDS
+    return False
+
+
+def _champion_list(values: Any) -> list[str]:
+    """Granter champion ids; a bare string is ONE champion, non-strings drop."""
+    if values is None:
+        return []
+    if isinstance(values, str):
+        values = (values,)
+    try:
+        items = list(values)
+    except TypeError:
+        return []
+    return [v for v in items if isinstance(v, str)]
+
+
+def _resist_slots(value: Any) -> tuple[float, float, float, float]:
+    """``(total_armor, total_mr, base_armor, base_mr)`` from one
+    ``granter_resists`` value. A non-sequence (or a string / mapping) is
+    absent; a malformed slot is 0.0; a missing slot is 0.0."""
+    if not isinstance(value, (list, tuple)):
+        return (0.0, 0.0, 0.0, 0.0)
+    slots = [_finite_or(v, 0.0) for v in value[:4]]
+    slots += [0.0] * (4 - len(slots))
+    return (slots[0], slots[1], slots[2], slots[3])
 
 
 # --- DSP5 summoner-spell consumer -------------------------------------------
@@ -80,10 +178,11 @@ def summoner_fight_adjustments(
     """Fold the player's + enemy's live summoner set into one adjustment struct.
 
     Reads ``summoners.py`` per spell id. Empty inputs -> all-zero. Fail-soft
-    (unknown ids contribute 0.0).
+    (unknown ids contribute 0.0; junk ids drop; a bad level is 1.0).
     """
-    self_ids = [int(s) for s in (self_spell_ids or ())]
-    enemy_ids = [int(s) for s in (enemy_spell_ids or ())]
+    self_ids = _id_list(self_spell_ids)
+    enemy_ids = _id_list(enemy_spell_ids)
+    level = _finite_or(level, 1.0)
     return SummonerFightAdjustments(
         self_ehp_bonus=float(sum(compute_summoner_ehp_bonus(s, level) for s in self_ids)),
         self_cc_discount_pct=max(
@@ -128,19 +227,25 @@ def enemy_rune_threat(
     Reads ``enemy_runes.py``. ``poke_sustain_hp`` needs ``enemy_max_hp`` (0.0
     leaves it 0.0). ``antiheal_present`` is True when ANY antiheal source is on
     the enemy team (no rune grants it; items/Ignite do). Empty + defaults -> a
-    pure no-op (divisor 1.0). Fail-soft.
+    pure no-op (divisor 1.0). Fail-soft: junk ids drop (the rest still count),
+    a bad level is 1.0, a bad or negative HP is 0.0, so every output is
+    finite (the registry magnitudes are finite).
     """
-    ids = [int(r) for r in (enemy_rune_ids or ())]
+    ids = _id_list(enemy_rune_ids)
+    level = _finite_or(level, 1.0)
+    max_hp = _finite_or(enemy_max_hp, 0.0)
+    # A negative missing HP would turn Second Wind into an enemy HP LOSS.
+    missing_hp = max(0.0, _finite_or(enemy_missing_hp, 0.0))
     amp = float(enemy_incoming_amp_pct(ids))
     poke = (
-        float(enemy_poke_sustain_hp(ids, enemy_max_hp, enemy_missing_hp))
-        if enemy_max_hp > 0.0 else 0.0
+        float(enemy_poke_sustain_hp(ids, max_hp, missing_hp))
+        if max_hp > 0.0 else 0.0
     )
     return EnemyRuneThreatSummary(
         incoming_amp_pct=amp,
         damage_ramp=float(enemy_damage_ramp(ids, level)),
         poke_sustain_hp=poke,
-        antiheal_pct=float(enemy_antiheal_pct(bool(antiheal_present))),
+        antiheal_pct=float(enemy_antiheal_pct(_flag(antiheal_present))),
         ehp_divisor=1.0 + amp,
     )
 
@@ -171,21 +276,27 @@ def ally_protected_ehp(
     plain ``compute_ehp`` call. Taric's percent-of-resist grant needs the
     granter's resolved armor/MR via ``granter_resists[granter] = (total_armor,
     total_mr, base_armor, base_mr)``; absent it contributes 0.0 (the flat
-    Orianna/Braum grants are self-contained). Fail-soft.
+    Orianna/Braum grants are self-contained). Fail-soft on the grant inputs:
+    a bare string granter is one champion, a non-string granter is skipped
+    (a blank one matches no granter), a ``granter_resists`` that is not a
+    mapping is absent, a value that is not a list / tuple is absent, and a
+    bool, null, non-numeric or non-finite slot is 0.0. A bad ``level`` still
+    raises (the grant helpers' ``int(level)``, then ``compute_ehp``), as do
+    ``champion_id`` / ``item_ids`` / ``mode`` errors from ``compute_ehp``.
     """
-    allies = [str(a) for a in (ally_grant_champions or ()) if str(a)]
+    allies = _champion_list(ally_grant_champions)
     flat_hp = 0.0
     ext_armor = ext_mr = 0.0
-    gr = granter_resists or {}
+    gr = granter_resists if isinstance(granter_resists, Mapping) else {}
     for g in allies:
         flat_hp += ally_flat_hp_grant(g, level, True)
-        r = tuple(gr.get(g) or ())
+        total_armor, total_mr, base_armor, base_mr = _resist_slots(gr.get(g))
         a, m = ally_resist_grant(
             g, level, True,
-            granter_total_armor=r[0] if len(r) > 0 else 0.0,
-            granter_total_mr=r[1] if len(r) > 1 else 0.0,
-            granter_base_armor=r[2] if len(r) > 2 else 0.0,
-            granter_base_mr=r[3] if len(r) > 3 else 0.0,
+            granter_total_armor=total_armor,
+            granter_total_mr=total_mr,
+            granter_base_armor=base_armor,
+            granter_base_mr=base_mr,
         )
         ext_armor += a
         ext_mr += m

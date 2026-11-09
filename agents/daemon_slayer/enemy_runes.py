@@ -50,8 +50,10 @@ Contract: fail-soft (never raises; unknown rune -> 0.0). ASCII only.
 
 from __future__ import annotations
 
+import math
+import operator
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, Optional
 
 __all__ = [
     "EnemyRuneThreat",
@@ -73,11 +75,22 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 def _clamp_level(level: float) -> int:
-    """Clamp an incoming level to the League 1..18 band, integer (fail-soft)."""
-    try:
-        lvl = int(level)
-    except (TypeError, ValueError):
-        return 1
+    """Clamp an incoming level to the League 1..18 band, integer (fail-soft).
+
+    A non-number or a non-finite value reads as level 1 (the same "bad level
+    is 1" rule ``dsp_live_consumers`` applies); an int of any size clamps; a
+    numeric string is read, and a fractional level truncates toward zero.
+    """
+    if isinstance(level, int):
+        lvl = level
+    else:
+        try:
+            f = float(level)
+        except (TypeError, ValueError, OverflowError):
+            return 1
+        if not math.isfinite(f):
+            return 1
+        lvl = int(f)
     if lvl < 1:
         return 1
     if lvl > 18:
@@ -249,9 +262,10 @@ def compute_enemy_rune_value(rune_id: int, level: float = 1.0) -> float:
 
     Press the Attack -> 0.08 incoming amp; Conqueror -> max-stack Adaptive Force
     (21.6-48.0 by level); Grasp -> 0.013 heal fraction; Second Wind -> 0.04 heal
-    fraction. Unknown id -> 0.0.
+    fraction. Unknown or non-integral id (incl. an unhashable one) -> 0.0.
     """
-    threat = ENEMY_RUNE_THREATS.get(rune_id)
+    rid = _one_id(rune_id)
+    threat = None if rid is None else ENEMY_RUNE_THREATS.get(rid)
     if threat is None:
         return 0.0
     try:
@@ -298,7 +312,9 @@ def enemy_poke_sustain_pct(rune_ids: Iterable[int], ranged: bool = False) -> flo
     Second Wind heals 4% of MISSING HP. The two bases differ (max vs missing HP)
     so this nominal sum is a coarse poke-resist indicator; ``enemy_poke_sustain_
     hp`` gives the exact HP given both bases. Unknown / empty -> 0.0.
+    ``ranged`` is a strict flag (``_flag``): the word "false" is melee.
     """
+    ranged = _flag(ranged)
     total = 0.0
     for rid in _iter_ids(rune_ids):
         threat = ENEMY_RUNE_THREATS.get(rid)
@@ -319,13 +335,16 @@ def enemy_poke_sustain_hp(
 ) -> float:
     """Concrete bonus EHP (in HP) the enemy recovers vs poke from Grasp + Second
     Wind. Grasp = (0.013 * max_hp + 5.0 perm) * ranged_factor; Second Wind =
-    0.04 * missing_hp. Fail-soft (bad numbers -> 0.0). Unknown / empty -> 0.0.
+    0.04 * missing_hp. Fail-soft: an HP that is not a finite, non-negative
+    number (NaN, infinity, a negative, a bool, None, junk) makes the whole
+    result 0.0, so a junk HP never yields a NaN, infinite or negative total.
+    Unknown / empty -> 0.0.
     """
-    try:
-        max_hp = float(enemy_max_hp)
-        missing_hp = float(enemy_missing_hp)
-    except (TypeError, ValueError):
+    max_hp = _hp_or_none(enemy_max_hp)
+    missing_hp = _hp_or_none(enemy_missing_hp)
+    if max_hp is None or missing_hp is None:
         return 0.0
+    ranged = _flag(ranged)
     total = 0.0
     for rid in _iter_ids(rune_ids):
         threat = ENEMY_RUNE_THREATS.get(rid)
@@ -344,16 +363,16 @@ def enemy_grasp_magic_proc(
 ) -> float:
     """Grasp's bonus magic damage per proc (3.5% of the GRASP-CARRIER's max HP,
     x 0.40 if ranged). A small incoming-damage threat carried for completeness.
-    Returns 0.0 when no Grasp in the set or on bad input.
+    Returns 0.0 when no Grasp in the set or on bad input (an HP that is not a
+    finite, non-negative number).
     """
-    if 8437 not in set(_iter_ids(rune_ids)):
+    if 8437 not in _iter_ids(rune_ids):
         return 0.0
     threat = ENEMY_RUNE_THREATS[8437]
-    try:
-        max_hp = float(enemy_max_hp)
-    except (TypeError, ValueError):
+    max_hp = _hp_or_none(enemy_max_hp)
+    if max_hp is None:
         return 0.0
-    rf = float(threat.ranged_factor) if ranged else 1.0
+    rf = float(threat.ranged_factor) if _flag(ranged) else 1.0
     return float(threat.grasp_magic_pct) * max_hp * rf
 
 
@@ -366,15 +385,84 @@ def enemy_antiheal_pct(antiheal_present: bool) -> float:
     consumer can discount the player's heal-based EHP alongside the rune threats.
     The antiheal source itself (Ignite id 14 -> ``summoners.summoner_antiheal_
     pct``; antiheal items) is detected elsewhere; this returns the magnitude.
+    ``antiheal_present`` is a strict flag (``_flag``): "false", NaN and
+    garbage are absent.
     """
-    return GRIEVOUS_WOUNDS_PCT if antiheal_present else 0.0
+    return GRIEVOUS_WOUNDS_PCT if _flag(antiheal_present) else 0.0
 
 
-def _iter_ids(rune_ids: Iterable[int]) -> Iterable[int]:
-    """Fail-soft id iterator: an empty / None / non-iterable input yields none."""
-    if not rune_ids:
-        return ()
+# ---------------------------------------------------------------------------
+# Input coercion (S144-T-571). Mirrors dsp_live_consumers' _one_id / _id_list /
+# _flag and its HP rule; restated here because that module imports this one.
+# _flag differs on purpose: an int past the float range must not raise.
+# ---------------------------------------------------------------------------
+
+_TRUE_WORDS = frozenset({"1", "true", "yes", "on"})
+
+
+def _one_id(value: Any) -> Optional[int]:
+    """One Riot rune id, or None when ``value`` is not an integral id.
+
+    bool is not an id; a float counts only when finite and integral (8005.5
+    is not Press the Attack); a string counts only as plain ASCII digits
+    after stripping (``int`` alone would also take "8_005" and non-ASCII
+    digits); any other integer-like (``__index__``) value is read; everything
+    else is None.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float):
+        # is_integer() is False for NaN and both infinities.
+        return int(value) if value.is_integer() else None
+    if isinstance(value, str):
+        text = value.strip()
+        return int(text) if text.isascii() and text.isdigit() else None
     try:
-        return tuple(int(r) for r in rune_ids)
+        return operator.index(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _iter_ids(rune_ids: Iterable[int]) -> tuple[int, ...]:
+    """Fail-soft id tuple: a bare scalar (int / float / str) is ONE id, junk
+    ids drop one by one (the rest still count), and a None or non-iterable
+    input yields none. An iterable that raises TypeError / ValueError while
+    being read yields none, as the pre-S144 iterator did."""
+    if isinstance(rune_ids, (str, int, float)):
+        rune_ids = (rune_ids,)
+    try:
+        items = list(rune_ids)
     except (TypeError, ValueError):
         return ()
+    return tuple(i for i in (_one_id(v) for v in items) if i is not None)
+
+
+def _flag(value: Any) -> bool:
+    """A strict boolean: garbage, NaN and every word but 1/true/yes/on read
+    False (``bool("false")`` is True, which armed antiheal / ranged). Any
+    other number (numpy bool / int, Decimal) is True when finite and
+    nonzero; an int past the float range is nonzero, so True."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in _TRUE_WORDS
+    try:
+        f = float(value)
+    except OverflowError:
+        return True
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(f) and f != 0
+
+
+def _hp_or_none(value: Any) -> Optional[float]:
+    """A finite, non-negative HP as float, else None (bool is not an HP)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(f) or f < 0.0:
+        return None
+    return f
