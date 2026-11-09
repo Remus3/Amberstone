@@ -62,6 +62,10 @@ slice 17 (S144-P-619) does the same for the first ten ratchet modules no other l
 changed, one site each (a001_test_code_idiom, agent3_suite_idiom, ambiguous_name, async_blocking_prod,
 asyncsleep_camelalias, branch_idiom and bug_class_lint_bundle2 to bundle5); their one site is
 the shared ``ruff`` helper whose only extra keyword dict holds ``creationflags``;
+slice 18 (S144-P-620) does the same for the next ten ratchet modules no other lane branch had
+changed, one site each (bug_class_lint_bundle6, bug_class_lint_bundle_zero, bugbear_gap_and_pie790,
+clamp_expression, cli_logging_print_conversion, collapsible_if, collection_idiom,
+container_builtin_return, d417_docstring_param and dead_weight_lint_bundle);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -94,18 +98,8 @@ _RULE = "PLW1510"
 # file -> finding count that stays. Only shrinks.
 _BASELINE = {
     "tests/test_b4_client_directive_gate.py": 1,
-    "tests/test_bug_class_lint_bundle6_zero_ratchet_s144p332.py": 1,
-    "tests/test_bug_class_lint_bundle_zero_ratchet_s144p319.py": 1,
-    "tests/test_bugbear_gap_and_pie790_ratchet_s144p111.py": 1,
     "tests/test_build_portable_bundle_pkg.py": 1,
     "tests/test_ci_sibling_sweep_tree_wiring.py": 1,
-    "tests/test_clamp_expression_ratchet_s144p124.py": 1,
-    "tests/test_cli_logging_print_conversion_s144p214.py": 1,
-    "tests/test_collapsible_if_ratchet_s144p161.py": 1,
-    "tests/test_collection_idiom_ratchet_s144p141.py": 1,
-    "tests/test_container_builtin_return_ratchet_s144p160.py": 1,
-    "tests/test_d417_docstring_param_ratchet_s144p509.py": 1,
-    "tests/test_dead_weight_lint_bundle_ratchet_s144p270.py": 1,
     "tests/test_dict_fromkeys_ratchet_s144p137.py": 1,
     "tests/test_dict_fromkeys_test_code_ratchet_s144p164.py": 1,
     "tests/test_dict_items_test_code_ratchet_s144p169.py": 1,
@@ -394,6 +388,16 @@ _FIXED = (
     "tests/test_bug_class_lint_bundle3_zero_ratchet_s144p328.py",
     "tests/test_bug_class_lint_bundle4_zero_ratchet_s144p329.py",
     "tests/test_bug_class_lint_bundle5_zero_ratchet_s144p330.py",
+    "tests/test_bug_class_lint_bundle6_zero_ratchet_s144p332.py",
+    "tests/test_bug_class_lint_bundle_zero_ratchet_s144p319.py",
+    "tests/test_bugbear_gap_and_pie790_ratchet_s144p111.py",
+    "tests/test_clamp_expression_ratchet_s144p124.py",
+    "tests/test_cli_logging_print_conversion_s144p214.py",
+    "tests/test_collapsible_if_ratchet_s144p161.py",
+    "tests/test_collection_idiom_ratchet_s144p141.py",
+    "tests/test_container_builtin_return_ratchet_s144p160.py",
+    "tests/test_d417_docstring_param_ratchet_s144p509.py",
+    "tests/test_dead_weight_lint_bundle_ratchet_s144p270.py",
 )
 
 
