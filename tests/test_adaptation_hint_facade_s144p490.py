@@ -141,7 +141,7 @@ def test_every_public_function_of_a_split_module_is_reachable_from_the_facade(mo
 def test_db_dir_patched_on_the_facade_redirects_every_split_module(tmp_path: Path, monkeypatch) -> None:
     facade = importlib.import_module("coaches.adaptation_hint")
     common = importlib.import_module("coaches._adaptation_common")
-    mode = sorted(common.SUPPORTED_MODES)[0]
+    mode = min(common.SUPPORTED_MODES)
     (tmp_path / f"{mode}.db").write_bytes(b"")
     monkeypatch.setattr(facade, "DB_DIR", tmp_path)
     assert common._db(mode) == tmp_path / f"{mode}.db"

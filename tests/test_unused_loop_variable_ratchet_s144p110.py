@@ -63,7 +63,6 @@ _BASELINE = {
     "agents/daemon_slayer/tests/test_extendedduel_item309.py": 1,
     "agents/daemon_slayer/tests/test_mobility_item297.py": 1,
     "agents/daemon_slayer/tests/test_objdamage_item303.py": 1,
-    "agents/daemon_slayer/tests/test_passive_heal_overrides_per_charge_item252.py": 1,
     "agents/daemon_slayer/tests/test_per_spell_cc_registry_wave2.py": 1,
     "agents/daemon_slayer/tests/test_scaling_item299.py": 2,
     "agents/daemon_slayer/tests/test_server_routes_p1l8.py": 1,

@@ -127,7 +127,7 @@ from core.build_order_precompute import (
     DS_MODE_BY_KEY,
     EXIT_EMPTY_TABLE,
     EXIT_NO_ROSTER,
-    SEED_CHAMPIONS as SEED_CHAMPIONS,  # explicit re-export: tests read bov.SEED_CHAMPIONS
+    SEED_CHAMPIONS,
     RosterUnavailableError,
     archetype_for,
     engine_version,
@@ -137,6 +137,11 @@ from core.build_order_precompute import (
 )
 from core.ds_antitank_hint import build_antitank_hint
 from core.polled_json import atomic_write_text
+
+# SEED_CHAMPIONS is imported above for no use in this module: tests/test_build_order_variants.py reads
+# `bov.SEED_CHAMPIONS` to pin parity with HZ-B1. Naming it here is the explicit re-export F401 honours (the
+# `X as X` spelling trips PLC0414 instead, which a zero ratchet bans).
+__all__ = ["SEED_CHAMPIONS"]
 
 # Project root: core/ -> <repo>\
 _ROOT = Path(__file__).resolve().parent.parent

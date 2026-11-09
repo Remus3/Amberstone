@@ -31,7 +31,6 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from core.smoothed_rates import blend, laplace_rate, shrink
-from itertools import starmap
 
 log = logging.getLogger("rc.playstyle_labels")
 
@@ -242,7 +241,7 @@ def compute_playstyle_labels(db_path: Path = DEFAULT_DB,
         "deaths": _mean(all_d),
         "assists": _mean(all_a),
         "kp": _mean(all_kp),
-        "kda_ratio": _mean(list(starmap(_kda_ratio, zip(all_k, all_d, all_a)))),
+        "kda_ratio": _mean(list(map(_kda_ratio, all_k, all_d, all_a))),
     }
 
     # ---- per-champion buckets --------------------------------------------
