@@ -113,6 +113,9 @@ def test_connection_is_closed_on_a_corrupt_file(tmp_path, opened):
 
 def test_no_unclosed_database_resource_warning(tmp_path):
     db = _make_db(tmp_path / "aram.db")
+    # s156 C9: flush garbage an EARLIER test left on this xdist worker first,
+    # so the recorded window sees only connections ensure_kda_columns made.
+    gc.collect()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         mk.ensure_kda_columns(db)

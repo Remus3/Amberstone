@@ -988,7 +988,13 @@ def test_a_junction_planted_at_the_base_is_refused_before_any_acl_change(tmp_pat
 
 def _handle_count() -> int:
     import ctypes
+    import gc
     from ctypes import wintypes
+
+    # s156 C9: collect first, so a handle held by an EARLIER test's uncollected
+    # garbage (a file, a socket, a sqlite connection on a shared xdist worker)
+    # is not freed inside the measured window; suite 2 read (475, 471).
+    gc.collect()
 
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     k32.GetCurrentProcess.restype = wintypes.HANDLE
