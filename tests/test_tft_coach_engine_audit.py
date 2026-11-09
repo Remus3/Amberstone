@@ -277,10 +277,6 @@ class TestConfigValidation(unittest.TestCase):
     """W9 - config values were adopted with no type or range check, so a
     string debounce raised TypeError out of submit() into the poll loop."""
 
-    def _write_cfg(self, payload):
-        cfg = Path(__file__).parent.parent / "config" / "coach_settings.json"
-        return cfg, payload
-
     def test_non_numeric_debounce_is_rejected(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:

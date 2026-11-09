@@ -46,9 +46,6 @@ class Class1OriannaScalingTests(unittest.TestCase):
     def _armor_values(self):
         return tuple(ally_resist_grant("Orianna", lvl, True)[0] for lvl in _PROBE_LEVELS)
 
-    def _mr_values(self):
-        return tuple(ally_resist_grant("Orianna", lvl, True)[1] for lvl in _PROBE_LEVELS)
-
     def test_pinned_regression_snapshot(self):
         self.assertEqual(self._armor_values(), _ORIANNA_ARMOR_PINNED)
 

@@ -227,12 +227,6 @@ def test_lockfile_with_empty_password_is_rejected(monkeypatch, tmp_path):
 # 3b. `_read_game_fallback` event normalisation must not pick an arbitrary key.
 # ---------------------------------------------------------------------------
 
-def _fallback_reader(monkeypatch, payloads: dict):
-    r = _build_reader(monkeypatch)
-    r._get = lambda url: payloads[url.rsplit("/", 1)[-1]]
-    return r
-
-
 def test_fallback_event_normalisation_picks_the_list_not_an_arbitrary_value():
     """`list(ev.values())[0]` trusted foreign key ORDER to find the events.
 

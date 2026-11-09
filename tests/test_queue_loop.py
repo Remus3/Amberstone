@@ -166,21 +166,6 @@ def _loop_seams(**kw):
     return log, seams
 
 
-def _heads(*shas):
-    """A `head_sha` seam walking a scripted list, repeating the last answer.
-
-    The driver reads it before and after each cycle: an UNCHANGED answer is the
-    only push signal a driver that never looks inside the lane worktree can
-    have, so a test that wants the gate to fire must move it.
-    """
-    seq = list(shas)
-
-    def head_sha():
-        return seq.pop(0) if len(seq) > 1 else seq[0]
-
-    return head_sha
-
-
 def _new_head_every_call():
     """A `head_sha` that never repeats - every cycle looks like a real push."""
     state = {"n": 0}
