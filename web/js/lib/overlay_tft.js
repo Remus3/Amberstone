@@ -379,8 +379,12 @@ export const TFT_OVERLAY_CSS = [
   'body[data-shell="overlay"] .ovt-panel .ovt-cell.ovt-major .ovt-val {',
   "  font-size: var(--fs-sm); line-height: 1.2;",
   "}",
+  // S144-U-273: the "-" no-data placeholder takes the overlay dim tier (0.55,
+  // as overlay.css's OBJECTIVE footer and --signal-dim). 0.45 read 4.48:1 on
+  // the nested backing live and 3.52 - 3.83:1 in the idle recede (widget
+  // opacity 0.85); 0.55 reads 6.06:1 live, 4.63:1 idle, over any game pixel.
   'body[data-shell="overlay"] .ovt-panel .ovt-cell.is-empty .ovt-val {',
-  "  color: rgba(var(--ovx-text), 0.45);",
+  "  color: rgba(var(--ovx-text), 0.55);",
   "}",
   'body[data-shell="overlay"] .ovt-panel .ovt-cell[data-band="low"] .ovt-val {',
   "  color: rgb(var(--ovx-warn));",
@@ -432,10 +436,11 @@ export const TFT_OVERLAY_CSS = [
   "  color: rgba(var(--ovx-text), 0.92); font-size: var(--fs-ov-chip);",
   "  font-weight: 700; line-height: 1.3; font-variant-numeric: tabular-nums;",
   "}",
-  // dimmed like the "-" placeholders (alpha 0.45, the 4.5:1 floor) at the
-  // sibling chips' size - UI audit: 0.40 at 11px measured 3.8:1.
+  // dimmed like the "-" placeholders (the 0.55 overlay dim tier, S144-U-273)
+  // at the sibling chips' size - UI audit: 0.40 at 11px measured 3.8:1, and
+  // 0.45 fell to 3.52:1 in the idle recede.
   'body[data-shell="overlay"] .ovt-panel .ovt-opp.is-out {',
-  "  color: rgba(var(--ovx-text), 0.45); font-weight: 600;",
+  "  color: rgba(var(--ovx-text), 0.55); font-weight: 600;",
   "}",
   // RM-950: a crit opponent chip (the dashboard lobby bar's red fill) reads
   // in the caution hue, never red - red is the ONE pop-out (OVERLAY_DOCTRINE

@@ -43,7 +43,7 @@ d1e3eea8b2c0f23e063492725a46085d49aa3fd65298df5cad3c629aca29941e  web/js/lib/ove
 
 707cd8576ac3cc73bc094773e7912279828e35a041559e6e6e737f2ecc980c15  web/js/lib/overlay_settings.js
 
-a9776830e10250728b6b34fc79a82164d8a9d2455c6ef26e8b23de009235a25f  web/js/lib/overlay_tft.js
+926766799aa033dd078bd174eae3fa50a6daac75eb40f1204adbf08fa050d555  web/js/lib/overlay_tft.js
 
 4ebd55a58e8537dc9c9934abd75160d438825fca6385fc5fc1c087bf5f702659  web/js/lib/overlay_tooltip.js
 

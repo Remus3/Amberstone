@@ -319,7 +319,7 @@ def test_tft_overlay_unknown_vitals_paint_the_no_data_sentinel(mock_server, pw_b
             by_key = {k: (text, alpha) for k, text, alpha in dimmed}
             for k in ("level", "gold") + (("hp",) if hp == "-" else ()):
                 assert k in by_key, f"{name} {k} not dimmed as empty"
-                assert by_key[k][0] == "-" and abs(by_key[k][1] - 0.45) < 0.01, (name, k, by_key[k])
+                assert by_key[k][0] == "-" and abs(by_key[k][1] - 0.55) < 0.01, (name, k, by_key[k])
             names = page.eval_on_selector_all("#ovt-board .ovt-unit-name", "els => els.map(e => e.textContent)")
             assert "unavailable" not in names, f"{name}: a no-read placeholder painted as a unit"
             painted = page.evaluate(
@@ -374,14 +374,15 @@ def test_tft_overlay_typography_and_hierarchy(mock_server, pw_browser):
             " return p.length > 3 ? p[3] : 1; })")
         assert len(head_alpha) == 3 and min(head_alpha) >= 0.85, head_alpha
         # MUST-FIX 2: the eliminated chip reads at the chip size, dimmed no
-        # further than the "-" placeholders (alpha 0.45, the 4.5:1 floor).
+        # further than the "-" placeholders (the 0.55 overlay dim tier,
+        # S144-U-273; 0.45 fell under AA in the idle recede).
         out_fs = _fs(page, "#ovt-lobby .ovt-opp.is-out")
         assert out_fs >= 13 and out_fs == opp, (out_fs, opp)
         out_alpha = page.eval_on_selector(
             "#ovt-lobby .ovt-opp.is-out",
             "e => { const p = /rgba?\\(([^)]+)\\)/.exec(getComputedStyle(e).color)[1].split(',').map(Number);"
             " return p.length > 3 ? p[3] : 1; }")
-        assert out_alpha >= 0.45, out_alpha
+        assert out_alpha >= 0.55, out_alpha
     finally:
         page.close()
         ctx.close()
@@ -444,7 +445,7 @@ def test_tft_overlay_lobby_chips_carry_the_hp_band(mock_server, pw_browser):
         # Pop-out discipline: no lobby chip ever paints the emergency red.
         assert all(c[:3] != red for c in colors), colors
         # The OUT chip keeps its own dimmed ink, never a band colour.
-        assert colors[6][:3] != warn and colors[6][3] == 0.45, chips[6]
+        assert colors[6][:3] != warn and colors[6][3] == 0.55, chips[6]
         # The band changes colour only: every chip keeps the chip size + weight.
         assert len({(c[3], c[4]) for c in chips[:6]}) == 1, chips
         box = page.eval_on_selector("#ovt-lobby", "e => { const r = e.getBoundingClientRect();"
