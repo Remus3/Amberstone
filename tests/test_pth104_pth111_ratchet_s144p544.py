@@ -152,8 +152,8 @@ def test_home_spellings_agree_when_a_home_resolves():
     assert str(Path.home() / ".perseus-vault") == old
     from tools import perseus_recall, perseus_sync
 
-    assert perseus_recall.PERSEUS_HOME == old
-    assert perseus_sync.PERSEUS_HOME == old
+    assert old == perseus_recall.PERSEUS_HOME
+    assert old == perseus_sync.PERSEUS_HOME
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="a POSIX home falls back to the passwd entry")

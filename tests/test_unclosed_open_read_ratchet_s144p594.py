@@ -55,9 +55,8 @@ def unclosed_reads(source: str) -> list[int]:
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
             continue
         attr = node.func.attr
-        if attr in _READERS and _is_open_call(node.func.value):
-            hits.append(node.lineno)
-        elif attr in _LOADERS and node.args and _is_open_call(node.args[0]):
+        if (attr in _READERS and _is_open_call(node.func.value)) or (
+                attr in _LOADERS and node.args and _is_open_call(node.args[0])):
             hits.append(node.lineno)
     return sorted(hits)
 
