@@ -64,27 +64,41 @@ lerp indexed at ``rank == level-1``; a SPELL-slot "based on level" shield sets
 - Viktor Q). A flat float is a 1-element list (clamped at every rank). Keyed
 ``(champion_id, key, form_index)`` - same shape as ``_passive_heal_overrides``.
 
-EXHAUSTED scan (all 171 champs, shield-verb forms with no shield block - 38
-matches): the seedable SELF/ALLY-shield set is exactly these 10. Documented
-EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
+Roster scan (all 171 champs, shield-verb forms with no shield block): 38
+matches at 16.11.1, re-measured 39 at 16.22.1 (S144-D-320, guard
+``tests/test_passive_heal_shield_registries_live_text_s144d319.py``). The 10
+seeded rows are NOT the whole seedable set: three real self-shields stay
+unseeded (the UNSEEDED class below). Documented EXCLUSIONS (scanned, NOT
+seeded - with the reason class):
   - SPELL SHIELD (a one-shot hostile-effect block, not a damage-absorb amount):
     Nocturne W Shroud of Darkness, Sivir E Spell Shield.
   - DAMAGE-STORED / grey-health / Grit conversion (a bespoke stored-damage
     barrier, not a flat/stat magnitude - same boundary as the heal registry's
     vamp class): Sett W (Grit), Mordekaiser W Indestructible (stored damage),
-    Tahm Kench E grey health.
+    TahmKench E grey health.
   - RE-GRANT of an existing structured shield (the magnitude is another spell's
     block - double-count): Galio R (resets/grants Galio W's Shield of Durand),
     Yuumi R (heal-overflow converted to an ally shield).
-  - SHIELD-STRIP (destroys ENEMY shields, not a grant): Blitzcrank R, Rell Q.
+  - SHIELD-STRIP (destroys ENEMY shields, not a grant): Blitzcrank R, Rell Q,
+    Renekton W (the Fury-empowered strikes destroy the target's shields).
   - shield-verb matched but NO self/ally shield-magnitude grant (weapon-flavor /
-    damage-reduction / ability name / vamp / amp / damage passive): Akshan P,
-    Ambessa W, Aphelios P (Severum vamp), Braum Q/E/R ("his shield" = weapon),
-    Leona Q ("her shield" empower) / W (flat damage reduction), Malphite W
-    (references the P shield), Mel P (damage store), Nilah P (shield-amp) /
-    Q (vamp) / R, Pantheon W (ability name "Shield Vault") / E (directional
-    invuln), Poppy P (buckler = damage passive), Renekton W (empowered-AA stun),
-    Yone W (cleave), Yuumi W (untargetable empower).
+    damage-reduction / ability name / vamp / amp / damage passive / trigger):
+    Akshan P, Aphelios P (Severum vamp; the overheal shield is the vamp class),
+    Braum Q/E/R ("his shield" = weapon), Leona Q ("her shield" empower) / W
+    (flat damage reduction), Lucian P (Vigilance empowers shots when an ally
+    heals or shields him - a trigger, no grant), Malphite W (references the P
+    shield), Mel P (damage store), Nilah P (shield-amp) / Q (vamp) / R,
+    Pantheon W (ability name "Shield Vault") / E (directional invuln), Yuumi W
+    (untargetable empower).
+  - UNSEEDED real self-shields (S144-D-320; each base magnitude is on units
+    ``_HEAL_UNIT_TO_CTX`` already resolves - Yone's champion-hit multiplier is
+    not a linear term and would stay a lower bound - filed under "no grant" before the
+    16.22.1 re-measure; seeding moves ``total_shield_per_sec`` under
+    ``apply_passive_shield`` so it is a Tier-2 follow-up, S144-D-323): Ambessa W
+    Repudiation (50 : 320 (based on level) (+ 150% bonus AD) on cast), Poppy P
+    Iron Ambassador (11% : 20% (based on level) of max HP on buckler pickup),
+    Yone W Spirit Cleave (40 : 90 (based on level) (+ 65% bonus AD) on a hit,
+    +100% on a champion hit and +50% per further champion).
 """
 from __future__ import annotations
 

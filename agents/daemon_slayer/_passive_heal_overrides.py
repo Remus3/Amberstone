@@ -40,7 +40,9 @@ confirmed the rest of the heal-verb+HP hits are DAMAGE lines (Aatrox/Brand/Gwen/
 Sejuani/Smolder %-of-HP damage), the documented vamp / revive / grey-health
 classes, a pet heal (Zyra R restores her PLANTS' HP), or a remount/mount-HP
 restore (Kled P / Skaarl) - none a new clean self/ally heal. The LINEAR
-effects-text heal class is now exhausted at patch 16.11.1.
+effects-text heal class was exhausted at patch 16.11.1; the S144-D-322
+re-measure at 16.22.1 found two clean self-heals outside it (Nocturne P,
+Elise P - the UNSEEDED class below).
 
 UNLIKE the 3 bilinear seeds (every term target/missing-HP scaled -> 0 at the
 default ``resolve_target_relative=False``), most linear entries have a FLAT /
@@ -119,8 +121,11 @@ the new ``bilinear_ctx``). Keyed ``(champion_id, key, form_index)`` - same
 shape as ``_passive_damage_overrides`` / ``_ability_overrides``.
 
 EXHAUSTED scan (all 171 champs, forms with NO ``attribute_kind=="heal"`` block
-whose effects_descriptions carry a "heal"/"restore" verb): 84 candidate forms.
-The BILINEAR set is exactly the 3 item-250 seeds; the LINEAR seedable set is the
+whose effects_descriptions carry a "heal"/"restore" verb): 84 candidate forms
+at 16.11.1, re-measured 93 at 16.22.1 (S144-D-322, guard
+``tests/test_passive_heal_shield_registries_live_text_s144d319.py``; the 15
+forms the 16.11.1 list never named are added to their classes below, marked
+"(16.22.1)" or filed UNSEEDED). The BILINEAR set is exactly the 3 item-250 seeds; the LINEAR seedable set is the
 16 item-251 entries below (14 P-slot + Rakan Q + Talon Q) PLUS the 4 item-254
 re-open misses (Mordekaiser R / Illaoi P / Zac P / Dr. Mundo P); the item-252
 per-charge seam adds Taric Q (the sole per-charge heal). Documented EXCLUSIONS
@@ -128,7 +133,9 @@ per-charge seam adds Taric Q (the sole per-charge heal). Documented EXCLUSIONS
   - VAMP / "% of post-mitigation damage dealt" (not resolvable at rest, same
     boundary as the damage registry's omitted vamp): Aatrox P/E, Briar P,
     DrMundo Q, Gwen P, Kayn P, Morgana P, Vladimir W, Warwick P/R, XinZhao W,
-    Aphelios P2, Nilah Q/R, Olaf E.
+    Aphelios P2, Nilah Q/R, Olaf E; (16.22.1) Camille W (100% of the outer-
+    half bonus damage), Viego Q (135% of the empowered strike's damage),
+    Trundle R (heals for the damage dealt).
   - RESOURCE restores (mana / energy / Courage - NOT health): Akali W, Ambessa
     P, Bard P, Brand P, Ezreal W, Fizz W, Hwei W3, Jayce W, Kalista E, Karthus
     E, Kassadin W, Kennen P/E, Kled P/Q, LeeSin P, Malzahar E, Shen E, Smolder
@@ -138,9 +145,26 @@ per-charge seam adds Taric Q (the sole per-charge heal). Documented EXCLUSIONS
     mount-HP restore - not a recurring castable self-heal): Anivia P, Pyke P,
     Rengar W, TahmKench E, Sion P (reanimate to full), Zac P resurrection half
     (the Goo-chunk heal half IS seeded item 254), Kled P (Skaarl restores
-    40-70% of the MOUNT's max HP on a 100-Courage remount).
+    40-70% of the MOUNT's max HP on a 100-Courage remount); (16.22.1) DrMundo W
+    (heals a share of grey health), Renata W (an ally restored to full on
+    fatal damage, then burned), KSante R (health lost to the All Out threshold
+    "is not restored" - no heal at all).
   - PET heals (restore a summon's HP, not the champion's): Zyra R (enrages her
-    plants, "restoring 50% of their current health" = the plants', not Zyra's).
+    plants, "restoring 50% of their current health" = the plants', not Zyra's);
+    (16.22.1) Naafiri E (Packmates healed to full).
+  - NO heal magnitude (16.22.1; the verb names a trigger, an amp, a restored
+    shield or a cap): Galio W (restores the magic-damage shield), Khazix W1
+    (the evolved form only caps the W heal, which form 0 carries as a heal
+    block), Lucian P (triggered by an ally's heal or shield), Rakan P
+    (restores the leftover shield out of combat), Sona P (stacks on Aria's
+    heals), Trundle W (25% increased healing - an amp, not an amount).
+  - UNSEEDED clean self-heals (S144-D-322; each is a linear magnitude on units
+    ``_HEAL_UNIT_TO_CTX`` already resolves - Nocturne's flat part is a per-level
+    lerp, Elise's steps by Spider Form (R) RANK, not by level; seeding moves ``ability_hps``
+    under ``apply_passive_heal`` so it is a Tier-2 follow-up, S144-D-324):
+    Nocturne P Umbra Blades (13 : 30 (based on level) (+ 30% AP) per enemy hit
+    on the periodic empowered attack), Elise P Spider Queen (6 / 8 / 10 / 12
+    (based on Spider Form's Rank) (+ 8% AP) on-hit, Spider-form only).
   - %-of-HP DAMAGE lines (heal-verb match was spurious - these are damage, in
     the damage path): Aatrox P, Brand P, Gwen P, Sejuani P, Smolder Q.
   - BESPOKE products / crit / form gates (no clean linear shape): Kindred W
