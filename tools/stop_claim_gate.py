@@ -3889,6 +3889,111 @@ def _assignment_commands(statement):
     return [body for body in bodies if body is not None]
 
 
+# S144-Q-164 (read only when EXTRA is on): PowerShell evaluates the
+# condition of `if`, `elseif`, `while`, `foreach` (and `do { } while`), the
+# value of `switch [-option ...] (...)` and the init clause of `for (...;`,
+# so a `$( ... )` / `@( ... )` inside those parentheses runs its command;
+# measured with Windows PowerShell 5.1 (a `$(` in double quotes runs too,
+# one in single quotes or behind a backtick does not). The later `for`
+# clauses sit past a statement break (_STATEMENT_BREAK splits at `;`), the
+# S144-Q-162 cause. _PS_HEAD_STEP is one brace head at the scan position:
+# a `}`, a lone `{`, a block head with its `{`, or a condition head up to
+# its `(`.
+_PS_HEAD_STEP = re.compile(
+    r"\s*(?:[{}]|(?:else|do|try|finally|catch(?:\s*\[[^\]]*\])*)\s*\{"
+    r"|(?P<cond>(?:if|elseif|while|foreach|for|switch(?:\s+-\w+)*)\s*\())",
+    re.IGNORECASE)
+_PS_BLOCK_OPEN = re.compile(r"\s*\{")
+# How deep _ps_group nests plain `( ... )` / `{ ... }` groups before it
+# stops (count-only: nothing past it is read, and no RecursionError).
+_PS_GROUP_MAX = 32
+
+
+def _ps_group(text, i, close, subs, depth):
+    """S144-Q-164: scan TEXT from I to the CLOSE (`)` or `}`) that ends
+    this group, appending the body of each `$( ... )` / `@( ... )` met to
+    SUBS (a plain group nested in it is scanned for them too). Quote-aware:
+    a single-quoted span is literal; in double quotes only `$(` opens a
+    substitution and a backtick escapes. Returns the index after CLOSE, or
+    None when the group does not close (a substitution cut off there reads
+    to the end of TEXT) or nests past _PS_GROUP_MAX."""
+    if depth > _PS_GROUP_MAX:
+        return None
+    n = len(text)
+    quoted = False
+    while i < n:
+        char = text[i]
+        if char == "`":
+            i += 2
+            continue
+        if quoted:
+            if char == '"':
+                if text.startswith('"', i + 1):
+                    i += 2  # `""` is a quote inside the string
+                    continue
+                quoted = False
+            elif text.startswith("$(", i):
+                i = _ps_substitution(text, i + 2, subs, depth)
+                if i is None:
+                    return None
+                continue
+            i += 1
+            continue
+        if char == close:
+            return i + 1
+        if char == '"':
+            quoted = True
+        elif char == "'":
+            end = text.find("'", i + 1)  # `''` re-enters at the next quote
+            if end < 0:
+                return None
+            i = end
+        elif char in "$@" and text.startswith("(", i + 1):
+            i = _ps_substitution(text, i + 2, subs, depth)
+            if i is None:
+                return None
+            continue
+        elif char in "({":
+            i = _ps_group(text, i + 1, ")" if char == "(" else "}", subs,
+                          depth + 1)
+            if i is None:
+                return None
+            continue
+        i += 1
+    return None
+
+
+def _ps_substitution(text, start, subs, depth):
+    """S144-Q-164: append the body of the substitution whose text starts at
+    START to SUBS and return the index after its `)` (None when it does not
+    close: the rest of TEXT is the body). Substitutions nested in the body
+    are not collected; the body is walked as a command, which reads them."""
+    end = _ps_group(text, start, ")", [], depth + 1)
+    subs.append(text[start:] if end is None else text[start:end - 1])
+    return end
+
+
+def _ps_condition_bodies(statement):
+    """S144-Q-164: the body of each `$( ... )` / `@( ... )` in the condition
+    of a PowerShell condition head at the start of STATEMENT (raw text),
+    walking past the brace heads before and between them (`} elseif (..) {`,
+    `if ($x) { if (..) {`, `do { } while (..)`); [] for any other
+    statement."""
+    bodies = []
+    pos = 0
+    while (step := _PS_HEAD_STEP.match(statement, pos)) is not None:
+        pos = step.end()
+        if step.group("cond") is not None:
+            pos = _ps_group(statement, pos, ")", bodies, 1)
+            if pos is None:
+                break
+            brace = _PS_BLOCK_OPEN.match(statement, pos)
+            if brace is None:
+                break
+            pos = brace.end()
+    return bodies
+
+
 def _cmd_script(rest):
     """The command line of `cmd /c ...` / `cmd /k ...` (`//c` from Git Bash)."""
     for i, word in enumerate(rest):
@@ -4168,8 +4273,19 @@ def _raw_words_bypass(statement, words, depth, extra, expand):
     for script in _launcher_scripts(words, extra) if words else ():
         if _has_bypass(script, depth + 1, extra, expand):
             return True
-    bodies = _assignment_commands(statement) if extra else ()
+    bodies = _statement_bodies(statement) if extra else ()
     return any(_has_bypass(body, depth + 1, extra, expand) for body in bodies)
+
+
+def _statement_bodies(statement):
+    """The commands a STATEMENT (raw text) runs inside itself and that are
+    walked like a launcher script: an assignment's (S144-Q-135,
+    _assignment_commands), then each substitution in a PowerShell condition
+    (S144-Q-164, _ps_condition_bodies) not already among them."""
+    bodies = _assignment_commands(statement)
+    bodies.extend(body for body in _ps_condition_bodies(statement)
+                  if body not in bodies)
+    return bodies
 
 
 def _placed(command, here, variables, depth, extra=True, expand=True):
@@ -4215,10 +4331,11 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True,
         if not hit and not legacy and extra and expand:
             held = _held_bypass(raw_words, _held_words(statement, variables))
             split = held == "split"
-        bodies = () if legacy or not extra or hit else _assignment_commands(text)
+        bodies = () if legacy or not extra or hit else _statement_bodies(text)
         hit = hit or bool(held)
         for body in bodies:
-            # S144-Q-135: the command an assignment runs, walked like a
+            # S144-Q-135: the command an assignment runs (S144-Q-164: or a
+            # substitution in a PowerShell condition), walked like a
             # launcher script (its own copy of HERE and VARIABLES). A HIT
             # statement is already placed from its own words below.
             targets.extend(_placed(body, here, variables, depth + 1, extra=extra,
