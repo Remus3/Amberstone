@@ -116,15 +116,18 @@ def test_not_mid_game_and_bad_window():
 
 
 def test_regex_reads_a_line_from_the_agent_format_and_fstring(tmp_path):
-    """Render a line with lcu_agent's own format string and drain f-string."""
+    """Render a line with lcu_agent's own format string and drain log call."""
     src = (ROOT / "tools" / "lcu_agent.py").read_text(encoding="utf-8")
     fmt = "%(asctime)s %(levelname)s %(message)s"
     assert f'format="{fmt}"' in src
-    assert "log.info(f\"  [cmd] {cmd.get('cmd')} -> {result}\")" in src
-    assert "log.warning(f\"  [cmd-exc] {cmd.get('cmd')} -> {result}\")" in src
+    info_call = 'log.info("  [cmd] %s -> %s", cmd.get("cmd"), result)'
+    warn_call = 'log.warning("  [cmd-exc] %s -> %s", cmd.get("cmd"), result)'
+    assert info_call in src
+    assert warn_call in src
     result = {"ok": True, "set_uid": "RC-ezreal-sr-ub-1", "title": "RC: X"}
+    # The lazy %-args call renders to the same text the old f-string did.
     rec = logging.LogRecord("lcu_agent", logging.INFO, __file__, 1,
-                            f"  [cmd] apply_item_set -> {result}", None, None)
+                            "  [cmd] %s -> %s", ("apply_item_set", result), None)
     line = logging.Formatter(fmt).format(rec)
     parsed = g236.parse_log_lines([line])
     assert len(parsed) == 1 and parsed[0]["result"] == result

@@ -8,10 +8,11 @@ logging machinery a finished string, so a handler or filter cannot group by the 
 select G004 and no earlier ratchet covers it. Measured 2026-11-09 with ``ruff check --isolated``
 (target py39) over the tracked production tree: 51 findings in 6 files. This slice converts the
 16 sites in the four ``core/`` modules no lane branch touches (the three precompute generators'
-``main()`` banners and the aftergame CLI); the 35 in ``tools/lcu_agent.py`` stay in the baseline
-below, which only shrinks (that file is a long-running agent with many call sites: a slice of its
-own). A baseline row that stops offending fails ``test_baseline_is_exact`` until it is dropped; a
-new finding anywhere else fails ``test_no_new_findings``.
+``main()`` banners and the aftergame CLI); the 35 in ``tools/lcu_agent.py`` followed in S144-P-499
+(that file is a long-running agent with many call sites: a slice of its own), so the baseline is
+now empty and stays a dict that only shrinks. A baseline row that stops offending fails
+``test_baseline_is_exact`` until it is dropped; a new finding anywhere fails
+``test_no_new_findings``.
 
 Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer`` (its
 ``cli.py`` carries 8 more), the vendored ``ops/fleet_kit`` and the ``agents/agent3_testing/suite``
@@ -44,15 +45,14 @@ _OUT_OF_SCOPE = (
     "agents/agent3_testing/suite/",
     "ops/fleet_kit/",
 )
-# file -> finding count that stays. Only shrinks.
-_BASELINE = {
-    "tools/lcu_agent.py": 35,
-}
+# file -> finding count that stays. Only shrinks; empty since S144-P-499.
+_BASELINE: dict[str, int] = {}
 _FIXED = (
     "core/aftergame_summary.py",
     "core/build_order_precompute.py",
     "core/build_order_variants.py",
     "core/laning_scenario_precompute.py",
+    "tools/lcu_agent.py",
 )
 
 
