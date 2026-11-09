@@ -33,7 +33,7 @@ _MIN_ROWS = 30
 
 
 def _load_resist_index():
-    with open(_ITEMS, encoding="utf-8") as fh:
+    with Path(_ITEMS).open(encoding="utf-8") as fh:
         raw = json.load(fh)
     data = raw.get("data", raw)
     out = {}

@@ -24,6 +24,7 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -293,7 +294,7 @@ def _code_strings(path):
     is the same comments-cite-the-bug trap that made an earlier guard red.
     """
     import ast
-    with open(path, encoding="utf-8") as fh:
+    with Path(path).open(encoding="utf-8") as fh:
         tree = ast.parse(fh.read())
     docstrings = set()
     for node in ast.walk(tree):

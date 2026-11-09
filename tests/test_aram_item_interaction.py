@@ -7,6 +7,7 @@ the pure bucketing functions, not on data-fragile cross-row comparisons
 (Testing Discipline).
 """
 import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -294,7 +295,7 @@ def test_module_never_imports_daemon_slayer_rank():
     """RM-111 firewall: this surface is DESCRIPTIVE and must not feed DS rank."""
     src = (aii.__file__ or "")
     assert src
-    with open(src, encoding="utf-8") as fh:
+    with Path(src).open(encoding="utf-8") as fh:
         text = fh.read()
     assert "agents.daemon_slayer" not in text
     assert "from agents" not in text

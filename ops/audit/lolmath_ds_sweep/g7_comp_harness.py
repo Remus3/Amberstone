@@ -48,7 +48,7 @@ HERE = f"{ROOT}/ops/audit/lolmath_ds_sweep"
 
 
 def _load_json(path):
-    with open(path, encoding="utf-8") as fh:
+    with Path(path).open(encoding="utf-8") as fh:
         return json.load(fh)
 
 # lolmath's constant default enemy comp (gen_md.py methodology: 4 squishy + 1 tank).

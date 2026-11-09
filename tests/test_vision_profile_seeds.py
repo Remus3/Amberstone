@@ -29,7 +29,7 @@ _BASELINE_FILE = str(Path(_ROOT) / "data" / "vision_regions.json")
 
 
 def _baseline() -> dict:
-    with open(_BASELINE_FILE, encoding="utf-8") as fh:
+    with Path(_BASELINE_FILE).open(encoding="utf-8") as fh:
         return json.load(fh)
 
 
