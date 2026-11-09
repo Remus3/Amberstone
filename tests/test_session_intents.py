@@ -371,7 +371,8 @@ def _cli(*args, env_base, ctl):
     env["PYTHONIOENCODING"] = "utf-8"
     return subprocess.run(
         [sys.executable, str(REPO_ROOT / "tools" / "session_intent.py"), *args],
-        capture_output=True, text=True, env=env, cwd=str(REPO_ROOT))
+        capture_output=True, text=True, env=env, cwd=str(REPO_ROOT),
+        check=False)
 
 
 def test_cli_peek_reports_no_intent(ctl, home):

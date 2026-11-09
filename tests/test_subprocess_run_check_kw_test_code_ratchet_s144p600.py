@@ -28,7 +28,9 @@ pytest_per_run_temproot_rm878, bar the ratchet modules, the launcher files, pack
 phase3_setup_rerun, the precommit_gate files that carry two sites and the other multi-site files
 between them); slice 10 (S144-P-610) does the same for the next twelve (rc2_p73_quarantine
 through sanitize_agent6_atomic_write_rm258, bar the ratchet modules and rm750_ds_keepalive,
-which lane/true-audit changed, between them);
+which lane/true-audit changed, between them); slice 11 (S144-P-611) does the same for the next twelve
+(sanitize_agent6_reports through strip_em_dashes_atomic_write_rm258, bar the ratchet modules, the
+two-site files and status_helper_rc2, which another lane branch changed, between them);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -176,10 +178,6 @@ _BASELINE = {
     "tests/test_ruf050_ruf070_ratchet_s144p516.py": 1,
     "tests/test_ruf056_falsy_dict_get_ratchet_s144p520.py": 1,
     "tests/test_s324_hash_usedforsecurity_prod_ratchet_s144p212.py": 1,
-    "tests/test_sanitize_agent6_reports.py": 1,
-    "tests/test_scheduled_task_docstring_commands.py": 1,
-    "tests/test_session_checklist_item13.py": 1,
-    "tests/test_session_intents.py": 1,
     "tests/test_session_intents_true_audit_s144t169.py": 2,
     "tests/test_sibling_name_sweep.py": 6,
     "tests/test_sibling_sweep_prefilter_f2.py": 1,
@@ -194,16 +192,8 @@ _BASELINE = {
     "tests/test_sorted_all_and_slots_rest_ratchet_s144p250.py": 1,
     "tests/test_sorted_first_min_test_code_ratchet_s144p168.py": 1,
     "tests/test_startswith_tuple_and_identity_comprehension_ratchet_s144p114.py": 1,
-    "tests/test_state_relay_pool_threads_s144q18.py": 1,
-    "tests/test_stats_panel_kp_live.py": 1,
     "tests/test_status_helper_rc2.py": 1,
-    "tests/test_stop_claim_gate_alt_scan_s144q04.py": 1,
-    "tests/test_stop_claim_gate_artifact_scan_rm421.py": 1,
-    "tests/test_stop_claim_gate_git_options_redos.py": 1,
-    "tests/test_stop_claim_gate_heredoc_summary_scan_rm829.py": 1,
-    "tests/test_stop_claim_gate_option_scan_rm765.py": 1,
     "tests/test_stop_claim_gate_span_scan_rm814.py": 1,
-    "tests/test_strip_em_dashes_atomic_write_rm258.py": 1,
     "tests/test_strip_smart_quotes_atomic_write_rm258.py": 1,
     "tests/test_strip_u2500_atomic_write_rm258.py": 1,
     "tests/test_suite_tmp_hygiene_rm828.py": 1,
@@ -361,6 +351,18 @@ _FIXED = (
     "tests/test_run_deploy_test_continuations_rm826.py",
     "tests/test_runtime_outputs_untracked_rm715_s144p221.py",
     "tests/test_sanitize_agent6_atomic_write_rm258.py",
+    "tests/test_sanitize_agent6_reports.py",
+    "tests/test_scheduled_task_docstring_commands.py",
+    "tests/test_session_checklist_item13.py",
+    "tests/test_session_intents.py",
+    "tests/test_state_relay_pool_threads_s144q18.py",
+    "tests/test_stats_panel_kp_live.py",
+    "tests/test_stop_claim_gate_alt_scan_s144q04.py",
+    "tests/test_stop_claim_gate_artifact_scan_rm421.py",
+    "tests/test_stop_claim_gate_git_options_redos.py",
+    "tests/test_stop_claim_gate_heredoc_summary_scan_rm829.py",
+    "tests/test_stop_claim_gate_option_scan_rm765.py",
+    "tests/test_strip_em_dashes_atomic_write_rm258.py",
 )
 
 

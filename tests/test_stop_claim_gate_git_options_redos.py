@@ -93,7 +93,7 @@ print(round(worst, 3))
 
 def test_option_runs_at_command_parse_max_finish_in_a_bounded_time():
     run = subprocess.run([sys.executable, "-c", _BIG_PROBE, str(REPO), ",".join(ALL_PATTERNS)],
-                         capture_output=True, text=True, timeout=60, cwd=str(REPO))
+                         capture_output=True, text=True, timeout=60, cwd=str(REPO), check=False)
     assert run.returncode == 0, run.stderr[-2000:]
     assert float(run.stdout.strip()) < 1.0, run.stdout
 
