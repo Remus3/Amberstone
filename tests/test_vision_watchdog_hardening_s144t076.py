@@ -173,7 +173,7 @@ def test_importing_the_watchdog_does_not_import_vision_server():
             "if m == 'vision_server' or m.startswith('vision_server.')))")
     r = subprocess.run([sys.executable, "-c", code], cwd=str(REPO),
                        capture_output=True, text=True, timeout=120,
-                       creationflags=_NO_WINDOW)
+                       creationflags=_NO_WINDOW, check=False)
     assert r.returncode == 0, r.stderr[-2000:]
     assert r.stdout.strip() == "[]"
 

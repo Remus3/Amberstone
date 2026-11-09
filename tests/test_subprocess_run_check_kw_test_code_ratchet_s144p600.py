@@ -34,6 +34,14 @@ two-site files and status_helper_rc2, which another lane branch changed, between
 slice 12 (S144-P-612) does the same for twelve more one-site files (stop_claim_gate_span_scan_rm814
 through truth_gate_git_paths_rm861, bar the ratchet modules, the two-site files and the
 third_party_notices_pkg file, whose subject is the rc-shell lockfile, between them);
+slice 13 (S144-P-613) does the same for twelve more one-site files no other lane branch had
+changed (phase_b champ_select_shape_rc2, snapshot_panels xss_escaping, ci_watchdog,
+claude_settings_template, fleet_kit_v26, u2500_candidate_sweep, vision_sync_dir_rm828c,
+vision_watchdog_hardening, voice_coach_ps_injection, web_ascii_sweep_atomic_write,
+web_js_unimported_calls and ws_server_port_in_use_rm756), bar the ratchet modules, the launcher
+files, the gated-lane files, test_ci_sibling_sweep_tree_wiring (its one site runs the whole
+sibling-sweep gate, a heavy re-run for a keyword) and test_b4_client_directive_gate (lane/uiux
+changed it);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -67,8 +75,6 @@ _RULE = "PLW1510"
 _BASELINE = {
     "tests/_repo_walk.py": 1,
     "tests/_ruff_version.py": 1,
-    "tests/phase_b_champ_select/test_champ_select_shape_rc2.py": 1,
-    "tests/snapshot_panels/test_xss_escaping.py": 1,
     "tests/test_a001_test_code_idiom_ratchet_s144p182.py": 1,
     "tests/test_agent3_suite_idiom_ratchet_s144p231.py": 1,
     "tests/test_ambiguous_name_ratchet_s144p475.py": 1,
@@ -87,9 +93,7 @@ _BASELINE = {
     "tests/test_build_portable_bundle_pkg.py": 1,
     "tests/test_ci_docs_guard_coverage.py": 1,
     "tests/test_ci_sibling_sweep_tree_wiring.py": 1,
-    "tests/test_ci_watchdog.py": 1,
     "tests/test_clamp_expression_ratchet_s144p124.py": 1,
-    "tests/test_claude_settings_template.py": 1,
     "tests/test_cli_logging_print_conversion_s144p214.py": 1,
     "tests/test_collapsible_if_ratchet_s144p161.py": 1,
     "tests/test_collection_idiom_ratchet_s144p141.py": 1,
@@ -105,7 +109,6 @@ _BASELINE = {
     "tests/test_exception_chain_ratchet_s144p153.py": 1,
     "tests/test_first_element_slice_test_code_ratchet_s144p167.py": 1,
     "tests/test_fleet_kit_v12_race_guards.py": 1,
-    "tests/test_fleet_kit_v26.py": 1,
     "tests/test_furb105_print_empty_string_ratchet_s144p133.py": 1,
     "tests/test_furb140_starmap_zero_ratchet_s144p521.py": 1,
     "tests/test_furb142_set_add_loop_ratchet_s144p518.py": 1,
@@ -203,7 +206,6 @@ _BASELINE = {
     "tests/test_third_party_notices_pkg.py": 1,
     "tests/test_try401_sim110_furb171_ratchet_s144p148.py": 1,
     "tests/test_type_ignore_code_needless_lambda_ratchet_s144p149.py": 1,
-    "tests/test_u2500_candidate_sweep.py": 1,
     "tests/test_unspecified_encoding_prod_ratchet_s144p303.py": 1,
     "tests/test_unused_import_ratchet_s144p108.py": 1,
     "tests/test_unused_local_ratchet_s144p106.py": 1,
@@ -212,14 +214,8 @@ _BASELINE = {
     "tests/test_unused_noqa_ratchet_s144p103.py": 1,
     "tests/test_unused_unpack_ratchet_s144p147.py": 1,
     "tests/test_useless_yield_fixture_ratchet_s144p170.py": 2,
-    "tests/test_vision_sync_dir_rm828c.py": 1,
-    "tests/test_vision_watchdog_hardening_s144t076.py": 1,
-    "tests/test_voice_coach_ps_injection.py": 1,
-    "tests/test_web_ascii_sweep_atomic_write_rm258.py": 1,
     "tests/test_web_js_esm_parse.py": 3,
-    "tests/test_web_js_unimported_calls_s144q43.py": 1,
     "tests/test_whitespace_docstring_prod_ratchet_s144p189.py": 1,
-    "tests/test_ws_server_port_in_use_rm756.py": 1,
     "tests/test_yoda_condition_test_code_ratchet_s144p166.py": 1,
     "tests/test_yoda_perf403_c408_ratchet_s144p146.py": 1,
 }
@@ -366,6 +362,18 @@ _FIXED = (
     "tests/test_third_party_notices_atomic_write_rm258.py",
     "tests/test_truth_gate.py",
     "tests/test_truth_gate_git_paths_rm861.py",
+    "tests/phase_b_champ_select/test_champ_select_shape_rc2.py",
+    "tests/snapshot_panels/test_xss_escaping.py",
+    "tests/test_ci_watchdog.py",
+    "tests/test_claude_settings_template.py",
+    "tests/test_fleet_kit_v26.py",
+    "tests/test_u2500_candidate_sweep.py",
+    "tests/test_vision_sync_dir_rm828c.py",
+    "tests/test_vision_watchdog_hardening_s144t076.py",
+    "tests/test_voice_coach_ps_injection.py",
+    "tests/test_web_ascii_sweep_atomic_write_rm258.py",
+    "tests/test_web_js_unimported_calls_s144q43.py",
+    "tests/test_ws_server_port_in_use_rm756.py",
 )
 
 

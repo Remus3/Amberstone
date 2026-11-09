@@ -135,7 +135,7 @@ def test_module_entry_point_exits_nonzero_without_traceback(held_port, tmp_path)
         [sys.executable, "-m", "agents.agent2_backend.ws_server",
          "--host", "127.0.0.1", "--port", str(held_port)],
         cwd=ROOT, capture_output=True, text=True, timeout=60,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
     )
     assert out.returncode == 1, (out.returncode, out.stderr[-800:])
     assert f"127.0.0.1:{held_port}" in out.stderr, out.stderr[-800:]

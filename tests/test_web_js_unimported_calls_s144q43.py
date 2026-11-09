@@ -306,7 +306,7 @@ def test_cs_adaptation_node_tests_pass():
     out = subprocess.run(
         [node, "--test", str(mjs)], capture_output=True, text=True,
         encoding="utf-8", errors="replace", timeout=120, cwd=str(ROOT),
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
     )
     tally = {k: int(v) for k, v in re.findall(
         r"^\s*(?:#\s*|\S\s+)?(pass|fail)[ \t]+(\d+)[ \t]*$", out.stdout, re.M)}
