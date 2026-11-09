@@ -5,8 +5,10 @@ Set-agnostic structure: update UNITS / TRAITS / ITEMS dicts each set patch.
 Roll odds: Set 18 (LT-02, in-client measured at L4-L9), the Set 14 table kept
 beside it and routed by set key (tier_odds_for_set). XP to the next level:
 Set 18 (S134, in-client measured at L4-L9) beside the Set 14 table, routed by
-xp_to_next_level. The other tables below (pool sizes, rounds, items) are
-still the Set 14 transcription.
+xp_to_next_level. Pool sizes and units per cost: Set 18 from the game's own
+shop data (S156, POOL_SIZES_SOURCE), the Set 14 transcription kept beside
+them. The Set 14 guide tables (rounds, tempo, items) were removed in S156
+(see the note at the end of the file).
 """
 
 # -- Set declaration ----------------------------------------------------------
@@ -90,18 +92,37 @@ def tier_odds_for_set(set_number=None):
     return None
 
 
-# Pool sizes per cost. NOT Set 18 values: carried over from the Set 14
-# transcription (POOL_SIZES_FROM_SET). The HUD does not show pool sizes and no
-# measured Set 18 source exists yet, so they stay unpinned (LT-02).
-POOL_SIZES_FROM_SET = 14
-POOL_SIZES = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
+def odds_level_verified(level, set_number=None) -> bool:
+    """True when the set's TIER_ODDS row for ``level`` was read off the live
+    client HUD. Only Set 18 has such levels (TIER_ODDS_VERIFIED_LEVELS); every
+    other set's table, and Set 18's L1-L3 / L10-L11, is unverified."""
+    if isinstance(level, bool) or not isinstance(level, int):
+        return False
+    if set_number is None:
+        from tft import tft_set
+        set_number = tft_set.resolve_set()
+    return set_number == CONSTANTS_SET and level in TIER_ODDS_VERIFIED_LEVELS
 
-# Units in pool per cost tier (Set 14 carry-over, as POOL_SIZES)
-UNITS_PER_COST = {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
 
-# -- Econ thresholds ----------------------------------------------------------
-INTEREST_BRACKETS = [10, 20, 30, 40, 50]   # gold thresholds for interest
-INTEREST_PER_10   = 1                        # +1g per 10g held
+# Pool sizes per cost and units in the pool per cost, Set 18 (S156): the game's
+# own shop data, CommunityDragon map22 `ShopContentData` TierBags (one bag per
+# cost, each entry a shop unit with its `Count` of copies), identical at 16.21
+# and 16.22. 14 / 13 / 14 / 14 / 10 units with 30 / 25 / 18 / 10 / 9 copies
+# each; every bag unit is in data/meta/tft_set18_cdragon.json at the same cost.
+# This is a game-data file, NOT the in-client display (at L7 the game data
+# disagrees with the live HUD, LT-02), so these are "game data, not read in
+# client": CONSTANTS_SET_VERIFIED stays False. Guard:
+# tests/test_tft_set18_pools_s156.py. The Set 14 transcription is kept beside
+# them and never borrowed for Set 18.
+POOL_SIZES_FROM_SET = 18
+POOL_SIZES_SOURCE = ("CommunityDragon map22 ShopContentData TierBags, patch 16.22 "
+                     "(equal at 16.21); game data, not read in client")
+POOL_SIZES = {1: 30, 2: 25, 3: 18, 4: 10, 5: 9}
+UNITS_PER_COST = {1: 14, 2: 13, 3: 14, 4: 14, 5: 10}
+
+# Set 14 transcription (never in-client verified), kept intact.
+POOL_SIZES_SET14 = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
+UNITS_PER_COST_SET14 = {1: 13, 2: 13, 3: 13, 4: 12, 5: 8}
 
 # XP to the next level. Every table here is {CURRENT level: XP needed at that
 # level to reach the next}, the denominator of the HUD level box
@@ -134,6 +155,12 @@ XP_TO_NEXT_SET18 = {3: 6, 4: 10, 5: 20, 6: 36, 7: 56, 8: 68, 9: 68}
 XP_TO_NEXT_BY_SET = {14: XP_TO_LEVEL, 17: XP_TO_LEVEL, 18: XP_TO_NEXT_SET18}
 
 
+def xp_table_verified(set_number) -> bool:
+    """True only for a set whose XP table was read off the HUD level box
+    (Set 18, S134). Set 14 / 17 keep the transcription, never client-read."""
+    return set_number == CONSTANTS_SET
+
+
 def xp_to_next_level(level, set_number=None):
     """XP needed at ``level`` to reach ``level + 1`` in a TFT set, or None.
 
@@ -155,71 +182,13 @@ def xp_to_next_level(level, set_number=None):
 # Gold cost to buy XP
 XP_BUY_COST = 4   # 4g = +4 XP
 
-# -- Stage / round structure --------------------------------------------------
-# (stage, round): event
-ROUND_EVENTS = {
-    (1, 1): "carousel",
-    (1, 3): "krugs",  # PvE
-    (2, 1): "carousel",
-    (2, 5): "wolves",
-    (3, 1): "carousel",
-    (3, 5): "raptors",
-    (4, 1): "carousel",
-    (4, 5): "herald",
-    (5, 1): "carousel",
-    (5, 5): "baron",
-    (6, 1): "carousel",
-    (6, 5): "baron",
-    (7, 1): "carousel",
-}
-PVE_ROUNDS = {(1,3), (2,5), (3,5), (4,5), (5,5), (6,5)}
-
-# -- Key tempo milestones -----------------------------------------------------
-TEMPO_MILESTONES = {
-    "2-1":  "First PvP - roll to 50g if needed for strong 2-star opener",
-    "2-5":  "Wolves PvE - save roll-down gold, plan econ after",
-    "3-1":  "Carousel - pick item component or 2-cost for comp",
-    "3-2":  "Mid-game pivot point - evaluate contested units, decide comp direction",
-    "4-1":  "Carousel - target BiS item component or 4-cost carry",
-    "4-2":  "Consider level 8 push for 4-costs if health permits",
-    "5-1":  "Level 9 decision - fast 9 or hyper-roll for 5-cost?",
-    "6-1":  "Late game - stabilise board, push level 9-10",
-}
-
-# -- Item tier list -----------------------------------------------------------
-ITEM_TIERS = {
-    "Sunfire Cape":              "S",
-    "Rabadon's Deathcap":        "S",
-    "Guinsoo's Rageblade":       "S",
-    "Infinity Edge":             "S",
-    "Bloodthirster":             "S",
-    "Jeweled Gauntlet":          "S",
-    "Blue Buff":                 "S",
-    "Shojin":                    "S",
-    "Titan's Resolve":           "A",
-    "Dragon's Claw":             "A",
-    "Gargoyle Stoneplate":       "A",
-    "Warmog's Armor":            "A",
-    "Redemption":                "A",
-    "Locket of the Iron Solari": "A",
-    "Zephyr":                    "A",
-    "Shroud of Stillness":       "A",
-    "Bramble Vest":              "B",
-    "Ionic Spark":               "B",
-    "Runaan's Hurricane":        "B",
-    "Last Whisper":              "B",
-    "Giant Slayer":              "B",
-    "Hand of Justice":           "B",
-    "Statikk Shiv":              "C",
-    "Rapid Firecannon":          "C",
-}
-
-COMPONENTS = {
-    "BF Sword", "Chain Vest", "Giant's Belt",
-    "Needlessly Large Rod", "Negatron Cloak",
-    "Recurve Bow", "Sparring Gloves", "Spatula", "Tear of the Goddess",
-}
-
-EMBLEM_TRAITS = {}
-
-AUGMENT_TIERS = {"prismatic": 3, "gold": 2, "silver": 1}
+# -- Removed guide tables (S156) -----------------------------------------------
+# ROUND_EVENTS, PVE_ROUNDS, TEMPO_MILESTONES, ITEM_TIERS, COMPONENTS,
+# EMBLEM_TRAITS, AUGMENT_TIERS, INTEREST_BRACKETS and INTEREST_PER_10 were the
+# Set 14 transcription. No module read them (tests/test_tft_engine_guards.py
+# bans the engine from naming them), the round tables contradict the Set 18
+# StageRoundData (carousel X-4, PvE X-7; the measured schedule is
+# tft/tft_state_reader.py _SET18_EVENTS), and ITEM_TIERS was a third-party-
+# shaped S/A/B tier list of Set 14 items. Item and round facts come from the
+# ingested game data (tft/tft_set.py, data/meta/tft_set18_cdragon.json).
+# Guard: tests/test_tft_strategy_review_s156.py.

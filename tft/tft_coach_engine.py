@@ -377,7 +377,9 @@ def _build_prompt(state: dict) -> str:
     _set_n = _resolved_set()
 
     round_type = "CAROUSEL" if is_car else ("PVE" if event == "pve" else "PVP")
-    max_level_for_stage = {1: 3, 2: 5, 3: 6, 4: 8, 5: 9, 6: 9, 7: 9}.get(stage, 9)
+    # S156: the client's level cap is 10 (Set 18 HUD showed L10 as the max
+    # state, QA 20261025-081234), so the late stages no longer say 9.
+    max_level_for_stage = {1: 3, 2: 5, 3: 6, 4: 8, 5: 9, 6: 10, 7: 10}.get(stage, 10)
 
     # S136 T9: the state dict is the authority (see _LIVE_DATA_FILE); the
     # vision file fills only what the reader lacks.
@@ -489,12 +491,15 @@ def _build_prompt(state: dict) -> str:
     # XP context for leveling decisions. The tables are keyed by the CURRENT
     # level (the HUD "x/68" denominator); reading level + 1 was one level off
     # (S134). Buys round UP: 10 XP is 3 buys, not 2.
-    from tft.tft_data import XP_BUY_COST, xp_to_next_level
+    from tft.tft_data import XP_BUY_COST, xp_table_verified, xp_to_next_level
     xp_needed = (xp_to_next_level(level, _set_n)
                  if _set_n is not None and _level_known else None)
     if xp_needed and level < 10:
         buys = -(-xp_needed // XP_BUY_COST)
-        lines.append(f"XP to Lv{level + 1}: {xp_needed}XP = {buys} buys ({buys * XP_BUY_COST}g at {XP_BUY_COST}g each)")
+        # S156: a table that was not read off the client HUD is said to be
+        # unverified, never stated as fact (only Set 18's was read).
+        _xp_tag = "" if xp_table_verified(_set_n) else " [unverified: not read in client]"
+        lines.append(f"XP to Lv{level + 1}: {xp_needed}XP = {buys} buys ({buys * XP_BUY_COST}g at {XP_BUY_COST}g each){_xp_tag}")
 
     # Interest context from the resolved gold (reader first, vision fallback)
     if _live_gold and _live_gold > 0:
@@ -527,7 +532,7 @@ def _build_prompt(state: dict) -> str:
             coord_signals = {}
         lines += [
             "",
-            "MODE: DOUBLE UP (PBE)  -  Playing with a partner. Shared HP pool.",
+            "MODE: DOUBLE UP  -  Playing with a partner. Shared HP pool.",
             "Coordination: ONE player AD carry, ONE player AP carry. Do not contest partner reroll targets.",
             "Donation rule: Send overflow units + 2nd tank if partner HP < 30.",
         ]
@@ -612,18 +617,22 @@ def _build_prompt(state: dict) -> str:
         pass
 
     # Roll odds of the resolved set; none for a set RC has no table for.
-    from tft.tft_data import tier_odds_for_set
+    from tft.tft_data import odds_level_verified, tier_odds_for_set
     odds = tier_odds_for_set(_set_n) if _set_n is not None and _level_known else None
     next_lvl = level + 1
     if odds and next_lvl <= 10:
         odds_now  = odds.get(level, {})
         odds_next = odds.get(next_lvl, {})
+
+        def _odds_tag(lv: int) -> str:
+            # S156: only a row read off the live HUD is stated as fact.
+            return "" if odds_level_verified(lv, _set_n) else " [unverified: not read in client]"
         lines += [
             "",
             f"Roll odds at Lv{level}: " +
-                "  ".join(f"{c}c={v:.0%}" for c, v in odds_now.items() if v > 0),
+                "  ".join(f"{c}c={v:.0%}" for c, v in odds_now.items() if v > 0) + _odds_tag(level),
             f"Roll odds at Lv{next_lvl}: " +
-                "  ".join(f"{c}c={v:.0%}" for c, v in odds_next.items() if v > 0),
+                "  ".join(f"{c}c={v:.0%}" for c, v in odds_next.items() if v > 0) + _odds_tag(next_lvl),
         ]
 
     return "\n".join(lines)

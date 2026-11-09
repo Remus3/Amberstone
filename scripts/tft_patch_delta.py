@@ -21,7 +21,10 @@ moving branch is re-read every run. The delta goes to the gitignored
 data/tft/patch_delta/, never to tracked data/meta/ (the tree tracks reduced
 extracts only). Values are the payload's own, verbatim (float32 noise such as
 0.8500000238418579 kept); hashed trait keys are passed through verbatim, never
-renamed or guessed. A local --old-source / --new-source payload takes its
+renamed or guessed; the one exception is an exact `bin_hash` equality between a
+hashed key on one side and a name on the other (CDragon's hash table learned the
+name), which is a key RESOLUTION, counted in `_counts["resolved_keys"]` and
+listed under `resolved_keys`, not a value change (RM-1158). A local --old-source / --new-source payload takes its
 content version from --old-version / --new-version, else from a
 content-metadata.json in the source's own directory (the shape the cache
 keeps), else None; a version flag without its source is refused, because a
@@ -52,6 +55,8 @@ ABILITY_NOT_CARRIED = "not carried by source"
 DEFAULT_CACHE = ROOT / "data" / "tft" / "cdragon_raw"
 # A numbered patch directory; [0-9] so no non-ASCII digit passes.
 _PATCH_DIR_RE = re.compile(r"[0-9]{1,2}\.[0-9]{1,2}")
+# CDragon's unresolved key form: `{%08x}` (fct.bin_hash).
+_HASHED_KEY_RE = re.compile(r"\{[0-9a-f]{8}\}")
 # A mutator becomes an output file-name segment, so it is held to this.
 _MUTATOR_RE = re.compile(r"[A-Za-z0-9_]{1,64}")
 # A stated content version: printable ASCII, no space, bounded.
@@ -122,14 +127,49 @@ def _strs(v) -> list:
     return [fct._text(x) for x in v if isinstance(x, str)] if isinstance(v, list) else []
 
 
-def _delta(old: dict, new: dict) -> dict:
-    """{key: {"old", "new"}} for every key whose value differs (absent = None)."""
+def _resolution_pairs(old: dict, new: dict) -> dict:
+    """{hashed key: named key} for each key CDragon's hash table named between
+    the two payloads: the hashed spelling only on one side and a name whose
+    `fct.bin_hash` equals it only on the other. Exact hash equality only, never
+    a guess (RM-1158)."""
+    only_old = set(old) - set(new)
+    only_new = set(new) - set(old)
+    pairs = {}
+    for hashed_side, named_side in ((only_old, only_new), (only_new, only_old)):
+        by_hash = {fct.bin_hash(n): n for n in sorted(named_side, key=str)
+                   if isinstance(n, str) and not _HASHED_KEY_RE.fullmatch(n)}
+        for h in hashed_side:
+            if isinstance(h, str) and h in by_hash:
+                pairs[h] = by_hash[h]
+    return pairs
+
+
+def _delta(old: dict, new: dict, resolved: dict | None = None) -> dict:
+    """{key: {"old", "new"}} for every key whose value differs (absent = None).
+
+    A hash-to-name resolution (`_resolution_pairs`) is not a value change: with
+    equal values the pair is recorded in `resolved` ({name: hashed key}) and
+    left out; with different values it is ONE change under the named key,
+    carrying the hashed key as `hashed_key`. Both spellings stay verbatim."""
     out = {}
+    skip, named = set(), {}
+    for h, n in _resolution_pairs(old, new).items():
+        skip.update((h, n))
+        a_key, b_key = (h, n) if h in old else (n, h)
+        a, b = _value(old.get(a_key)), _value(new.get(b_key))
+        if a == b:
+            if resolved is not None:
+                resolved[n] = h
+        else:
+            named[n] = {"old": a, "new": b, "hashed_key": h}
     for k in sorted(set(old) | set(new), key=str):
+        if k in skip:
+            continue
         a, b = _value(old.get(k)), _value(new.get(k))
         if a != b:
             out[str(k)] = {"old": a, "new": b}
-    return out
+    out.update(named)
+    return dict(sorted(out.items()))
 
 
 def _by_api(rows) -> dict:
@@ -152,22 +192,22 @@ def _ability_vars(champ: dict) -> dict:
     return fct._ability(champ.get("ability"))["variables"]
 
 
-def _unit_entry(a: dict, b: dict) -> dict:
+def _unit_entry(a: dict, b: dict, resolved: dict) -> dict:
     e = {}
     if _value(a.get("cost")) != _value(b.get("cost")):
         e["cost"] = {"old": _value(a.get("cost")), "new": _value(b.get("cost"))}
     if _strs(a.get("traits")) != _strs(b.get("traits")):
         e["traits"] = {"old": _strs(a.get("traits")), "new": _strs(b.get("traits"))}
-    stats = _delta(_dict(a.get("stats")), _dict(b.get("stats")))
+    stats = _delta(_dict(a.get("stats")), _dict(b.get("stats")), resolved)
     if stats:
         e["stats"] = stats
-    ability = _delta(_ability_vars(a), _ability_vars(b))
+    ability = _delta(_ability_vars(a), _ability_vars(b), resolved)
     if ability:
         e["ability"] = ability
     return e
 
 
-def _breakpoints(a: dict, b: dict) -> list:
+def _breakpoints(a: dict, b: dict, resolved: dict) -> list:
     ea, eb = _rows(a.get("effects")), _rows(b.get("effects"))
     out = []
     for i in range(max(len(ea), len(eb))):
@@ -185,7 +225,8 @@ def _breakpoints(a: dict, b: dict) -> list:
                             {k: y.get(k) for k in ("minUnits", "maxUnits")})
             if bounds:
                 entry["bounds"] = bounds
-        variables = _delta(_dict((x or {}).get("variables")), _dict((y or {}).get("variables")))
+        variables = _delta(_dict((x or {}).get("variables")), _dict((y or {}).get("variables")),
+                           resolved)
         if variables:
             entry["variables"] = variables
         if len(entry) > 3:
@@ -193,9 +234,9 @@ def _breakpoints(a: dict, b: dict) -> list:
     return out
 
 
-def _trait_entry(a: dict, b: dict) -> dict:
+def _trait_entry(a: dict, b: dict, resolved: dict) -> dict:
     e = {}
-    bps = _breakpoints(a, b)
+    bps = _breakpoints(a, b, resolved)
     if bps:
         e["breakpoints"] = bps
     if fct._text(a.get("desc")) != fct._text(b.get("desc")):
@@ -203,9 +244,9 @@ def _trait_entry(a: dict, b: dict) -> dict:
     return e
 
 
-def _item_entry(a: dict, b: dict) -> dict:
+def _item_entry(a: dict, b: dict, resolved: dict) -> dict:
     e = {}
-    effects = _delta(_dict(a.get("effects")), _dict(b.get("effects")))
+    effects = _delta(_dict(a.get("effects")), _dict(b.get("effects")), resolved)
     if effects:
         e["effects"] = effects
     if fct._text(a.get("desc")) != fct._text(b.get("desc")):
@@ -213,17 +254,26 @@ def _item_entry(a: dict, b: dict) -> dict:
     return e
 
 
-def _section(old: dict, new: dict, entry) -> tuple[dict, list, list]:
-    changed = {}
+def _section(old: dict, new: dict, entry) -> tuple[dict, list, list, dict]:
+    """(changed, added, removed, resolved): `resolved` is {api: {name: hashed
+    key}} for the entries that carried a hash-to-name resolution (RM-1158)."""
+    changed, resolved = {}, {}
     for api in sorted(set(old) & set(new)):
-        e = entry(old[api], new[api])
+        pairs: dict = {}
+        e = entry(old[api], new[api], pairs)
         if e:
             changed[api] = e
-    return changed, sorted(set(new) - set(old)), sorted(set(old) - set(new))
+        if pairs:
+            resolved[api] = dict(sorted(pairs.items()))
+    return changed, sorted(set(new) - set(old)), sorted(set(old) - set(new)), resolved
 
 
 def _ability_note(old_units: dict, new_units: dict) -> str:
-    apis = set(old_units) | set(new_units)
+    # Trait-bearing rows only: the other champion rows are armory / anvil /
+    # monster rows the extract's `units` rule also leaves out (RM-1158 b).
+    apis = {api for api in set(old_units) | set(new_units)
+            if _strs(old_units.get(api, {}).get("traits"))
+            or _strs(new_units.get(api, {}).get("traits"))}
     carried = sum(1 for api in apis
                   if _ability_vars(old_units.get(api, {})) or _ability_vars(new_units.get(api, {})))
     if not carried:
@@ -242,8 +292,9 @@ def _skeleton(mutator, old_label, new_label, old_version, new_version) -> dict:
         "_note": _NOTE,
         "ability_values": ABILITY_NOT_CARRIED,
         "reason": None,
-        "_counts": dict.fromkeys(SECTIONS + ("added", "removed"), 0),
+        "_counts": dict.fromkeys(SECTIONS + ("added", "removed", "resolved_keys"), 0),
         **{k: {} for k in SECTIONS},
+        "resolved_keys": {k: {} for k in SECTIONS},
         "added": {k: [] for k in SECTIONS},
         "removed": {k: [] for k in SECTIONS},
     }
@@ -272,11 +323,14 @@ def diff_set(old_raw, new_raw, mutator: str = DEFAULT_MUTATOR, *, old_label=None
             sections[key] = _section({api: _dict(items[0].get(api)) for api in _strs(a.get(key))},
                                      {api: _dict(items[1].get(api)) for api in _strs(b.get(key))},
                                      _item_entry)
-        for key, (changed, added, removed) in sections.items():
+        for key, (changed, added, removed, resolved) in sections.items():
             d[key] = changed
             d["added"][key] = added
             d["removed"][key] = removed
+            d["resolved_keys"][key] = resolved
             d["_counts"][key] = len(changed)
+        d["_counts"]["resolved_keys"] = sum(len(pairs) for per_api in d["resolved_keys"].values()
+                                            for pairs in per_api.values())
         d["_counts"]["added"] = sum(len(v) for v in d["added"].values())
         d["_counts"]["removed"] = sum(len(v) for v in d["removed"].values())
         d["ability_values"] = _ability_note(*units)
@@ -379,7 +433,7 @@ def main(argv=None) -> int:
     c = delta["_counts"]
     print(f"{mutator} {old} -> {new}: changed {c['units']} units, {c['traits']} traits, "
           f"{c['augments']} augments, {c['items']} items; added {c['added']}, "
-          f"removed {c['removed']} -> {target}")
+          f"removed {c['removed']}; key resolutions {c['resolved_keys']} -> {target}")
     if delta["reason"]:
         print(f"tft_patch_delta: {delta['reason']}", file=sys.stderr)
         return 2

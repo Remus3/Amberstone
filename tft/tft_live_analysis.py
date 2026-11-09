@@ -412,7 +412,9 @@ class TftLiveAnalysis:
     # augment round) and RoundSchedule has no augment field to route through.
     # A wrong guess on a set with other augment rounds costs extra scans or
     # leaves the one planning scan plus the force scan, never a wrong label.
-    # Set 18's augment rounds are unverified: docs/LIVE_GAME_GATED_SYNC.md LT-01.
+    # Set 18's augment rounds 2-1 / 3-2 / 4-2 were read off the live HUD round
+    # strip (LT-01, tft/tft_state_reader.py _SET18_EVENTS); this set is the
+    # same three rounds.
     _AUGMENT_ROUNDS: ClassVar[set] = {(2,1),(3,2),(4,2)}
     _CAROUSEL_EVENTS: ClassVar[set] = {"carousel","opening_carousel","realm_of_gods"}
     def __init__(self, api_key: str, data_file, model: str = "claude-haiku-4-5-20251001") -> None:

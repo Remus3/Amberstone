@@ -300,6 +300,10 @@ def build_extract(raw: dict, set_number: int, *, branch: str,
         key=lambda u: (u["cost"] if isinstance(u["cost"], int) else 99,
                        u["name"], u["apiName"]),
     )
+    for u in units:
+        # Set 18 ability numbers are mostly absent from the payload (RM-891
+        # cycle 6): say so per unit, never imply a number.
+        u["ability_values"] = "carried" if u["ability"]["variables"] else "absent"
     unit_costs: dict = {}
     unit_traits: dict = {}
     for u in units:
