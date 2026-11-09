@@ -75,7 +75,10 @@ _LANES = frozenset({"top", "jungle", "mid", "bottom", "support"})
 
 # Injectable clock + now so tests are deterministic.
 _clock: Callable[[], float] = time.monotonic
-_utcnow: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class SynergyError(RuntimeError):

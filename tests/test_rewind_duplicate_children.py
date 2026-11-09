@@ -44,7 +44,8 @@ from scripts import rewind_catchup as rc  # noqa: E402
 from scripts import rewind_dedup_children as dd  # noqa: E402
 from scripts import rewind_scraper as rs  # noqa: E402
 
-NO_SLEEP = (lambda _s: None)
+def NO_SLEEP(_s):
+    return None
 
 
 def _detail() -> dict:

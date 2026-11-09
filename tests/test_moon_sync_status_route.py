@@ -352,7 +352,9 @@ def test_route_fault_uses_scrubbed_error_envelope(statedir, monkeypatch):
 # carry, mapped to the same six facts. A parameter name outside this table is a
 # real parity break and must fail loudly rather than be defaulted around.
 def _facts(*, fault, pid_alive, checked, expect, interval_s, now) -> dict:
-    epoch = (lambda d: None if d is None else d.timestamp())
+    def epoch(d):
+        return None if d is None else d.timestamp()
+
     return {
         "fault": fault,
         "pid_alive": pid_alive,

@@ -63,47 +63,56 @@ def _pair(champ_a="A", champ_b="B", gold_a=1000.0, gold_b=900.0, pid_a=1, pid_b=
     )
 
 
+def _verdict_fn(verdict, swing):
+    """A verdict_fn stand-in that always returns ``(verdict, swing)``."""
+
+    def vf(a, b, lvl):
+        return (verdict, swing)
+
+    return vf
+
+
 def test_score_pair_gold_uncovered():
-    vf = lambda a, b, lvl: (None, None)
+    vf = _verdict_fn(None, None)
     status, agreed, verdict = MOD.score_pair_gold(_pair(), 6, vf)
     assert status == "uncovered" and agreed is False and verdict is None
 
 
 def test_score_pair_gold_decisive_agree():
     # all_in favors A; A has higher gold -> agree.
-    vf = lambda a, b, lvl: ("all_in", 0.3)
+    vf = _verdict_fn("all_in", 0.3)
     status, agreed, verdict = MOD.score_pair_gold(_pair(gold_a=1200, gold_b=800), 6, vf)
     assert status == "decisive" and agreed is True and verdict == "all_in"
 
 
 def test_score_pair_gold_decisive_disagree():
     # back_off favors B; A has higher gold -> disagree.
-    vf = lambda a, b, lvl: ("back_off", -0.3)
+    vf = _verdict_fn("back_off", -0.3)
     status, agreed, _ = MOD.score_pair_gold(_pair(gold_a=1200, gold_b=800), 6, vf)
     assert status == "decisive" and agreed is False
 
 
 def test_score_pair_gold_tie_excluded():
-    vf = lambda a, b, lvl: ("trade", 0.3)
+    vf = _verdict_fn("trade", 0.3)
     status, agreed, _ = MOD.score_pair_gold(_pair(gold_a=1000, gold_b=1000), 6, vf)
     assert status == "gold_tie" and agreed is False
 
 
 def test_score_pair_gold_even_excluded():
-    vf = lambda a, b, lvl: ("even", 0.0)
+    vf = _verdict_fn("even", 0.0)
     status, _, _ = MOD.score_pair_gold(_pair(), 6, vf)
     assert status == "even"
 
 
 def test_score_pair_duel_no_duel_and_tie():
-    vf = lambda a, b, lvl: ("trade", 0.3)
+    vf = _verdict_fn("trade", 0.3)
     assert MOD.score_pair_duel(_pair(), 6, vf, 0, 0)[0] == "no_duel"
     assert MOD.score_pair_duel(_pair(), 6, vf, 2, 2)[0] == "kill_tie"
 
 
 def test_score_pair_duel_decisive():
     # trade favors A; A killed B more -> agree.
-    vf = lambda a, b, lvl: ("trade", 0.3)
+    vf = _verdict_fn("trade", 0.3)
     status, agreed, verdict = MOD.score_pair_duel(_pair(), 6, vf, 2, 0)
     assert status == "decisive" and agreed is True and verdict == "trade"
 
