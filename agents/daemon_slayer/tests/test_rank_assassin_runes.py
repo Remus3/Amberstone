@@ -14,6 +14,7 @@ DataSnapshot once.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer.burst import rank_items_by_burst
 from agents.daemon_slayer.data_loader import DataSnapshot
@@ -173,7 +174,7 @@ class RankAssassinRunesRouteTests(unittest.TestCase):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_test_file_is_ascii(self) -> None:
-        with open(__file__, "rb") as fh:
+        with Path(__file__).open("rb") as fh:
             data = fh.read()
         for i, b in enumerate(data):
             self.assertLess(b, 128, f"non-ASCII byte {b} at offset {i}")
