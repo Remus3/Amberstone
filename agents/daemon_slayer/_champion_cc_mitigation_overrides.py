@@ -54,8 +54,9 @@ sustained DEFENSIVE uptime, not a cast-bound dash window). The clean self set is
   - Malzahar P Void Shift: "Malzahar gains crowd control immunity and 90% damage
     reduction." A passive CC immunity that is up until he takes damage / acts
     aggressively -> amortized at the passive midpoint (above an active ult, below
-    a permanent stat). Flat. (The 90% damage reduction is the SEPARATE
-    ``_passive_mitigation_overrides`` axis; only the CC immunity is THIS axis.)
+    a permanent stat). Flat. (The 90% damage reduction is modeled nowhere:
+    ``_passive_mitigation_overrides`` files it as an IMMUNITY-UNTIL-HIT exclusion
+    and its snapshot fold reads no P blocks. Only the CC immunity is THIS axis.)
 
 Documented EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
   - CAST-BOUND dash / channel CC-immunity (Sion R Unstoppable Onslaught, Warwick
@@ -67,19 +68,27 @@ Documented EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class)
     added survivability" exclusion class the revive registry used for the
     decaying-frenzy passives). A future engage-window seam could model it; it is
     not a defensive tenacity uptime.
-  - SPELL-SHIELD / block-one mechanics (Fiora W Riposte's timed damage+CC block,
-    Morgana E Black Shield's single-CC absorb): a binary block of ONE incoming CC
-    instance, not a duration scale on every CC. This is the separate spell-shield
-    sub-axis (a probabilistic CC-INSTANCE negation), deliberately not folded into
-    the multiplicative-tenacity seam.
+  - SPELL-SHIELD / block mechanics (Fiora W Riposte's timed damage+CC block, Morgana
+    E Black Shield's 5s magic shield that grants CC immunity while it holds): a
+    block that ends on its own condition (the parry window closing, the shield
+    breaking), not a duration scale on every CC. Both ride the separate
+    ``_champion_spell_shield_overrides`` sub-axis (a probabilistic CC-INSTANCE
+    negation), deliberately not folded into the multiplicative-tenacity seam.
   - ALLY-TARGETED CC mitigation (Milio R's ally tenacity grant + cleanse, Morgana
     E Black Shield on an ally): rides a TEAMMATE, so it belongs to the
     ``_passive_ally_grant_overrides`` ally domain (a different consumer that
-    scores the protected ally), not this SELF caster registry.
+    scores the protected ally), not this SELF caster registry. NOTE the Milio
+    self half (S144-D-317, measured at 16.22.1):
+    Milio R Breath of Life grants 65% tenacity for 3s to Milio HIMSELF as well
+    ("cleansing himself and nearby allied champions ... granting them 65%
+    tenacity"), so its SELF half meets this registry's inclusion rule. It is
+    NOT yet seeded - filed as a Tier-2 seed, because a registry value moves
+    ``cc_blended_ehp`` whenever ``apply_champion_tenacity`` is on.
   - ONE-TIME CLEANSE (Kled P dismount, Alistar R Unbreakable Will's cleanse):
     removes the CC currently on the champion ONCE; it is not a tenacity that
-    shortens future CC over a window. The Alistar R 45/55/65% incoming-damage
-    reduction is the ``_passive_mitigation_overrides`` axis, not this one.
+    shortens future CC over a window. The Alistar R 55/65/75% incoming-damage
+    reduction (its live "Damage Reduction" block) is read by the
+    ``_passive_mitigation_overrides`` snapshot fold, not this axis.
   - FALSE POSITIVE: Bard R Tempered Fate "Epic monsters and turrets ... immune to
     crowd control" describes the TARGETS exempt from his stun, not a Bard self
     grant.
@@ -154,11 +163,12 @@ _CHAMPION_CC_MITIGATION_OVERRIDES: dict[tuple[str, str, int], CcMitigationEntry]
     # Malzahar P Void Shift: "Malzahar gains crowd control immunity and 90% damage
     # reduction." A passive immunity that is up until he is hit / acts -> amortized
     # at the passive midpoint (above an active ult, below a permanent stat). Flat.
-    # The 90% damage reduction is the SEPARATE _passive_mitigation axis.
+    # The 90% damage reduction is modeled nowhere (a _passive_mitigation
+    # IMMUNITY-UNTIL-HIT exclusion).
     ("Malzahar", "P", 0): CcMitigationEntry(
         tenacity_pct=100.0,
         conditional_probability=_CC_IMMUNITY_PASSIVE_PROB,
-        note="Void Shift: 100% CC immunity (passive, up until hit); amortized at the passive midpoint; the 90% damage reduction is the _passive_mitigation axis",
+        note="Void Shift: 100% CC immunity (passive, up until hit); amortized at the passive midpoint; the 90% damage reduction is modeled nowhere (a _passive_mitigation exclusion)",
         attribute="Void Shift",
     ),
 }

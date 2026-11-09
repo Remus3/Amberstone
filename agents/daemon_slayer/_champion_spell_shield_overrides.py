@@ -13,6 +13,10 @@ sibling sub-axis:
     sub-axis (a probabilistic CC-INSTANCE negation), deliberately not folded into
     the multiplicative-tenacity seam."
 
+(Quoted as item 290 wrote it. S144-D-316 corrected the Morgana half there: the
+live 16.22.1 Black Shield grants CC immunity for as long as its 5s magic shield
+holds, which is how this registry's own Morgana row models it.)
+
 This registry is that sub-axis. The mechanical distinction from item 290's
 tenacity is real and is preserved in the code:
 
