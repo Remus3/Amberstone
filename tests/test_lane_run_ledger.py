@@ -206,7 +206,7 @@ def test_module_still_loads_by_file_path_with_no_repo_on_sys_path(tmp_path):
     done = subprocess.run(
         [sys.executable, "-I", "-c", code, str(REPO_ROOT / "ops/loop/lane_run_ledger.py"),
          str(tmp_path), DAY],
-        cwd=tmp_path, capture_output=True, text=True, timeout=120,
+        cwd=tmp_path, capture_output=True, text=True, timeout=120, check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert done.returncode == 0, done.stderr
     assert json.loads(status.read_bytes())["daily"]["day"] == DAY

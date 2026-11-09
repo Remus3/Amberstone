@@ -78,7 +78,8 @@ print(round(worst, 3))
 
 def test_the_body_cap_size_stays_linear():
     run = subprocess.run([sys.executable, "-c", _BIG_PROBE, str(REPO)],
-                         capture_output=True, text=True, timeout=60, cwd=str(REPO))
+                         capture_output=True, text=True, timeout=60, cwd=str(REPO),
+                         check=False)
     assert run.returncode == 0, run.stderr[-2000:]
     assert float(run.stdout.strip()) < 1.0, run.stdout
 

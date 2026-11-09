@@ -76,7 +76,8 @@ def extract_render_fn(html: str) -> str:
 
 def render_cases(html: str) -> dict:
     script = _HARNESS % {"fn": extract_render_fn(html), "cases": json.dumps(_CASES)}
-    proc = subprocess.run([NODE, "-e", script], capture_output=True, text=True, encoding="utf-8", timeout=30)
+    proc = subprocess.run([NODE, "-e", script], capture_output=True, text=True, encoding="utf-8", timeout=30,
+                          check=False)
     if proc.returncode != 0:
         raise AssertionError(f"node failed: {proc.stderr}")
     return json.loads(proc.stdout)

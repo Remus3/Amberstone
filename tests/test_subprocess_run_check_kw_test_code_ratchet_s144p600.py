@@ -18,7 +18,9 @@ files (ascii_escape_py through compare_101qq, alphabetically); slice 5 (S144-P-6
 for the next twelve (cost_tracker_compensating_cites through ds_engine_logger_boot_order,
 bar the ratchet modules between them); slice 6 (S144-P-606) does the same for the next twelve
 (ds_engine_logger_scrub through hook_log_live_isolation, bar the ratchet modules and the two
-gated-lane files between them); every other
+gated-lane files between them); slice 7 (S144-P-607) does the same for the next twelve
+(hz_mismatch_diagnose through live_log_isolation, bar the ratchet modules and the launcher
+files between them); every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
 a finding beyond the baseline fails ``test_no_new_findings``; a ``_FIXED`` file that offends again
@@ -102,28 +104,16 @@ _BASELINE = {
     "tests/test_gated_g418_jhin_lethality.py": 1,
     "tests/test_gated_live_probe_relay_auth.py": 1,
     "tests/test_global_return_perf_ratchet_s144p117.py": 1,
-    "tests/test_hz_mismatch_diagnose_atomic_write_rm258.py": 1,
-    "tests/test_idempotent_stream_gate.py": 1,
     "tests/test_idiom_zero_ratchet_s144p180.py": 1,
     "tests/test_import_alias_test_code_ratchet_s144p165.py": 1,
-    "tests/test_inbox_responder_export.py": 1,
-    "tests/test_inference_prompt_cites_s144p51.py": 1,
-    "tests/test_input_parser_redos_codeql.py": 1,
-    "tests/test_install_bat_embedded_pins_rm764.py": 1,
-    "tests/test_install_bat_key_stage_rm779.py": 1,
     "tests/test_isc001_same_line_concat_ratchet_s144p507.py": 1,
     "tests/test_isc002_backslash_concat_ratchet_s144p237.py": 1,
-    "tests/test_kit_v10_spawn_routes.py": 1,
     "tests/test_lambda_assignment_ratchet_s144p473.py": 1,
-    "tests/test_lane_run_ledger.py": 1,
-    "tests/test_lane_worktree_eol_rm343.py": 1,
     "tests/test_launcher_cutover_ps1.py": 3,
     "tests/test_launcher_embed_fitness_a45b.py": 1,
     "tests/test_launcher_first_run.py": 2,
     "tests/test_launcher_key_read_rm810.py": 3,
     "tests/test_launcher_update_cycle_pkg6b.py": 1,
-    "tests/test_legacy_lcu_panel_phase_rm382.py": 1,
-    "tests/test_live_log_isolation_rm812.py": 1,
     "tests/test_liveclient_shape_audit_rm601.py": 1,
     "tests/test_logger_leak_census.py": 1,
     "tests/test_loop_concurrency.py": 1,
@@ -350,6 +340,18 @@ _FIXED = (
     "tests/test_gitignore_negations_are_effective.py",
     "tests/test_headless_env.py",
     "tests/test_hook_log_live_isolation.py",
+    "tests/test_hz_mismatch_diagnose_atomic_write_rm258.py",
+    "tests/test_idempotent_stream_gate.py",
+    "tests/test_inbox_responder_export.py",
+    "tests/test_inference_prompt_cites_s144p51.py",
+    "tests/test_input_parser_redos_codeql.py",
+    "tests/test_install_bat_embedded_pins_rm764.py",
+    "tests/test_install_bat_key_stage_rm779.py",
+    "tests/test_kit_v10_spawn_routes.py",
+    "tests/test_lane_run_ledger.py",
+    "tests/test_lane_worktree_eol_rm343.py",
+    "tests/test_legacy_lcu_panel_phase_rm382.py",
+    "tests/test_live_log_isolation_rm812.py",
 )
 
 

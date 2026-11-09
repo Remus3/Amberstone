@@ -320,7 +320,7 @@ def test_run_lane_exits_3_when_python_cannot_start(tmp_path):
          str(RUN_LANE), "-PromptFile", str(tmp_path / "absent_prompt.md"),
          "-Cwd", str(tmp_path), "-Log", str(log)],
         env=env, cwd=str(tmp_path), capture_output=True, text=True, timeout=120,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        check=False, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     text = log.read_text(encoding="utf-8-sig", errors="replace")
     assert proc.returncode == 3, (proc.returncode, text, proc.stderr)
     assert "lane start" in text and "could not start" in text, text

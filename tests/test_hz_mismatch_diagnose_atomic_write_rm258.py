@@ -113,7 +113,7 @@ def test_bare_cli_writes_the_report(tmp_path):
         [sys.executable, str(_TOOL), "--choice-path",
          str(tmp_path / "missing.jsonl"), "--md-path", str(out)],
         cwd=str(tmp_path), env=env, capture_output=True, text=True,
-        timeout=120, creationflags=flags)
+        timeout=120, creationflags=flags, check=False)
 
     assert proc.returncode == 0, proc.stderr
     body = out.read_bytes()

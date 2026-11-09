@@ -85,6 +85,7 @@ class RealRunner:
             cwd=str(self.repo_root),
             capture_output=True,
             timeout=timeout_s,
+            check=False,
         )
         return StubResult(exit_code=proc.returncode, stdout=proc.stdout, stderr=proc.stderr)
 

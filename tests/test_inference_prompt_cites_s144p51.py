@@ -118,7 +118,7 @@ def _symbol(src: str, cls: str | None, name: str) -> ast.AST:
 
 def _have(rev: str) -> bool:
     probe = subprocess.run(["git", "cat-file", "-e", f"{rev}^{{commit}}"],
-                           cwd=ROOT, capture_output=True)
+                           cwd=ROOT, capture_output=True, check=False)
     return probe.returncode == 0
 
 

@@ -106,7 +106,7 @@ def _run_step4(tmp_path: Path) -> str:
     env.pop("API_KEY", None)
     proc = subprocess.run(
         ["cmd.exe", "/d", "/c", str(bat)], cwd=str(tmp_path), env=env,
-        capture_output=True, timeout=60,
+        capture_output=True, timeout=60, check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert not missing.exists(), "step 4 created the temp location"
     return proc.stdout.decode("ascii", "replace")
