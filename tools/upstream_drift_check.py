@@ -799,8 +799,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.spec_watch and _run_spec_watch() == 2:
             return 2
         return 0
-    except Exception as e:  # hard unexpected failure -> exit 2
-        logger.exception("upstream_drift_check hard error: %s", e)
+    except Exception:  # hard unexpected failure -> exit 2; the traceback carries the error
+        logger.exception("upstream_drift_check hard error")
         return 2
 
 
