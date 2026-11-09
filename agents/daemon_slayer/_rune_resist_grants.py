@@ -261,7 +261,18 @@ def rune_resist_grants(
     ``item_resist_armor`` / ``item_resist_mr``. The default-OFF gating lives in
     ``compute_ehp`` (this function is only called when ``apply_rune_resist_grants``
     is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-141).
     """
+    # A bare "8429" was read character by character and lost Conditioning; a
+    # bare int or None raised TypeError.
+    if rune_ids is None:
+        rune_ids = ()
+    elif isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     minute = _ASSUMED_GAME_MINUTE if game_minute is None else float(game_minute)
     if math.isnan(minute):
         # NaN is "no clock", so it takes the documented default like None

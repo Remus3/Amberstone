@@ -273,10 +273,21 @@ def rune_flat_mitigation_hp(
     cannot double-credit; different families sum. Runes outside the seeded
     allowlist contribute 0.0 by construction, so every offensive keystone and
     every non-blocking Resolve rune returns zero.
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-138).
     """
     phys = mag = true = 0.0
     if not apply_rune_flat_mitigation:
         return phys, mag, true
+    # A bare "8473" was read character by character and lost Bone Plating; a
+    # bare int or None raised TypeError.
+    if rune_ids is None:
+        return phys, mag, true
+    if isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     # A level int() cannot convert (NaN, +-inf, None, garbage) credits nothing
     # instead of raising out of the compute_ehp seam (S144-D-110, the S144-D-96
     # rule). The [1, 18] clamp in _value_at_level is untouched (RM-848 family).

@@ -470,9 +470,20 @@ def rune_health_grants(
     cannot double-credit; different families sum. Runes outside the two-id
     allowlist contribute 0.0 by construction, so every offensive keystone and
     every non-max-HP Resolve rune returns zero.
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-139).
     """
     if not apply_rune_health_grants:
         return 0.0, 0.0
+    # A bare "8451" was read character by character and lost Overgrowth; a bare
+    # int or None raised TypeError.
+    if rune_ids is None:
+        return 0.0, 0.0
+    if isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     permanent_hp = 0.0
     heal_hp = 0.0
     seen_families: set[str] = set()

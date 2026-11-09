@@ -1159,7 +1159,18 @@ def rune_offense_grants(
     raw), gated on the champion not being attack-speed-locked. The default-OFF
     gating lives in ``compute_dps`` (this function is only called when
     ``apply_rune_offense_grants`` is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-140).
     """
+    # A bare "8236" was read character by character and lost Gathering Storm; a
+    # bare int or None raised TypeError.
+    if rune_ids is None:
+        rune_ids = ()
+    elif isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     # S144-D-114: an unconvertible or NaN game_minute reads the assumed minute
     # (it used to raise ValueError out of this seam); +inf keeps the documented
     # 60-minute-row clamp. A non-finite bonus_ad / ap reads 0.0 like junk (NaN
