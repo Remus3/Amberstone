@@ -527,7 +527,7 @@ def scan_reparse(roots, rw: PathRewriter) -> dict:
                                 target = os.readlink(e.path)
                                 target = target.removeprefix("\\\\?\\")
                                 if not os.path.isabs(target):
-                                    target = os.path.normpath(os.path.join(os.path.dirname(e.path), target))
+                                    target = os.path.normpath(os.path.join(str(Path(e.path).parent), target))
                             except OSError as exc:
                                 errors.append(f"{e.path}: readlink {exc}")
                         row = {"path": e.path, "kind": kind, "target": target}

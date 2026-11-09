@@ -16,9 +16,9 @@ No test here starts a process or reaches the real CLI.
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
+from pathlib import Path
 from subprocess import CompletedProcess
 
 import pytest
@@ -221,7 +221,7 @@ def test_measure_runs_every_control_in_order_through_the_spawn_seam(tmp_path):
     for call in cli.calls:
         assert call["note"].strip()
         assert "QXTESTCODE01" not in call["prompt"], "the codeword rides the flag only"
-        assert os.path.dirname(call["log_path"]) == str(tmp_path / "ev")
+        assert Path(call["log_path"]).parent == tmp_path / "ev"
     assert (tmp_path / "ev" / "summary.json").is_file()
 
 

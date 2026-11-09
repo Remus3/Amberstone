@@ -7060,11 +7060,9 @@ class Batch55DDragonCoverageTests(unittest.TestCase):
     def test_ddragon_purchasable_coverage_complete(self) -> None:
         """Every DDragon purchasable item (gold>0, not 9xxx/55xxx) has an entry."""
         import json
-        import os
-        items_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..", "data",
-            "daemon_slayer", "16.10.1", "items.json"
-        )
+        from pathlib import Path
+        items_path = (Path(__file__).absolute().parents[3] / "data"
+                      / "daemon_slayer" / "16.10.1" / "items.json")
         items = json.load(open(items_path))["data"]
         covered = set(ITEM_EFFECTS.keys())
         missing = []

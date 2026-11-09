@@ -6,7 +6,7 @@ modules spelled their repo root ``os.path.dirname(os.path.dirname(os.path.abspat
 symlink or subst-drive resolution, unlike ``Path.resolve()``, which ruff's fix suggests and which would change the
 string on a junctioned checkout), and the ``str()`` keeps every ``os.path.join`` consumer working on the same type.
 
-The rest sits in ``_BASELINE`` (41 findings in 19 files): hand-written paths (``live_write_tracer``, the lane
+The rest sits in ``_BASELINE`` (33 findings in 13 files after S144-P-533): hand-written paths (``live_write_tracer``, the lane
 launcher, the conftest helpers, the DS geometry tests) each need their own look, not a mechanical rewrite. The
 baseline only shrinks: ANY new finding, or one above a baselined file's count, fails ``test_no_file_exceeds_its_baseline``.
 The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding, and ``--preview`` because both
@@ -38,23 +38,17 @@ _NOT_THIS_SCOPE = {
 }
 # file -> findings (both rules together). Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE: dict[str, int] = {
-    "agents/daemon_slayer/tests/test_effects_expansion.py": 1,
-    "agents/daemon_slayer/tests/test_geometry_item232.py": 3,
     "core/hot_reload.py": 2,
     "core/vod_retention.py": 2,
     "dashboard/routes_recordings.py": 2,
     "dashboard/routes_vision_calibrator.py": 2,
     "ops/loop/lane_launcher.py": 2,
     "ops/loop/lanes.py": 2,
-    "ops/migrate/e_move_helpers.py": 1,
     "tests/_basetemp_guard.py": 1,
     "tests/_crlf_text_layer.py": 1,
     "tests/conftest.py": 2,
-    "tests/test_ds_antitank_hint.py": 1,
     "tests/test_guard_grading_rc_facts.py": 2,
     "tests/test_inbox_responder_runner.py": 3,
-    "tests/test_repin_subagent_cli_rm795.py": 1,
-    "tests/test_shadow_archive_split_rm859.py": 1,
     "tools/live_write_tracer.py": 11,
     "tools/stop_claim_gate.py": 1,
 }
@@ -73,6 +67,13 @@ _FIXED = (
     # S144-P-532: the three-level spelling, str(Path(__file__).absolute().parents[2]).
     "ops/audit/ds_latency_probe.py",
     "ops/audit/opponent_prior_gonogo.py",
+    # S144-P-533: dirname / repo-root idioms in tests and one migrate helper.
+    "agents/daemon_slayer/tests/test_effects_expansion.py",
+    "agents/daemon_slayer/tests/test_geometry_item232.py",
+    "ops/migrate/e_move_helpers.py",
+    "tests/test_ds_antitank_hint.py",
+    "tests/test_repin_subagent_cli_rm795.py",
+    "tests/test_shadow_archive_split_rm859.py",
 )
 
 
@@ -171,3 +172,31 @@ def test_the_audit_probe_root_is_the_repo_root():
     assert os.path.normcase(module._ROOT) == os.path.normcase(str(REPO_ROOT.absolute()))
     source = (REPO_ROOT / "ops/audit/ds_latency_probe.py").read_text(encoding="utf-8")
     assert "str(Path(__file__).absolute().parents[2])" in source
+
+
+def test_the_three_level_parents_spelling_is_the_old_string_for_a_ds_test_path():
+    """S144-P-533: agents/daemon_slayer/tests/x.py reaches the repo root with parents[3] (the old
+    normpath(join(dirname, '..', '..', '..')) string) and the DS package dir with parents[1]."""
+    here = str(Path(__file__).absolute().parents[1] / "agents" / "daemon_slayer" / "tests" / "x.py")
+    old_root = os.path.normpath(os.path.join(_OLD_DIRNAME(here), "..", "..", ".."))
+    assert str(Path(here).absolute().parents[3]) == old_root
+    old_ds = os.path.normpath(os.path.join(_OLD_DIRNAME(_OLD_ABSPATH(here)), ".."))
+    assert str(Path(here).absolute().parents[1]) == old_ds
+
+
+def test_dirname_comparisons_keep_their_truth_for_absolute_paths(tmp_path):
+    """S144-P-533: Path(p).parent == q is the old dirname(p) == str(q) for an absolute p."""
+    target = tmp_path / "ev" / "x.log"
+    assert (Path(str(target)).parent == tmp_path / "ev") == (_OLD_DIRNAME(str(target)) == str(tmp_path / "ev"))
+    assert str(Path(str(target)).parent) == _OLD_DIRNAME(str(target))
+
+
+def test_the_remaining_abspath_sites_need_lexical_dotdot_collapse():
+    """S144-P-533 finding: os.path.abspath collapses '..' lexically; Path.absolute() keeps it and
+    Path.resolve() follows symlinks. The hostile-input path gates in the baseline (routes_recordings,
+    routes_vision_calibrator, hot_reload, vod_retention) depend on the lexical form, so they are NOT a
+    mechanical rewrite - the converted sites above were all '__file__' or an already-normal absolute path."""
+    hostile = os.path.join("C:" + os.sep, "a", "b", "..", "c")
+    assert _OLD_ABSPATH(hostile) != str(Path(hostile).absolute())
+    assert ".." in str(Path(hostile).absolute())
+    assert ".." not in _OLD_ABSPATH(hostile)

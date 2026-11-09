@@ -16,19 +16,16 @@ Pinned geometry shapes (16.11.1):
 import sys
 import os
 import unittest
+from pathlib import Path
 
 # Resolve repo root so imports work regardless of working directory.
-_REPO_ROOT = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..")
-)
+_REPO_ROOT = str(Path(__file__).absolute().parents[3])
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 # Source-file lookups below are anchored on this file's own location, not the
 # process CWD, so they run from any directory.
-_DS_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-)
+_DS_DIR = str(Path(__file__).absolute().parents[1])
 
 from agents.daemon_slayer.geometry import (
     _AOE_TARGET_CAP,

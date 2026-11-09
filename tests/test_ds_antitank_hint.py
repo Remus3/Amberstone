@@ -14,10 +14,10 @@ Champion archetype ground truth (DDragon tags, verified live 2026-06-06):
   Lux       -> mage    (antitank_score 0.0 -> recommend_antitank_items)
 """
 import sys
-import os
+from pathlib import Path
 
 # Ensure project root is on the path.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, str(Path(__file__).absolute().parents[1]))
 
 from core.ds_antitank_hint import (
     build_antitank_hint,
