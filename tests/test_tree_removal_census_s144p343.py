@@ -10,7 +10,7 @@ module just made, a rolling copy of its own regenerable output, or a previous bu
 a new call fails until it is added with a reason, and a call that goes away must be dropped.
 
 The single-file half is a ceiling, not a census: ``Path.unlink`` / ``os.remove`` / ``os.unlink`` appear in 43 production
-files (95 calls, ``_UNLINK_CEILING``), nearly all cleaning up a tmp file the same function created or a lock the same
+files (96 calls, ``_UNLINK_CEILING``, recounted at S144-Q-139), nearly all cleaning up a tmp file the same function created or a lock the same
 module owns, so naming each would be noise. A file may not gain one without lifting its number here, and a file that
 loses one must lower it (the ratchet only shrinks, so a stale ceiling cannot hide a later addition).
 
@@ -84,8 +84,8 @@ _TREE_SITES = {
 
 # file -> number of Path.unlink / os.remove / os.unlink calls. Lowered when a call goes; never raised silently.
 _UNLINK_CEILING = {
-    # 3 since S144-Q-132: the sentinel break-by-path unlink became _remove_if_holds' two side-file unlinks
-    "agents/_supervisor_common.py": 3,
+    # 1 since S144-Q-139: _remove_if_holds' two side-file unlinks (S144-Q-132) moved to core.polled_json.remove_if_holds
+    "agents/_supervisor_common.py": 1,
     "agents/_supervisor_ephemeral.py": 1,
     "agents/agent4_coach_mentor/ui_applier.py": 1,
     "coaches/experimental_builder.py": 2,
@@ -94,7 +94,9 @@ _UNLINK_CEILING = {
     "core/log_retention.py": 2,
     "core/log_rotation.py": 3,
     "core/log_setup.py": 1,
-    "core/polled_json.py": 2,  # S144-Q-126: sweep_stale_scratch drops its own aged scratch a hard kill orphaned
+    # S144-Q-126: sweep_stale_scratch drops its own aged scratch a hard kill orphaned (2); S144-Q-139: remove_if_holds
+    # drops the side file it renamed aside (2), the one copy of the break the three lock owners used to repeat
+    "core/polled_json.py": 4,
     "core/rofl_archive.py": 1,
     "dashboard/routes_loop_control.py": 2,
     "ops/launcher/first_run.py": 3,
@@ -102,9 +104,7 @@ _UNLINK_CEILING = {
     "ops/launcher/update_cycle.py": 2,
     "ops/launcher/updater.py": 1,
     "ops/loop/claude_stub.py": 1,
-    "ops/loop/drain_waves_2_3.py": 2,
     "ops/loop/executor.py": 1,
-    "ops/loop/inbox_tick.py": 2,
     "ops/loop/lane_launcher.py": 1,
     "ops/loop/loop_controller.py": 5,  # S144-Q-138: _publish_claim drops its own claim scratch file
     "ops/loop/slots.py": 3,

@@ -10,7 +10,6 @@ agents.supervisor; import from there (not this module) in tests/callers.
 """
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 import os
@@ -24,7 +23,7 @@ from pathlib import Path
 
 from core import log_rotation
 from core.log_rotation import LFRotatingFileHandler
-from core.polled_json import atomic_write_text
+from core.polled_json import atomic_write_text, remove_if_holds
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -461,49 +460,14 @@ def _remove_if_holds(path: Path, expected: bytes) -> bool:
     """Remove ``path`` only if it still holds ``expected`` (S144-Q-132).
 
     True when it is gone (removed here, or already gone); False when it holds
-    anything else or cannot be moved (left in place, or put back). Same
-    mechanism as RM-691's ``_remove_if`` in ops/loop/inbox_tick.py: the file is
-    renamed to a unique side name first, so the bytes compared are the bytes
-    removed, and a mismatch is put back with a no-overwrite link. The side name
-    is ``<name>.break-<pid>-<hex>``, which ``_reap_orphan_lockfile_tmps``
+    anything else or cannot be moved (left in place, or put back). The break is
+    the shared ``core.polled_json.remove_if_holds`` (S144-Q-139; mechanism,
+    Windows open-handle behaviour and the accepted three-starter residual are
+    documented there). ``keep_suffix=False`` keeps this module's side name
+    ``<name>.break-<pid>-<hex>``, which ``_reap_orphan_lockfile_tmps``
     (``lockfile.*.tmp``) never matches.
-
-    On Windows a sentinel whose creator still has it open (between its O_EXCL
-    and its close) cannot be renamed, so the move fails and nothing is taken.
-
-    Residual (accepted, as for RM-691; needs three starters inside one rename
-    window after a crash left a stale sentinel): while B holds A's fresh claim
-    aside, C can create the sentinel; B's put-back then loses to C and A's
-    claim is gone, so A and C both run. Two starters can no longer do it.
     """
-    side = path.with_name(f"{path.name}.break-{os.getpid()}-{os.urandom(4).hex()}")
-    try:
-        os.rename(path, side)
-    except FileNotFoundError:
-        return True
-    except OSError:
-        return False
-    try:
-        held = side.read_bytes()
-    except OSError:
-        held = None
-    if held == expected:
-        with contextlib.suppress(OSError):
-            side.unlink()
-        return True
-    try:
-        os.link(side, path)
-    except FileExistsError:
-        pass  # a claim made since the rename is newer still; it stays
-    except OSError:
-        # No hard links here: a plain rename back (the side file is never
-        # deleted on this path, so the moved claim is not lost).
-        with contextlib.suppress(OSError):
-            os.rename(side, path)
-        return False
-    with contextlib.suppress(OSError):
-        side.unlink()
-    return False
+    return remove_if_holds(path, expected, keep_suffix=False)
 
 
 def _parse_sentinel_pid(raw: bytes | None) -> int:

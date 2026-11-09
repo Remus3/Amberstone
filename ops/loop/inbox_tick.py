@@ -125,19 +125,23 @@ def _bind_kit(name: str):
 
 # core/polled_json.py holds the repo's atomic-write contract (the ops/loop
 # sibling-writer guard): plain import first, absolute-path bind as fallback.
+# remove_if_holds is the shared compare-and-remove lock break (S144-Q-139),
+# bound as `_remove_if`, the name ops/loop/loop_controller.py calls.
 try:
     from core.polled_json import atomic_write_bytes as _atomic_write_bytes
+    from core.polled_json import remove_if_holds as _remove_if
 except ModuleNotFoundError:
     _pj_name = "rc_core_polled_json"
     if _pj_name in sys.modules:
-        _atomic_write_bytes = sys.modules[_pj_name].atomic_write_bytes
+        _pj = sys.modules[_pj_name]
     else:
         _pj_spec = importlib.util.spec_from_file_location(
             _pj_name, _HERE.parents[1] / "core" / "polled_json.py")
         _pj = importlib.util.module_from_spec(_pj_spec)
         sys.modules[_pj_name] = _pj
         _pj_spec.loader.exec_module(_pj)
-        _atomic_write_bytes = _pj.atomic_write_bytes
+    _atomic_write_bytes = _pj.atomic_write_bytes
+    _remove_if = _pj.remove_if_holds
 
 fleet_inbox = _bind_kit("fleet_inbox")
 fleet_headless = _bind_kit("fleet_headless")
@@ -326,50 +330,6 @@ def _take_lock(root: Path, clock=time.time) -> bytes | None:
             fh.write(claim)
         return claim
     return None
-
-
-def _remove_if(lock: Path, expected: bytes) -> bool:
-    """Remove `lock` only if it still holds `expected`. True when it is gone
-    (removed here, or already gone); False when it holds anything else or
-    cannot be moved (left in place, or put back).
-
-    The file is first renamed to a unique side name, so the bytes compared are
-    the bytes removed; a mismatch is put back with a no-overwrite link. The
-    side name ends in `.lock`, which the test guard's IGNORE already covers.
-
-    Residual (accepted, needs three fires inside one rename window, after a
-    crash left a stale lock): while B holds A's fresh lock aside, a third fire
-    C can create the lock; B's put-back then loses to C and A's lock is gone,
-    so A and C both run. Two fires can no longer do it."""
-    side = lock.with_name(
-        f"{lock.stem}.break-{os.getpid()}-{os.urandom(4).hex()}{lock.suffix}")
-    try:
-        os.rename(lock, side)
-    except FileNotFoundError:
-        return True
-    except OSError:
-        return False
-    try:
-        held = side.read_bytes()
-    except OSError:
-        held = None
-    if held == expected:
-        with contextlib.suppress(OSError):
-            side.unlink()
-        return True
-    try:
-        os.link(side, lock)
-    except FileExistsError:
-        pass  # a lock created since the rename is newer still; it stays
-    except OSError:
-        # No hard links here: a plain rename back (the side file is never
-        # deleted on this path, so the moved lock is not lost).
-        with contextlib.suppress(OSError):
-            os.rename(side, lock)
-        return False
-    with contextlib.suppress(OSError):
-        side.unlink()
-    return False
 
 
 def _drop_lock(root: Path, claim: bytes | None) -> None:

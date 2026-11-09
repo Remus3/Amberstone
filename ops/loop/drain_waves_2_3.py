@@ -59,7 +59,6 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures as cf
-import contextlib
 import hashlib
 import importlib.util
 import json
@@ -77,6 +76,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.polled_json import atomic_write_text  # noqa: E402
+# The shared compare-and-remove lock break (S144-Q-139), bound as `_remove_if`.
+from core.polled_json import remove_if_holds as _remove_if  # noqa: E402
 TASK = "drain-waves-2-3"
 CALLER = "drain_waves_2_3"
 PROMPTS = ROOT / "ops" / "loop" / "prompts"
@@ -596,51 +597,6 @@ def _take_lock(clock=time.time) -> bytes | None:
             os.close(fd)
         return claim
     return None
-
-
-def _remove_if(lock: Path, expected: bytes) -> bool:
-    """Remove `lock` only if it still holds `expected`. True when it is gone
-    (removed here, or already gone); False when it holds anything else or
-    cannot be moved (left in place, or put back).
-
-    Same mechanism as RM-691's `_remove_if` in ops/loop/inbox_tick.py: the file
-    is renamed to a unique side name first, so the bytes compared are the bytes
-    removed; a mismatch is put back with a no-overwrite link. The side name
-    ends in `.lock`.
-
-    Residual (accepted, as for RM-691; needs three launchers inside one rename
-    window after a crash left a stale lock): while B holds A's fresh lock
-    aside, C can create the lock; B's put-back then loses to C and A's lock is
-    gone, so A and C both run. Two launchers can no longer do it."""
-    side = lock.with_name(
-        f"{lock.stem}.break-{os.getpid()}-{os.urandom(4).hex()}{lock.suffix}")
-    try:
-        os.rename(lock, side)
-    except FileNotFoundError:
-        return True
-    except OSError:
-        return False
-    try:
-        held = side.read_bytes()
-    except OSError:
-        held = None
-    if held == expected:
-        with contextlib.suppress(OSError):
-            side.unlink()
-        return True
-    try:
-        os.link(side, lock)
-    except FileExistsError:
-        pass  # a lock created since the rename is newer still; it stays
-    except OSError:
-        # No hard links here: a plain rename back (the side file is never
-        # deleted on this path, so the moved lock is not lost).
-        with contextlib.suppress(OSError):
-            os.rename(side, lock)
-        return False
-    with contextlib.suppress(OSError):
-        side.unlink()
-    return False
 
 
 def _drop_lock(claim) -> None:
