@@ -3909,16 +3909,32 @@ _PS_BLOCK_OPEN = re.compile(r"\s*\{")
 _PS_GROUP_MAX = 32
 
 
-def _ps_group(text, i, close, subs, depth):
+def _ps_group(text, i, close, subs, depth, groups=None, expression=False):
     """S144-Q-164: scan TEXT from I to the CLOSE (`)` or `}`) that ends
     this group, appending the body of each `$( ... )` / `@( ... )` met to
     SUBS (a plain group nested in it is scanned for them too). Quote-aware:
     a single-quoted span is literal; in double quotes only `$(` opens a
     substitution and a backtick escapes. Returns the index after CLOSE, or
     None when the group does not close (a substitution cut off there reads
-    to the end of TEXT) or nests past _PS_GROUP_MAX."""
+    to the end of TEXT) or nests past _PS_GROUP_MAX.
+
+    S144-Q-165: with GROUPS (a list), the body of each bare `( ... )` group
+    met at any depth outside a substitution is appended to it too, outer
+    before inner (a None slot is held while a group is open; callers drop
+    None): each `(` that _ps_paren_kind calls a group, read in the mode
+    _ps_pipeline_mode gives the text from I (EXPRESSION forces expression
+    mode). Nothing is collected in a statement (`(if (..) { .. })`), a
+    scriptblock (`{ .. }`) or after a `(` that is a parse error; a hash
+    literal (`@{ .. }`) is read."""
     if depth > _PS_GROUP_MAX:
         return None
+    lo = i
+    command = False
+    if groups is not None and not expression:
+        mode = _ps_pipeline_mode(text, i)
+        if mode == "statement":
+            groups = None
+        command = mode == "command"
     n = len(text)
     quoted = False
     while i < n:
@@ -3954,13 +3970,132 @@ def _ps_group(text, i, close, subs, depth):
                 return None
             continue
         elif char in "({":
-            i = _ps_group(text, i + 1, ")" if char == "(" else "}", subs,
-                          depth + 1)
+            kind = None
+            if groups is not None:
+                if char == "(":
+                    kind = _ps_paren_kind(text, i, lo, command)
+                else:
+                    # a `{ ... }` scriptblock is a value, not a run
+                    # (measured: `if ({ (..) })` runs nothing); a hash
+                    # literal's values run (`if (@{a=(..)})`)
+                    kind = "args" if text[i - 1:i] == "@" else "dead"
+            slot = None
+            if kind == "group":
+                slot = len(groups)
+                groups.append(None)
+            start = i + 1
+            # a method's arguments and a hash literal's values are read in
+            # expression mode (`$s.Contains(a (..))`, `@{a = 5 (..)}` do not
+            # parse; a command-valued `@{a = foo (..)}` is left uncounted)
+            i = _ps_group(text, start, ")" if char == "(" else "}", subs,
+                          depth + 1, groups if kind in ("group", "args") else None,
+                          expression=kind == "args")
             if i is None:
                 return None
+            if slot is not None:
+                groups[slot] = (start, i - 1)
             continue
         i += 1
     return None
+
+
+def _ps_pipeline_mode(text, i):
+    """S144-Q-165: how PowerShell reads the pipeline whose text starts at I:
+    "statement" when it opens with a statement keyword or a block (in a
+    group it runs nothing: measured, PS 5.1), "command" when it opens with
+    a command name or the call operator `&`, else "expression"."""
+    if _PS_HEAD_STEP.match(text, i) is not None:
+        return "statement"
+    n = len(text)
+    while i < n and text[i] in " \t":
+        i += 1
+    if i < n and (text[i].isalpha() or text[i] in "_&"):
+        return "command"
+    return "expression"
+
+
+def _ps_paren_kind(text, i, lo, command):
+    """S144-Q-165: what the `(` at I opens, in a group or pipeline whose text
+    starts at LO and is read in COMMAND mode or not: "group" (a bare group,
+    which runs), "args" (a method's argument list, `$s.Contains(`: its
+    contents are expressions, so a bare command there runs nothing) or
+    "dead" (a parse error: nothing in the script runs). Measured with PS
+    5.1: in command mode every `(` is a group (`Write-Output 'a' (..)`,
+    `Write-Output a.b(..)` run); in expression mode a `(` first in its
+    group or after an operator (`-not(`, `-eq (`, `+`), a cast (`[int] (`)
+    or an opening is a group, a glued one after a member is "args", and one
+    after a value (`$a (`, `5 (`, `'a' (`, `(1)(`, `$x -eq foo (`, `-1 (`,
+    `$y-1 (`, `$x++ (`, a here-string's `'@ (`) or a spaced one after a
+    member (`$s.Contains (`) is "dead". An operator is one of
+    _PS_OPERATORS after a space or an opening (`-Path (`, `-foo (` are
+    dead), the unary `-not` / `-bnot` only where no value precedes it; a
+    static member needs `::` (`$env:Path(` is a variable). In command mode
+    a glued method paren whose chain back over letters, digits, `_`, `.`
+    and `:` reaches a `$` (`Write-Output $s.Contains(`) is "args" too
+    (verifier round 4, each measured)."""
+    end = i
+    while end > lo and text[end - 1] in " \t":
+        end -= 1
+    if end == lo:
+        return "group"
+    last = text[end - 1]
+    word = last.isalnum() or last == "_"
+    k = end
+    while word and k > lo and (text[k - 1].isalnum() or text[k - 1] == "_"):
+        k -= 1
+    before = text[k - 1] if word and k > lo else ""
+    if command:
+        if before == "." and end == i:
+            j = k - 1
+            while j > lo and (text[j - 1].isalnum() or text[j - 1] in "_.:"):
+                j -= 1
+            if j > lo and text[j - 1] == "$":
+                return "args"
+        return "group"
+    if last in "'\")}@" or (last in "+-" and text[end - 2:end - 1] == last):
+        return "dead"
+    if not word:
+        return "group"
+    if before == "." or (before == ":" and k - 2 >= lo and text[k - 2] == ":"):
+        return "args" if end == i else "dead"
+    name = text[k:end].lower()
+    if before == "-" and name in _PS_OPERATORS:
+        ahead = text[k - 2] if k - 2 >= lo else " "
+        if not (ahead.isalnum() or ahead in "_$"):
+            if name in ("not", "bnot") and _ps_after_value(text, k - 1, lo):
+                return "dead"
+            return "group"
+    return "dead"
+
+
+# S144-Q-165: the PowerShell operators spelled `-name` (comparison ones
+# also with a `c` / `i` case prefix).
+_PS_OPERATORS = frozenset(
+    [prefix + name for name in (
+        "eq", "ne", "gt", "ge", "lt", "le", "like", "notlike", "match",
+        "notmatch", "contains", "notcontains", "in", "notin", "replace",
+        "split") for prefix in ("", "c", "i")]
+    + ["join", "is", "isnot", "as", "and", "or", "xor", "not", "band",
+       "bor", "bxor", "bnot", "shl", "shr", "f"])
+
+
+def _ps_after_value(text, end, lo):
+    """S144-Q-165: True when the token ending at END (spaces skipped, not
+    before LO) is a value, so a unary operator after it does not parse
+    (`$x -bnot (..)`); an operator (`-eq -not (..)`) or an opening is not."""
+    while end > lo and text[end - 1] in " \t":
+        end -= 1
+    if end == lo:
+        return False
+    last = text[end - 1]
+    if last in "'\")]}":
+        return True
+    if not (last.isalnum() or last == "_"):
+        return False
+    k = end
+    while k > lo and (text[k - 1].isalnum() or text[k - 1] == "_"):
+        k -= 1
+    return not (k > lo and text[k - 1] == "-" and text[k:end].lower() in _PS_OPERATORS)
 
 
 def _ps_substitution(text, start, subs, depth):
@@ -3979,18 +4114,90 @@ def _ps_condition_bodies(statement):
     walking past the brace heads before and between them (`} elseif (..) {`,
     `if ($x) { if (..) {`, `do { } while (..)`); [] for any other
     statement."""
-    bodies = []
+    return _ps_condition_scan(statement)[0]
+
+
+def _ps_condition_pipelines(statement):
+    """S144-Q-165: for each condition _ps_condition_bodies walks, the
+    condition's own pipeline (the part after `in` for foreach; read to the
+    end of STATEMENT when the condition does not close, as a `for` init
+    clause cut at its `;` does; left out when it is one bare group), then
+    the body of each bare `( ... )` group in it (_ps_group), outer before
+    inner, leaving out any that opens with a statement keyword or a block;
+    [] for any other statement."""
+    return _ps_condition_scan(statement)[1]
+
+
+# S144-Q-165: what `foreach (` holds before its pipeline: the loop
+# variable and `in`.
+_PS_FOREACH_IN = re.compile(r"\s*\$(?:\{[^}]*\}|[\w:?]+)\s+in(?![\w-])\s*",
+                            re.IGNORECASE)
+
+
+def _ps_condition_scan(statement):
+    """(substitution bodies, pipelines) of the PowerShell conditions at the
+    start of STATEMENT in one linear pass: _ps_condition_bodies (S144-Q-164)
+    and _ps_condition_pipelines (S144-Q-165)."""
+    subs, pipes = [], []
     pos = 0
     while (step := _PS_HEAD_STEP.match(statement, pos)) is not None:
         pos = step.end()
-        if step.group("cond") is not None:
-            pos = _ps_group(statement, pos, ")", bodies, 1)
-            if pos is None:
-                break
-            brace = _PS_BLOCK_OPEN.match(statement, pos)
-            if brace is None:
-                break
-            pos = brace.end()
+        cond = step.group("cond")
+        if cond is None:
+            continue
+        begin = pos
+        if cond[:7].lower() == "foreach":
+            # the pipeline starts after `in`; with no `in` the script does
+            # not parse (measured) and no group in it is read
+            loop = _PS_FOREACH_IN.match(statement, pos)
+            begin = None if loop is None else loop.end()
+        slot = len(pipes)
+        pipes.append(None)
+        pos = _ps_group(statement, pos if begin is None else begin, ")", subs, 1,
+                        None if begin is None else pipes)
+        if begin is not None:
+            pipe = statement[begin:] if pos is None else statement[begin:pos - 1]
+            # an expression-mode condition (`$x -eq ..`, `-not (..)`, `(..)`)
+            # runs only its groups and substitutions, since a bare command in
+            # it does not parse (measured: `if ($x -eq git commit -n)`); an
+            # assignment (`if ($r = ..)`, a `for` init clause) runs its value
+            if _ps_pipeline_mode(pipe, 0) == "command" or _assignment_commands(pipe):
+                pipes[slot] = pipe
+        if pos is None:
+            break
+        brace = _PS_BLOCK_OPEN.match(statement, pos)
+        if brace is None:
+            break
+        pos = brace.end()
+    spans = [pipe for pipe in pipes if isinstance(pipe, tuple)]
+    bodies = iter(_ps_group_bodies(statement, spans))
+    pipes = [next(bodies) if isinstance(pipe, tuple) else pipe for pipe in pipes]
+    # A pipeline or group that opens with a statement keyword or a block
+    # (`(if (..) { .. })`, `({ .. })`) runs nothing: measured, PS 5.1.
+    return subs, [pipe for pipe in pipes if pipe is not None and pipe.strip()
+                  and _PS_HEAD_STEP.match(pipe) is None]
+
+
+def _ps_group_bodies(text, spans):
+    """S144-Q-165: the body of each group span (START, END) of TEXT (in the
+    pre-order _ps_group collects them), with the body of every group nested
+    in it emptied to `()`: each nested group is walked as its own body, so
+    the text walked stays linear in TEXT however deep the groups nest
+    (verifier round 5: 30 nested levels walked whole were 547k chars)."""
+    bodies = []
+    for index, (start, end) in enumerate(spans):
+        pieces = []
+        pos = start
+        child = index + 1
+        while child < len(spans) and spans[child][0] < end:
+            child_start, child_end = spans[child]
+            pieces.append(text[pos:child_start])
+            pos = child_end
+            child += 1
+            while child < len(spans) and spans[child][0] < child_end:
+                child += 1  # a grandchild: inside the emptied child
+        pieces.append(text[pos:end])
+        bodies.append("".join(pieces))
     return bodies
 
 
@@ -4281,10 +4488,15 @@ def _statement_bodies(statement):
     """The commands a STATEMENT (raw text) runs inside itself and that are
     walked like a launcher script: an assignment's (S144-Q-135,
     _assignment_commands), then each substitution in a PowerShell condition
-    (S144-Q-164, _ps_condition_bodies) not already among them."""
+    (S144-Q-164, _ps_condition_bodies), then each condition's own pipeline
+    and bare group (S144-Q-165, _ps_condition_pipelines), each once."""
     bodies = _assignment_commands(statement)
-    bodies.extend(body for body in _ps_condition_bodies(statement)
-                  if body not in bodies)
+    subs, pipes = _ps_condition_scan(statement)
+    seen = set(bodies)
+    for body in subs + pipes:
+        if body not in seen:
+            seen.add(body)
+            bodies.append(body)
     return bodies
 
 
