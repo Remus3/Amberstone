@@ -405,5 +405,8 @@ def conversion_factor(
         shortfall = 1.0 - getattr(conv, channel)
         if shortfall <= 0.0:
             continue
-        factor *= 1.0 - strength * exposure * shortfall
+        # S144-D-156: floor each term at 0.0. Past strength 1.0 a term went
+        # negative and two of them multiplied back above 1.0 (+inf at an
+        # infinite strength), RAISING the row. Identity for strength in [0, 1].
+        factor *= max(0.0, 1.0 - strength * exposure * shortfall)
     return factor if factor > 0.0 else 0.0
