@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-07b - session 153: six slices landed (RM-2036 ceilings, RM-2037 RC-FAIL names, NA3 PR #29 re-applied, NA4 ORDER 2215 residue, NA5, NA6 landing sampler); gated run 3 GREEN on 64951a903, PUSHED on the operator's "yes" with a one-time sweep bypass; RM-2033 box half shipped
+
+- **Landed (M1 merger, LEDGER 2067-2073):** RM-2036 `608452f17` (step 110 -> 160, job 125 -> 175, pytest stops at 150 min), RM-2037 `06f1a4521` + `7d4999a16`, NA3 `a2023948b`, NA4 `c9d25376f`, NA5 RM-2030..2032 + 2034..2035, NA6 `tools/landing_sampler.py`; folds `dcaa45684`, `2c926a917`; RM-2038..RM-2043 filed.
+- **Gated runs:** 1 on `1b1460c4a` 1 failed (raw wait bounds, folded); 2 on `a442c3243` 1 failed (leaked sqlite garbage, check hardened, leaker RM-2043); 3 on `64951a903` GREEN, 69352 passed, exit 0.
+- **Pushed (operator "yes"):** `e37f0d1b4..64951a903` (31 commits); the sweep halted act 1 on a drive-rooted fixture line `7d4999a16` added and `4d4a52511` removed (per-commit scan, RM-2044); operator bypass ONCE for that sha; ls-remote `64951a903`, bot_merge_check clean (31), contributors 1.
+- **RM-2033 box half:** Python314 pydantic 2.14.2 / pydantic-core 2.50.2 / portalocker 4.4.2 / pytest-asyncio 1.4.1 / mypy 2.4.1; nothing stopped. ORDER 2215 ONE ANSWER delivered 1/1 (14:36), row closed.
+- **/done:** docs commit LOCAL (a push would cancel full ci 42427610342 via cancel-in-progress; LEDGER 2047 rule). Reap 7 removed, 9 kept.
+- **Do NOT redo:** the landing, run 3, the push, the bypass (never set it again), the MAIN 2215 reply (do not re-run deliver.py), the RM-2033 upgrade.
+- **Next:** read ci 42427610342 (RM-2037 RC-FAIL names; RM-1657; RM-2036 run time), then the RM-2041 fixes on a gated sha; PRs #30 / #31 (#29 closed itself).
+
+---
+
 # 2026-11-07 - session 152: RM-1974 reds fixed, the gated dual suite GREEN on e37f0d1b4, that sha PUSHED on the operator's word; ci RED by its 110-min step timeout (RM-2036 / RM-2037)
 
 - **RM-1974 SHIPPED:** a `36ba25a07` (MEASURED_RUFF (0, 17)), docstring `d6144375b`, b `39c6ab4f0`, c `b36e3c095` (Playwright loop marker, the xdist hang), d `346ff0d79`, e `cc53df7ae`; RM-1270 residue `765ab2d77`.

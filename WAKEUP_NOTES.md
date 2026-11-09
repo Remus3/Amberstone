@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-11-09 - session 156: all seven lanes landed + pushed (push 1 `d86c2e2f5..a2abb3bb7`), CI fix push `a585214c6`, eight s156 slices landed by the C9 merger (DS 16.22.1 / ENGINE 1.291.0, TFT Set 18, SR schedule, skins reader, draft + runes, ROADMAP split), cifix for 8 CI-only reds, gated suite-2 GREEN on `843a79730`, push 2 `a585214c6..843a79730`
+
+- **Landings (LEDGER 2082-2092):** C12 lane landing 272 commits (suite 1 green, 73577 passed); slices C1, S2-S7 and the folded held tails merged by C9; cifix `c922b2491`; merger follow-ups through `843a79730`.
+- **Suite-2 (gated, TIER TABLE):** A 10 red (pre-cifix), B 2 red, C VOID (memory watchdog kill at 444 MB free; lane workers run pytest outside the gate), D GREEN on `843a79730`: 76028 passed, exit 0 (session scratchpad `s156-suite-2.txt`).
+- **Push 2 (operator chat orders):** `a585214c6..843a79730`, 95 commits, every pre-push gate clean (sweep ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO); bot_merge_check clean; contributors one.
+- **Ops:** run budget reset 228 -> 0 (cap 500); route repointed with fallback armed (RM-2074 / RM-2075); RC daily ceiling $1000 (MAIN); client relaunched via explorer + product-launcher API (CLI arg crashed the UX).
+- **Do NOT redo:** the lane landing, the slice merges, the cifix, suite-2 run D, push 2, the client relaunch.
+- **Next:** lane/repo reconcile (lane lock held or rotator stopped; drop the rival RM-723 pair, cherry-pick S144-P-468..484); the kit-defect note to MAIN (operator ask); RM-2075 KIT v20 line; atlas DS count; DS :8860 ENGINE 1.291.0 at next app launch.
+
+---
+
 # 2026-11-08 - session 155: gated suite GREEN twice (-n 6 on 47075c685, -n 4 on d86c2e2f5, both operator-ordered), PUSHED 64951a903..d86c2e2f5 in two operator-approved pushes, hosted ci GREEN with the full dual suite (RM-2037 / RM-2041 / RM-1657 / RM-2036 CLOSED), lanes resumed after the billing renewal, RM-1267 CLOSED
 
 - **Suites (LEDGER 2077):** C1 on `47075c685` at -n 6: 69420 passed, exit 0; C10 -n 6 on `d86c2e2f5` killed at 79 percent by Claude Code's low-memory background-shell reaper (4.3 GB free, 5 lanes live), C11 found no failure; C12 -n 4 on `d86c2e2f5`: 69420 passed in 0:22:15, exit 0.
@@ -28,15 +39,3 @@
 - **C4 NOT DONE:** gated suite blocked by RAM admission (line 25135 MB; 90 rounds read 24879-25074 MB; kernel pools ~2.8 GB). Adjudicator ruling (a): keep the line, close nothing; suite + push = s155 first act. Pre-checks on `5835bf6f7`: 8 batches 6271 passed 0 failed.
 - **Do NOT redo:** the 27 folds, C6, the C3 re-apply, the stash config, the C7 diagnosis.
 - **Next:** read RAM; if >= 25135 MB run the TIER TABLE gated suite (`--exclusive`) on HEAD; else ONE operator ask (close an app, or order -n 6). Green -> pre-push dry runs -> ask the operator for one push.
-
----
-
-# 2026-11-07b - session 153: six slices landed (RM-2036 ceilings, RM-2037 RC-FAIL names, NA3 PR #29 re-applied, NA4 ORDER 2215 residue, NA5, NA6 landing sampler); gated run 3 GREEN on 64951a903, PUSHED on the operator's "yes" with a one-time sweep bypass; RM-2033 box half shipped
-
-- **Landed (M1 merger, LEDGER 2067-2073):** RM-2036 `608452f17` (step 110 -> 160, job 125 -> 175, pytest stops at 150 min), RM-2037 `06f1a4521` + `7d4999a16`, NA3 `a2023948b`, NA4 `c9d25376f`, NA5 RM-2030..2032 + 2034..2035, NA6 `tools/landing_sampler.py`; folds `dcaa45684`, `2c926a917`; RM-2038..RM-2043 filed.
-- **Gated runs:** 1 on `1b1460c4a` 1 failed (raw wait bounds, folded); 2 on `a442c3243` 1 failed (leaked sqlite garbage, check hardened, leaker RM-2043); 3 on `64951a903` GREEN, 69352 passed, exit 0.
-- **Pushed (operator "yes"):** `e37f0d1b4..64951a903` (31 commits); the sweep halted act 1 on a drive-rooted fixture line `7d4999a16` added and `4d4a52511` removed (per-commit scan, RM-2044); operator bypass ONCE for that sha; ls-remote `64951a903`, bot_merge_check clean (31), contributors 1.
-- **RM-2033 box half:** Python314 pydantic 2.14.2 / pydantic-core 2.50.2 / portalocker 4.4.2 / pytest-asyncio 1.4.1 / mypy 2.4.1; nothing stopped. ORDER 2215 ONE ANSWER delivered 1/1 (14:36), row closed.
-- **/done:** docs commit LOCAL (a push would cancel full ci 42427610342 via cancel-in-progress; LEDGER 2047 rule). Reap 7 removed, 9 kept.
-- **Do NOT redo:** the landing, run 3, the push, the bypass (never set it again), the MAIN 2215 reply (do not re-run deliver.py), the RM-2033 upgrade.
-- **Next:** read ci 42427610342 (RM-2037 RC-FAIL names; RM-1657; RM-2036 run time), then the RM-2041 fixes on a gated sha; PRs #30 / #31 (#29 closed itself).
