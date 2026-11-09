@@ -247,7 +247,7 @@ def sync(vault: Vault) -> dict:
             failures.append(f"settled/{key}")
 
     # 2. Memory files.
-    if os.path.isdir(MEMDIR):
+    if Path(MEMDIR).is_dir():
         for filename in sorted(entry.name for entry in Path(MEMDIR).iterdir()):
             if not filename.endswith(".md") or filename == "MEMORY.md":
                 continue
@@ -261,7 +261,7 @@ def sync(vault: Vault) -> dict:
 
     # 3. LEDGER items.
     ledger_path = os.path.join(REPO, "docs", "LEDGER.md")
-    if os.path.exists(ledger_path):
+    if Path(ledger_path).exists():
         for match in re.finditer(r"^(\d{1,5})\.\s+(.+)$", read_text(ledger_path), re.MULTILINE):
             number, text = match.group(1), match.group(2).strip()
             if len(text) < 30:
@@ -275,7 +275,7 @@ def sync(vault: Vault) -> dict:
     # 4. ROADMAP / BACKLOG sections.
     for filename, category in (("ROADMAP.md", "roadmap"), ("BACKLOG.md", "backlog")):
         path = os.path.join(REPO, filename)
-        if not os.path.exists(path):
+        if not Path(path).exists():
             continue
         parts = re.split(r"^(#{2,4} .+)$", read_text(path), flags=re.MULTILINE)
         for index in range(1, len(parts), 2):
@@ -316,7 +316,7 @@ def backfill(vault: Vault) -> tuple[int, int]:
 
 
 def main() -> int:
-    if not os.path.exists(PV):
+    if not Path(PV).exists():
         print(f"perseus-vault binary not found at {PV}", file=sys.stderr)
         return 2
 

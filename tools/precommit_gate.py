@@ -733,7 +733,7 @@ def _gate_commit(command: str, claude: bool) -> int:
 
     # 3. net-new ruff errors on staged .py
     pyfiles = [
-        p for p in staged if p.endswith(".py") and os.path.isfile(os.path.join(root, p))
+        p for p in staged if p.endswith(".py") and (pathlib.Path(root) / p).is_file()
     ]
     violations.extend(_compile_errors(pyfiles, root))
     ruff = _resolve_ruff() if pyfiles else None

@@ -193,10 +193,10 @@ def _ensure_tesseract() -> None:
     ``RC_TESSERACT_CMD`` with no code edit (refactor-plan P4.2 portability)."""
     import pytesseract
     cmd = pytesseract.pytesseract.tesseract_cmd
-    if cmd and os.path.isfile(cmd):
+    if cmd and Path(cmd).is_file():
         return
     for cand in _tesseract_candidates():
-        if cand and os.path.isfile(cand):
+        if cand and Path(cand).is_file():
             pytesseract.pytesseract.tesseract_cmd = cand
             return
 

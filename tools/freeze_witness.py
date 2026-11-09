@@ -41,10 +41,10 @@ def _walk(root: Path):
     out = []
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS
-                             and not os.path.islink(os.path.join(dirpath, d)))
+                             and not (Path(dirpath) / d).is_symlink())
         for name in filenames:
             full = os.path.join(dirpath, name)
-            if os.path.isfile(full) and not os.path.islink(full):
+            if Path(full).is_file() and not Path(full).is_symlink():
                 out.append(os.path.relpath(full, root).replace("\\", "/"))
     return sorted(out)
 

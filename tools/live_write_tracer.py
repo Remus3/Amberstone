@@ -582,7 +582,7 @@ def main(argv=None):
 
     files = []
     for target in args.merge:
-        if os.path.isdir(target):
+        if Path(target).is_dir():
             files.extend(sorted(
                 str(entry) for entry in Path(target).iterdir()
                 if entry.name.startswith("live_write_trace") and entry.name.endswith(".json")))

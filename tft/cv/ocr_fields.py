@@ -42,6 +42,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from itertools import product
+from pathlib import Path
 from typing import Any, Callable, Iterable, Protocol
 
 from tft.cv import EXTRACTOR_VERSION
@@ -130,7 +131,7 @@ def _tesseract_cmd() -> str | None:
         cands = [os.environ.get("RC_TESSERACT_CMD") or "",
                  r"C:\Program Files\Tesseract-OCR\tesseract.exe"]
     for cand in cands:
-        if cand and os.path.isfile(cand):
+        if cand and Path(cand).is_file():
             return cand
     return shutil.which("tesseract")
 
@@ -145,7 +146,7 @@ class TesseractEngine:
         self._lock = threading.Lock()
 
     def available(self) -> bool:
-        return bool(self.cmd) and os.path.isfile(self.cmd)
+        return bool(self.cmd) and Path(self.cmd).is_file()
 
     def _warn_once(self, msg: str, *args) -> None:
         with self._lock:

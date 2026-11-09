@@ -74,7 +74,7 @@ def _analyze(con, mode, resist):
 
 
 def main():
-    if not os.path.exists(_DB):
+    if not Path(_DB).exists():
         print(f"NO DB at {_DB}")
         return
     resist = _load_resist_index()
