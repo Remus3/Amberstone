@@ -58,7 +58,7 @@ def _gather_get() -> list:
     global _GET_CACHE
     if _GET_CACHE is None:
         from dashboard import (routes_static, routes_state, routes_history,
-                               routes_diag, routes_coach, routes_champions,
+                               routes_diag, routes_coach, routes_champions, routes_skins,
                                routes_ban_suggest,
                                routes_cc_blended_ehp_threat,
                                routes_cc_conditional_pressure,
@@ -120,6 +120,7 @@ def _gather_get() -> list:
                       + list(routes_diag.GET_ROUTES)
                       + list(routes_coach.GET_ROUTES)
                       + list(routes_champions.GET_ROUTES)
+                      + list(routes_skins.GET_ROUTES)
                       + list(routes_ban_suggest.GET_ROUTES)
                       + list(routes_cc_blended_ehp_threat.GET_ROUTES)
                       + list(routes_cc_conditional_pressure.GET_ROUTES)
