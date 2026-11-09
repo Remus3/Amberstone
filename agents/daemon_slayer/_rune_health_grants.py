@@ -329,6 +329,20 @@ def stacks_at_level(assumed_stacks_by_level: tuple[float, ...], level: int) -> f
     return float(assumed_stacks_by_level[idx])
 
 
+def _finite_nonneg(value: float) -> float:
+    """``max(0.0, float(value))``, with a non-finite value read as 0.0.
+
+    A stack count or pool of +/-inf is unusable, like NaN (which the bare clamp
+    already reads as 0.0, ``max`` keeping its first argument): inf would credit an
+    infinite pool, NaN-poison a zero term (``inf * 0.0``) or raise in
+    ``math.floor`` (S144-D-95, the ``_rune_self_heal._coerce_pool`` rule).
+    """
+    number = float(value)
+    if not math.isfinite(number):
+        return 0.0
+    return max(0.0, number)
+
+
 def _entry_permanent_hp(
     entry: RuneHealthEntry, stacks: float, max_hp: float
 ) -> float:
@@ -339,8 +353,8 @@ def _entry_permanent_hp(
     and the one-shot percent-of-max-HP threshold. The ranged factor is NOT applied
     here - the caller applies it once to both halves.
     """
-    stacks = max(0.0, float(stacks))
-    pool = max(0.0, float(max_hp))
+    stacks = _finite_nonneg(stacks)
+    pool = _finite_nonneg(max_hp)
     total = 0.0
     # Per-stack flat grant (Grasp +5 per proc).
     if entry.perm_hp_per_proc:
@@ -367,7 +381,7 @@ def _entry_heal_hp(entry: RuneHealthEntry, max_hp: float) -> float:
     """
     if not entry.heal_pct_max_hp or not entry.procs_per_fight:
         return 0.0
-    return entry.heal_pct_max_hp * max(0.0, float(max_hp)) * entry.procs_per_fight
+    return entry.heal_pct_max_hp * _finite_nonneg(max_hp) * entry.procs_per_fight
 
 
 def grasp_permanent_hp(procs: float, is_ranged: bool = False) -> float:
@@ -391,7 +405,7 @@ def grasp_heal_hp(procs: float, max_hp: float, is_ranged: bool = False) -> float
     behaves in game.
     """
     entry = _RUNE_HEALTH_GRANTS["8437"]
-    raw = entry.heal_pct_max_hp * max(0.0, float(max_hp)) * max(0.0, float(procs))
+    raw = entry.heal_pct_max_hp * _finite_nonneg(max_hp) * _finite_nonneg(procs)
     return raw * (entry.ranged_factor if is_ranged else 1.0)
 
 

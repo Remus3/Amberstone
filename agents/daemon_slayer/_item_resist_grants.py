@@ -137,6 +137,7 @@ Keyed by string item_id to match the engine's ``resolved.item_ids`` tuple shape
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -338,6 +339,19 @@ def _value_at_level(
     return float(val)
 
 
+def _finite_or_zero(resist: float) -> float:
+    """A clamped percent-term resist, or 0.0 when it is infinite.
+
+    The item twin of ``_rune_resist_grants._finite_or_zero`` (S144-D-97): an
+    infinite resist input is unusable, as NaN already was through the
+    ``max(0.0, ...)`` clamp, and +inf total or -inf base would otherwise credit
+    an infinite percent term into ``eff_armor`` / ``eff_mr`` (S144-D-98). Every
+    non-finite input reaches this point as 0.0 or +inf, so zeroing +inf here
+    covers them all.
+    """
+    return resist if math.isfinite(resist) else 0.0
+
+
 def item_resist_grants(
     item_ids: Iterable[str | int],
     *,
@@ -393,6 +407,8 @@ def item_resist_grants(
             else:
                 res_a = max(0.0, total_armor)
                 res_m = max(0.0, total_mr)
+            res_a = _finite_or_zero(res_a)
+            res_m = _finite_or_zero(res_m)
             bonus_armor += res_a * (entry.armor_pct / 100.0) * prob
             bonus_mr += res_m * (entry.mr_pct / 100.0) * prob
     return bonus_armor, bonus_mr

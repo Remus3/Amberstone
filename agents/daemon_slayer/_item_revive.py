@@ -49,6 +49,7 @@ Keyed by string item_id to match the engine's ``resolved.item_ids`` tuple shape
 
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 
@@ -96,10 +97,17 @@ def item_revive_max_hp_fraction(
     Items not in the registry contribute 0. ``total_hp <= 0`` returns 0.0
     (division guard). Duplicate ids stack per occurrence (the build planner
     enforces the inventory cap + unique-passive doctrine separately).
+
+    A non-finite pool, a ratio that is not finite (NaN ``total_hp`` slips past the
+    ``<= 0.0`` guard; ``1e308 / 1e-308`` overflows) or a negative ratio (negative
+    ``base_hp``) credits 0.0: a revive never lowers the multiplier below 1.0 and
+    never returns inf or NaN (S144-D-108).
     """
     if total_hp <= 0.0:
         return 0.0
     ratio = float(base_hp) / float(total_hp)
+    if not math.isfinite(ratio) or ratio <= 0.0:
+        return 0.0
     total = 0.0
     for iid in item_ids:
         base_frac = _ITEM_REVIVE.get(str(iid))

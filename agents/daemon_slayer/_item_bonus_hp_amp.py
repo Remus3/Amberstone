@@ -79,6 +79,7 @@ Keyed by string item_id to match the engine's ``resolved.item_ids`` tuple shape
 
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 
@@ -125,7 +126,9 @@ def item_bonus_hp_amp_hp(
     True).
     """
     bh = max(0.0, float(bonus_hp_from_items))
-    if bh <= 0.0:
+    # S144-D-101: an infinite pool is unusable, as NaN / -inf already were via
+    # the clamp; it returned inf, and NaN (0.0 * inf) on a build with no Warmog's.
+    if bh <= 0.0 or not math.isfinite(bh):
         return 0.0
     max_pct = 0.0
     for iid in item_ids:

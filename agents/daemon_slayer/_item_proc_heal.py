@@ -97,6 +97,7 @@ Keyed by string item_id to match the engine's ``resolved.item_ids`` tuple shape
 
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 
@@ -209,4 +210,9 @@ def item_proc_heal_hp(
     )
 
     per_proc_per_target = coefficient * hp * _magic_mitigation_factor(mr)
-    return max(0.0, per_proc_per_target * triggers * targets)
+    total = per_proc_per_target * triggers * targets
+    # S144-D-105: an infinite bonus_hp / triggers / targets, or a finite product
+    # that overflows, credited inf; it now reads 0.0 like NaN already did.
+    if not math.isfinite(total):
+        return 0.0
+    return max(0.0, total)

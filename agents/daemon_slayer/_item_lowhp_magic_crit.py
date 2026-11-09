@@ -58,6 +58,7 @@ Keyed by string item_id to match the engine's resolved item-id tuple shape
 
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 
@@ -101,7 +102,14 @@ def item_lowhp_magic_crit_amp(
     """
     if not assume_item_lowhp_magic_crit:
         return 1.0
-    if target_current_hp_pct >= _LOWHP_THRESHOLD:
+    # S144-D-111: a target HP that is not a finite number (NaN, +-inf, or
+    # anything float() refuses) never meets the gate. NaN used to fail the
+    # ``>=`` test and fire the amp; None / junk raised TypeError.
+    try:
+        hp_pct = float(target_current_hp_pct)
+    except Exception:
+        return 1.0
+    if not math.isfinite(hp_pct) or hp_pct >= _LOWHP_THRESHOLD:
         return 1.0
     max_amp = 0.0
     for iid in item_ids:

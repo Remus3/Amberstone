@@ -45,7 +45,7 @@ Contract: fail-soft (never raises; unknown spell -> 0.0). ASCII only.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 __all__ = [
     "SummonerSpell",
@@ -65,10 +65,20 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 def _clamp_level(level: float) -> int:
-    """Clamp an incoming level to the League 1..18 band, integer (fail-soft)."""
+    """Clamp an incoming level to the League 1..18 band, integer (fail-soft).
+
+    +inf clamps to 18 and -inf to 1 (S144-D-115: ``int(inf)`` raised
+    OverflowError, which compute_summoner_value swallowed into a zeroed spell);
+    NaN and anything ``int()`` refuses read 1.
+    """
     try:
         lvl = int(level)
-    except (TypeError, ValueError):
+    except OverflowError:
+        try:
+            return 18 if level > 0 else 1
+        except Exception:
+            return 1
+    except Exception:
         return 1
     if lvl < 1:
         return 1
@@ -256,6 +266,15 @@ SUMMONER_SEAM_IDS: frozenset[int] = frozenset(SUMMONER_SPELLS)
 # Public functions (fail-soft: unknown id / bad input -> 0.0, never raise).
 # ---------------------------------------------------------------------------
 
+def _lookup_spell(spell_id) -> Optional[SummonerSpell]:
+    """``SUMMONER_SPELLS.get(spell_id)``, None for an unhashable id (S144-D-118:
+    the bare ``dict.get`` raised TypeError out of every public function)."""
+    try:
+        return SUMMONER_SPELLS.get(spell_id)
+    except TypeError:
+        return None
+
+
 def compute_summoner_value(spell_id: int, level: float = 1.0) -> float:
     """Return a spell's PRIMARY-axis scalar (level-scaled where applicable).
 
@@ -263,7 +282,7 @@ def compute_summoner_value(spell_id: int, level: float = 1.0) -> float:
     Barrier -> flat shield; Cleanse -> 0.75 cc-discount; Ghost -> MS fraction.
     Unknown id -> 0.0.
     """
-    spell = SUMMONER_SPELLS.get(spell_id)
+    spell = _lookup_spell(spell_id)
     if spell is None:
         return 0.0
     try:
@@ -274,19 +293,19 @@ def compute_summoner_value(spell_id: int, level: float = 1.0) -> float:
 
 def summoner_antiheal_pct(spell_id: int) -> float:
     """Grievous Wounds healing-reduction fraction (Ignite 0.40, else 0.0)."""
-    spell = SUMMONER_SPELLS.get(spell_id)
+    spell = _lookup_spell(spell_id)
     return float(spell.antiheal_pct) if spell is not None else 0.0
 
 
 def summoner_incoming_dr_pct(spell_id: int) -> float:
     """Incoming damage-reduction fraction from exhausting the enemy (0.35/0.0)."""
-    spell = SUMMONER_SPELLS.get(spell_id)
+    spell = _lookup_spell(spell_id)
     return float(spell.incoming_dr_pct) if spell is not None else 0.0
 
 
 def summoner_cc_discount_pct(spell_id: int) -> float:
     """CC-duration discount (tenacity) fraction (Cleanse 0.75, else 0.0)."""
-    spell = SUMMONER_SPELLS.get(spell_id)
+    spell = _lookup_spell(spell_id)
     return float(spell.cc_discount_pct) if spell is not None else 0.0
 
 
@@ -294,7 +313,7 @@ def compute_summoner_ms_pct(spell_id: int, level: float = 1.0) -> float:
     """Bonus move-speed fraction. Ghost is level-scaled (0.24-0.5082); Heal is
     a flat 0.30; every other spell is 0.0. Unknown id -> 0.0.
     """
-    spell = SUMMONER_SPELLS.get(spell_id)
+    spell = _lookup_spell(spell_id)
     if spell is None:
         return 0.0
     if spell.axis == "move_speed":
@@ -306,7 +325,7 @@ def compute_summoner_ehp_bonus(spell_id: int, level: float = 1.0) -> float:
     """Flat EHP-equivalent from a defensive summoner (Heal flat heal, Barrier
     flat shield), level-scaled. Damage / CC / pure-MS spells -> 0.0.
     """
-    spell = SUMMONER_SPELLS.get(spell_id)
+    spell = _lookup_spell(spell_id)
     if spell is None:
         return 0.0
     if spell.axis in ("ehp_heal", "ehp_shield"):

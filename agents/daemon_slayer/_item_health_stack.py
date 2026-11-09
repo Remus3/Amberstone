@@ -80,6 +80,7 @@ Keyed by string item_id to match the engine's ``resolved.item_ids`` tuple shape.
 
 from __future__ import annotations
 
+import math
 from typing import Iterable
 
 # item_id -> fraction of the empowered proc's damage granted as PERMANENT bonus
@@ -143,7 +144,9 @@ def item_health_stack_hp(
     ``assume_item_health_stacks`` is True).
     """
     hp = max(0.0, float(caster_max_hp))
-    if hp <= 0.0:
+    # S144-D-104: an infinite pool is unusable, as NaN / -inf already were via
+    # the clamp; it returned inf into every compute_ehp numerator.
+    if hp <= 0.0 or not math.isfinite(hp):
         return 0.0
     max_pct = 0.0
     for iid in item_ids:

@@ -147,6 +147,7 @@ the page carries no self-heal rune.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
@@ -255,24 +256,36 @@ def _coerce_pool(max_health: object) -> float:
     """Resolve a health pool to a non-negative float, or 0.0 if unusable.
 
     Fail-soft on None / non-numeric input so the orchestrator's seam cannot be
-    made to raise by a malformed caller.
+    made to raise by a malformed caller. A non-finite pool is unusable too: an
+    infinite pool would credit an infinite heal, or NaN (``inf * 0.0``) at a
+    zero missing share, so NaN and +/-inf all resolve to 0.0 (S144-D-93).
     """
     try:
-        return max(0.0, float(max_health))  # type: ignore[arg-type]
+        pool = float(max_health)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return 0.0
+    if not math.isfinite(pool):
+        return 0.0
+    return max(0.0, pool)
 
 
 def _coerce_share(missing_hp_share: object) -> float:
     """Clamp a missing-health share into ``[0.0, 1.0]``.
 
     Missing health can never exceed the pool, and a below-zero share would
-    invert the heal into a penalty; both are clamped rather than raising.
+    invert the heal into a penalty; both are clamped rather than raising
+    (+/-inf clamp like any other out-of-range value). NaN is unusable, like
+    non-numeric input, and resolves to 0.0: ``min`` / ``max`` keep their first
+    argument against NaN, so the bare clamp would have read it as the MAXIMUM
+    share 1.0 (S144-D-92).
     """
     try:
-        return max(0.0, min(1.0, float(missing_hp_share)))  # type: ignore[arg-type]
+        share = float(missing_hp_share)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return 0.0
+    if math.isnan(share):
+        return 0.0
+    return max(0.0, min(1.0, share))
 
 
 def second_wind_heal(
@@ -333,11 +346,13 @@ def sum_rune_self_heal(
     cannot double-credit; different families sum. Runes outside the one-id
     allowlist contribute 0.0 by construction, so every offensive keystone and
     every sibling-lane Resolve rune returns zero. Returns 0.0 on an empty / None
-    / non-iterable argument, a non-numeric pool, or any lookup failure.
+    / non-iterable argument, a page whose truthiness raises (the emptiness check
+    runs inside the guard, S144-D-94), a non-numeric pool, or any lookup
+    failure.
     """
-    if not rune_ids:
-        return 0.0
     try:
+        if not rune_ids:
+            return 0.0
         total = 0.0
         seen_families: set[str] = set()
         for rid in rune_ids:

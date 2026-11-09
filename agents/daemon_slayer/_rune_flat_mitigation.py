@@ -277,7 +277,13 @@ def rune_flat_mitigation_hp(
     phys = mag = true = 0.0
     if not apply_rune_flat_mitigation:
         return phys, mag, true
-    lvl = int(level)
+    # A level int() cannot convert (NaN, +-inf, None, garbage) credits nothing
+    # instead of raising out of the compute_ehp seam (S144-D-110, the S144-D-96
+    # rule). The [1, 18] clamp in _value_at_level is untouched (RM-848 family).
+    try:
+        lvl = int(level)
+    except (TypeError, ValueError, OverflowError):
+        return phys, mag, true
     seen_families: set[str] = set()
     for rid in rune_ids:
         entry = _RUNE_FLAT_MITIGATION.get(str(rid))
