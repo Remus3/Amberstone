@@ -1736,6 +1736,43 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   too low, right, or too high. Observed uptime is the ONLY thing that moves this row.
   The Arena mirror 444644 magnitude confirm is GATE 5 (G5-08). The "Draw Your Sword" Runaan's blind
   spot flagged at R108 is FIXED (LEDGER 856). SOURCE: LEDGER 855.
+  **AGE CHECK (lane 9 PREP s144 cycle 129, S144-G-116; source read at local main `d2d4840f1`, DS
+  16.22.1 / ENGINE 1.291.0, no game up (RC :8888 refused at 2026-11-09T05:07); NOT a tick). The
+  mechanism half holds, the seam has NO live producer, and the live residual does NOT wait on one.**
+  Holds: `_item_general_dr._GENERAL_DR_UPTIME` is still `0.4`; `_ITEM_GENERAL_DR` still maps `3869`
+  to `(0.35, 0.25)` and `664644` to `(0.40, 0.40)`, with `444644` as the Arena mirror. At 16.22.1
+  `items.json` still lists 3869 Celestial Opposition (maps 11 and 453), 664644 Crown of the
+  Shattered Queen (map 11) and 444644 (map 30 only). DDragon's 3869 prose carries no magnitude
+  ("Reduce incoming champion damage for 2 seconds after taking damage from a champion"); the 35%/25%
+  is Meraki's `{{rd|35%|25%}}` in the 16.22.1 `items_meraki.json`. 664644's DDragon prose still says
+  40%. Producer-orphan, measured with `inspect.signature`: the DS functions that take the flag are
+  `ehp.compute_ehp`, `ehp.rank_items_by_ehp`, `hybrid.compute_hybrid` and
+  `hybrid.rank_items_by_hybrid`, and `server.py` parses it in `_route_ehp`, `_route_rank_tank`,
+  `_route_hybrid` and `_route_rank_bruiser`. The client functions `rank_tank_for`, `ehp_for`,
+  `rank_bruiser_for` and `hybrid_for` take it, but `rank_for_primary_archetype` and
+  `dispatch_for_coach` do not. The tank and bruiser branches of `rank_for_primary_archetype` call
+  `rank_tank_for` / `rank_bruiser_for` without it, and `core/defensive_picks.py` calls
+  `rank_tank_for` without it. `_DS_PREVIEW_SEAM_BOOLS` does not list it, and no `web/` file and no
+  code file outside DS, the client and `tests/` names it. So no live recommendation reads the 0.4
+  today. That bounds what the row is WORTH (a different uptime would move no live surface until a
+  producer lands), but not whether it can DRAIN: the residual is an observation of the GAME's own
+  buff uptime, not of anything RC sends. READY, so the drain is copy-paste. Practice-tool SR
+  (GATE 2), the operator holding 3869 or 664644 and taking hits from bots in a fight. The Live Client
+  API carries no buffs (`dashboard/_liveclient.py:334`), so the source is pixel: GET
+  `http://127.0.0.1:8889/latest-frame` with `X-RC-Token`, plus `/latest-frame/meta` `ts` for each
+  sample, at about 1 s. FIGHT WINDOW, fixed before the game: from the first `:2999`
+  `activePlayer.championStats.currentHealth` drop while an enemy champion is in the frame to the last
+  such drop, closed by a 3 s gap with no drop. u = (samples in the window whose buff bar shows the
+  Blessed / Safeguarded icon) / (samples in the window). PREDICATE, stated NOW: at least 10 samples
+  in one window; u in [0.30, 0.50] means 0.4 is RIGHT, u > 0.50 means TOO LOW and u < 0.30 means TOO
+  HIGH. Report one u per item; 3869 and 664644 are graded separately and are not averaged. EVIDENCE:
+  u, n, the item id, the window's start and end `gameData.gameTime`, and each sample's frame `ts`
+  checked against `gameTime` (a frame older than 2 s is dropped, not counted). Frames are 1280x720
+  (G2-41), so a sample whose buff bar cannot be read is dropped and counted in the report, never
+  scored as absent. SUBSTITUTION CHECK: a DS `/ehp` or `/rank-tank` delta with the flag on restates
+  `1/(1 - dr * 0.4)` and so answers COMPUTES, not UPTIME. A dashboard render answers neither. One
+  screenshot of the icon proves it can be up, not how long it stays up. The Arena 444644 magnitude
+  stays GATE 5 (G5-08, re-checked s144 S144-G-105).
 
 ### `[BATCH OVERLAY-PIXEL]` - overlay up, one screenshot pass
 
