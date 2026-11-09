@@ -115,7 +115,7 @@ def test_audit_cli_reads_a_directory_and_a_wrapped_capture(tmp_path):
     proc = subprocess.run(
         [sys.executable, str(root / "tools" / "liveclient_shape_audit.py"),
          str(tmp_path)],
-        capture_output=True, text=True, timeout=120, cwd=str(root))
+        capture_output=True, text=True, timeout=120, cwd=str(root), check=False)
     assert proc.returncode == 0, proc.stderr
     out = proc.stdout
     assert "over 2 payload(s)" in out

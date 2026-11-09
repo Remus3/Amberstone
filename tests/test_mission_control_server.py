@@ -32,7 +32,7 @@ def _import_probe(module: str, forbidden: list[str]) -> tuple[int, str]:
     )
     proc = subprocess.run(
         [sys.executable, "-c", code],
-        cwd=str(ROOT), capture_output=True, text=True, timeout=120,
+        cwd=str(ROOT), capture_output=True, text=True, timeout=120, check=False,
     )
     return proc.returncode, proc.stdout + proc.stderr
 

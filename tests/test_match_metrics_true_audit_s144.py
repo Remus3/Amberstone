@@ -62,7 +62,8 @@ class TestImportHasNoDbSideEffect:
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         proc = subprocess.run(
             [sys.executable, "-c", code], cwd=str(_REPO_ROOT), env=env,
-            capture_output=True, text=True, timeout=120, creationflags=flags)
+            capture_output=True, text=True, timeout=120, creationflags=flags,
+            check=False)
         assert proc.returncode == 0, proc.stderr
         assert "IMPORT_OK 0" in proc.stdout
 

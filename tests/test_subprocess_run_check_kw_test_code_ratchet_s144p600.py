@@ -20,7 +20,10 @@ bar the ratchet modules between them); slice 6 (S144-P-606) does the same for th
 (ds_engine_logger_scrub through hook_log_live_isolation, bar the ratchet modules and the two
 gated-lane files between them); slice 7 (S144-P-607) does the same for the next twelve
 (hz_mismatch_diagnose through live_log_isolation, bar the ratchet modules and the launcher
-files between them); every other
+files between them); slice 8 (S144-P-608) does the same for the next twelve (liveclient_shape_audit
+through overlay_priority_rc2, bar the ratchet modules, the launcher files, the loop_concurrency byte
+pin and the four md_guard_selector files, whose ``subprocess.run`` is fixture text, between them);
+every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
 a finding beyond the baseline fails ``test_no_new_findings``; a ``_FIXED`` file that offends again
@@ -114,28 +117,16 @@ _BASELINE = {
     "tests/test_launcher_first_run.py": 2,
     "tests/test_launcher_key_read_rm810.py": 3,
     "tests/test_launcher_update_cycle_pkg6b.py": 1,
-    "tests/test_liveclient_shape_audit_rm601.py": 1,
-    "tests/test_logger_leak_census.py": 1,
     "tests/test_loop_concurrency.py": 1,
-    "tests/test_match_metrics_true_audit_s144.py": 1,
-    "tests/test_mcp_mc_hardening_rm811.py": 1,
     "tests/test_md_guard_selector_bound_argv_s144q40b.py": 1,
     "tests/test_md_guard_selector_browser_tree_rm1657.py": 1,
     "tests/test_md_guard_selector_option_args_s144q41.py": 1,
     "tests/test_md_guard_selector_residue_s144q40.py": 1,
-    "tests/test_mission_control_server.py": 1,
     "tests/test_mutable_default_arg_ratchet_s144p318.py": 1,
     "tests/test_n805_first_arg_ratchet_s144p238.py": 1,
     "tests/test_naive_datetime_prod_ratchet_s144p340.py": 1,
     "tests/test_nan_selfcompare_prod_ratchet_s144p173.py": 1,
     "tests/test_noqa_concat_ratchet_s144p156.py": 1,
-    "tests/test_now6_logger_leak_regression.py": 1,
-    "tests/test_now7_logger_leak_detector.py": 1,
-    "tests/test_obs_recorder.py": 1,
-    "tests/test_overlay_callouts_ui_audit.py": 1,
-    "tests/test_overlay_drag_listener_leak_behavior.py": 1,
-    "tests/test_overlay_idle_rc2.py": 1,
-    "tests/test_overlay_priority_rc2.py": 1,
     "tests/test_overlay_pulse_flip_rc2.py": 1,
     "tests/test_overlay_settings_rc2.py": 1,
     "tests/test_package_portable_atomic_write_rm258.py": 1,
@@ -352,6 +343,18 @@ _FIXED = (
     "tests/test_lane_worktree_eol_rm343.py",
     "tests/test_legacy_lcu_panel_phase_rm382.py",
     "tests/test_live_log_isolation_rm812.py",
+    "tests/test_liveclient_shape_audit_rm601.py",
+    "tests/test_logger_leak_census.py",
+    "tests/test_match_metrics_true_audit_s144.py",
+    "tests/test_mcp_mc_hardening_rm811.py",
+    "tests/test_mission_control_server.py",
+    "tests/test_now6_logger_leak_regression.py",
+    "tests/test_now7_logger_leak_detector.py",
+    "tests/test_obs_recorder.py",
+    "tests/test_overlay_callouts_ui_audit.py",
+    "tests/test_overlay_drag_listener_leak_behavior.py",
+    "tests/test_overlay_idle_rc2.py",
+    "tests/test_overlay_priority_rc2.py",
 )
 
 

@@ -108,7 +108,7 @@ def census(tmp_path_factory):
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", str(ctl), "-p", "logger_leak_census",
          "-q", "-p", "no:cacheprovider"],
-        cwd=str(work), env=env, capture_output=True, text=True,
+        cwd=str(work), env=env, capture_output=True, text=True, check=False,
     )
     payload = report_dir / "logger_leak_census.json"
     assert payload.is_file(), (
