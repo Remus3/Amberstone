@@ -584,8 +584,8 @@ def main(argv=None):
     for target in args.merge:
         if os.path.isdir(target):
             files.extend(sorted(
-                os.path.join(target, name) for name in os.listdir(target)
-                if name.startswith("live_write_trace") and name.endswith(".json")))
+                str(entry) for entry in Path(target).iterdir()
+                if entry.name.startswith("live_write_trace") and entry.name.endswith(".json")))
         else:
             files.append(target)
     if not files:

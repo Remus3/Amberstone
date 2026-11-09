@@ -36,6 +36,7 @@ import re
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 try:  # imported as tools.<mod> (tests) or run as a script from tools/
     from tools._perseus_rpc import read_json_reply
@@ -247,7 +248,7 @@ def sync(vault: Vault) -> dict:
 
     # 2. Memory files.
     if os.path.isdir(MEMDIR):
-        for filename in sorted(os.listdir(MEMDIR)):
+        for filename in sorted(entry.name for entry in Path(MEMDIR).iterdir()):
             if not filename.endswith(".md") or filename == "MEMORY.md":
                 continue
             name, desc, mtype, body = parse_memory_file(os.path.join(MEMDIR, filename))
