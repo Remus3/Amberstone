@@ -234,6 +234,7 @@ def test_no_batch_system_tool_resolves_from_the_current_folder(tmp_path):
            if k.upper() != "NODEFAULTCURRENTDIRECTORYINEXEPATH"}
     proc = subprocess.run(["cmd.exe", "/d", "/c", str(bat)], cwd=str(caller), env=env,
                           stdin=subprocess.DEVNULL, capture_output=True, timeout=120,
+                          check=False,
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     out = proc.stdout.decode("ascii", "replace")
     assert "TOOLS=DONE" in out, out

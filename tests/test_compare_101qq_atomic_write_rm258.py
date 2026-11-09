@@ -117,7 +117,7 @@ def test_bare_cli_writes_the_map(tmp_path):
         [sys.executable, str(_TOOL), "--json", str(_WRAPPED),
          "--out", str(out)],
         cwd=str(tmp_path), env=env, capture_output=True, text=True,
-        timeout=120, creationflags=flags)
+        timeout=120, check=False, creationflags=flags)
 
     assert proc.returncode == 0, proc.stderr
     assert out.read_bytes() == _expected_bytes()

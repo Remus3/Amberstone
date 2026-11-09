@@ -13,7 +13,8 @@ the most sites that no other lane branch had changed, none of them launcher / pa
 files); slice 2 (S144-P-602) states it at 24 sites in twelve more (every two-site file no other
 lane branch had changed, bar the gated-lane, launcher and held sibling-sweep files); slice 3
 (S144-P-603) states it at twelve one-site files no other lane branch had changed (none a ratchet
-module, helper or launcher file); every other
+module, helper or launcher file); slice 4 (S144-P-604) does the same for twelve more one-site
+files (ascii_escape_py through compare_101qq, alphabetically); every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
 a finding beyond the baseline fails ``test_no_new_findings``; a ``_FIXED`` file that offends again
@@ -51,15 +52,10 @@ _BASELINE = {
     "tests/test_a001_test_code_idiom_ratchet_s144p182.py": 1,
     "tests/test_agent3_suite_idiom_ratchet_s144p231.py": 1,
     "tests/test_ambiguous_name_ratchet_s144p475.py": 1,
-    "tests/test_ascii_escape_py_atomic_write_rm258.py": 1,
     "tests/test_ascii_source_sweep.py": 2,
     "tests/test_async_blocking_prod_ratchet_s144p213.py": 1,
     "tests/test_asyncsleep_camelalias_ratchet_s144p239.py": 1,
     "tests/test_b4_client_directive_gate.py": 1,
-    "tests/test_batch_embed_stamp_gate_a45b.py": 1,
-    "tests/test_batch_set_p_clears_first_rm826.py": 1,
-    "tests/test_batch_system_tools_rm826.py": 1,
-    "tests/test_bootstrap_dev_no_overwrite_s144p218.py": 1,
     "tests/test_branch_idiom_ratchet_s144p163.py": 1,
     "tests/test_bug_class_lint_bundle2_zero_ratchet_s144p321.py": 1,
     "tests/test_bug_class_lint_bundle3_zero_ratchet_s144p328.py": 1,
@@ -69,21 +65,14 @@ _BASELINE = {
     "tests/test_bug_class_lint_bundle_zero_ratchet_s144p319.py": 1,
     "tests/test_bugbear_gap_and_pie790_ratchet_s144p111.py": 1,
     "tests/test_build_portable_bundle_pkg.py": 1,
-    "tests/test_build_python_embed_atomic_write_rm258.py": 1,
-    "tests/test_cc_conditional_externalization_item245.py": 1,
-    "tests/test_champ_select_ban_provenance_dom.py": 1,
-    "tests/test_champ_select_pick_placeholder_provenance.py": 1,
-    "tests/test_champ_select_rune_follows_build.py": 1,
     "tests/test_ci_docs_guard_coverage.py": 1,
     "tests/test_ci_sibling_sweep_tree_wiring.py": 1,
     "tests/test_ci_watchdog.py": 1,
     "tests/test_clamp_expression_ratchet_s144p124.py": 1,
     "tests/test_claude_settings_template.py": 1,
     "tests/test_cli_logging_print_conversion_s144p214.py": 1,
-    "tests/test_coach_choices_trigger_render.py": 1,
     "tests/test_collapsible_if_ratchet_s144p161.py": 1,
     "tests/test_collection_idiom_ratchet_s144p141.py": 1,
-    "tests/test_compare_101qq_atomic_write_rm258.py": 1,
     "tests/test_container_builtin_return_ratchet_s144p160.py": 1,
     "tests/test_cost_tracker_compensating_cites_s144p52.py": 1,
     "tests/test_cost_tracker_vision_bucket_removed_s144p61.py": 1,
@@ -345,6 +334,18 @@ _FIXED = (
     "tests/test_audit_api_surface_gitignored_s144d13.py",
     "tests/test_b4_branch_review_panel_dom.py",
     "tests/test_base_coach_dclass_cites_s144p51.py",
+    "tests/test_ascii_escape_py_atomic_write_rm258.py",
+    "tests/test_batch_embed_stamp_gate_a45b.py",
+    "tests/test_batch_set_p_clears_first_rm826.py",
+    "tests/test_batch_system_tools_rm826.py",
+    "tests/test_bootstrap_dev_no_overwrite_s144p218.py",
+    "tests/test_build_python_embed_atomic_write_rm258.py",
+    "tests/test_cc_conditional_externalization_item245.py",
+    "tests/test_champ_select_ban_provenance_dom.py",
+    "tests/test_champ_select_pick_placeholder_provenance.py",
+    "tests/test_champ_select_rune_follows_build.py",
+    "tests/test_coach_choices_trigger_render.py",
+    "tests/test_compare_101qq_atomic_write_rm258.py",
 )
 
 

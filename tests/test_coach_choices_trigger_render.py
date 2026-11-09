@@ -30,7 +30,7 @@ def _run_node(script: str) -> dict:
     full = script.replace("__URI__", uri)
     res = subprocess.run(
         [node, "--input-type=module", "-e", full],
-        capture_output=True, text=True, cwd=str(REPO), timeout=30,
+        capture_output=True, text=True, cwd=str(REPO), timeout=30, check=False,
     )
     assert res.returncode == 0, f"node failed: {res.stderr.strip()}"
     return json.loads(res.stdout)
