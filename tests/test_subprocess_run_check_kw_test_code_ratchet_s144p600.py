@@ -66,6 +66,10 @@ slice 18 (S144-P-620) does the same for the next ten ratchet modules no other la
 changed, one site each (bug_class_lint_bundle6, bug_class_lint_bundle_zero, bugbear_gap_and_pie790,
 clamp_expression, cli_logging_print_conversion, collapsible_if, collection_idiom,
 container_builtin_return, d417_docstring_param and dead_weight_lint_bundle);
+slice 19 (S144-P-621) does the same for the next ten ratchet modules no other lane branch had
+changed, one site each (dict_fromkeys, dict_fromkeys_test_code, dict_items_test_code,
+dict_iter_unused_half, docindent_pathdot_yoda, env_name_case_prod, exception_chain,
+first_element_slice_test_code, furb105_print_empty_string and furb140_starmap_zero);
 every other
 offending file sits in ``_BASELINE`` below, which only shrinks. A row
 that stops offending (or offends less) fails ``test_baseline_is_exact`` until it shrinks or goes;
@@ -100,16 +104,6 @@ _BASELINE = {
     "tests/test_b4_client_directive_gate.py": 1,
     "tests/test_build_portable_bundle_pkg.py": 1,
     "tests/test_ci_sibling_sweep_tree_wiring.py": 1,
-    "tests/test_dict_fromkeys_ratchet_s144p137.py": 1,
-    "tests/test_dict_fromkeys_test_code_ratchet_s144p164.py": 1,
-    "tests/test_dict_items_test_code_ratchet_s144p169.py": 1,
-    "tests/test_dict_iter_unused_half_ratchet_s144p139.py": 1,
-    "tests/test_docindent_pathdot_yoda_ratchet_s144p240.py": 1,
-    "tests/test_env_name_case_prod_ratchet_s144p215.py": 1,
-    "tests/test_exception_chain_ratchet_s144p153.py": 1,
-    "tests/test_first_element_slice_test_code_ratchet_s144p167.py": 1,
-    "tests/test_furb105_print_empty_string_ratchet_s144p133.py": 1,
-    "tests/test_furb140_starmap_zero_ratchet_s144p521.py": 1,
     "tests/test_furb142_set_add_loop_ratchet_s144p518.py": 1,
     "tests/test_furb148_furb145_zero_ratchet_s144p515.py": 1,
     "tests/test_furb154_furb156_zero_ratchet_s144p517.py": 1,
@@ -398,6 +392,16 @@ _FIXED = (
     "tests/test_container_builtin_return_ratchet_s144p160.py",
     "tests/test_d417_docstring_param_ratchet_s144p509.py",
     "tests/test_dead_weight_lint_bundle_ratchet_s144p270.py",
+    "tests/test_dict_fromkeys_ratchet_s144p137.py",
+    "tests/test_dict_fromkeys_test_code_ratchet_s144p164.py",
+    "tests/test_dict_items_test_code_ratchet_s144p169.py",
+    "tests/test_dict_iter_unused_half_ratchet_s144p139.py",
+    "tests/test_docindent_pathdot_yoda_ratchet_s144p240.py",
+    "tests/test_env_name_case_prod_ratchet_s144p215.py",
+    "tests/test_exception_chain_ratchet_s144p153.py",
+    "tests/test_first_element_slice_test_code_ratchet_s144p167.py",
+    "tests/test_furb105_print_empty_string_ratchet_s144p133.py",
+    "tests/test_furb140_starmap_zero_ratchet_s144p521.py",
 )
 
 
