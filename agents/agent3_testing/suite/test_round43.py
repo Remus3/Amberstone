@@ -161,7 +161,7 @@ def test_llm_prompt_carries_allowed_ops(tmp_path: Path) -> None:
     """The instruction passed to the LLM must enumerate the allowed
     ops so the model can constrain itself."""
     from agents.agent1_lead import Scheduler
-    from agents.agent7_context.input_parser import InputParser, LLM_ALLOWED_OPS
+    from agents.agent7_context.input_parser import InputParser
 
     captured = {}
     def _spawn(agent, task_id, op_name, payload):
