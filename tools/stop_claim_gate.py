@@ -4358,20 +4358,191 @@ def _readings(command, extra=False):
 # in the same statement (`if ($x) { a } else { b }`, `} catch {`).
 _PS_BLOCK_CLOSE = re.compile(r"\}(?=\s*(?:else|elseif|catch|finally)\b)",
                              re.IGNORECASE)
+# S144-Q-170: a `}` that a `while` / `until` condition follows
+# (`do { a; b } until (..)`, `}until(..)`). PowerShell evaluates it (a
+# do-loop condition, or a bare `until (..)` command whose argument runs:
+# S144-Q-169), but a `;` or `|` inside the block left it in a statement
+# that opens with a command, and the condition scan reads only from a
+# statement's start. Measured with Windows PowerShell 5.1.
+_PS_LOOP_CLOSE = re.compile(r"\}(?=\s*(while|until)\s*\()", re.IGNORECASE)
+# S144-Q-170: the statement heads whose block a `while` / `until` condition
+# may follow, by the kind of block they open: a head before a `( ... )`
+# and one before the `{` itself. "try" is a statement block, but a `try`
+# with no catch / finally is a parse error, so no break follows it; only
+# a "do" block takes a `while (..)` with no body after it (a `while` after
+# any other block is a statement that needs its `{ }`: measured).
+_PS_PAREN_BLOCK_KINDS = {"if": "if", "elseif": "if", "while": "loop",
+                         "foreach": "loop", "for": "loop"}
+_PS_WORD_BLOCK_KINDS = {"do": "do", "try": "try", "else": "loop",
+                        "catch": "catch", "finally": "loop"}
+# The block a head must follow (`} else {`, `} catch {`), by head. A
+# second untyped catch is a parse error (verifier round 2), so a catch
+# follows only the try.
+_PS_AFTER_KINDS = {"elseif": ("if",), "else": ("if",),
+                   "catch": ("try",), "finally": ("try", "catch")}
+
+
+def _ps_back(masked, i, newlines=False):
+    """S144-Q-170: I moved back over spaces and tabs (and line breaks with
+    NEWLINES) before it."""
+    gap = " \t\r\n" if newlines else " \t"
+    while i > 0 and masked[i - 1] in gap:
+        i -= 1
+    return i
+
+
+def _ps_word_back(masked, i):
+    """S144-Q-170: (start, lower-cased text) of the word ending before I,
+    spaces and tabs skipped (the text is "" when no word ends there)."""
+    end = _ps_back(masked, i)
+    start = end
+    while start > 0 and (masked[start - 1].isalnum() or masked[start - 1] in "_-:"):
+        start -= 1
+    return start, masked[start:end].lower()
+
+
+def _ps_statement_start(masked, k, kinds, context, head=""):
+    """S144-Q-170: True when the word at K opens a statement. CONTEXT is the
+    stack of open brackets ((char, statements allowed) pairs); statements
+    start only at the top level, in a `$( )` / `@( )` or in a statement
+    block, never in a hash literal, a class / enum / switch body, a
+    scriptblock value, a group or an argument list (verifier round 2). There
+    the word stands first, or after a `;`, a line break, the `$(` / `@(`, or
+    the `{` / `}` of a statement block (KINDS; a `try` block's `}` does not:
+    a `try` needs its catch / finally). A `do` also counts after `=` or a
+    single `|` (measured, PS 5.1: `$x = do { .. } until (..)` runs, and
+    `1 | do` reads `do` as a command whose arguments run)."""
+    if context and not context[-1][1]:
+        return False
+    j = _ps_back(masked, k)
+    if j == 0:
+        return True
+    char = masked[j - 1]
+    if char in ";\n(":
+        return True  # a `(` here is the `$(` / `@(` that CONTEXT allowed
+    if char == "{":
+        return kinds.get(j - 1) is not None
+    if char == "}":
+        return kinds.get(j - 1) not in (None, "try")
+    if head == "do" and char == "=":
+        return True
+    return head == "do" and char == "|" and masked[j - 2:j - 1] != "|"
+
+
+def _ps_block_kind(masked, i, kinds, opens, context):
+    """S144-Q-170: the kind of block the `{` at I opens ("if", "do", "try",
+    "catch", "loop"), or None when it is no statement block _brace_broken
+    knows: `if` / `elseif` / `while` / `foreach` / `for` and their `( ... )`,
+    `do`, `try`, `else`, `catch` (with at most one `[Type]`), `finally`,
+    `function NAME`, `filter NAME`, each where PowerShell reads it as that
+    statement (_ps_statement_start, or right after the block it belongs
+    to). OPENS maps each `)` / `]` index to its opening one; CONTEXT is
+    _ps_statement_start's."""
+    j = _ps_back(masked, i)
+    if j > 0 and masked[j - 1] == ")":
+        o = opens.get(j - 1)
+        if o is None:
+            return None
+        k, word = _ps_word_back(masked, o)
+        kind = _PS_PAREN_BLOCK_KINDS.get(word)
+    elif j > 0 and masked[j - 1] == "]":  # `catch [Type] {`
+        o = opens.get(j - 1)
+        if o is None:
+            return None
+        k, word = _ps_word_back(masked, o)
+        kind = "catch" if word == "catch" else None
+    else:
+        k, word = _ps_word_back(masked, j)
+        kind = _PS_WORD_BLOCK_KINDS.get(word)
+        if kind is None and word:
+            k, head = _ps_word_back(masked, k)  # `function NAME {`
+            if head not in ("function", "filter"):
+                return None
+            kind, word = "loop", head
+    if kind is None:
+        return None
+    if word in _PS_AFTER_KINDS:
+        # the block before is a statement block only where CONTEXT allows one
+        j = _ps_back(masked, k, newlines=True)
+        after = j > 0 and masked[j - 1] == "}" and kinds.get(j - 1) in _PS_AFTER_KINDS[word]
+        return kind if after else None
+    return kind if _ps_statement_start(masked, k, kinds, context, word) else None
+
+
+def _ps_loop_block_closes(masked):
+    """S144-Q-170: {index of each `}` in MASKED (quotes masked) that closes a
+    statement block (_ps_block_kind) other than a `try` block: its kind}.
+    After such a `}` a `until (..)` runs (a do-loop condition, or a bare
+    `until` command whose argument runs), and after a "do" block a
+    `while (..)` does too (measured, PS 5.1: `do { a; b } until (..)`,
+    `do { a; b } while (..)`, `if (..) { a; b } until (..)`,
+    `function f { a; b } until (..)`, `try { } catch { a; b } until (..)`).
+    Any other block is left alone: a scriptblock or hash value before the
+    keyword is a parse error (`{ a; b } until (..)`, `$x = { .. } until
+    (..)`, `-not { .. } until (..)`, `[void] { .. } until (..)`,
+    `return { .. } until (..)`), and so is `try { a; b } until (..)`. A
+    backtick-escaped bracket is no bracket; text whose `( )` / `{ }` do not
+    balance is a parse error, so nothing is returned for it. One forward
+    pass; each backward look reads only the gap and word next to one
+    bracket, so the cost stays linear."""
+    kinds, braces, opens, squares, context = {}, [], {}, [], []
+    i, n = 0, len(masked)
+    while i < n:
+        char = masked[i]
+        if char == "`":
+            i += 2
+            continue
+        if char == "(":
+            context.append(("(", i > 0 and masked[i - 1] in "$@", i))
+        elif char == "[":
+            squares.append(i)
+        elif char == "]":
+            if squares:
+                opens[i] = squares.pop()
+        elif char == "{":
+            kind = _ps_block_kind(masked, i, kinds, opens, context)
+            kinds[i] = kind
+            braces.append(kind)
+            context.append(("{", kind is not None, i))
+        elif char in ")}":
+            if not context or context[-1][0] != ("(" if char == ")" else "{"):
+                return {}
+            opens[i] = context.pop()[2]
+            if char == "}":
+                kinds[i] = braces.pop()
+        i += 1
+    if context:
+        return {}
+    return {i: kind for i, kind in kinds.items()
+            if masked[i] == "}" and kind not in (None, "try")}
 
 
 def _brace_broken(text):
     """S144-Q-158: TEXT with a newline (a statement break) before each
     _PS_BLOCK_CLOSE outside quotes; the `}` opens the next statement, where
-    _keyword_unwrapped drops it with the block head after it."""
+    _keyword_unwrapped drops it with the block head after it.
+
+    S144-Q-170: and before each _PS_LOOP_CLOSE whose block is a statement
+    block (_ps_loop_block_closes; a `while` only after a `do` block), so
+    the `} while (..)` / `} until (..)` condition opens its statement and
+    the condition scan (_ps_condition_scan) reads it."""
     masked = _QUOTED.sub(lambda m: "x" * len(m.group(0)), text)
+    closes = [match.start() for match in _PS_BLOCK_CLOSE.finditer(masked)]
+    loops = [(match.start(), match.group(1).lower())
+             for match in _PS_LOOP_CLOSE.finditer(masked)]
+    if loops:
+        blocks = _ps_loop_block_closes(masked)
+        closes = sorted(closes + [i for i, word in loops if i in blocks
+                                  and (word == "until" or blocks[i] == "do")])
     pieces, start = [], 0
-    for match in _PS_BLOCK_CLOSE.finditer(masked):
-        before = masked[:match.start()].rstrip()
-        if not before or before[-1] in ";\n|&":
+    for close in closes:
+        j = close
+        while j > 0 and masked[j - 1].isspace():
+            j -= 1
+        if j == 0 or masked[j - 1] in ";\n|&":
             continue  # the `}` already opens its statement
-        pieces.extend((text[start:match.start()], "\n"))
-        start = match.start()
+        pieces.extend((text[start:close], "\n"))
+        start = close
     pieces.append(text[start:])
     return "".join(pieces)
 

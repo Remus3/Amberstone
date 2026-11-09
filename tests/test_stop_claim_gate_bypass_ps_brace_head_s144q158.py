@@ -296,7 +296,9 @@ def test_assignment_commands_keep_the_plain_body_first():
     ("a; } else { b }", "a; } else { b }"),
     # inside quotes, or not followed by a block keyword: left alone
     ("echo '} else {'", "echo '} else {'"),
-    ("do { a } while ($x)", "do { a } while ($x)"),
+    # (a `while` / `until` condition is broken out since S144-Q-170:
+    # tests/test_stop_claim_gate_bypass_ps_loop_close_s144q170.py)
+    ("do { a } whilst ($x)", "do { a } whilst ($x)"),
     ("if ($x) { a } elsewhere", "if ($x) { a } elsewhere"),
 ])
 def test_brace_broken(text, broken):
