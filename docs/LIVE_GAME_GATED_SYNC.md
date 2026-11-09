@@ -3102,6 +3102,36 @@ survivability flips below cannot roll otherwise.
   an Arena game's samples, proof lines or trace rows are not counted. Idle smoke 2026-11-04 20:19
   local: the dashboard was down, so `sample` read a `URLError` poll (the coach file still held an
   older game's `game_time_s`), and `grade` returned NO_RESULT, exit 1.
+  **AGE RE-CHECK 2026-11-08 (lane 9 s144 cycle 116, read at `edeed0091`; NOT a tick).** The CHECK,
+  the 90 s bound and the tool stand; two corrections. (1) BEHAVIOUR UNCHANGED since cycle 54:
+  `coaches/aram_coach.py` took about 780 churned lines after `d3bc4ce4c`, but on the debounce path
+  the only change is RM-1541 (`a2503f89e`), which removed a `try:` / `except Exception:` / `raise`
+  wrapper around `_run_coach`'s body and re-indented it (the two diff sides of that file, stripped of
+  indentation, differ by exactly those three lines; the decorator already catches). The tool's
+  source pins (`tests/test_gated_g312_aram_debounce_lag.py`, 20 passed this cycle) hold.
+  `coaches/_base_coach.py` changed only an append `newline=` and three dead `pass` lines; every
+  `_base_coach.py` line cite in this row still holds. LINE DRIFT in `coaches/aram_coach.py`, by
+  symbol: the flag read `_STATE_DEBOUNCE` is `:62` (was `:61`), the band `time_band` `:117` (was
+  `:116`), the `@safe_coach_output("ARAM")` decorator on `_run_coach` `:1005` (was `:1004`), the
+  silent missing-client return `if not self._client` `:1014` (was `:1013`), the feature-policy gate
+  `if not _fp_ok("aram", "live_coaching")` `:1009` (was `:1008`; the `:1008` cites in the TOOL
+  block and in (3) above now land on its import line); the debounce log `:1219-1223`, `timeout = 20`
+  `:1246`, `:1257`, `:1268`, `:1344`, `:1383` and `:1390-1393` hold. (2) PRECONDITION ROUTE CHANGED
+  by the 2026-10-31 launcher cutover (CLAUDE.md Topology): no scheduled task starts RC now, so "RC
+  started with `RC_ARAM_STATE_DEBOUNCE=1`" means the variable must be in rc-shell's environment when
+  it spawns `ops/launcher/service_host.py`. The services inherit it: `child_environment` in
+  `ops/launcher/service_host.py` starts from `os.environ` and applies only the overrides it is given
+  (the `services.json` ones - top-level `env` is `{}`, the `dev` profile overrides only
+  `RC_DASH_BIND` - plus first-run provisioning secrets such as `RC_DASH_TOKEN`; none touches this
+  flag), and the supervisor's RC `subprocess.Popen` in
+  `ops/rc_supervisor.py` passes no `env=`, so RC inherits too. Two routes, both operator / merger
+  acts, never the watcher's: set the variable at User scope and relaunch rc-shell from a process
+  started after the change, or add `"RC_ARAM_STATE_DEBOUNCE": "1"` to `profiles.dev.env` in
+  `ops/launcher/services.json` (a main-session path) and relaunch. Still unset at User and Machine
+  scope (read 2026-11-08 about 22:40 local), so the row stays undrainable until one of those lands. The
+  flag is read ONCE at import, so a running RC never picks it up; the zero-proof-line rule already
+  turns a flag-OFF game into INCONCLUSIVE. Idle this cycle: `:8888` and `:2999` both curl 000
+  (RC down, no game).
 - **G3-13** `[UNBLOCKED 2026-10-27 by RM-860 + RM-877; was BLOCKED ON WIRING 2026-10-24]` (was
   C15+C16) Augment OCR rank-vs-pick + live on-screen render validation.
   **READY (lane 9 PREP s144 cycle 8, source read at `f073b1ca1`; NOT a tick). The blocker below is
