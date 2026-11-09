@@ -126,7 +126,12 @@ from .abilities import (
     DamageBlock,
 )
 from .data_loader import DataSnapshot, canonical_mode
-from .dps import _ASSUMED_ABILITY_AMP_STACKS, _armor_factor, _periodic_proc_dps
+from .dps import (
+    _ASSUMED_ABILITY_AMP_STACKS,
+    _armor_factor,
+    _periodic_proc_dps,
+    _refuse_non_finite_targets,
+)
 from ._effects_types import CallContext
 from .ehp import effective_cc_duration
 from .effects import (
@@ -1147,6 +1152,12 @@ def compute_ability_dps(
         raise ValueError(
             f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
         )
+    _refuse_non_finite_targets(
+        target_armor=target_armor,
+        target_mr=target_mr,
+        target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
+    )
 
     level = clamp_level(level)
 
