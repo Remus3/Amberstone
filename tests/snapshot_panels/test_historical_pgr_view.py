@@ -22,7 +22,6 @@ conftest. Mirrors test_last_match_view.py's harness + _WS_STUB usage.
 ASCII-only authored content (CLAUDE.md hard rule).
 """
 import json
-import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
