@@ -83,6 +83,7 @@ _FACTORIES = {
     ("scripts/rewind_catchup.py", "open_db"): (1, "rw", "write-capable WAL connection for the catch-up batch job; the caller closes it"),
     ("scripts/rewind_catchup.py", "open_db_readonly"): (1, "ro", _RO_DB),
     ("scripts/rewind_scraper.py", "get_conn"): (1, "rw", "write-capable WAL connection for the scraper batch job; the caller closes it"),
+    ("tools/backfill_match_ingest_misattribution.py", "_connect"): (1, "rw", "S144-T-692: thin opener that sets the tolerant text_factory; its two callers in main (the read-only dry-run URI and the write path) each close it in a finally"),
     ("tools/gated_lx01_draft_check.py", "_ro"): (1, "ro", "read-only opener for a one-shot check script"),
     ("tools/gated_lx05_tape_check.py", "_ro"): (1, "ro", "read-only opener for a one-shot check script"),
     ("tools/replay_laning_verdict_validate.py", "_connect_readonly"): (2, "ro", "read-only first, with a documented plain-path fallback for a path a URI cannot name; the caller closes it"),
