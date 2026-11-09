@@ -53,18 +53,39 @@ def test_overflow_bind_skips_only_the_bad_champion():
     assert layers["synergy"]["sub_score"] is not None
 
 
-def test_matchup_layer_absorbs_overflow():
-    out = draft_score._matchup_layer(_conn(), [_HUGE], [1], None)
+def _overflow(*_a, **_k):
+    raise OverflowError("Python int too large to convert to SQLite INTEGER")
+
+
+# s156 C9 merger: the true-audit lane's 185b0b056 hardened the primitives
+# themselves - an id outside SQLite int64 now reads as zero games instead of
+# raising - so a huge id no longer reaches these layer catches. The catch is
+# still the layer's contract (any other OverflowError source), so the three
+# layer tests inject the error into the primitive explicitly.
+def test_primitive_reads_an_out_of_range_id_as_zero_games():
+    from core import draft_elo_db
+    assert draft_elo_db.matchup_winrate(_conn(), _HUGE, 1, None)[:2] == (0, 0)
+    assert draft_elo_db.solo_winrate(_conn(), _HUGE, None)[:2] == (0, 0)
+
+
+def test_matchup_layer_absorbs_overflow(monkeypatch):
+    from core import draft_elo_db
+    monkeypatch.setattr(draft_elo_db, "matchup_winrate", _overflow)
+    out = draft_score._matchup_layer(_conn(), [1], [2], None)
     assert out["sub_score"] is None
 
 
-def test_synergy_layer_absorbs_overflow():
-    out = draft_score._synergy_layer(_conn(), [_HUGE, 1], None, None, None)
+def test_synergy_layer_absorbs_overflow(monkeypatch):
+    from core import draft_elo_db
+    monkeypatch.setattr(draft_elo_db, "pair_winrate", _overflow)
+    out = draft_score._synergy_layer(_conn(), [1, 2], None, None, None)
     assert out["sub_score"] is None
 
 
-def test_base_wr_layer_absorbs_overflow():
-    out = draft_score._base_wr_layer(_conn(), [_HUGE], None)
+def test_base_wr_layer_absorbs_overflow(monkeypatch):
+    from core import draft_elo_db
+    monkeypatch.setattr(draft_elo_db, "solo_winrate", _overflow)
+    out = draft_score._base_wr_layer(_conn(), [1], None)
     assert out["sub_score"] is None
 
 
