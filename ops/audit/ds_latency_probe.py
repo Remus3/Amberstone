@@ -48,7 +48,7 @@ def _bench(fn, n):
 
 def _p(ts, pct):
     ss = sorted(ts)
-    i = max(0, min(len(ss) - 1, int(math.ceil(pct / 100.0 * len(ss))) - 1))
+    i = max(0, min(len(ss) - 1, math.ceil(pct / 100.0 * len(ss)) - 1))
     return ss[i]
 
 

@@ -110,7 +110,7 @@ def truth_from(doc, wall: float) -> dict | None:
                for v in (gold, level, gt)):
         return None
     return {"wall": float(wall), "game_time": float(gt),
-            "gold": int(math.floor(gold)), "level": int(level)}
+            "gold": math.floor(gold), "level": int(level)}
 
 
 def grade_value(field: str, value, t0: dict, t1: dict, tc: float) -> tuple[str, str]:

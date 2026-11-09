@@ -25,7 +25,14 @@ Slice 3 (S144-P-502) drops the cast at the 14 sites in twelve more modules, thre
 ``math.floor`` (which return ``int`` since Python 3): coach_integration/archetype_dispatch, core/math_core,
 core/vision_template_match, core/zoi_influence, dashboard/_wave_timing, routes_ds_combo, routes_ds_shape,
 routes_duo_synergy, routes_pickban (two sites), routes_replay_events, tft/engine/recommend and
-tft/tft_scouting (two sites). The baseline keeps only the files below.
+tft/tft_scouting (two sites).
+
+Slice 4 (S144-P-503) drops the cast at the 13 sites in nine files (ops/audit/ds_latency_probe,
+ops/loop/lane_progress, scripts/postmortem_analyze (two), tools/gated_g239_wave_clock (two),
+tools/gated_g241_ocr_native, tools/gated_lx04_cast_check, tools/gated_lx11_minimap_check (three,
+two on one line), tools/repair_spend_ledger, tools/run_phase2_perf); no other lane branch
+changed any of them. The baseline keeps only the files below: agents/supervisor.py (another lane
+branch changed it) and the two lane/ds extractors.
 
 Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the
 vendored ``ops/fleet_kit`` and the ``agents/agent3_testing/suite`` suite are out of scope. The run
@@ -60,20 +67,20 @@ _OUT_OF_SCOPE = (
 # file -> finding count that stays (module docstring). Only shrinks.
 _BASELINE = {
     "agents/supervisor.py": 1,
-    "ops/audit/ds_latency_probe.py": 1,
-    "ops/loop/lane_progress.py": 1,
-    "scripts/postmortem_analyze.py": 2,
     "tools/daemon_slayer_cdragon_ratio_extract.py": 1,
     "tools/daemon_slayer_cdragon_spell_extract.py": 1,
-    "tools/gated_g239_wave_clock.py": 2,
-    "tools/gated_g241_ocr_native.py": 1,
-    "tools/gated_lx04_cast_check.py": 1,
-    "tools/gated_lx11_minimap_check.py": 3,
-    "tools/repair_spend_ledger.py": 1,
-    "tools/run_phase2_perf.py": 1,
 }
 _FIXED = (
     "coach_integration/archetype_dispatch.py",
+    "ops/audit/ds_latency_probe.py",
+    "ops/loop/lane_progress.py",
+    "scripts/postmortem_analyze.py",
+    "tools/gated_g239_wave_clock.py",
+    "tools/gated_g241_ocr_native.py",
+    "tools/gated_lx04_cast_check.py",
+    "tools/gated_lx11_minimap_check.py",
+    "tools/repair_spend_ledger.py",
+    "tools/run_phase2_perf.py",
     "core/aram_item_interaction_context.py",
     "core/death_recap.py",
     "core/decision_detector.py",

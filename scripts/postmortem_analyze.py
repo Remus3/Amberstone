@@ -442,12 +442,12 @@ def aggregate_role_grades(grades: list[dict]) -> dict:
         scores = by_role_scores[role]
         by_role_out[role] = {
             "count": len(scores),
-            "median_score": int(round(_median(scores))),
+            "median_score": round(_median(scores)),
             "tier_distribution": by_role_tiers[role],
         }
     overall_out = {
         "count": len(overall_scores),
-        "median_score": int(round(_median(overall_scores))),
+        "median_score": round(_median(overall_scores)),
         "tier_distribution": overall_tiers,
     }
     return {

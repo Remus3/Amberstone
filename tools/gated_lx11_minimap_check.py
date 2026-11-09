@@ -173,7 +173,7 @@ def canvas_size(index_html: Path = INDEX_HTML) -> tuple[int, int]:
 
 def badge_radius(w: int) -> int:
     # dev.js _replayMapDraw: R = Math.round(W / 30); JS rounds .5 up
-    return int(math.floor(w / 30 + 0.5))
+    return math.floor(w / 30 + 0.5)
 
 
 def _dist(a, b) -> float:
@@ -324,7 +324,7 @@ def _cdist(px, col) -> float:
 
 
 def _px(img, x, y):
-    xi, yi = int(round(x)), int(round(y))
+    xi, yi = round(x), round(y)
     if not (0 <= xi < img.width and 0 <= yi < img.height):
         return None
     return img.getpixel((xi, yi))
