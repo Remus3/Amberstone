@@ -822,7 +822,7 @@ def _asset_stamp_mtime() -> float:
     mtimes = []
     for _rel, p in _static.asset_fileset():
         try:
-            mtimes.append(os.path.getmtime(p))
+            mtimes.append(p.stat().st_mtime)
         except OSError:
             pass
     return max(mtimes) if mtimes else 0.0

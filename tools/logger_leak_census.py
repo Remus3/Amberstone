@@ -222,7 +222,7 @@ class _Census:
         add("exempt it, THEN arm the gate. Do not arm it on this report alone.")
         text = "\n".join(lines)
         try:
-            os.makedirs(_REPORT_DIR, exist_ok=True)
+            Path(_REPORT_DIR).mkdir(parents=True, exist_ok=True)
             with open(_REPORT_JSON, "w", encoding="utf-8", newline="\n") as fh:
                 json.dump(payload, fh, indent=2)
             with open(_REPORT_TXT, "w", encoding="utf-8", newline="\n") as fh:
