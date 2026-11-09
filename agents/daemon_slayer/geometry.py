@@ -41,6 +41,9 @@ function is fail-soft: any exception returns 1.0.
 
 from __future__ import annotations
 
+import math
+from collections.abc import Mapping
+
 # ---------------------------------------------------------------------------
 # Module constants
 # ---------------------------------------------------------------------------
@@ -64,6 +67,27 @@ _CONFLATED_RADIUS_SENTINELS: frozenset[float] = frozenset({210.0, 100.0})
 _CONE_DISTANCE_SENTINELS: frozenset[float] = frozenset({0.0, 100.0})
 
 
+def _magnitude(value: object) -> float | None:
+    """A sidecar datum as a FINITE float, or None.
+
+    The sidecar is third-party JSON.  None and a bool (a flag, never a
+    magnitude) are None; so is anything ``float()`` refuses (TypeError /
+    ValueError), an integer too large for a float (OverflowError - the class
+    a ``(TypeError, ValueError)`` handler misses) and a non-finite result
+    (``nan`` slips past every ``<= 0`` and sentinel test; ``inf`` is no
+    length).  A numeric string stays accepted, as the accessors' own tests
+    pin.  Every real sidecar value is a finite float, so this is the identity
+    on real data.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
+
+
 # ---------------------------------------------------------------------------
 # Shape classification
 # ---------------------------------------------------------------------------
@@ -82,10 +106,18 @@ def classify_spell_shape(geometry: dict | None) -> str:
     -------
     One of ``"line"``, ``"cone"``, ``"circle"``, ``"point"``, or
     ``"unknown"``.  ``"unknown"`` is returned only when the input is None
-    or an empty dict.  A dict with keys present but all null values falls
-    through to ``"point"``.
+    or an empty dict, or when it is not a mapping at all (a truthy list or
+    string used to raise AttributeError).  A dict with keys present but all
+    null values falls through to ``"point"``.
+
+    ``cast_radius`` is read through ``_magnitude`` before the circle test, so
+    a non-finite, non-numeric or bool radius (and the string form of a
+    sentinel) is no circle - the same values ``spell_cast_radius`` rejects -
+    instead of scaling AoE damage off a radius nothing can measure.  A finite
+    zero or negative radius still classifies as before (one live row carries
+    one).
     """
-    if not geometry:
+    if not isinstance(geometry, Mapping) or not geometry:
         return "unknown"
 
     # Line skillshot: non-null line_width
@@ -100,7 +132,7 @@ def classify_spell_shape(geometry: dict | None) -> str:
         return "cone"
 
     # Circle: non-null cast_radius AND NOT conflated AND not a sentinel value
-    cast_radius = geometry.get("cast_radius")
+    cast_radius = _magnitude(geometry.get("cast_radius"))
     cast_radius_conflated = geometry.get("cast_radius_conflated", False)
     if (
         cast_radius is not None
@@ -147,7 +179,10 @@ def aoe_multiplier(geometry: dict | None, targets_hit: int) -> float:
     targets_hit:
         Number of enemy champions hit in the simulated teamfight window.
         Values below 1 are clamped to 1; values above ``_AOE_TARGET_CAP``
-        are clamped to ``_AOE_TARGET_CAP``.
+        are clamped to ``_AOE_TARGET_CAP``.  A fraction truncates (``int``).
+        ``+inf`` is above the cap and clamps to it, ``-inf`` to 1; a NaN,
+        None or non-numeric count is the single-target 1.0 (it used to raise
+        ValueError / OverflowError / TypeError out of this public function).
 
     Returns
     -------
@@ -155,7 +190,14 @@ def aoe_multiplier(geometry: dict | None, targets_hit: int) -> float:
     """
     if not is_aoe_shape(geometry):
         return 1.0
-    clamped = min(max(int(targets_hit), 1), _AOE_TARGET_CAP)
+    try:
+        count = int(targets_hit)
+    except OverflowError:
+        # int() overflows only on an infinity; its sign picks the clamp end.
+        count = _AOE_TARGET_CAP if targets_hit > 0 else 1
+    except (TypeError, ValueError):
+        return 1.0
+    clamped = min(max(count, 1), _AOE_TARGET_CAP)
     return float(clamped)
 
 
@@ -226,7 +268,8 @@ def spell_cone_angle(
 
     Returns the positive ``cone_angle`` float for a cone spell, or None when the
     spell has no geometry, no ``cone_angle`` (line / circle / point), or a
-    non-positive / non-numeric angle.  The 0.0 sentinel (CDragon fills it for
+    non-positive / non-numeric / non-finite / bool angle (``_magnitude``).
+    The 0.0 sentinel (CDragon fills it for
     radial-cone spells such as Aurelion Sol Q) returns None via the ``<= 0``
     guard, while ``classify_spell_shape`` still treats it as a cone (presence is
     magnitude-blind) - so the lift is byte-identical to classification.  A None
@@ -237,11 +280,8 @@ def spell_cone_angle(
         geometry = snapshot.spell_geometry(champ_id, slot)
         if not geometry:
             return None
-        angle = geometry.get("cone_angle")
-        if angle is None:
-            return None
-        angle = float(angle)
-        if angle <= 0:
+        angle = _magnitude(geometry.get("cone_angle"))
+        if angle is None or angle <= 0:
             return None
         return angle
     except (TypeError, ValueError, AttributeError):
@@ -275,7 +315,8 @@ def spell_cone_distance(
 
     Returns the positive ``cone_distance`` float for a cone spell, or None when
     the spell has no geometry, no ``cone_distance`` (line / circle / point), a
-    non-positive / non-numeric reach, or a CDragon placeholder sentinel.  Unlike
+    non-positive / non-numeric / non-finite reach (``_magnitude``), or a
+    CDragon placeholder sentinel.  Unlike
     the cone-angle accessor (whose guard is ``<= 0`` only), ``cone_distance``
     carries TWO boilerplate sentinels - 0.0 and 100.0 (``_CONE_DISTANCE_SENTINELS``)
     - that both reject to None.  The 0.0 sentinel still classifies as a cone
@@ -287,10 +328,9 @@ def spell_cone_distance(
         geometry = snapshot.spell_geometry(champ_id, slot)
         if not geometry:
             return None
-        distance = geometry.get("cone_distance")
-        if distance is None or isinstance(distance, bool):
+        distance = _magnitude(geometry.get("cone_distance"))
+        if distance is None:
             return None
-        distance = float(distance)
         if distance <= 0 or distance in _CONE_DISTANCE_SENTINELS:
             return None
         return distance
@@ -326,10 +366,11 @@ def spell_cast_radius(
 
     Returns the positive ``cast_radius`` float for a circle spell, or None when
     the spell has no geometry, no ``cast_radius`` (line / cone / point), a
-    non-positive / non-numeric radius, a CDragon placeholder sentinel, or a
-    CONFLATED radius.  This is a TRIPLE guard - the delta from the cone-distance
-    dual-sentinel and the cone-angle ``<= 0``-only guards: ``cast_radius`` rejects
-    via (a) the purpose-built ``cast_radius_conflated`` BOOL FLAG - the live
+    non-positive / non-numeric / non-finite radius (``_magnitude``), a CDragon
+    placeholder sentinel, or a CONFLATED radius.  This is a TRIPLE guard - the
+    delta from the cone-distance dual-sentinel and the cone-angle ``<= 0``-only
+    guards: ``cast_radius`` rejects via (a) the purpose-built
+    ``cast_radius_conflated`` BOOL FLAG - the live
     discriminator (192 conflated spells at 16.11.1), (b) the
     ``_CONFLATED_RADIUS_SENTINELS`` frozenset shared with ``classify_spell_shape``
     (belt-and-suspenders; 0 non-conflated sentinels live), and (c) the
@@ -342,12 +383,11 @@ def spell_cast_radius(
         geometry = snapshot.spell_geometry(champ_id, slot)
         if not geometry:
             return None
-        radius = geometry.get("cast_radius")
-        if radius is None or isinstance(radius, bool):
+        radius = _magnitude(geometry.get("cast_radius"))
+        if radius is None:
             return None
         if geometry.get("cast_radius_conflated"):
             return None
-        radius = float(radius)
         if radius <= 0 or radius in _CONFLATED_RADIUS_SENTINELS:
             return None
         return radius
