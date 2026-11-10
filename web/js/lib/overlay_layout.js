@@ -353,6 +353,26 @@ function _fitDropGroups(el) {
 // A refit is skipped mid-drag (the drag owns top/left; the drop re-applies).
 const _tallWatch = new Map();
 
+// S144-U-285: the ids of the widgets being dragged right now, written by the
+// drag's begin / end (_installDrag). Every re-place path - _placeAll (the
+// body-wide and game-family observers), the resize handler and the tall
+// refit - asks _midDrag before calling _applyPos. _applyPos bottom-anchors a
+// tall widget whose stored y is in the lower half, while the drag tracks the
+// cursor by top, so an unguarded re-place snapped a held widget away from the
+// cursor on every panel repaint. Keyed by id as well as by the class, because
+// the drag follows a mount its renderer swapped (_liveEl), and a fresh node
+// carries no ovx-dragging class.
+const _dragIds = new Set();
+
+function _midDrag(el, id) {
+  if (_dragIds.has(id)) return true;
+  try {
+    return !!(el && el.classList && el.classList.contains("ovx-dragging"));
+  } catch (_e) {
+    return false;
+  }
+}
+
 function _tallTargets(el) {
   const out = [el];
   for (const k of el.children) {
@@ -390,7 +410,7 @@ function _watchTall(el, w) {
   st = { el, mo: null, ro: null, raf: 0, prim: [], sync: () => {} };
   _tallWatch.set(w.id, st);
   const refit = () => {
-    if (!el.isConnected || el.classList.contains("ovx-dragging")) return;
+    if (!el.isConnected || _midDrag(el, w.id)) return;
     _applyPos(el, _posFor(w));
   };
   if (hasRO) {
@@ -760,6 +780,7 @@ function _installDrag(el, w) {
   const end = (e) => {
     if (!dragging) return;
     dragging = false;
+    _dragIds.delete(w.id);
     el.classList.remove("ovx-dragging");
     // Drop the temporary zone mark unless the widget is a zone in its own
     // right (w-enemyspells) - stripping that would kill its tap-to-interact.
@@ -800,6 +821,7 @@ function _installDrag(el, w) {
       Number.isFinite(oh) && oh > 0 ? oh * scale : NaN);
     originX = eff.x;
     originY = eff.y;
+    _dragIds.add(w.id);
     el.classList.add("ovx-dragging");
     // The rc-shell zone machine (clickthrough_zones.js) hit-tests e.target per
     // pointermove; once capture retargets moves to `el`, the handle's own
@@ -945,7 +967,8 @@ function _placeAll() {
     // interactive on hover in PASSIVE, no ACTIVE toggle needed. (A/B/C #rn-choices
     // is already a static zone in clickthrough_zones.js.)
     if (w.zone) el.setAttribute("data-rc-zone", "");
-    _applyPos(el, _posFor(w));
+    // The drag owns a held widget's position; the drop re-applies it.
+    if (!_midDrag(el, w.id)) _applyPos(el, _posFor(w));
     _makeHandle(el, w);
     _makeHideMenu(el, w);
     _makeHotkeyHint(el, w);
@@ -1443,7 +1466,7 @@ export function initOverlayLayout() {
   window.addEventListener("resize", () => {
     for (const w of _registry()) {
       const el = document.querySelector(w.sel);
-      if (el) _applyPos(el, _posFor(w));
+      if (el && !_midDrag(el, w.id)) _applyPos(el, _posFor(w));
     }
   });
 
@@ -1521,6 +1544,7 @@ export const _internals = {
   _watchTall,
   _tallTargets,
   _tallWatch,
+  _midDrag,
   _clampXY,
   _effectiveXY,
   MIN_VISIBLE,

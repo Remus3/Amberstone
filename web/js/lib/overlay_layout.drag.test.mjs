@@ -344,6 +344,35 @@ test("a mid-drag mount rebuild does not kill the drag (writes go to the live nod
     "position must land on the re-rendered live mount");
 });
 
+// S144-U-285: every re-place path (_placeAll, resize, the tall refit) asks
+// _midDrag before _applyPos. It must answer for the WIDGET, so a fresh mount
+// with no ovx-dragging class still reads as held, and stop answering on drop.
+// Synthetic ids: earlier tests here press w-build and w-lead and never release
+// them (their window stubs are replaced), and the held set is module state.
+test("_midDrag follows the dragged widget id across a mount swap, until the drop", () => {
+  const dom = installDom();
+  setActive(dom, false);
+  const w = { id: "w-s144u285", sel: "#w-s144u285", x: 100, y: 200, tier: "ambient" };
+  const other = { id: "w-s144u285-other" };
+  I._setLayout({});
+  const el = makeNode();
+  el.dataset.ovxId = w.id;
+  I._makeHandle(el, w);
+  const fresh = makeNode();
+  assert.strictEqual(I._midDrag(fresh, w.id), false, "not held before the press");
+
+  handleOf(el)._dispatch("pointerdown", pDown(100, 500));
+  assert.strictEqual(I._midDrag(el, w.id), true, "the wired node is held");
+  assert.strictEqual(I._midDrag(fresh, w.id), true,
+    "a swapped-in mount without the class is still held");
+  assert.strictEqual(I._midDrag(makeNode(), other.id), false,
+    "another widget is not held");
+
+  globalThis.window._dispatch("pointerup", pUp(100, 500));
+  assert.strictEqual(I._midDrag(el, w.id), false, "released on drop");
+  assert.strictEqual(I._midDrag(fresh, w.id), false);
+});
+
 // --- (c) hit-testing: borders and foreign widgets never start a body drag -----
 
 test("ACTIVE: a border/chrome press (target === el) does not start a drag", () => {
