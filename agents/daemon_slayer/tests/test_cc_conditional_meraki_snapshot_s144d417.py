@@ -26,12 +26,21 @@ S144-D-419. Each quote listed in ``_NOTE_QUOTES`` is in the registry row's
 string of the row: the listed ``effects_descriptions`` index, else any
 ``effects_descriptions`` entry or the ``notes`` field. Whitespace runs in the
 snapshot string and the quote are collapsed to one space before matching.
+
+S144-D-421..422. Every ``effects_descriptions[N]`` cite in a registry note is
+followed by a ``_NOTE_QUOTES`` quote listed with index N, and every quote
+listed with an index is cited that way (``index_cite_mismatches``).
+
+S144-D-423. The ``effects_descriptions[N]`` cites in ``CC_CONDITIONAL_NOTES.md``
+comments are exactly ``_DOC_CITES``, and each quote's parts occur in order in
+entry N of the named snapshot form (every form when none is named).
 """
 
 from __future__ import annotations
 
 import copy
 import json
+import re
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
@@ -336,9 +345,8 @@ _FLOORS: dict[Row, float] = {
 # (row, quote as written in the row's notes, the effects_descriptions index
 # that holds it, or None to search every effects_descriptions entry and the
 # notes field of the row's snapshot forms). The Karma W form-1 note quotes
-# "Mantra Bonus: Focused Resolve's root duration is increased ... Renewal
-# scales with Mantra's rank" as effects_descriptions[0]; the snapshot holds
-# the two parts in entries 0 and 1, so they are listed as two quotes.
+# its two parts as effects_descriptions[0] and [1], the entries that hold them
+# (S144-D-421; it cited one joined quote as [0] before).
 _NOTE_QUOTES: tuple[tuple[Row, str, Optional[int]], ...] = (
     (("Ashe", "R", None), "stunning them for 1 : 3.5 (based on distance traveled) seconds", None),
     (("Briar", "R", None), "fears all non-marked targets for 1.5 seconds", None),
@@ -484,3 +492,130 @@ def test_parts_in_order_rejects_a_reordered_or_missing_part() -> None:
     assert not _parts_in_order("a b c d", ["c", "a"])
     assert not _parts_in_order("a b c d", ["a", "e"])
     assert _parts_in_order("a  b\nc", ["a b c"])
+
+
+# ---------------------------------------------------------------------------
+# S144-D-421..422 - every effects_descriptions[N] cite in a registry note names
+# the entry that holds the quote it introduces.
+# ---------------------------------------------------------------------------
+
+_INDEX_CITE = re.compile(r"effects_descriptions\[(\d+)\]")
+
+
+def index_cite_mismatches(
+    row: Row, notes: str, quotes: tuple[tuple[Row, str, Optional[int]], ...]
+) -> list[tuple[Any, ...]]:
+    """Each ``effects_descriptions[N]`` cite in ``notes`` must be followed, past
+    spaces, an opening parenthesis and quote marks, by a ``_NOTE_QUOTES`` quote of
+    the same row listed with index N; each quote listed with an index must be so
+    cited."""
+    listed = [(q, i) for r, q, i in quotes if r == row and i is not None]
+    out: list[tuple[Any, ...]] = []
+    cited: set[tuple[str, int]] = set()
+    for m in _INDEX_CITE.finditer(notes):
+        n = int(m.group(1))
+        tail = notes[m.end() :].lstrip(" ('\"")
+        hits = [(q, i) for q, i in listed if tail.startswith(q)]
+        if not hits:
+            out.append(("cite-without-listed-quote", n, tail[:40]))
+            continue
+        q, i = hits[0]
+        if i != n:
+            out.append(("cite-index-mismatch", n, i, q))
+        cited.add((q, i))
+    out.extend(("listed-index-without-cite", i, q) for q, i in listed if (q, i) not in cited)
+    return out
+
+
+def test_every_note_index_cite_names_the_entry_holding_its_quote() -> None:
+    records = _records()
+    cites = {_row(r) for r in records if _INDEX_CITE.search(r["notes"])}
+    assert cites == {
+        ("Hecarim", "R", None),
+        ("Renekton", "W", None),
+        ("XinZhao", "Q", None),
+        ("XinZhao", "R", None),
+        ("Karma", "W", 1),
+    }
+    bad = {_row(r): index_cite_mismatches(_row(r), r["notes"], _NOTE_QUOTES) for r in records}
+    assert {row: m for row, m in bad.items() if m} == {}
+
+
+def test_index_cite_check_catches_a_planted_miscite() -> None:
+    row = ("Karma", "W", 1)
+    first = "Mantra Bonus: Focused Resolve's root duration is increased"
+    second = "Renewal scales with Mantra's rank"
+    good = f"(effects_descriptions[0] '{first}' and effects_descriptions[1] '{second}')"
+    assert index_cite_mismatches(row, good, _NOTE_QUOTES) == []
+    swapped = f"(effects_descriptions[1] '{first}' and effects_descriptions[1] '{second}')"
+    assert ("cite-index-mismatch", 1, 0, first) in index_cite_mismatches(row, swapped, _NOTE_QUOTES)
+    joined = f"(effects_descriptions[0] '{first} ... {second}')"
+    assert ("listed-index-without-cite", 1, second) in index_cite_mismatches(row, joined, _NOTE_QUOTES)
+    unlisted = good + " effects_descriptions[2] 'Karma heals'"
+    assert ("cite-without-listed-quote", 2, "Karma heals'") in index_cite_mismatches(row, unlisted, _NOTE_QUOTES)
+
+
+# ---------------------------------------------------------------------------
+# S144-D-423 - every effects_descriptions[N] cite in a CC_CONDITIONAL_NOTES.md
+# comment names the entry of the snapshot form that holds its quote. The
+# construction-notes string cites are the registry notes, checked above.
+# ---------------------------------------------------------------------------
+
+_NOTES_DOC_PATH = _REGISTRY_PATH.with_name("CC_CONDITIONAL_NOTES.md")
+_DOC_CITE = re.compile(r'effects_descriptions\[(\d+)\](?:\s+for\s+form(?:_index=|\s)(\d+))?:?\s*\(?"([^"]*)"')
+
+# (champion, spell, form named in the comment or None, cited index, quote's
+# first 40 characters), in document order.
+_DOC_CITES: tuple[tuple[str, str, Optional[int], int, str], ...] = (
+    ("Zac", "Q", 0, 2, "If the two Stretching Strikes affect dif"),
+    ("Ornn", "E", 0, 1, "If Ornn collides with terrain during the"),
+    ("Garen", "Q", 0, 1, "Additionally, Garen empowers his next ba"),
+    ("Syndra", "E", 0, 1, "Dark Spheres can be knocked back for 950"),
+    ("Udyr", "E", 0, 0, "Active - Stance: Udyr enters Stampede St"),
+    ("KSante", "W", 0, 2, "Recast: K'Sante dashes in the direction "),
+    ("Taliyah", "E", 0, 1, "Enemies that dash or are knocked over a "),
+    ("XinZhao", "Q", None, 1, "The third attack knocks up the target fo"),
+    ("XinZhao", "R", None, 1, "Active: Xin Zhao sweeps his spear around"),
+    ("Hecarim", "R", None, 1, "Upon arrival, he fears nearby enemies fo"),
+    ("Gnar", "W", 1, 0, "Active: Gnar slams his arm down in the t"),
+    ("Sylas", "E", 1, 0, "Active: Sylas whips out his chains in th"),
+    ("Jayce", "E", 0, 0, "Active: Jayce roots the target enemy ove"),
+    ("Rell", "W", 0, 1, "Active: Rell becomes Dismounted and leap"),
+    ("Rell", "W", 1, 1, "Active: Rell becomes Mounted, gaining 30"),
+)
+
+
+def _doc_comment_text() -> str:
+    lines = _NOTES_DOC_PATH.read_text(encoding="utf-8").split("\n")
+    return " ".join(ln.strip()[1:].strip() for ln in lines if ln.strip().startswith("#"))
+
+
+def doc_cites(comment_text: str) -> list[tuple[Optional[int], int, str]]:
+    """(form named or None, cited index, full quote) for every comment cite."""
+    out: list[tuple[Optional[int], int, str]] = []
+    for m in _DOC_CITE.finditer(comment_text):
+        form = None if m.group(2) is None else int(m.group(2))
+        out.append((form, int(m.group(1)), m.group(3)))
+    return out
+
+
+def test_doc_comment_cites_are_exactly_the_pinned_list() -> None:
+    text = _doc_comment_text()
+    cites = doc_cites(text)
+    assert len(re.findall(r"effects_descriptions\[\d+\]", text)) == len(cites) == len(_DOC_CITES)
+    assert [(f, n, q[:40]) for f, n, q in cites] == [(f, n, p) for _c, _s, f, n, p in _DOC_CITES]
+
+
+@pytest.mark.parametrize(
+    ("pin", "cite"), list(zip(_DOC_CITES, doc_cites(_doc_comment_text()))), ids=lambda v: str(v[:4])
+)
+def test_doc_comment_cite_names_the_entry_holding_its_quote(
+    live_data: Mapping[str, Any], pin: tuple[str, str, Optional[int], int, str], cite: tuple[Optional[int], int, str]
+) -> None:
+    champion, spell, form, index, _prefix = pin
+    forms = list(live_data[champion][spell])
+    if form is not None:
+        forms = [f for f in forms if f.get("form_index") == form]
+    assert forms
+    parts = [_squash(p) for p in cite[2].split(" ... ")]
+    assert any(_parts_in_order(t, parts) for t in _snapshot_strings(forms, index))

@@ -3388,12 +3388,13 @@ def _build_per_spell_cc_conditional_forms() -> (
     # this is the SECOND consumer.
     #
     # Mechanic schema-lift-verified: the form 1 effects_descriptions
-    # text "Mantra Bonus: Focused Resolve's root duration is
+    # entry [0] "Mantra Bonus: Focused Resolve's root duration is
     # increased. Karma heals for 17% (+ 1% per 100 AP) of her missing
     # health once on-cast, and again once the tether lasts its full
-    # duration or the target dies while tethered. Renewal scales with
-    # Mantra's rank." confirms the mechanic (the bonus root values
-    # are NOT in the structured leveling[] but the duration EXTENSION
+    # duration or the target dies while tethered." and entry [1]
+    # "Renewal scales with Mantra's rank." confirm the mechanic (the
+    # bonus root values are NOT in the structured leveling[] but the
+    # duration EXTENSION
     # values ARE in the Meraki damage_blocks Root Duration Increase
     # modifier; the schema lift confirms the mechanic in-source).
     #
@@ -3428,8 +3429,9 @@ def _build_per_spell_cc_conditional_forms() -> (
             "of COND_FRENZY_STATE after Renekton W wave 9. Mechanic "
             "captured by ENGINE 1.46.0 Meraki schema lift "
             "(effects_descriptions[0] 'Mantra Bonus: Focused "
-            "Resolve's root duration is increased ... Renewal "
-            "scales with Mantra's rank'). Coexists with the primary "
+            "Resolve's root duration is increased' and "
+            "effects_descriptions[1] 'Renewal scales with "
+            "Mantra's rank'). Coexists with the primary "
             "registry wave 1 Karma W default-form entry; this is "
             "the FIRST same-spell-slot schema-lift entry in the "
             "sidecar registry. Form-explicit override key shape: "
@@ -4000,7 +4002,7 @@ def _build_per_spell_cc_conditional_forms() -> (
     # the target 0.6s flat + flings them 150 units over Rell over
     # 0.4s.
     #
-    # Mechanic per Meraki effects_descriptions[0] for form_index=1:
+    # Mechanic per Meraki effects_descriptions[1] for form_index=1:
     # "Active: Rell becomes Mounted, gaining 30% bonus movement
     # speed decaying over 2 seconds and empowering her next basic
     # attack within 3.5 seconds to have a 0.2-second cast time, gain
