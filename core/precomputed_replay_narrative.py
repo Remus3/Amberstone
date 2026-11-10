@@ -588,6 +588,7 @@ def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
             total_score, components, percentile_grade) for downstream use.
 
     Pure + deterministic; never raises (fail-soft to an empty-but-shaped dict).
+
     """
     out: dict[str, Any] = {
         "ok": False,

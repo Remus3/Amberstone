@@ -60,6 +60,7 @@ def log_replay_narrative(
         The record dict on a fresh write, None on a gate miss (blank match_id),
         a dedup skip, or any failure (fail-soft). Never raises - safe on any
         call path.
+
     """
     try:
         if not match_id or not isinstance(match_id, str):

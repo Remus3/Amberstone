@@ -596,6 +596,7 @@ def compute_match_wpa(
 
     If the match has no timeline data, returns ``{"ok": False,
     "error": "no_timeline", "match_id": ...}``.
+
     """
     # Pull frames first - one shot, group by timestamp.
     frame_cur = conn.execute(

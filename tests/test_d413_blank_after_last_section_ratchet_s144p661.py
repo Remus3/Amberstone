@@ -11,14 +11,16 @@ changes outside a string, so behaviour and every line cite by symbol are unchang
 
 A second slice (S144-P-662) gave ten more core modules (aram_deterministic_coach, arena_augment_playline,
 arena_deterministic_coach, decision_detector, event_callouts, feature_policy, heal_threat, macro_context,
-macro_response, obj_participation) the same one blank line.
+macro_response, obj_participation) the same one blank line, and a third (S144-P-663) seven more (core/post_game_rubric,
+post_game_score, precomputed_replay_narrative, replay_narrative_shadow, vision_fusion, dashboard/_deterministic_coaching,
+dashboard/builders_last_match: 9 sites).
 
-Not touched, and named in ``_BASELINE`` with their counts (24 sites in 19 files), so the baseline drains in later
+Not touched, and named in ``_BASELINE`` with their counts (15 sites in 12 files), so the baseline drains in later
 slices or when the owner lands:
 
 - ``agents/daemon_slayer/`` and ``core/ds_*`` carry the ds lane's engine tree and its unlanded edits.
 - ``tools/ds_cdragon_drift_audit.py`` is the ds lane's tool.
-- The rest are small production modules left for a later slice (one finding each, mostly).
+- ``core/objective_playbook.py`` carries the true-audit lane's unlanded edit (S144-T-748..752).
 
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
@@ -57,13 +59,6 @@ _BASELINE = {
     "core/ds_capability_gap.py": 1,
     "core/ds_scaling_hint.py": 1,
     "core/objective_playbook.py": 1,
-    "core/post_game_rubric.py": 1,
-    "core/post_game_score.py": 1,
-    "core/precomputed_replay_narrative.py": 1,
-    "core/replay_narrative_shadow.py": 1,
-    "core/vision_fusion.py": 1,
-    "dashboard/_deterministic_coaching.py": 2,
-    "dashboard/builders_last_match.py": 2,
     "tools/ds_cdragon_drift_audit.py": 1,
 }
 

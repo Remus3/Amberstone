@@ -535,6 +535,7 @@ def compute_role_grade(
         percentile_grade ("S+", "S", "A", "B", "C", or "D"). The components
         dict gains a `carry_efficiency` entry ONLY when carry_efficiency or
         assume_carry_share_grade is True.
+
     """
     if not isinstance(stats, Mapping):
         stats = {}
