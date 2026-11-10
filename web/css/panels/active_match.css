@@ -522,10 +522,20 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   border: 1px solid var(--border);
   border-radius: 6px;
 }
+/* S144-U-300: the name line wraps, and the name is never cut. One nowrap
+ * ellipsised line cut recorded names at every size: a 3-star
+ * "CrimsonRaptor" by 11px at the 1920x920 baseline, every 11-letter name
+ * ("Brambleback") from 1600px down, 37 - 55px at the 923px companion
+ * width, with a hover on the title as the only read (the S144-U-291
+ * ruling for the items line). The star drops under a name that fills the
+ * line; a name wider than the chip breaks at its word joints (<wbr>,
+ * active_match.js _amTftUnitName), then anywhere. A taller chip grows
+ * inside the fixed board box, which scrolls with its "+N BELOW" cue. */
 #view-active-match .am-tft-unit-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px;
+  column-gap: 6px;
   min-width: 0;
 }
 #view-active-match .am-tft-unit-name {
@@ -534,9 +544,8 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   font-weight: 700;
   line-height: 1.25;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 /* Star level: 1-star in the dim step; an upgraded unit in amber
  * (--signal-warn, global token) - audit S2: the theme --gold is the same hue as

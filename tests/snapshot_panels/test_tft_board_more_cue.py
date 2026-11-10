@@ -55,6 +55,18 @@ board, which overflows at those sizes (two columns at 760 and 800).
 
 Drive path: /?ui_mock=1&mode=tft_round#active-match (web/data/ui_mock/
 active_match_tft_round.json, a recorded S134 round row: seven units).
+
+S144-U-300 (a unit name wraps whole inside its chip instead of
+ellipsising; the star drops under a name that fills the line) changed which
+rows fit again: "Fiddlesticks" (109 px at --fs-sm bold) plus its star no
+longer share one line in a narrow chip, so its grid row is one line taller.
+Where the chip is narrower than the name itself (923x1280, 480x800) the
+name takes two lines; where the name fits but not its star (768x1024,
+1024x768, 760x900) the star takes the second line. Re-measured: the
+recorded board now hides one unit at the 923x1280 companion size and at
+480x800 (was none) and three at 768x1024 (was one); the items board four
+at 1024x768 (was one). The pinned-scroll case scrolls 145 px, one row of
+the taller third row.
 """
 import copy
 import json
@@ -159,16 +171,17 @@ def _row_model_below(m: dict) -> int:
 _SIZES = [(1920, 920), (1440, 900), (1199, 920), (1100, 900), (1024, 768),
           (923, 1280), (768, 1024), (640, 900), (480, 800)]
 
-# Units below the box per size, measured once (S144-U-291, headless) and
+# Units below the box per size, measured (S144-U-291, re-measured for the
+# wrapped unit name in S144-U-300, headless) and
 # pinned as constants so the sweep has an expectation worked out apart from
 # the code's counting. The recorded board is mostly a no-cue check now (its
 # third row fits whole at three columns); the items board carries the cue.
 _EXPECTED_BELOW = {
     "recorded": {(1920, 920): 0, (1440, 900): 0, (1199, 920): 0,
-                 (1100, 900): 0, (1024, 768): 0, (923, 1280): 0,
-                 (768, 1024): 1, (640, 900): 0, (480, 800): 0},
+                 (1100, 900): 0, (1024, 768): 0, (923, 1280): 1,
+                 (768, 1024): 3, (640, 900): 0, (480, 800): 1},
     "items": {(1920, 920): 0, (1440, 900): 2, (1199, 920): 3,
-              (1100, 900): 1, (1024, 768): 1, (923, 1280): 4,
+              (1100, 900): 1, (1024, 768): 4, (923, 1280): 4,
               (768, 1024): 3, (640, 900): 3, (480, 800): 4},
 }
 
@@ -281,10 +294,12 @@ def test_cue_counts_the_units_below_the_box(w, h, board, mock_server,
 
 def test_companion_size_shows_the_hidden_row(mock_server, pw_browser):
     # The RM-1766 FUTURE case, at the 923x1280 companion size: three
-    # columns. The recorded board's third row (one no-item chip) now fits
-    # whole in the 252 px box (S144-U-291), so nothing is below and the cue
-    # hides; seven units of three items each are five-line chips there, one
-    # whole row, so four units are below and the cue says so.
+    # columns. The recorded board's third row (one no-item chip) fitted
+    # whole in the 252 px box after S144-U-291; since S144-U-300 the second
+    # row holds "Fiddlesticks" on two lines, so the third row's one chip
+    # ("Vi") is below again and the cue says "+1 BELOW". Seven units of
+    # three items each are five-line chips there, one whole row, so four
+    # units are below and the cue says so.
     ctx, page, errors = _open(pw_browser, mock_server, 923, 1280)
     try:
         rec = page.evaluate(_MEASURE)
@@ -292,8 +307,8 @@ def test_companion_size_shows_the_hidden_row(mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, errors[:3]
-    assert rec["cols"] == 3 and rec["below"] == 0, rec
-    assert not _shown(rec["cue"]), rec["cue"]
+    assert rec["cols"] == 3 and rec["below"] == 1, rec
+    assert _shown(rec["cue"]) and rec["cue"]["text"] == "+1 BELOW", rec["cue"]
     ctx, page, errors = _open(pw_browser, mock_server, 923, 1280,
                               _items_board())
     try:
@@ -341,15 +356,18 @@ def test_cue_stays_pinned_while_units_remain_below(mock_server, pw_browser):
     # The RM-1771 verifier SHOULD-FIX: at 760 px (two columns, the last
     # two-column width band since RM-1772 stacks the panes at 720 and
     # under) three units of the items board are below; scrolling one chip
-    # row (120 px: a 110 px four-line row and its 6 px gap, plus 4) must
-    # not scroll the cue away with the eyebrow. The pinned row
+    # row must not scroll the cue away with the eyebrow. 145 px: the third
+    # row ("Diana", "Fiddlesticks") is a 110 px four-line row plus one
+    # line: at 760 px the name fits its chip but its star does not, and
+    # drops under it (S144-U-300), so 120 px no longer brings the row
+    # wholly inside (139.2 px does). The pinned row
     # paints the pane colour, so no chip shows through it.
     ctx, page, errors = _open(pw_browser, mock_server, 760, 900, _items_board())
     try:
         before = page.evaluate(_MEASURE)
         page.evaluate(
             "() => { document.querySelector("
-            "'#am-build-body .am-tft-board-wrap').scrollTop = 120; }")
+            "'#am-build-body .am-tft-board-wrap').scrollTop = 145; }")
         page.evaluate(_SETTLE)
         after = page.evaluate(_MEASURE)
     finally:
@@ -357,7 +375,7 @@ def test_cue_stays_pinned_while_units_remain_below(mock_server, pw_browser):
         ctx.close()
     assert not errors, errors[:3]
     assert before["below"] == 3, before
-    assert after["scrollTop"] == 120, after["scrollTop"]
+    assert after["scrollTop"] == 145, after["scrollTop"]
     assert 1 <= after["below"] < 3, after
     assert _shown(after["cue"]), after["cue"]
     assert after["cue"]["text"] == _units_word(after["below"]), after["cue"]

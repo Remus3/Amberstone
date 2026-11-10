@@ -39,10 +39,10 @@ and the empty track still differs from the pane (1.12:1 to 1.27:1, was
 1.18 to 1.40), so the bar's full extent stays visible.
 
 Not pinned here, by design: at the 721-800 px three-pane band the board
-eyebrow, the lobby eyebrow and a long unit name ("Fiddlesticks") ellipsise.
-That is the RM-1766 / RM-1767 contract (the eyebrow's title and the chip's
-title / aria-label carry the whole text), pinned by test_tft_board_more_cue
-and test_tft_board_unit_columns.
+eyebrow and the lobby eyebrow ellipsise. That is the RM-1766 / RM-1767
+contract (the eyebrow's title carries the whole text), pinned by
+test_tft_board_more_cue. A long unit name ("Fiddlesticks") ellipsised there
+too until S144-U-300; it now wraps whole (test_tft_board_unit_names_whole).
 """
 import pytest
 

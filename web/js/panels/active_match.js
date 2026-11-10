@@ -1457,6 +1457,20 @@ function _amEmptyIn(wrap, text) {
 // Local board: one chip per unit - name + star level on the first line, its
 // items (or "no items") on the second. Pure DOM, textContent only. An empty
 // board renders its empty-state line inside the same fixed-height wrapper.
+// S144-U-300: the unit name wraps whole inside its chip (active_match.css
+// .am-tft-unit-name), so give it word joints to break at. The client's
+// names are joined ("CrimsonRaptor", "MasterYi_AD"): a <wbr> between a
+// lower-case letter and a capital, and after an underscore, makes
+// "Crimson" / "Raptor" the two lines instead of "CrimsonRapt" / "or". A
+// <wbr> carries no character, so textContent stays the name.
+function _amTftUnitName(el, name) {
+  const parts = String(name).split(/(?<=[a-z])(?=[A-Z])|(?<=_)(?=.)/);
+  parts.forEach((part, i) => {
+    if (i) el.appendChild(document.createElement("wbr"));
+    el.appendChild(document.createTextNode(part));
+  });
+}
+
 function _amTftBoardNode(board, emptyText, asOf) {
   const wrap = document.createElement("div");
   wrap.className = "am-tft-board-wrap";
@@ -1498,7 +1512,7 @@ function _amTftBoardNode(board, emptyText, asOf) {
     top.className = "am-tft-unit-top";
     const name = document.createElement("span");
     name.className = "am-tft-unit-name";
-    name.textContent = u.name;
+    _amTftUnitName(name, u.name);
     const star = document.createElement("span");
     star.className = "am-tft-unit-star";
     star.dataset.star = String(u.star);
