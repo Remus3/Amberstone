@@ -259,9 +259,9 @@ def test_non_admitted_ally_tokens_and_their_holders():
     tokens = {"allied turrets": [], "oathsworn ally": [], "rakan": []}
     for champion, slot, form in _all_forms(body):
         toks = car._affects_tokens(form.get("affects"))
-        for tok in tokens:
+        for tok, holders in tokens.items():
             if tok in toks:
-                tokens[tok].append((champion, slot, car._ALLY_TOKEN in toks))
+                holders.append((champion, slot, car._ALLY_TOKEN in toks))
     assert tokens == {
         "allied turrets": [("Janna", "E", True)],
         "oathsworn ally": [("Kalista", "R", False)],

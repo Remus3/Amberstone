@@ -261,7 +261,7 @@ def test_loaded_forms_no_longer_serve_the_flipped_block() -> None:
 
 def test_docstring_says_first_damage_block_not_block_zero() -> None:
     assert 'block[0] (the one ``block_strategy="first"`` picks)' not in _DOC
-    assert "first ``attribute_kind == \"damage\"`` block" in _DOC
+    assert 'first ``attribute_kind == "damage"`` block' in _DOC
     for name in ("Aatrox R", "Janna E", "Olaf R", "Sona W", "Vayne R"):
         assert name in _DOC, name
 
@@ -322,7 +322,7 @@ def test_mel_r_is_routed_to_damage_ordinal_one_magic_damage() -> None:
 
 
 def test_mel_r_comment_matches_the_registry() -> None:
-    assert "block 2 (\"Total Damage\")" not in _SRC_FLAT
+    assert 'block 2 ("Total Damage")' not in _SRC_FLAT
     assert 'damage-block ordinal 1 (raw block 2, "Magic Damage"' in _SRC_FLAT
 
 

@@ -167,9 +167,10 @@ def test_proc_heal_mirror_stat_block_matches_live() -> None:
 
 
 def test_proc_heal_cites_the_slice_c_test_by_its_path() -> None:
-    cite = "agents/daemon_slayer/tests/test_r144_mirror_slice_c.py"
+    path = Path(__file__).resolve().parent / "test_r144_mirror_slice_c.py"
+    cite = path.relative_to(_REPO_ROOT).as_posix()
     assert cite in _HEAL_DOC
-    assert (_REPO_ROOT / cite).is_file()
+    assert path.is_file()
 
 
 # --------------------------------------------------------------------------

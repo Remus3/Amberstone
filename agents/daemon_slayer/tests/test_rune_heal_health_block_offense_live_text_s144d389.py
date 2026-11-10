@@ -108,6 +108,13 @@ def missing_fragments(live: dict[int, tuple[str, str, str]], fragments: dict[int
     return [rid for rid, frag in fragments.items() if _plain(frag) not in _plain(live[rid][2])]
 
 
+def _test_cite(name: str) -> str:
+    """The repo-relative cite of a sibling test file, anchored on ``__file__``."""
+    path = Path(__file__).resolve().parent / name
+    assert path.is_file(), path
+    return path.relative_to(_REPO_ROOT).as_posix()
+
+
 def unresolved_test_paths(text: str) -> list[str]:
     """Every ``...tests/<name>.py`` cite that does not resolve from the repo root."""
     cited = re.findall(r"``((?:[\w]+/)*tests/[\w]+\.py)``", text)
@@ -166,7 +173,7 @@ def test_self_heal_routing_list_owner_lanes_are_live(vendored) -> None:
 
 def test_self_heal_cited_test_paths_resolve() -> None:
     src = _source(_rune_self_heal)
-    assert "agents/daemon_slayer/tests/test_rune_self_heal_r142.py" in src
+    assert _test_cite("test_rune_self_heal_r142.py") in src
     assert unresolved_test_paths(src) == []
 
 
@@ -206,7 +213,7 @@ def test_health_grasp_anti_drift_sentence_spans_the_vendored_range() -> None:
 
 def test_health_cited_test_paths_resolve() -> None:
     src = _source(_rune_health_grants)
-    assert "agents/daemon_slayer/tests/test_rune_health_grants_r136.py" in src
+    assert _test_cite("test_rune_health_grants_r136.py") in src
     assert unresolved_test_paths(src) == []
 
 
@@ -238,7 +245,7 @@ def test_flat_resist_rejection_already_names_this_lane() -> None:
 
 def test_flat_cited_test_paths_resolve() -> None:
     src = _source(_rune_flat_mitigation)
-    assert "agents/daemon_slayer/tests/test_rune_flat_mitigation_rm101.py" in src
+    assert _test_cite("test_rune_flat_mitigation_rm101.py") in src
     assert unresolved_test_paths(src) == []
 
 
@@ -309,7 +316,7 @@ def test_offense_tree_counts_are_live(live) -> None:
 
 def test_offense_cited_test_paths_resolve() -> None:
     src = _source(_rune_offense_grants)
-    assert "agents/daemon_slayer/tests/test_rune_offense_saturation_r158.py" in src
+    assert _test_cite("test_rune_offense_saturation_r158.py") in src
     assert unresolved_test_paths(src) == []
     assert "nothing reads it except" not in src
 
@@ -336,7 +343,7 @@ def test_offense_jack_drift_is_named_where_the_old_text_is_quoted(vendored) -> N
 )
 def test_jack_tiers_match_the_live_text(live) -> None:
     m = _rune_offense_grants
-    assert (m._JACK_AF_AT_LOW_TIER, m._JACK_AF_AT_HIGH_TIER) == _jack_tiers(live[8316][2])
+    assert _jack_tiers(live[8316][2]) == (m._JACK_AF_AT_LOW_TIER, m._JACK_AF_AT_HIGH_TIER)
 
 
 @pytest.mark.xfail(
