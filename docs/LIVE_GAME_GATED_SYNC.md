@@ -6151,6 +6151,41 @@ waits on the RM-875 wiring.)
   the live glance stays the only check. Predicates unchanged; nothing ticked; no count moved.
 - **G5-10** `[HOLD 2026-06-20]` (was D8) Arena S2 augment level-up + crafting - trigger on the 26.09
   PBE (separate PBE install). ADR-010. NOT part of the current Arena sitting.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 146, S144-G-134, source read at `998ae3e1f`, DS patch
+  16.22.1, ENGINE_VERSION 1.291.0; no game up; NOT a tick; the HOLD tag is left for a human).** (1) THE
+  HOLD TRIGGER FIRED BEFORE THE ADR WAS WRITTEN: the cdragon Arena snapshot DS committed for 16.9.1
+  (added `c306f56d4` 2026-05-03, pruned `c95396fd4`; read it with
+  `git show c306f56d4:data/daemon_slayer/16.9.1/arena_augments.json`) already carries the level-up and
+  crafting data: 202 of 219 records have a `MaxLevel` dataValue (1.0 x55, 2.0 x100, 3.0 x47) and three
+  Crafting records exist - `CraftingAugmentSlot` ("Unlock your ...th Augment Slot"), `CraftingSellAugment`
+  ("Remove an Augment. Gain @AugmentLevelsToGrant@ random Augment Levels") and `CraftingPrisStatAnvil`.
+  The tracked 16.22.1 snapshot has 208 of 225 with `MaxLevel` (1.0 x62, 2.0 x103, 3.0 x43) and the same
+  three. ADR-010 (dated 2026-05-21) waited on a 26.09 PBE that live data had already passed; no PBE
+  install is needed. (2) ADR-010'S PREDICTED SCHEMA IS REFUTED: no record has `levels[]`,
+  `dataValuesByLevel` or any record-level key containing "level" (the level data lives INSIDE
+  dataValues: `MaxLevel`, `AugmentLevelsToGrant`); both snapshots carry the same ten record keys
+  (id, apiName, name, rarity, desc, tooltip, dataValues, calculations, iconLarge, iconSmall). Of the
+  dataValues entries, 1003 of 1016 (16.9.1) and 1024 of 1037 (16.22.1) are 7-element lists, the other
+  13 scalar 0; 149 / 147 augments have list entries that differ along the list. Which index is which in-game level is NOT on disk (no snapshot older
+  than 16.9.1 exists to diff; the `augments.py:92-93` comment calls the axis "stack/level"). (3) THE
+  ADR SEAM WAS NEVER ADDED AND ITS CITED SIGNATURE DRIFTED: `compute_augment_stats` (`augments.py:332`)
+  takes `(augments, snapshot)`, with no `level` kwarg (ADR-010 cites `(augment_or_id, *, mode=...)`);
+  `_v` (`augments.py:94`) reads index 0; `tests/test_arena_s2_augment_leveling.py` does not exist.
+  `StatContext.level_index` (`augment_formula_eval.py:148`, read at `:243`) exists, but `git grep`
+  finds no tracked non-test `.py` that builds a `StatContext` outside that module, and no tracked
+  non-test `.py` / `.js` / `.mjs` names `MaxLevel` or `AugmentLevel`. So every Arena game since
+  26.09 has run the level-0 path that ADR-010's Trade-off section describes (fail-soft under-credit of
+  a leveled augment). (4) STILL LIVE-GATED: only the index-to-level mapping and the on-screen level
+  read. LCU and `:2999` carry no augment data (CLAUDE.md Settled; augment-OCR is the path), and no RC
+  producer emits a live augment level, so the live half is blocked on wiring, not on a PBE. READY
+  predicate for a later sitting, stated before any game: in an Arena game, read one leveled augment's
+  tooltip number off the screen at level 1 and at level 2; PASS iff each value equals exactly one
+  entry of that key's 7-element list in the patch's `arena_augments.json`, and two augments give the
+  same index for the same level. Evidence: value, augment apiName, level, frame ts and game round.
+  PROPOSAL (a human edits; the lane does not): re-tag `[HOLD 2026-06-20]` as BLOCKED ON WIRING with
+  this note as the reason. The data-lift half (read `MaxLevel`, thread a level through
+  `compute_augment_stats` / `StatContext.level_index`) is a "Not actually live-gated" candidate for the
+  DS roadmap (S144-G-135), Tier-2. Nothing ticked; no count moved.
 - **G5-11** Focus-board Arena team layout - the GATE 5 verification RM-844 / RM-854 left owed ("shadow-only
   ... until a gated row verifies it in GATE 5", `BACKLOG.md` RM-844). Filed and READIED 2026-10-27 by lane 9 PREP (s144 cycle 11,
   source read at `d257c4f43`; NOT a tick). The shadow column (`core/arena_coach_shadow.py:139`
