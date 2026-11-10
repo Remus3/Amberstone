@@ -40,8 +40,10 @@ for a BURST scorer at t=0 but leaves the SUSTAINED scorers - which evaluate a
 completed six-item build well past the 10-minute mark - crediting zero AD/AP for
 a rune that grants up to 101 AD or 168 AP. This registry closes that.
 
-DDragon 16.14.1 ``runesReforged.json`` longDescs, quoted VERBATIM (tags stripped,
-text otherwise unaltered):
+The DDragon ``runesReforged.json`` longDescs, quoted VERBATIM with only the
+tooltip markup stripped (``<lol-uikit-tooltipped-keyword>``, ``<font>`` and
+``<speed>``; every other tag is kept). The first four are identical in every
+vendored snapshot 16.11.1..16.22.1:
 
   * 8236 Gathering Storm: "Every 10 min gain AP or AD, adaptive.<br><br><i>10
     min</i>: + 8 AP or 5 AD <br><i>20 min</i>: + 24 AP or 14 AD<br><i>30 min</i>:
@@ -59,9 +61,18 @@ text otherwise unaltered):
     every <i>Legend</i> stack (<statGood>max 10 stacks</statGood>).<br><br>Earn
     progress toward <i>Legend</i> stacks for every champion takedown, epic
     monster takedown, large monster kill, and minion kill."
-  * 8316 Jack Of All Trades: "For each different stat gained from items, gain
-    one Jack stack. Each stack grants you 1 Ability Haste.<br><br>Gain 10 or 25
-    bonus Adaptive Force at 5 and 10 stacks, respectively."
+  * 8316 Jack Of All Trades, as it reads from 16.15.1 on: "For each different
+    stat gained from items, gain one Jack stack. Each stack grants you 1 Ability
+    Haste.<br><br>Gain 8 or 20 bonus Adaptive Force at 5 and 10 stacks,
+    respectively."
+
+JACK OF ALL TRADES'S TIERS DRIFTED, FILED AS S144-D-393 (Tier-2). The vendored
+snapshots 16.11.1..16.14.1 read "Gain 10 or 25 bonus Adaptive Force", and the
+``_JACK_AF_AT_LOW_TIER`` / ``_JACK_AF_AT_HIGH_TIER`` constants below still pay
+those older tiers. Re-seeding them changes scorer output (an ENGINE_VERSION
+bump), so it is filed rather than done here; the strict xfail in
+``agents/daemon_slayer/tests/test_rune_heal_health_block_offense_live_text_s144d389.py``
+flips when it lands. Every "10 or 25" below describes the code as it stands.
 
 LEGEND: ALACRITY IS A FRACTION, AND THE FOLD IS WHERE IT GOES WRONG. The value
 this entry returns is a BONUS-AS FRACTION (0.03 at zero stacks, 0.18 at the
@@ -259,10 +270,12 @@ seeded ALLOWLIST like its R132 sibling, and the rest of the Sorcery + Domination
     offensive stat.
   * 8234 Celerity, 8275 Nimbus Cloak, 8105 Relentless Hunter, 8230 Phase Rush
     grant MOVE SPEED only - no offensive stat on any of them.
-  * 9923 Hail of Blades grants "120% (60% for ranged champions) Attack Speed ...
+  * 9923 Hail of Blades grants "90% (60% for ranged champions) Attack Speed ...
     for up to 3 attacks" - a real offensive stat, but a 3-attack window on a 10s
     cooldown is a BURST-window steroid, and it is ALREADY registered and scored
     as ``rune_procs.RUNE_PROCS[9923]``. Adding it here would double-credit it.
+    (That entry's on-hit magnitudes lag the text that changed in 16.16.1 -
+    filed as S144-D-394, Tier-2.)
   * 8112 Electrocute, 8128 Dark Harvest, 8229 Arcane Comet, 8214 Summon Aery,
     8237 Scorch, 8126 Cheap Shot, 8143 Sudden Impact, 8992 Deathfire Touch are
     PROC DAMAGE, already registered in ``rune_procs.py`` and scored by the burst
@@ -277,7 +290,8 @@ runes) and SORCERY 8200 (13 runes); R159 swept the remaining three - PRECISION
 8000 (13), INSPIRATION 8300 (12) and RESOLVE 8400 (12) - so every one of the 62
 runes the live DDragon feed carries is now either seeded above or recorded in
 ``_ADJUDICATED_NON_GRANTS`` below: 5 registered (8010, 8233, 8236, 8316, 9104)
-and 57 adjudicated. ``tests/test_rune_offense_saturation_r158.py`` fails if the
+and 57 adjudicated.
+``agents/daemon_slayer/tests/test_rune_offense_saturation_r158.py`` fails if the
 feed ever carries a rune - in any tree - that is neither, if an adjudicated id
 stops existing, if a tree id in its sweep list is not in the feed, or if the
 feed grows a tree the list omits. The exclusions list above is no longer prose
@@ -320,7 +334,7 @@ from .stats import aggregate_item_stats
 _ASSUMED_GAME_MINUTE: float = 15.0
 
 # Gathering Storm 8236 milestone table, transcribed VERBATIM from the DDragon
-# 16.14.1 longDesc as (minute, ad, ap) rows. NOT interpolated: the feed states
+# longDesc (unchanged across the vendored snapshots) as (minute, ad, ap) rows. NOT interpolated: the feed states
 # "Every 10 min gain" and enumerates discrete rows, and the AD-side first
 # differences (9, 15, 19, 24, 29) are plainly non-linear. Rows are ascending by
 # minute; the lookup takes the LAST row whose minute has been reached.
@@ -388,9 +402,11 @@ _LEGEND_MAX_STACKS: float = 10.0
 # and ANTI-conservative on our own build.
 _ASSUMED_LEGEND_STACKS: float = 10.0
 
-# Jack Of All Trades 8316, verbatim: "For each different stat gained from items,
-# gain one Jack stack. Each stack grants you 1 Ability Haste. Gain 10 or 25
-# bonus Adaptive Force at 5 and 10 stacks, respectively." Units on the two tier
+# Jack Of All Trades 8316, verbatim as of 16.11.1..16.14.1: "For each different
+# stat gained from items, gain one Jack stack. Each stack grants you 1 Ability
+# Haste. Gain 10 or 25 bonus Adaptive Force at 5 and 10 stacks, respectively."
+# From 16.15.1 the text reads "Gain 8 or 20"; these two tier constants have not
+# been re-seeded (S144-D-393, Tier-2, filed). Units on the two tier
 # values are ADAPTIVE FORCE, so they convert through
 # _ADAPTIVE_FORCE_AD_PER_AF exactly as Conqueror's do. The tiers REPLACE one
 # another ("10 or 25"), they do not sum, and nothing is granted below the low
@@ -846,10 +862,11 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
             (0.0, 0.0, legend_alacrity_grant(legend_stacks))
         ),
     ),
-    # 8316 Jack Of All Trades (Inspiration, slot 2) - verbatim: "For each
-    # different stat gained from items, gain one Jack stack. Each stack grants
-    # you 1 Ability Haste. Gain 10 or 25 bonus Adaptive Force at 5 and 10
-    # stacks, respectively."
+    # 8316 Jack Of All Trades (Inspiration, slot 2) - verbatim as of
+    # 16.11.1..16.14.1: "For each different stat gained from items, gain one
+    # Jack stack. Each stack grants you 1 Ability Haste. Gain 10 or 25 bonus
+    # Adaptive Force at 5 and 10 stacks, respectively." 16.15.1 on reads "Gain
+    # 8 or 20"; this entry still pays 10 / 25 (S144-D-393, Tier-2, filed).
     #
     # THE ONLY ENTRY WHOSE COUNT IS COMPUTED. Conqueror's and Alacrity's stack
     # counts are unobservable in-game counters and therefore knobs with stated
@@ -899,14 +916,16 @@ _RUNE_OFFENSE_GRANTS: dict[str, RuneOffenseEntry] = {
 # forever and nothing in the repo would say a word.
 #
 # This mapping is the machine-readable half of the same claim. It carries no
-# magnitudes and no behavior: nothing reads it except
-# ``tests/test_rune_offense_saturation_r158.py``, which asserts that every rune
+# magnitudes and no behavior: no production code reads it. Its guard is
+# ``agents/daemon_slayer/tests/test_rune_offense_saturation_r158.py``, which
+# asserts that every rune
 # id in ALL FIVE TREES in the live DDragon
 # ``runesReforged.json`` feed is either in ``_RUNE_OFFENSE_GRANTS`` or here, that
 # the two sets are disjoint, and - running the claim the other way - that every
 # id here actually EXISTS in the feed. That last direction is not decoration:
 # adjudicating a rune that has been REMOVED from the game (Eyeball Collection
-# 8138, Ghost Poro 8120, Zombie Ward - all absent from 16.14.1) records a
+# 8138, Ghost Poro 8120, Zombie Ward 8136 - absent from every vendored snapshot
+# 16.11.1..16.22.1) records a
 # decision about something nobody can equip, and reads as coverage while
 # providing none.
 #
@@ -1159,7 +1178,18 @@ def rune_offense_grants(
     raw), gated on the champion not being attack-speed-locked. The default-OFF
     gating lives in ``compute_dps`` (this function is only called when
     ``apply_rune_offense_grants`` is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-140).
     """
+    # A bare "8236" was read character by character and lost Gathering Storm; a
+    # bare int or None raised TypeError.
+    if rune_ids is None:
+        rune_ids = ()
+    elif isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     # S144-D-114: an unconvertible or NaN game_minute reads the assumed minute
     # (it used to raise ValueError out of this seam); +inf keeps the documented
     # 60-minute-row clamp. A non-finite bonus_ad / ap reads 0.0 like junk (NaN

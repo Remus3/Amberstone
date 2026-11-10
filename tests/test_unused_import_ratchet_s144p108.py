@@ -89,7 +89,6 @@ _BASELINE = {
     "agents/daemon_slayer/cc_pressure.py": 1,
     "agents/daemon_slayer/effects.py": 9,
     "agents/daemon_slayer/scenario_matrix.py": 1,
-    "agents/daemon_slayer/self_shred.py": 1,
     "agents/daemon_slayer/server.py": 1,
     "app/_game_lifecycle.py": 2,
     "coaches/_adaptation_common.py": 1,

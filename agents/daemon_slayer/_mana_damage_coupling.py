@@ -7,7 +7,9 @@ tank that is usually fine - health and resists ARE the tank objective. But a
 champion whose OWN KIT spends its MANA as damage gets a SECOND, genuinely-real
 payment out of the same purchase, and that payment is credited NOWHERE:
 Blitzcrank R "Static Field" deals 2 percent of his maximum mana as magic damage
-on every detonation. The tank route therefore prices a mana item (Winter's
+with every lightning bolt of its PASSIVE (one on-hit stack consumed per second
+while the ultimate is off cooldown); the active detonation's 275 / 400 / 525
+block carries no mana term. The tank route therefore prices a mana item (Winter's
 Approach 3119 / Fimbulwinter 3121) on the HEALTH axis alone and under-ranks it
 for exactly the champion built to spend the mana half.
 
@@ -100,7 +102,9 @@ _ABILITY_CAST_PROB = 0.5           # a cooldown-gated damage ability in the rota
 # 60/40/20 second cooldown per champion_abilities.json 16.15.1, i.e. 3-5x that
 # cadence at the ranks a mana item is actually being bought at. Crediting an
 # ultimate at the basic-ability rate would over-model it, so the ultimate takes
-# its own lower midpoint. Conservative and operator-tunable.
+# its own lower midpoint. Conservative and operator-tunable. The mana term rides
+# the R PASSIVE, which runs only while R is off cooldown, so each cast switches
+# it off for that cooldown; 0.35 is a cadence estimate, not a measured uptime.
 _ULTIMATE_CAST_PROB = 0.35
 
 
@@ -131,8 +135,10 @@ _CHAMPION_MANA_DAMAGE_COUPLING: dict[str, ManaDamageCouplingEntry] = {
     # damage_blocks[0] (path Blitzcrank/R/0/damage_blocks/0): attribute
     # "Magic Damage", damage_type MAGIC, caster_max_mp_pct [2.0, 2.0, 2.0] -
     # flat across all 3 ranks. caster_max_mp_pct reads TOTAL mana, hence
-    # pct_base "total". The ONLY mana-scaling block in his kit - no
-    # sub-component and no peer ability, so nothing is discarded.
+    # pct_base "total". This block is the PASSIVE lightning bolt; the active
+    # detonation (damage_blocks[1], 275/400/525) has no mana term. The ONLY
+    # mana-scaling block in his kit - no sub-component and no peer ability, so
+    # nothing is discarded.
     "Blitzcrank": ManaDamageCouplingEntry(
         max_mp_pct=2.0,
         bonus_mp_pct=0.0,

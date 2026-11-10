@@ -597,7 +597,7 @@ neighbouring rows, so they were swept the same way - by behaviour, not by file.
 - **B10 - clean.** `cooldown-watch` survives only in docs, ROADMAP, WAKEUP,
   LEDGER and `web/index.html` prose. No route, no producer.
 - **Deliberately retained and correct:** `my_ult_cd_s`
-  (`core/laning_scenario_precompute.py:613-664`) is the operator's OWN
+  (`_my_ult_cd_s` in `core/laning_scenario_precompute.py`) is the operator's OWN
   ultimate, which the file already documents as intentionally kept, and
   `ally_summs_up` is own-party, which the B2 row explicitly permits
   ("restrict `summs` rows to own party only"). Neither is an enemy timer.

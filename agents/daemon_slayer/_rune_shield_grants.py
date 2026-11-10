@@ -34,8 +34,9 @@ SHIELD AMOUNT in HP units that adds to the EHP numerator. Same word, different
 quantity - Guardian absorbs a measured number of damage points, it does not
 negate an ability.
 
-DDragon 16.14.1 ``data/meta_build/ddragon/16.14.1/runesReforged.json`` longDesc
-for 8465 Guardian, quoted VERBATIM (re-read from raw source for this slice; the
+DDragon ``data/meta_build/ddragon/<patch>/runesReforged.json`` longDesc for 8465
+Guardian, identical in every vendored snapshot 16.11.1..16.22.1, quoted
+VERBATIM (re-read from raw source for this slice; the
 raw JSON wraps the magnitudes in <scaleLevel> / <scaleAP> / <scalehealth> tags
 and separates the lines with <br>):
 
@@ -67,10 +68,12 @@ this slice and both push the credit DOWNWARD, which is the safe direction.
         grep -nE "ability_power|abilitypower|total_ap|bonus_ap|ap_flat" ehp.py
         -> ZERO matches (exit 1).
 
-      All 27 "ap" substring hits in ``ehp.py`` are ``enemy_ap_share``, which is
-      the ENEMY damage-type mix used to weight blended EHP - it is a share of
-      incoming damage, not the wielder's ability-power stat, and it is
-      mathematically unusable as one. Inventing an AP value would be the exact
+      Every identifier in ``ehp.py`` with an ``ap`` part is ``enemy_ap_share``
+      (or its shorthand ``ap_share`` in a comment) or the ``ap_ad_coherence``
+      gate name (re-measured at 16.22.1; an older "27 hits" count did not
+      reproduce). ``enemy_ap_share`` is the ENEMY damage-type mix used to weight
+      blended EHP - it is a share of incoming damage, not the wielder's
+      ability-power stat, and it is mathematically unusable as one. Inventing an AP value would be the exact
       "scaffolded against an assumed API surface" failure the repo bans.
 
       So the credit is a DELIBERATE UNDERCOUNT. For an enchanter running Guardian
@@ -85,8 +88,9 @@ this slice and both push the credit DOWNWARD, which is the safe direction.
 
       When an AP convention eventually exists at the EHP call site, the term is a
       one-line addition here. Until then
-      ``AbilityPowerOmissionRegressionTests`` in the test file keeps the omission
-      LOUD: the public signature accepts no AP argument, so a well-meaning edit
+      ``AbilityPowerOmissionRegressionTests`` in
+      ``agents/daemon_slayer/tests/test_rune_shield_grants_r142.py`` keeps the
+      omission LOUD: the public signature accepts no AP argument, so a well-meaning edit
       that passes one goes RED rather than silently succeeding.
 
 WHAT IS THEREFORE MODELLED:
@@ -155,7 +159,7 @@ the resolved build health and the base per-level health - the same pair
 registry's own output: feeding peer grant-lane output back into a grant lane is
 grant-on-grant compounding and makes the result depend on the SOURCE ORDER of the
 peer registries (GUARD 2 of
-``tests/test_rune_resist_signature_convention_r134.py``).
+``agents/daemon_slayer/tests/test_rune_resist_signature_convention_r134.py``).
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL. ``apply_rune_shield_grants`` defaults False on
 this function itself (belt and braces, the ``_rune_health_grants`` posture): an
@@ -174,7 +178,7 @@ import math
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-# --- Guardian (8465) - EXACT DDragon 16.14.1 magnitudes ----------------------
+# --- Guardian (8465) - EXACT DDragon magnitudes, 16.11.1..16.22.1 -----------
 # "Shield: <scaleLevel>40 - 150</scaleLevel>" - the level-1 and level-18
 # endpoints of the linear walk.
 _GUARDIAN_SHIELD_AT_LEVEL_1: float = 40.0
@@ -292,12 +296,16 @@ _RUNE_SHIELD_GRANTS: dict[str, RuneShieldEntry] = {
 #     term in any lane.
 #   * 8463 Font of Life - DATA-BLOCKED, and deliberately NOT built. Its longDesc
 #     heal magnitude is the UNRESOLVED DDragon template variable "@BaseHeal@",
-#     present verbatim in ALL FOUR vendored snapshots, so there is no number to
-#     read. It is also an ALLY heal, not a self shield, so it fails this
-#     registry's SELF and SHIELD tests independently of the data block.
+#     present verbatim in every vendored snapshot (16.11.1..16.22.1), so there
+#     is no number to read. It is also an ALLY heal, not a self shield, so it
+#     fails this registry's SELF and SHIELD tests independently of the data
+#     block.
 #   * 8444 Second Wind  - "heal for 4% of your missing health over 10s". A HEAL,
-#     not a shield, and it is being built in a PARALLEL SLICE. It must not be
-#     duplicated here.
+#     not a shield; _rune_self_heal registers it. It must not be duplicated
+#     here.
+#   * 8401 Shield Bash  - bonus adaptive damage on the next attack after GAINING
+#     a shield. It is triggered by a shield rather than granting one;
+#     rune_procs.py registers it as a damage proc.
 
 
 __all__ = [
@@ -429,10 +437,16 @@ def rune_shield_grants(
     exactly 0.0.
 
     FAIL-SOFT: an empty / None / non-iterable rune list, a garbage entry, or a
-    non-numeric pool argument returns 0.0 rather than raising.
+    non-numeric pool argument returns 0.0 rather than raising. A bare ``str`` /
+    ``int`` id (never ``bool``) is ONE id (S144-D-136).
     """
     if not apply_rune_shield_grants:
         return 0.0
+    # A bare "8465" was read character by character and lost Guardian.
+    if isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     # The emptiness check runs inside the guard: a page whose truthiness raises
     # (a multi-element array) must stay inert, not escape (S144-D-96).
     try:

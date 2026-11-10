@@ -9,7 +9,7 @@ on the operator's LIVE champion + level + owned items. NO new ENGINE math,
 NO schema lift, NO new dependency; the engine module is a read-only
 classifier over RC's own DS curves.
 
-Sibling of ``routes_cooldown_watch.py`` (cache + fail-soft discipline) and
+Sibling of ``routes_cc_conditional_pressure.py`` (cache + fail-soft discipline) and
 ``routes_spike_curve.py`` (the team-vs-team sparkline this complements).
 Where spike-curve renders a synthetic minute->level->item team power
 curve, this route surfaces the OPERATOR's discrete spike thresholds keyed
@@ -59,7 +59,7 @@ Failure modes:
   - 503  spike_markers import / compute fails (DS engine unreachable).
 
 5-min TTL in-process cache keyed on (champion, level, sorted items, mode,
-item_count, minor). Mirrors routes_cooldown_watch cache discipline, and is
+item_count, minor). Mirrors routes_cc_conditional_pressure cache discipline, and is
 bounded at ``_CACHE_MAX`` entries (expired entries dropped on write).
 
 Don't-redo:
@@ -85,7 +85,7 @@ from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
 
-# 5-min response TTL mirrors routes_cooldown_watch exactly.
+# 5-min response TTL mirrors routes_cc_conditional_pressure exactly.
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()

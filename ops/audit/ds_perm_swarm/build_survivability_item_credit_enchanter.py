@@ -50,6 +50,14 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[3]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from ops.audit.ds_perm_swarm.credit_table_check import (  # noqa: E402
+    committed_matches,
+    render,
+)
+
 _REPORT = _ROOT / "ops" / "audit" / "ds_perm_swarm" / "report" / "dsp10_consolidated.json"
 _DS_DIR = _ROOT / "data" / "daemon_slayer"
 _OUT = _ROOT / "agents" / "daemon_slayer" / "survivability_item_credit_enchanter.json"
@@ -175,15 +183,14 @@ def main() -> int:
                     help="verify the committed JSON matches a fresh build")
     args = ap.parse_args()
     built = build()
-    text = json.dumps(built, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
     if args.check:
-        cur = _OUT.read_text(encoding="utf-8") if _OUT.exists() else ""
-        if cur != text:
+        # S144-D-236: the committed _meta.ds_patch stamp is provenance, kept.
+        if not committed_matches(_OUT, built):
             print("DRIFT: survivability_item_credit_enchanter.json != fresh build", file=sys.stderr)
             return 2
         print("survivability_item_credit_enchanter.json in sync")
         return 0
-    _OUT.write_bytes(text.encode("utf-8"))
+    _OUT.write_bytes(render(built).encode("utf-8"))
     n_items = sum(len(v["items"]) for v in built["champions"].values())
     print(f"wrote {_OUT} - {len(built['champions'])} champs / {n_items} items")
     for champ, v in sorted(built["champions"].items()):

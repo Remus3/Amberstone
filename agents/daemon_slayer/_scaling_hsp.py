@@ -23,7 +23,7 @@ stat line, never the SR twin's):
     power for every additional 100% base mana regeneration."
   * 226621 Dawncore (Arena)  - DDragon: "Gain 3% Heal and Shield Power ... per
     100% Base Mana Regen." Printed stat line: 200% Base Mana Regen.
-  * 326621 Dawncore (ARAM)   - DDragon: "Gain 2% Heal and Shield Power ... per
+  * 326621 Dawncore (map 11) - DDragon: "Gain 2% Heal and Shield Power ... per
     100% Base Mana Regen." Printed stat line: 150% Base Mana Regen.
 
 Magnitudes are stored as FRACTIONS (2% -> 0.02) so this lane is DIRECTLY
@@ -47,7 +47,7 @@ Two consequences are asserted by ``test_scaling_hsp_r197``:
      step rather than two.
 Steps are DISCRETE - ``floor(total_item_base_mana_regen_pct / 100)`` - following
 the printed "for every additional 100%" wording. A sub-step remainder earns
-nothing (the ARAM mirror's 150% floors to one step). Floor is also the
+nothing (the 326621 copy's 150% floors to one step). Floor is also the
 conservative direction: a continuous reading would be an upper bound, so if a
 live probe ever shows continuous scaling this constant changes and the registry
 does not.
@@ -118,7 +118,7 @@ MANA_REGEN_STEP_PCT: float = 100.0
 SCALING_HSP_PER_MANA_REGEN_STEP: dict[str, float] = {
     "6621": 0.02,    # Dawncore SR    - "Gain 2% Heal and Shield Power ... per 100% Base Mana Regen"
     "226621": 0.03,  # Dawncore Arena - "Gain 3% Heal and Shield Power ... per 100% Base Mana Regen"
-    "326621": 0.02,  # Dawncore ARAM  - "Gain 2% Heal and Shield Power ... per 100% Base Mana Regen"
+    "326621": 0.02,  # Dawncore map-11 - "Gain 2% Heal and Shield Power ... per 100% Base Mana Regen"
 }
 
 _CONSUMER_REASON = (

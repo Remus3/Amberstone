@@ -14,10 +14,10 @@ is read-only over the existing ``cc_conditional`` registry):
     (one of the ``COND_*`` constants).
 
 The existing ``cc_conditional`` consumers (cc_pressure / compute_ehp /
-compute_hybrid / routes_cc_conditional_pressure / coach prompt /
-cooldown_watch) all reduce the registry to a SCALAR - the probability-
-weighted ``conditional_cc_seconds`` ratio (the balance chip) or the
-single highest-threat card (cooldown-watch). NONE of them surface the
+compute_hybrid / routes_cc_conditional_pressure / coach prompt) all
+reduce the registry to a SCALAR - the probability-weighted
+``conditional_cc_seconds`` ratio that drives the balance chip.
+NONE of them surface the
 PAIRING data: for the operator's OWN team, which conditional CC entries
 are ones a TEAMMATE can set up, and what the teammate needs to do.
 
@@ -66,8 +66,8 @@ v1 honesty contract:
     pull / charm / fear / taunt / suppression). Mode-agnostic: the
     pairing fact is intrinsic to the abilities, not the map.
 
-Public surface (mirrors ``cooldown_watch.py``'s dataclass + builder
-shape so the dashboard route wires identically):
+Public surface (frozen result dataclasses + one builder, the shape
+``dashboard/routes_cc_pairing.py`` serialises):
 
   * ``CcPairingCard``  - one ally conditional CC entry that a teammate can
     enable, plus the resolved enabler list + the human-readable setup hint.
@@ -135,7 +135,7 @@ class CcPairingCard:
     ``champion`` / ``spell`` / ``cc_kind`` / ``cc_duration_s`` mirror the
     underlying ``ConditionalCcEntry`` (``cc_duration_s`` is the max-rank
     raw conditional CC seconds, BEFORE any tenacity - this module never
-    applies tenacity, matching ``cooldown_watch``). ``condition`` is the
+    applies tenacity, since it reports ability facts). ``condition`` is the
     raw ``COND_*`` tag. ``probability`` is the operator-tunable midpoint
     that the condition lands in a fight. ``setup_hint`` is the human-
     readable imperative from ``_ALLY_ENABLABLE``. ``enablers`` is the

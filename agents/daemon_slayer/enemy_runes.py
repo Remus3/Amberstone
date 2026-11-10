@@ -108,11 +108,11 @@ def _lerp_by_level(low: float, high: float, level: float) -> float:
     return low + (high - low) * (lvl - 1) / 17.0
 
 
-# Grievous Wounds healing-reduction fraction. League applies 40% (the "light"
-# Grievous Wounds tier - Ignite, Executioner's, most ranged antiheal items);
-# the "heavy" 50% tier (melee Mortal Reminder / Chempunk on champions below 50%
-# HP) is a consumer refinement, not modeled here. Cited: LoL wiki Grievous
-# Wounds, 2026-06-17 (matches summoners.py Ignite antiheal_pct=0.40).
+# Grievous Wounds healing-reduction fraction, 40%. Every Summoner's Rift item
+# whose DDragon item.json description applies it reads 40% in every vendored
+# snapshot 16.11.1..16.22.1, Mortal Reminder and Chempunk Chainsword included;
+# no SR 50% tier exists to model (S144-D-403). Ignite's tooltip is templated, so
+# its 0.40 stays the LoL wiki value (summoners.py Ignite antiheal_pct=0.40).
 GRIEVOUS_WOUNDS_PCT = 0.40
 
 

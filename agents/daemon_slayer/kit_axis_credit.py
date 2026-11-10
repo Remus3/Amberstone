@@ -14,6 +14,11 @@ wins on. Consumed by the DEFAULT-OFF ``prefer_kit_axis_by_win`` seam in
 Fail-soft: a missing / unreadable / malformed table yields an empty map so the
 seam degrades to a byte-identical no-op rather than raising. The live default-ON
 flip is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
+
+Only ``champions`` is read. The table's ``_meta`` block (``ds_patch``,
+``min_rewind_n``, ``source``, ``anchored_to``) is build provenance: ``ds_patch``
+is the DS snapshot the builder validated ids against, NOT a runtime patch gate
+(S144-D-239, ``tests/test_item_credit_builders_s144d236.py``).
 """
 from __future__ import annotations
 

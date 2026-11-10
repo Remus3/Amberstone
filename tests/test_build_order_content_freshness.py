@@ -134,8 +134,9 @@ def test_table_structural_integrity(family: str, mode_key: str) -> None:
     is a non-empty list of numeric-string item ids.
 
     Item ids are validated as numeric strings ONLY - NOT cross-checked against the
-    DDragon catalog, because the Arena/ARAM tables legitimately use 22xxxx/32xxxx
-    mirror ids that are absent from the base catalog (a catalog check false-fails).
+    DDragon catalog here; ``test_build_order_map_legality`` does that check, per
+    map. (Measured 2026-11-09 at 16.22.1: every id in all six tables is in the
+    catalog, and no 32xxxx id - a map-11-only family - appears in a map-12 table.)
     """
     payload = _load_table(family, mode_key)
     content = payload.get(_CONTENT_KEY)

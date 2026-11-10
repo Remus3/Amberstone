@@ -124,13 +124,22 @@ effects_descriptions, all default-OFF byte-identical: Kai'Sa P Caustic Wounds
 stacks" AP ratio is linear = 12% + 3%/stack) + Darius P Hemorrhage ((13:30 +
 30% bonus AD) per stack bleed dot) + Twitch P Deadly Venom ((6/12/18/24/30 +
 18% AP) per stack true dot) + an UPGRADE to the already-seeded Orianna P
-(adds the 2:10 + 3% AP per-stack ramp it was missing). EXHAUSTED scan: of the
-15 no_damage P-forms with "per stack"+"damage" language, only these 4 are
-per-stack TARGET damage; the other 11 are NOT (Belveth/Garen/Irelia/Kayle/
-Samira/Senna/Volibear/Wukong gain AS/MS/armor stat STEROIDS per stack;
-Mel/Smolder are stack-gain / damage-store mechanics; Sona's per-stack
-Accelerando is a haste steroid - Sona P is separately seeded for its flat
-Power Chord, not a per-stack term) - documented inline, not seeded. The Kai'Sa
+(adds the 2:10 + 3% AP per-stack ramp it was missing). EXHAUSTED scan,
+RE-MEASURED by S144-D-347 at 16.22.1. Item 249 recited "15 no_damage P-forms
+with per stack + damage language", but that literal criterion finds 1 form
+(Orianna) even at 16.11.1, because Kai'Sa says "per Plasma stack" and Darius /
+Twitch say "For each stack". The reproducible scan - no_damage forms of ANY key
+whose effects text says "per [X] stack(s)", "each stack", "based on [X] stacks"
+or "of [X] stacks" and "damage" number 17 at both 16.11.1 and 16.22.1. Only
+these 4 carry a per_stack term. Brand P's Ablaze DoT ("each stack of Ablaze
+deals damage to the target individually") is per-stack target damage too, but
+its item-255 row models only the 3-stack ring and documents the DoT as NOT
+modeled. The other 12 are NOT per-stack target damage: Belveth / Garen W
+(Courage) / Irelia / Jinx Q / Kayle / Samira / Senna / Volibear / Wukong gain
+AS / MS / AD / armor stat STEROIDS per stack; Mel / Smolder are stack-gain /
+damage-store mechanics; Sona's per-stack Accelerando is a haste steroid (Sona
+P is separately seeded for its flat Power Chord, not a per-stack term) -
+documented inline, not seeded. The Kai'Sa
 5th-stack-consume sub-term (15% + 6%/100 AP of MISSING health) is OMITTED:
 conditional (fires on the 5th stack) AND inert at the default full-HP ctx
 (same precedent as Ekko W).
@@ -191,12 +200,21 @@ verbatim 16.11.1 effects_descriptions, both default-OFF byte-identical: Taric P
 Bravado (25 : 93 based on level + 15% bonus armor) + Galio P Colossal Smash
 (15 : 115 based on level + 100% AD + 45% AP + 60% bonus MR). Both resolve to a
 pure flat base at the default no-build ctx (caster bonus resists 0), so they are
-not inert there. EXHAUSTED sweep (all 172 champs, no_damage forms with bonus-
-armor / bonus-MR + damage text) found ONLY these two clean linear cases;
-documented NOT-seeded: K'Sante P (bilinear caster_bonus_resist * target_max_hp
-PRODUCT, gated on the All Out state - needs the item-248 bilinear form +
-conditional_probability) and Rammus W (TOTAL-resist on-being-hit reflect - no
-caster total-MR field + wrong cadence).
+not inert there. EXHAUSTED sweep, RE-MEASURED by S144-D-349 / S144-D-350 at
+16.22.1 over all 171 champion keys (item 513 recited 172; 16.11.1 also carries
+171): no_damage forms whose effects text says "bonus armor" or
+"bonus magic resist" and "damage" number 13. Five deal damage that scales on
+the caster's resists: these two clean linear cases, plus three that this
+registry does not hold because their shape does not fit it. K'Sante P All Out
+Bonus is a bilinear caster_bonus_resist * target_max_hp PRODUCT gated on the
+All Out state; R50 seeded it in ``_ALL_OUT_BONUS_OVERRIDES`` (below) with a
+conditional_probability. Rammus W is a TOTAL-resist on-being-hit reflect, the
+wrong cadence for an empowered-AA block; R49 seeded it in
+``_passive_reflect_overrides`` once the ``caster_mr`` scaling target landed.
+Rell P Break the Mold deals on-hit 5% TOTAL armor + 5% TOTAL MR; RM-87 credits
+it on the tank ranking key in ``_resist_damage_coupling``. The other 8 (Anivia
+P, Garen W, Jayce R form 1, Kled P form 1, Ornn P, Sejuani P, Shyvana P,
+Wukong P) grant resists and deal no resist-scaled damage.
 
 Applied at load time in ``abilities.AbilitiesSnapshot.load`` (behind the
 opt-in flag) so every consumer (ability_dps / burst / dps / fight_report /
@@ -703,12 +721,14 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
     # All default-OFF byte-identical (the seam injects only under
     # apply_passive_damage=True). Authored from verbatim 16.11.1
     # effects_descriptions; vs-monster multipliers/caps are champ-context
-    # (same precedent as Aatrox / Zed). Exhausted scan: the 11 other "per
-    # stack" no_damage P-forms are NOT per-stack target damage - stat STEROIDS
-    # (Belveth/Garen/Irelia/Kayle/Samira/Senna/Volibear/Wukong AS/MS/armor) or
-    # stack-gain/store mechanics (Mel/Smolder); Sona's per-stack Accelerando is
-    # a haste steroid (Sona P is separately seeded for its flat Power Chord).
-    # Documented in the module docstring, not seeded.
+    # (same precedent as Aatrox / Zed). Exhausted scan (S144-D-347): the 13
+    # other forms of the 17-form scan (module docstring) are not seeded with a
+    # per_stack term. Brand P's per-stack Ablaze DoT is documented NOT modeled
+    # on its item-255 row; the rest are stat STEROIDS (Belveth / Garen W /
+    # Irelia / Jinx Q / Kayle / Samira / Senna / Volibear / Wukong AS / MS /
+    # AD / armor) or stack-gain / store mechanics (Mel / Smolder); Sona's per-stack
+    # Accelerando is a haste steroid (Sona P is separately seeded for its flat
+    # Power Chord).
     #
     # Kai'Sa P Caustic Wounds: "Plasma stacks ... deal 4 : 24 (based on level)
     # (+ 1 : 6 (based on level) per Plasma stack before application) (+ 12% :
@@ -884,18 +904,21 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
     # is on the _AA_ROUTED_ON_HIT_KEYS allowlist (Taric's is post-spell 2-hit,
     # Galio's is periodic - both internally gated, not every-AA), so the block
     # stays metadata-only / inert in scorers exactly like Lux / Ziggs. All
-    # default-OFF byte-identical. Sibling sweep (all 172 champs, no_damage forms
-    # with "bonus armor"/"bonus magic resist"+"damage" text) found ONLY these two
-    # clean linear cases; documented rejects:
+    # default-OFF byte-identical. Sibling sweep (S144-D-349, 171 champion keys
+    # at 16.22.1, no_damage forms with "bonus armor"/"bonus magic resist" +
+    # "damage" text: 13 forms) found ONLY these two clean linear cases; the
+    # other three resist-scaled damage forms live in other registries:
     #   - K'Sante P All Out Bonus (1% + 1%/100 bonus armor + 1%/100 bonus MR of
     #     target max HP): bilinear (caster_bonus_resist * target_max_hp PRODUCT)
-    #     AND gated on the R-empowered "All Out" state - needs the item-248
-    #     bilinear form keyed on caster_bonus_armor + a conditional_probability
-    #     for the All Out gate. Staged, not seeded blind (over-models if always-on).
+    #     AND gated on the R-empowered "All Out" state. Seeded by R50 in
+    #     _ALL_OUT_BONUS_OVERRIDES (below) with a conditional_probability.
     #   - Rammus W Defensive Ball Curl (15 + 10% total armor + 10% total MR
-    #     reflect): scales on TOTAL resists (no caster total-MR _SCALING_TARGETS
-    #     field) AND is a reactive on-being-hit reflect, not an empowered AA -
-    #     wrong cadence for this seam.
+    #     reflect): a reactive on-being-hit reflect, not an empowered AA - wrong
+    #     cadence for this seam. Seeded by R49 in _passive_reflect_overrides on
+    #     the caster_mr scaling target.
+    #   - Rell P Break the Mold (on-hit 5% total armor + 5% total MR): credited
+    #     on the tank ranking key by RM-87 _resist_damage_coupling.
+    # The other 8 scan hits grant resists and deal no resist-scaled damage.
     # ------------------------------------------------------------------
     # Taric Bravado: "After casting an ability, Taric empowers his next two
     # basic attacks ... deal 25 : 93 (based on level) (+ 15% bonus armor) bonus
@@ -1260,8 +1283,8 @@ def per_second_aura_entry(champion_id: str):
     Mordekaiser today - so the seam is byte-identical for the whole rest of the
     roster BY CONSTRUCTION, not by luck.
 
-    The cadence gate is the load-bearing part. The registry's other 32 entries
-    are ``on_hit`` (25), ``dot`` (4) and ``per_fight`` (3); NONE of them may be
+    The cadence gate is the load-bearing part. The registry's other 33 entries
+    are ``on_hit`` (26), ``dot`` (4) and ``per_fight`` (3); NONE of them may be
     credited on the per-second ability clock:
 
     * an ``on_hit`` entry's damage rides the AUTO-ATTACK cadence and

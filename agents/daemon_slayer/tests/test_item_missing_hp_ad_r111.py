@@ -43,7 +43,7 @@ _MERAKI_PATH = _REPO_ROOT / "data" / "daemon_slayer" / _PATCH / "items_meraki.js
 
 _BLOODMAIL_SR = "2501"
 _BLOODMAIL_ARENA = "447111"
-_BLOODMAIL_ARAM = "322501"  # NOT registered (grep-confirmed) - guard its absence
+_BLOODMAIL_MAP11 = "322501"  # NOT registered (grep-confirmed) - guard its absence
 _SR_MAX_PCT = 0.10  # DDragon 16.22.1 "up to 10%" (was 0.12 through 16.21.1)
 _ARENA_MAX_PCT = 0.175
 # Realized share of the max amp at the assumed midpoint: 0.35 / 0.70 = 0.5.
@@ -70,9 +70,9 @@ class SchemaField(unittest.TestCase):
             _ARENA_MAX_PCT,
         )
 
-    def test_aram_mirror_absent(self) -> None:
-        # No 322501 ARAM mirror in the pool - guard so a future add is deliberate.
-        self.assertNotIn(_BLOODMAIL_ARAM, ITEM_EFFECTS)
+    def test_map11_copy_absent(self) -> None:
+        # No 322501 map-11 copy in the pool - guard so a future add is deliberate.
+        self.assertNotIn(_BLOODMAIL_MAP11, ITEM_EFFECTS)
 
     def test_consumer_constants(self) -> None:
         self.assertEqual(_RETRIBUTION_CAP_MISSING_HP, 0.70)

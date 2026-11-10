@@ -739,7 +739,7 @@
    "kind": "SUSTAINED",
    "magnitude": 0.45,
    "conditional": false,
-   "source_quote": "Zyra Garden of Thorns W ~825 range seed placement; passive seed spawn; nearby plants attack enemies"
+   "source_quote": "Zyra Rampant Growth W ~825 range seed placement; passive seed spawn; nearby plants attack enemies"
   },
   {
    "champion": "Zyra",
@@ -3448,7 +3448,7 @@
    "kind": "BURST",
    "magnitude": 0.45,
    "conditional": false,
-   "source_quote": "Sundering Slam overhead ground smash ~300 range, deals physical damage in area"
+   "source_quote": "Repudiation braces then smashes the ground beneath her ~300 range, deals physical damage in area"
   },
   {
    "champion": "Ambessa",
@@ -5905,7 +5905,7 @@
    "kind": "POKE",
    "magnitude": 0.75,
    "conditional": true,
-   "source_quote": "Calibrum Q fires Crescendum shot at ~1450 range; conditional on Calibrum being active weapon"
+   "source_quote": "Calibrum Q fires Moonshot at ~1450 range; conditional on Calibrum being active weapon"
   },
   {
    "champion": "Aphelios",
@@ -5914,7 +5914,7 @@
    "kind": "BURST",
    "magnitude": 0.55,
    "conditional": true,
-   "source_quote": "Infernum W Onslaught AoE cone at weapon range ~550; conditional on Infernum being active gun"
+   "source_quote": "Infernum W Duskwave AoE cone at weapon range ~550; conditional on Infernum being active gun"
   },
   {
    "champion": "Aphelios",
@@ -5968,7 +5968,7 @@
    "kind": "POKE",
    "magnitude": 0.6,
    "conditional": false,
-   "source_quote": "Ekko Q Z-Drive Resonance boomerang travels ~1050 out and returns, hits twice across the path"
+   "source_quote": "Ekko Q Timewinder boomerang travels ~1050 out and returns, hits twice across the path"
   },
   {
    "champion": "Ekko",

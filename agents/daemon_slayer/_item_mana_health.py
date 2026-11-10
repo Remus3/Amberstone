@@ -44,16 +44,20 @@ the equipped family items (not a sum), which cannot double-count the SHARED bonu
 mana pool if a synthetic build lists two.
 
 Registered ids (each confirmed present in the DS item index
-``data/daemon_slayer/16.13.1/items.json`` before adding; the exhaustive Meraki
-passives scan for 'health' + 'mana' co-occurrence returned exactly this family):
+``data/daemon_slayer/16.13.1/items.json`` before adding). The Meraki passives
+scan for 'health' + 'mana' co-occurrence returns 9 passives at 16.22.1, and only
+the Awe pair 3119 / 3121 converts mana into bonus max health; the other seven
+are excluded below (re-run by
+``agents/daemon_slayer/tests/test_item_ehp_registries_live_text_s144d364.py``):
   * 3119   - Winter's Approach (base; carries Awe HP + the Manaflow mana-stack).
   * 3121   - Fimbulwinter (base; Awe HP + a separate current-mana Empowered Shield,
     which is NOT this credit).
   * 223119 / 223121 - Arena mode-mirrors (same nominal; the ``_item_revive`` /
     ``_item_survival_window`` Arena-mirror convention).
-  * 323119 / 323121 - ARAM mode-mirrors. UNLIKE ``_item_revive``'s dropped ARAM
-    Guardian-Angel mirror (323026, absent from the index), these ARAM mirrors ARE
-    present in the DS item index, so they are included.
+  * 323119 / 323121 - the map-11 (SR) copies; live 16.22.1 maps them to 11
+    only, never 12. UNLIKE ``_item_revive``'s dropped Guardian-Angel copy
+    (323026, absent from the index), these copies ARE present in the DS item
+    index, so they are included.
 
 DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class):
   * MANA -> DAMAGE "Awe" twins (Manamune 3004 / Muramana 3042 = 2% max mana as
@@ -69,6 +73,14 @@ DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class)
   * MANA-REGEN / HEAL-ON-SPEND (Catalyst of Aeons 3803 Eternity heal-from-mana-
     spent; Diadem of Songs 2530 ally heal from your max mana): heal throughput /
     ally grants, not a self bonus-max-HP conversion.
+  * MANALESS FALLBACK REGEN (Guardian's Amulet 2049 / Guardian's Orb 3112
+    "Recovery": mana, or health regeneration for a manaless champion): regen,
+    not a max-HP grant.
+  * REVIVE RESTORE (Guardian Angel 3026 "Rebirth" heals 50% base health and
+    restores 100% maximum mana on resurrection): the ``_item_revive`` lane.
+  * ARENA GRAB-BAG (The Golden Spatula 224403 "Doing Something": level-scaled
+    bonus health (50 to 900) and bonus mana regeneration among a dozen stats):
+    stat grants, not a conversion of mana.
 
 R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
 ``core.daemon_slayer_resolver.name_to_id`` - the resolver hands the engine
@@ -81,8 +93,9 @@ never actually emits the ``32xxxx`` pair for these names - both 32 mirrors
 declare ``maps["11"]`` only, and the bare id wins the first-write-wins per-mode
 index - so those two rows are defensive coverage rather than a live path.
 
-OPEN, NOT ACTED ON (R144): the Arena mirrors' DDragon copy reads "Gain bonus
-Health equal to Total Mana" where the SR/ARAM line reads "bonus mana", and the
+OPEN, NOT ACTED ON (R144): the Arena mirrors' DDragon copy reads, for 223119,
+"Gain bonus Health equal to Total Mana" and, for 223121, "Gain bonus Health
+based on Mana" where the SR/ARAM line reads "bonus mana", and the
 Arena stat blocks are genuinely retuned (223119 carries 600 mana / 400 HP vs
 the base 500 / 550). DDragon strips the numeral from the Awe tooltip and Meraki
 keys base ids only, so the catalog cannot settle whether the Arena percent or
@@ -113,8 +126,8 @@ _ITEM_MANA_HEALTH_PCT: dict[str, float] = {
     "3121":   0.15,  # Fimbulwinter - Awe
     "223119": 0.15,  # Winter's Approach (Arena mirror; base nominal)
     "223121": 0.15,  # Fimbulwinter (Arena mirror; base nominal)
-    "323119": 0.15,  # Winter's Approach (ARAM mirror; base nominal)
-    "323121": 0.15,  # Fimbulwinter (ARAM mirror; base nominal)
+    "323119": 0.15,  # Winter's Approach (map-11 copy; base nominal)
+    "323121": 0.15,  # Fimbulwinter (map-11 copy; base nominal)
 }
 
 
@@ -140,7 +153,18 @@ def item_mana_health_hp(item_ids: Iterable[str | int], bonus_mana: float) -> flo
     Non-positive ``bonus_mana`` (a manaless build) yields 0.0. The default-OFF
     gating lives in ``compute_ehp`` (this function is only called when
     ``apply_item_mana_health`` is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-146).
     """
+    # A bare "3119" was read character by character and lost Awe; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     bm = max(0.0, float(bonus_mana))
     # S144-D-100: an infinite pool is unusable, as NaN / -inf already were via
     # the clamp; it returned inf, and NaN (0.0 * inf) on a build with no Awe item.

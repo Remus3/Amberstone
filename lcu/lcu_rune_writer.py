@@ -55,7 +55,7 @@ _KEYSTONES = {
     "Stormraider's Surge": 8230,
     "Deathfire Touch":  8992,
     # Legacy pre-rename name of 8230, kept as an alias: champion_loadouts.json
-    # and coaches/sr_draft_profile.py still say "Phase Rush" (RM-1379).
+    # still says "Phase Rush" (RM-1379).
     "Phase Rush":       8230,
     # Resolve
     "Grasp of the Undying": 8437,

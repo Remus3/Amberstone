@@ -201,9 +201,10 @@ def _is_aram_mode(mode: str | None) -> bool:
     Mirrors ``aram_tenacity_context._ARAM_MODES`` membership: ARAM,
     KIWI (ARAM Mayhem), ARAM_5V5, ARAM_MAYHEM, plus their lowercase
     forms. Returns False for None, empty string, SR, CHERRY (Arena),
-    or any unknown mode token.
+    or any unknown mode token, a non-string one included (S144-D-128:
+    mode=5 raised AttributeError on ``.upper()``, a list TypeError).
     """
-    if not mode:
+    if not mode or not isinstance(mode, str):
         return False
     return mode in _ARAM_MODES or mode.upper() in _ARAM_MODES
 
@@ -277,7 +278,9 @@ def compute_cc_pressure(
     (Maokai R / Hecarim R / Ashe R / KSante W / Sion R).
     """
     safe_mode = mode if mode else "SR"
-    if not champion:
+    # S144-D-128: a non-string champion (unhashable ones raised TypeError
+    # out of the registry lookups) reads as blank.
+    if not champion or not isinstance(champion, str):
         return CcPressureResult(
             champion="",
             mode=safe_mode,

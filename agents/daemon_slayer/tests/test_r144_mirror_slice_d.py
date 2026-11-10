@@ -277,12 +277,12 @@ class DroppedMirrorsStillAbsentTests(_CatalogCase):
 
     def test_documented_dropped_mirrors_absent(self) -> None:
         dropped = (
-            "323026",                      # Guardian Angel ARAM
-            "324645",                      # Shadowflame ARAM
-            "323102", "323814",            # Banshee's / Edge of Night ARAM
-            "224632", "324632",            # Verdant Barrier Arena / ARAM
-            "323157",                      # Zhonya's ARAM
-            "222420", "322420",            # Seeker's Armguard Arena / ARAM
+            "323026",                      # Guardian Angel map-11
+            "324645",                      # Shadowflame map-11
+            "323102", "323814",            # Banshee's / Edge of Night map-11
+            "224632", "324632",            # Verdant Barrier Arena / map-11
+            "323157",                      # Zhonya's map-11
+            "222420", "322420",            # Seeker's Armguard Arena / map-11
         )
         present = sorted(iid for iid in dropped if iid in self.items)
         self.assertEqual(

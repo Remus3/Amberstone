@@ -86,7 +86,7 @@ class MirrorIdCoverageTests(unittest.TestCase):
         inv = ["223107", "226616", "223222", "226617"]
         self.assertAlmostEqual(sum_wielder_hsp_pct(inv), 0.32, places=6)
 
-    def test_mixed_aram_inventory_sums_additively(self) -> None:
+    def test_mixed_map11_copy_inventory_sums_additively(self) -> None:
         # 0.15 (Mikael's) + 0.20 (Dawncore) + 0.10 (Ardent) = 0.45
         inv = ["323222", "326621", "323504"]
         self.assertAlmostEqual(sum_wielder_hsp_pct(inv), 0.45, places=6)

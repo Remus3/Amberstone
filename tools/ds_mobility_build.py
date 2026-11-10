@@ -12,7 +12,13 @@ kind carries a positive ``range_units``; a ``MS_STEROID`` carries positive
     ``agents/daemon_slayer/mobility_registry_notes.json`` (champion, spell, kind,
     magnitudes, charges, conditional, source_quote).
 
-Reusable as a drift-guard re-build when the roster scan is re-run. Usage:
+One-shot (S144-D-244): the splice consumed the marker and the shipped module no
+longer carries it, so a re-run stops with "marker ... not found (already
+injected?)" before writing anything. A re-run needs the marker re-seeded in
+place of the generated block, and then rebuilds that block from the fan-out
+alone, dropping every later hand edit to the registry. Any validation problem
+fails closed: the builder prints the problems and exits 2 before any write
+(S144-D-245). Usage:
   $env:LOCALAPPDATA/Programs/Python/Python314/python.exe tools/ds_mobility_build.py <workflow_output.json>
 """
 
@@ -125,6 +131,13 @@ def main() -> None:
             lines.append(_emit(r))
     block = "\n".join(lines)
 
+    # ---- fail closed: a problem row writes nothing (S144-D-245) ----
+    if problems:
+        print(f"PROBLEMS={len(problems)}")
+        for p in problems[:25]:
+            print("  ", p)
+        raise SystemExit(2)
+
     # ---- splice into the module at the marker, LF endings ----
     src = MODULE.read_text(encoding="utf-8").replace("\r\n", "\n").replace(
         "\r", "\n"
@@ -148,12 +161,7 @@ def main() -> None:
     n_ms = sum(1 for c in clean if c["kind"] == "MS_STEROID")
     print(f"entries_clean={len(clean)} champs={len(by_champ)} "
           f"ms_steroid={n_ms} conditional={sum(1 for c in clean if c['conditional'])}")
-    if problems:
-        print(f"PROBLEMS={len(problems)}")
-        for p in problems[:25]:
-            print("  ", p)
-    else:
-        print("PROBLEMS=0")
+    print("PROBLEMS=0")
 
 
 if __name__ == "__main__":

@@ -16,37 +16,52 @@ caster eats -> larger CC-adjusted EHP). This is what makes the
 Mercury's Treads / Sterak's candidate rises vs a heavy-CC comp); without it the
 discount is a uniform per-enemy-comp scale that cannot re-rank items.
 
-Values are the NOMINAL flat passive tenacity from each item's 16.11.1
-description (parse-verified, not hand-typed). EXCLUDED on purpose:
+Values are the NOMINAL flat tenacity from each item's description, seeded at
+16.11.1 and re-read at 16.22.1 (parse-verified, not hand-typed). EXCLUDED on
+purpose:
   * Silvermere Dawn (6035, + mirror 226035) - the tenacity is a temporary buff
     from the Quicksilver ACTIVE (a CC cleanse), not a passive stat; modeling it
     as flat would overstate. Both rows are also map-dead this patch.
   * Anathema's Chains (8001, + Arena mirror 228001) - "reduced Tenacity" is a
     DEBUFF dealt to the marked Nemesis, NOT a self-grant.
   * Elixir of Iron (2138) - a consumable, never a build slot.
-R144 re-ran that description scan across the full 706-item catalog and confirmed
-these five ids are the COMPLETE set of tenacity-mentioning rows outside the
-registry - i.e. the exclusion list is exhaustive, not a sample, and the mirrors
-of the excluded items are excluded for the same reason as their bases.
-Conditional caveats (Wit's End / Sterak's tenacity has melee/near-enemy gates
-in-game) are treated as the nominal best-case, matching the AH registry's
-"carry the base stat" convention - the gate is a second-order refinement.
+R144 re-ran that description scan across the full catalog and confirmed these
+five ids are the COMPLETE set of tenacity-mentioning rows outside the registry -
+i.e. the exclusion list is exhaustive, not a sample, and the mirrors of the
+excluded items are excluded for the same reason as their bases (re-measured at
+16.22.1 by S144-D-326). Gunmetal Greaves (3172) says "Tenacity" only in its
+``plaintext`` blurb; its description grants none, so it is not a row.
+
+CONDITIONAL ROW (S144-D-327). Every row but one carries its tenacity as an
+unconditional ``<stats>`` line. Protoplasm Harness (2525, + Arena mirror
+222525) is the exception: its 25% sits in the Lifeline passive ("While
+regenerating Health"), a window opened by dropping below 30% Health. It is
+carried at the nominal 25%, matching the AH registry's "carry the base stat"
+convention, so it OVERSTATES the always-on value; whether to drop or amortize
+it is a registry value change, a Tier-2 follow-up (S144-D-329) not made here. Wit's End
+and Sterak's Gage were named here as the gated rows, but at 16.22.1 both are
+plain ``<stats>`` lines.
 
 Regeneration on a patch bump: re-run the description scan that seeded this
-(parse ``<attention>N%</attention>`` adjacent to "Tenacity" in
-``items.json.data[id].description``, drop the 3 excluded ids) and diff.
+(strip the markup from ``items.json.data[id].description``, match
+``N% Tenacity``, drop the 5 excluded ids) and diff. Matching only
+``<attention>N%</attention>`` misses Protoplasm Harness, whose 25% is untagged
+passive text.
 
 Keyed by string item_id to match the engine's ``resolved.item_ids`` tuple
 shape (strings throughout). The 22.../44.../66...-prefixed ids are mode-mirror
 copies (same item, different map id). NOTE the prefix does NOT encode Arena: on
 this registry ``22xxxx`` and ``44xxxx`` rows are map-30 (Arena) but ``66xxxx``
 rows are map-11 (SR) - 663172 Zephyr is the SR mirror, not an Arena one. The
-per-row comments below carry each id's ACTUAL map flag, verified against
-``items.json``; an earlier pass had labelled several of them by prefix guess.
+per-row comments below carry each id's ACTUAL map flags, verified against
+``items.json``; an earlier pass had labelled several of them by prefix guess,
+and S144-D-325 re-read them at 16.22.1 (the throwback map 453 replaced maps
+21 / 35). ``agents/daemon_slayer/tests/test_item_tenacity_registry_live_text_s144d325.py``
+pins every ``maps ...`` label to the live flags.
 
 MIRROR MAGNITUDES ARE READ, NEVER INHERITED (the R133 rule, applied to this
 registry by R144). All 17 rows are pinned to their OWN ``description`` by
-``tests/test_r144_mirror_slice_b.py``. Measured outcome: every mirror on this
+``agents/daemon_slayer/tests/test_r144_mirror_slice_b.py``. Measured outcome: every mirror on this
 axis happens to be magnitude-IDENTICAL to its base, unlike the resist (R133) and
 HSP (R143) registries where mirrors diverge in both directions. That coincidence
 is asserted rather than assumed - do NOT collapse these rows into a prefix-strip.
@@ -58,25 +73,25 @@ from typing import Iterable
 
 
 _ITEM_TENACITY: dict[str, float] = {
-    "1111": 30.0,    # Jarvan I's - maps.12 ARAM only (augment-gated boots)
-    "2517": 20.0,    # Endless Hunger - maps 11/12/21/35
-    "2525": 25.0,    # Protoplasm Harness - maps 11/12/21/35
-    "3053": 20.0,    # Sterak's Gage - maps 11/12/21/35
-    "3091": 20.0,    # Wit's End - maps 11/12/21/35
-    "3111": 30.0,    # Mercury's Treads - maps 11/12/21/35
-    "3173": 30.0,    # Chainlaced Crushers (boots) - maps.11 SR only
-    "4012": 30.0,    # Sin Eater - maps all-False, not equippable this patch
-    "4013": 30.0,    # Lightning Braid - maps all-False, not equippable this patch
-    "222517": 20.0,  # Endless Hunger - maps.30 Arena mirror
-    "222525": 25.0,  # Protoplasm Harness - maps.30 Arena mirror
-    "223053": 20.0,  # Sterak's Gage - maps.30 Arena mirror
-    "223091": 20.0,  # Wit's End - maps.30 Arena mirror
-    "223111": 30.0,  # Mercury's Treads - maps.30 Arena mirror
-    "223172": 20.0,  # Zephyr - maps.30 Arena; ships as mirrors only, no bare Zephyr
-    "447110": 30.0,  # Moonflair Spellblade - maps.30 Arena only
+    "1111": 30.0,    # Jarvan I's - maps 12, ARAM only (augment-gated boots)
+    "2517": 20.0,    # Endless Hunger - maps 11/12/453
+    "2525": 25.0,    # Protoplasm Harness - maps 11/12/453; Lifeline-gated
+    "3053": 20.0,    # Sterak's Gage - maps 11/12/453
+    "3091": 20.0,    # Wit's End - maps 11/12/453
+    "3111": 30.0,    # Mercury's Treads - maps 11/12/453
+    "3173": 30.0,    # Chainlaced Crushers (boots) - maps 11/453
+    "4012": 30.0,    # Sin Eater - maps none, not equippable this patch
+    "4013": 30.0,    # Lightning Braid - maps none, not equippable this patch
+    "222517": 20.0,  # Endless Hunger - maps 30, Arena mirror
+    "222525": 25.0,  # Protoplasm Harness - maps 30, Arena mirror; Lifeline-gated
+    "223053": 20.0,  # Sterak's Gage - maps 30, Arena mirror
+    "223091": 20.0,  # Wit's End - maps 30, Arena mirror
+    "223111": 30.0,  # Mercury's Treads - maps 30, Arena mirror
+    "223172": 20.0,  # Zephyr - maps 30, Arena; ships as mirrors only, no bare Zephyr
+    "447110": 30.0,  # Moonflair Spellblade - maps 30, Arena only
     # WARNING: bare 3172 is NOT Zephyr - it is Gunmetal Greaves, an unrelated
     # boot with no tenacity. Never prefix-strip these two to a "base" id.
-    "663172": 20.0,  # Zephyr - maps.11 SR mirror (66 prefix is SR here, not Arena)
+    "663172": 20.0,  # Zephyr - maps 11, SR mirror (66 prefix is SR here, not Arena)
 }
 
 
@@ -95,7 +110,18 @@ def total_item_tenacity(item_ids: Iterable[str | int]) -> float:
     Items not in the registry contribute 0 (no reduction). Duplicate ids stack
     per occurrence per League's stat-stack rules (the build planner enforces the
     inventory cap + unique-passive doctrine separately).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-153).
     """
+    # A bare "3111" was read character by character and lost Mercury's Treads;
+    # a bare int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     remaining = 1.0
     for iid in item_ids:
         pct = _ITEM_TENACITY.get(str(iid), 0.0)

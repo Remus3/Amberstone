@@ -83,6 +83,23 @@ VALID_METRICS: Tuple[str, ...] = (
 # authority on per-cast timing. A caller-supplied sequence overrides this.
 _DEFAULT_COMBO_SEQUENCE: Tuple[str, ...] = ("Q", "AA", "W", "R")
 
+# S144-D-180: the fixed note on a cell whose target profile has an entry that
+# is not a finite number (the cell's value is NaN, so invariant 4 flags it).
+_BAD_PROFILE_NOTE = "target profile not a finite number"
+
+# S144-D-186 / S144-D-187: the fixed notes on the cells of an item set that is
+# not iterable and of a level int() rejects (or a bool). Those cells never
+# reach a scorer; a bad level is stamped ``_BAD_LEVEL`` (0 is not a game level)
+# so the int-typed field stays sortable for invariant 3.
+_BAD_ITEM_SET_NOTE = "item set not readable"
+_BAD_LEVEL_NOTE = "level not a whole number"
+_BAD_LEVEL = 0
+
+# S144-D-188: the fixed note on a combo / mana_bounded_dps cell whose walk
+# resolved no action. Those scorers fail soft to a zero total, which read as a
+# real finite 0.0 where dps / burst give NaN for the same input.
+_NO_ACTION_NOTE = "walk resolved no action"
+
 # Floating-point slack for the "non-increasing" / "non-decreasing" tests.
 # Engine values are O(10-1000); 1e-6 absorbs round-trip float noise without
 # masking a real reversal.
@@ -125,9 +142,44 @@ class InvariantViolation:
     cells: Tuple[ScenarioCell, ...]
 
 
-def _coerce_item_set(item_set: Sequence[str | int]) -> Tuple[str, ...]:
-    """Normalize one item-id tuple to a tuple of str ids."""
-    return tuple(str(i) for i in (item_set or ()))
+def _coerce_item_set(item_set: Sequence[str | int]) -> Optional[Tuple[str, ...]]:
+    """Normalize one item-id tuple to a tuple of str ids.
+
+    S144-D-184: a bare ``str`` / ``int`` id is a ONE-item set. Before, a bare
+    "3089" was read as ('3', '0', '8', '9') (``burst`` NaN, ``combo`` a finite
+    0.0 that read like a real value) and a bare int raised TypeError, which
+    aborted the whole sweep. A ``bool`` is never an id, and a falsy set
+    ("", 0, None, empty) is the empty set, as before.
+
+    S144-D-186: a set that is not iterable (True, 1.5, object()) returns None,
+    so ``sweep_scenarios`` fails only its own cells; before, the TypeError
+    aborted the whole sweep.
+    """
+    if not item_set:
+        return ()
+    if isinstance(item_set, str) or (
+        isinstance(item_set, int) and not isinstance(item_set, bool)
+    ):
+        return (str(item_set),)
+    try:
+        return tuple(str(i) for i in item_set)
+    except TypeError:
+        return None
+
+
+def _coerce_level(level: int) -> Optional[int]:
+    """Read one swept level as ``int(level)``, or None when it is not one.
+
+    S144-D-187: a value ``int()`` rejects ("x", None, NaN, +-inf) aborted the
+    whole sweep, and a bool read as level 1 / 0. Both now return None so only
+    that level's cells fail. A numeric string or a float truncates, as before.
+    """
+    if isinstance(level, bool):
+        return None
+    try:
+        return int(level)
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 
 def _coerce_profile(
@@ -137,13 +189,22 @@ def _coerce_profile(
 
     Missing trailing entries default to 0.0 so a 2-tuple ``(armor, mr)``
     works as well as a 4-tuple. Extra entries past index 3 are ignored.
+
+    S144-D-179: an entry ``float()`` rejects (None, "x", an int too large
+    for a float) reads as NaN instead of raising, so one bad profile fails
+    only its own cells (see ``sweep_scenarios``) and never aborts the sweep.
     """
     vals = list(profile or ())
-    armor = float(vals[0]) if len(vals) > 0 else 0.0
-    mr = float(vals[1]) if len(vals) > 1 else 0.0
-    max_hp = float(vals[2]) if len(vals) > 2 else 0.0
-    bonus_hp = float(vals[3]) if len(vals) > 3 else 0.0
-    return (armor, mr, max_hp, bonus_hp)
+
+    def _at(i: int) -> float:
+        if len(vals) <= i:
+            return 0.0
+        try:
+            return float(vals[i])
+        except (TypeError, ValueError, OverflowError):
+            return math.nan
+
+    return (_at(0), _at(1), _at(2), _at(3))
 
 
 def _score_cell(
@@ -193,6 +254,8 @@ def _score_cell(
                 target_armor=armor, target_mr=mr, target_max_hp=max_hp,
                 target_bonus_hp=bonus_hp, mode=mode, snapshot=snapshot,
             )
+            if not r.hits:
+                return (float("nan"), _NO_ACTION_NOTE)
             return (float(r.total_mitigated), "")
         if metric == "mana_bounded_dps":
             from .mana_sim import compute_mana_bounded_combo  # noqa: PLC0415
@@ -202,6 +265,12 @@ def _score_cell(
                 target_armor=armor, target_mr=mr, target_max_hp=max_hp,
                 target_bonus_hp=bonus_hp, mode=mode, snapshot=snapshot,
             )
+            # The mana walk drops a locked cast without a hit, so empty hits
+            # alone is also an all-locked rotation (a real 0.0). Only the
+            # fail-soft empty result has a 0.0 pool: a real walk's pool is
+            # positive, or inf for a champion with no finite mana.
+            if not r.hits and r.mana_pool == 0.0:
+                return (float("nan"), _NO_ACTION_NOTE)
             return (float(r.bounded_dps), "")
         if metric == "rune_burst":
             from .burst import compute_burst_damage  # noqa: PLC0415
@@ -254,7 +323,11 @@ def sweep_scenarios(
     Fail-soft: a scorer raising on one cell yields a ``ScenarioCell`` with
     ``value=float('nan')`` + a note; the sweep continues. The returned list
     length is exactly ``len(levels) * len(item_sets) * len(target_profiles)
-    * len(modes)`` - every cell is present even if its scorer failed.
+    * len(modes)`` - every cell is present even if its scorer failed. A level,
+    item set or target profile that cannot be read fails only its own cells
+    (NaN + a fixed note, no scorer call); a bad level is stamped ``level=0``
+    and a bad item set ``item_ids=()``. A ``combo`` / ``mana_bounded_dps``
+    cell whose walk resolved no action is NaN, never the scorer's 0.0.
 
     Cell order is deterministic: levels outer, then item_sets, then
     target_profiles, then modes innermost.
@@ -269,21 +342,36 @@ def sweep_scenarios(
     norm_item_sets = [_coerce_item_set(s) for s in (item_sets or [])]
     norm_profiles = [_coerce_profile(p) for p in (target_profiles or [])]
     norm_modes = [str(m) for m in (modes or ())]
-    norm_levels = [int(lv) for lv in (levels or [])]
+    norm_levels = [_coerce_level(lv) for lv in (levels or [])]
 
     cells: List[ScenarioCell] = []
     for lv in norm_levels:
         for item_ids in norm_item_sets:
             for (armor, mr, max_hp, bonus_hp) in norm_profiles:
+                profile_ok = all(
+                    math.isfinite(x) for x in (armor, mr, max_hp, bonus_hp)
+                )
                 for mode in norm_modes:
-                    value, note = _score_cell(
-                        snap, champ, lv, item_ids, armor, mr, max_hp,
-                        bonus_hp, mode, metric, sequence, runes,
-                    )
+                    # One bad axis entry fails only its own cells and never
+                    # reaches a scorer; the level note wins, then the set's.
+                    if lv is None:
+                        value, note = (math.nan, _BAD_LEVEL_NOTE)
+                    elif item_ids is None:
+                        value, note = (math.nan, _BAD_ITEM_SET_NOTE)
+                    elif profile_ok:
+                        value, note = _score_cell(
+                            snap, champ, lv, item_ids, armor, mr, max_hp,
+                            bonus_hp, mode, metric, sequence, runes,
+                        )
+                    else:
+                        # S144-D-180: never reach a scorer. combo /
+                        # mana_bounded_dps fail soft to a FINITE 0.0 that
+                        # passed invariant 4 as a real measurement.
+                        value, note = (math.nan, _BAD_PROFILE_NOTE)
                     cells.append(ScenarioCell(
                         champion=champ,
-                        level=lv,
-                        item_ids=item_ids,
+                        level=_BAD_LEVEL if lv is None else lv,
+                        item_ids=() if item_ids is None else item_ids,
                         target_armor=armor,
                         target_mr=mr,
                         mode=mode,

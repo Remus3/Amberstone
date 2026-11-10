@@ -37,8 +37,8 @@ trigger semantic and a duration field on a dataclass built for stack-counted
 instantaneous grants. It is a separate registry for the same reason
 ``_rune_hsp_amp`` is separate from ``_rune_resist_grants``.
 
-DDragon 16.14.1 ``data/meta_build/ddragon/16.14.1/runesReforged.json`` longDesc,
-quoted VERBATIM (re-read from raw source for this slice, not paraphrased):
+The DDragon ``runesReforged.json`` longDesc, identical in every vendored
+snapshot 16.11.1..16.22.1, quoted VERBATIM:
 
   * 8444 SecondWind: "After taking damage from an enemy champion, heal for 4% of
     your missing health over 10s."
@@ -63,7 +63,8 @@ The constant is RESTATED here rather than imported, for the same reason
 ``_rune_health_grants`` restates its Grasp coefficients from ``enemy_runes.py``:
 the orchestrator wires this module INTO ``ehp.py``, so importing ``ehp`` back out
 of it would create an import cycle. The restatement is held safe by
-``ConventionPinTests`` in ``tests/test_rune_self_heal_r142.py``, which imports
+``ConventionPinTests`` in
+``agents/daemon_slayer/tests/test_rune_self_heal_r142.py``, which imports
 BOTH sides - it lives outside the production import graph, so it can hold the
 pair at once and goes RED the moment either side is edited alone. Same treatment
 for ``_FIGHT_WINDOW_S = 6.0`` (``ehp._FIGHT_WINDOW_S``).
@@ -122,17 +123,20 @@ sweep. Every other Resolve rune was read and ROUTED, not overlooked:
     ``_rune_flat_mitigation`` lane, not a heal.
   * 8446 Demolish - bonus physical damage to TOWERS. Not a survivability term at
     all, and not a champion-combat term.
-  * 8463 Font of Life - DATA-BLOCKED, not rejected on merit. Its longDesc is
+  * 8401 Shield Bash - bonus adaptive damage on the next attack after GAINING a
+    shield. A damage proc, not a heal; ``rune_procs.py`` registers it.
+  * 8463 Font of Life - DATA-BLOCKED, not rejected on merit. Its longDesc opens
     "Impairing the movement of an enemy champion restores <healing>@BaseHeal@
     Health</healing> to you and the lowest health nearby allied champion." The
-    ``@BaseHeal@`` template variable is UNRESOLVED in all four vendored DDragon
-    snapshots (16.11.1 / 16.12.1 / 16.13.1 / 16.14.1 - verified for this slice),
-    so the rune has NO extractable magnitude from the only sanctioned data
-    source. It cannot be modelled without inventing a coefficient, which the
-    exact-magnitude discipline forbids. It is also a two-target heal whose ally
-    half is the ``hps.py`` ally-throughput lane.
-  * 8465 Guardian - a SHIELD, not a heal, and it is being built in a PARALLEL
-    SLICE. Routed away here explicitly so the two slices cannot both credit it.
+    ``@BaseHeal@`` template variable is UNRESOLVED in every vendored DDragon
+    snapshot 16.11.1..16.22.1, so the rune has NO extractable magnitude from the
+    only sanctioned data source. It cannot be modelled without inventing a
+    coefficient, which the exact-magnitude discipline forbids. It is also a
+    two-target heal whose ally half is the ``hps.py`` ally-throughput lane.
+  * 8465 Guardian - a SHIELD, not a heal. ``_rune_shield_grants`` registers it;
+    routed away here explicitly so the two lanes cannot both credit it.
+
+With the seeded 8444 the list covers all 12 Resolve runes at 16.22.1.
 
 Keyed by string rune_id to match the engine's id convention (strings throughout);
 integer ids are coerced on lookup, and a repeated id is credited at most once (a
@@ -151,7 +155,7 @@ import math
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-# --- Second Wind (8444) - EXACT DDragon 16.14.1 magnitudes -------------------
+# --- Second Wind (8444) - EXACT DDragon magnitudes ---------------------------
 # "heal for 4% of your missing health over 10s". Stored as a FRACTION (0.04 ==
 # 4%) to match the _rune_hsp_amp convention for a value that multiplies a pool
 # directly, rather than the _rune_resist_grants "75.0 == 75%" convention which
@@ -334,7 +338,8 @@ def sum_rune_self_heal(
     grant-lane output back into a grant lane is grant-on-grant compounding and
     makes the result depend on the SOURCE ORDER of the peer registries (the
     ``total_armor`` contract of GUARD 2 in
-    ``tests/test_rune_resist_signature_convention_r134.py``, applied to the
+    ``agents/daemon_slayer/tests/test_rune_resist_signature_convention_r134.py``,
+    applied to the
     numerator).
 
     ``missing_hp_share`` defaults to ``_MISSING_HP_SHARE_FOR_HEALS``, the
@@ -348,8 +353,14 @@ def sum_rune_self_heal(
     every sibling-lane Resolve rune returns zero. Returns 0.0 on an empty / None
     / non-iterable argument, a page whose truthiness raises (the emptiness check
     runs inside the guard, S144-D-94), a non-numeric pool, or any lookup
-    failure.
+    failure. A bare ``str`` / ``int`` id (never ``bool``) is ONE id
+    (S144-D-135).
     """
+    # A bare "8444" was read character by character and lost Second Wind.
+    if isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     try:
         if not rune_ids:
             return 0.0

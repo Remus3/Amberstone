@@ -17,22 +17,29 @@ Why a NEW registry / seam:
     express ``procs x hp_per_proc``, because neither takes a level or a proc count.
 
 SOURCING - the coefficient is 10%, and the obvious in-repo source is STALE.
-``data/daemon_slayer/16.14.1/items_meraki.json`` says 8%. It is wrong for this
-patch: the Meraki body is BYTE-IDENTICAL across all five vendored patch dirs
-(16.10.1 .. 16.14.1) despite five separate fetches, i.e. the ``latest`` endpoint is
+``items_meraki.json`` says 8% in every vendored patch dir. It is wrong for this
+patch: the Meraki ``items`` body is identical across every vendored patch dir
+(16.10.1 .. 16.22.1 at the 2026-11-09 re-measure; only the fetch wrapper fields
+differ) despite a separate fetch per dir, i.e. the ``latest`` endpoint is
 frozen at content patch 25.15 - the item-side instance of the RM-81 defect. Three
-independent live sources read 10% (DDragon ``items.json`` for this same patch dir,
-CommunityDragon 16.14, and the LoL wiki), and the wiki's dated ``V26.11`` entry
+independent live sources read 10% at 16.14.1 (DDragon ``items.json`` for that
+patch dir, CommunityDragon 16.14, and the LoL wiki), and the wiki's dated ``V26.11`` entry
 ("conversion to permanent bonus health increased to 10% from 8%") PREDICTS the
 exact 8 -> 10 flip observed between the vendored 16.10.1 and 16.11.1 dirs. Meraki's
 8% was correct for V25.04 .. V26.10 and is ~11 patches stale. Meraki's 30-second
-per-target cooldown is still correct - only the coefficient moved.
+per-target cooldown is still correct - only the coefficient moved. DDragon 16.22.1
+still reads 10%.
 
-Mechanic (verbatim, wiki + DDragon 16.14.1 agreeing): within 700 units of an enemy
-champion, generate a stack on them each second, up to 3; your next basic attack
-against a 3-stack target consumes them to deal 70 (+6% maximum health) bonus
-physical damage on-hit and grants permanent bonus health equal to 10% of that
-amount (30 second cooldown PER TARGET).
+Mechanic (Meraki's wording with the live 10% coefficient): within 700 units of an
+enemy champion, generate a stack on them each second, up to 3; your next basic
+attack against a 3-stack target consumes them to deal 70 (+6% maximum health)
+bonus physical damage on-hit and grants permanent bonus health equal to 10% of
+that amount (30 second cooldown PER TARGET). This is NOT DDragon's text, which
+at 16.22.1 reads only "If an enemy champion is nearby for a few seconds, your
+next Attack against them deals 70 plus 6% of your max Health as bonus physical
+damage and grants 10% of the damage as max Health." and prints its cooldown as
+an unrendered "(0s) per target"; the 700 units, the 3 stacks and the 30 seconds
+are Meraki's.
 
 THE PROC-COUNT PROXY (the data we lack live), mirroring the R46 rationale: the
 value of a permanent-HP-per-proc item is ``hp_per_proc * proc_count``, but there is
@@ -46,16 +53,19 @@ not realistically completed earlier, and it lands at 8 procs at level 13 - above
 the ~5.2 that RM-99 measured as passing Warmog's, well below the ~16.5 that would
 take #1 on a tank.
 
-CADENCE DISAGREEMENT - deliberate, and NOT resolved here. The damage half in
-``_effects_data`` carries ``every_n_seconds=3.5``, which is neither the 3-second
-charge nor the 30-second per-target cooldown; on a single-target rotation it
-implies ~8.57x the real proc count. This curve is derived from the REAL 30s
-cadence, so the two halves of the Heartsteel model disagree about firing rate.
-Correcting ``every_n_seconds`` is a DEFAULT-ON change to already-shipped damage
-scoring that would reorder live build orders, so it is deliberately NOT bundled
-into this default-OFF numerator add - it is filed as its own operator-gated slice.
-Matching a known-wrong cadence to look self-consistent would make this lane wrong
-on purpose.
+CADENCE - the SR halves now AGREE; the mirror's still do not. When this lane
+shipped, the damage half in ``_effects_data`` carried ``every_n_seconds=3.5``,
+which is neither the 3-second charge nor the 30-second per-target cooldown; on a
+single-target rotation it implies ~8.57x the real proc count. This curve is
+derived from the REAL 30s cadence, so the two halves disagreed about firing rate.
+Correcting it was a DEFAULT-ON change to already-shipped damage scoring, so it was
+deliberately NOT bundled into this default-OFF numerator add but filed as its own
+operator-gated slice, which shipped as RM-99b / A-04 (operator flip 2026-07-24):
+3084 now carries ``every_n_seconds=30.0``. The mirror 223084 still carries 3.5,
+because 30s is unsourced on its own feed; ``HEARTSTEEL_CADENCE_FIX_IDS`` and the
+DEFAULT-OFF ``apply_heartsteel_per_target_cadence`` flag hold that correction, so
+the mirror's two halves still disagree by the same 30/3.5 (S144-D-375). Matching a
+known-wrong cadence to look self-consistent would make this lane wrong on purpose.
 
 NO SELF-FEEDBACK: the proc damage scales with the caster's max HP, and the credit
 IS max HP, so a naive implementation would feed its own output back into its input.
@@ -86,11 +96,13 @@ from typing import Iterable
 # item_id -> fraction of the empowered proc's damage granted as PERMANENT bonus
 # max health.
 _ITEM_HEALTH_STACK_PCT: dict[str, float] = {
-    # Heartsteel - "grant you permanent bonus health equal to 10% of that amount"
-    # (DDragon 16.14.1 + CommunityDragon 16.14 + wiki; NOT Meraki, which is frozen
+    # Heartsteel - "grants 10% of the damage as max Health" (DDragon 16.22.1; also
+    # DDragon 16.14.1 + CommunityDragon 16.14 + wiki; NOT Meraki, which is frozen
     # at 8% - see the SOURCING note above).
     "3084": 0.10,
-    # Heartsteel (Arena mirror). PROVENANCE: INHERITED, UNSOURCED. No feed states a
+    # Heartsteel (mirror; live on maps 12 and 30, but the resolver hands it out
+    # under mode arena only - ARAM resolves to 3084). PROVENANCE: INHERITED,
+    # UNSOURCED. No feed states a
     # coefficient for 223084 - it is absent from Meraki entirely (which carries no
     # Arena mirrors) and its DDragon description omits the percentage. Riot
     # demonstrably retuned this mirror on other axes (700 Health vs 900, 2500g vs
@@ -142,7 +154,18 @@ def item_health_stack_hp(
     stat conversions). Non-positive ``caster_max_hp`` yields 0.0. The default-OFF
     gating lives in ``compute_ehp`` (this function is only called when
     ``assume_item_health_stacks`` is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-145).
     """
+    # A bare "3084" was read character by character and lost Heartsteel; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     hp = max(0.0, float(caster_max_hp))
     # S144-D-104: an infinite pool is unusable, as NaN / -inf already were via
     # the clamp; it returned inf into every compute_ehp numerator.

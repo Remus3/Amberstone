@@ -110,10 +110,14 @@ _KIT_CONVERSION: dict[str, KitConversion] = {
         attack_speed=0.00, crit=0.30, on_hit=0.10, off_axis_stat=0.00,
         note=(
             "A regex for attack speed / on-hit / critical / per second / per tick "
-            "over all five slots returns ZERO matches, while the same regex matches "
-            "Olaf, Pantheon, Orianna, Poppy, RekSai, Rengar and Riven. Every damage "
-            "block she owns scales bonus_ad_pct only (Q Darkin Daggers 20-240 pct "
-            "bonus AD, E Eviscerate 40-120, R Hounds' Pursuit 120). Her only "
+            "over the effects_descriptions of all five slots returns ZERO matches, "
+            "while the same regex matches Olaf, Pantheon, Orianna, Quinn, RekSai, "
+            "Rengar and Riven. (Poppy's prose has no match either; her signal is "
+            "'Periodically', see her entry. The scope is the prose, not the block "
+            "labels: a Q block is named 'Bleed Physical Damage per Tick'.) Every "
+            "block of hers that carries a ratio scales bonus_ad_pct only (Q Darkin "
+            "Daggers 20-240 pct bonus AD, E Eviscerate 40-120, R Hounds' Pursuit "
+            "120). Her only "
             "self-buff is W: 'Naafiri gains 20% AD bonus attack damage'. attack_speed "
             "is 0.00 because there is no AS ratio, no AS prose and no attack-timer "
             "reset anywhere in the kit; crit and on_hit are low but nonzero because "
@@ -154,8 +158,9 @@ _KIT_CONVERSION: dict[str, KitConversion] = {
             "her auto cadence. attack_speed and crit are 0.00 - no AS or crit "
             "language in any of her five slots. off_axis_stat 0.00 is verifiable "
             "structurally: no Orianna damage block carries caster_max_hp_pct, "
-            "caster_bonus_hp_pct, bonus_armor_pct or bonus_mr_pct; every one carries "
-            "ap_pct only, so health converts to ability DPS at exactly zero."
+            "caster_bonus_hp_pct, bonus_armor_pct or bonus_mr_pct; every block of "
+            "hers that carries a ratio carries ap_pct only, so health converts to "
+            "ability DPS at exactly zero."
         ),
     ),
     "Poppy": KitConversion(
@@ -196,7 +201,7 @@ _KIT_CONVERSION: dict[str, KitConversion] = {
     # seed. It is TRUE that health converts to zero carry-route DPS for her - but
     # that is true of every AD carry, so it is a class-wide statement, not Quinn
     # kit signal, and the channel is a 300g-of-off-axis-stat presence test that
-    # fires on Edge of Night (3814, 350 HP). Edge of Night IS a real Quinn core
+    # fires on Edge of Night (3814, 250 HP). Edge of Night IS a real Quinn core
     # item (Profane Hydra or Hubris -> boots -> Collector -> Edge of Night ->
     # Lord Dominik's -> Infinity Edge). A fraction below 1.0 would demote her own
     # build alongside the leads this seed exists to suppress, so the channel is
@@ -405,5 +410,8 @@ def conversion_factor(
         shortfall = 1.0 - getattr(conv, channel)
         if shortfall <= 0.0:
             continue
-        factor *= 1.0 - strength * exposure * shortfall
+        # S144-D-156: floor each term at 0.0. Past strength 1.0 a term went
+        # negative and two of them multiplied back above 1.0 (+inf at an
+        # infinite strength), RAISING the row. Identity for strength in [0, 1].
+        factor *= max(0.0, 1.0 - strength * exposure * shortfall)
     return factor if factor > 0.0 else 0.0

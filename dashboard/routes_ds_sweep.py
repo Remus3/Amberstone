@@ -10,7 +10,7 @@ new dependency; the sweep seam already exists in the engine module (and
 ``compute_dps_curve`` already sweeps the level axis).
 
 Sibling of ``routes_spike_curve.py`` (snapshot-load + id->slug + 5-min
-response cache) and ``routes_cooldown_watch.py`` (cache discipline + error
+response cache) and ``routes_cc_conditional_pressure.py`` (cache discipline + error
 codes). Where spike-curve plots per-minute TEAM power, ds-sweep plots ONE
 champion's DPS against a swept enemy-stat axis (target armor / MR / level) -
 the "how does my damage scale vs their armor 0->300" calc.gg read.
@@ -63,7 +63,7 @@ Failure modes:
 
 5-min TTL in-process cache keyed on
 (champion, axis, sorted_item_ids, mode, level, max, step). Mirrors
-routes_cooldown_watch cache discipline, bounded at ``_CACHE_MAX`` entries
+routes_cc_conditional_pressure cache discipline, bounded at ``_CACHE_MAX`` entries
 with expired entries dropped on write (RM-1327). The level axis ignores
 max/step in the sweep but they still participate in the key (a no-op vary).
 
@@ -89,7 +89,7 @@ from dashboard._errors import send_error
 
 log = logging.getLogger("rc.web_dashboard")
 
-# 5-min response TTL mirrors routes_cooldown_watch / routes_spike_curve.
+# 5-min response TTL mirrors routes_cc_conditional_pressure / routes_spike_curve.
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()

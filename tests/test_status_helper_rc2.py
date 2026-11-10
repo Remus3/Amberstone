@@ -4,7 +4,7 @@ The helper is vanilla JS (Grafana-style threshold model) consumed by the
 dashboard as an ES module. This characterization suite drives node to
 require() the CommonJS export and asserts the threshold mapping so the
 per-panel magic-number migration (op_score, player_gpi, cost-tile,
-cooldown_watch) has a pinned contract.
+the since-deleted cooldown_watch) has a pinned contract.
 
 Skips cleanly when node is unavailable so it never hard-fails CI on a
 runner without a JS toolchain (the dashboard itself needs node only at

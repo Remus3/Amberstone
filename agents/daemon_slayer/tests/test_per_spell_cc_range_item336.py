@@ -33,8 +33,8 @@ FORWARD-MARKER / BYTE-IDENTICAL contract: NOTHING consumes
 ``_PER_SPELL_CC_RANGE`` at ship - it mirrors the way
 ``_PER_SPELL_CC_DURATIONS`` itself shipped EMPTY at ENGINE 1.29.0
 (forward-marker pattern, item 130 / item 112 ``STAT_GRANT_CALC_KEYS``).
-``compute_cc_pressure`` / ``compute_ehp`` / ``cooldown_watch`` /
-``cc_output`` read only ``_PER_SPELL_CC_DURATIONS`` and never the new
+``compute_cc_pressure`` / ``compute_ehp`` / ``cc_pairing`` / the laning
+precompute read only ``_PER_SPELL_CC_DURATIONS`` and never the new
 sibling, so live DS output is byte-identical and ENGINE_VERSION does
 NOT bump.
 

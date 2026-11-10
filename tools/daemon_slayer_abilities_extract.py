@@ -698,14 +698,54 @@ def _build_champion(name: str, payload: dict) -> dict:
 
 # --- Coverage ----------------------------------------------------------------
 
+# A number, then (same sentence) a typed damage noun: "deals 70 : 160 (based on
+# level) (+ 42% bonus AD) physical damage". Stopping at "." keeps a later
+# sentence's damage word from pairing with an earlier unrelated number.
+_PROSE_TYPED_DAMAGE = re.compile(r"\d[^.]*?\b(?:physical|magic|true) damage", re.IGNORECASE)
+
+
+def _is_prose_only_damage(form: Any) -> bool:
+    """True for a non-passive ``no_damage`` form with NO leveling payload whose
+    effect prose still states a numeric typed damage figure (S144-D-196).
+
+    ``_coverage_summary`` drops every ``no_damage`` form from
+    ``damage_eligible``, so without this count such a form leaves the coverage
+    report silently while the burst walker reads it as 0.0 (Aphelios R, Pyke R,
+    Blitzcrank E at 16.22.1). Forms WITH a leveling payload are excluded: that
+    is the RM-95b B2 population (modifier / shield / reflect blocks, not a
+    missing number). Passives are excluded: their damage lives in
+    ``_passive_damage_overrides``. Never raises on a junk form.
+    """
+    if not isinstance(form, dict) or form.get("key") == "P":
+        return False
+    if form.get("parse_status") != "no_damage":
+        return False
+    leveling = form.get("raw_leveling_count")
+    if not isinstance(leveling, int) or isinstance(leveling, bool) or leveling != 0:
+        return False
+    prose = form.get("effects_descriptions")
+    if isinstance(prose, str):
+        prose = [prose]
+    if not isinstance(prose, (list, tuple)):
+        return False
+    return any(isinstance(t, str) and _PROSE_TYPED_DAMAGE.search(t) for t in prose)
+
+
 def _coverage_summary(data: dict[str, dict[str, list[dict]]]) -> dict[str, Any]:
-    """Return per-status counts for the coverage check."""
+    """Return per-status counts for the coverage check.
+
+    ``prose_only_damage`` / ``prose_only_damage_forms`` (S144-D-196) count and
+    name the ``no_damage`` forms ``_is_prose_only_damage`` flags; they sit
+    outside ``damage_eligible`` like every ``no_damage`` form, so ``ok_rate``
+    is unchanged and these keys are what make the excluded damage visible.
+    """
     status_counts: dict[str, int] = {"ok": 0, "partial": 0, "unparsed": 0, "no_damage": 0}
     by_key: dict[str, dict[str, int]] = {k: dict(status_counts) for k in ("P", "Q", "W", "E", "R")}
     total_forms = 0
     multiform = 0
+    prose_only: list[str] = []
 
-    for keymap in data.values():
+    for champion, keymap in data.items():
         for key, forms in keymap.items():
             if len(forms) > 1:
                 multiform += 1
@@ -715,6 +755,8 @@ def _coverage_summary(data: dict[str, dict[str, list[dict]]]) -> dict[str, Any]:
                 status_counts[status] = status_counts.get(status, 0) + 1
                 if key in by_key:
                     by_key[key][status] = by_key[key].get(status, 0) + 1
+                if _is_prose_only_damage(form):
+                    prose_only.append(f"{champion}/{key}/{form.get('form_index')}")
 
     damage_eligible = total_forms - status_counts["no_damage"]
     ok_rate = (status_counts["ok"] / damage_eligible) if damage_eligible else 0.0
@@ -728,6 +770,8 @@ def _coverage_summary(data: dict[str, dict[str, list[dict]]]) -> dict[str, Any]:
         "damage_eligible": damage_eligible,
         "ok_rate": round(ok_rate, 4),
         "parsed_rate": round(parsed_rate, 4),
+        "prose_only_damage": len(prose_only),
+        "prose_only_damage_forms": sorted(prose_only),
     }
 
 
@@ -853,6 +897,12 @@ def main() -> int:
         coverage["ok_rate"] * 100,
         coverage["parsed_rate"] * 100,
     )
+    if coverage["prose_only_damage"]:
+        log.warning(
+            "coverage: %d no_damage form(s) state damage in prose only (the burst walker reads them as 0.0): %s",
+            coverage["prose_only_damage"],
+            ", ".join(coverage["prose_only_damage_forms"]),
+        )
 
     snapshot = {
         "version": patch,

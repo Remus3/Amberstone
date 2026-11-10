@@ -843,8 +843,12 @@ def get_conditional_entries(champion: str) -> Tuple[ConditionalCcEntry, ...]:
     multi-form schema-lift entries (Karma W / Hwei E since ENGINE
     1.47.0), the primary default-form entry comes FIRST, followed by
     each form-explicit sidecar entry in form_index ASC order.
+
+    A non-string champion is blank (S144-D-129: an unhashable one raised
+    TypeError out of the registry lookup, and so out of
+    ``get_total_conditional_cc_seconds``, which documents "Never raises").
     """
-    if not champion:
+    if not champion or not isinstance(champion, str):
         return ()
     spells_dict = _PER_SPELL_CC_CONDITIONAL.get(champion, {})
     forms_dict = _PER_SPELL_CC_CONDITIONAL_FORMS.get(champion, {})

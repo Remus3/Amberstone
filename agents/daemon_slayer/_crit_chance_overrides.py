@@ -24,8 +24,10 @@ no seam anywhere in the engine before this module:
      Jhin's Whisper penalty is 0.86 applied to base-plus-bonuses, NOT an
      additive term on the bonus alone. His notes state the order of operations
      verbatim and explicitly reject the additive reading (see GROUND TRUTH).
-     The engine has no multiplicative crit-damage axis at all - grep 0.86 across
-     ``agents/daemon_slayer/*.py`` returns nothing outside this module.
+     The engine has no multiplicative crit-damage axis at all - no 0.86 literal
+     in CODE in ``agents/daemon_slayer/*.py`` outside this module. A grep does
+     hit ``dps.py`` and ``server.py`` since RM-118, but only in a docstring and
+     a comment that name this seam (re-measured S144-D-383).
 
 CONSUMER: ``dps.compute_dps(apply_crit_chance_overrides=True)`` - DEFAULT-OFF.
 With the flag omitted (the default) NOTHING in this module is imported or read
@@ -60,7 +62,8 @@ rule; this registry answers "given a resolved crit chance, what does the game
 actually do with it".
 
 GROUND TRUTH: ``data/daemon_slayer/16.14.1/champion_abilities.json`` -> data ->
-<Champion> -> P (patch 16.14.1), verbatim:
+<Champion> -> P (patch 16.14.1; every fragment below re-read unchanged at
+16.22.1, S144-D-383 - the drift guard reads the ``current.txt`` patch), verbatim:
 
   Yasuo "Way of the Wanderer" effects_descriptions[0]:
     "Innate - Intent: Yasuo's total critical strike chance is doubled from all
@@ -86,8 +89,9 @@ The Jhin fragment is the whole reason ``crit_damage_multiplier`` multiplies
 term must read 1.75 x 0.86 = 1.505, and with a +0.40 crit-damage source
 2.15 x 0.86 = 1.849. (The note's "40" is a historical Infinity Edge value; the
 SHIPPED IE (``ITEM_EFFECTS["3031"]`` in ``_effects_data.py``) carries
-crit_damage_bonus=0.30. The
-identity being pinned is the ORDER OF OPERATIONS, not IE's current number.)
+crit_damage_bonus=0.30, matching the live DDragon 16.22.1 line "30% Critical
+Strike Damage". The identity being pinned is the ORDER OF OPERATIONS, not
+IE's current number.)
 """
 from __future__ import annotations
 

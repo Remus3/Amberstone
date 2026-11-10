@@ -21,7 +21,7 @@ wires reverts the surface to invisible:
   - web/css/dashboard.css @import's the panel css.
 
 Grep-based smoke checks - cheap, fast, enough to catch a missing wire.
-Mirrors test_cooldown_watch_panel_dom.py.
+Mirrors test_cc_conditional_pressure_panel_dom.py.
 """
 from __future__ import annotations
 

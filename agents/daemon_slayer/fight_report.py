@@ -175,6 +175,45 @@ def _section_failed(section: str, exc: Exception) -> str:
     return f"{section} section failed - see logs"
 
 
+def _finite_knob(value, default: float, name: str, notes: List[str]) -> float:
+    """Return ``value`` as a finite float, else ``default`` plus a note.
+
+    S144-D-176..178. The note names the knob only, never the value: the notes
+    ride the :8860 reply (RM-838 (d))."""
+    try:
+        num = float(value)
+    except (TypeError, ValueError, OverflowError):
+        num = math.nan
+    if math.isfinite(num):
+        return num
+    notes.append(f"{name}: not a finite number - read as {default:g}")
+    return default
+
+
+def _item_strs(item_ids) -> Tuple[List[str], str]:
+    """The caller's item ids as strings, plus a note when they were unusable.
+
+    S144-D-183: a bare ``str`` / ``int`` id is ONE id (``[str(i) for i in
+    item_ids]`` read a bare "3089" as '3', '0', '8', '9' and raised TypeError
+    out of this NEVER-raises report on a bare int). A falsy page is empty, as
+    before. A page that cannot be read as ids (a ``bool``, any other
+    non-iterable, an id whose ``str()`` raises) is scored as no items, with
+    one fixed note that carries no part of the value (RM-835).
+    """
+    if not item_ids:
+        return [], ""
+    if isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
+    try:
+        if isinstance(item_ids, bool):
+            raise TypeError("bool is not an item id page")
+        return [str(i) for i in item_ids], ""
+    except Exception:  # noqa: BLE001 - NEVER raises; a fixed note instead
+        return [], "item_ids: not a list of item ids - scored with no items"
+
+
 def compute_fight_report(
     champion: str,
     level: int = 1,
@@ -202,7 +241,7 @@ def compute_fight_report(
     (int or str). ``sequence`` defaults to ``_DEFAULT_SEQUENCE`` when None.
     """
     snap = snapshot if snapshot is not None else DataSnapshot.load()
-    items: List[str] = [str(i) for i in (item_ids or [])]
+    items, items_note = _item_strs(item_ids)
     runes_list: List[int] = []
     for r in (runes or []):
         try:
@@ -214,6 +253,9 @@ def compute_fight_report(
     )
     try:
         lvl = int(level)
+    except OverflowError:
+        # S144-D-120: int(+-inf) raised out of this NEVER-raises surface.
+        lvl = 18 if level > 0 else 1
     except (TypeError, ValueError):
         lvl = 1
     if lvl < 1:
@@ -221,6 +263,24 @@ def compute_fight_report(
 
     champ = str(champion or "").strip()
     notes: List[str] = []
+    if items_note:
+        notes.append(items_note)
+
+    # S144-D-176..178: a target knob or recharge window that is not a finite
+    # number reads as its own default, and one note names the knob. Before,
+    # a non-numeric one raised out of the report constructor's float() echo,
+    # a NaN / inf one was echoed non-finite while the damage sections failed
+    # with a note that never named it, and a NaN / inf window silently
+    # dropped every charge slot.
+    target_armor = _finite_knob(target_armor, 0.0, "target_armor", notes)
+    target_mr = _finite_knob(target_mr, 0.0, "target_mr", notes)
+    target_max_hp = _finite_knob(target_max_hp, 0.0, "target_max_hp", notes)
+    target_bonus_hp = _finite_knob(
+        target_bonus_hp, 0.0, "target_bonus_hp", notes,
+    )
+    recharge_window_s = _finite_knob(
+        recharge_window_s, 10.0, "recharge_window_s", notes,
+    )
 
     champion_name = champ
     # ----- MANA section -------------------------------------------------

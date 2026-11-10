@@ -463,6 +463,23 @@ def _build_missing_hp_heal_amp() -> dict[str, dict[str, float]]:
 _MISSING_HP_HEAL_AMP: dict[str, dict[str, float]] = _build_missing_hp_heal_amp()
 
 
+def _clamped_hp_fraction(value) -> float:
+    """An HP fraction clamped to ``[0, 1]``; non-finite or unconvertible -> 0.0.
+
+    S144-D-161: the resolved missing-HP units multiply this straight into a
+    heal, so 5.0 credited five times the caster's max HP as missing, a negative
+    value erased the heal and NaN poisoned the total. 0.0 is the no-assumption
+    default (full HP, nothing missing) every caller already passes.
+    """
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(out) or out <= 0.0:
+        return 0.0
+    return 1.0 if out > 1.0 else out
+
+
 def _missing_hp_heal_amp_factor(
     champion_id: str, spell_key: str, missing_hp_pct: float,
 ) -> float:
@@ -481,6 +498,10 @@ def _missing_hp_heal_amp_factor(
     if not max_bonus:
         return 1.0
     frac = missing_hp_pct
+    # S144-D-160: NaN fails both clamp compares below and made the factor NaN.
+    # A non-finite fraction is junk, and junk takes the no-amp default.
+    if not math.isfinite(frac):
+        return 1.0
     if frac < 0.0:
         frac = 0.0
     elif frac > 1.0:
@@ -712,7 +733,9 @@ def compute_ability_hps(
       (lower bound 0). With it ON and ``target_max_hp == 0`` the target units
       still resolve to 0 - pass a representative enemy HP for a real lower
       bound. The caster-missing-HP units use ``caster_max_hp`` from the
-      resolved build times ``caster_missing_hp_pct``.
+      resolved build times ``caster_missing_hp_pct``. Both missing-HP
+      fractions are clamped to ``[0, 1]`` (non-finite -> 0.0), and a
+      non-finite or negative ``target_max_hp`` reads as 0.0 (S144-D-161/162).
     * ``assume_missing_hp_heal_amp`` (item 515, default False) multiplies a
       registered ``(champion, spell)`` heal by ``1 + max_bonus *
       caster_missing_hp_pct`` from ``_MISSING_HP_HEAL_AMP`` (the comeback
@@ -734,6 +757,18 @@ def compute_ability_hps(
             f"got {block_strategy!r}"
         )
     level = clamp_level(level)
+    # S144-D-161 / S144-D-162: normalize the per-call HP assumptions once, so
+    # the resolved units, the bilinear terms, the heal amp and the dedupe
+    # context all read the same sane value. Identity for every finite fraction
+    # in [0, 1] and every finite non-negative target_max_hp.
+    caster_missing_hp_pct = _clamped_hp_fraction(caster_missing_hp_pct)
+    target_missing_hp_pct = _clamped_hp_fraction(target_missing_hp_pct)
+    try:
+        target_max_hp = float(target_max_hp)
+    except (TypeError, ValueError):
+        target_max_hp = 0.0
+    if not math.isfinite(target_max_hp) or target_max_hp < 0.0:
+        target_max_hp = 0.0
 
     # RM-172: apply_mode_modifiers (DEFAULT-OFF) opts into the ARENA/Swiftplay
     # stat-growth ADDEND lane. compute_hps forwards its own flag here so the

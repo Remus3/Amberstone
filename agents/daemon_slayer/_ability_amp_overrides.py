@@ -34,8 +34,8 @@ block-index routing (the "Maximum ..." block already holds the ceiling, so an
 amp would double-model it - route the block-index instead, never add an amp):
 
 * Sion Q - already resolved BEFORE this seam: ``champion_block_index.json``
-  ``{"Q": 2}`` selects the "Maximum Physical Damage" block by default (the s191
-  block-index routing predates the Gap-1 amp analysis). No flag-gated route is
+  ``{"Q": 1}`` (a damage-block ordinal since F2) selects the "Maximum Physical Damage"
+  block by default (the s191 block-index routing predates the Gap-1 amp analysis). No flag-gated route is
   needed; flag on/off is byte-identical. Its STAGED entry was removed.
 * Hwei Q form2 - now wired via ``_STAGED_AMP_BLOCK_ROUTES`` below, GATED on
   ``apply_ability_amps`` (default byte-identical). The route points at the
@@ -72,15 +72,17 @@ Two amp bases:
   * Fiora E (Bladework) - the 2nd empowered AA is a GUARANTEED CRIT at modified
     crit damage 160%:200% by rank; on Fiora's typical no-crit bruiser build that
     is a real ``(m - 1)`` per-AA damage uplift, amortized over the E cooldown.
-    AUTHORED (condition ``nth_hit``; the guaranteed crit is the every-Nth-AA
-    empowered hit). See its note for the assumption.
+    AUTHORED ``always_on`` with no condition: the addend is already amortized
+    over the E cooldown, so a probability gate would double-discount it (and
+    ``nth_hit`` is not a ``_DEFAULT_AMP_PROBABILITY`` key, so naming it would
+    read probability 0.0). See its note for the assumption.
   The other 4 stay INERT placeholders (``amp_per_rank=(0.0,)``) because their
   empowerment is NOT a base-AA single-target damage multiplier the consumer can
   represent (Caitlyn W = a conditional Headshot passive gated on a sprung trap;
   Jayce W f1 = a per-AA "% AD" modifier mostly BELOW 1.0xAD whose real value is
   the +360% bonus AS the consumer cannot model; Sivir W = an extra-target bounce
   + AS; Nidalee Q f1 = an AA-replacement that converts the AA to a magic
-  missing-HP formula, gated behind a Cougar-form Q recast). Each entry's note
+  missing-HP formula, gated behind a Cougar-form Q cast). Each entry's note
   documents the precise non-fit reason.
 
 Two amp gatings (via ``_amp_multiplier``):
@@ -95,8 +97,24 @@ Two amp gatings (via ``_amp_multiplier``):
 
 ``amp_per_rank`` is the multiplier ADDEND per spell rank (0-based index by
 the spell's current rank, matching ``ability_dps``'s ``rank_at_level``
-0-based contract). Values verified against the form's ``raw_modifiers``
-and ``effects_descriptions`` at patch 16.11.1.
+0-based contract). Values were first read from the form's ``raw_modifiers``
+and ``effects_descriptions`` at patch 16.11.1. They are not re-checked by
+hand: these live guards rebuild them from the CURRENT snapshot on every run -
+test_ability_amp_live_magnitudes_s144d272.py (ability and cross-spell
+magnitudes, the Hwei route, the live-shape claims),
+test_ability_amp_aa_rows_live_s144d275.py (the base="aa" rows and the Sion
+block index) and test_ability_amp_prose_and_disposition_s144d279.py (every
+``ed[N]`` cite, and the bucket coverage below).
+
+Out of seam - the taxonomy's other ``damage_amp_self`` blocks
+(``modifier_blocks.classify_modifier_kind``) that this registry deliberately
+does not key: Mel R "Stored Damage Increase per Stack" (the form already
+carries the "Increased Stored Damage" damage block, so an amp would
+double-model it); Yone E "Damage Stored" (a mark storing a share of damage
+dealt, paid out as the recast's true damage; the form has no damage block to
+scale). The Mel W replicated-projectile and TahmKench E grey-health blocks
+are no longer in the bucket: the taxonomy files them under ``other``
+(test_modifier_taxonomy_live_s144d282.py).
 """
 from __future__ import annotations
 
@@ -170,7 +188,9 @@ class CrossSpellAmpEntry:
 
 
 # (champion_id, key, form_index) -> AmpEntry.
-# Verified 2026-05-31 against raw_modifiers + effects_descriptions at 16.11.1.
+# First authored 2026-05-31 from raw_modifiers + effects_descriptions at
+# 16.11.1; the live guards named in the module docstring re-check every value
+# and every ed[N] cite against the current snapshot.
 _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
     # Illaoi Q Tentacle Smash: ed[0] "Passive: Tentacle damage is increased"
     # (unconditional). raw_modifiers "Damage Increase" [10,15,20,25,30]%.
@@ -234,8 +254,8 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
     # damage + gain 360% bonus AS (ed[0]). The damage_block "Damage Modifier" is
     # 70:110 % AD by rank - i.e. each empowered AA deals 0.70..1.10 * AD, MOSTLY
     # BELOW a normal 1.0*AD hit (only rank 5/6 exceed it). Hyper Charge's value is
-    # the +360% bonus AS (4x hits in the window), which the base-AA DAMAGE consumer
-    # does NOT model. INERT: modeling it as a per-AA damage multiplier would make
+    # the +360% bonus AS on the next 3 AAs within 4 s, which the base-AA DAMAGE
+    # consumer does NOT model. INERT: modeling it as a per-AA damage multiplier would make
     # the spell look like a base-AA NERF at ranks 1-4 (delta -0.30..-0.06 *AD), the
     # opposite of grounded; the AS gain is the real uplift + belongs in an AS-aware
     # AA seam, not the base-AA damage factor.
@@ -261,8 +281,9 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
     # Nidalee Q form1 Takedown (Cougar form): empowers the next AA to deal MODIFIED
     # MAGIC damage with a missing-HP scaling (damage_block Min/Max Magic Damage,
     # 75:206% total AD + 40:110% AP). notes: the AA's damage is CONVERTED to magic +
-    # the empowered hit is gated behind a Cougar-form Q recast (not the sustained
-    # physical-AA rotation). This REPLACES the AA's physical damage with a magic
+    # the empowered hit is gated behind a Cougar-form Q cast - Takedown IS that
+    # cast, empowering the next AA within 10 s (not the sustained physical-AA
+    # rotation). This REPLACES the AA's physical damage with a magic
     # formula - it is not a multiplier ON the physical base-AA the consumer scales.
     # INERT: AA-replacement / damage-type conversion, gated off-rotation; belongs in
     # an ability-cast seam, not the base-AA physical damage factor.
@@ -270,7 +291,7 @@ _ABILITY_AMP_OVERRIDES: dict[tuple[str, str, int], AmpEntry] = {
         amp_per_rank=(0.0,),
         base="aa",
         note="Takedown CONVERTS the AA to a magic missing-HP formula (not a physical "
-             "base-AA multiplier), gated behind a Cougar-form Q recast; INERT.",
+             "base-AA multiplier), gated behind a Cougar-form Q cast; INERT.",
     ),
 }
 
@@ -302,8 +323,9 @@ _CROSS_SPELL_AMP_OVERRIDES: dict[tuple[str, str, int], CrossSpellAmpEntry] = {
     # AurelionSol Q Breath of Light: amplified by W (Astral Flight) while W
     # flight is active. W's "Breath of Light Flat Damage Modifier" raw_modifiers
     # are [108,109,110,111,112]% by W rank (x1.08..1.12 -> addend 0.08..0.12).
-    # Source rank = W; gated on the W-flight self-state midpoint (0.4). Verified
-    # against AurelionSol W raw_modifiers + effects_descriptions at 16.11.1.
+    # Source rank = W; gated on the W-flight self-state midpoint (0.4). First
+    # read from AurelionSol W raw_modifiers + effects_descriptions at 16.11.1;
+    # S144-D-273 re-checks the magnitude against the live form.
     ("AurelionSol", "Q", 0): CrossSpellAmpEntry(
         source_key="W",
         amp_per_rank=(0.08, 0.09, 0.10, 0.11, 0.12),
@@ -321,11 +343,15 @@ _CROSS_SPELL_AMP_OVERRIDES: dict[tuple[str, str, int], CrossSpellAmpEntry] = {
 # reconciled by routing the block-index (vs the un-amped "first" block), NOT by
 # adding an amp that would double-count. The value is a DAMAGE-block index (the
 # index into the form's ``attribute_kind=="damage"`` blocks, matching
-# ``_select_blocks`` "indexed" semantics), out-of-range clamps to the last.
+# ``_select_blocks`` "indexed" semantics). Every value must be IN RANGE for the
+# live form: ``_select_blocks`` still clamps an out-of-range index to the last
+# damage block, but since F2 that clamp logs a WARNING as a defect signal and is
+# never authored semantics (guarded by test_block_index_damage_ordinal_f2 and
+# test_ability_amp_live_magnitudes_s144d272).
 #
-# Sion Q is intentionally ABSENT: champion_block_index.json {Q:2} already routes
-# it to the Maximum block by default (flag on/off byte-identical), so no gated
-# entry is needed.
+# Sion Q is intentionally ABSENT: champion_block_index.json {Q:1} (damage-block
+# ordinal) already routes it to the Maximum block by default (flag on/off
+# byte-identical), so no gated entry is needed.
 _STAGED_AMP_BLOCK_ROUTES: dict[tuple[str, str, int], int] = {
     # Hwei Q form2 Severing Bolt: damage-block 0 "Magic Damage" is the un-amped
     # base; damage-block 1 "Maximum Damage" is the isolated / immobilized + full

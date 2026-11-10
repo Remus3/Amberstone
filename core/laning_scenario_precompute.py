@@ -313,13 +313,17 @@ def cc_threat_verdict(
     Fail-soft to ``even`` on any malformed scalar (the coach hot path contract)."""
     if str(cd_state) == "no_ult":
         return "wait_cd"
-    try:
-        enemy_cc = float(enemy_cc_s)
-    except (TypeError, ValueError):
+    # S144-D-190: an infinite or bool CC is not crowd control, and a NaN own
+    # cooldown reads like a non-numeric one (the cd_state axis already says
+    # whether the ult is up); +/-inf keep their sign, like any other number.
+    enemy_cc = _finite(enemy_cc_s)
+    if enemy_cc is None:
         return "even"
     try:
         my_cd = float(my_ult_cd_s)
     except (TypeError, ValueError):
+        my_cd = 0.0
+    if math.isnan(my_cd):
         my_cd = 0.0
     if enemy_cc > 0.0 and my_cd >= 0.0:
         return "punish_now"
@@ -419,6 +423,27 @@ def _round(value: object) -> float:
     return round(f, 4)
 
 
+def _finite(value: object) -> Optional[float]:
+    """``value`` as a finite float, or None for a bool, a non-number or a
+    non-finite float. A fail-soft helper reads None as "nothing measured",
+    which ``_round``'s 0.0 cannot tell apart from a real zero."""
+    if isinstance(value, bool):
+        return None
+    try:
+        f = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return f if math.isfinite(f) else None
+
+
+def _finite_int(value: object) -> Optional[int]:
+    """``value`` as an int when it is a finite whole number, else None."""
+    f = _finite(value)
+    if f is None or f != int(f):
+        return None
+    return int(f)
+
+
 # --------------------------------------------------------------------------- #
 # HZ-A2 economy verdict (recall/back-timing + power-spike-ETA)
 # --------------------------------------------------------------------------- #
@@ -498,7 +523,8 @@ def _affordable_sequence(
     tokens while the cumulative cost stays within budget (always at least one -
     you can always throw a single spell). Returns ``(sequence, manaless)``; a
     manaless / poolless champ has no restriction so ``base_seq`` rides through
-    with ``manaless=True``. Fail-soft: any engine error returns ``base_seq``.
+    with ``manaless=True``. Fail-soft: any engine error, or a walk that resolved
+    no hits, returns ``base_seq`` with ``manaless=False``.
     """
     try:
         r = compute_mana_bounded_combo(
@@ -507,20 +533,28 @@ def _affordable_sequence(
         )
     except Exception:  # noqa: BLE001 - one bad cell never sinks the sweep
         return tuple(base_seq), False
-    pool = float(r.mana_pool)
-    if not math.isfinite(pool) or pool <= 0.0:
+    # S144-D-189: the walker never raises; a walk that resolved nothing comes
+    # back as mana_sim's empty result (no hits, pool 0.0). That is a failure,
+    # not a manaless champ, so it reads like the raised walk above. A real
+    # manaless champ resolves its hits with an infinite pool.
+    hits = tuple(getattr(r, "hits", ()) or ())
+    try:
+        pool = float(r.mana_pool)
+    except (AttributeError, TypeError, ValueError):
+        return tuple(base_seq), False
+    if not hits or math.isnan(pool):
+        return tuple(base_seq), False
+    if math.isinf(pool) or pool <= 0.0:
         return tuple(base_seq), True
     budget = pool * float(budget_frac)
     out: list[str] = []
     spent = 0.0
-    for hit in r.hits:
+    for hit in hits:
         cost = float(getattr(hit, "cost", 0.0) or 0.0)
         if out and spent + cost > budget:
             break
         spent += cost
         out.append(str(hit.action))
-    if not out:
-        out = [str(r.hits[0].action)] if r.hits else list(base_seq[:1])
     return tuple(out), False
 
 
@@ -609,12 +643,16 @@ def _enemy_cc_threat_card(enemy: str) -> Optional[CcThreatCard]:
         by_spell = _PER_SPELL_CC_DURATIONS.get(str(enemy)) or {}
     except Exception:  # noqa: BLE001 - one bad enemy never sinks the sweep
         return None
+    if not isinstance(by_spell, dict):
+        return None
+    # S144-D-191: only finite numeric ranks count, so an infinite rank never
+    # wins (and then rounds to a 0.0 card) and one NaN never hides the rest.
     best_key, best_cc = "", 0.0
-    for spell_key, ranks in sorted(by_spell.items()):
-        try:
-            cc = max(float(r) for r in (ranks or ()))
-        except (TypeError, ValueError):
+    for spell_key, ranks in sorted(by_spell.items(), key=lambda kv: str(kv[0])):
+        if not isinstance(ranks, (list, tuple)):
             continue
+        finite = [f for f in (_finite(r) for r in ranks) if f is not None]
+        cc = max(finite, default=0.0)
         if cc > best_cc:
             best_key, best_cc = str(spell_key), cc
     return CcThreatCard(best_key, _round(best_cc)) if best_cc > 0.0 else None
@@ -702,14 +740,22 @@ def spike_timing_cell(
             "next_kind": "", "next_threshold": 0, "next_label": "",
             "crossed_dps_at": None, "spike_verdict": "even",
         }
-    nm = res.next_marker
-    next_kind = str(nm.kind) if nm else ""
-    next_threshold = int(nm.threshold) if nm else 0
-    next_label = str(nm.label) if nm else ""
+    # S144-D-192: a junk threshold reads as 0 / no match instead of raising
+    # (which dropped the whole pair from the sweep), and a non-finite dps_at
+    # is a failed annotation (None), not a measured 0.0.
+    nm = getattr(res, "next_marker", None)
+    next_kind = str(getattr(nm, "kind", "")) if nm else ""
+    next_threshold = (_finite_int(getattr(nm, "threshold", None)) or 0) if nm else 0
+    next_label = str(getattr(nm, "label", "")) if nm else ""
     crossed_dps_at: Optional[float] = None
-    for m in res.markers:
-        if m.kind == "level" and int(m.threshold) == int(level) and m.dps_at is not None:
-            crossed_dps_at = _round(m.dps_at)
+    for m in getattr(res, "markers", None) or ():
+        if getattr(m, "kind", None) != "level":
+            continue
+        if _finite_int(getattr(m, "threshold", None)) != int(level):
+            continue
+        dps_at = _finite(getattr(m, "dps_at", None))
+        if dps_at is not None:
+            crossed_dps_at = _round(dps_at)
             break
     return {
         "next_kind": next_kind,
@@ -1054,6 +1100,15 @@ def load_laning_scenarios(mode: str = "sr", patch: Optional[str] = None) -> dict
     return payload
 
 
+def _get(node: dict, key: object) -> object:
+    """``node.get(key)``, or None for an unhashable key (S144-D-193: a miss,
+    so ``lookup`` keeps its ``{}``-on-absent contract instead of raising)."""
+    try:
+        return node.get(key)
+    except TypeError:
+        return None
+
+
 def lookup(
     payload: dict,
     my_champion: str,
@@ -1077,7 +1132,7 @@ def lookup(
     for step in (my_champion, enemy, band, mana_state, cd_state):
         if not isinstance(node, dict):
             return {}
-        node = node.get(step)
+        node = _get(node, step)
     if not isinstance(node, dict):
         return {}
     # v3 compat: a v3 cd node is the leaf cell (carries "verdict"), not an
@@ -1085,7 +1140,7 @@ def lookup(
     if "verdict" in node:
         return node
     # v4: descend the item_state key, then fall back to the "none" cell.
-    cell = node.get(item_state)
+    cell = _get(node, item_state)
     if not isinstance(cell, dict) or "verdict" not in cell:
         cell = node.get("none")
     return cell if isinstance(cell, dict) else {}

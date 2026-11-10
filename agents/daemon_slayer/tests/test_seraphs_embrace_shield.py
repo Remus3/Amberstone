@@ -20,7 +20,7 @@ drops 3040/223040/323040's shield from the pool. The per-shield arming gate
 keeps arming one opt-in shield from leaking credit into another (Seraph's ON
 must not credit Kaenic / Eclipse / Chainlaced and vice versa).
 
-Seraph's Embrace has three mode mirrors: SR 3040, Arena 223040, ARAM 323040 -
+Seraph's Embrace has three ids: SR 3040, Arena 223040, map-11 copy 323040 -
 so arming keys on all three ids.
 
 This credit bumps ENGINE_VERSION to 1.193.0 (the seam changes EHP output when
@@ -38,7 +38,7 @@ from agents.daemon_slayer.ehp import _collect_shields, compute_ehp
 
 _SERAPHS = "3040"           # SR Lifeline 18% max-mana generic shield, default-OFF
 _SERAPHS_ARENA = "223040"   # Arena mirror
-_SERAPHS_ARAM = "323040"    # ARAM mirror
+_SERAPHS_MAP11 = "323040"   # map-11 copy
 _KAENIC = "2504"            # R92 magic shield on its OWN seam
 _ECLIPSE = "6692"           # R97 generic shield on its OWN seam
 _ECLIPSE_ARENA = "226692"   # R97 Arena mirror
@@ -63,8 +63,8 @@ class SeraphsShieldFieldTests(unittest.TestCase):
         self.assertAlmostEqual(eff.shield.max_mana_scaling, 0.18, places=6)
         self.assertTrue(eff.shield.default_off)
 
-    def test_aram_field_pins(self) -> None:
-        eff = ITEM_EFFECTS[_SERAPHS_ARAM]
+    def test_map11_field_pins(self) -> None:
+        eff = ITEM_EFFECTS[_SERAPHS_MAP11]
         self.assertIsNotNone(eff.shield)
         self.assertEqual(eff.shield.damage_type, ANY)
         self.assertAlmostEqual(eff.shield.max_mana_scaling, 0.18, places=6)
@@ -72,7 +72,7 @@ class SeraphsShieldFieldTests(unittest.TestCase):
 
     def test_existing_fields_preserved(self) -> None:
         """The shield add does not disturb the Awe AP or lifeline dedup key."""
-        for iid in (_SERAPHS, _SERAPHS_ARENA, _SERAPHS_ARAM):
+        for iid in (_SERAPHS, _SERAPHS_ARENA, _SERAPHS_MAP11):
             eff = ITEM_EFFECTS[iid]
             self.assertAlmostEqual(eff.bonus_ap_pct_bonus_mp, 0.02, places=6)
             self.assertEqual(eff.unique_passive_key, "lifeline")
@@ -126,8 +126,8 @@ class SeraphsCollectShieldsGateTests(unittest.TestCase):
         self.assertEqual(totals["magical"], 0.0)
         self.assertEqual(totals["true"], 0.0)
 
-    def test_on_credits_arena_and_aram_mirrors(self) -> None:
-        for iid in (_SERAPHS_ARENA, _SERAPHS_ARAM):
+    def test_on_credits_arena_and_map11_copies(self) -> None:
+        for iid in (_SERAPHS_ARENA, _SERAPHS_MAP11):
             totals, sources = _collect_shields(
                 [iid], level=11, bonus_hp=0.0, bonus_ad=0.0,
                 is_ranged=False, max_hp=2000.0, max_mana=1500.0,

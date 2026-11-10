@@ -33,7 +33,7 @@ def sum_wielder_hsp_pct(
     the seam callers gate on ``assume_hsp_amp`` so a 0.0 return is byte-identical.
 
     R143: mode-mirror ids resolve natively - the live resolver hands this
-    function ``32xxxx`` (SR/ARAM mirror) and ``22xxxx`` (Arena mirror) ids, which
+    function ``32xxxx`` (map-11 SR copy) and ``22xxxx`` (Arena mirror) ids, which
     are registered explicitly because their magnitudes DIFFER from the SR line
     (Arena Redemption 12% vs SR 10%). Never normalize by stripping the prefix.
 
@@ -51,8 +51,21 @@ def sum_wielder_hsp_pct(
     Dawncore's First Light ("2% heal and shield power for every additional 100%
     base mana regeneration") earns zero without this flag. OFF is the default
     and adds nothing, so every existing caller stays byte-identical.
+
+    Fail-soft on the inventory shape (S144-D-137): a bare ``str`` / ``int`` id
+    (never ``bool``) is ONE item; any other non-iterable, or an inventory whose
+    truthiness or iteration raises, -> 0.0.
     """
-    ids = [str(i) for i in (item_ids or []) if i is not None and str(i)]
+    # A bare "3107" was read character by character and lost Redemption; a bare
+    # int raised TypeError out of ``(item_ids or [])``.
+    if isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
+    try:
+        ids = [str(i) for i in (item_ids or []) if i is not None and str(i)]
+    except Exception:  # noqa: BLE001 - caller inventories are untrusted
+        return 0.0
     if not ids:
         return 0.0
     try:

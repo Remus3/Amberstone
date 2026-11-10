@@ -88,7 +88,7 @@ class ItemReviveRegistryTests(unittest.TestCase):
     def test_prob_midpoint_is_conservative(self) -> None:
         self.assertAlmostEqual(_ITEM_REVIVE_PROB, 0.4, places=9)
 
-    def test_aram_mirror_id_is_not_registered(self) -> None:
+    def test_map11_copy_id_is_not_registered(self) -> None:
         # 323026 is NOT in the DS item index -> intentionally dropped.
         self.assertNotIn("323026", _ITEM_REVIVE)
 

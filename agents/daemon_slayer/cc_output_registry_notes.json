@@ -1849,7 +1849,7 @@
    "cc_kind": "AIRBORNE",
    "duration_s": 1.25,
    "conditional": false,
-   "source_quote": "Knock-up 1.25s on enemies hit by the dive landing. Center hit also slowed by 40% for 2 seconds (SLOW secondary)."
+   "source_quote": "MMOOOMMMM!: The wave heals Smolder and deals physical damage to enemies hit, with those in the center taking 50% increased damage and becoming slowed by 40% for 2 seconds. (snapshot 16.22.1 names no knock-up for R; the AIRBORNE 1.25s row is unbacked)"
   },
   {
    "champion": "Smolder",
@@ -2265,7 +2265,7 @@
    "cc_kind": "AIRBORNE",
    "duration_s": 0.25,
    "conditional": false,
-   "source_quote": "bolt deals magic damage to enemies hit and slows them by 40% for 2 seconds (also brief airborne on landing per wave-7 registry entry; AIRBORNE harder than SLOW)"
+   "source_quote": "The bolt deals magic damage to enemies hit, capped at 650 against non- champions, and slows them by 40% for 2 seconds. (snapshot 16.22.1 names no knock-up for E; the AIRBORNE 0.25s row is unbacked)"
   },
   {
    "champion": "Volibear",
@@ -2353,7 +2353,7 @@
    "cc_kind": "AIRBORNE",
    "duration_s": 1.0,
    "conditional": false,
-   "source_quote": "thrust slows enemies hit by 50% for 1.5 seconds; W thrust also applies 1.0s knockup per registry wave-3 entry (AIRBORNE harder than SLOW)"
+   "source_quote": "The thrust deals increased damage, further by 0% : 33.3% (based on critical strike chance), and slows enemies hit by 50% for 1.5 seconds. (snapshot 16.22.1 names no knock-up for W; Xin Zhao's knock-up is Q Three Talon Strike's third attack, its own row; the AIRBORNE 1.0s row is unbacked)"
   },
   {
    "champion": "Yasuo",

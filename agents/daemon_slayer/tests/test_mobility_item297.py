@@ -166,8 +166,9 @@ class RegistryInvariantTests(unittest.TestCase):
                 self.assertIn(e.spell, ("P", "Q", "W", "E", "R"))
 
     def test_roster_coverage(self):
-        # 10-channel roster fan-out: 254 entries / 150 champions. Re-running
-        # tools/ds_mobility_build.py against a fresh scan updates these pins.
+        # 10-channel roster fan-out: 254 entries / 150 champions.
+        # tools/ds_mobility_build.py is one-shot (S144-D-244): a fresh scan
+        # updates these pins by hand.
         self.assertEqual(len(_MOBILITY_REGISTRY), 150)
         total = sum(len(v) for v in _MOBILITY_REGISTRY.values())
         self.assertEqual(total, 254)

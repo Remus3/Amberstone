@@ -31,7 +31,15 @@ from the FIRST ``<stats>`` block of each item description; subsequent
 matches (Mythic-passive AH grants, proc-on-takedown AH) are intentionally
 ignored - the static lane carries only the build-time base stat. That also
 means conditional / passive-granted AH is invisible to the checker by
-design. Patch 16.10.1: 220 items (count unchanged at 16.12.1; the 16.12.1
+design. At 16.22.1 the registry rows whose description grants AH outside
+``<stats>`` are: Imperial Mandate 4005 / 324005 (+20 for Immobilizing
+abilities, raised from +15 at 16.13.1) and its Arena mirror 224005 (+15); Staff of Flowing Water 6616 /
+226616 / 326616 (15 AH on heal or shield); and the Mythic passives of Night
+Harvester 4636, Goredrinker 6630 and Duskblade of Draktharr 6691 / 226691.
+Each row carries only its ``<stats>`` value. The checker also excludes, by
+design, the Ornn masterworks whose AH sits in ``<ornnBonus>`` (228002,
+228005, 228006, 228008 at 16.22.1): they are never purchasable and get no
+row. The registry holds 221 rows at 16.22.1. Patch 16.10.1: 220 items (count unchanged at 16.12.1; the 16.12.1
 refresh re-valued 3 Arena mirror ids - Imperial Mandate 224005 35->15,
 Iceborn 226662 10->15, Serylda's 226694 10->15 - verified vs
 data/meta_build/ddragon/16.12.1/item.json). Count still 220 at 16.14.1,
@@ -103,7 +111,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "3430":  15.0,  # Rite Of Ruin
     "3508":  20.0,  # Essence Reaver
     "3802":  10.0,  # Lost Chapter
-    "4005":  15.0,  # Imperial Mandate (16.11.1: base 20->15; +15 cond. on immobilize excluded)
+    "4005":  15.0,  # Imperial Mandate (16.11.1: base 20->15; 16.13.1: +20 cond. on Immobilizing abilities excluded)
     "4010":  15.0,  # Bloodletter's Curse
     "4011":  15.0,  # Sword of Blossoming Dawn
     "4016":  25.0,  # Wordless Promise
@@ -189,7 +197,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "223190":  25.0,  # Locket of the Iron Solari
     "223193":  15.0,  # Gargoyle Stoneplate
     "223508":  20.0,  # Essence Reaver
-    "224005":  15.0,  # Imperial Mandate (16.12.1: Arena mirror 35->15)
+    "224005":  15.0,  # Imperial Mandate (16.12.1: Arena mirror 35->15; +15 cond. on Immobilizing abilities excluded)
     "224403":  20.0,  # The Golden Spatula
     "224628":  25.0,  # Horizon Focus
     "224629":  35.0,  # Cosmic Drive
@@ -206,7 +214,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "226632":  20.0,  # Divine Sunderer
     "226655":  25.0,  # Luden's Echo
     "226656":  20.0,  # Everfrost
-    "226660":   5.0,  # Bami's Cinder
+    "226660":   5.0,  # Bami's Cinder (live name blank; base 6660 name)
     "226662":  15.0,  # Iceborn Gauntlet (16.12.1: Arena mirror 10->15)
     "226664":  10.0,  # Hollow Radiance
     "226667":  10.0,  # Radiant Virtue
@@ -234,7 +242,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "323121":  15.0,  # Fimbulwinter
     "323190":  10.0,  # Locket of the Iron Solari
     "323222":  15.0,  # Mikael's Blessing
-    "324005":  15.0,  # Imperial Mandate (ARAM; 16.11.1 base 20->15)
+    "324005":  15.0,  # Imperial Mandate (map 11 variant; 16.11.1 base 20->15; 16.13.1: +20 cond. on Immobilizing abilities excluded)
     "326616":  10.0,  # Staff of Flowing Water
     "326617":  20.0,  # Moonstone Renewer
     "326620":  20.0,  # Echoes of Helia
@@ -281,13 +289,24 @@ def total_item_ability_haste(item_ids: Iterable[str | int]) -> float:
 
     Items not in the registry contribute 0 (no warning - many DDragon
     item ids are boots/consumables/wards with no AH). Duplicate item ids
-    contribute multiplicatively per occurrence per League's stat-stack
-    rules (the engine's build planner enforces inventory cap and the
+    contribute additively, once per occurrence (League stacks flat AH by
+    summing) (the engine's build planner enforces inventory cap and the
     s81/s82 unique-passive doctrine separately).
 
     Delegates per-item to ``item_ability_haste`` so the single-item
     accessor and the sum share one lookup path (no duplicate dict-get).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-142).
     """
+    # A bare "2020" was read character by character and lost The Brutalizer; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     return sum(item_ability_haste(iid) for iid in item_ids)
 
 

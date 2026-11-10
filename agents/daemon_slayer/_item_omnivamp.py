@@ -21,9 +21,9 @@ operator-gated.
 Values are the MELEE / RANGED omnivamp FRACTIONS at MAXIMUM stacks, the
 best-case sustained-DPS convention Riftmaker's ``damage_amp_pct=0.08`` already
 uses (its Void Corruption ramps to full over 4s in combat; the omnivamp is
-granted only at that max-stack strength). Source magnitude:
-``data/daemon_slayer/16.13.1/items_meraki.json`` item 4633 "Void Corruption":
-"At maximum stacks, gain {{as|{{rd|10%|6%}} omnivamp}}" -> 10% melee / 6%
+granted only at that max-stack strength). Source magnitude: the live
+``items_meraki.json`` item 4633 "Void Corruption" (re-read at 16.22.1,
+S144-D-369): "At maximum stacks, gain {{as|{{rd|10%|6%}} omnivamp}}" -> 10% melee / 6%
 ranged. The ``(melee_frac, ranged_frac)`` tuple lets the consumer pick the
 branch by the wielder's ``is_ranged`` (base attackrange >= 350, per
 ``ehp._is_ranged`` / ``_melee_ranged``; RM-123).
@@ -31,23 +31,35 @@ branch by the wielder's ``is_ranged`` (base attackrange >= 350, per
 Registered ids (each confirmed present in ``data/daemon_slayer/16.13.1/
 items.json`` before adding):
   * 4633   - Riftmaker (base).
-  * 224633 - Riftmaker (Arena mode-mirror, items.json:9980). Carries the base
+  * 224633 - Riftmaker (Arena mode-mirror, map 30). Carries the base
     nominal: Meraki keys base ids only (no separate Arena magnitude), and the
-    Arena copy shares the identical Void Corruption passive text. This matches
-    the ``_item_tenacity.py`` Arena-mirror convention (same-nominal carry).
+    Arena copy's DDragon Void Corruption text is the same as the base's (only
+    its stat line differs: 60 AP against 70). This matches the
+    ``_item_tenacity.py`` Arena-mirror convention (same-nominal carry).
 
 DROPPED / DEFERRED:
-  * 324633 (ARAM mirror) - NOT present in the DS item index; intentionally
+  * 324633 (32xxxx copy) - NOT present in the DS item index; intentionally
     omitted (an item id the engine never resolves would be dead weight).
   * 124633 - not in the item index either; omitted.
   * 2517 Endless Hunger (Feast) - 15% omnivamp is TAKEDOWN-gated for an 8s
     window (transient, kill-conditional), NOT an always-on max-stacks passive.
-    DEFERRED (start tight, widen on evidence).
+    DEFERRED (start tight, widen on evidence). Its separate flat 5% Omnivamp
+    is a stat line (see below), not this passive.
   * 3156 Maw of Malmortius (Lifeline) - 10% omnivamp fires only on a Lifeline
     magic-damage-below-30%-HP proc (conditional burst window). DEFERRED.
-  * 447103 Hemomancer's Helm (Scarlet Allegiance) - a threshold CONSUMER of
-    omnivamp (grants bonus HP IF lifesteal + omnivamp >= 30%), NOT an omnivamp
-    grant. Excluded by definition.
+  * 447103 Hemomancer's Helm (Scarlet Allegiance) - the passive is a threshold
+    CONSUMER of omnivamp (grants bonus HP IF lifesteal + omnivamp >= 30%), not
+    a passive grant, so it is excluded from this registry. The item's own flat
+    15% Omnivamp is a stat line (see below).
+
+STAT-LINE OMNIVAMP IS NOT CREDITED (S144-D-369; filed S144-D-372). This
+registry holds PASSIVE omnivamp only. At 16.22.1, 16 DDragon item ids print a
+flat omnivamp in their ``<stats>`` block (among them Doran's Blade 1055,
+Hextech Gunblade 3146, Endless Hunger 2517 and Hemomancer's Helm 447103), the
+structured ``stats`` dict omits every one of them, and no engine path reads the
+printed value: ``ehp.compute_ehp`` sets ``stats["omnivamp"]`` only from this
+registry. Crediting the stat lines is an item-effect change (Tier-2), so it is
+filed rather than made here.
 
 R144 MIRROR-COVERAGE RE-MEASURE (16.14.1, slice C). Re-audited against
 ``core.daemon_slayer_resolver.name_to_id``, which hands the engine mirror ids
@@ -90,7 +102,18 @@ def item_omnivamp_fraction(item_ids: Iterable[str | int], is_ranged: bool) -> fl
     or ranged branch by ``is_ranged``. Items not in the registry contribute 0.
     Duplicate ids stack per occurrence (League stat-stack rules; the build
     planner enforces the inventory cap + unique-passive doctrine separately).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-147).
     """
+    # A bare "4633" was read character by character and lost Riftmaker; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     idx = 1 if is_ranged else 0
     total = 0.0
     for iid in item_ids:

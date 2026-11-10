@@ -1,7 +1,7 @@
 """Tests for dashboard/routes_ds_combo.py - action-queue combo simulator
 (competitor lift #2, docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
-Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
+Sibling of test_routes_cc_conditional_pressure.py; mirrors its StubHandler pattern.
 The route is a thin wire over agents.daemon_slayer.combo.compute_combo
 (covered by agents/daemon_slayer/tests/test_combo_2026_05_30.py); these
 tests pin the HTTP contract: param validation, payload shape, totals,

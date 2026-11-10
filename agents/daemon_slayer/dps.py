@@ -50,6 +50,7 @@ rotations naturally dilute auto-attack DPS.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field, replace
 from typing import Iterable, Optional
 
@@ -261,6 +262,22 @@ class DpsResult:
             for n in self.notes:
                 rows.append(f"  note: {n}")
         return "\n".join(rows)
+
+
+def _refuse_non_finite_targets(**targets: float) -> None:
+    """Raise ValueError for a float target knob that is NaN or infinite.
+
+    S144-D-168..170: unchecked, a NaN armor / MR made the scorer's result NaN,
+    +inf armor credited compute_dps the WHOLE raw attack DPS (more than a
+    zero-armor target takes) and a NaN armor read as zero armor in
+    compute_burst_damage. There is no safe default to fall back to (0.0 is the
+    inflated reading), so the knob is refused like ``target_current_hp_pct``.
+    Only floats are checked: ints are always finite, and other types keep
+    whatever behaviour they had.
+    """
+    for name, value in targets.items():
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError(f"{name} must be finite, got {value}")
 
 
 def _select_phase(level: int) -> str:
@@ -899,6 +916,22 @@ def compute_dps(
     # case-sensitive, so a lowercase mode got an ARAM-legal pool scored
     # through a non-ARAM multiplier path.
     mode = canonical_mode(mode)
+    # S144-D-157: the same contract compute_burst_damage and
+    # compute_ability_dps enforce. Unchecked, a negative fraction credited
+    # NEGATIVE %-current-HP proc damage and a fraction above 1.0 credited more
+    # than the target's whole current HP, through rank_items (/rank) and
+    # rank_items_by_hybrid (/rank-bruiser), which both call this first. NaN
+    # fails the chained comparison, so it is refused too.
+    if not 0.0 <= target_current_hp_pct <= 1.0:
+        raise ValueError(
+            f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
+        )
+    _refuse_non_finite_targets(
+        target_armor=target_armor,
+        target_mr=target_mr,
+        target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
+    )
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
     if selected_phase not in PHASES:

@@ -71,8 +71,8 @@ class MechanismValueMathTests(unittest.TestCase):
 
 
 class HandVerifiedChampionTests(unittest.TestCase):
-    # Pinned exact values; re-running tools/ds_antitank_build.py against a fresh
-    # scan updates them.
+    # Pinned exact values. tools/ds_antitank_build.py is one-shot (S144-D-244),
+    # so a fresh scan updates them by hand.
     def test_vayne_pure_maxhp(self):
         # Vayne W MAX_HP SUSTAINED 0.95 -> 0.95; top MAX_HP, no shred.
         r = compute_antitank("Vayne")
@@ -248,8 +248,9 @@ class RegistryInvariantTests(unittest.TestCase):
     def test_roster_coverage(self):
         # Roster fan-out (selective axis): 103 entries / 79 champions; 30 of them
         # bring a SHRED or PERCENT_PEN mechanism (the shreds_resist set), 6 of
-        # which are kit-intrinsic PERCENT_PEN. Re-running
-        # tools/ds_antitank_build.py against a fresh scan updates these.
+        # which are kit-intrinsic PERCENT_PEN.
+        # tools/ds_antitank_build.py is one-shot (S144-D-244): a fresh scan
+        # updates these by hand.
         # R93 (ENGINE 1.190.0) added the 6th PERCENT_PEN row: Darius E Apprehend
         # (always-on 20-40% armor pen), the SUSTAINED sibling of Mordekaiser E.
         # R196 added the 7th - Annie R (always-on 15 / 17.5 / 20% MAGIC pen) - and

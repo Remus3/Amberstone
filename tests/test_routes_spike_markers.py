@@ -1,7 +1,7 @@
 """Tests for dashboard/routes_spike_markers.py - live power-spike markers
 (competitor lift #4, docs/_archive/COMPETITOR_LIFT_2026-05-30.md).
 
-Sibling of test_routes_cooldown_watch.py; mirrors its StubHandler pattern.
+Sibling of test_routes_cc_conditional_pressure.py; mirrors its StubHandler pattern.
 The route is a thin wire over
 agents.daemon_slayer.spike_markers.compute_spike_markers (covered by
 agents/daemon_slayer/tests/test_spike_markers_2026_05_30.py); these tests

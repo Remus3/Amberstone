@@ -69,8 +69,8 @@ class MechanismValueMathTests(unittest.TestCase):
 
 
 class HandVerifiedChampionTests(unittest.TestCase):
-    # Pinned exact values; re-running tools/ds_allyamp_build.py against a fresh
-    # scan updates them.
+    # Pinned exact values. tools/ds_allyamp_build.py is one-shot (S144-D-244),
+    # so a fresh scan updates them by hand.
     def test_taric_tops_roster_hard_save(self):
         # Taric: Q HEAL TEAM 0.55 (0.4125) + W SHIELD SINGLE 0.6 (0.3315)
         # + R PROTECT TEAM 0.92 cond (0.46) -> 1.204; top PROTECT (R), saves True.
@@ -227,8 +227,9 @@ class RegistryInvariantTests(unittest.TestCase):
 
     def test_roster_coverage(self):
         # 10-channel roster fan-out (sparse axis): 74 entries / 43 champions,
-        # 8 PROTECT mechanisms (one per hard-save champion). Re-running
-        # tools/ds_allyamp_build.py against a fresh scan updates these.
+        # 8 PROTECT mechanisms (one per hard-save champion).
+        # tools/ds_allyamp_build.py is one-shot (S144-D-244): a fresh scan
+        # updates these by hand.
         self.assertEqual(len(_ALLYAMP_REGISTRY), 43)
         total = sum(len(v) for v in _ALLYAMP_REGISTRY.values())
         self.assertEqual(total, 74)

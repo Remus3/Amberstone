@@ -6,8 +6,9 @@ map-id mapping is imported from ``agents.daemon_slayer.rank.MODE_MAP_ID`` rather
 than duplicated, so the guard tracks the engine's own table.
 
 WHY THIS EXISTS (2026-07-18). A great many items ship BOTH a base SR id and
-mode-mirror ids in the 22xxxx (Arena) / 32xxxx (ARAM) families, and the base and
-its mirrors share an identical display NAME. Moonstone Renewer is 6617 with
+mode-mirror ids in the 22xxxx (Arena) family (the 32xxxx copies are map 11 only;
+the ARAM copies are 12xxxx), and the base and its mirrors share an identical
+display NAME. Moonstone Renewer is 6617 with
 ``maps["30"]=False`` and 226617 with ``maps["30"]=True``. That makes the Arena
 table look wrong to any check that reads item NAMES and then resolves the BASE
 id - the name "Moonstone Renewer" appears in a shipped Arena order and the base
@@ -122,8 +123,8 @@ def test_every_shipped_item_id_is_legal_on_its_map(family: str, mode_key: str) -
         f"{family} {mode_key}: {len(illegal)} item id(s) illegal on map "
         f"{map_id}: "
         + ", ".join(f"{i} ({items[i].get('name', '?')})" for i in illegal[:10])
-        + ". Arena/ARAM orders must carry the mode MIRROR id (22xxxx / 32xxxx), "
-        "not the base SR id - they share a display name, so check the ID."
+        + ". Arena orders must carry the 22xxxx MIRROR id and ARAM orders a map-12 "
+        "id, not a map-11-only id - copies share a display name, so check the ID."
     )
 
 

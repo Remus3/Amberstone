@@ -62,8 +62,8 @@ class MechanismValueMathTests(unittest.TestCase):
 
 
 class HandVerifiedChampionTests(unittest.TestCase):
-    # Pinned exact values; re-running tools/ds_waveclear_build.py against a fresh
-    # scan updates them.
+    # Pinned exact values. tools/ds_waveclear_build.py is one-shot (S144-D-244),
+    # so a fresh scan updates them by hand.
     def test_zilean_single_full_aoe(self):
         # Zilean: one Q FULL_AOE RANGED (magnitude 0.85) -> 1.0 * 1.0 * 0.85.
         r = compute_waveclear("Zilean")
@@ -206,8 +206,8 @@ class RegistryInvariantTests(unittest.TestCase):
 
     def test_roster_coverage(self):
         # 10-channel roster fan-out: 376 entries / 171 champions (full roster),
-        # 4 GLOBAL-band mechanisms. Re-running tools/ds_waveclear_build.py against
-        # a fresh scan updates these.
+        # 4 GLOBAL-band mechanisms. tools/ds_waveclear_build.py is one-shot
+        # (S144-D-244): a fresh scan updates these by hand.
         self.assertEqual(len(_WAVECLEAR_REGISTRY), 171)
         total = sum(len(v) for v in _WAVECLEAR_REGISTRY.values())
         self.assertEqual(total, 376)

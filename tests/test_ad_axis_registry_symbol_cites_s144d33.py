@@ -183,7 +183,11 @@ def test_compute_ability_dps_claims():
 def test_rank_items_reweight_burst_claims():
     rank_items = _function(RANK, "rank_items")
     src = _sources(rank_items)
-    assert "reweight = fight_length is not None and fight_length > 0.0" in src
+    # S144-D-154 added the isfinite term: +inf no longer engages the reweight.
+    assert (
+        "reweight = fight_length is not None and math.isfinite(fight_length)"
+        " and (fight_length > 0.0)"
+    ) in src
     branches = [
         n for n in ast.walk(rank_items)
         if isinstance(n, ast.If) and ast.unparse(n.test) == "reweight"

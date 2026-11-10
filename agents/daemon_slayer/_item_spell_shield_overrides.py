@@ -11,9 +11,13 @@ that feeds the SAME cc_blended discount the champion spell-shield feeds
 (``cc_total *= (1 - frac)`` in ``compute_ehp``), NOT the EHP numerator.
 
 Mechanic: the "Annul" passive (Banshee's Veil / Edge of Night / Verdant Barrier)
-grants a SPELL SHIELD that BLOCKS THE NEXT enemy ABILITY, then goes on a ~40s
-cooldown (Banshee regenerates its shield after leaving combat; Edge of Night /
-Verdant Barrier restart the cooldown on taking champion damage). This is the
+grants a SPELL SHIELD that BLOCKS THE NEXT enemy ABILITY, then goes on cooldown:
+40s for Banshee's Veil / Edge of Night, 60s for Verdant Barrier, and on all
+three the timer restarts upon taking damage from champions (the "Annul" text
+for 3102 / 3814 / 4632 in the vendored 16.22.1 Meraki snapshot, whose content
+is frozen at 25.15 per RM-808; DDragon's SR rows carry no cooldown
+sentence; the Arena 223102 row states the same champion-damage restart, while
+223814 says only "restarted if you take damage"). This is the
 item analog of Sivir E / Nocturne W: a single-instance negation of one incoming
 hostile effect, gated to one block per cooldown. So - like the champion reactive
 spell shield - it lands on the cc_blended CC-pressure discount, amortized by the
@@ -42,18 +46,20 @@ before adding; adversarial 4th-item hunt returned none missed):
   * 3814   - Edge of Night (base).
   * 223814 - Edge of Night (Arena mode-mirror; same nominal).
   * 4632   - Verdant Barrier (the Banshee's / Edge of Night component that keeps
-    the Annul spell shield; no Arena / ARAM mirror of its own in the index).
+    the Annul spell shield; no Arena 22xxxx or 32xxxx copy of its own in the
+    index).
 
 DROPPED (NOT present in the DS item index - an item id the engine never resolves
 would be dead weight, the ``_item_revive`` dropped-mirror convention):
-  * 323102 / 323814 - Banshee's / Edge of Night ARAM mirrors.
-  * 224632 / 324632 - Verdant Barrier Arena / ARAM mirrors.
+  * 323102 / 323814 - Banshee's / Edge of Night 32xxxx copies.
+  * 224632 / 324632 - Verdant Barrier Arena / 32xxxx copies.
 
 DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class,
 mirroring the champion registry's exclusion discipline):
   * CLEANSE / CC-REMOVAL actives (Quicksilver Sash 3140, Mercurial Scimitar 3139
-    + Arena 223139, Silvermere Dawn 6035 + Arena 226035, Mikael's Blessing 3222 +
-    mirrors): "Remove all crowd control debuffs" REMOVES EXISTING CC, it does not
+    + Arena 223139, Silvermere Dawn 6035 + Arena 226035 (both carry no live map
+    flag at 16.22.1), Mikael's Blessing 3222 + mirrors 223222 / 323222):
+    "Remove all crowd control debuffs" REMOVES EXISTING CC, it does not
     pre-emptively BLOCK the next instance. A different mechanic (a duration-scale /
     removal, not a single-instance block). The champion registry draws the same
     line against tenacity / immunity.
@@ -97,7 +103,7 @@ _ITEM_SPELL_SHIELD: dict[str, float] = {
 # block removes. Sourced from the CHAMPION reactive spell-shield midpoint
 # (``_SPELL_SHIELD_REACTIVE_PROB`` = 0.2): the item Annul is the same block-one
 # mechanic as Sivir E / Nocturne W (a reactive negation of the next hostile
-# effect, one block per ~40s cooldown). It is aliased (not re-declared) so the
+# effect, one block per 40s or 60s cooldown). It is aliased (not re-declared) so the
 # mapping is explicit, yet the item lane stays INDEPENDENTLY tunable - Phase D can
 # decouple it on a live re-rank without touching the champion midpoint. Starting
 # at the reactive floor is the conservative posture: an item passive auto-triggers
@@ -127,7 +133,18 @@ def item_spell_shield_fraction(item_ids: Iterable[str | int]) -> float:
     all-damage void on the numerator). The default-OFF gating lives in
     ``compute_ehp`` (this function is only called when ``apply_item_spell_shield``
     is True), mirroring ``_item_survival_window``.
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-151).
     """
+    # A bare "3102" was read character by character and lost Banshee's Veil; a
+    # bare int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     remaining = 1.0
     for iid in item_ids:
         block_pct = _ITEM_SPELL_SHIELD.get(str(iid))

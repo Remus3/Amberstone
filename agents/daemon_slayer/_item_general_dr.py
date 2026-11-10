@@ -49,10 +49,11 @@ operator-tunable amortization midpoint, NOT a gap-existence question (mirrors
 R106's at-max-stacks midpoint / R77/R80/R86's ``_ASSUMED_INCOMING_*_SHARE``).
 
 Registered ids (each confirmed present + live in the DS item index
-``data/daemon_slayer/16.13.1/items.json`` with a real map flag before adding):
-  * 3869   - Celestial Opposition (SR, ``maps.11``; support-line quest item).
-    Meraki-verified 35/25.
-  * 664644 - Crown of the Shattered Queen (SR, ``maps.11``; premium mage item).
+``data/daemon_slayer/16.13.1/items.json`` with a real map flag before adding;
+map flags re-measured at 16.22.1):
+  * 3869   - Celestial Opposition (SR + throwback, maps 11/453; support-line
+    quest item). Meraki-verified 35/25.
+  * 664644 - Crown of the Shattered Queen (SR only, maps 11; premium mage item).
     DDragon-verified 40 (Meraki-absent).
 
 DOCUMENTED EXCLUSIONS (scanned, deliberately NOT seeded - with the reason class).
@@ -85,8 +86,9 @@ the R144 coverage guard can tell "knowingly excluded" apart from "silently misse
     Nemesis): source- AND target-conditional (one specific enemy), with no clean
     whole-fight fold point - a different (single-target) mechanic, not this
     untargeted all-comers credit.
-  * Cloak of Starry Night 443059/663059: bundles an already-R106 +20%-total-resist
-    term with a resist-ramped, cap-50%, basic-attack-EXCLUDING %DR - a two-seam,
+  * Cloak of Starry Night 443059 (+20% MR, cap 50%) / 663059 (+10% MR, cap 25%):
+    bundles an already-R106 percent-total-resist term with a resist-ramped,
+    capped, basic-attack-EXCLUDING %DR - a two-seam,
     double-approximation fold, a separate (future) axis, not this clean registry.
   * Celestial's shockwave-SLOW half (unleashed when Blessed ends): a CC utility,
     not a survivability DR - only the damage-reduction half is this credit.
@@ -120,8 +122,8 @@ _GENERAL_DR_UPTIME: float = 0.4
 # the item's UNTARGETED general-DR passive. "Safeguard" is range-agnostic (both
 # equal); "Blessing" splits melee 35 / ranged 25.
 _ITEM_GENERAL_DR: dict[str, tuple[float, float]] = {
-    "3869":   (0.35, 0.25),  # Celestial Opposition - Blessing (Meraki 16.13.1 {{rd|35%|25%}}); SR maps.11
-    "664644": (0.40, 0.40),  # Crown of the Shattered Queen - Safeguard 40% (DDragon 16.13.1, range-agnostic); SR maps.11
+    "3869":   (0.35, 0.25),  # Celestial Opposition - Blessing (Meraki 16.13.1 {{rd|35%|25%}}); maps 11/453
+    "664644": (0.40, 0.40),  # Crown of the Shattered Queen - Safeguard 40% (DDragon 16.13.1, range-agnostic); maps 11
 }
 
 
@@ -167,9 +169,20 @@ def item_general_dr_multiplier(
     Items not in the registry contribute nothing. The default-OFF gating lives in
     ``compute_ehp`` (this helper short-circuits to identity before any item is
     inspected when the flag is False).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-144).
     """
     if not assume_item_general_dr:
         return 1.0
+    # A bare "3869" was read character by character and lost Celestial
+    # Opposition; a bare int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     max_dr = 0.0
     for iid in item_ids:
         pair = _ITEM_GENERAL_DR.get(str(iid))

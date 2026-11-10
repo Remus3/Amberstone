@@ -16,6 +16,7 @@ on-hit) - those live in Phase 4 alongside ability damage.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional
@@ -1043,7 +1044,8 @@ def rank_items(
     ``effective_score`` DESC (``sort_by`` is ignored while engaged) and the
     value is exposed on each ``RankedItem``. Fail-soft: a candidate whose burst
     is unavailable falls back to a delta-only effective score and never raises.
-    Non-positive ``fight_length`` is treated as ``None`` (default ranking).
+    Non-positive or non-finite ``fight_length`` is treated as ``None`` (default
+    ranking).
 
     ``mana_value_per_point`` is the OPTIONAL bounded mana-valuation knob
     (ENGINE 1.64.0). The auto-attack DPS scorer values flat mana at ~0, so a
@@ -1058,7 +1060,7 @@ def rank_items(
     by it. It has NO effect under ``sort_by="efficiency"`` or when
     ``fight_length`` is engaged (those own the sort key). A sane starting
     value is small (e.g. 0.02); it is operator-tunable, not a claim that mana
-    has a fixed DPS price. Non-positive is treated as ``None``.
+    has a fixed DPS price. Non-positive or non-finite is treated as ``None``.
 
     ``exempt_offclass_by_win`` is the OPTIONAL DSP2 Cluster-B seam (DEFAULT-OFF).
     When ``False`` (default) the output is byte-identical to before - the
@@ -1143,12 +1145,24 @@ def rank_items(
     level = clamp_level(level)
     # Bounded mana valuation knob (ENGINE 1.64.0). Only a positive float
     # engages it; None / non-positive -> byte-identical default ranking.
-    mana_reweight = mana_value_per_point is not None and mana_value_per_point > 0.0
+    # S144-D-155: +inf passed ``> 0.0`` and scored delta + inf * mana_gained
+    # (NaN at zero mana); a non-finite value is garbage and takes the default.
+    mana_reweight = (
+        mana_value_per_point is not None
+        and math.isfinite(mana_value_per_point)
+        and mana_value_per_point > 0.0
+    )
 
     # Fight-length-reweight knob (item 219 C). Only a positive float engages
     # the burst reweight; None / non-positive -> default delta-only ranking
     # (the byte-identical pre-knob path that pays nothing for burst compute).
-    reweight = fight_length is not None and fight_length > 0.0
+    # S144-D-154: +inf passed ``> 0.0`` and scored burst + delta * inf (NaN at
+    # a zero delta, which broke the sort); non-finite takes the default too.
+    reweight = (
+        fight_length is not None
+        and math.isfinite(fight_length)
+        and fight_length > 0.0
+    )
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
@@ -1182,7 +1196,7 @@ def rank_items(
     _selected_phase = phase or _select_phase(level)
 
     # RM-42 (DEFAULT-OFF): the kit-passive damage registry finally reaches the
-    # CARRY ranker. ``_passive_damage_overrides`` holds 33 entries and
+    # CARRY ranker. ``_passive_damage_overrides`` held 33 entries at RM-42 and
     # ``apply_passive_damage`` already reached ``compute_dps`` (/dps) and
     # ``rank_items_by_onhit`` (/rank-onhit, default True) - but NOT here, which
     # is the route every marksman build table and coach tick passes through, so

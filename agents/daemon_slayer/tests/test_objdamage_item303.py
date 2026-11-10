@@ -65,8 +65,8 @@ class MechanismValueMathTests(unittest.TestCase):
 
 
 class HandVerifiedChampionTests(unittest.TestCase):
-    # Pinned exact values; re-running tools/ds_objdamage_build.py against a
-    # fresh scan updates them.
+    # Pinned exact values. tools/ds_objdamage_build.py is one-shot
+    # (S144-D-244), so a fresh scan updates them by hand.
     def test_kogmaw_on_hit_shredder_tops_roster(self):
         # KogMaw: W MONSTER_BONUS MONSTER 0.88 (0.6732) + BASE SUSTAINED_DPS
         # BOTH 0.85 (0.595) -> 1.2682; top MONSTER_BONUS, pressures structures.
@@ -230,8 +230,8 @@ class RegistryInvariantTests(unittest.TestCase):
     def test_roster_coverage(self):
         # 10-channel roster fan-out (full roster): 285 entries / 171 champions,
         # 4 STRUCTURE_BONUS mechanisms (Tristana / Volibear / Yunara / Ziggs),
-        # 66 conditional. Re-running tools/ds_objdamage_build.py against a fresh
-        # scan updates these.
+        # 66 conditional. tools/ds_objdamage_build.py is one-shot (S144-D-244):
+        # a fresh scan updates these by hand.
         self.assertEqual(len(_OBJDAMAGE_REGISTRY), 171)
         total = sum(len(v) for v in _OBJDAMAGE_REGISTRY.values())
         self.assertEqual(total, 285)

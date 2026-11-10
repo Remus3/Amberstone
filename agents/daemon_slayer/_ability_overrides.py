@@ -6,19 +6,26 @@ bulk dump lose their mitigation type. RC's evaluator defaults a null
 ``damage_type`` to MAGIC (``ability_dps._mitigation_factor`` /
 ``compute_ability_dps`` ``(form.damage_type or "MAGIC")``). A roster scan of
 patch 16.11.1 found 27 ability forms with a null ``damage_type`` AND a real
-``attribute_kind == "damage"`` block. Two correction classes, both verified
-against the form's actual damage_blocks + the Meraki effects-text:
+``attribute_kind == "damage"`` block; re-derived 27 at 16.22.1 (S144-D-361):
+the 7 DAMAGE_TYPE_OVERRIDES rows, the 7 null-type NON_DAMAGE_BLOCKS rows and
+the 13 intentionally absent forms named below. Two correction classes, both
+verified against the form's actual damage_blocks + the Meraki effects-text:
 
 1. DAMAGE_TYPE_OVERRIDES - the form deals real damage but the engine
    mis-mitigates it as MAGIC. Each entry corrects ``form.damage_type`` so
    the mitigation pipeline uses the right resist. Strictly improves accuracy
    vs a resisted target; byte-identical vs a 0-armor / 0-MR target.
-   - PHYSICAL: block[0] is pure physical (currently routed through MR).
-   - MIXED: block[0] is the combined equal-parts physical+magic block
-     (Yone W/R "Total Mixed Damage"); the engine's MIXED = 50/50 armor/MR
-     is exact for an equal phys+magic split.
+   - PHYSICAL: the first damage block is pure physical (currently routed
+     through MR).
+   - MIXED: the first damage block is the combined equal-parts
+     physical+magic block (Yone W/R "Total Mixed Damage"); the engine's
+     MIXED = 50/50 armor/MR is exact for an equal phys+magic split.
 
-2. NON_DAMAGE_BLOCKS - block[0] (the one ``block_strategy="first"`` picks)
+2. NON_DAMAGE_BLOCKS - the first ``attribute_kind == "damage"`` block (the
+   one ``block_strategy="first"`` picks: ``ability_dps._select_blocks``
+   drops non-damage blocks before it picks, so for Aatrox R, Janna E,
+   Olaf R, Sona W and Vayne R it is raw block 1 or 2, behind a movement
+   speed, shield, resistance, heal or duration block - S144-D-360)
    is NOT damage dealt - it is a self attack-damage GRANT (World Ender /
    Ragnarok / Final Hour / Bloodlust bonus AD, Eye of the Storm's AD grant,
    Aphelios weapon AD) or a shield value (Aria of Perseverance "Minimum
@@ -30,11 +37,12 @@ against the form's actual damage_blocks + the Meraki effects-text:
    re-extract; that is deferred (the Meraki ``latest`` endpoint is mutable),
    so this score-time override is the grounded interim.
 
-Magic abilities whose null-type block IS genuinely magic (Skarner W, Zeri
-E/R, Nunu Q, Ahri/Fizz/Gwen/Lillia/Velkoz/Pantheon block[0], Yunara Q) are
-INTENTIONALLY ABSENT - the MAGIC default is already correct for them. Ryze R
-has an empty block (evaluates to 0, no phantom). Yunara R is left untouched
-(new champion, ambiguous block - do not guess).
+Magic abilities whose null-type block IS genuinely magic (Skarner W, Zeri E,
+Zeri R, Nunu Q, Yunara Q, and the first damage block of Ahri Q, Fizz Q,
+Gwen Q, Lillia Q, Velkoz R and Pantheon R) are INTENTIONALLY ABSENT - the
+MAGIC default is already correct for them. Ryze R has an empty block (no
+numeric field; evaluates to 0, no phantom). Yunara R is left untouched (new
+champion, ambiguous block - do not guess).
 
 Applied at load time in ``abilities.AbilitiesSnapshot.load`` so every
 consumer (ability_dps / burst / dps / fight_report / scenario / hps) sees the
@@ -45,11 +53,11 @@ from __future__ import annotations
 # (champion_id, key, form_index) -> corrected damage_type.
 # Verified 2026-05-31 against block[0] + Meraki effects-text at patch 16.11.1.
 DAMAGE_TYPE_OVERRIDES: dict[tuple[str, str, int], str] = {
-    ("Camille", "Q", 0): "PHYSICAL",   # "Bonus Physical Damage" (block[0]); 2nd cast adds true
+    ("Camille", "Q", 0): "PHYSICAL",   # "Bonus Physical Damage" (block[0]); 2nd cast adds true; served block is ordinal 1 "Increased Mixed Damage" (S144-D-363)
     ("Sett", "W", 0): "PHYSICAL",      # Haymaker physical to all (center line is true)
     ("Smolder", "Q", 0): "PHYSICAL",   # "Physical Damage" base + 130% bonus AD
     ("Udyr", "Q", 0): "PHYSICAL",      # "Bonus Physical Damage" %max-hp (block[0])
-    ("Urgot", "R", 0): "PHYSICAL",     # Fear Beyond Death first-cast physical
+    ("Urgot", "R", 0): "PHYSICAL",     # "Physical Damage" - Fear Beyond Death first-cast physical
     ("Yone", "W", 0): "MIXED",         # "Total Mixed Damage" = equal phys+magic
     ("Yone", "R", 0): "MIXED",         # "Total Mixed Damage" = equal phys+magic
 }
@@ -68,8 +76,9 @@ DAMAGE_TYPE_OVERRIDES: dict[tuple[str, str, int], str] = {
 #     it is R's only block (R empowers basic attacks, so cast damage is 0).
 # Three candidates were checked and intentionally NOT flipped:
 #   Mel R - block[0] "Increased Stored Damage" looks phantom (ed[0] "Passive:
-#     Overwhelm stacks store more damage"), but Mel R is routed to block 2
-#     ("Total Damage") by the block-index registry, so block[0] is never the
+#     Overwhelm stacks store more damage"), but the block-index registry
+#     routes Mel R to damage-block ordinal 1 (raw block 2, "Magic Damage";
+#     S144-D-362), so block[0] is never the
 #     default-selected block; flipping it would change the forced-block-0
 #     delta baseline that test_block_index_overrides pins, with no default-path
 #     benefit (Mel is a new champ with ambiguous storage-block semantics - left

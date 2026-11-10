@@ -19,7 +19,7 @@ passed on their first run. That is the CLEAN outcome, not an untested one: the
 assertions are catalog-driven, so they fail the moment a patch bump introduces
 a new mirror, retires an old one, or a future edit drops a row. Absence of a
 mirror is asserted as a POSITIVE fact (Riftmaker and Unending Despair have no
-``32xxxx`` twin) rather than left implicit, so "the ARAM mirror is missing"
+``32xxxx`` twin) rather than left implicit, so "the map-11 copy is missing"
 cannot be silently re-filed as a defect later.
 
 The magnitudes below are enumerated PER ID, deliberately not derived by
@@ -93,8 +93,8 @@ _LANES: tuple[tuple[str, dict, tuple[str, ...]], ...] = (
 # from "fixing" a gap that the catalog does not have. Compare R143's Forbidden
 # Idol 3114, which correctly gained no mirror.
 _MEASURED_ABSENT: tuple[tuple[str, str], ...] = (
-    ("324633", "Riftmaker has no ARAM mirror; base 4633 is the ARAM item"),
-    ("322502", "Unending Despair has no ARAM mirror; base 2502 is the ARAM item"),
+    ("324633", "Riftmaker has no 32xxxx copy; base 4633 already carries map 12"),
+    ("322502", "Unending Despair has no 32xxxx copy; base 2502 already carries map 12"),
     ("124633", "no 12xxxx Riftmaker line exists in the index"),
     ("443119", "no 44xxxx Winter's Approach line exists in the index"),
     ("663119", "no 66xxxx Winter's Approach line exists in the index"),

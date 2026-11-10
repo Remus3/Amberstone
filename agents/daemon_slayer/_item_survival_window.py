@@ -31,28 +31,41 @@ pool - it is a fraction-of-fight avoided). Both land on the EHP NUMERATOR as
 avoided-fight FRACTION vs a restored HP fraction) and the trigger (cast vs death)
 differ, so they stay separate item registries under separate flags.
 
-Source magnitude: ``data/daemon_slayer/16.13.1/items_meraki.json`` - Zhonya's
-Hourglass (3157) + Seeker's Armguard (2420) share the "Time Stop" active ("Put
-yourself in stasis for 2.5 seconds, rendering you untargetable and invulnerable
-... but also unable to move, attack, cast spells, or use items"); Wooglet's
-Witchcap (228002, Arena-native) carries the identical "Stasis" active. So the
+Source magnitude: the live ``items_meraki.json`` (re-read at 16.22.1,
+S144-D-370) - Zhonya's Hourglass (3157) + Seeker's Armguard (2420) share the
+"Time Stop" active ("Put yourself in stasis for 2.5 seconds, rendering you
+untargetable and invulnerable ... but also unable to move, declare basic
+attacks, cast abilities, use summoner spells, or activate items"); Wooglet's
+Witchcap (228002, live on maps 12 and 30, ARAM and Arena) carries the same
+active text, which Meraki names "Stasis" and DDragon names "Time Stop". So the
 window is a flat 2.5s all-damage void for every registered item.
 
-Registered ids (each confirmed present in the DS item index + Meraki before
-adding):
+Registered ids (each confirmed present in the DS item index before adding;
+Meraki has no row for the Arena 223157):
   * 3157   - Zhonya's Hourglass (base).
   * 223157 - Zhonya's Hourglass (Arena mode-mirror). Carries the base nominal:
-    the Arena copy shares the identical Time Stop active (same-nominal carry,
-    the ``_item_revive`` / ``_item_omnivamp`` Arena-mirror convention).
+    the Arena DDragon text names its active "Stasis" (120s) and words it
+    "Invulnerable and Untargetable for 2.5 seconds", the same 2.5s window
+    (same-nominal carry, the ``_item_revive`` / ``_item_omnivamp`` Arena-mirror
+    convention).
   * 2420   - Seeker's Armguard (the Zhonya component that keeps the 2.5s Time
-    Stop active; no Arena / ARAM mirror of its own in the index).
-  * 228002 - Wooglet's Witchcap (Arena-native stasis item; no own 22/32 mirror).
+    Stop active; no Arena 22xxxx or 32xxxx copy of its own in the index). Its
+    live DDragon text marks that Time Stop "(Single use)": it fires once and
+    is not on a cooldown, so the shared ``_ITEM_STASIS_PROB`` firing midpoint
+    below (written for a ~120s-cooldown active) is not derived for it.
+    Changing its value is an item-effect change, filed as S144-D-373.
+  * 228002 - Wooglet's Witchcap (stasis item on maps 12 and 30; no own 22/32
+    mirror).
+
+EXCLUDED: Guardian Angel (3026 / 223026) also prints "Stasis" live, but its
+stasis is death-triggered and ends in a heal; it is the ``_item_revive``
+registry's, not a cast-triggered window.
 
 DROPPED / DEFERRED (NOT present in the DS item index - an item id the engine
 never resolves would be dead weight, the ``_item_revive`` dropped-mirror
 convention):
-  * 323157   - Zhonya's ARAM mirror.
-  * 222420 / 322420 - Seeker's Armguard Arena / ARAM mirrors.
+  * 323157   - Zhonya's 32xxxx copy.
+  * 222420 / 322420 - Seeker's Armguard Arena / 32xxxx copies.
   * 22228002 / 32228002 - Wooglet's Witchcap map-mirror ids.
 
 DEFAULT BEHAVIOR IS BYTE-IDENTICAL: the ``assume_item_stasis`` seam on
@@ -75,7 +88,7 @@ _ITEM_SURVIVAL_WINDOW: dict[str, float] = {
     "3157":   2.5,  # Zhonya's Hourglass - Time Stop (2.5s stasis)
     "223157": 2.5,  # Zhonya's Hourglass (Arena mirror; base nominal)
     "2420":   2.5,  # Seeker's Armguard - Time Stop (2.5s stasis)
-    "228002": 2.5,  # Wooglet's Witchcap (Arena-native stasis; 2.5s)
+    "228002": 2.5,  # Wooglet's Witchcap (stasis on maps 12 + 30; 2.5s)
 }
 
 
@@ -115,7 +128,18 @@ def item_survival_window_fraction(
     the reference 6.0s window (division guard). Duplicate ids stack per occurrence
     (the build planner enforces the inventory cap + unique-passive doctrine
     separately).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-152).
     """
+    # A bare "3157" was read character by character and lost Zhonya's; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     fw = float(fight_window_s) if fight_window_s and fight_window_s > 0 else 6.0
     total = 0.0
     for iid in item_ids:

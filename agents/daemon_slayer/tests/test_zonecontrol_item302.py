@@ -64,8 +64,8 @@ class MechanismValueMathTests(unittest.TestCase):
 
 
 class HandVerifiedChampionTests(unittest.TestCase):
-    # Pinned exact values; re-running tools/ds_zonecontrol_build.py against a
-    # fresh scan updates them.
+    # Pinned exact values. tools/ds_zonecontrol_build.py is one-shot
+    # (S144-D-244), so a fresh scan updates them by hand.
     def test_anivia_tops_roster(self):
         # Anivia: W TERRAIN TIMED 0.82 (0.656) + R FIELD SUSTAINED 0.78 (0.663)
         # -> 1.319; top FIELD (R edges out W), controls_terrain True (W wall).
@@ -226,8 +226,9 @@ class RegistryInvariantTests(unittest.TestCase):
 
     def test_roster_coverage(self):
         # 10-channel roster fan-out (sparse axis): 98 entries / 83 champions,
-        # 11 TERRAIN mechanisms (one per terrain champion). Re-running
-        # tools/ds_zonecontrol_build.py against a fresh scan updates these.
+        # 11 TERRAIN mechanisms (one per terrain champion).
+        # tools/ds_zonecontrol_build.py is one-shot (S144-D-244): a fresh scan
+        # updates these by hand.
         self.assertEqual(len(_ZONECONTROL_REGISTRY), 83)
         total = sum(len(v) for v in _ZONECONTROL_REGISTRY.values())
         self.assertEqual(total, 98)

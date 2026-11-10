@@ -111,6 +111,7 @@ heal-only or shield-only amp items stay representable.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
@@ -171,6 +172,12 @@ def _armor_factor(resist: float) -> float:
     return 2.0 - 100.0 / (100.0 - resist)
 
 
+def _finite_or(value: float, default: float) -> float:
+    """``float(value)`` when finite, else ``default`` (S144-D-164/165)."""
+    number = float(value)
+    return number if math.isfinite(number) else default
+
+
 def _clamp_pct(value: float) -> float:
     """Clamp a percent-fraction input to ``[0.0, 0.99]``.
 
@@ -179,9 +186,11 @@ def _clamp_pct(value: float) -> float:
     WHAT line of docs/_archive/COMPETITOR_LIFT_2026-06-08.md) so a single
     source can never fully zero a resist (mirrors League's 99% shred/pen
     practical ceiling). Negative inputs floor at 0.0 (a percent term
-    cannot heal a resist back upward).
+    cannot heal a resist back upward). S144-D-166: NaN reads as 0.0 (no pen);
+    both comparisons are False for NaN, so it used to pass through and read
+    as MORE than the 0.99 cap.
     """
-    if value <= 0.0:
+    if not value > 0.0:
         return 0.0
     if value >= 0.99:
         return 0.99
@@ -323,9 +332,9 @@ def _collect_shields(
         # (a burst-window shield on a 6s/target CD); R99 Chainlaced Crushers
         # (3173) rides assume_chainlaced_shield (its Noxian Persistence magic
         # shield triggers only on taking magic damage, 15s CD). Seraph's Embrace
-        # (3040 / Arena 223040 / ARAM 323040) rides assume_seraphs_shield (its
+        # (3040 / Arena 223040 / map-11 323040) rides assume_seraphs_shield (its
         # Lifeline 18%-max-mana generic shield fires only at <30% HP). R129
-        # Fimbulwinter (3121 / Arena 223121 / ARAM 323121) rides
+        # Fimbulwinter (3121 / Arena 223121 / map-11 323121) rides
         # assume_fimbulwinter_shield (its Everlasting 100 +4.5%-max-mana generic
         # shield fires on immobilizing an enemy, 8s CD). None is folded into the
         # always-on lifeline pool.
@@ -618,7 +627,7 @@ def item_aa_dr_multiplier(
 
 
 # ENGINE 1.182.0 (R86, 2026-07-06): item-keyed enemy ATTACK-SPEED-SLOW aura.
-# Frozen Heart (SR 3110 / ARAM 323110 / Arena 223110) "Winter's Caress" reduces
+# Frozen Heart (SR 3110 / map-11 323110 / Arena 223110) "Winter's Caress" reduces
 # nearby enemy Attack Speed by 20% (DDragon 16.13.1) - a defensive_only NOTE with
 # ZERO EHP credit though the item's armor already counted. A 20% enemy AS slow
 # means nearby enemies auto-attack at 0.80x RATE, so the incoming basic-attack
@@ -786,7 +795,7 @@ def _crit_weighted_vamp_multiplier(
 _VAMP_ELIGIBLE_CLEAVE_BASE_IDS: frozenset[str] = frozenset({"3074"})
 
 # Mode-mirror id prefixes. DDragon ships one item under several ids (Arena 22*,
-# ARAM 32*, plus the rarer 12* copies), so the credited set is resolved by ID
+# map-11 SR 32*, plus the rarer map-12 12* copies), so the credited set is resolved by ID
 # SUFFIX against ITEM_EFFECTS rather than by NAME - a name sweep silently misses
 # a renamed mirror, and a bare-base-id registry silently returns 0.0 for the
 # mirror id the Arena resolver actually hands the engine (the R143 defect class).
@@ -1160,7 +1169,7 @@ class EhpResult:
     item_spell_shield_frac: float = 0.0
     # ENGINE 1.198.0 (R105, 2026-07-10): item-side MANA -> MAX-HP "Awe" credit - the
     # bonus max HEALTH (15% of BONUS mana; Winter's Approach 3119 / Fimbulwinter 3121
-    # + Arena/ARAM mirrors) folded into the EHP NUMERATOR when
+    # + their Arena 22xxxx / map-11 32xxxx copies) folded into the EHP NUMERATOR when
     # ``apply_item_mana_health`` is True. Default 0.0 leaves every EHP field
     # byte-identical. A genuine flat max-HP pool add (sibling of ext_flat_hp /
     # ally_grant_flat_hp), NOT a cc-only term. Appended at END per the dataclass
@@ -1428,13 +1437,13 @@ def compute_ehp(
     # Kaenic/Eclipse.
     assume_chainlaced_shield: bool = False,
     # Seraph's Embrace (2026-07-10): default-OFF opt-in for Seraph's Embrace
-    # (3040 / Arena 223040 / ARAM 323040) Lifeline - 18% max mana ANY (generic)
+    # (3040 / Arena 223040 / map-11 323040) Lifeline - 18% max mana ANY (generic)
     # shield at <30% HP. Byte-identical OFF (the default_off shield is dropped
     # from the pool); live default-ON flip is operator-gated. Armed per-shield so
     # it never credits Kaenic/Eclipse/Chainlaced.
     assume_seraphs_shield: bool = False,
     # R129 (2026-07-14): default-OFF opt-in for Fimbulwinter (3121 / Arena 223121
-    # / ARAM 323121) Everlasting - 100 (+4.5% max mana) ANY (generic) shield on
+    # / map-11 323121) Everlasting - 100 (+4.5% max mana) ANY (generic) shield on
     # immobilizing an enemy, 8s CD. Byte-identical OFF (the default_off shield is
     # dropped from the pool); live default-ON flip is operator-gated. Armed
     # per-shield so it never credits Kaenic/Eclipse/Chainlaced/Seraphs.
@@ -1496,7 +1505,7 @@ def compute_ehp(
     apply_item_spell_shield: bool = False,
     # ENGINE 1.198.0 (R105, 2026-07-10): default-OFF opt-in to credit an item-side
     # MANA -> MAX-HP "Awe" passive (Winter's Approach 3119 / Fimbulwinter 3121 +
-    # Arena/ARAM mirrors = bonus health equal to 15% of BONUS mana) to the EHP
+    # Arena / map-11 copies = bonus health equal to 15% of BONUS mana) to the EHP
     # NUMERATOR. The item-side lane of the R46 stacking-HP axis (champion-keyed, so
     # an item can never match ``passive_health_stack_hp``); build_champion folds
     # mana->AD (Manamune) / mana->AP (Archangel/Seraph) but has NO mana->HP walk, so
@@ -2129,7 +2138,7 @@ def compute_ehp(
     # ENGINE 1.198.0 (R105, 2026-07-10): item-side MANA -> MAX-HP "Awe" credit - the
     # item analog of passive_health_hp above (a clean EHP-NUMERATOR flat max-HP
     # term), sourced from an ITEM passive. Winter's Approach 3119 / Fimbulwinter 3121
-    # (+ Arena/ARAM mirrors) grant bonus MAX HEALTH = 15% of BONUS mana via "Awe"
+    # (+ Arena / map-11 copies) grant bonus MAX HEALTH = 15% of BONUS mana via "Awe"
     # (Meraki 16.13.1), which is NOT in the resolved stat block: build_champion folds
     # mana->AD (Manamune) / mana->AP (Archangel/Seraph) but has NO mana->HP walk.
     # bonus_mana = item-contributed max mana (max_mana - base max mana; the
@@ -2220,8 +2229,10 @@ def compute_ehp(
     # - a GENERIC external add (compute_ehp scores the PROTECTED ally; the grant
     # rides in from a teammate). Folded into the SAME armor/MR denominator as the
     # self resist grant. Default 0.0 -> byte-identical to 1.101.0.
-    ext_armor = max(0.0, float(external_resist_armor))
-    ext_mr = max(0.0, float(external_resist_mr))
+    # S144-D-164: a non-finite add reads as the 0.0 default (+inf divided by
+    # zero in the resist curve; NaN only read as 0.0 through max's arg order).
+    ext_armor = max(0.0, _finite_or(external_resist_armor, 0.0))
+    ext_mr = max(0.0, _finite_or(external_resist_mr, 0.0))
     # ENGINE 1.199.0 (R106, 2026-07-11): item-side conditional RESIST-GRANT credit -
     # the ITEM analog of resist_grants above (a clean EHP-DENOMINATOR bonus armor/MR
     # add). Jak'Sho 6665 Voidborn (+30% BONUS armor+MR at 5 combat stacks) + Force of
@@ -2287,7 +2298,8 @@ def compute_ehp(
     # protected ally's own shield/heal amp - the granter's value is final), so it
     # adds RAW to every per-type numerator and rides the SAME armor/MR curve.
     # Default 0.0 -> byte-identical. Negative clamped (never lowers EHP).
-    ext_flat_hp = max(0.0, float(external_flat_hp))
+    # S144-D-165: non-finite reads as the 0.0 default (+inf made EHP NaN).
+    ext_flat_hp = max(0.0, _finite_or(external_flat_hp, 0.0))
 
     # T1-F3 (2026-06-09, docs/_archive/COMPETITOR_LIFT_2026-06-08.md T1-F3):
     # OPT-IN enemy-penetration seam. The five enemy_* kwargs default to 0.0
@@ -2356,7 +2368,8 @@ def compute_ehp(
     # caller sources it from ``ally_revive_multiplier`` and passes the > 1.0
     # multiplier as ``external_revive_multiplier`` (composes multiplicatively with
     # any self revive - two independent second lives). Default 1.0 -> unchanged.
-    ext_revive = max(1.0, float(external_revive_multiplier))
+    # S144-D-165: non-finite reads as the 1.0 default (+inf made EHP NaN).
+    ext_revive = max(1.0, _finite_or(external_revive_multiplier, 1.0))
     # ENGINE 1.105.0 (item 293): GAP-2 GUARANTEED-SURVIVAL WINDOW - the SECOND
     # EHP-NUMERATOR term (sibling of the revive). A SELF untargetable / stasis /
     # invulnerable window (Tryndamere R / Kindred R / Taric R / Kayle R self /

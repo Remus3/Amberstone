@@ -155,13 +155,14 @@ _PASSIVE_REVIVE_OVERRIDES: dict[tuple[str, str, int], PassiveReviveEntry] = {
     # current health." FULL-HP second life on a 240s cooldown. revived_fraction
     # 1.0 (restores ALL health). The -40:20 (by level) egg armor / MR is the
     # can't-act resurrection-STATE resist that item 272 correctly EXCLUDED from
-    # the resist-denominator axis - NOT modeled here either (this entry is the
-    # REVIVE, the second HP pool, not the egg resist). Amortized at _REVIVE_PROB
-    # (the 240s cooldown + egg survival).
+    # the resist-denominator axis; item 316 seeds it HERE (egg_resist_armor /
+    # egg_resist_mr), applied only to this second-life pool by compute_ehp's
+    # apply_egg_resist seam (default-ON since item 321). Amortized at
+    # _REVIVE_PROB (the 240s cooldown + egg survival).
     ("Anivia", "P", 0): PassiveReviveEntry(
         revived_hp_fraction=1.0,
         conditional_probability=_REVIVE_PROB,
-        note="Rebirth: restores ALL health (full second life) on a 240s cooldown; revived_fraction 1.0; egg armor/MR is the item-272-excluded can't-act state (not modeled here); amortized at the revive midpoint",
+        note="Rebirth: restores ALL health (full second life) on a 240s cooldown; revived_fraction 1.0; egg armor/MR -40:20 by level is the can't-act state, kept off the resist denominator (item 272) and applied to this second-life pool only (item 316 apply_egg_resist); amortized at the revive midpoint",
         attribute="Rebirth",
         egg_resist_armor=_lerp_per_level(-40.0, 20.0),
         egg_resist_mr=_lerp_per_level(-40.0, 20.0),
@@ -232,10 +233,11 @@ def revive_egg_resist(
 
     Summed over every revive entry matching ``champion_id``. The deltas are added
     to the resolved armor/MR ONLY for the second-life portion of EHP (the egg that
-    must survive), reshaping the self-revive numerator by the resist curve. When
-    ``apply_egg_resist`` is False (default) returns ``(0.0, 0.0)`` -> the consumer's
-    egg ratio is 1.0 -> byte-identical. A non-egg revive (Zac) carries 0.0 deltas
-    so it is unchanged even with the flag on.
+    must survive), reshaping the self-revive numerator by the resist curve.
+    ``compute_ehp``'s ``apply_egg_resist`` defaults True (item 321); when a
+    caller passes False this returns ``(0.0, 0.0)`` -> the consumer's egg ratio
+    is 1.0 -> the pre-item-316 scalar path. A non-egg revive (Zac) carries 0.0
+    deltas so it is unchanged even with the flag on.
     """
     if not apply_egg_resist:
         return 0.0, 0.0

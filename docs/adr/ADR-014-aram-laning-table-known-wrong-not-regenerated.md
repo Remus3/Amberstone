@@ -97,22 +97,22 @@ NOT cancel) but ARENA already owed a regen from RM-158 and carries no new debt.
 
 ### Who actually consumes an ARAM laning table
 
-Every non-test, non-tool reader, with file:line:
+Every non-test, non-tool reader, by symbol (line numbers drift; S144-D-194):
 
-| reader | line | what it does |
+| reader | symbol | what it does |
 |---|---|---|
-| `dashboard/_state_builder.py` | 629 | calls `shadow_log_precomputed_choices(coach, lc, mode_key)` |
-| `dashboard/_deterministic_coaching.py` | 1647 | `payload = load_laning_scenarios(lower)` - inside `shadow_log_precomputed_choices`, gated on a live liveclient champion |
-| `core/precomputed_laning_coach.py` | 484, 521 | `load_laning_scenarios(mode)` when the caller passes no payload |
-| `core/precomputed_laning_coach.py` | 333-342 | `_recall_outcome` - renders `"<N>g banked; next spike <label>"` as the B-chip `expected_outcome` |
-| `core/precomputed_laning_coach.py` | 441 | `recall in _RECALL_LABELS` - **gates whether a B recall chip exists at all**, and picks its label |
-| `core/precomputed_laning_coach.py` | 575 | `b_is_recall` -> feeds `laning_rebranch` wording on the A chip |
-| `core/hz_choice_shadow.py` | 79 | reads `dimensions.economy` for the RM-158 arena writer gate (header only, not the leaves) |
+| `dashboard/_state_builder.py` | `build_state` | calls `shadow_log_precomputed_choices(coach, lc, mode_key)` |
+| `dashboard/_deterministic_coaching.py` | `shadow_log_precomputed_choices` | `payload = load_laning_scenarios(lower)`, gated on a live liveclient champion |
+| `core/precomputed_laning_coach.py` | `resolve_enemy`, `_resolve_cell_ctx` | `load_laning_scenarios(mode)` when the caller passes no payload |
+| `core/precomputed_laning_coach.py` | `_recall_outcome` | renders `"<N>g banked; next spike <label>"` as the B-chip `expected_outcome` |
+| `core/precomputed_laning_coach.py` | `_build_choices` | `recall in _RECALL_LABELS` - **gates whether a B recall chip exists at all**, and picks its label |
+| `core/precomputed_laning_coach.py` | `_resolve_rebranch` | `b_is_recall` -> feeds `laning_rebranch` wording on the A chip |
+| `core/hz_choice_shadow.py` | `precompute_source_tag` | reads `dimensions.economy` for the RM-158 arena writer gate (header only, not the leaves) |
 
 ### The defect is worse in KIND than "a wrong number", and this is the strongest argument against this ADR
 
-`_RECALL_LABELS` (`core/precomputed_laning_coach.py:83-86`) has exactly two
-keys, `recall_now` and `back_soon`. **There is no `hold` key.** At `:441` the
+`_RECALL_LABELS` (`core/precomputed_laning_coach.py`) has exactly two
+keys, `recall_now` and `back_soon`. **There is no `hold` key.** In `_build_choices` the
 chip is built only `if recall in _RECALL_LABELS`, so a `hold` falls through to
 the `b_label_alt` branch and a combat alternative is substituted instead.
 
@@ -123,7 +123,7 @@ replaced by a combat option. That is a missing option, not a wrong string, and
 it is a materially bigger defect than "off by 50 percent" suggests.
 
 It still does not change the decision, for one reason: the suppression happens
-entirely inside `shadow_log_precomputed_choices`. `dashboard/_state_builder.py:629`
+entirely inside `shadow_log_precomputed_choices`. `build_state` in `dashboard/_state_builder.py`
 calls it AFTER `compute_deterministic`, and it writes only to
 `data/hz_choice_shadow.jsonl`. No served chip list is built from this path. The
 defect is severe in kind and zero in reach.
@@ -187,7 +187,7 @@ to go that a wrong one does not.
 
 - **Every shipped table is `laning_scenarios/v3`.** Read off the tail of all
   seven files (16.11.1 sr; 16.12.1 and 16.13.1 x sr/aram/arena).
-- **The generator has no v3 emit path.** `core/laning_scenario_precompute.py:856`
+- **The generator has no v3 emit path.** `generate_table` in `core/laning_scenario_precompute.py`
   hard-codes `"schema": "laning_scenarios/v4"`. There is no flag, no branch.
 - Therefore **any regen of ARAM alone lands a v4 file next to v3 siblings in the
   same patch directory.** That is not a cosmetic version skew:
@@ -196,7 +196,7 @@ to go that a wrong one does not.
     shipped table for this reason. A v4 ARAM table makes that axis live for ARAM
     and ARAM only.
   - A v4 leaf carries `cooldown_window` / `spike_timing` blocks, which
-    `dashboard/_deterministic_coaching.py:1691-1705` folds into
+    `shadow_log_precomputed_choices` in `dashboard/_deterministic_coaching.py` folds into
     `verdict_blocks`. The shadow corpus would then hold ARAM rows carrying
     verdict blocks against sr/arena rows that structurally cannot, and
     `tools/hz_shadow_report.py` / `hz_mismatch_diagnose.py` /
@@ -235,12 +235,14 @@ the mode, so while 16.13.1 exists the fallback can never select 16.12.1.
 
 **No caller anywhere in the repo can supply a pin.** `load_laning_scenarios` does
 accept an explicit `patch` and honours it verbatim - the probe above proves that -
-but every call site passes mode only: `_deterministic_coaching.py:1647`,
-`hz_choice_shadow.py:79`, `precomputed_laning_coach.py:484,521`, and
-`tools/replay_laning_verdict_validate.py:644`, which is literally
+but every call site passes mode only: `shadow_log_precomputed_choices` in
+`_deterministic_coaching.py`, `precompute_source_tag` in `hz_choice_shadow.py`,
+`resolve_enemy` and `_resolve_cell_ctx` in `precomputed_laning_coach.py`, and
+`_load_table` in `tools/replay_laning_verdict_validate.py`, which is literally
 `return load_laning_scenarios(mode)` and whose argparse exposes no `--patch`
 flag. The only `patch=` arguments in the tree are in
-`tests/test_laning_scenario_precompute.py:141,394`, both asserting a MISS.
+`tests/test_laning_scenario_precompute.py`, in `test_load_missing_db_failsoft` and
+`test_explicit_patch_pin_does_not_fall_back`, both asserting a MISS.
 
 So 16.12.1 is unreachable full stop, not merely unreachable by default. This is
 stronger than the sibling slice's finding, which said an explicit pin was
@@ -351,12 +353,12 @@ decision for a fully fenced one.
 Any one of these flips the decision. They are the trigger list, not a wish list:
 
 - **Anything starts SERVING an ARAM economy value to a human.** Watch
-  `core/precomputed_laning_coach._recall_outcome` (:333-342), the chip gate at
-  :441 and the rebranch read at :575. **Do NOT rely on
+  `core/precomputed_laning_coach._recall_outcome`, the chip gate in
+  `_build_choices` and the rebranch read in `_resolve_rebranch`. **Do NOT rely on
   `tests/test_laning_verdict_flip_retired.py` to catch this** - per gap 2 above
   it guards importers, and the likeliest wiring happens inside a module that is
   already allowlisted.
-- **A `hold` key is added to `_RECALL_LABELS`** (`precomputed_laning_coach.py:83-86`).
+- **A `hold` key is added to `_RECALL_LABELS`** (`precomputed_laning_coach.py`).
   Today a stale `hold` suppresses the B chip; with that key present it would be
   emitted carrying a wrong label, which is a different and more visible defect.
 - **The generator gains a v3 emit path**, or all three 16.13.1 modes are

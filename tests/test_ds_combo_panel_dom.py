@@ -20,7 +20,7 @@ those shared files). Those wires get their own guard once landed; here we
 only assert the two NEW files are coherent + ASCII-clean so a refactor
 that breaks an export / class name is caught.
 
-Grep-based smoke checks - cheap, fast. Mirrors test_cooldown_watch_panel_dom.py.
+Grep-based smoke checks - cheap, fast. Mirrors test_cc_conditional_pressure_panel_dom.py.
 """
 from __future__ import annotations
 

@@ -23,10 +23,10 @@ per-cast damage through the full mitigation pipeline.
     burst scorer. NO scoring math is duplicated or moved here.
   * Cast-time / cooldown clock: per-spell ``cast_time`` + per-rank
     ``cooldown`` lists from the patch-pinned
-    ``data/daemon_slayer/<patch>/champion_abilities.json`` (same loader
-    pattern as ``cooldown_watch.py``). The clock starts at 0; each action
-    is stamped with its start time ``t``; the clock advances by the
-    action's cast time after it resolves.
+    ``data/daemon_slayer/<patch>/champion_abilities.json`` (patch from
+    ``current.txt``; ``_load_abilities``). The clock starts at 0; each
+    action is stamped with its start time ``t``; the clock advances by
+    the action's cast time after it resolves.
 
 v1 scope (per the DEPTH spec, which itself flags "not all features
 implemented" on calc.gg):
@@ -50,7 +50,7 @@ implemented" on calc.gg):
   * CAP: the sequence is capped at 60 actions AND the clock at 60s,
     mirroring calc.gg's stated limit. Actions past either cap are dropped.
 
-Fail-soft contract (mirrors ``cooldown_watch`` + the burst walker):
+Fail-soft contract (the same as the burst walker's):
 unknown champion / champion absent from the abilities snapshot yields an
 empty ``hits`` list with a note rather than raising. An empty / all-blank
 sequence yields empty ``hits``.
@@ -156,7 +156,7 @@ class ComboResult:
 def _load_abilities() -> Dict[str, dict]:
     """Read patch + champion_abilities.json once; return the ``data`` map.
 
-    Mirrors ``cooldown_watch._load_abilities`` exactly: read ``current.txt``
+    Patch-pinned and read once at import: read ``current.txt``
     for the patch, then ``<patch>/champion_abilities.json``, return its
     ``data`` dict (champion id -> {slot: [form, ...]}). Fail-soft to ``{}``
     so a missing file degenerates to "use fallback cast times" rather than
@@ -211,6 +211,44 @@ def _burst_notes(burst) -> Tuple[str, ...]:
         return ()
 
 
+def _coerce_level(level) -> int:
+    """``int(level)``, fail-soft (S144-D-122).
+
+    Every int-convertible level is returned unchanged (a finite out-of-range
+    level still reaches the burst walker, whose range note answers it);
+    +inf reads as 18, -inf as 1, and NaN / junk / None as 1 - the
+    fight_report / self_shred convention. Before this, each ``int(level)``
+    sat outside the fail-soft wrap and raised out of :func:`compute_combo`.
+    """
+    try:
+        return int(level)
+    except OverflowError:
+        try:
+            return 18 if level > 0 else 1
+        except Exception:
+            return 1
+    except (TypeError, ValueError):
+        return 1
+
+
+def _item_page(item_ids) -> List[str | int]:
+    """The caller's item ids as a list; a bare ``str`` / ``int`` id is ONE id.
+
+    S144-D-181: ``list(item_ids or [])`` read a bare "3089" as the ids
+    '3', '0', '8', '9' and a bare int raised TypeError, so the burst walker
+    failed and the result was the fail-soft zero. A falsy page is empty, as
+    before; a ``bool`` is never an id and still fails inside the walker's
+    fail-soft wrap, as does any other non-iterable.
+    """
+    if not item_ids:
+        return []
+    if isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        return [item_ids]
+    return list(item_ids)
+
+
 def _normalize_sequence(sequence: Optional[Sequence[str]]) -> List[str]:
     """Clean + cap the authored action list.
 
@@ -263,6 +301,7 @@ def compute_combo(
     seconds (calc.gg's stated limits). Fail-soft: unknown champion /
     empty sequence yields an empty ``hits`` list with a note.
     """
+    level = _coerce_level(level)
     champ = str(champion or "").strip()
     seq = _normalize_sequence(sequence)
     snap = snapshot if snapshot is not None else DataSnapshot.load()
@@ -288,7 +327,7 @@ def compute_combo(
     # layers the clock + cooldown skip on top of that per-cast damage.
     try:
         burst = compute_burst_damage(
-            snap, champ, int(level), item_ids=list(item_ids or []),
+            snap, champ, int(level), item_ids=_item_page(item_ids),
             mode=mode, target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
             combo_sequence=seq, runes=runes,

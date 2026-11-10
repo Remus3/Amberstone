@@ -9,8 +9,11 @@ gains bonus AD = (level% + 0.30 per 1% bonus AS + 0.35 per 1% crit) of base AD.
 
 The DS stat pipeline (``engine.build_champion``) resolves base + item + rune AS
 into ``item_totals["as_pct"]`` and folds it into ``stats["as"]`` via the generic
-AS rebuild; DDragon / Meraki strip Whisper's numbers (Jhin's champion record is
-prose-only), so without this registry the engine (1) over-credits Jhin with item
+AS rebuild. No structured DDragon / Meraki field carries Whisper: the snapshot's
+Every Moment Matters prose states the 4% : 44% level endpoints and both
+coefficients, but not the per-level table between them (that is wiki-only, see
+GROUND TRUTH), and nothing in the stat pipeline reads prose. So without this
+registry the engine (1) over-credits Jhin with item
 attack speed he can never actually gain and (2) under-credits the AD his passive
 converts that attack speed / crit into. Both errors compound in every scorer that
 resolves stats (dps / burst / ability_dps / hybrid / ehp / rank / beam /
@@ -20,7 +23,10 @@ build_order), so the fix lives at the single load-time chokepoint
 CONSUMER: ``engine.build_champion`` unconditionally (DEFAULT-ON) - Whisper is a
 permanent mechanic, not an opt-in seam. The consumer walk is guarded on
 ``as_lock_entry(champion_id) is not None``, so every champion WITHOUT an entry is
-byte-identical to the prior engine version.
+byte-identical to the prior engine version. A second reader,
+``dps.compute_dps``, looks up the same entry in its rune attack-speed fold
+(R155) and grants a locked champion ZERO rune attack speed, because that fold
+runs downstream of the build_champion zeroing.
 
 WHY AN EXPLICIT DICT, not an automatic "attackspeedperlevel == 0" rule: Belveth
 shares Jhin's ``attackspeedperlevel == 0`` DDragon signature but has UNCAPPED

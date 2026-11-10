@@ -86,6 +86,7 @@ from .data_loader import DataSnapshot, canonical_mode
 from .dps import (
     _ASSUMED_ABILITY_AMP_STACKS,
     _ASSUMED_TAKEDOWN_STACKS,
+    _refuse_non_finite_targets,
     compute_dps,
     total_missing_hp_bonus_ad,
 )
@@ -649,6 +650,12 @@ def compute_burst_damage(
         raise ValueError(
             f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
         )
+    _refuse_non_finite_targets(
+        target_armor=target_armor,
+        target_mr=target_mr,
+        target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
+    )
     combo_norm, combo_source = _resolve_combo_sequence(champion_id, combo_sequence)
 
     level = clamp_level(level)

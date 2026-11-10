@@ -84,7 +84,7 @@ Failure modes:
 
 5-min TTL in-process cache keyed on (champion, mode, sorted items,
 target_armor, target_mr, budget, fight_length, level). Mirrors
-routes_cooldown_watch cache discipline, bounded at ``_CACHE_MAX`` entries
+routes_cc_conditional_pressure cache discipline, bounded at ``_CACHE_MAX`` entries
 with expired entries dropped on write (RM-1329: the key carries
 free-form floats, so it is not a closed set).
 
@@ -122,7 +122,7 @@ log = logging.getLogger("rc.web_dashboard")
 # Same set as routes_ds_sweep (RM-1327).
 _SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 
-# 5-min response TTL mirrors routes_cooldown_watch exactly.
+# 5-min response TTL mirrors routes_cc_conditional_pressure exactly.
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()

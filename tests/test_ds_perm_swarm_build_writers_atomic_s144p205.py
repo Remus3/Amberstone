@@ -23,12 +23,19 @@ TABLE = {"champions": {}, "note": "caf" + chr(0xE9), "considered_archetype_misma
          "skipped_no_win_anchor": []}
 
 
+def _pin_table(mod, monkeypatch):
+    """main() writes exactly TABLE: S144-D-240's manual-row merge is identity here."""
+    monkeypatch.setattr(mod, "build_table", lambda: dict(TABLE))
+    if hasattr(mod, "with_manual_entries"):
+        monkeypatch.setattr(mod, "with_manual_entries", lambda t: t)
+
+
 @pytest.mark.parametrize("mod", [aram, mark], ids=["aram", "marksman"])
 def test_main_writes_exact_lf_bytes_and_leaves_no_scratch(
         mod, tmp_path, monkeypatch, capsys):
     out = tmp_path / "out.json"
     monkeypatch.setattr(mod, "_OUT_PATH", out)
-    monkeypatch.setattr(mod, "build_table", lambda: dict(TABLE))
+    _pin_table(mod, monkeypatch)
     mod.main()
     expected = json.dumps(dict(TABLE), indent=2,
                           ensure_ascii=True, sort_keys=False) + "\n"
@@ -43,7 +50,7 @@ def test_main_writes_exact_lf_bytes_and_leaves_no_scratch(
 def test_main_goes_through_polled_json(mod, tmp_path, monkeypatch):
     seen = []
     monkeypatch.setattr(mod, "_OUT_PATH", tmp_path / "out.json")
-    monkeypatch.setattr(mod, "build_table", lambda: dict(TABLE))
+    _pin_table(mod, monkeypatch)
     monkeypatch.setattr(mod, "atomic_write_text",
                         lambda p, t: seen.append((p, t)))
     mod.main()

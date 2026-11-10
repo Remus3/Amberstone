@@ -452,7 +452,9 @@ def compute_zonecontrol(champion: str, mode: str = "SR") -> ZoneControlResult:
     champion is blank / None or absent from the (sparse) registry; never raises.
     """
     safe_mode = mode if mode else "SR"
-    if not champion:
+    # S144-D-127: a non-string champion (unhashable ones raised TypeError
+    # out of the registry lookup) reads as blank.
+    if not champion or not isinstance(champion, str):
         return _empty_result("", safe_mode)
     entries = _ZONECONTROL_REGISTRY.get(champion)
     if not entries:

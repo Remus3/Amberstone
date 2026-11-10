@@ -10,7 +10,7 @@ same value the block holds), route the block-index under ``apply_ability_amps``:
   Meraki pre-bakes as a flat value == block0 * the "Maximum Damage Increase" %,
   so NO separate missing-HP coefficient is needed - the route IS the ceiling).
 - Sion Q (Decimating Smash): NO gated route - ``champion_block_index.json``
-  ``{Q:2}`` already selects the "Maximum Physical Damage" block by default (the
+  ``{Q:1}`` (damage-block ordinal 1) already selects the "Maximum Physical Damage" block by default (the
   s191 routing predates this seam), so flag on/off is byte-identical.
 
 Default path (``apply_ability_amps=False``) is byte-identical. Does NOT pin
@@ -42,7 +42,7 @@ class RouteRegistryShapeTests(unittest.TestCase):
         self.assertEqual(_staged_amp_block_route_for("Hwei", "Q", 2), 1)
 
     def test_sion_q_has_no_staged_route(self):
-        # Sion Q is resolved by champion_block_index.json {Q:2}, not a gated route.
+        # Sion Q is resolved by champion_block_index.json {Q:1}, not a gated route.
         self.assertIsNone(_staged_amp_block_route_for("Sion", "Q", 0))
 
     def test_unmapped_returns_none(self):

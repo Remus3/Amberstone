@@ -49,19 +49,18 @@ percent-bonus-HP amp (Cinderhulk) is carried in the resolved HP by
 R105 mana->HP credit. The credit is EXACT (a deterministic stat conversion), so -
 unlike R106's ramping resist grant - there is NO amortization midpoint.
 
-Unique-passive semantics: "Warmog's Vitality" is a UNIQUE passive AND, in the DS
-item pool, at most one Warmog's is ever equipped (the base and its Arena mirror are
-mutually exclusive). So the credited fraction is the MAX registered percent among
-the equipped items (not a sum), which cannot double-count the SHARED bonus-HP pool
-if a synthetic build lists both a base and its mirror.
+Unique-passive semantics: "Warmog's Vitality" is a UNIQUE passive, and 3083 is
+the only item that carries it, so a real build holds at most one. The credited
+fraction is the MAX registered percent among the equipped items (not a sum),
+which cannot double-count the SHARED bonus-HP pool if a synthetic build lists
+3083 twice.
 
-Registered ids (each confirmed present in the DS item index
-``data/daemon_slayer/16.13.1/items.json`` before adding; a live snapshot probe
-resolved 3083 + 443083 and found 223083 / 323083 ABSENT):
+Registered ids (re-measured against the live 16.22.1 index, where 3083 is the
+only row whose text carries "Warmog's Vitality"):
   * 3083   - Warmog's Armor (base; carries Warmog's Vitality + Warmog's Heart regen).
-  * 443083 - Warmog's Armor (Arena mirror; base nominal - the ``_item_mana_health`` /
-    ``_item_resist_grants`` Arena-mirror convention). No 22xxxx / 32xxxx mirror exists
-    in the index, so only the base + the 44xxxx Arena id are registered.
+NOT registered: the Arena id 443083 (RM-102, removed - its own text carries a
+1100 Health stat, 4% move speed and Warmog's Heart regen, and no Warmog's
+Vitality); 223083 / 323083 are absent from the index.
 
 DOCUMENTED EXCLUSIONS (same item, NOT this credit):
   * Warmog's HEART (3083 passive "Warmog's Heart"): an out-of-combat HP-REGEN
@@ -114,9 +113,8 @@ def item_bonus_hp_amp_hp(
 
     The MAX (not the sum) over the equipped registered items reflects the "Warmog's
     Vitality" UNIQUE passive over a shared bonus-HP pool, so a synthetic build listing
-    the base plus its Arena mirror cannot double-count. In a real DS build at most one
-    Warmog's is ever equipped (the base and the mirror are mutually exclusive), so the
-    MAX equals the single match.
+    3083 twice cannot double-count. 3083 is the only registered carrier, so in a real
+    build the MAX equals the single match.
 
     Items not in the registry contribute 0. This is a clean EHP-NUMERATOR flat max-HP
     term (a real pool increase, folded next to ``ext_flat_hp`` / ``item_mana_health_hp``),
@@ -124,7 +122,18 @@ def item_bonus_hp_amp_hp(
     Non-positive ``bonus_hp_from_items`` yields 0.0. The default-OFF gating lives in
     ``compute_ehp`` (this function is only called when ``apply_item_bonus_hp_amp`` is
     True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-143).
     """
+    # A bare "3083" was read character by character and lost Warmog's Vitality; a bare
+    # int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     bh = max(0.0, float(bonus_hp_from_items))
     # S144-D-101: an infinite pool is unusable, as NaN / -inf already were via
     # the clamp; it returned inf, and NaN (0.0 * inf) on a build with no Warmog's.

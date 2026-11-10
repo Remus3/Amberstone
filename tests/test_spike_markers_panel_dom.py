@@ -20,7 +20,7 @@ skip-if-absent to keep this slice green pre-wire; that scaffold outlived the
 wire-up and made the three wiring tests unable to fail (removed 2026-07-26).
 
 Grep-based smoke checks - cheap, fast, enough to catch a missing wire.
-Mirrors test_cooldown_watch_panel_dom.py.
+Mirrors test_cc_conditional_pressure_panel_dom.py.
 """
 from __future__ import annotations
 

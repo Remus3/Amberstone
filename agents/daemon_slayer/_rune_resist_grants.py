@@ -14,8 +14,8 @@ of ``ehp.py`` and ``rank.py`` for ``rune`` / ``perk`` / ``keystone`` returned ZE
 matches, and ``rune_procs.py`` registers Aftershock (8439) for its magic-damage
 explosion ALONE - its own formula string says verbatim "(resist-bonus side not
 modeled)". Three current-patch Resolve runes therefore earned ZERO EHP for the
-bonus resists they grant. Their DDragon 16.14.1 ``runesReforged.json`` longDescs,
-quoted VERBATIM:
+bonus resists they grant. Their DDragon ``runesReforged.json`` longDescs,
+identical in every vendored snapshot 16.11.1..16.22.1, quoted VERBATIM:
 
   * 8439 Aftershock: "After immobilizing an enemy champion, increase your Armor
     and Magic Resist by 45 + 75% of your Bonus Resists for 2.5s. Then explode,
@@ -49,12 +49,16 @@ seam, all expressed through the same flat / percent / cap fields:
     firing midpoint.
 
 Only three ids are SEEDED. This registry is a deliberate ALLOWLIST, not a
-tree-wide sweep: the other Resolve runes either grant no resist at all (8446
-Demolish tower damage, 8451 Overgrowth max health, 8453 Revitalize heal/shield
-power, 8463 Font of Life ally healing, 8465 Guardian ally shield) or reduce
-damage through a different axis entirely (8473 Bone Plating is a flat
-per-instance damage BLOCK, which is the ``_passive_mitigation_overrides`` lane,
-NOT a resist add). Each was read and rejected rather than overlooked.
+tree-wide sweep: the other Resolve runes either grant no resist at all (8437
+Grasp of the Undying self-heal plus permanent health, 8446 Demolish tower
+damage, 8451 Overgrowth max health, 8453 Revitalize heal/shield power, 8444
+Second Wind missing-health self-heal, 8401 Shield Bash damage on the attack
+after a shield, 8463 Font of Life ally healing, 8465 Guardian ally shield) or
+reduce damage through a different axis entirely (8473 Bone Plating is a flat
+per-instance damage BLOCK, which the ``_rune_flat_mitigation`` registry owns,
+NOT a resist add). Each was read and rejected rather than overlooked; with the
+three seeded ids the list covers all 12 Resolve runes at 16.22.1, and those
+three are the only runes whose longDesc names Armor or Magic Resist.
 
 Amortization (CONDITIONAL, unlike an always-on static stat): Aftershock and
 Unflinching realize their value only in a firing WINDOW, so each is scaled by
@@ -204,8 +208,8 @@ _RUNE_RESIST_GRANTS: dict[str, RuneResistEntry] = {
     # Resist when crowd controlled and for 2 seconds after." Flat 10/10, NO
     # percent term, NO level scaling, NO cap. Conditional on being crowd
     # controlled -> amortized at the shared firing midpoint. The rune's tenacity /
-    # slow-resist half (absent from this longDesc in 16.14.1) is a different axis
-    # and is not credited here.
+    # slow-resist half (absent from this longDesc at every vendored snapshot
+    # 16.11.1..16.22.1) is a different axis and is not credited here.
     "8242": RuneResistEntry(
         armor=10.0, mr=10.0, family="unflinching",
         note="Unflinching: +10 armor/MR while crowd controlled and for 2s after",
@@ -261,7 +265,18 @@ def rune_resist_grants(
     ``item_resist_armor`` / ``item_resist_mr``. The default-OFF gating lives in
     ``compute_ehp`` (this function is only called when ``apply_rune_resist_grants``
     is True).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-141).
     """
+    # A bare "8429" was read character by character and lost Conditioning; a
+    # bare int or None raised TypeError.
+    if rune_ids is None:
+        rune_ids = ()
+    elif isinstance(rune_ids, str) or (
+        isinstance(rune_ids, int) and not isinstance(rune_ids, bool)
+    ):
+        rune_ids = (rune_ids,)
     minute = _ASSUMED_GAME_MINUTE if game_minute is None else float(game_minute)
     if math.isnan(minute):
         # NaN is "no clock", so it takes the documented default like None

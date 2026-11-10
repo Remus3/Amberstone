@@ -121,7 +121,9 @@ _ACTIVE_DR_PROB = 0.3
 # live per-instance rank feed exists - the analog of the flat registry's
 # ``_passive_flat_mitigation_overrides._ASSUMED_ABILITY_RANK`` (kept in sync). A
 # rank-4 read (index 3, clamped to the tuple bounds) is the mid-late-game default
-# a future live per-instance consumer replaces.
+# a future live per-instance consumer replaces. On a 3-rank ult tuple (Alistar R
+# at 16.22.1) the clamp reads the ult's MAX rank 3, not a mid rank. Guard
+# ``test_assumed_ability_rank_sync_s144d269.py`` keeps both constants equal.
 _ASSUMED_ABILITY_RANK = 4
 
 
@@ -164,7 +166,7 @@ _PASSIVE_MITIGATION_OVERRIDES: dict[tuple[str, str, int], PassiveMitigationEntry
         note="Void Stone: permanent 10% reduced magic damage taken (innate, always-on)",
         attribute="Void Stone",
     ),
-    # Nilah W Slipstream: "during which she becomes ghosted ... reduces all
+    # Nilah W Jubilant Veil: "during which she becomes ghosted ... reduces all
     # incoming magic damage taken by 25%, and dodges all non-turret basic
     # attacks." 25% MAGIC, active 2.25s on a cooldown -> amortized at the active
     # midpoint. The ally-share (allies she touches gain the same for 1.5s) is not

@@ -188,8 +188,8 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     registry.setdefault("Neeko", {})["R"] = (1.25, 1.25, 1.25)
     # Orianna R - Command: Shockwave: knock-up 1.0s all ranks
     registry.setdefault("Orianna", {})["R"] = (1.0, 1.0, 1.0)
-    # Poppy E - Heroic Charge: stun 0.5s base on contact (wall stun
-    # 1.5s is conditional on terrain - base 0.5s always fires)
+    # Poppy E - Heroic Charge: 0.5s modeled for the contact carry (no time
+    # in Meraki); the terrain stun is Meraki 1.6/1.7/1.8/1.9/2.0s
     registry.setdefault("Poppy", {})["E"] = (0.5, 0.5, 0.5, 0.5, 0.5)
     # Rell W (Ferromancy: Crash Down) intentionally NOT modeled here -
     # the W toggle has a non-standard rank progression (split mount /
@@ -776,6 +776,9 @@ def _build_per_spell_cc_durations() -> dict[str, dict[str, tuple[float, ...]]]:
     return registry
 
 
+# The rows above are compared with the CC durations in the shipped Meraki
+# snapshot, and the rows that disagree are pinned as a worklist, by
+# agents/daemon_slayer/tests/test_per_spell_cc_meraki_divergence_s144d415.py.
 _PER_SPELL_CC_DURATIONS: dict[str, dict[str, tuple[float, ...]]] = (
     _build_per_spell_cc_durations()
 )
@@ -827,7 +830,7 @@ def _apply_tenacity_to_cc_tuple(
 # FORWARD-MARKER / BYTE-IDENTICAL: nothing consumes _PER_SPELL_CC_RANGE at
 # ship - it mirrors how _PER_SPELL_CC_DURATIONS itself shipped EMPTY at
 # ENGINE 1.29.0 (item 130; item 112 STAT_GRANT_CALC_KEYS precedent).
-# compute_cc_pressure / compute_ehp / cooldown_watch / cc_output read ONLY
+# compute_cc_pressure / compute_ehp / cc_pairing / laning precompute read ONLY
 # _PER_SPELL_CC_DURATIONS and never this sibling, so live DS output is
 # byte-identical and ENGINE_VERSION does NOT bump. A future EHP-vs-CC /
 # fight-sim consumer can read the worst-case (max-distance) ceiling without

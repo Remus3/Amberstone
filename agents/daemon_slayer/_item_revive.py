@@ -19,22 +19,27 @@ gate - its resurrection is a 4s invulnerable + untargetable channel that always
 completes - so the item revive folds through the wielder's NORMAL resists (it
 must NOT get the egg_ratio the champion ``revive_extra`` gets).
 
-Source magnitude: ``data/daemon_slayer/16.13.1/items_meraki.json`` item 3026
-Rebirth passive (items_meraki.json:15505): "Upon taking lethal damage, enter
+Source magnitude: the live ``items_meraki.json`` item 3026 Rebirth passive
+(re-read at 16.22.1, S144-D-368): "Upon taking lethal damage, enter
 resurrection for 4 seconds ... afterwards heal for {{as|50% of '''base'''
-health}} ... (300 second cooldown, starts after resurrection ends)." So the
-restored pool is 50% of BASE health.
+health}} ... (300 second cooldown, starts after resurrection ends)." DDragon
+reads "restores 50% base Health and 100% max Mana after 4 seconds of Stasis".
+So the restored pool is 50% of BASE health.
 
-Registered ids (each confirmed present in ``data/daemon_slayer/16.13.1/
-items.json`` before adding):
-  * 3026   - Guardian Angel (base, items.json:13560).
-  * 223026 - Guardian Angel (Arena mode-mirror, items.json:6782). Carries the
-    base nominal: the Arena copy shares the identical Rebirth passive text. This
-    matches the ``_item_omnivamp.py`` Arena-mirror convention (same-nominal
-    carry).
+Registered ids (each confirmed present in the vendored ``items.json`` before
+adding; re-checked at 16.22.1, where these are the only two ids that print
+"Upon taking lethal damage, restores 50% base Health"):
+  * 3026   - Guardian Angel (base, live on maps 11 and 453).
+  * 223026 - Guardian Angel (Arena mode-mirror, map 30; Meraki has no row for
+    it). Carries the base nominal: the Arena text names the passive "Saving
+    Grace" and gives it "a one round cooldown" instead of the 300 second one,
+    but restores the same "50% base Health". The cooldown feeds only the
+    availability midpoint below, never the restored fraction, so the fraction
+    carries. This matches the ``_item_omnivamp.py`` Arena-mirror convention
+    (same-nominal carry).
 
 DROPPED / DEFERRED:
-  * 323026 (ARAM mirror) - NOT present in the DS item index; intentionally
+  * 323026 (32xxxx copy) - NOT present in the DS item index; intentionally
     omitted (same convention as ``_item_omnivamp.py`` dropping 324633 - an item
     id the engine never resolves would be dead weight).
 
@@ -102,7 +107,18 @@ def item_revive_max_hp_fraction(
     ``<= 0.0`` guard; ``1e308 / 1e-308`` overflows) or a negative ratio (negative
     ``base_hp``) credits 0.0: a revive never lowers the multiplier below 1.0 and
     never returns inf or NaN (S144-D-108).
+
+    A bare ``str`` / ``int`` id (never ``bool``) is ONE id, and None is an empty
+    page (S144-D-150).
     """
+    # A bare "3026" was read character by character and lost Guardian Angel; a
+    # bare int or None raised TypeError.
+    if item_ids is None:
+        item_ids = ()
+    elif isinstance(item_ids, str) or (
+        isinstance(item_ids, int) and not isinstance(item_ids, bool)
+    ):
+        item_ids = (item_ids,)
     if total_hp <= 0.0:
         return 0.0
     ratio = float(base_hp) / float(total_hp)

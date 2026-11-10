@@ -78,6 +78,7 @@ _FACTORIES = {
     ("dashboard/routes_summspell_wpa.py", "_open_rewind_db_ro"): (1, "ro", _RO_DB),
     ("lcu/lcu_postgame_collector.py", "_get_conn"): (1, "rw", "write-capable WAL connection for the collector, shared across threads under _db_lock; closed by the collector's own lifetime"),
     ("lib/rewind_live_writer.py", "_open_db"): (1, "rw", "write-capable WAL connection for the live writer; the caller closes it"),
+    ("ops/audit/ds_perm_swarm/build_kit_axis_item_credit.py", "_open_rewind"): (1, "ro", "S144-D-249: read-only opener of the rewind DB for a one-shot offline table build; both callers close it in a finally, and a missing file raises FileNotFoundError, which main() reports as exit 3"),
     ("scripts/build_spell_cast_rates.py", "main"): (1, "rw", "one-shot script: a single read pass, then the process exits; the connection never outlives it"),
     ("scripts/rewind_catchup.py", "open_db"): (1, "rw", "write-capable WAL connection for the catch-up batch job; the caller closes it"),
     ("scripts/rewind_catchup.py", "open_db_readonly"): (1, "ro", _RO_DB),

@@ -199,7 +199,8 @@ class RegistryInvariantTests(unittest.TestCase):
 
     def test_roster_coverage(self):
         # 10-channel roster fan-out: 258 entries / 171 champions (full roster).
-        # Re-running tools/ds_scaling_build.py against a fresh scan updates these.
+        # tools/ds_scaling_build.py is one-shot (S144-D-244): a fresh scan
+        # updates these by hand.
         self.assertEqual(len(_SCALING_REGISTRY), 171)
         total = sum(len(v) for v in _SCALING_REGISTRY.values())
         self.assertEqual(total, 258)

@@ -10,12 +10,12 @@ plausible enabler teammates, and a human-readable setup hint. NO new
 compute, NO ENGINE math change, NO schema lift; the join lives entirely
 in the engine module.
 
-Sibling of ``routes_cooldown_watch.py`` (same cache + fail-soft + status
-discipline) and ``routes_cc_conditional_pressure.py``. Where the
-cc-conditional-pressure chip ratios ally-vs-enemy CONDITIONAL CC seconds
-into a single balance number, and cooldown-watch surfaces the single
-highest-threat ENEMY ability, THIS route surfaces the per-entry PAIRING
-data for the operator's OWN team - the gap neither existing surface fills.
+Sibling of ``routes_cc_conditional_pressure.py`` (same cache + fail-soft
++ status discipline). Where the cc-conditional-pressure chip ratios
+ally-vs-enemy CONDITIONAL CC seconds into a single balance number, THIS
+route surfaces the per-entry PAIRING data for the operator's OWN team -
+the gap that scalar does not fill.
+
 
 Request shape:
   GET /api/cc-pairing?ally=<champ,champ,...>[&top_n=6]
@@ -57,7 +57,7 @@ Failure modes:
 
 5-min TTL in-process cache keyed on (sorted_ally_tuple, top_n), bounded
 at ``_CACHE_MAX`` entries (expired entries dropped on write, RM-1329).
-Mirrors routes_cooldown_watch cache discipline.
+Mirrors routes_cc_conditional_pressure cache discipline.
 
 Don't-redo:
   * This route takes NO mode param: the pairing fact (which condition an
@@ -84,7 +84,7 @@ from dashboard._errors import send_error
 from dashboard._get_caps import MAX_CHAMPION_LIST, reject_oversized
 log = logging.getLogger("rc.web_dashboard")
 
-# 5-min response TTL mirrors routes_cooldown_watch exactly.
+# 5-min response TTL mirrors routes_cc_conditional_pressure exactly.
 _CACHE_TTL_S = 300.0
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 _CACHE_LOCK = threading.Lock()

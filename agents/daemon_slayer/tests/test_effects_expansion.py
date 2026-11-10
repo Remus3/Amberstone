@@ -5778,7 +5778,7 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
 
 
 class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
-    """Phase 4 batch 42 - 222xxx/224xxx Arena + 32xxxx ARAM mirrors (35 items)."""
+    """Phase 4 batch 42 - 222xxx/224xxx Arena + 32xxxx map-11 copies (35 items)."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -5818,19 +5818,19 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
         self.assertIsNotNone(e, "224645 missing")
         self.assertAlmostEqual(e.magic_pen_flat, 10.0)
 
-    def test_323003_archangel_aram(self) -> None:
+    def test_323003_archangel_map11(self) -> None:
         e = ITEM_EFFECTS.get("323003")
         self.assertIsNotNone(e, "323003 missing")
         self.assertAlmostEqual(e.bonus_ap_pct_bonus_mp, 0.01)
         self.assertFalse(e.defensive_only)
 
-    def test_323004_manamune_aram(self) -> None:
+    def test_323004_manamune_map11(self) -> None:
         e = ITEM_EFFECTS.get("323004")
         self.assertIsNotNone(e, "323004 missing")
         self.assertAlmostEqual(e.bonus_ad_pct_max_mp, 0.02)
         self.assertFalse(e.defensive_only)
 
-    def test_328020_abyssal_mask_aram(self) -> None:
+    def test_328020_abyssal_mask_map11(self) -> None:
         e = ITEM_EFFECTS.get("328020")
         self.assertIsNotNone(e, "328020 missing")
         self.assertAlmostEqual(e.magic_amp_pct, 0.12)
@@ -6418,9 +6418,9 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
 
     def test_323042_muramana_shock_matches_sr(self) -> None:
         ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=10, caster_max_mp=1500.0)
-        aram_dmg = ITEM_EFFECTS["323042"].periodics[0].resolve_damage(ctx)
+        copy_dmg = ITEM_EFFECTS["323042"].periodics[0].resolve_damage(ctx)
         sr_dmg = ITEM_EFFECTS["3042"].periodics[0].resolve_damage(ctx)
-        self.assertAlmostEqual(aram_dmg, sr_dmg, places=2)
+        self.assertAlmostEqual(copy_dmg, sr_dmg, places=2)
 
     # -- 221xxx Arena components not defensive_only ------------------------
 
