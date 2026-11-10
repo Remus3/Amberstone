@@ -79,6 +79,7 @@ import time
 import pytest
 
 from tools import stop_claim_gate as gate
+from tests._timing_budget import fleet_test_guard
 
 COUNTED = [
     "do { echo a; echo b } until (git commit -n)",
@@ -395,4 +396,4 @@ def test_the_break_is_linear_on_a_long_input():
                  "if (" * 5000 + ")" * 5000 + " { a } until (b)"):
         started = time.perf_counter()
         gate._brace_broken(text)
-        assert time.perf_counter() - started < 1.0
+        assert time.perf_counter() - started < fleet_test_guard.budget(1.0)

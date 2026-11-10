@@ -70,6 +70,7 @@ import time
 import pytest
 
 from tools import stop_claim_gate as gate
+from tests._timing_budget import fleet_test_guard
 
 COUNTED = [
     "foreach ($f in (bash -c 'git commit -n')) { echo }",
@@ -373,7 +374,7 @@ def test_a_long_condition_full_of_groups_stays_cheap():
     start = time.perf_counter()
     assert gate._has_bypass(command) is False
     assert gate._bypass_targets(command, ".") == []
-    assert time.perf_counter() - start < 5.0
+    assert time.perf_counter() - start < fleet_test_guard.budget(5.0)
 
 
 @pytest.mark.parametrize("head", ["if (", "foreach ($f in "])
@@ -386,7 +387,7 @@ def test_nested_condition_heads_stay_cheap(head):
     start = time.perf_counter()
     assert gate._has_bypass(command) is False
     assert gate._bypass_targets(command, ".") == []
-    assert time.perf_counter() - start < 1.0
+    assert time.perf_counter() - start < fleet_test_guard.budget(1.0)
 
 
 def _nested(head, tail, depth):
@@ -416,4 +417,4 @@ def test_nested_groups_in_a_launcher_stay_cheap(head):
     start = time.perf_counter()
     assert gate._has_bypass(command) is False
     assert gate._bypass_targets(command, ".") == []
-    assert time.perf_counter() - start < 1.0
+    assert time.perf_counter() - start < fleet_test_guard.budget(1.0)

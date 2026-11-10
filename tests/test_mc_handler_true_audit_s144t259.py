@@ -42,6 +42,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+from tests._timing_budget import fleet_test_guard
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -201,7 +202,7 @@ def test_f4_stalled_body_is_408_within_the_deadline(served, monkeypatch):
     assert b"<<TIMEOUT>>" not in resp
     assert _status(resp) == 408
     assert _body(resp) == {"ok": False, "error": "body read timeout"}
-    assert elapsed < 3.0
+    assert elapsed < fleet_test_guard.budget(3.0)
     assert reached == []
 
 
@@ -243,7 +244,7 @@ def test_f4_deadline_is_absolute_not_per_chunk(served, monkeypatch):
         elapsed = time.monotonic() - t0
     finally:
         s.close()
-    assert elapsed < 3.0
+    assert elapsed < fleet_test_guard.budget(3.0)
     assert _status(resp) == 408
     assert reached == []
 

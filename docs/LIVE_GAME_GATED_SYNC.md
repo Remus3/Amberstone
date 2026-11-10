@@ -5633,7 +5633,7 @@ waits on the RM-875 wiring.)
   (`web/js/panels/champ_select.js:3866`, wired at `:1037` on the champ-select Arena pane) needs
   `augments.options`, which `lcu/champ_select_shape.py:469` always sets to `[]`, so no clickable
   option ever renders from live data. The live discovery therefore uses the recipe's MANUAL route
-  (`docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md` step 2: POST `/api/lcu-cmd`, `dashboard/routes_loadout.py:853`,
+  (`docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md` step 2: POST `/api/lcu-cmd`, `dashboard/routes_loadout.py:849`,
   `{"cmd": "set_augment_intent", "augment_id": <id>, "slot": 0}`) or step 5 (`RC_LIVE_ARENA=1`
   `tests/test_set_augment_intent_handler.py::LiveAugmentSelectIntegrationTests`, which loads
   `tools/lcu_agent.py` directly). That recipe's "Game-PC agent" hop and its whole "Game-PC agent

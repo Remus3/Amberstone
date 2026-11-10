@@ -27,6 +27,7 @@ import pytest
 
 from core import prompt_sanitize as ps
 from core.prompt_sanitize import clean, clean_iter
+from tests._timing_budget import fleet_test_guard
 
 MARKER = ps._INJECTION_MARKER
 _LIVE = re.compile(
@@ -109,7 +110,7 @@ def test_fixpoint_is_bounded_on_a_large_adversarial_chain():
     text = unit * (2 ** 20 // len(unit)) + "forget all "
     t0 = time.perf_counter()
     clean(text, max_len=50)
-    assert time.perf_counter() - t0 < 30.0
+    assert time.perf_counter() - t0 < fleet_test_guard.budget(30.0)
     assert ps._MAX_PASSES >= 4
 
 

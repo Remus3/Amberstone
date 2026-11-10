@@ -73,6 +73,13 @@ _ALLOWED_TEST_FILES = {
     # two public getters never raise on a non-string champion. No SOURCE file
     # gains an import of cc_conditional.
     "test_axis_nonstr_champion_s144d127.py",
+    # S144-D-220..223 and S144-D-266..268 (ds lane, landed s159). TEST reads,
+    # not consumer wires: one checks the conditional-CC registry is well formed
+    # (entry counts, coexistence flags), the other that the ability-amp
+    # registry's condition channels equal cc_conditional's constants. No
+    # SOURCE file gains an import of cc_conditional.
+    "test_cc_conditional_registry_integrity_s144d220.py",
+    "test_ability_amp_registry_invariants_s144d266.py",
     "test_cc_conditional_forward_marker.py",
     "test_cc_conditional_wave1.py",
     "test_cc_conditional_wave2.py",

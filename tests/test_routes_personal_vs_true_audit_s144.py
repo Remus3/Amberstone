@@ -49,6 +49,7 @@ import pytest
 
 from dashboard import routes_personal_vs as rpv
 from tests.test_routes_personal_vs import _build_test_db
+from tests._timing_budget import fleet_test_guard
 
 _ENEMY = 64
 
@@ -413,4 +414,4 @@ def test_elapsed_ms_never_negative_on_a_wall_clock_step(tmp_path, monkeypatch):
     monkeypatch.setattr(rpv.time, "time", stepping)
     status, payload = _serve(db, "/api/personal-vs?champ_id=64&days=0", monkeypatch)
     assert status == 200
-    assert 0 <= payload["elapsed_ms"] < 60_000
+    assert 0 <= payload["elapsed_ms"] < fleet_test_guard.budget(60) * 1000

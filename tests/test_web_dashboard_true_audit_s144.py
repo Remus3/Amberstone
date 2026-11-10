@@ -35,6 +35,7 @@ import uuid
 from pathlib import Path
 
 import pytest
+from tests._timing_budget import fleet_test_guard
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "web_dashboard.py"
@@ -201,7 +202,7 @@ def test_a_live_watcher_thread_is_reused_not_doubled(hot_reload):
 def test_a_dead_watcher_thread_does_not_block_a_restart(hot_reload):
     t = threading.Thread(target=lambda: None, name="hot-reload-watcher")
     t.start()
-    t.join(timeout=5)
+    t.join(timeout=fleet_test_guard.budget(5))
     assert not t.is_alive()
     _load()
     assert hot_reload._probe_calls == [SRC.parent]

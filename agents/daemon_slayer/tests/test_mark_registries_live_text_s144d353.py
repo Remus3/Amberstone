@@ -8,7 +8,8 @@ consumes the mark). Both carry prose that was verified once, at 16.12.1 or
 Imperial Mandate story in its ``note=`` strings. Re-measured against the
 current snapshot:
 
-* S144-D-353: the 324005 vulnerability note called it an "ARAM 32-mirror".
+* S144-D-353: the 324005 vulnerability note gave it the retired map-12 label
+  with the "32-mirror" spelling.
   Every ``32xxxx`` row is map 11 only (the S144-D-334 guard); its token
   pattern missed the ``32-mirror`` spelling. That guard now catches it.
 * S144-D-354: the three ``_effects_data`` Imperial Mandate rows (4005 /
