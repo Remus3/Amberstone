@@ -1,4 +1,5 @@
-"""
+"""OQ6: dark-values ratchet over the web/css hex counts.
+
 tests/test_dark_values_ratchet_oq6.py
 
 OQ6 (QA48, operator-queue 2026-07-01) - the LOCK half of the dark-values

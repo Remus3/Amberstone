@@ -1,4 +1,5 @@
-"""
+"""RM-1134: the dead `.view-section-btn` selector stays removed.
+
 tests/test_view_section_btn_selector_removed.py
 
 RM-1134 (s144 uiux): `.view-section-btn` was a dead selector. No web/

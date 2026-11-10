@@ -1,5 +1,6 @@
 # arch: every VIEW_IDS entry must have a real mount | section=tests | frozen=no
-"""
+"""RM-340: the VIEW_IDS registry in web/js/lib/state.js stays resolvable against the DOM.
+
 tests/test_web_view_registry_rm340.py
 
 RM-340 - the view registry in ``web/js/lib/state.js`` must stay resolvable

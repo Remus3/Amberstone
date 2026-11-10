@@ -1,4 +1,5 @@
-"""
+"""RM-339: every literal getElementById id under web/ names an id something creates.
+
 tests/test_web_element_id_resolution_rm339.py
 
 RM-339 - every literal ``document.getElementById("x")`` in a JS module under

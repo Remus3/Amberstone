@@ -1,4 +1,5 @@
-"""
+"""RM-726 (d): guard that keeps the web JS split plan honest.
+
 tests/test_web_js_split_plan_rm726.py
 RM-726 (d) (s144 queue lane): web/js/main.js and web/js/panels/champ_select.js
 are the two oversize dashboard scripts, and the row's acceptance is "a split

@@ -1,4 +1,5 @@
-"""
+"""RM-726 (c): guard that keeps the web CSS split plan honest.
+
 tests/test_web_css_split_plan_rm726.py
 RM-726 (c) (s144 queue lane): two panel stylesheets are over the row's 60 KB
 cap (web/css/panels/header.css and web/css/panels/champ_select_view.css).
