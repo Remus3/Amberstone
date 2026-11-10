@@ -6581,6 +6581,32 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   of played games fixes it - the fix is ARCHETYPE POOLING, i.e. headless code, not accrual.
   RESIDUAL (accrual, background only): density rises slowly with every ranked q420 game. Re-read the
   three counts above before anyone proposes a per-matchup calibration again.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 149, S144-G-140, source read at `6051a971a`; no game
+  up; NOT a tick).** The three counts reproduce; the corpus has barely moved and the cross-ref is
+  still almost all insufficient_data. (1) DENSITY RE-DERIVED over the main checkout's
+  `data/rewind_history.db` opened `mode=ro`: the DB holds 2966 matches (2961 on 2026-07-18), 667 of
+  them `game_mode` CLASSIC, all with `has_timeline` 1 (516 queue 420, 141 queue 400). Keying each
+  lane that has exactly one champion per side as (lane, sorted champion pair), the same selector
+  `tools/replay_matchup_validate.py:177` `select_sr_match_ids` uses: **2,144 distinct matchups,
+  63 (2.9%) at n>=5, 4 at n>=10, median n=1, max n=12** (filed: 2,139 / 62 / 4 / 1). Ranked q420
+  alone: 1,702 distinct, 46 at n>=5, 1 at n>=10. Counting each pairing in both directions doubles
+  every figure and leaves the 2.9% unchanged, so the key orientation does not move the finding. The
+  newest CLASSIC `game_creation_ts` is 2026-07-21 03:27 UTC (2026-07-20 local), the same ingest
+  stall G7-06 records: no game since has reached this DB, so "density rises with every ranked
+  game" has not been true for nearly four months. (2) CROSS-REF RE-RUN in memory, no md write:
+  `tools/hz_mismatch_diagnose.py:442` `rewind_cross_ref` over `data/hz_choice_shadow.jsonl`
+  (58,806 records, newest `ts` 2026-08-02 22:34 UTC) with a `mode=ro` connection passed through its
+  `conn=` test seam (the tool's own path at `:478` opens the DB without `mode=ro`). It scans the 667
+  SR matches with `_REWIND_MIN_SAMPLES = 3` (`:99`) and excludes 4,057 ARAM and 3 client mismatch
+  records. Of 13 mismatch classes, **11 read insufficient_data** and 2 read disagree on thin
+  support: `hold->trade` covers 1 of 6 class matchups over 4 lane games, `trade->hold` 2 of 10 over
+  5. The SR mismatch side holds only 24 (class, my, enemy) matchup entries summed over classes;
+  coverage is the binding constraint on the mismatch side too, not just the rewind side. (3)
+  POOLING STILL NOT BUILT: neither `tools/hz_mismatch_diagnose.py` nor
+  `tools/replay_matchup_validate.py` contains any pooling step (grep `pool`: no hit), so the fix the
+  row names is still open headless code. VERDICT: row stands as written (settled headless,
+  background accrual only); the residual's accrual premise is stalled with the rewind ingest
+  (S144-G-139 (b) owns that cause). No game state moves this row.
 - **G7-09** (was G9) Draft-Elo pairwise WR corpus densification - **DENSITY MEASURED 2026-07-18; this
   is NOT a drain-session row.** SETTLED HEADLESS: **8,188 distinct cross-team champion pairs observed,
   covering 55.0% of the C(173,2) = 14,878 possible pairs, but EXACTLY ONE pair reaches n>=20.** Median
