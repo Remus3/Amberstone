@@ -12,7 +12,7 @@ time chip, retired 2026-04-23 (S144-U-261 removed the last guarded write).
 main.js also imported `_updateGameClock` and `_applyGamePhase` without
 calling either. map_state.js also assigned `state.spellCds = {}` twice at
 module load; the second assignment (beside the spell-cooldown helpers)
-was kept, then S144-U-268 dropped it too, since lib/state.js already
+was kept, then S144-U-268 dropped it too, since web/js/lib/state.js already
 creates state.spellCds. MEASURED headless before the fix
 (/?ui_mock=1&mode=sr#active-match, 1920x920): `state.gameClock` was present
 and renderMinimap({game_time_s: 1000, game_time: '16:40'}) rewrote it to
@@ -126,7 +126,7 @@ def test_positive_control_render_minimap_still_feeds_spell_cds(drive):
 
 
 def test_map_state_js_never_reassigns_spell_cds():
-    # S144-U-268: lib/state.js creates state.spellCds; map_state.js only
+    # S144-U-268: web/js/lib/state.js creates state.spellCds; map_state.js only
     # reads and writes its keys.
     text = MAP_STATE.read_text(encoding="utf-8")
     assert len(re.findall(r"^state\.spellCds\s*=", text, re.M)) == 0

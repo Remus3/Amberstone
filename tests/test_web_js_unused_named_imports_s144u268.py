@@ -23,15 +23,15 @@ calls it.
 
 THE FIX. The 57 names go. Three import statements emptied out and are
 dropped: champ_select.js -> item_build.js (main.js still loads
-item_build.js), and coach_decisions.js -> lib/state.js and dev.js ->
-lib/state.js (many modules load state.js). main.js -> panels/coach_decisions.js becomes a bare
+item_build.js), and coach_decisions.js -> web/js/lib/state.js and dev.js ->
+web/js/lib/state.js (many modules load state.js). main.js -> panels/coach_decisions.js becomes a bare
 side-effect import, because that module runs its /api/decisions poll at
 load (setInterval at module scope) and dropping the statement would stop
 loading it. Whether that poll still has a visible consumer is a separate
 question, not decided here.
 
 Also: map_state.js no longer re-assigns `state.spellCds = {}` at module
-load; lib/state.js already creates it (a reset at load could only wipe a
+load; web/js/lib/state.js already creates it (a reset at load could only wipe a
 cooldown written before map_state.js evaluated), and main.js's stale
 "spellCds is added to state at runtime below" comment goes.
 
