@@ -28,7 +28,10 @@ fallback for a host where that store cannot be opened at all.
 
 STDLIB ONLY, and runnable as a bare script: the PowerShell runners call
 `python <repo>/ops/loop/headless_env.py --url` from a worktree cwd, and the
-loop modules load siblings by file path with no repo root on sys.path.
+loop modules load siblings by file path with no repo root on sys.path. The one
+in-repo module it reaches, the stdlib-only core/log_rotation that caps
+`REFUSAL_LOG` (S144-Q-123), is therefore loaded by FILE PATH, lazily, on the
+refusal path only, and a failed load degrades to a plain append.
 """
 from __future__ import annotations
 
@@ -39,6 +42,7 @@ import socket
 import sys
 import time
 from pathlib import Path
+from types import ModuleType
 from typing import Mapping, Optional, Union
 from urllib.parse import urlsplit
 
@@ -50,6 +54,17 @@ EXIT_REFUSED = 3
 ROOT = Path(__file__).resolve().parents[2]
 # Gitignored (logs/). Overridable by env for the bare-script test only.
 REFUSAL_LOG = Path(os.environ.get("RC_HEADLESS_ENV_LOG") or (ROOT / "logs" / "headless_route.log"))
+
+# S144-Q-123 (RM-718 residue): the refusal log is size-capped through the shared
+# rotation helper, at the same bound as the other RM-718 writers. The helper is
+# stdlib-only and is loaded by FILE PATH from this checkout, lazily, only when a
+# refusal is logged: the bare-script run has no repo root on sys.path, and the
+# routed (success) path loads nothing. Mirrors core/log_rotation.DEFAULT_*,
+# pinned equal by tests/test_headless_env_refusal_log_cap_s144q123.py.
+REFUSAL_LOG_MAX_BYTES = 5 * 1024 * 1024
+REFUSAL_LOG_BACKUPS = 2
+_LOG_ROTATION_FILE = ROOT / "core" / "log_rotation.py"
+_LOG_ROTATION_CACHE: list = []
 
 
 class _Absent:
@@ -108,9 +123,65 @@ def _probe(host: str, port: int, timeout: float) -> Optional[str]:
         return type(exc).__name__
 
 
+def _log_rotation() -> Optional[ModuleType]:
+    """core/log_rotation loaded from this checkout by file path, or None when
+    it cannot be loaded (the refusal row is then a plain append). A loaded
+    module is cached; a failed load is not, so the next refusal tries again."""
+    if _LOG_ROTATION_CACHE:
+        return _LOG_ROTATION_CACHE[0]
+    try:
+        import importlib.util  # noqa: PLC0415 - lazy: only the refusal path loads it
+
+        spec = importlib.util.spec_from_file_location(
+            "_rc_headless_env_log_rotation", _LOG_ROTATION_FILE)
+        if spec is None or spec.loader is None:
+            return None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+    except Exception:  # noqa: BLE001 - a failed load must never cost the refusal row
+        return None
+    _LOG_ROTATION_CACHE.append(mod)
+    return mod
+
+
+def _cap_refusal_log() -> None:
+    """Rotate REFUSAL_LOG BEFORE the next append when it is at or over the cap.
+
+    Recovers a crashed rotation's scratch even under the cap. A refused
+    rotation (another process holds the file) appends one JSON row saying so,
+    keeping the file JSON lines. Never raises: a cap that cannot run leaves the
+    refusal row appended to the oversize file, so no row is dropped for it.
+    """
+    rot = _log_rotation()
+    if rot is None:
+        return
+    path = REFUSAL_LOG
+    try:
+        rot.recover_orphans(path, REFUSAL_LOG_BACKUPS)
+        try:
+            oversize = path.stat().st_size >= REFUSAL_LOG_MAX_BYTES
+        except OSError:
+            return
+        if not oversize:
+            return
+        err = rot.try_rotate(path, REFUSAL_LOG_BACKUPS)
+        if err is None or isinstance(err, FileNotFoundError):
+            # FileNotFoundError: another writer rotated it between the stat and
+            # here, so nothing was refused and the append starts a fresh file.
+            return
+        note = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "caller": "headless_env",
+                "reason": "log_rotation_refused", "error": type(err).__name__,
+                "pid": os.getpid()}
+        with path.open("a", encoding="utf-8", newline="\n") as fh:
+            fh.write(json.dumps(note, sort_keys=True) + "\n")
+    except Exception:  # noqa: BLE001 - the cap is best effort; the row is not
+        return
+
+
 def _log_refusal(caller: str, reason: str) -> None:
     row = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "caller": caller or "?",
            "reason": reason, "pid": os.getpid()}
+    _cap_refusal_log()
     try:
         REFUSAL_LOG.parent.mkdir(parents=True, exist_ok=True)
         with open(REFUSAL_LOG, "a", encoding="utf-8", newline="\n") as fh:
