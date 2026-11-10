@@ -233,9 +233,9 @@ def test_tft_profile_regions_land_on_the_windowed_client(monkeypatch):
     # The profile is tracked; its absence is a defect, not a skip.
     assert prof is not None and prof.boxes, "no TFT region profile in this tree"
     name = min(prof.boxes)
-    l, t, r, b = prof.box(name, (1280, 720))
+    left, t, r, b = prof.box(name, (1280, 720))
     game = Image.new("RGB", (1280, 720), (20, 20, 20))
-    game.paste(Image.new("RGB", (r - l, b - t), MARK), (l, t))
+    game.paste(Image.new("RGB", (r - left, b - t), MARK), (left, t))
     desk, _ = _desktop_with_game(game=game)
     monkeypatch.setattr(_frame, "_game_window", lambda: _win())
     cut = _frame._crop_to_game_window(desk)

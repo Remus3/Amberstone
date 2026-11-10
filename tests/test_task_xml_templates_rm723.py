@@ -218,7 +218,7 @@ def _ps51(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(
         [_PS51, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
          *args],
-        cwd=ROOT, capture_output=True, text=True, timeout=120,
+        cwd=ROOT, capture_output=True, text=True, timeout=120, check=False,
         creationflags=NO_WINDOW if os.name == "nt" else 0,
     )
 

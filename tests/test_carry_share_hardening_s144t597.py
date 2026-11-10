@@ -30,6 +30,7 @@ from __future__ import annotations
 import ast
 import math
 import random
+from pathlib import Path
 
 import pytest
 
@@ -252,6 +253,6 @@ def test_valid_input_is_byte_identical_to_the_old_body(field, fn):
 def test_module_has_no_exception_handler_that_could_hide_a_bug():
     # Junk is refused by explicit shape checks, never by a try/except that
     # would also swallow a programming error.
-    with open(carry_share.__file__, encoding="utf-8") as fh:
+    with Path(carry_share.__file__).open(encoding="utf-8") as fh:
         tree = ast.parse(fh.read())
     assert not [n for n in ast.walk(tree) if isinstance(n, ast.Try)]

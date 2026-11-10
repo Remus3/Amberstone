@@ -13,7 +13,9 @@ Thirteen sites stay baselined (one more is fenced, below; two were cleared later
 ``dashboard/routes_recordings.py`` (``_is_link`` also consults ``os.path.isjunction``, one idiom family), ``ops/launcher/``
 (PKG-owned), ``ops/migrate/e_move_helpers.py`` (one-shot migration owner's string handling) and three test sites that
 probe relative or Linux-only strings (three more, the relative ``data/rewind_history.db`` skip guards of
-``tests/test_item_wpa.py``, ``test_rune_wpa.py`` and ``test_summspell_wpa.py``, became ``Path(...).exists()`` in S144-P-549). ``ops/fleet_kit/`` is vendored byte-for-byte and fenced. The baseline only shrinks:
+``tests/test_item_wpa.py``, ``test_rune_wpa.py`` and ``test_summspell_wpa.py``, became ``Path(...).exists()`` in S144-P-549;
+the ``tests/test_inbox_responder_runner.py`` ``/proc/self/fd`` probe left with main's rewrite of that test, so its row was
+dropped at the s158 rebase). ``ops/fleet_kit/`` is vendored byte-for-byte and fenced. The baseline only shrinks:
 ANY new finding, or a further finding in a baselined file, fails ``test_no_file_exceeds_its_baseline``. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding, and ``--preview`` because the PTH family differs under
 it.
@@ -47,7 +49,6 @@ _BASELINE: dict[str, int] = {
     "ops/launcher/updater.py": 1,  # PKG-owned
     "ops/migrate/e_move_helpers.py": 3,  # one-shot migrate helper, string handling not touched blind
     "tests/_replace_faults.py": 1,  # fault-injection harness probing a string directory
-    "tests/test_inbox_responder_runner.py": 1,  # os.path.isdir of the Linux-only /proc/self/fd
     "tests/test_junction_drive_spellings_pubrepo_f.py": 1,
     "tools/perseus_recall.py": 1,  # tests bind os.path.exists on this module (tests/_module_view.bind_os_path)
 }
