@@ -382,6 +382,21 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
 #view-active-match .am-tft-stat.is-empty .am-tft-stat-value {
   color: var(--text-dim);
 }
+/* S144-U-296: the HP value paints its band, the CSS half of RM-949. The
+ * cell carries the overlay vitals band (tftHpBand, data-band low / crit)
+ * and nothing read it, so 36 HP and 13 HP read in the same --text as 70
+ * while the overlay painted them amber and red. --signal-warn / --signal-bad
+ * are the overlay's --ovx-warn / --ovx-red inside the overlay shell
+ * (overlay.css section 0a), so one band reads one hue on both screens. The
+ * value is 29 px / 700, WCAG large text (floor 3:1): amber 7.14 - 8.60, red
+ * 3.89 - 5.02 on the pane in the six themes. Guard:
+ * tests/snapshot_panels/test_tft_strip_hp_band_colour.py. */
+#view-active-match .am-tft-stat[data-band="low"] .am-tft-stat-value {
+  color: var(--signal-warn);
+}
+#view-active-match .am-tft-stat[data-band="crit"] .am-tft-stat-value {
+  color: var(--signal-bad);
+}
 
 /* S134: TFT board (BUILD pane, head renamed BOARD) + lobby (MAP pane), from
  * the standalone client's per-round stats file (coach.tft_board /

@@ -2378,3 +2378,31 @@ DONE 2026-11-06 (s144 uiux cycle 167, S144-U-177, Tier-1 CSS + snapshot guard). 
   - the bar per theme, with the good fill and a crit-red copy of the first row against the track and the pane at 3:1, plus a control that the track is not the pane's colour.
   - Red on the old CSS: 2 of 42 (the moonlit and arcane bars, 2.80). Green: 42 of 42 after the fix.
 - Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).
+
+### S144-U-296 - the TFT stat strip's HP value paints its band (amber at low, red at crit) as the overlay vitals do, the CSS half RM-949 filed and nobody landed (s144 uiux cycle 288)
+
+- Picked: cycle 287's NEXT CANDIDATES first.
+  - (a) "The amber low band paints nothing in the dashboard lobby" is BY DESIGN and needs no change. `_amTftLobbyNode` (active_match.js, the RM-948 comment) keeps red as the one emergency colour on the lobby bar. The overlay's own lobby chips keep low as ambient ink too (overlay_tft.js, `.ovt-opp[data-band="crit"]` only), so the two screens already agree.
+  - (b) "The six-theme pin at the 920x1280 companion size" found no defect. The S144-U-295 pin, re-run at 920x1280 in a scratch copy, passed text AA and the bar floor in all six themes. Its only cut is "Fiddlesticks" (27 px) in a board chip, the RM-1766 contract ("a longer name may ellipsise"; title and aria-label carry it).
+- Found while probing (b): RM-949 (`fc6823acd`) stamps `data-band="low" | "crit"` on the strip's HP cell (`amLiveFallbackModel` hpBand, `_amRenderLiveFallback`). Its message says the colour, the CSS half, was "filed separately". No rule in `web/css` reads `data-band`, and no ROADMAP, BACKLOG, QA or lane-report row carries that half. So the strip painted 36 HP and 13 HP in the same `--text` as 70 HP, while the overlay vitals painted them amber and red (`.ovt-cell[data-band]`, `--ovx-warn` / `--ovx-red`).
+- RULING / FIX (`web/css/panels/active_match.css`): the value of `.am-tft-stat[data-band="low"]` takes `--signal-warn`, and the value of `[data-band="crit"]` takes `--signal-bad`.
+  - These are the dashboard's semantic amber and red, the same hues as the 2-star unit amber and the crit-red lobby fill.
+  - `overlay.css` section 0a re-points both tokens to `--ovx-warn` / `--ovx-red` in the overlay shell, so one band reads one hue on both screens.
+  - The label stays `--text-dim`. Only the value carries the band.
+- Floor: the value is `--fs-lg` (29 px) at 700, which is WCAG large text, so the floor is 3:1 (the program's large-text ruling, `.home-coach-pick-champ`). Measured on the pane, the same at 1920x920 and 923x1280:
+  - amber 7.14 (arcane), 7.21 (moonlit), 7.61 (hextech), 7.97 (terminal), 8.34 (ember), 8.60 (bloodmoon);
+  - red 3.89 (arcane), 3.93 (moonlit), 4.14 (hextech), 4.44 (bloodmoon), 4.45 (ember), 5.02 (terminal);
+  - the unbanded control 12.83 to 16.78.
+- 5-phase audit (headless, six themes, 1920x920 and 923x1280, the live /api/state path with real tft_qa rows at 36 / 13 / 70 HP):
+  - STRUCTURE: colour only. Box, columns and reflow are unchanged, the value is not cut, and test_tft_stat_strip_reflow is green.
+  - TYPOGRAPHY: unchanged at 29 px / 700, on tokens.
+  - HIT-TARGETS: the strip is display-only.
+  - ASCII: 0 non-ASCII and 0 CR in the touched files; `tools/web_ascii_sweep.py --dry-run` finds 0 comment-span glyphs.
+  - HIERARCHY: at low and crit the HP value is the one hued value in the strip, so the number to act on draws the eye. At 70 HP it is plain `--text` like its neighbours. At crit the red value has less luminance contrast (3.89 - 5.02) than its plain neighbours (12.83 - 16.78). That is accepted, unlike the `.home-coach-pick-champ` case: the hue carries the alarm, the overlay vitals use the same red, and 3.89 sits clear of the 3:1 floor rather than on it.
+- Pin: `tests/snapshot_panels/test_tft_strip_hp_band_colour.py`, 24 cases (six themes x two sizes x two tests).
+  - The band text and `data-band`, and the value colour equals the resolved token. An opaque-token anchor means an undefined var cannot pass by inheriting `--text`.
+  - The control row equals the STAGE value's ink, and the three states are three distinct colours.
+  - The WCAG floor is derived from the computed size and weight, and the value is not cut.
+  - Red on the old CSS: 12 of 24 (every paint case). Green: 24 of 24.
+- `tests/guard_data/web_live_half/css_panels.txt` was re-captured; only the active_match.css row moved.
+- Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).
