@@ -423,12 +423,39 @@ test("ACTIVE: a content-child press still body-drags this widget (2026-06-27 kee
 
 // --- (c) launcher: menu presses never arm a launcher drag/tap ------------------
 
+// The launcher mounts on document.body (S144-U-287). The stub body has no
+// appendChild, so a launcher test gives it one that records what was mounted.
+function bodyHost() {
+  const mounted = [];
+  globalThis.document.body.appendChild = (child) => {
+    mounted.push(child);
+    return child;
+  };
+  return mounted;
+}
+
+test("the launcher mounts on document.body, never on an #am-grid node (S144-U-287)", () => {
+  const dom = installDom();
+  setActive(dom, false);
+  I._setLayout({});
+  // A node answering "#am-grid" must NOT become the host: the escape hatch is a
+  // body child so no view / phase wrapper can hide it and position:fixed stays
+  // viewport-relative (web/index.html carries only the class am-grid anyway).
+  const grid = makeNode();
+  dom.nodes["#am-grid"] = grid;
+  const mounted = bodyHost();
+  const el = I._ensureLauncher();
+  assert.ok(el, "launcher created");
+  assert.strictEqual(el.id, "w-launcher");
+  assert.deepStrictEqual(mounted, [el], "launcher appended to document.body exactly once");
+  assert.strictEqual(grid._children.length, 0, "nothing appended to the #am-grid node");
+});
+
 test("a press inside the open launcher menu neither drags the launcher nor re-taps", () => {
   const dom = installDom();
   setActive(dom, false);
   I._setLayout({});
-  const grid = makeNode();
-  dom.nodes["#am-grid"] = grid;
+  bodyHost();
   const el = I._ensureLauncher();
   assert.ok(el, "launcher created");
   const menu = el._children.find((c) => c.className === "ovx-launcher-menu");
@@ -449,8 +476,7 @@ test("a press on the launcher square itself still taps (menu toggles open)", () 
   const dom = installDom();
   setActive(dom, false);
   I._setLayout({});
-  const grid = makeNode();
-  dom.nodes["#am-grid"] = grid;
+  bodyHost();
   const el = I._ensureLauncher();
   const menu = el._children.find((c) => c.className === "ovx-launcher-menu");
 

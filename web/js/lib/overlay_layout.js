@@ -1311,8 +1311,11 @@ function _renderMenu(menu) {
 }
 
 // Create the launcher mount once (idempotent: returns the existing node on a
-// re-render). Mounted as a direct #am-grid child (NOT inside a pane) so its
-// position:fixed is viewport-relative, matching the doctrine cues.
+// re-render). Mounted as a direct document.body child (outside every view
+// section and pane) so its position:fixed is viewport-relative and no view or
+// phase wrapper can hide the escape hatch (S144-U-287: an earlier "#am-grid"
+// lookup never matched - web/index.html carries only the class am-grid - so
+// body was always the real host; the code now says so).
 function _ensureLauncher() {
   // best-effort: a locked-down / minimal document (or a host with no appendChild)
   // must never throw into resetOverlayLayout / init - the launcher is additive.
@@ -1324,7 +1327,7 @@ function _ensureLauncher() {
       _makeHotkeyHint(el, LAUNCHER);
       return el;
     }
-    const host = document.querySelector("#am-grid") || document.body;
+    const host = document.body;
     if (!host || typeof host.appendChild !== "function") return null;
 
     el = document.createElement("div");
