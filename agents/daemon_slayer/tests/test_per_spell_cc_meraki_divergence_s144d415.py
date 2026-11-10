@@ -31,8 +31,8 @@ sentence without a CC word, and any other field.
 THE PINS. ``_MEASURED`` holds both readers' output for every registry row and
 is compared EXACTLY, AGREE rows included, so any change to what either reader
 extracts for any row, or a row added to or removed from the registry, turns it
-red. The classification is a separate pin and is also derived from
-``_MEASURED`` alone.
+red. The classification is a separate pin, checked twice with the registry
+values: once from the live readings and once from ``_MEASURED``.
 
 CLASSIFICATION, per row. A row with at least one CC block is decided on its
 blocks: AGREE when one block equals the registry tuple, or is constant and
@@ -384,7 +384,7 @@ def test_classification_is_exactly_the_pinned_worklist(live_data: Mapping[str, A
 
 
 def test_the_pinned_worklist_follows_from_the_pinned_inputs() -> None:
-    # Derived from _MEASURED alone, so the worklist cannot drift from the pin.
+    # Classified from _MEASURED and the registry values, not the live snapshot.
     block_div, prose_div, unquoted, agree = classify(_PER_SPELL_CC_DURATIONS, _MEASURED)
     assert (block_div, prose_div, unquoted) == (set(_BLOCK_DIVERGE), set(_PROSE_DIVERGE), set(_UNQUOTED))
     classes = [block_div, prose_div, unquoted, agree]
