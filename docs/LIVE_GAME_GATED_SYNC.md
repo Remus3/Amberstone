@@ -3578,6 +3578,30 @@ survivability flips below cannot roll otherwise.
   Infinity Edge 3031) and the ceiling sweep is 1000 -> 15, 2500 -> 33, 3500 -> 121, 99999 -> 121.
   **There is no ARAM mega-item**, so there is no ARAM mega-item context for the eyeball to want.
   NO LIVE RESIDUAL. Do NOT ship F2 expecting an effect, and do not record this row as a validated flip.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 141, S144-G-128; NOT a tick).** The verdict holds, but
+  the row's DECISIVE CONTROL IS GONE and two cites drifted. (1) RE-MEASURED in-process (compute half
+  only): DS snapshot `16.22.1`, ENGINE `1.291.0`, call shape `rank_items_by_hybrid` /
+  `rank_items_by_ehp`, `"Malphite"`, L13, `current_item_ids=[]`, `only_item_ids=[<id>]`, top_n 200.
+  223069 is still 6000g, `purchasable: True`, `maps {'11':False,'12':True,'22':False,'30':True,
+  '453':False}` (key `21` gone, `453` new) and still returns **0 rows in ARAM on both scorers**.
+  (2) CONTROL DRIFT: the filed `mode="ARENA"` control now ALSO returns **0 rows** on both scorers,
+  because RM-513 (2026-10-03) added `rank._ARENA_EXCLUDED_ITEM_IDS` (`agents/daemon_slayer/rank.py:278`,
+  gate `:814`) - Void Immolation is an augment REWARD in Arena too. The ARAM-vs-ARENA comparison no
+  longer separates a deny from a probe artifact. REPLACEMENT CONTROL (counterfactual, same call
+  shape): with `rank._ARAM_EXCLUDED_ITEM_IDS` and `rank._ARENA_EXCLUDED_ITEM_IDS` both emptied
+  in-process, 223069 returns **1 row** in ARAM and in ARENA on both scorers, and still 0 in SR
+  (maps `11` False). So the ARAM 0 is the deny, not the probe. (3) CITE DRIFT: the deny is no longer
+  at `rank.py:196` / `:190`; it is `_ARAM_EXCLUDED_ITEM_IDS` at `rank.py:267` (entry `:268`), applied in
+  `_filter_candidates` at `:811` before the inject force-admit. The set now holds a SECOND id, 226668
+  Ultra Hydra (6000g, maps `12` only, a Mayhem augment reward, NEW 16.17.1): 0 rows ARAM as shipped,
+  1 row with the set emptied. Guards are under `agents/daemon_slayer/tests/`
+  (`test_aram_mega_item_exclusion_1618.py`, `test_arena_augment_reward_exclusion_rm513.py`), not
+  `tests/`. (4) CEILING SWEEP, `rank_items_by_hybrid` ARAM Malphite L13 depth `[]` `cost_ceiling=`:
+  1000 -> 15, 2500 -> **34** (filed 33), 3500 -> 121, 99999 -> 121, None -> 121; the pool still tops
+  out at 3500g (Infinity Edge 3031 / Rabadon's 3089). The pool is champion-dependent (Lux reads 122 at
+  3500 / 99999), so quote the champion with the count. "No ARAM mega-item" still holds for the SHOP
+  pool. The row stays CLOSED-STALE-PREMISE with NO LIVE RESIDUAL. Idle: `/api/state` `mode_key`
+  `client`, `liveclient` `{}`, `:2999` curl status `000` at 2026-11-09 22:21 local; no game.
 - **G3-09** (was C9) T1-F3 enemy-pen-aware effective-resist EHP flip (opt-in
   `enemy_lethality`/`enemy_*_pen` on compute_ehp) - **RE-FILE source: GATE 3; destination: headless
   CODE task.** SETTLED HEADLESS: (1) the row's blocker was binary - "bots do not build pen items" - and
