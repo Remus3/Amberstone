@@ -14,6 +14,19 @@ coefficient that disagreed with the live DDragon longDesc, the DDragon value
 WINS and the divergence is documented inline in the ``formula`` string so the
 provenance is auditable (Do NOT invent numbers).
 
+Re-checked at 16.22.1 (S144-D-397): the longDesc of every modeled rune
+except Hail of Blades 9923 is identical in every vendored snapshot
+16.11.1..16.22.1, so its DDragon quote below is still the live text. Hail of
+Blades 9923 changed at 16.16.1 (on-hit "2 - 20 (+0.12 bonus AD, +0.1 AP)");
+the closure still computes the 16.11.1 numbers, filed as S144-D-394 (Tier-2
+re-seed). The Fleet Footwork 8021 exclusion quote changed at 16.17.1; its
+comment below quotes both texts. The closures are checked against the live
+text by
+``agents/daemon_slayer/tests/test_rune_procs_live_text_s144d395.py``
+(its docstring names what it does not check), and this paragraph plus the
+Hail of Blades, Gathering Storm and Fleet Footwork comment blocks by
+``agents/daemon_slayer/tests/test_rune_procs_prose_live_text_s144d397.py``.
+
 proc_type semantics:
   * ``on_proc_burst``  - one burst of damage when the rune procs. The closure
                          returns that burst.
@@ -291,6 +304,8 @@ def _hail_of_blades(*, level=1.0, ad=0.0, ap=0.0, role="melee", **_kw) -> float:
     # of Blades' On-Hit Damage does NOT vary by role (DDragon gives one number,
     # not a melee||ranged split), so role is unused and the melee default value
     # is byte-identical.
+    # STALE from 16.16.1: the live on-hit reads "2 - 20 (+0.12 bonus AD, +0.1
+    # AP)". The re-seed is Tier-2 (ENGINE_VERSION bump), filed as S144-D-394.
     return _lerp_by_level(4.0, 20.0, level) + 0.08 * _f(ad) + 0.06 * _f(ap)
 
 
@@ -377,6 +392,9 @@ def _gathering_storm(*, ad=0.0, ap=0.0, game_time_s=0.0, **_kw) -> float:
     # scorer at t=0 has the rune contribute nothing, matching the exclusion).
     # game_time_s=600 (10 min) -> 5 AD (AD-side); game_time_s=1800 (30 min) ->
     # 15 AD. AD-side on the default ad>=ap tie.
+    # Only the 10-min row matches the feed: it is a STEP table (29 AD at 30
+    # min, nothing before 10 min), which ``_rune_offense_grants`` transcribes
+    # for the sustained scorers. This ramp never reaches a burst total.
     t = _f(game_time_s)
     if t <= 0.0:
         return 0.0
@@ -413,8 +431,9 @@ def _shield_bash(*, level=1.0, bonus_hp=0.0, shield_amount=0.0, **_kw) -> float:
 # ---------------------------------------------------------------------------
 
 # Honest exclusion (NOT in RUNE_PROCS): Fleet Footwork 8021 (Precision).
-# DDragon 16.11.1 longDesc: "Energized attacks heal you for 10 - 130 (+0.1
-# Bonus AD, +0.05 AP) and grant 20% Move Speed for 1s." It is a HEAL + MOVE
+# DDragon 16.17.1 onward longDesc: "Energized attacks heal you for 15 - 160
+# (+0.1 Bonus AD, +0.05 AP) and grant 20% Move Speed for 1s." (16.11.1..16.16.1
+# read "10 - 130"; no registry models this heal.) It is a HEAL + MOVE
 # SPEED sustain keystone with NO damage component - modeling it as a damage
 # rune would invent numbers that do not exist. Same data-availability-ceiling
 # discipline as the Summon Aery shield side (mitigation, not burst) and the
@@ -720,7 +739,8 @@ RUNE_PROCS: Dict[int, RuneProc] = {
             "per-AA TRUE damage 4-20 by level + 0.08 bonus AD + 0.06 AP "
             "(ADDITIVE, not adaptive); up to 3 attacks per proc, CD 10s. "
             "compute returns the SINGLE-AA contribution; the 3-attack window "
-            "multiplier is the caller's concern (DDragon 16.11.1)"
+            "multiplier is the caller's concern (DDragon 16.11.1; the live "
+            "text changed at 16.16.1, re-seed filed as S144-D-394)"
         ),
         compute=_hail_of_blades,
     ),
