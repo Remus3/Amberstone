@@ -6520,6 +6520,24 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   The `RC_LANING_CV_SERVED` gate is a DIFFERENT predictor (live `compute_matchup` plus a CV
   override) and may still be worth flipping on its own terms - but it needs a new acceptance
   number, not this one.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 151, S144-G-142, source read at `db40bed65`; no game
+  up; NOT a tick).** CV rows accrued, the re-run step has no tool, and one game moves
+  neither. (1) ACCRUED, THEN STOPPED (the row sets no row-count target): a read-only parse of the main checkout's
+  `data/hz_choice_shadow.jsonl` gives 58,806 rows (2 unparseable), 12,417 with a dict
+  `cv_override` (`enemy_dead` 11,419, `low_hp` 998; by `mode`: sr 7,963, aram 4,028, arena 306,
+  client 120), first CV row 2026-06-21, LAST ROW OF ANY KIND 2026-08-02T22:34:15Z. The sibling
+  in-game shadows `data/det_coach_shadow.jsonl` and `data/hz_build_shadow.jsonl` end at the same
+  second (22:34:15.3988 / .4038), which points (inferred, not observed) to a common upstream stop
+  (no in-game tick reaching `dashboard/_state_builder.py:1004`) rather than a defect in the
+  `core/hz_choice_shadow.py` writer; it
+  matches the G7-06 rail stall since 08-02. (2) THE NAMED RE-RUN DOES NOT EXIST: `tools/hz_shadow_report.py`
+  contains the string `cv` zero times (case-insensitive), and no file under `tools/` reads
+  `cv_override`; its only reader is the post-game renderer `core/branch_review.py:238`. "Re-run
+  hz_shadow_report WITH the CV layer" therefore needs a CV-aware read-only reader built first, over
+  rows already on disk. (3) The flip flag is unchanged: `RC_LANING_CV_SERVED` defaults OFF at
+  `dashboard/_deterministic_coaching.py:445`. RESIDUAL: a new acceptance number from the operator or
+  MAIN (ADR-013 retired the 70% one), then the CV-aware reader, both offline. Filed as a
+  "Not actually live-gated" CANDIDATE only; moving the row is a human doc edit.
 - **G7-06** (was G6) DS calibration pipeline: needs **~20+ RANKED SR (queue 420)** games. Customs and
   Mayhem cannot feed it. SOURCE: RM-32.
   **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 148, S144-G-138, source read at `4704d777b`; no game
