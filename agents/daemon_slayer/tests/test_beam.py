@@ -1,3 +1,4 @@
+"""Daemon Slayer beam search: predicates, build search, constraints, modes, synergy, validation, serialization."""
 import unittest
 
 from agents.daemon_slayer.beam import (

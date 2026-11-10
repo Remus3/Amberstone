@@ -1,3 +1,4 @@
+"""Daemon Slayer build_champion: level and item stat folding, mode modifier hook, ARAM exposure, aliases."""
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot

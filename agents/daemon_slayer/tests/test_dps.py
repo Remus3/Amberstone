@@ -1,3 +1,4 @@
+"""Daemon Slayer DPS math: phase selection, armor factor, Aatrox baseline, item impact, resists, mode multipliers."""
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot

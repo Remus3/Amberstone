@@ -15,9 +15,13 @@ S144-P-636 brought the root ``tests/`` tree in: 17 test modules whose leading ``
 the module docstring (text unchanged) and 14 test packages (``tests`` itself and 13 subpackages) with a
 one-line docstring. ``test_package_docstring_is_set`` covers those packages too.
 
-Scope: tracked ``.py`` files, including the root ``tests/`` tree. Any nested ``*/tests/`` directory
-(``tools/tests``, ``agents/daemon_slayer/tests``: other lanes' trees) and the vendored ``ops/fleet_kit``
-are out of scope. The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding.
+S144-P-638 brought ``agents/daemon_slayer/tests`` in: six old unittest modules (beam, data_loader, dps,
+engine, rank, stats) gained a one-line module docstring and the package ``__init__.py`` one line
+(``test_package_docstring_is_set`` covers ``agents.daemon_slayer.tests``).
+
+Scope: tracked ``.py`` files, including the root ``tests/`` tree and ``agents/daemon_slayer/tests``. The
+nested ``tools/tests`` directory and the vendored ``ops/fleet_kit`` are out of scope. The run uses NO
+config (``--isolated``) so a per-file-ignore cannot hide a finding.
 """
 from __future__ import annotations
 
@@ -67,6 +71,7 @@ _FIXED_PACKAGES = (
     "tests.rc2_l3",
     "tests.snapshot_panels",
     "tests.snapshot_regressions",
+    "agents.daemon_slayer.tests",
 )
 
 
@@ -92,7 +97,7 @@ def tree_counts() -> dict[str, int]:
     counts: collections.Counter = collections.Counter()
     for d in _ruff(["--select", _RULES, "."]):
         rel = relative_posix(Path(d["filename"]).resolve())
-        if rel in tracked and not rel.startswith(_OUT_OF_SCOPE) and "/tests/" not in rel:
+        if rel in tracked and not rel.startswith(_OUT_OF_SCOPE):
             counts[rel] += 1
     return dict(counts)
 

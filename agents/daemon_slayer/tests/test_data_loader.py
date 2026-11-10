@@ -1,3 +1,4 @@
+"""Daemon Slayer DataSnapshot loader: pointer, manifest counts, champion / item lookup, missing-data errors."""
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot, SnapshotNotFound

@@ -1,3 +1,4 @@
+"""Daemon Slayer item ranking: candidate filters, rank_items, shared-unique rules, map ids, Arena trinkets."""
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot
