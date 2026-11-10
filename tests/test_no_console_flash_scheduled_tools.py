@@ -109,6 +109,12 @@ SCHEDULED_SPAWNERS = (
     # check-ignore in build_manifest) already passed creationflags=_NO_WINDOW;
     # its reviewer runs go through fleet_route.spawn. Listed so it stays so.
     "ops/loop/repo_review.py",
+    # 2026-11-09 s158 C9: the lane driver's kill helper (commit 5f498779e),
+    # found by the completeness check. Imported by the windowless lane driver,
+    # so its one spawn - kill_tree's `taskkill /F /T` of a timed-out runner -
+    # runs unattended under that host; it already passed
+    # creationflags=_NO_WINDOW (0x08000000). Listed so it stays so.
+    "ops/loop/proc_tree.py",
     "tools/upstream_drift_check.py",
     # 2026-10-03, second pass: found by the IMPORT CLOSURE added to the
     # completeness check (a task target imports them, so they run under the
