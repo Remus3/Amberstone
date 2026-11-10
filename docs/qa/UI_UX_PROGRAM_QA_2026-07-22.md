@@ -2354,3 +2354,27 @@ DONE 2026-11-06 (s144 uiux cycle 167, S144-U-177, Tier-1 CSS + snapshot guard). 
 - 5-phase audit (headless, tft_round and tft_live, 360 / 721 / 760 / 800 / 920x1280 / 1920x920): STRUCTURE - no cut label or value, 2 or 4 equal columns, every cell inside the strip, CALL pane scrollHeight == clientHeight at 721 - 800 (the extra 2x2 row fits, no view scroll in the three-pane band); TYPOGRAPHY - value 29 px (--fs-lg), label 16 px (--fs-xs), unchanged; HIT-TARGETS - display-only strip, no clickables; ASCII - 0 non-ASCII, 0 CR in every touched file; HIERARCHY - the value stays the brightest ink (L 0.94 over the label's 0.74), cells 74 px tall in both layouts.
 - Pin: `tests/snapshot_panels/test_tft_stat_strip_reflow.py` (14 cases: whole at ten widths, four columns at companion and baseline with the baseline tracks as control, no geometry move when data lands at 360 and 721). Red 6 of 14 before the CSS (the six cut widths, 320 - 800; the no-reflow pair is a property guard and passed on the fixed four columns too); green 14 of 14 after.
 - Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).
+
+### S144-U-295 - the TFT Active Match lobby HP bar's crit-red fill reaches 3:1 against its track in every theme, instead of 2.80:1 in moonlit and arcane; the TFT view is pinned whole and at AA in all six themes (s144 uiux cycle 287)
+
+- Picked: the TFT Active Match in the six themes (cycle 286's NEXT CANDIDATE). The other carried candidate, "the narrow board / lobby eyebrows carry the title", was already pinned: `_amSectionHead` sets `title` (RM-1767), and `test_tft_board_more_cue` pins it for the board and the lobby. No lane branch or s144 report had taken it.
+- Probed headless under `/?ui_mock=1&mode=<tft | tft_live | tft_round>&theme=<t>#active-match`, at 1920x920 and 760x900, ancestor opacity folded in. Text: no defect. Every visible text node reaches AA in every theme on every fixture, with 17 text boxes on tft / tft_live and 60 on tft_round. Nothing is cut at 1920x920. At 760 the board eyebrow, the lobby eyebrow and the "Fiddlesticks" chip ellipsise; that is RM-1766 / RM-1767 by design, and the title carries the whole text.
+- DEFECT (WCAG 1.4.11, MUST-FIX): the lobby HP bar track `.am-tft-lob-bar` was `--border-soft`, a light veil over the pane. Against it, the crit-band red fill (`.is-low`, set when `tftHpBand(hp) === "crit"` in `_amTftLobbyNode`) read 2.80:1 in moonlit and arcane, and only 3.29 (ember, bloodmoon) to 3.60 (terminal) and 3.47 (hextech) elsewhere. No recorded fixture holds a crit row, so the low fill had never been rendered by any pin. The bar repeats the HP number beside it, so it is a graphical object with a 3:1 floor (the S144-U-277 ruling for state bars).
+- RULING / FIX (`web/css/panels/active_match.css`): the track is `var(--canvas)`, the page's deepest ground and defined in every theme, so the bar reads as a sunken well. After the fix:
+  - The red fill reads 4.88 (hextech) to 5.64 (terminal) against the track.
+  - The green fill reads 8.31 to 9.79 against the track (was 4.97 to 6.91).
+  - The fills against the pane are unchanged: red 3.89 to 5.02, green 6.72 to 8.24.
+  - The empty track still differs from the pane, at 1.12 to 1.27 (was 1.18 to 1.40), so the full bar extent stays visible.
+  - `tests/guard_data/web_live_half/css_panels.txt` was re-captured; only the active_match.css row moved, for a live CSS value.
+- 5-phase audit (headless, 1920x920, six themes, three TFT fixtures):
+  - STRUCTURE: the bar keeps 8 px and the same columns, and `test_tft_lobby_row_fits` is green; no page overflow and no cut text.
+  - TYPOGRAPHY: no text changed.
+  - HIT-TARGETS: the bar is display-only.
+  - ASCII: 0 non-ASCII and 0 CR in every touched file; `tools/web_ascii_sweep.py --dry-run` finds 0 comment-span glyphs.
+  - HIERARCHY: the fill is now the brightest part of the bar and the track recedes below the pane.
+- Pin: `tests/snapshot_panels/test_tft_active_match_theme_contrast.py`, 42 cases:
+  - AA text per theme x fixture, with line-count, stat, unit and lobby anchors;
+  - whole at 920 per theme x fixture;
+  - the bar per theme, with the good fill and a crit-red copy of the first row against the track and the pane at 3:1, plus a control that the track is not the pane's colour.
+  - Red on the old CSS: 2 of 42 (the moonlit and arcane bars, 2.80). Green: 42 of 42 after the fix.
+- Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).

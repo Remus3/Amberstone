@@ -602,7 +602,14 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   display: block;
   height: 8px;
   border-radius: 4px;
-  background: var(--border-soft);
+  /* S144-U-295: the track is a sunken well in the page's own deepest
+   * ground. It was --border-soft, a light veil over the pane, and the
+   * crit-band red fill (.is-low) read only 2.80:1 against it in moonlit
+   * and arcane (3.29 to 3.60 elsewhere), under the WCAG 1.4.11 3:1
+   * floor. On --canvas the red reads 4.88:1 or more and the green 8.31:1
+   * or more in every theme (tests/snapshot_panels/
+   * test_tft_active_match_theme_contrast.py). */
+  background: var(--canvas);
   overflow: hidden;
 }
 #view-active-match .am-tft-lob-fill {
