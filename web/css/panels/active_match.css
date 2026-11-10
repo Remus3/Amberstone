@@ -328,10 +328,23 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
  * fixed columns - STAGE / LEVEL / HP / GOLD - present with the "-" sentinel
  * before the feed lands, so data arriving changes text, never geometry. The
  * value is the focal point (--fs-lg, tabular), the label the faint eyebrow
- * (--fs-xs), matching the CALL pane _line hierarchy. */
+ * (--fs-xs), matching the CALL pane _line hierarchy.
+ * S144-U-294: four columns while the strip is at least 350px wide, else 2x2,
+ * never a 3 + 1 orphan. A cell needs ~79px for the widest real value (HP
+ * "100" at --fs-lg plus padding and border); the fixed repeat(4) cut "4-2"
+ * to "4-..." in a narrow strip (measured: a 320-400px window, and the CALL
+ * pane of a 721-800px window, just over the 720px breakpoint). The clamp() picks the track minimum from the
+ * strip's OWN width - (100% - 3 gaps) / 4 at or over 350px, (100% - 1 gap)
+ * / 2 under it (the 999 factor saturates to one bound or the other) - and
+ * auto-fit lays out exactly that many tracks; each bound is 1px under the
+ * exact share so rounding never drops a track. Width only, never data, so
+ * a value landing still changes text, not geometry. 1920x920 and the
+ * 920x1280 companion stay four; the overlay's w-call 2x2 rule outranks
+ * this. Guard: tests/snapshot_panels/test_tft_stat_strip_reflow.py. */
 #view-active-match .am-tft-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(clamp(
+    (100% - 31px) / 4, (350px - 100%) * 999, (100% - 11px) / 2), 1fr));
   gap: 10px;
   margin-top: 4px;
 }
