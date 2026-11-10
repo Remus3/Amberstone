@@ -419,8 +419,8 @@ class PatchAndPathTests(unittest.TestCase):
         self.assertEqual(p.parent.parent.parent.name, "daemon_slayer")
 
     def test_out_dir_override_wins(self):
-        d = bop.out_dir_for("16.11.1", "/tmp/whatever")
-        self.assertEqual(d, Path("/tmp/whatever"))
+        d = bop.out_dir_for("16.11.1", "/override/whatever")
+        self.assertEqual(d, Path("/override/whatever"))
 
 
 class SeedTableTests(unittest.TestCase):
