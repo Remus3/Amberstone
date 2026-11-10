@@ -1743,7 +1743,7 @@ class Phase599ExpansionTests(unittest.TestCase):
 # --- Phase 5.9.10 (s197) - assassin/fighter resource amps + utility totals --
 
 
-class Phase599_10ExpansionTests(unittest.TestCase):
+class Phase599P10ExpansionTests(unittest.TestCase):
     """Phase 5.9.10 (s197). 20 new (champion, key) entries across 18 new
     champions spanning five sub-patterns: (A) multi-hit / channel / mark
     totals (Aatrox W, Hwei R, Leblanc Q/E, Lucian R, Mel Q/R, MonkeyKing R,
@@ -1931,7 +1931,7 @@ class Phase599_10ExpansionTests(unittest.TestCase):
         """Renekton Q=1 + W=2 (s197) + R=1 (s202 Dominus full duration) -
         all three keys must appear in resolved map. (s205 also adds E=3,
         but this s197-era test only asserts the s197/s202 keys via subset
-        check; full s205 shape is asserted in Phase599_18ExpansionTests
+        check; full s205 shape is asserted in Phase599P18ExpansionTests
         test_renekton_all_four_keys_in_resolved.)"""
         r = compute_ability_dps(
             self.snap, "Renekton", level=11, mode="SR",
@@ -2014,7 +2014,7 @@ class Phase599_10ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"Q": 1})
 
 
-class Phase599_11ExpansionTests(unittest.TestCase):
+class Phase599P11ExpansionTests(unittest.TestCase):
     """Phase 5.9.11 (s198). 20 new (champion, key) entries - 17 new
     champions (XinZhao contributes 2 entries Q+W) + 2 key extensions
     on existing champions Sion (adds R) and Vladimir (adds W). Registry
@@ -2275,7 +2275,7 @@ class Phase599_11ExpansionTests(unittest.TestCase):
 # --- Phase 5.9.12 (s199) - Aatrox sweet-spot / Ashe Flurry / 17-entry expansion
 
 
-class Phase599_12ExpansionTests(unittest.TestCase):
+class Phase599P12ExpansionTests(unittest.TestCase):
     """Phase 5.9.12 (s199). 17 new (champion, key) entries - 6 new
     champions (Ashe/Shaco/Shen/Swain/Tristana/Xayah) + 11 key extensions
     on existing (Aatrox/Fiddlesticks/Karthus/Nautilus/Nunu/Samira/
@@ -2581,7 +2581,7 @@ class Phase599_12ExpansionTests(unittest.TestCase):
 # --- Phase 5.9.13 (s200) - rescue batch: Ambessa/Anivia/Lillia/Nilah/Poppy
 
 
-class Phase599_13ExpansionTests(unittest.TestCase):
+class Phase599P13ExpansionTests(unittest.TestCase):
     """Phase 5.9.13 (s200). 7 new (champion, key) entries - rescues 4
     previously-deferred mechanics:
       - Ambessa Q/W (s196/s197/s198 'form swap' deferral dissolved -
@@ -2788,7 +2788,7 @@ class Phase599_13ExpansionTests(unittest.TestCase):
 # --- Phase 5.9.14 (s201): block_index expansion 17 entries / 14 champs ------
 
 
-class Phase599_14ExpansionTests(unittest.TestCase):
+class Phase599P14ExpansionTests(unittest.TestCase):
     """Phase 5.9.14 (s201). 16 new (champion, key) entries across 13 new
     champions (3 with two keys: Jhin Q+R, Teemo E+R, Xerath W+R; the rest
     single-key).
@@ -3032,7 +3032,7 @@ class Phase599_14ExpansionTests(unittest.TestCase):
 # --- Phase 5.9.15 (s202): block_index expansion 18 entries / 6 new champs --
 
 
-class Phase599_15ExpansionTests(unittest.TestCase):
+class Phase599P15ExpansionTests(unittest.TestCase):
     """Phase 5.9.15 (s202). 18 new (champion, key) entries: 6 truly-new
     champions (Gangplank, Gnar, KSante, RekSai, Vayne, Yunara) + 12 key
     extensions on existing champions (Zoe W, Akshan R, AurelionSol Q,
@@ -3331,7 +3331,7 @@ class Phase599_15ExpansionTests(unittest.TestCase):
 # --- Phase 5.9.16 (s203) - 12 entries / 5 new champs + 5 extensions ---------
 
 
-class Phase599_16ExpansionTests(unittest.TestCase):
+class Phase599P16ExpansionTests(unittest.TestCase):
     """Phase 5.9.16 (s203). 12 new (champion, key) entries: 5 truly-new
     champions (Blitzcrank, Gwen, Kled, LeeSin, Thresh) + 5 key extensions
     on existing champions (Diana R, Jax R, Kennen W, Smolder E, Vladimir Q).
@@ -3677,7 +3677,7 @@ class Phase599_16ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved.get("E"), 1)  # s203
 
 
-class Phase599_17ExpansionTests(unittest.TestCase):
+class Phase599P17ExpansionTests(unittest.TestCase):
     """Phase 5.9.17 (s204). 8 new (champion, key) entries: 2 truly-new
     champions (Nidalee, Seraphine) + 6 key extensions on existing champions
     (Evelynn Q, Gwen Q, KSante W, Riven R, Syndra W, Zoe E). PLUS Riven is
@@ -4032,7 +4032,7 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         self.assertEqual(r.form_index_resolved.get("Q"), 1)
 
 
-class Phase599_18ExpansionTests(unittest.TestCase):
+class Phase599P18ExpansionTests(unittest.TestCase):
     """Phase 5.9.18 (s205). 4 new (champion, key) block_index entries (1
     truly-new champion Qiyana + 3 key extensions on existing champions:
     Hwei W, Renekton E, Shaco W) PLUS 3 new form_index seeds (Qiyana Q=1,

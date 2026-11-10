@@ -63,7 +63,7 @@ def _snap() -> DataSnapshot:
 # --- Registry shape - 2 new/lifted entries -----------------------------------
 
 
-class Phase599_22RegistrySeedTests(unittest.TestCase):
+class Phase599P22RegistrySeedTests(unittest.TestCase):
     """The 2 entries are present with expected shapes.
 
     Taliyah gains a new E key (Q=2 preserved from s201). DrMundo's
@@ -96,7 +96,7 @@ class Phase599_22RegistrySeedTests(unittest.TestCase):
 # --- Arithmetic parity - sum == sum of forced singletons ---------------------
 
 
-class Phase599_22AbilityDpsTests(unittest.TestCase):
+class Phase599P22AbilityDpsTests(unittest.TestCase):
     """Sum-of-blocks entries deliver canonical full-burst totals.
 
     Pattern mirrors ``test_sum_of_blocks_expansion_s215``: fetch the
@@ -183,7 +183,7 @@ class Phase599_22AbilityDpsTests(unittest.TestCase):
 # --- Backward-compat - s207 + s215 sum-of-blocks entries preserved -----------
 
 
-class Phase599_22BackwardCompatTests(unittest.TestCase):
+class Phase599P22BackwardCompatTests(unittest.TestCase):
     """All prior sum-of-blocks entries (s207 seed + s215 batch) still
     resolve identically post-s217."""
 
@@ -233,7 +233,7 @@ class Phase599_22BackwardCompatTests(unittest.TestCase):
 # --- ENGINE_VERSION pin ------------------------------------------------------
 
 
-class Phase599_22EngineVersionTests(unittest.TestCase):
+class Phase599P22EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents import daemon_slayer
         self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.291.0")

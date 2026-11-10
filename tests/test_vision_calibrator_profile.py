@@ -48,7 +48,7 @@ class FrameSourceTests(unittest.TestCase):
             "ok": True, "b64": "REFB64", "width": 2560, "height": 1440,
             "age_s": 12.0, "config_key": "cfgX", "format": "jpeg",
         }
-        with _patch(vc.vp, "load_reference", lambda config_key=None: ref):
+        with _Patch(vc.vp, "load_reference", lambda config_key=None: ref):
             h = _FakeHandler("/api/vision-frame?source=reference")
             vc._serve_frame_get(h)
         code, payload, _ = h.sent
@@ -62,7 +62,7 @@ class FrameSourceTests(unittest.TestCase):
 
     def test_reference_source_passes_error_through(self):
         ref = {"ok": False, "error": "no reference captured yet", "config_key": "z"}
-        with _patch(vc.vp, "load_reference", lambda config_key=None: ref):
+        with _Patch(vc.vp, "load_reference", lambda config_key=None: ref):
             h = _FakeHandler("/api/vision-frame?source=reference")
             vc._serve_frame_get(h)
         code, payload, _ = h.sent
@@ -73,7 +73,7 @@ class FrameSourceTests(unittest.TestCase):
     def test_no_source_uses_relay_unchanged(self):
         sentinel = {"ok": True, "b64": "RELAY", "width": 1920, "height": 1080,
                     "format": "jpeg", "age_s": 0.5}
-        with _patch(vc, "fetch_frame", lambda: dict(sentinel)):
+        with _Patch(vc, "fetch_frame", lambda: dict(sentinel)):
             h = _FakeHandler("/api/vision-frame")
             vc._serve_frame_get(h)
         code, payload, _ = h.sent
@@ -87,7 +87,7 @@ class RegionsGetSourceTests(unittest.TestCase):
             "config_key": "cfgX", "base": [2560, 1440],
             "regions": {"hp": [10, 20, 30, 40]}, "source": "profile",
         }
-        with _patch(vc.vp, "load_profile", lambda config_key=None: prof):
+        with _Patch(vc.vp, "load_profile", lambda config_key=None: prof):
             h = _FakeHandler("/api/vision-regions?source=profile")
             vc._serve_regions_get(h)
         code, payload, _ = h.sent
@@ -105,8 +105,8 @@ class RegionsGetSourceTests(unittest.TestCase):
             "regions": {"hp": [900, 300, 1200, 600]}, "source": "legacy_seed",
         }
         ref = {"ok": True, "width": 2560, "height": 1440}
-        with _patch(vc.vp, "load_profile", lambda config_key=None: prof), \
-                _patch(vc.vp, "load_reference", lambda config_key=None: ref):
+        with _Patch(vc.vp, "load_profile", lambda config_key=None: prof), \
+                _Patch(vc.vp, "load_reference", lambda config_key=None: ref):
             h = _FakeHandler("/api/vision-regions?source=profile")
             vc._serve_regions_get(h)
         code, payload, _ = h.sent
@@ -122,8 +122,8 @@ class RegionsGetSourceTests(unittest.TestCase):
             "regions": {"hp": [960, 540, 1920, 1080]}, "source": "legacy_seed",
         }
         ref = {"ok": False, "error": "none"}
-        with _patch(vc.vp, "load_profile", lambda config_key=None: prof), \
-                _patch(vc.vp, "load_reference", lambda config_key=None: ref):
+        with _Patch(vc.vp, "load_profile", lambda config_key=None: prof), \
+                _Patch(vc.vp, "load_reference", lambda config_key=None: ref):
             h = _FakeHandler("/api/vision-regions?source=reference")  # alias
             vc._serve_regions_get(h)
         code, payload, _ = h.sent
@@ -131,7 +131,7 @@ class RegionsGetSourceTests(unittest.TestCase):
         self.assertTrue(payload["seeded"])
 
     def test_no_source_uses_legacy_load_regions(self):
-        with _patch(vc, "load_regions", lambda: {"legacy": [1, 2, 3, 4]}):
+        with _Patch(vc, "load_regions", lambda: {"legacy": [1, 2, 3, 4]}):
             h = _FakeHandler("/api/vision-regions")
             vc._serve_regions_get(h)
         code, payload, _ = h.sent
@@ -154,8 +154,8 @@ class RegionsPostSourceTests(unittest.TestCase):
             "base": [2560, 1440],
             "source": "profile",
         }
-        with _patch(vc.vp, "active_config_key", lambda: "cfgX"), \
-                _patch(vc.vp, "save_profile", _save_profile):
+        with _Patch(vc.vp, "active_config_key", lambda: "cfgX"), \
+                _Patch(vc.vp, "save_profile", _save_profile):
             h = _FakeHandler("/api/vision-regions")
             vc._serve_regions_post(h, body)
         code, payload, _ = h.sent
@@ -181,8 +181,8 @@ class RegionsPostSourceTests(unittest.TestCase):
             "base": [2560, 1440],
             "source": "profile",
         }
-        with _patch(vc.vp, "active_config_key", lambda: "cfgX"), \
-                _patch(vc.vp, "save_profile", _save_profile):
+        with _Patch(vc.vp, "active_config_key", lambda: "cfgX"), \
+                _Patch(vc.vp, "save_profile", _save_profile):
             h = _FakeHandler("/api/vision-regions")
             vc._serve_regions_post(h, body)
         code, payload, _ = h.sent
@@ -198,8 +198,8 @@ class RegionsPostSourceTests(unittest.TestCase):
             return {"ok": True, "count": len(regions), "config_key": config_key}
 
         body = {"regions": {"hp": [1, 2, 3, 4]}, "base": [2560, 1440]}
-        with _patch(vc.vp, "active_config_key", lambda: "cfgX"), \
-                _patch(vc.vp, "save_profile", _save_profile):
+        with _Patch(vc.vp, "active_config_key", lambda: "cfgX"), \
+                _Patch(vc.vp, "save_profile", _save_profile):
             h = _FakeHandler("/api/vision-regions")
             vc._serve_regions_post(h, body)
         code, payload, _ = h.sent
@@ -215,7 +215,7 @@ class RegionsPostSourceTests(unittest.TestCase):
             return (True, None, len(obj))
 
         body = {"regions": {"hp": [1, 2, 3, 4]}}  # no base, no source
-        with _patch(vc, "save_regions", _save_regions):
+        with _Patch(vc, "save_regions", _save_regions):
             h = _FakeHandler("/api/vision-regions")
             vc._serve_regions_post(h, body)
         code, payload, _ = h.sent
@@ -239,8 +239,8 @@ class BaseValidationTests(unittest.TestCase):
             called["n"] += 1
             return {"ok": True, "count": len(regions), "config_key": config_key}
 
-        with _patch(vc.vp, "active_config_key", lambda: "cfgX"), \
-                _patch(vc.vp, "save_profile", _save_profile):
+        with _Patch(vc.vp, "active_config_key", lambda: "cfgX"), \
+                _Patch(vc.vp, "save_profile", _save_profile):
             h = _FakeHandler("/api/vision-regions")
             vc._serve_regions_post(h, body)
         code, payload, _ = h.sent
@@ -295,7 +295,7 @@ class NoBannedCodepointsTests(unittest.TestCase):
         self.assertFalse(hits, f"routes_vision_calibrator.py banned codepoints: {hits}")
 
 
-class _patch:
+class _Patch:
     """Tiny context-manager monkeypatch (setattr on enter, restore on exit) so
     the suite never touches real data/ - vision_profiles is fully stubbed."""
 
