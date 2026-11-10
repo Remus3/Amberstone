@@ -161,7 +161,9 @@ _liveclient: dict = {"data": None, "ts": 0.0, "size": 0}
 
 # 1-PC self-heal config (ADR-011). League's :2999 is HTTPS with a self-signed
 # Riot cert; verify=off like every other RC reader (poller, lcu_client).
-_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+# core.game_host emits an IPv6 literal bracketed (its URL authority form,
+# S144-T-768), so the IPv6 loopback arrives as "[::1]".
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]"}
 _LIVE_API_URL = f"https://{GAME_HOST}:2999/liveclientdata/allgamedata"
 _SELF_READ_STALE_S = 2.0          # serve the cache as-is when fresher than this
 _SELF_READ_MIN_INTERVAL_S = 1.5   # min gap between :2999 self-read attempts

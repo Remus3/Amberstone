@@ -87,7 +87,9 @@ _frames_by_source: dict = {}
 # Mirrors vision_server/_relay.py. A single one-shot GDI BitBlt grab is the
 # fallback for the retired continuous screen-agent loop (1-PC, ADR-011). The
 # intervals are tight so vision recording stays fresh during live gameplay.
-_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+# core.game_host emits an IPv6 literal bracketed (its URL authority form,
+# S144-T-768), so the IPv6 loopback arrives as "[::1]".
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]"}
 _SELF_GRAB_STALE_S = 1.0          # serve the cache as-is when fresher than this
 _SELF_GRAB_MIN_INTERVAL_S = 0.5   # min gap between in-process grab attempts
 _SELF_GRAB_MAX_WIDTH = 1280       # downscale to the documented coaching width
