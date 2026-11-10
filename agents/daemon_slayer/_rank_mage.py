@@ -13,9 +13,8 @@ import annotations`` keeps the dataclass field annotations lazy.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, Optional, Sequence
+from typing import TYPE_CHECKING, Iterable, Optional, Sequence
 
-from .abilities import AbilitiesSnapshot
 from .data_loader import DataSnapshot, canonical_mode
 from .effects import ITEM_EFFECTS
 from .kit_conversion import conversion_factor, damage_objective, kit_conversion
@@ -30,6 +29,9 @@ from .rank import (
     strip_arena_trinkets,
 )
 from .stats import clamp_level
+
+if TYPE_CHECKING:
+    from .abilities import AbilitiesSnapshot
 
 # --- ranker (Phase 4c, s179) -------------------------------------------------
 

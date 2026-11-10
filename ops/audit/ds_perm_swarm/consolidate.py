@@ -11,10 +11,13 @@ is touched; the hermetic tests synthesize their own fixtures.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from .cross_eval_loader import CrossEval
 from .perm_score import PermConfig, score_champ
-from .win_anchor import ChampModeWin
+
+if TYPE_CHECKING:
+    from .cross_eval_loader import CrossEval
+    from .win_anchor import ChampModeWin
 
 
 @dataclass(frozen=True)

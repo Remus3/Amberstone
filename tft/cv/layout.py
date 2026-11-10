@@ -17,8 +17,10 @@ A hidden panel makes every field on it ``absent`` - never a guess.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from tft.cv.profile import PanelSpec, Probe, Profile
+if TYPE_CHECKING:
+    from tft.cv.profile import PanelSpec, Probe, Profile
 
 PANELS = ("stage_bar", "hud_bar", "shop", "own_hp", "scoreboard", "traits")
 

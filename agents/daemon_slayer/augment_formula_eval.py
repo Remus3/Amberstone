@@ -68,9 +68,10 @@ from __future__ import annotations
 import math
 import numbers
 from dataclasses import dataclass, field
-from typing import Mapping
+from typing import TYPE_CHECKING, Mapping
 
-from .augments import Augment
+if TYPE_CHECKING:
+    from .augments import Augment
 
 
 # ---- Riot StatType enum -> canonical stat key -----------------------------
