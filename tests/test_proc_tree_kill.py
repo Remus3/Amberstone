@@ -42,7 +42,7 @@ GRANDCHILD = (
 # _WinJob: _JOB_KILL_ON_CLOSE | _JOB_BREAKAWAY_OK), starts an intermediate in it that
 # starts the grandchild out of that job and exits at once (the grandchild is orphaned),
 # then sleeps like a long verifier round.
-WORKER = r'''
+WORKER = r"""
 import ctypes, os, subprocess, sys, time
 from ctypes import wintypes
 
@@ -92,7 +92,7 @@ if mode != "breakaway":  # like a tool timeout that kills the shell, not its tre
     p.kill()
 p.wait()
 time.sleep(90)
-'''
+"""
 
 
 def _psutil():

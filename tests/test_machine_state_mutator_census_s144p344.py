@@ -98,6 +98,14 @@ _SITES = {
         "taskkill /F /PID, no /T, of a pid named to the operator first; the killer is injected so tests never run it",
     ("ops/loop/lane_launcher.py", "str:taskkill", "_kill"):
         "taskkill /F /PID of a lane worker this launcher started and recorded",
+    ("ops/loop/proc_tree.py", "call:TerminateJobObject", "KillJob.kill"):
+        "ends only the members of the lane worker's OWN job object, which the caller created and assigned its worker to",
+    ("ops/loop/proc_tree.py", "call:kill", "KillJob.close"):
+        "close(kill=True) calls self.kill() on the owned job; kill=False first allows breakaway, else close ends only that job",
+    ("ops/loop/proc_tree.py", "call:kill", "kill_tree"):
+        "os.kill SIGKILL off Windows, then job.kill() of the owned job, for the worker pid the caller spawned and holds",
+    ("ops/loop/proc_tree.py", "str:taskkill", "_taskkill_exe"):
+        "the System32 taskkill.exe path kill_tree runs as /F /T /PID of the worker the caller spawned (s158 C9)",
     ("ops/loop/queue_loop.py", "call:kill", "run_cycle"):
         "the injected `kill` callback (default _taskkill) ends the cycle worker this loop spawned, then verifies it",
     ("ops/loop/queue_loop.py", "str:taskkill", "_taskkill"):
