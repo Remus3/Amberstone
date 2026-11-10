@@ -62,7 +62,7 @@ def _read(p: Path) -> str:
 
 
 class OwnFilesTests(unittest.TestCase):
-    """This agent's own deliverables - always run."""
+    """The agent's own deliverables - always run."""
 
     @classmethod
     def setUpClass(cls) -> None:

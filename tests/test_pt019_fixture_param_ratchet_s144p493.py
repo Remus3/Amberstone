@@ -120,7 +120,7 @@ def test_the_safe_spellings_are_not_flagged():
 
 
 def test_ruff_toml_does_not_select_the_rule():
-    """This ratchet exists because ruff.toml leaves PT019 off; if the rule is ever selected the ordinary lint
+    """The ratchet exists because ruff.toml leaves PT019 off; if the rule is ever selected the ordinary lint
     covers it and this file should be retired, not left as a second copy."""
     text = (REPO_ROOT / "ruff.toml").read_text(encoding="utf-8")
     select_block = text.split("\nselect = [", 1)[1].split("\n]", 1)[0]

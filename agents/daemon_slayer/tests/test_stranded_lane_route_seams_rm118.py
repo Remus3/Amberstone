@@ -338,7 +338,7 @@ class SeamsAreNoLongerStranded(unittest.TestCase):
                 )
 
     def test_the_declined_seams_are_untouched(self):
-        """This slice drains 4 of 14 and must not silently drain the rest.
+        """The slice drains 4 of 14 and must not silently drain the rest.
 
         The 5 per-item shield opt-ins left the ledger in their own slice
         (test_per_item_shield_route_seams_rm118.py), which wired them to /ehp

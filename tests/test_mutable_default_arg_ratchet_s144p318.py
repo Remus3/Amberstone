@@ -84,7 +84,7 @@ def test_the_safe_spellings_are_not_flagged():
 
 
 def test_ruff_toml_still_waives_both_rules():
-    """This ratchet exists because ruff.toml waives B006 and B008; if the waiver is lifted the ordinary lint covers
+    """The ratchet exists because ruff.toml waives B006 and B008; if the waiver is lifted the ordinary lint covers
     it and this file should be retired, not left as a second copy."""
     text = (REPO_ROOT / "ruff.toml").read_text(encoding="utf-8")
     ignore_block = text.split("ignore = [", 1)[1].split("]", 1)[0]

@@ -212,7 +212,7 @@ def test_loop_executor_sources_are_out_of_scope() -> None:
 
 
 def test_this_drift_guard_is_ascii() -> None:
-    """This test file MUST be 7-bit ASCII."""
+    """The test file MUST be 7-bit ASCII."""
     raw = Path(__file__).read_bytes()
     non_ascii = [(i, b) for i, b in enumerate(raw) if b > 127]
     assert not non_ascii, (

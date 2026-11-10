@@ -463,7 +463,7 @@ class DocstringTests(unittest.TestCase):
 
 
 class AsciiHygieneTests(unittest.TestCase):
-    """This test file is pure ASCII."""
+    """The test file is pure ASCII."""
 
     def test_self_source_has_no_unicode_punctuation(self):
         path = pathlib.Path("tests/test_post_game_rubric_overrides.py")

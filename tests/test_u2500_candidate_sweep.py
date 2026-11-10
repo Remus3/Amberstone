@@ -271,7 +271,7 @@ def test_item_187_swept_set_size() -> None:
 
 
 def test_this_drift_guard_is_ascii() -> None:
-    """This test file MUST be 7-bit ASCII (no literal U+2500 glyph, no
+    """The test file MUST be 7-bit ASCII (no literal U+2500 glyph, no
     em-dash, no smart-quote, no other non-ASCII codepoint).
     """
     raw = Path(__file__).read_bytes()

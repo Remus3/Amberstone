@@ -105,7 +105,7 @@ def test_a_real_fire_is_distinguishable_from_a_manual_cli_run(tmp_path):
 
 
 def test_record_carries_no_prompt_text_and_no_paths(tmp_path):
-    """This channel pulled a 48-file drop for operator PII eight hours ago.
+    """The channel pulled a 48-file drop for operator PII eight hours ago.
 
     A hook payload carries the operator's literal prompt and cwd. A log that
     persists either is a new disclosure surface on every keystroke.

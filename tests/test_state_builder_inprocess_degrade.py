@@ -254,7 +254,7 @@ class TestCallerSeamSignal(_StateBuilderDegradeBase):
 
 
 class TestCallerSeamNoPayloadLeak(_StateBuilderDegradeBase):
-    """This repo is PUBLIC and LCU payloads carry PUUIDs - never str(exc)."""
+    """The repo is PUBLIC and LCU payloads carry PUUIDs - never str(exc)."""
 
     MARKER = "PUUID-LEAK-MARKER-7f3a"
 

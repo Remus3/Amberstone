@@ -32,7 +32,7 @@ def load(path=None) -> dict:
 
 
 def tailnet_ipv4(cfg=None):
-    """This box's tailnet IPv4 when configured AND inside 100.64.0.0/10, else None."""
+    """Return this box's tailnet IPv4 when configured AND inside 100.64.0.0/10, else None."""
     cfg = load() if cfg is None else cfg
     raw = cfg.get("tailnet_ipv4")
     if not isinstance(raw, str):

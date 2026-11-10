@@ -208,7 +208,7 @@ def _dual_suite_steps(doc):
 
 
 def test_every_job_running_this_module_installs_pyyaml():
-    """This module's own dependency must not disarm it in a job that runs it.
+    """The module's own dependency must not disarm it in a job that runs it.
 
     Text-level and per-JOB on purpose. The sibling in
     tests/test_ci_docs_guard_coverage.py does this per-FILE, which is what let

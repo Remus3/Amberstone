@@ -196,7 +196,7 @@ def _digest_path(path: Path) -> str:
 
 
 def _live_roots() -> dict:
-    """This checkout, plus the MAIN checkout when this one is a worktree.
+    """The current checkout, plus the MAIN checkout when this one is a worktree.
 
     A worktree carries no `ops/moon_sync_repos.json` of its own - the file is
     gitignored and per-host - so guarding only `runner.ROOT` would leave the

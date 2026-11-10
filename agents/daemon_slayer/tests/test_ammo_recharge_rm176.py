@@ -295,7 +295,7 @@ class ManaConservationInvariantTests(unittest.TestCase):
 
 
 class AsciiHygieneTests(unittest.TestCase):
-    """This file carries zero non-ASCII bytes (enforced repo rule)."""
+    """The file carries zero non-ASCII bytes (enforced repo rule)."""
 
     def test_this_file_is_ascii(self):
         data = Path(__file__).resolve().read_bytes()

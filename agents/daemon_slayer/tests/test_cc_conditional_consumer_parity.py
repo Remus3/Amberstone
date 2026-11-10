@@ -121,7 +121,7 @@ class HelperIsRawAcrossRegistryTests(unittest.TestCase):
 
 
 class AsciiHygieneTests(unittest.TestCase):
-    """This test file is pure 7-bit ASCII."""
+    """The test file is pure 7-bit ASCII."""
 
     def test_test_file_is_ascii(self) -> None:
         raw = pathlib.Path(__file__).read_bytes()

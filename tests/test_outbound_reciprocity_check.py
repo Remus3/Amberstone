@@ -594,7 +594,7 @@ def _is_within(candidate: str, root: Path) -> bool:
 
 
 def test_default_render_carries_no_path_and_no_filename(tmp_path):
-    """This repo is PUBLIC and the sweep gates every push. The report is meant
+    """The repo is PUBLIC and the sweep gates every push. The report is meant
     to be pasteable, so it names slots and digests - never a configured path,
     and not even a note filename, since a slug is free text a sender chose."""
     local, sibs = _make_tree(tmp_path, 2)

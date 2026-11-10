@@ -103,7 +103,7 @@ def test_home_view_renders(mock_server, pw_browser):
 
 
 def test_home_week_pool_rows(mock_server, pw_browser):
-    """THIS WEEK champ-pool renders one row per fixture this_week champ."""
+    """The THIS WEEK champ-pool renders one row per fixture this_week champ."""
     ctx, page, errors = _open_home(pw_browser, mock_server)
     try:
         # The fixture ships 5 this_week champs; _homeRenderWeek paints one
