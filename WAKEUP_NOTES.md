@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-11-09c - session 158: pushed `50e5ad38f..683aafe11` (operator yes), lane-0 timeout explained and the lane loop hardened (`5f498779e` + `08579afca`), lane/repo reconciled, Dependabot #32 decided, RC relaunched for L9
+
+- **C1-C4, C6-C8 (LEDGER 2098):** s157 dispatch 42734265057 red on one suspected flake (focus ring [sr], RM-2082); #32 already landed as `0a2879497`, never take a bot lock (`e14a5e432`); RM-723 SHIPPED and RM-1255 / RM-1506 reconciled (`734b0c094`); RC up via WMI, DS 1.291.0, L9 read-backs mostly PASS (q090 deviates, d159 / t101 partial).
+- **C2, C5, C9-C12 (LEDGER 2099):** lane-0 cycle 227 = the 9000 s cycle timeout after 7 verifier rejections; Fix A (3-round verifier cap + job-object kill, `ops/loop/proc_tree.py`) and Fix B (16 starts per rolling hour) landed; live driver + template deployed, rotator pid 23632. lane/repo rebased (3 RM-723 commits dropped, 142 kept) + 19 reds conformed; tip `9338b87eb`, not landed.
+- **Push (LEDGER 2100):** 5 commits incl. the Agent 6 report; bot_merge_check clean; 2c dispatched ONE full run 42749327744 on `683aafe11`. Push ci 42749286101 RED on 2 repo-wide guards from `5f498779e`'s new files (mutator census, Q001 ratchet); fixed forward LOCALLY as `255595a24` (verifier CONFIRM, ratchets + censuses 2284 passed), NOT pushed.
+- **Do NOT redo:** the C9 fixes, the lane/repo reconcile and C10 fixes, the #32 decision, the RM-723 / RM-1255 / RM-1506 closes, the push, the `255595a24` fix.
+- **Next:** push `255595a24` + the /done docs on the operator's yes (origin red until then); read the first lane cycle under the job object once the run budget frees (from about 22:17 on 11-09); read dispatch 42749327744 (RM-2082); the stranded S144-Q-173 files in rc-lane-queue; the gated full-box suite and the next landing.
+
+---
+
 # 2026-11-09b - session 157: RM-723 Linux CI red fixed forward in the TEST (`f5e48a27d`), RM-2075 KIT v20 line reconciled (`f2f40f47f`), NOTHING PUSHED (no operator yes; gated-suite line unmet)
 
 - **C2 RM-723 (LEDGER 2095):** the 4 ids of `tests/test_task_xml_templates_rm723.py` red on Linux CI because the test joined Windows targets onto the host root; now rendered under a fixed Windows root and mapped by parts. Verifier: Linux 0/4 -> 5/0, Windows 28 passed. Renderer and `ops/*.xml` untouched.
@@ -26,15 +36,3 @@
 - **Ops:** run budget reset 228 -> 0 (cap 500); route repointed with fallback armed (RM-2074 / RM-2075); RC daily ceiling $1000 (MAIN); client relaunched via explorer + product-launcher API (CLI arg crashed the UX).
 - **Do NOT redo:** the lane landing, the slice merges, the cifix, suite-2 run D, push 2, the client relaunch.
 - **Next:** lane/repo reconcile (lane lock held or rotator stopped; drop the rival RM-723 pair, cherry-pick S144-P-468..484); the kit-defect note to MAIN (operator ask); RM-2075 KIT v20 line; atlas DS count; DS :8860 ENGINE 1.291.0 at next app launch.
-
----
-
-# 2026-11-08 - session 155: gated suite GREEN twice (-n 6 on 47075c685, -n 4 on d86c2e2f5, both operator-ordered), PUSHED 64951a903..d86c2e2f5 in two operator-approved pushes, hosted ci GREEN with the full dual suite (RM-2037 / RM-2041 / RM-1657 / RM-2036 CLOSED), lanes resumed after the billing renewal, RM-1267 CLOSED
-
-- **Suites (LEDGER 2077):** C1 on `47075c685` at -n 6: 69420 passed, exit 0; C10 -n 6 on `d86c2e2f5` killed at 79 percent by Claude Code's low-memory background-shell reaper (4.3 GB free, 5 lanes live), C11 found no failure; C12 -n 4 on `d86c2e2f5`: 69420 passed in 0:22:15, exit 0.
-- **Pushes (operator yes, each):** `64951a903..47075c685` then `47075c685..d86c2e2f5`; pre-push dry runs clean (sweep ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO); bot_merge_check exit 0; contributors clean; PRs #30 / #31 self-closed; refs c3-pr30 / c3-pr31 deleted.
-- **Hosted:** ci 42510026781 on `47075c685` green incl. the full dual suite (68988 passed, 0 failed, step 41m05s); nightly 42491619408 on the pre-fold `64951a903` read the 27 folded reds by name; ci 42513898158 on `d86c2e2f5` green (slice).
-- **Lanes:** billing renewed (operator); probe rc 0; rotator pid 34304 restarted, lanes live. RM-1267 CLOSED `f1954a39d` (repo sonnet to 2026-12-08; ds / research opus); RM-2049, RM-2050 filed; RM-1269 OPEN (RM-1266 DST reds); note to MAIN 1/1 (`a438f16e1`).
-- **/done:** commits LOCAL by operator ruling (exactly two pushes approved). New Dependabot PR #32 (pip group) open.
-- **Do NOT redo:** the two suites, the two pushes, the four row closes, RM-1267, the billing probe / rotator restart, the MAIN note.
-- **Next:** the operator's yes for the push of /done's commits (a gated suite on that sha first, LEDGER 2047); a standing -n ruling while lanes run; the lane landing (repo 104, true-audit 50, uiux 49, gated 21, queue 19, research 5).

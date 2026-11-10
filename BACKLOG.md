@@ -7,6 +7,11 @@ _Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-
 
 ---
 
+## S158 filings (2026-11-09) - RM-2082..RM-2083, indexed in ROADMAP NOW (filed by the s158 /done executor from the session's C1 CI read and C9 lane fix)
+
+- **RM-2082 OPEN (CI watch; Tier-1 test, suspected flake; gated: the next hosted full run) - `tests/snapshot_panels/test_champ_select_build_chooser_keyboard.py::test_the_focus_ring_is_never_clipped[sr]` red once on a hosted full run.** ci dispatch 42734265057 on `50e5ad38f`: 1 failed, 75549 passed, AssertionError `('sr', 0)` at line 268; the aram and arena variants passed, and the same id passed on both earlier full runs on `843a79730`. Acceptance: read it on the next full runs (s158 dispatch 42749327744, then the nightly). A second red, in any shape, makes it real: root-cause why the [sr] chooser reports 0 for the focus ring and fix the code, not the assertion. Two further greens close it as a flake, citing the run ids.
+- **RM-2083 OPEN (lanes; Tier-1 `ops/loop/`; gated: none) - the rolling-hour start pace caps total lane starts, not one lane's share.** The s158 C9 Fix B (`ops/loop/lane_run_ledger.py`, landed `5f498779e`) paces the rotator to (cap - reserve) // 24 = 16 starts per rolling 60 minutes; the C9 simulation with the least-recently-started pick still gave the repo lane 52 percent of starts. Acceptance: a per-lane hourly start limit (or a fair-share pick) with a test that one always-ready lane cannot exceed its share of a simulated hour, then a read of `ops/loop/control/lane_prompts/s144_rotator.log` after a day of live starts.
+
 ## S156 C9 merger filings (2026-11-08) - RM-2058..RM-2081, indexed in ROADMAP NOW (the slice and merger follow-ups of the s156 landing, filed by the C9 merger; next free RM-2082)
 
 - **RM-2058 OPEN (S4 skins; Tier-1 UI, UI-audit owed; gated: none) - no dashboard surface reads GET /api/skins yet.** Build the skins / chromas picker on `core/skins.py` + `dashboard/routes_skins.py` (spec `docs/SKINS_CHROMAS.md`), with the 5-phase UI fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY) before commit.

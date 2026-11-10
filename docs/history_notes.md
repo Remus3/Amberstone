@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-08 - session 155: gated suite GREEN twice (-n 6 on 47075c685, -n 4 on d86c2e2f5, both operator-ordered), PUSHED 64951a903..d86c2e2f5 in two operator-approved pushes, hosted ci GREEN with the full dual suite (RM-2037 / RM-2041 / RM-1657 / RM-2036 CLOSED), lanes resumed after the billing renewal, RM-1267 CLOSED
+
+- **Suites (LEDGER 2077):** C1 on `47075c685` at -n 6: 69420 passed, exit 0; C10 -n 6 on `d86c2e2f5` killed at 79 percent by Claude Code's low-memory background-shell reaper (4.3 GB free, 5 lanes live), C11 found no failure; C12 -n 4 on `d86c2e2f5`: 69420 passed in 0:22:15, exit 0.
+- **Pushes (operator yes, each):** `64951a903..47075c685` then `47075c685..d86c2e2f5`; pre-push dry runs clean (sweep ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO); bot_merge_check exit 0; contributors clean; PRs #30 / #31 self-closed; refs c3-pr30 / c3-pr31 deleted.
+- **Hosted:** ci 42510026781 on `47075c685` green incl. the full dual suite (68988 passed, 0 failed, step 41m05s); nightly 42491619408 on the pre-fold `64951a903` read the 27 folded reds by name; ci 42513898158 on `d86c2e2f5` green (slice).
+- **Lanes:** billing renewed (operator); probe rc 0; rotator pid 34304 restarted, lanes live. RM-1267 CLOSED `f1954a39d` (repo sonnet to 2026-12-08; ds / research opus); RM-2049, RM-2050 filed; RM-1269 OPEN (RM-1266 DST reds); note to MAIN 1/1 (`a438f16e1`).
+- **/done:** commits LOCAL by operator ruling (exactly two pushes approved). New Dependabot PR #32 (pip group) open.
+- **Do NOT redo:** the two suites, the two pushes, the four row closes, RM-1267, the billing probe / rotator restart, the MAIN note.
+- **Next:** the operator's yes for the push of /done's commits (a gated suite on that sha first, LEDGER 2047); a standing -n ruling while lanes run; the lane landing (repo 104, true-audit 50, uiux 49, gated 21, queue 19, research 5).
+
+---
+
 # 2026-11-07c - session 154: all 27 reds of ci 42427610342 folded locally (C1a/b/c), C6 rune-tabs focus product fix, PRs #30 / #31 re-applied locally (anthropic 2.5.0 declined), STASH-GC decided; gated suite NOT run (RAM line out of reach), NOTHING PUSHED
 
 - **Folds (each CONFIRMED by an independent verifier; LEDGER 2075):** C1a `e09c9860a` `5b344557b` `15d15b253` (snapshot layout, icon stand-in, badge token, mains mock, SF Mono); C1b `af90020e2` `3c2eb9446` (shared `tests/_crlf_text_layer.py`, 13 LF modules); C1c `caa22a035` `9cc7065d3` (RM-2037 xdist subprocess cases, self-scan of 14 spellings).
