@@ -151,6 +151,7 @@ class DraftSide:
                           off-lane matchups are typically 0 because
                           the data is too sparse to be informative).
     """
+
     champ_ratings: tuple[float, ...]
     pair_ratings: tuple[float, ...]
     matchup_ratings: tuple[float, ...] = ()
@@ -240,6 +241,7 @@ class Contribution:
     Elo-rating credit to the ALLY team_score. ``n`` is the raw game
     count from the underlying smoothed-rate query.
     """
+
     kind: str
     a: int
     b: int

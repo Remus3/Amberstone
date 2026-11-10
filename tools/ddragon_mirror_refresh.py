@@ -273,6 +273,7 @@ class Asset:
 
     ``rel_dest`` is the path under ``web/data/ddragon/<ver>/`` (forward slashes).
     """
+
     cls: str
     url: str
     rel_dest: str

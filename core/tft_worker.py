@@ -88,6 +88,7 @@ class TftWorkerResult:
       pulse_ts     - worker liveness timestamp (monotonic)
       last_success - monotonic timestamp of most recent successful read
     """
+
     __slots__ = ("end_signal", "last_success", "pulse_ts", "state")
 
     def __init__(

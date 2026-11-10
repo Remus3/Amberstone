@@ -138,6 +138,7 @@ _DAY = 86400.0
 @dataclass(frozen=True)
 class VodRow:
     """One file in scope. None means UNKNOWN for marks / win / created_at."""
+
     match_id: str
     path: str
     kind: str = KIND_RECORDING

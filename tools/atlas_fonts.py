@@ -81,6 +81,7 @@ class Sfnt(NamedTuple):
     A NamedTuple, not a dataclass: the tests load this file by path without
     registering it in sys.modules, which a dataclass with postponed
     annotations cannot survive."""
+
     flavor: int
     tables: dict[str, bytes]
     checksums: dict[str, int]

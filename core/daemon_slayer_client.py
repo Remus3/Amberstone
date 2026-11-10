@@ -863,6 +863,7 @@ def rank_for(
 class TankRankedItem:
     """Mirror of ``agents.daemon_slayer.ehp.EhpRankedItem`` - EHP scorer
     Phase 1 sibling of ``RankedItem``."""
+
     item_id: str
     item_name: str
     delta_ehp: float
@@ -1484,6 +1485,7 @@ class BruiserRankedItem:
     normalized percentage gains. ``delta_dps`` + ``delta_ehp`` are raw
     deltas exposed for transparency.
     """
+
     item_id: str
     item_name: str
     delta_dps: float
@@ -1701,6 +1703,7 @@ class MageRankedItem:
     ``delta_ability_dps`` is the raw total-ability-DPS gain over the
     baseline; ``ability_dps_per_1k_gold`` is the efficiency view.
     """
+
     item_id: str
     item_name: str
     delta_ability_dps: float
@@ -1906,6 +1909,7 @@ class AssassinRankedItem:
     ``delta_burst`` is the total-burst-damage gain over the baseline;
     ``burst_per_1k_gold`` is the efficiency view.
     """
+
     item_id: str
     item_name: str
     delta_burst: float
@@ -2325,6 +2329,7 @@ class EnchanterRankedItem:
     """Mirror of ``agents.daemon_slayer.hps.HpsRankedItem`` - HPS scorer
     Phase 6 sibling of ``RankedItem`` / ``TankRankedItem`` / ``BruiserRankedItem``
     / ``MageRankedItem`` / ``AssassinRankedItem``."""
+
     item_id: str
     item_name: str
     delta_hps: float
@@ -2482,6 +2487,7 @@ class OnhitRankedItem:
     row (RM-1003): a string becomes a one-tuple, a list or tuple keeps only
     its string elements, and anything else becomes ``()``.
     """
+
     item_id: str
     item_name: str
     gold: int

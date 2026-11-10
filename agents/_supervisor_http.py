@@ -155,6 +155,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
     idle client held its request thread indefinitely. Never a class-level
     ``timeout``: it is per receive and lasts the whole connection (RM-152).
     """
+
     _DENYLIST_NAMES: ClassVar[set] = {".env", ".git", ".htpasswd", "secrets.json",
                        "api-key-claude.txt", "credentials.json"}
     host_refusal_log = log
@@ -1221,6 +1222,7 @@ class _RequestThread(threading.Thread):
 class _WebServer(socketserver.ThreadingTCPServer):
     """Wraps the supervisor handle so HTTP handlers can access the
     scheduler + ephemeral-spawn closure."""
+
     daemon_threads = True
     supervisor: "Supervisor"
     # RM-738: a thread start normally takes well under a millisecond.
