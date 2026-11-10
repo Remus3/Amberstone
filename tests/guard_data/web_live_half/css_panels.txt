@@ -71,7 +71,7 @@ ef77149fff6a74703ab1d50b6d61481b75394cfedf054b5d98a53553613a7357  web/css/panels
 
 02eb1e47e58d52f648b6138c24572b08cbe4ffd27e52b6df05360377854b6705  web/css/panels/next_buy.css
 
-24cdd38b12144391d740832772320d0b8e2cc86481af092677c6e7617fe7e05f  web/css/panels/objective_chips.css
+9f61848b69713a5f9c27f24a3c73f90fd4cc658fe67774b8bc27abada439ca96  web/css/panels/objective_chips.css
 
 93d4512916f085a4f72fa9c4a71d39e37d3143eba8fd7d3585eaeb4b2937179d  web/css/panels/objective_gauges.css
 

@@ -5,7 +5,8 @@
  * Overlay-only - the base rule hides it on the 1920 dashboard (which shows
  * objective timing in the full map pane); only body[data-shell="overlay"]
  * shows it, and only when objective_chips.js clears [hidden] (a respawn is
- * pending). GPU-light: text chips, no animation. Colors from tokens.css.
+ * pending). GPU-light: text chips, no animation. Colors: the --signal-*
+ * tokens, which overlay.css section 0 re-points to the --ovx-* palette.
  */
 
 .obj-chips {
@@ -35,6 +36,15 @@ body[data-shell="overlay"] .obj-chips[hidden] {
   line-height: 1.2;
   border: 1px solid transparent;
   white-space: nowrap;
+  /* S144-U-301: every chip sits on the inset-row backing every overlay widget
+   * row uses (--ovx-bg-nested at 0.9); the hue rides the ink and the border.
+   * The old per-objective tints (a 0.15 wash of the hue, 0.18 green when up)
+   * LIGHTENED the call pane under the ink: 4.94 - 6.92:1 live, but 3.62:1
+   * (DRAKE, arcane) to 4.72:1 in the idle recede (widget opacity 0.85) over a
+   * white game pixel, every chip state under 4.5:1 in five of six themes.
+   * After: 6.21:1 live, 4.71:1 idle worst (HERALD, the --signal-dim tier),
+   * every theme. Guard: tests/snapshot_panels/test_overlay_league_text_contrast.py. */
+  background: rgba(var(--ovx-bg-nested), 0.9);
 }
 
 .obj-chips .obj-eta {
@@ -45,17 +55,14 @@ body[data-shell="overlay"] .obj-chips[hidden] {
 .obj-chips .obj-chip.baron {
   color: var(--signal-info);
   border-color: var(--signal-info);
-  background: rgba(138, 140, 240, 0.15);
 }
 .obj-chips .obj-chip.dragon {
   color: var(--signal-gold);
   border-color: var(--signal-gold);
-  background: rgba(245, 184, 124, 0.15);
 }
 .obj-chips .obj-chip.herald {
   color: var(--signal-dim);
   border-color: var(--signal-dim);
-  background: rgba(138, 142, 156, 0.15);
 }
 
 /* UP NOW: the objective is available to contest - brighten every up chip to the
@@ -63,5 +70,4 @@ body[data-shell="overlay"] .obj-chips[hidden] {
 .obj-chips .obj-chip.is-up {
   color: var(--signal-good);
   border-color: var(--signal-good);
-  background: var(--signal-good-soft);
 }

@@ -371,6 +371,9 @@ Audit (2026-11-10, s144 uiux cycle 291, S144-U-299, the same detector):
     the idle flip starts). Its dashboard case reads no theme swap either
     (?theme= at boot) and adds the same sheet. It joins the contrast pin
     below.
+    Its objective-chip case (cycle 293, S144-U-301) boots ?overlay=1
+    without ui_mock on a static live envelope, waits for the three chips'
+    text, and adds the same sheet before its two reads; it swaps no theme.
 This module pins all seventy-six verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
