@@ -332,7 +332,28 @@ detector), the s144 uiux module of S144-U-288:
     and its widget's opacity in one evaluate live and one idle (the sheet
     also stops the widget's own opacity transition the idle flip starts).
     It joins the contrast pin below.
-This module pins all seventy verdicts at runtime with each test's own opener,
+Audit (2026-11-10, s144 uiux cycle 289, S144-U-297, the same
+detector), the three s144 uiux modules of S144-U-293 / U-295 / U-296 (each
+landed on the lane without joining this audit, so the inventory test below
+was red) and the module of S144-U-297:
+  - test_tft_last_match_baseline_contrast (U-293),
+    test_tft_active_match_theme_contrast (U-295): boot-stamped (?theme=,
+    under ?ui_mock=1), never swap in-page; each waits for its card, adds
+    the transitions-off sheet, then reads in one evaluate. They join the
+    contrast pin below.
+  - test_tft_strip_hp_band_colour (U-296): boot-stamped (?theme=), never
+    swaps in-page; it adds the sheet after the live fallback paints, then
+    reads the strip's HP value at each live tick (36 / 13 / 70 HP), each
+    read after two animation frames. It joins the contrast pin below on
+    its first size.
+  - test_overlay_tft_hp_band_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the TFT vitals HP cell to carry its band
+    on the live ?overlay=1 route (no mock, a real crit / low HP), adds the
+    transitions-off sheet, then reads the HP value's ink, its backing
+    chain and its widget's opacity in one evaluate live and one idle (the
+    widget's own opacity transition is also switched off inline for that
+    read). It joins the contrast pin below.
+This module pins all seventy-four verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -421,7 +442,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The seventy modules audited above, keyed by file name.
+# The seventy-four modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_empty_line_contrast.py",
@@ -474,6 +495,7 @@ _COVERED = {
     "test_overlay_empty_caption_contrast.py",
     "test_overlay_hotkey_hint_contrast.py",
     "test_overlay_lead_bar_contrast.py",
+    "test_overlay_tft_hp_band_contrast.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_pgr_text_contrast.py",
     "test_replay_match_row_text_contrast.py",
@@ -481,6 +503,9 @@ _COVERED = {
     "test_session_text_contrast.py",
     "test_settings_checkbox_hit_targets.py",
     "test_tab_bars_selected_state.py",
+    "test_tft_active_match_theme_contrast.py",
+    "test_tft_last_match_baseline_contrast.py",
+    "test_tft_strip_hp_band_colour.py",
     "test_theme_signal_prim_hue.py",
     "test_theme_soft_token_hue.py",
     "test_ui_mock_active_match_build_eyebrows.py",
@@ -1286,12 +1311,12 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The thirty-five contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# The thirty-nine contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
 # U-242, U-243, U-245, U-250, U-251, U-253, U-255, U-269, U-272, U-275,
-# U-277, U-278, U-279, U-280, U-281, U-288):
+# U-277, U-278, U-279, U-280, U-281, U-288, U-293, U-295, U-296, U-297):
 # each one's _measure extra arguments after (mock_server, pw_browser, theme),
 # taken from its own constants (its first viewport, its first mode, the TFT
-# footer state, the mixed Session scenario, its first surface).
+# footer state, the mixed Session scenario, its first surface, its first size).
 _CONTRAST = {
     "test_am_empty_line_contrast": ("mode", "vp"),
     "test_am_map_roster_state_contrast": (),
@@ -1320,16 +1345,20 @@ _CONTRAST = {
     "test_overlay_empty_caption_contrast": ("surface",),
     "test_overlay_hotkey_hint_contrast": ("mode",),
     "test_overlay_lead_bar_contrast": (),
+    "test_overlay_tft_hp_band_contrast": (),
     "test_pgr_text_contrast": ("mode", "vp"),
     "test_replay_match_row_text_contrast": (),
     "test_session_hygiene_inert_contrast": ("vp", "scenario"),
     "test_session_text_contrast": ("vp",),
+    "test_tft_active_match_theme_contrast": ("mode",),
+    "test_tft_last_match_baseline_contrast": (),
+    "test_tft_strip_hp_band_colour": ("size",),
     "test_ui_mock_active_match_build_eyebrows": ("surface",),
     "test_ui_mock_active_match_complete": (),
     "test_user_builds_text_contrast": ("vp",),
     "test_zoi_debug_readout": ("vp",),
 }
-# The twenty-seven whose opener adds the sheet before its first interaction.
+# The thirty-one whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
@@ -1353,9 +1382,13 @@ _CONTRAST_SHEETED = (
     "test_overlay_empty_caption_contrast",
     "test_overlay_hotkey_hint_contrast",
     "test_overlay_lead_bar_contrast",
+    "test_overlay_tft_hp_band_contrast",
     "test_pgr_text_contrast",
     "test_replay_match_row_text_contrast",
     "test_session_hygiene_inert_contrast",
+    "test_tft_active_match_theme_contrast",
+    "test_tft_last_match_baseline_contrast",
+    "test_tft_strip_hp_band_colour",
     "test_user_builds_text_contrast",
     "test_zoi_debug_readout",
 )
@@ -1486,7 +1519,8 @@ def _contrast_run(mock_server, pw_browser, name, theme, **opts):
     mod = importlib.import_module(f"tests.snapshot_panels.{name}")
     pick = {"vp": lambda: mod._VIEWPORTS[0], "mode": lambda: mod._MODES[0],
             "fixture": lambda: "tft", "scenario": lambda: "mixed",
-            "surface": lambda: sorted(mod._SURFACES)[0]}
+            "surface": lambda: sorted(mod._SURFACES)[0],
+            "size": lambda: mod._SIZES[0]}
     extra = [pick[axis]() for axis in _CONTRAST[name]]
     rec = {"reads": 0, "running": [], "reclass_running": [], "reclassed": 0,
            "dropped": 0,

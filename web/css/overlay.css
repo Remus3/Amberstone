@@ -32,6 +32,10 @@ body[data-shell="overlay"] {
    * over a white game pixel (arcane), under the WCAG 1.4.11 3:1 non-text floor;
    * this reads 3.41:1 or better idle, 4.59:1 or better live, in every theme. */
   --ovx-red-ink: 235, 91, 111;   /* #EB5B6F */
+  /* S144-U-297: the same red as TEXT (the TFT vitals crit HP value, 18 px bold,
+   * under large-text size, so 4.5:1). --ovx-red reads 4.45:1 live and 3.36:1
+   * idle there; this reads 6.38:1 live and 4.71:1 idle, every theme. */
+  --ovx-red-text: 239, 118, 135; /* #EF7687 */
   --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.62) - palette section 5 */
   /* Damage-type hues (Y-07, external reference P): the threat donut renders in
    * the overlay build widget, so its hues join the overlay table (doctrine

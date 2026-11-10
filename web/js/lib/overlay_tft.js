@@ -389,8 +389,10 @@ export const TFT_OVERLAY_CSS = [
   'body[data-shell="overlay"] .ovt-panel .ovt-cell[data-band="low"] .ovt-val {',
   "  color: rgb(var(--ovx-warn));",
   "}",
+  // S144-U-297: crit takes --ovx-red-text, the red lifted to the 4.5:1 text
+  // floor in the idle recede (--ovx-red read 3.36:1 idle on this backing).
   'body[data-shell="overlay"] .ovt-panel .ovt-cell[data-band="crit"] .ovt-val {',
-  "  color: rgb(var(--ovx-red));",
+  "  color: rgb(var(--ovx-red-text));",
   "}",
   'body[data-shell="overlay"] .ovt-panel .ovt-units {',
   "  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));",

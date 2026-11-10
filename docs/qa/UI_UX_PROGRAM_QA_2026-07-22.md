@@ -2406,3 +2406,23 @@ DONE 2026-11-06 (s144 uiux cycle 167, S144-U-177, Tier-1 CSS + snapshot guard). 
   - Red on the old CSS: 12 of 24 (every paint case). Green: 24 of 24.
 - `tests/guard_data/web_live_half/css_panels.txt` was re-captured; only the active_match.css row moved.
 - Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).
+
+### S144-U-297 - the TFT overlay vitals HP value at crit reaches AA live and in the idle recede, instead of 4.45:1 live and 3.36:1 idle (s144 uiux cycle 289)
+- Picked from cycle 288's NEXT CANDIDATE: no test rendered a banded vitals cell's contrast (the S144-U-273 pin reads the "-" placeholder only).
+- Defect measured headless (snapshot harness, the live TFT overlay route `?overlay=1&theme=<t>`, 1920x1080, six themes, the tft_overlay_live payload at real tft_qa readings from run 20261025-104400: 17 HP crit, 30 HP low):
+  - The HP value is `--fs-sm` (18 px) at 700. That is under the 18.66 px bold large-text size, so its floor is 4.5:1, not 3:1.
+  - The crit rule (`overlay_tft.js` `.ovt-cell[data-band="crit"] .ovt-val`) painted `--ovx-red` itself, rgb(232, 64, 87). On the cell's 0.9 `--ovx-bg-nested` backing over the 0.58 frame it read 4.45:1 live and 3.36:1 in the idle recede (widget opacity 0.85) over a white game pixel, in every theme (the overlay palette is theme-invariant).
+  - So the one number the vitals widget exists to shout at crit HP was the one value on it under AA.
+  - The low band (`--ovx-warn`) reads 8.17:1 live and 5.82:1 idle. No defect; pinned as it is.
+- RULING: a new overlay token `--ovx-red-text` (239, 118, 135), the `--ovx-red` hue (351.6 vs 351.8 deg) lifted in lightness only (HLS L 0.58 -> 0.70). It is the text-floor sibling of S144-U-275's non-text `--ovx-red-ink`. The crit HP value paints it. After: 6.38:1 live, 4.71:1 idle, every theme. `--ovx-red` itself is unchanged, so every other red use is untouched.
+  - Rejected: `--ovx-red-ink` (5.25 live, 3.96 idle, still under 4.5 idle); L 0.69 (4.58 idle, a 0.08 margin); L 0.72 (5.03 idle, but lighter than it needs to be and drifting toward pink); exempting a crit vitals widget from the idle recede (a behaviour change to the shared idle rule; this cycle changes colour only, as S144-U-275 ruled); white text on a red pill (a box change on the glance-budget widget for what one token fixes).
+- 5-phase audit (headless Chromium, the live overlay route, 1920x1080, six themes):
+  - STRUCTURE: colour only. No DOM, box or class change; `test_overlay_tft_view.py` no-reflow and keep-out cases green.
+  - TYPOGRAPHY: the HP value keeps 18 px / 700, equal to the unbanded PLACE value beside it (pinned).
+  - HIT-TARGETS: the vitals widget stays click-through; nothing in it is interactive.
+  - ASCII: 0 non-ASCII and 0 CR in every touched file; `tools/web_ascii_sweep.py --dry-run` finds 0 comment-span glyphs.
+  - HIERARCHY: crit keeps the `--ovx-red` hue within 2 deg (the ONE emergency pop-out, doctrine rule 4; the lobby crit chips stay `--ovx-warn`, RM-950), low keeps `--ovx-warn`'s hue, the two stay more than 20 deg apart, and each band differs from the neutral PLACE ink.
+- Pin: new `tests/snapshot_panels/test_overlay_tft_hp_band_contrast.py` (16): six themes x two bands at AA live and idle over five game pixels, with the band stamped by the real render from the real HP; the hue / hierarchy case in hextech and arcane; the colour-only case per band. Red on the old CSS: 6 of 16 (every crit AA case, 4.45:1 live). Green: 16 of 16.
+- Registered in the RM-1132 theme-swap audit (`test_theme_swap_reads_settled.py`). Found while registering: the inventory test there was already red on the lane, because S144-U-293 (`test_tft_last_match_baseline_contrast`), S144-U-295 (`test_tft_active_match_theme_contrast`) and S144-U-296 (`test_tft_strip_hp_band_colour`) landed without joining the audit. All four join now: seventy-four modules, thirty-nine contrast, thirty-one sheeted; the contrast probe gains a `size` axis (its first size) for the strip pin. Each new module's reads are settled in all six themes.
+- `tests/guard_data/web_live_half/css_other.txt` (overlay.css row) and `js_lib.txt` (overlay_tft.js row) re-captured.
+- Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).
