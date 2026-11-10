@@ -295,5 +295,5 @@ def test_gold_per_table_is_the_component_price_per_unit():
     by_key = {key: gold / value for _, _, gold, key, value in _COMPONENTS}
     for key, per in kc._GOLD_PER.items():
         assert per == pytest.approx(by_key[key]), key
-    assert kc._GOLD_PER_AS == pytest.approx(by_key["PercentAttackSpeedMod"])
-    assert kc._GOLD_PER_CRIT == pytest.approx(by_key["FlatCritChanceMod"])
+    assert pytest.approx(by_key["PercentAttackSpeedMod"]) == kc._GOLD_PER_AS
+    assert pytest.approx(by_key["FlatCritChanceMod"]) == kc._GOLD_PER_CRIT

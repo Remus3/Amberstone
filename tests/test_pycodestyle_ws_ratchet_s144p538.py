@@ -36,7 +36,6 @@ _BASELINE: dict[str, int] = {
     "ops/rc_supervisor.py": 1,                 # FROZEN (CLAUDE.md frozen list): a trailing blank line
     "tft/tft_coach_engine.py": 1,              # unscheduled (BACKLOG RM-381 holds this file this session)
     "tools/run_packaged_smoke.py": 1,          # PKG, main session owns
-    "web_dashboard.py": 1,                     # another lane branch (lane/true-audit) changed it
     "agents/daemon_slayer/ability_dps.py": 1,  # another lane branch (lane/ds) changed it
     "coaches/replay_coach.py": 1,              # another lane branch (lane/true-audit) changed it
 }

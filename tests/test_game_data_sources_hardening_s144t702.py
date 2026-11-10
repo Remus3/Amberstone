@@ -197,7 +197,7 @@ def test_every_source_parse_raises_only_source_parse_error_on_junk():
         names = list(src.urls("16.1.1"))
         for junk in junk_values:
             try:
-                src.parse({n: junk for n in names})
+                src.parse(dict.fromkeys(names, junk))
             except gd_sources.SourceParseError:
                 pass
 
@@ -211,7 +211,7 @@ def test_fetch_names_the_source_when_a_body_is_structurally_junk(tmp_path, monke
     }
     ddragon = [s for s in gd_sources.SOURCES if s.id == "ddragon"]
     monkeypatch.setattr(gd_fetch, "_get", lambda _client, url: bodies[url])
-    with pytest.raises(gd_fetch.MissingSourceError, match="^ddragon: "):
+    with pytest.raises(gd_fetch.MissingSourceError, match=r"^ddragon: "):
         gd_fetch.fetch(None, client=object(), cache_dir=tmp_path, sources=ddragon)
     assert not any(tmp_path.rglob("*.body"))  # a bad body is never cached
 

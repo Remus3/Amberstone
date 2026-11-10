@@ -49,8 +49,7 @@ def _text(desc: str) -> str:
 
 @pytest.fixture(scope="module")
 def order() -> list[str]:
-    if not _DDRAGON_ROOT.is_dir():
-        pytest.skip("no vendored DDragon snapshots")
+    assert _DDRAGON_ROOT.is_dir(), "no vendored DDragon snapshots"
     patches = [c.name for c in _DDRAGON_ROOT.iterdir() if c.is_dir() and (c / "item.json").is_file()]
     patches.sort(key=lambda p: tuple(int(x) for x in p.split(".")))
     assert patches, "no vendored item.json"

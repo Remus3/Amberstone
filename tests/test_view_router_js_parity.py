@@ -136,6 +136,7 @@ def _run_js(cases: list[list], tmp_path: Path) -> dict:
         input=json.dumps({"cases": cases, "views": VIEWS}),
         capture_output=True, text=True, timeout=120,
         creationflags=_CREATE_NO_WINDOW,
+        check=False,
     )
     assert done.returncode == 0, done.stderr[-2000:]
     return json.loads(done.stdout)

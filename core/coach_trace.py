@@ -252,7 +252,7 @@ def _trim() -> None:
 def _nonfinite_to_none(_token: str) -> None:
     """json parse_constant hook: a legacy NaN / Infinity token reads as None,
     so one old line cannot 500 the strict /api/coach/trace serialiser."""
-    return None
+    return
 
 
 def read_recent(limit: int = 50) -> list:

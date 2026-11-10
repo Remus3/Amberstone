@@ -65,7 +65,7 @@ def test_default_usage_path_is_the_main_checkouts(tmp_path):
 
 def test_module_default_is_resolved_through_main_checkout():
     from core.claude_project import main_checkout
-    assert lum.USAGE == main_checkout(ROOT) / lum.USAGE_REL
+    assert main_checkout(ROOT) / lum.USAGE_REL == lum.USAGE
 
 
 # F2 ------------------------------------------------------------------------

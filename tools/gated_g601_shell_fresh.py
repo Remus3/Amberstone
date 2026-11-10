@@ -253,8 +253,8 @@ def source_bound(repo: Path, run=subprocess.run) -> dict:
         ct = _parse_ts(parts[1])
         out["commit_time"] = ct.isoformat() if ct else None
     newest = None
-    for rel in (files.stdout or "").splitlines():
-        rel = rel.strip()
+    for raw_rel in (files.stdout or "").splitlines():
+        rel = raw_rel.strip()
         if not rel:
             continue
         try:

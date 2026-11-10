@@ -267,7 +267,7 @@ def test_snippet_parses_as_javascript(tmp_path):
     p = tmp_path / "snippet.mjs"
     p.write_text("export const f = " + g.SNIPPET + ";\n", encoding="utf-8")
     r = subprocess.run([node, "--check", str(p)], capture_output=True, text=True,
-                       timeout=60)
+                       timeout=60, check=False)
     assert r.returncode == 0, r.stderr
 
 
@@ -299,7 +299,7 @@ def _node_render(tmp_path, payload) -> dict:
                                       encoding="utf-8")
     (tmp_path / "run.mjs").write_text(NODE_HARNESS, encoding="utf-8")
     r = subprocess.run([node, str(tmp_path / "run.mjs"), json.dumps(payload)],
-                       capture_output=True, text=True, timeout=60, cwd=tmp_path)
+                       capture_output=True, text=True, timeout=60, cwd=tmp_path, check=False)
     assert r.returncode == 0, r.stderr
     return json.loads(r.stdout)
 
@@ -364,7 +364,7 @@ def test_stale_signature_trap_still_exists(tmp_path):
 
 def _cli(*args):
     return subprocess.run([sys.executable, str(TOOL), *args], capture_output=True,
-                          text=True, timeout=60, cwd=ROOT)
+                          text=True, timeout=60, cwd=ROOT, check=False)
 
 
 def test_cli_exit_codes(tmp_path):

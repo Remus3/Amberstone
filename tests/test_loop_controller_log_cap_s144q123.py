@@ -196,7 +196,7 @@ def test_loaded_by_absolute_path_the_cap_still_works(tmp_path):
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     proc = subprocess.run(
         [sys.executable, "-c", script, str(cfg)], cwd=str(tmp_path), env=env,
-        capture_output=True, text=True, timeout=120, creationflags=flags)
+        capture_output=True, text=True, timeout=120, creationflags=flags, check=False)
     assert proc.returncode == 0, proc.stderr[-2000:]
     assert "ROTATED True" in proc.stdout
     assert (control / "controller.log").read_text(

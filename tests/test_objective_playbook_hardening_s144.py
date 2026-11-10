@@ -1,4 +1,4 @@
-# Hardening tests for core/objective_playbook.py (s144 true-audit, S144-T-748..752).
+"""Hardening tests for core/objective_playbook.py (s144 true-audit, S144-T-748..752)."""
 #
 # The playbook row is built on the live SR coach tick from the eta-sorted
 # next_callouts list, the project_lead read and the vision_state.json fog
@@ -120,6 +120,8 @@ def test_tables_keep_their_entries() -> None:
 
 class _OddTag(str):
     """A str subclass equal to "dragon" whose str() lies."""
+
+    __slots__ = ()
 
     def __str__(self) -> str:  # pragma: no cover - called by the old code only
         return "x<script>"

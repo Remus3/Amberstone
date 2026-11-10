@@ -339,6 +339,10 @@ BOOT_SCAN_ALLOW = {
         frozenset({"schtasks"}),
         "FROZEN supervisor: `schtasks /Run RC-Phase3-Supervisor` of an existing task, "
         "breaker-bounded (plan S9); it creates no task"),
+    "tools/ds_keepalive.py": (
+        frozenset({"schtasks"}),
+        "`schtasks /Query` only: asks whether RC-DaemonSlayer is registered and stands "
+        "down while it is absent (true-audit S144-T-708); it creates and runs no task"),
 }
 
 

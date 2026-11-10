@@ -251,9 +251,9 @@ def test_prefix_unwrapped_ionice(words, expected):
     ("chrt", ["-f", "10", "bash"], ["bash"]),
     ("chrt", ["-o", "bash"], ["bash"]),
     ("taskset", ["-c", "0-2", "bash"], ["bash"]),
-    ("flock", ["-w", "5", "/tmp/l", "bash"], ["bash"]),
-    ("flock", ["/tmp/l", "-c", "git x"], ["sh", "-c", "git x"]),
-    ("flock", ["/tmp/l", "-c"], []),
+    ("flock", ["-w", "5", "/var/lock/l", "bash"], ["bash"]),
+    ("flock", ["/var/lock/l", "-c", "git x"], ["sh", "-c", "git x"]),
+    ("flock", ["/var/lock/l", "-c"], []),
     ("flock", ["9"], []),
     ("watch", ["-n", "5", "git", "commit"], ["sh", "-c", "git commit"]),
     ("watch", ["-x", "git", "commit"], ["git", "commit"]),
@@ -332,6 +332,6 @@ def test_the_last_su_command_wins():
 
 
 def test_the_readings_are_extra_only():
-    words = ["flock", "/tmp/l", "-c", "git commit -n"]
+    words = ["flock", "/var/lock/l", "-c", "git commit -n"]
     assert gate._launcher_scripts(words) == ["git commit -n"]
     assert gate._launcher_scripts(words, extra=False) == []

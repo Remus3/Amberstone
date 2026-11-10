@@ -91,6 +91,7 @@ def test_importing_the_module_loads_no_rotation_module(tmp_path):
     p = subprocess.run(
         [sys.executable, "-c", code, str(REPO / "ops" / "loop" / "headless_env.py")],
         cwd=str(tmp_path), capture_output=True, text=True, timeout=60,
+        check=False,
     )
     assert p.returncode == 0, p.stderr
     assert p.stdout.split() == ["[]", "False"]
@@ -257,6 +258,7 @@ def test_the_bare_script_run_rotates_an_oversize_log(tmp_path):
         [sys.executable, str(REPO / "ops" / "loop" / "headless_env.py"),
          "--url", "--caller", "e2e"],
         cwd=str(cwd), env=env, capture_output=True, text=True, timeout=60,
+        check=False,
     )
     assert p.returncode == he.EXIT_REFUSED, p.stderr
     assert Path(str(log_path) + ".1").read_bytes() == old

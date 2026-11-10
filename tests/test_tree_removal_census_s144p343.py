@@ -114,6 +114,8 @@ _UNLINK_CEILING = {
     "ops/rc_transactional_deploy.py": 6,
     "oss/win32_atomic_io/src/win32_atomic_io/_atomic.py": 1,
     "scripts/repair_tft_match_rows.py": 1,
+    # true-audit S144-T-692: _backup_db drops its own <final>.tmp-<pid> scratch backup when the copy or rename fails
+    "tools/backfill_match_ingest_misattribution.py": 1,
     "tools/bootstrap_env_check.py": 1,
     "tools/build_python_embed.py": 1,
     "tools/bytecode_hygiene.py": 1,  # RM-705: --apply removes the regenerable .pyc residue the dry run listed

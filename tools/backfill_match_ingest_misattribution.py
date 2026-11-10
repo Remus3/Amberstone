@@ -50,6 +50,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+# The backup's scratch -> final rename goes through the repo's one atomic
+# rename (bounded WinError 5 retry), as core/rofl_archive.py does for a file
+# another API wrote (RM-258 atomic-write guard).
+from core.polled_json import _replace_with_retry  # noqa: E402
+
 _DB = _ROOT / "data" / "match_history.db"
 
 # Tolerance window for matching gameEnd-unix against db.timestamp.
@@ -508,7 +516,7 @@ def _backup_db(db: Path, stamp: str) -> Path:
             raise RuntimeError(f"backup failed quick_check: {ok}")
         if final.exists():
             raise FileExistsError(f"backup name taken during the copy: {final}")
-        os.replace(tmp, final)
+        _replace_with_retry(tmp, final)
     except BaseException:
         tmp.unlink(missing_ok=True)
         raise

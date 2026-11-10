@@ -191,7 +191,7 @@ def test_a_row_after_a_torn_last_line_is_not_fused_onto_it():
     raw = path.read_bytes()
     assert raw.endswith(b"\n")
     records = load_records(path)
-    assert [r.get("game_id") for r in records][0] == "kept"
+    assert next(r.get("game_id") for r in records) == "kept"
     assert records[-1]["match_key"] == "k7"
     assert len(records) == 2
 

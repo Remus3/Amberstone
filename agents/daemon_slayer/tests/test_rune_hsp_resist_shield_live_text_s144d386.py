@@ -82,18 +82,15 @@ def _vendored() -> dict[str, dict[int, tuple[str, str, str]]]:
 
 @pytest.fixture(scope="module")
 def vendored() -> dict[str, dict[int, tuple[str, str, str]]]:
-    if not _DDRAGON_ROOT.is_dir():
-        pytest.skip("no vendored DDragon snapshots")
+    assert _DDRAGON_ROOT.is_dir(), "no vendored DDragon snapshots"
     return _vendored()
 
 
 @pytest.fixture(scope="module")
 def live(vendored) -> dict[int, tuple[str, str, str]]:
-    if not _CURRENT_TXT.exists():
-        pytest.skip("no data/daemon_slayer/current.txt")
+    assert _CURRENT_TXT.exists(), "no data/daemon_slayer/current.txt"
     patch = _CURRENT_TXT.read_text(encoding="utf-8").strip()
-    if patch not in vendored:
-        pytest.skip(f"no vendored runesReforged.json for {patch}")
+    assert patch in vendored, f"no vendored runesReforged.json for {patch}"
     return vendored[patch]
 
 

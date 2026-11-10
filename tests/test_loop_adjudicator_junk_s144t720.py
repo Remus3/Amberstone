@@ -404,7 +404,7 @@ def test_a_null_adjudicator_name_is_unset_not_a_vendor(adj):
 # --- F8: a non-path control_dir --------------------------------------------
 
 
-@pytest.mark.parametrize("raw", [5, ["x"], True, {"p": 1}, "/tmp/a\x00b"])
+@pytest.mark.parametrize("raw", [5, ["x"], True, {"p": 1}, "/srv/a\x00b"])
 def test_a_non_path_control_dir_is_the_default(adj, raw):
     want = _ADJ.resolve().parent / "control"
     assert adj._control_dir({"control_dir": raw}, None) == want

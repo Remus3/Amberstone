@@ -22,6 +22,7 @@ import math
 import pytest
 
 from ops.loop import proc_tree as PT
+from tests._module_view import bind_module_view, bind_subprocess
 
 
 class _FakeJob:
@@ -58,8 +59,8 @@ def recorder(monkeypatch):
     def fake_kill(pid, sig):
         calls["kill"].append((pid, sig))
 
-    monkeypatch.setattr(PT.subprocess, "run", fake_run)
-    monkeypatch.setattr(PT.os, "kill", fake_kill)
+    bind_subprocess(monkeypatch, PT, run=fake_run)
+    bind_module_view(monkeypatch, PT, "os", kill=fake_kill)
     return calls
 
 

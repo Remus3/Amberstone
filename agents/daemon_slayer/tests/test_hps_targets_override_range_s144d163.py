@@ -48,7 +48,7 @@ def test_the_build_really_scales_on_the_override(snap):
     assert _hps(snap, None).targets_per_proc_override is None
 
 
-@pytest.mark.parametrize("neg", (-1.0, -0.5, -5))
+@pytest.mark.parametrize("neg", [-1.0, -0.5, -5])
 def test_negative_reads_as_zero_targets(snap, neg):
     zero = _hps(snap, 0.0)
     got = _hps(snap, neg)

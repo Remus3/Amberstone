@@ -8,7 +8,8 @@ response variable). ``l`` is the one letter indistinguishable from ``1`` and ``I
 became ``left`` / ``top`` / ``right`` / ``bottom`` (or ``ln`` / ``lean`` / ``msg`` / ``lcu``): agents/_minimap_bbox.py,
 coaches/_base_coach.py, core/aram_comp_verdict.py, core/vision_profiles.py, core/vision_tesseract.py,
 tools/bootstrap_env_check.py, tools/match_monitor.py, tools/screen_agent.py. What is left is held in ``_BASELINE``
-(rel path -> count), which only shrinks: coaches/replay_coach.py belongs to another lane branch. The DS test file
+(rel path -> count), which only shrinks; it is empty since the s159 landing (the true-audit lane's
+coaches/replay_coach.py, held there while it sat on another lane branch, binds none). The DS test file
 agents/daemon_slayer/tests/test_engine_concurrency_p1l15.py (8 hits, the lambda default ``l=lvl``) became ``lv`` in
 S144-P-491.
 The 11 test files that held 13 hits became ``left`` / ``ln`` in S144-P-485 (tests/fu01_minimap/
@@ -42,10 +43,9 @@ pytestmark = pytest.mark.skipif(
     reason="ruff is not importable by this interpreter",
 )
 
-# replay_coach (the true-audit lane branch changed it). Only shrinks.
-_BASELINE = {
-    "coaches/replay_coach.py": 1,
-}
+# Empty since the s159 landing: the true-audit lane's coaches/replay_coach.py binds no ambiguous name, so its
+# row was dropped. Only shrinks; a new finding anywhere fails.
+_BASELINE: dict[str, int] = {}
 
 
 def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:

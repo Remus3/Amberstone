@@ -126,12 +126,11 @@ def _comment_files() -> list[Path]:
 
 
 def _patch_dir() -> Path:
-    if not _CURRENT_TXT.exists():
-        pytest.skip("no data/daemon_slayer/current.txt")
+    assert _CURRENT_TXT.exists(), "no data/daemon_slayer/current.txt"
     patch = _CURRENT_TXT.read_text(encoding="utf-8").strip()
     path = _DDRAGON_ROOT / patch
-    if not (path / "item.json").exists() or not (path / "runesReforged.json").exists():
-        pytest.skip(f"no vendored DDragon item.json / runesReforged.json for {patch}")
+    assert (path / "item.json").exists(), f"no vendored DDragon item.json for {patch}"
+    assert (path / "runesReforged.json").exists(), f"no vendored DDragon runesReforged.json for {patch}"
     return path
 
 

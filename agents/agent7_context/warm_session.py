@@ -35,6 +35,7 @@ non-final message). Pinned by tests/test_warm_session_true_audit_s144t719.py.
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from pathlib import Path
@@ -86,7 +87,7 @@ def _token_count(value: Any) -> int:
     """
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return 0
-    if value != value or value in (float("inf"), float("-inf")) or value < 0:
+    if (isinstance(value, float) and math.isnan(value)) or value in (float("inf"), float("-inf")) or value < 0:
         return 0
     return int(value)
 

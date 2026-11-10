@@ -61,24 +61,22 @@ from agents.daemon_slayer.tests.test_rune_hsp_resist_shield_live_text_s144d386 i
     _squash,
     _vendored,
 )
+from itertools import starmap
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
 
 @pytest.fixture(scope="module")
 def vendored() -> dict[str, dict[int, tuple[str, str, str]]]:
-    if not _DDRAGON_ROOT.is_dir():
-        pytest.skip("no vendored DDragon snapshots")
+    assert _DDRAGON_ROOT.is_dir(), "no vendored DDragon snapshots"
     return _vendored()
 
 
 @pytest.fixture(scope="module")
 def live(vendored) -> dict[int, str]:
-    if not _CURRENT_TXT.exists():
-        pytest.skip("no data/daemon_slayer/current.txt")
+    assert _CURRENT_TXT.exists(), "no data/daemon_slayer/current.txt"
     patch = _CURRENT_TXT.read_text(encoding="utf-8").strip()
-    if patch not in vendored:
-        pytest.skip(f"no vendored runesReforged.json for {patch}")
+    assert patch in vendored, f"no vendored runesReforged.json for {patch}"
     return {rid: row[2] for rid, row in vendored[patch].items()}
 
 
@@ -199,7 +197,7 @@ def _special_mismatches(live: dict[int, str]) -> list[str]:
         for level, melee, ranged in ((1.0, m_lo, r_lo), (18.0, m_hi, r_hi)):
             pairs.append((_c(8008, level, bonus_as=0.5), 1.5 * melee))
             pairs.append((_c(8008, level, role="ranged", bonus_as=0.5), 1.5 * ranged))
-        if not all(_close(a, b) for a, b in pairs):
+        if not all(starmap(_close, pairs)):
             out.append(f"8008: melee / ranged ends or the 1%-per-1% AS amp drift from live {lt}")
     af = _nums(
         r"Whileabove(\d+)%health,gainanadaptivebonusofupto(\d+)AttackDamageor(\d+)AbilityPower"
@@ -222,7 +220,7 @@ def _special_mismatches(live: dict[int, str]) -> list[str]:
             pairs.append((_c(8233, level, caster_hp_pct=g + 0.01), ad_end))
             pairs.append((_c(8233, level, ap=1.0, caster_hp_pct=g), 0.0))
             pairs.append((_c(8233, level, ap=1.0, caster_hp_pct=g + 0.01), ap_end))
-        if not all(_close(a, b) for a, b in pairs):
+        if not all(starmap(_close, pairs)):
             out.append(f"8233: grant ends or the {gate}% health gate drift from live {af}")
     gs = _nums(r"10min:\+(\d+)APor(\d+)AD", live[8236])
     if gs is None:

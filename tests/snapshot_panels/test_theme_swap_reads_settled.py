@@ -1565,7 +1565,7 @@ def _contrast_run(mock_server, pw_browser, name, theme, **opts):
     mod = importlib.import_module(f"tests.snapshot_panels.{name}")
     pick = {"vp": lambda: mod._VIEWPORTS[0], "mode": lambda: mod._MODES[0],
             "fixture": lambda: "tft", "scenario": lambda: "mixed",
-            "surface": lambda: sorted(mod._SURFACES)[0],
+            "surface": lambda: min(mod._SURFACES),
             "size": lambda: mod._SIZES[0], "lead": lambda: mod._LEADS[0]}
     extra = [pick[axis]() for axis in _CONTRAST[name]]
     rec = {"reads": 0, "running": [], "reclass_running": [], "reclassed": 0,
@@ -1623,7 +1623,7 @@ def test_contrast_modules_hold_their_sheet_and_no_sleep():
         src = (_HERE / f"{name}.py").read_text(encoding="utf-8")
         extra = _SHEET_EXTRA.get(name)
         want = _SHEET if extra is None else _SHEET.replace(" }", f" {extra} }}")
-        assert mod._SHEET == want, name
+        assert want == mod._SHEET, name
         assert "add_style_tag(content=_SHEET)" in src, name
 
 

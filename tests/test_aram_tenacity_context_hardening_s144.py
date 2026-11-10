@@ -85,7 +85,7 @@ def test_display_name_equal_to_another_id_keeps_the_id():
 
 # ---------------------------------------------------------------- junk shapes
 
-@pytest.mark.parametrize("raw", ["[]", "\"text\"", "5", "null"])
+@pytest.mark.parametrize("raw", ["[]", '"text"', "5", "null"])
 def test_non_object_document_is_empty_not_a_raise(tmp_path, monkeypatch, raw):
     monkeypatch.setattr(mod, "_DATA_DIR", _ds_dir(tmp_path, {}, raw=raw))
     assert mod._load_tenacity_map() == {}
@@ -149,8 +149,8 @@ def test_patch_token_escaping_to_a_real_snapshot_is_refused(tmp_path,
 # ---------------------------------------------------------------- values
 
 @pytest.mark.parametrize("bad", [
-    "NaN", "Infinity", "-Infinity", "true", "false", "0", "-1.2", "\"nan\"",
-    "\"inf\"", "[1.2]", "{}",
+    "NaN", "Infinity", "-Infinity", "true", "false", "0", "-1.2", '"nan"',
+    '"inf"', "[1.2]", "{}",
 ])
 def test_unusable_multiplier_is_neutral(tmp_path, monkeypatch, bad):
     raw = ('{"data": {"Bad": {"lolmath": {"aram_modifiers": '

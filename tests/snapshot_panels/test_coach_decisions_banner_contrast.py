@@ -52,6 +52,7 @@ import pytest
 from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_ds_cards_muted_text_contrast import _HELPERS
 from tests.snapshot_panels.test_ds_matchup_text_contrast import _ratio
+from itertools import starmap
 
 _THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
 _AA = 4.5
@@ -187,7 +188,7 @@ def _lum(c) -> float:
 def _worst(ln, fg_key="fg", bg_key="bg") -> float:
     pairs = list(zip(ln[fg_key], ln[bg_key]))
     assert pairs, ln
-    return min(_ratio(f, b) for f, b in pairs)
+    return min(starmap(_ratio, pairs))
 
 
 @pytest.mark.parametrize("theme", _THEMES)

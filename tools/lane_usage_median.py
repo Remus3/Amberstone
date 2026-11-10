@@ -109,7 +109,7 @@ def load_rows(path: Path, since, until=None) -> list[dict]:
     rows = []
     # utf-8-sig: a BOM written by an editor would otherwise make the first
     # line non-JSON and silently drop that row.
-    with open(path, encoding="utf-8-sig", errors="replace") as fh:
+    with Path(path).open(encoding="utf-8-sig", errors="replace") as fh:
         for line in fh:
             try:
                 row = json.loads(line)

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 
 import pytest
 
@@ -281,11 +282,13 @@ def test_failed_to_establish_needs_the_connection_phrase():
 def test_coach_error_record_points_at_the_handler_not_the_guard(caplog):
     with caplog.at_level(logging.ERROR, logger="coach"):
         _WriterCoach()._run_coach(ValueError("x"))
-    rec = [r for r in caplog.records if r.name == "coach"][0]
+    rec = next(r for r in caplog.records if r.name == "coach")
     assert rec.funcName == "_degrade"
 
 
 class _BadLowerStr(str):
+    __slots__ = ()
+
     def lower(self):
         raise RuntimeError("lower fails")
 
@@ -378,6 +381,6 @@ def test_no_out_attribute_is_a_quiet_no_op():
 
 
 def test_module_is_ascii_lf():
-    raw = open(sco.__file__, "rb").read()
+    raw = Path(sco.__file__).read_bytes()
     raw.decode("ascii")
     assert b"\r\n" not in raw

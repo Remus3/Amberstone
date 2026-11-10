@@ -55,7 +55,7 @@ def _put(path: Path, data: bytes) -> None:
     """Another controller's atomic write (what the old awrite did)."""
     tmp = path.with_name(path.name + ".other.tmp")
     tmp.write_bytes(data)
-    os.replace(tmp, path)
+    tmp.replace(path)
 
 
 def _stub_alive(monkeypatch, lc, on_dead=None):

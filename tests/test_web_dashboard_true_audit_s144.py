@@ -65,7 +65,7 @@ def hot_reload(monkeypatch):
 
     monkeypatch.setattr(mod, "start_watcher", _fake)
     mod._probe_calls = calls  # type: ignore[attr-defined]
-    yield mod
+    return mod
 
 
 def _no_live_watcher() -> None:
@@ -134,7 +134,7 @@ def test_reexport_table_is_not_vacuous():
 
 def test_vision_token_is_the_canonical_resolver_value(hot_reload):
     from core.vision_token import get_vision_token
-    assert _load()._VISION_TOKEN == get_vision_token()
+    assert get_vision_token() == _load()._VISION_TOKEN
 
 
 # --- finding 1: a watcher start failure never aborts the import ----------

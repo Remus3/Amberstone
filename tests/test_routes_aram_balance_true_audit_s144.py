@@ -180,7 +180,7 @@ def test_junk_patch_is_retried(ds_dir):
 
 def test_empty_grid_is_503_unavailable(ds_dir, monkeypatch):
     _write_patch(ds_dir, b"16.22.1")
-    monkeypatch.setattr(abc, "balance_grid_map", lambda: {})
+    monkeypatch.setattr(abc, "balance_grid_map", dict)
     status, body = _serve()
     assert status == 503
     assert body == {"ok": False, "error": "aram-balance unavailable - see logs"}
@@ -189,7 +189,7 @@ def test_empty_grid_is_503_unavailable(ds_dir, monkeypatch):
 def test_empty_grid_is_not_memoized(ds_dir, monkeypatch):
     _write_patch(ds_dir, b"16.22.1")
     real = abc.balance_grid_map
-    monkeypatch.setattr(abc, "balance_grid_map", lambda: {})
+    monkeypatch.setattr(abc, "balance_grid_map", dict)
     assert _serve()[0] == 503
     monkeypatch.setattr(abc, "balance_grid_map", real)
     status, body = _serve()
@@ -199,7 +199,7 @@ def test_empty_grid_is_not_memoized(ds_dir, monkeypatch):
 
 def test_empty_grid_logs_once(ds_dir, monkeypatch, caplog):
     _write_patch(ds_dir, b"16.22.1")
-    monkeypatch.setattr(abc, "balance_grid_map", lambda: {})
+    monkeypatch.setattr(abc, "balance_grid_map", dict)
     with caplog.at_level(logging.WARNING, logger="rc.web_dashboard"):
         for _ in range(3):
             assert _serve()[0] == 503

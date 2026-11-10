@@ -86,8 +86,7 @@ def mismatches(spells: dict[int, SummonerSpell], feed: dict[int, dict]) -> list[
 
 @pytest.fixture(scope="module")
 def order() -> list[str]:
-    if not _DDRAGON_ROOT.is_dir():
-        pytest.skip("no vendored DDragon snapshots")
+    assert _DDRAGON_ROOT.is_dir(), "no vendored DDragon snapshots"
     patches = [c.name for c in _DDRAGON_ROOT.iterdir() if c.is_dir() and (c / "summoner.json").is_file()]
     patches.sort(key=_ver)
     assert patches, "no vendored summoner.json"

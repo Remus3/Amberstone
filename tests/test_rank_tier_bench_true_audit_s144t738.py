@@ -73,7 +73,7 @@ def _seed(tmp_path, monkeypatch, tiers, *, raw: str | None = None,
 # --- 1: the static seed is validated like a live row ----------------------
 
 @pytest.mark.parametrize("bad", ["NaN", "Infinity", "-Infinity", "true",
-                                 "\"205\"", "-3", "null", "[1]", "{}"])
+                                 '"205"', "-3", "null", "[1]", "{}"])
 def test_bad_seed_avg_is_dropped_and_good_metrics_survive(tmp_path, monkeypatch,
                                                           bad):
     raw = (

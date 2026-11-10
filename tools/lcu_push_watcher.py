@@ -509,7 +509,7 @@ class DayLogTailer:
         """True when the path now names a different file than the open handle."""
         try:
             held = os.fstat(self._fh.fileno())
-            now = os.stat(self._path)
+            now = self._path.stat()
         except FileNotFoundError:
             return True  # renamed away, fresh file not created yet
         except OSError:

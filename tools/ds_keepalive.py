@@ -201,8 +201,9 @@ def _attach_log() -> None:
     file handle for the life of the process).
     """
     root = logging.getLogger()
-    wanted = {os.path.abspath(str(t)) for t in (_LOG_FILE, _FALLBACK_LOG_FILE)}
-    if any(os.path.abspath(str(getattr(h, "baseFilename", ""))) in wanted
+    # normpath(absolute()) is abspath without resolving links (resolve() would).
+    wanted = {os.path.normpath(Path(str(t)).absolute()) for t in (_LOG_FILE, _FALLBACK_LOG_FILE)}
+    if any(os.path.normpath(Path(str(getattr(h, "baseFilename", ""))).absolute()) in wanted
            for h in root.handlers):
         return
     for target in (_LOG_FILE, _FALLBACK_LOG_FILE):

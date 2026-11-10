@@ -57,8 +57,7 @@ _DS_DIR = Path(rune_procs.__file__).resolve().parent
 
 @pytest.fixture(scope="module")
 def vendored() -> dict[str, dict[int, tuple[str, str, str]]]:
-    if not _DDRAGON_ROOT.is_dir():
-        pytest.skip("no vendored DDragon snapshots")
+    assert _DDRAGON_ROOT.is_dir(), "no vendored DDragon snapshots"
     return _vendored()
 
 

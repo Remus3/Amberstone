@@ -47,7 +47,7 @@ def _load(monkeypatch):
     return mod
 
 
-@pytest.fixture()
+@pytest.fixture
 def mod(tmp_path, monkeypatch):
     m = _load(monkeypatch)
     dd = tmp_path / "data" / "meta_build" / "ddragon" / "15.1.1"

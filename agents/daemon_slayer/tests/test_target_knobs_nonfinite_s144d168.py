@@ -105,7 +105,7 @@ def test_defaults_are_finite_and_positive(snap, scorer):
 
 @pytest.mark.parametrize("scorer", sorted(_SCORERS))
 @pytest.mark.parametrize("knob", _KNOBS)
-@pytest.mark.parametrize("value", (0.0, 1e6, -50.0))
+@pytest.mark.parametrize("value", [0.0, 1e6, -50.0])
 def test_finite_target_knob_still_scores(snap, scorer, knob, value):
     assert math.isfinite(_SCORERS[scorer](snap, **{knob: value}))
 

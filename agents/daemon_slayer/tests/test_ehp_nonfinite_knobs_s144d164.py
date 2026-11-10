@@ -52,14 +52,14 @@ def _finite_fields(r):
 # ---- S144-D-164: external resist ------------------------------------------
 
 
-@pytest.mark.parametrize("key", ("external_resist_armor", "external_resist_mr"))
+@pytest.mark.parametrize("key", ["external_resist_armor", "external_resist_mr"])
 def test_external_resist_really_moves_ehp(snap, key):
     # Anchor: the knob is live, so the default-equality asserts are not vacuous.
     assert _ehp(snap, **{key: 50.0}).blended_ehp > _ehp(snap).blended_ehp
 
 
-@pytest.mark.parametrize("key", ("external_resist_armor", "external_resist_mr"))
-@pytest.mark.parametrize("bad", (_INF, -_INF, _NAN))
+@pytest.mark.parametrize("key", ["external_resist_armor", "external_resist_mr"])
+@pytest.mark.parametrize("bad", [_INF, -_INF, _NAN])
 def test_non_finite_external_resist_reads_as_zero(snap, key, bad):
     got = _ehp(snap, **{key: bad})
     _finite_fields(got)
@@ -75,8 +75,8 @@ def test_external_revive_and_flat_hp_really_move_ehp(snap):
     assert _ehp(snap, external_flat_hp=300.0).blended_ehp > base
 
 
-@pytest.mark.parametrize("key", ("external_revive_multiplier", "external_flat_hp"))
-@pytest.mark.parametrize("bad", (_INF, -_INF, _NAN))
+@pytest.mark.parametrize("key", ["external_revive_multiplier", "external_flat_hp"])
+@pytest.mark.parametrize("bad", [_INF, -_INF, _NAN])
 def test_non_finite_revive_or_flat_hp_reads_as_default(snap, key, bad):
     got = _ehp(snap, **{key: bad})
     _finite_fields(got)
@@ -85,7 +85,7 @@ def test_non_finite_revive_or_flat_hp_reads_as_default(snap, key, bad):
 
 
 @pytest.mark.parametrize(
-    "key,value", (("external_revive_multiplier", 0.5), ("external_flat_hp", -500.0))
+    "key,value", [("external_revive_multiplier", 0.5), ("external_flat_hp", -500.0)]
 )
 def test_finite_floors_unchanged(snap, key, value):
     assert _ehp(snap, **{key: value}).blended_ehp == _ehp(snap).blended_ehp
@@ -96,15 +96,15 @@ def test_finite_floors_unchanged(snap, key, value):
 
 @pytest.mark.parametrize(
     "value,expected",
-    ((_NAN, 0.0), (-_INF, 0.0), (_INF, 0.99), (-0.5, 0.0), (0.0, 0.0),
-     (0.4, 0.4), (0.99, 0.99), (2.0, 0.99)),
+    [(_NAN, 0.0), (-_INF, 0.0), (_INF, 0.99), (-0.5, 0.0), (0.0, 0.0),
+     (0.4, 0.4), (0.99, 0.99), (2.0, 0.99)],
 )
 def test_clamp_pct(value, expected):
     assert _clamp_pct(value) == expected
 
 
 @pytest.mark.parametrize(
-    "key", ("enemy_shred_pct", "enemy_armor_pen_pct", "enemy_magic_pen_pct")
+    "key", ["enemy_shred_pct", "enemy_armor_pen_pct", "enemy_magic_pen_pct"]
 )
 def test_nan_pen_pct_reads_as_no_pen(snap, key):
     base = _ehp(snap)
@@ -118,7 +118,7 @@ def test_nan_pen_pct_reads_as_no_pen(snap, key):
 
 
 @pytest.mark.parametrize(
-    "key", ("enemy_shred_pct", "enemy_armor_pen_pct", "enemy_magic_pen_pct")
+    "key", ["enemy_shred_pct", "enemy_armor_pen_pct", "enemy_magic_pen_pct"]
 )
 def test_inf_pen_pct_still_reads_as_the_cap(snap, key):
     assert _ehp(snap, **{key: _INF}).blended_ehp == _ehp(snap, **{key: 0.99}).blended_ehp

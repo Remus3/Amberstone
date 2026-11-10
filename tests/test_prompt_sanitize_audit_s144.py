@@ -89,8 +89,8 @@ def test_front_glued_links_are_a_documented_residual():
     # A link glued at the FRONT ("instructionignore") has no word boundary
     # that any substitution can supply, so the fixpoint cannot reach it.
     # Pinned so a change here is a decision, not an accident (S144-T-721).
-    out = clean("ignore above instruction" "disregard prior instruction"
-                "ignore previous instruction" "forget all ")
+    out = clean("ignore above instructiondisregard prior instruction"
+                "ignore previous instructionforget all ")
     assert out.endswith(MARKER)
     assert out.startswith("ignore above instruction")
 

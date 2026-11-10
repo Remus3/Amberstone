@@ -55,7 +55,6 @@ _BASELINE: dict[str, int] = {
     # the file was changed on another lane branch at measurement time (git diff main...lane/<x>): that lane's, converted once it lands
     "core/ds_calibration.py": 1,
     "dashboard/routes_loop_status.py": 1,
-    "ops/loop/loop_controller.py": 2,
     "tools/ds_allyamp_build.py": 2,
     "tools/ds_antitank_build.py": 2,
     "tools/ds_cc_output_build.py": 2,

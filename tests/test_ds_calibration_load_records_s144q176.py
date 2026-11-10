@@ -121,14 +121,16 @@ def test_a_failed_read_returns_empty_and_logs_why(tmp_path, monkeypatch,
                                                   records):
     p = tmp_path / "cal.jsonl"
     p.write_text(_row("g1") + "\n", encoding="utf-8")
-    real_open = open
+    # load_records reads each generation through Path.open (PTH123), so the
+    # read fault sits there.
+    real_open = pathlib.Path.open
 
-    def denied(path, *args, **kwargs):
-        if pathlib.Path(path) == p:
+    def denied(self, *args, **kwargs):
+        if self == p:
             raise PermissionError(13, "Permission denied")
-        return real_open(path, *args, **kwargs)
+        return real_open(self, *args, **kwargs)
 
-    monkeypatch.setattr("builtins.open", denied)
+    monkeypatch.setattr(pathlib.Path, "open", denied)
     assert dca.load_records(p) == []
     msgs = _warnings(records)
     assert len(msgs) == 1
@@ -151,13 +153,15 @@ def test_a_failed_read_drops_rows_already_read_from_older_generations(
     base.with_name(base.name + ".1").write_text(_row("g-old") + "\n",
                                                 encoding="utf-8")
     base.write_text(_row("g-new") + "\n", encoding="utf-8")
-    real_open = open
+    # load_records reads each generation through Path.open (PTH123), so the
+    # read fault sits there.
+    real_open = pathlib.Path.open
 
-    def denied(path, *args, **kwargs):
-        if pathlib.Path(path) == base:
+    def denied(self, *args, **kwargs):
+        if self == base:
             raise PermissionError(13, "Permission denied")
-        return real_open(path, *args, **kwargs)
+        return real_open(self, *args, **kwargs)
 
-    monkeypatch.setattr("builtins.open", denied)
+    monkeypatch.setattr(pathlib.Path, "open", denied)
     assert dca.load_records(base) == []
     assert len(_warnings(records)) == 1

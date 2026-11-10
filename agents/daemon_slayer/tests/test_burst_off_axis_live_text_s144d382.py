@@ -97,8 +97,7 @@ def test_shaco_live_split_is_quoted_and_indecisive():
 
 @pytest.mark.parametrize("patch", ["16.10.1", "16.14.1", "16.18.1"])
 def test_shaco_historic_split_is_dated(patch):
-    if not (_DATA / patch / "champions.json").is_file():
-        pytest.skip(f"{patch} not vendored")
+    assert (_DATA / patch / "champions.json").is_file(), f"{patch} champions.json not vendored"
     dist = _dist(patch, "Shaco")
     magical = float(dist["magical"])
     physical = float(dist["physical"])

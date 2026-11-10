@@ -21,6 +21,9 @@ after the open raised). Re-measured 2026-11-09 with the queue lane's commits: 21
 files, 196 ``with`` items and 16 not (S144-Q-123 moved the agents/ log writers to a shared rotating
 handler in agents/_supervisor_common.py, -6 +1; S144-Q-138 gave ops/loop/loop_controller.py two
 exclusive-create opens; S144-Q-123 gave ops/loop/headless_env.py one for its refusal-log cap).
+Re-measured 2026-11-10 at the s159 landing (all seven lanes merged): 214 opens, 198 ``with``
+items and 16 not; the true-audit lane added two ``with`` opens (dashboard/routes_aram_balance.py
+``_read_patch``, tools/lane_usage_median.py ``load_rows``).
 The kinds seen:
 builtin ``open``, ``io.open``, ``codecs`` / ``gzip`` / ``bz2`` / ``lzma`` / ``tarfile`` ``.open``,
 ``os.fdopen`` and ``zipfile.ZipFile``, plus a ``<receiver>.open(`` method call (``Path.open``)
@@ -45,7 +48,7 @@ _OUT_OF_SCOPE = ("tests/", "ops/fleet_kit/", "agents/agent3_testing/suite/", "do
 _OPEN_MODULES = {"io", "codecs", "gzip", "bz2", "lzma", "tarfile"}
 _MODE = re.compile(r"^[rwaxbt+U]{1,4}$")
 
-_MEASURED_TOTAL = 212
+_MEASURED_TOTAL = 214
 _MEASURED_NOT_WITH = 16
 
 _SINK = ("a process-lifetime --log-file sink for a one-shot CLI: it replaces sys.stdout and "

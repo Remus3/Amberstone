@@ -114,7 +114,7 @@ def _body(resp: bytes) -> dict:
 def test_control_well_framed_post_reaches_route(served):
     port, reached = served
     resp = _raw(port, b"POST /x HTTP/1.1\r\n" + _AUTH
-                + b"Content-Length: 8\r\n\r\n{\"a\": 1}")
+                + b'Content-Length: 8\r\n\r\n{"a": 1}')
     assert _status(resp) == 200
     assert reached == [{"a": 1}]
 
@@ -152,7 +152,7 @@ def test_control_unauthenticated_chunked_post_is_still_401(served):
 def test_f1_transfer_encoding_is_411_and_no_route_runs(served, te_lines):
     port, reached = served
     resp = _raw(port, b"POST /x HTTP/1.1\r\n" + _AUTH + te_lines
-                + b"\r\n7\r\n{\"a\":1}\r\n0\r\n\r\n")
+                + b'\r\n7\r\n{"a":1}\r\n0\r\n\r\n')
     assert _status(resp) == 411
     assert _body(resp) == {"ok": False, "error": "length required"}
     assert reached == []

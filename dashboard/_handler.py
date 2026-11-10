@@ -79,7 +79,7 @@ from core.http_host_gate import (  # noqa: F401 - re-exports
     request_target_ok,
 )
 from core.log_scrub import CONTROL_CHAR_TABLE as _CONTROL_CHAR_TABLE
-from core.log_scrub import SCRUB_RANGES as _SCRUB_RANGES
+from core.log_scrub import SCRUB_RANGES as _SCRUB_RANGES  # noqa: F401 - re-export, see the RM-825 note below
 from core.log_scrub import scrub_log as _core_scrub_log
 from dashboard import _dispatch
 from dashboard._errors import forward_upstream_error, send_error
@@ -102,6 +102,9 @@ log = logging.getLogger("rc.web_dashboard")
 # through, which bypassed core's widening (U+2028 / U+2029, the bidi
 # controls). `_CONTROL_CHAR_TABLE` and `_SCRUB_RANGES` are imported above under
 # their module-private names, so there is no second binding to drift.
+# `_SCRUB_RANGES` has no reader in this module: it is a re-export that
+# tests/test_rm825_jsonrpc_scrub_host_residuals.py (test_one_shared_range_table)
+# reads as `_handler._SCRUB_RANGES` to pin it to core's object.
 
 
 # D9 control-endpoint class: POSTs gated behind X-RC-Token == RC_DASH_TOKEN

@@ -82,7 +82,7 @@ def _read_patch() -> str:
     or is not a canonical ASCII patch. Never raises; logs the failure
     class only, never the file's content."""
     try:
-        with open(_DS_DIR / "current.txt", "rb") as fh:
+        with (_DS_DIR / "current.txt").open("rb") as fh:
             raw = fh.read(_PATCH_READ_CAP + 1)
     except OSError as exc:
         log.warning("aram-balance: current.txt unreadable (%s)",

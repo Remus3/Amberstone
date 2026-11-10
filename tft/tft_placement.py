@@ -538,7 +538,7 @@ def parse_history_game(game, local_puuid: str, *,
             "level": _int(p.get("level")),
             "gold_left": _int(p.get("gold_left")),
             "last_round": _int(p.get("last_round")),
-            "time_eliminated_s": int(round(elim))
+            "time_eliminated_s": round(elim)
             if elim is not None and abs(elim) <= _SECONDS_CAP else None,
             "board": [u for u in (_history_unit(x) for x in _list(p.get("units"))) if u],
             "traits": _history_traits(p.get("traits")),

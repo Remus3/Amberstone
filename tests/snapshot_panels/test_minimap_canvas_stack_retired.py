@@ -48,7 +48,7 @@ _NAMES = (
 )
 # Helpers only the painters used; scoped to map_state.js.
 _MAP_STATE_NAMES = ("_dataRGB", "_DATA_SENTINEL", "_rgbCss", "loRes",
-                    "getContext(", "createElement(\"canvas\")")
+                    "getContext(", 'createElement("canvas")')
 
 
 def _live_web_text():

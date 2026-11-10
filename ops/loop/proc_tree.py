@@ -27,6 +27,7 @@ Stdlib only, ASCII only; imports cleanly on any platform.
 from __future__ import annotations
 
 import contextlib
+import math
 import os
 import subprocess
 import sys
@@ -249,7 +250,7 @@ def _bounded_s(value, default: float, low: float, high: float) -> float:
         value = float(value)
     except OverflowError:  # an int past float range
         return high if value > 0 else low
-    if value != value:  # NaN
+    if math.isnan(value):  # value is a float here
         return default
     return min(high, max(low, value))
 
@@ -276,7 +277,7 @@ def kill_tree(pid: int, job: KillJob | None = None, grace_s: float = _GRACE_DEFA
         with contextlib.suppress(OSError, subprocess.SubprocessError):
             out["taskkill_rc"] = subprocess.run(
                 [_taskkill_exe(), "/F", "/T", "/PID", str(target)], capture_output=True,
-                timeout=30, creationflags=_NO_WINDOW).returncode
+                timeout=30, creationflags=_NO_WINDOW, check=False).returncode
     elif target is not None:
         import signal
         with contextlib.suppress(OSError):

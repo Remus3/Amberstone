@@ -608,11 +608,13 @@ def _same_dir(a: Path, b: Path) -> bool:
     which still catches a self root whose inbox does not exist yet.
     """
     try:
-        return os.path.samefile(a, b)
+        return Path(a).samefile(b)
     except (OSError, ValueError):
         pass
     try:
-        return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+        # normpath(absolute()) is abspath without resolving links (resolve() would).
+        return (os.path.normcase(os.path.normpath(Path(a).absolute()))
+                == os.path.normcase(os.path.normpath(Path(b).absolute())))
     except (OSError, ValueError):
         return False
 

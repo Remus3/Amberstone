@@ -43,6 +43,7 @@ def test_overlay_settings_node_suite_passes() -> None:
         errors="replace",
         timeout=120,
         creationflags=flags,
+        check=False,
     )
     out = proc.stdout + proc.stderr
     assert proc.returncode == 0, f"node --test exited {proc.returncode}\n{out[-4000:]}"

@@ -7,9 +7,9 @@ package holds, so ``help(core)`` and an outsider reading the tree learn somethin
 string expression statement at the top of the file: the import behaviour is unchanged (checked by
 ``test_package_docstring_is_set``).
 
-One baseline row stays: ``core/safe_coach_output.py`` (another lane branch changed it, so this lane
-leaves it; the merger or the owning lane adds the docstring and drops the row). The row can only
-shrink: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
+The one baseline row, ``core/safe_coach_output.py`` (held while another lane branch changed it), was
+dropped at the s159 landing: that lane's version carries the docstring. ``_BASELINE`` can only shrink:
+a file that reaches zero must leave it, and a new finding anywhere fails.
 
 S144-P-636 brought the root ``tests/`` tree in: 17 test modules whose leading ``#`` comment block is now
 the module docstring (text unchanged) and 14 test packages (``tests`` itself and 13 subpackages) with a
@@ -47,10 +47,9 @@ _OUT_OF_SCOPE = (
     "tools/tests/",
     "ops/fleet_kit/",
 )
-# file -> finding count that stays (module docstring). Only shrinks.
-_BASELINE = {
-    "core/safe_coach_output.py": 1,
-}
+# file -> finding count that stays (module docstring). Only shrinks. Empty since the s159 landing: the
+# true-audit lane's core/safe_coach_output.py carries its module docstring, so its row was dropped.
+_BASELINE: dict[str, int] = {}
 _FIXED_PACKAGES = (
     "core",
     "modes",
@@ -117,7 +116,7 @@ def test_baseline_is_exact(tree_counts):
 def test_package_docstring_is_set(pkg):
     init = REPO_ROOT.joinpath(*pkg.split(".")) / "__init__.py"
     assert init.is_file(), f"{init} missing - update _FIXED_PACKAGES"
-    assert relative_posix(init) not in {f for f in _BASELINE}
+    assert relative_posix(init) not in set(_BASELINE)
     mod = importlib.import_module(pkg)
     assert isinstance(mod.__doc__, str)
     assert mod.__doc__.strip(), f"{pkg} has an empty docstring"

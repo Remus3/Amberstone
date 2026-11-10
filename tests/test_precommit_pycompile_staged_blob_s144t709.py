@@ -70,6 +70,7 @@ def _gate(repo: Path, env: dict, extra: dict | None = None) -> subprocess.Comple
     return subprocess.run(
         [sys.executable, str(repo / "scripts" / "precommit_pycompile.py")],
         cwd=repo, capture_output=True, env={**env, **(extra or {})}, timeout=120,
+        check=False,
     )
 
 
@@ -180,7 +181,7 @@ def test_git_failure_is_a_clean_refusal(tmp_path, env):
     (root / "scripts").mkdir(parents=True)
     (root / "scripts" / "precommit_pycompile.py").write_bytes(_SCRIPT.read_bytes())
     proc = subprocess.run([sys.executable, str(root / "scripts" / "precommit_pycompile.py")],
-                          cwd=root, capture_output=True, env=env, timeout=120)
+                          cwd=root, capture_output=True, env=env, timeout=120, check=False)
     assert proc.returncode == 1
     assert "Traceback" not in _err(proc)
     assert "pre-commit:" in _err(proc)
@@ -230,7 +231,7 @@ def test_a_real_commit_with_the_fixed_worktree_does_not_land(tmp_path, env):
     _stage(repo, git, "a.py", _BROKEN)
     (repo / "a.py").write_bytes(_GOOD)
     proc = subprocess.run(["git", "commit", "-qm", "broken"], cwd=repo, capture_output=True,
-                          env=env, timeout=120)
+                          env=env, timeout=120, check=False)
     assert proc.returncode != 0
     assert git("rev-parse", "HEAD") == before
 

@@ -168,7 +168,7 @@ def test_every_league_overlay_line_reaches_aa_live_and_idle(
     for state in ("live", "idle"):
         widgets = got[state]
         # Anchor: a widget that failed to show would pass the loop.
-        assert _WIDGETS <= set(widgets), (state, sorted(widgets))
+        assert set(widgets) >= _WIDGETS, (state, sorted(widgets))
         for wid in _WIDGETS:
             assert widgets[wid], f"{state}: {wid} read no text"
         aria = set()

@@ -58,6 +58,8 @@ _SITES = {
         "wrapped in try/except: a non-main-thread construction raises ValueError and is swallowed",
     ("ops/launcher/service_host.py", "signal.signal", "_install_signals"):
         "service host main thread only; ValueError / OSError from a non-main thread is caught",
+    ("scripts/precommit_pycompile.py", "warnings.simplefilter", "compile_error"):
+        "NOT global: sits inside warnings.catch_warnings(record=True), restored on exit (true-audit S144-T-709)",
     ("tools/build_rank_baselines.py", "sys.stdout", "main"):
         "CLI entry: --log-file redirects the run's own output, set inside main()",
     ("tools/build_rank_baselines.py", "sys.stderr", "main"):

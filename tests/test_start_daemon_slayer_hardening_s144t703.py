@@ -1,5 +1,5 @@
 """
-tests/test_start_daemon_slayer_hardening_s144t703.py
+tests/test_start_daemon_slayer_hardening_s144t703.py.
 
 S144-T-703 (true-audit lane, s144 cycle 269): tools/start_daemon_slayer.py is
 the script RC's DsWatchdog starts windowless as DS's own child
@@ -35,7 +35,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 
 def _load():
     # The module chdirs to the project root at import; restore cwd.
-    cwd = os.getcwd()
+    cwd = Path.cwd()
     try:
         spec = importlib.util.spec_from_file_location(
             "start_daemon_slayer_s144t703", _ROOT / "tools" / "start_daemon_slayer.py")

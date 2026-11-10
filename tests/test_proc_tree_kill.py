@@ -177,7 +177,7 @@ def test_positive_control_taskkill_tree_alone_misses_the_orphan(tmp_path, mode):
     pid, ctime = _grandchild(pidfile)
     try:
         subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True,
-                       timeout=30, creationflags=NO_WINDOW)
+                       timeout=30, creationflags=NO_WINDOW, check=False)
         proc.wait(timeout=15)
         time.sleep(1.5)
         assert _alive(pid, ctime), "control failed: taskkill /T reached the orphan"

@@ -46,6 +46,9 @@ _NOT_THIS_SCOPE = {
 # file -> findings. Only shrinks; each entry is an unconverted site, not an exemption.
 _BASELINE: dict[str, int] = {
     "core/log_rotation.py": 1,  # os.rename is the no-clobber link seam the race tests patch
+    # remove_if_holds' rename-aside (queue S144-Q-139, landed s159): tests/test_remove_if_holds_shared_s144q139.py
+    # patches polled_json.os.rename there (side-name spies, a refused move) and its body scan asserts the call
+    "core/polled_json.py": 1,
     "tests/_basetemp_guard.py": 1,  # expanduser on an arbitrary --basetemp value; a gate must not raise
     "tests/test_launcher_first_run.py": 3,  # packaging owner's test
     "tools/progress_watch.py": 2,  # os.rename inside the _move and _capture seams of the race tests

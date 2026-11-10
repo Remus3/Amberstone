@@ -72,6 +72,7 @@ _FACTORIES = {
     ("dashboard/_context.py", "ro_conn"): (1, "ro", "cached per thread in DB_CONN_LOCAL and reused until the file vanishes; the cache owns the close"),
     ("dashboard/routes_item_wpa.py", "_open_rewind_db_ro"): (1, "ro", _RO_DB),
     ("dashboard/routes_lobby_aux.py", "_connect_rewind_ro"): (1, "ro", _RO_DB),
+    ("dashboard/routes_personal_vs.py", "_open_ro"): (1, "ro", "true-audit S144-T-771..776: read-only Path.as_uri() opener of the rewind DB; its one caller, _build_reply, closes it in a finally"),
     ("dashboard/routes_post_game_wpa.py", "_open_rewind_db_ro"): (1, "ro", _RO_DB),
     ("dashboard/routes_replay_events.py", "_open_rewind_db_ro"): (1, "ro", _RO_DB),
     ("dashboard/routes_rune_wpa.py", "_open_rewind_db_ro"): (1, "ro", _RO_DB),

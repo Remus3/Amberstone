@@ -15,6 +15,7 @@ import json
 import pytest
 
 from core import skins
+from tests._module_view import bind_urlopen
 
 
 class _Resp(io.BytesIO):
@@ -36,8 +37,7 @@ class _Resp(io.BytesIO):
 
 def _serve(monkeypatch, doc, url="https://example.invalid/skins.json"):
     body = doc if isinstance(doc, bytes) else json.dumps(doc).encode("utf-8")
-    monkeypatch.setattr(skins.urllib.request, "urlopen",
-                        lambda *a, **k: _Resp(body, url))
+    bind_urlopen(monkeypatch, skins, lambda *a, **k: _Resp(body, url))
 
 
 _GOOD = {"1001": {"name": "A", "chromas": [{"id": 1010, "name": "R"}]}}
@@ -72,7 +72,7 @@ def test_refresh_survives_non_list_chromas(tmp_path, monkeypatch, junk):
 def test_refresh_returns_false_on_http_protocol_errors(tmp_path, monkeypatch, exc):
     def boom(*a, **k):
         raise exc
-    monkeypatch.setattr(skins.urllib.request, "urlopen", boom)
+    bind_urlopen(monkeypatch, skins, boom)
     c = _good_cache(tmp_path)
     assert skins.refresh_cdragon_cache(cache=c) is False
     assert json.loads(c.read_text(encoding="utf-8")) == _GOOD

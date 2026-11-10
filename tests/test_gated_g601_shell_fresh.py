@@ -1,4 +1,4 @@
-"""tests/test_gated_g601_shell_fresh.py
+"""tests/test_gated_g601_shell_fresh.py.
 
 `tools/gated_g601_shell_fresh.py` answers the G6-01 precondition (the Electron
 MAIN process started after its newest `rc-shell/src` change, as a dev-profile

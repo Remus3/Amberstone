@@ -33,6 +33,7 @@ import json
 
 import pytest
 
+from tests._module_view import bind_urlopen
 from tools import live_flip_watcher as w
 
 
@@ -105,20 +106,19 @@ def _state(champ="Ahri", mode="sr", players=None):
 # --- 9. _fetch_state --------------------------------------------------------
 
 def test_fetch_state_returns_an_object_body(monkeypatch):
-    monkeypatch.setattr(w.urllib.request, "urlopen",
-                        lambda *a, **k: _Resp(b'{"mode_key": "sr"}'))
+    bind_urlopen(monkeypatch, w, lambda *a, **k: _Resp(b'{"mode_key": "sr"}'))
     assert w._fetch_state() == {"mode_key": "sr"}
 
 
 @pytest.mark.parametrize("body", [b"[1, 2]", b'"sr"', b"7", b"null"])
 def test_fetch_state_non_object_body_reads_idle(monkeypatch, body):
-    monkeypatch.setattr(w.urllib.request, "urlopen", lambda *a, **k: _Resp(body))
+    bind_urlopen(monkeypatch, w, lambda *a, **k: _Resp(body))
     assert w._fetch_state() is None
 
 
 @pytest.mark.parametrize("body", [b"{not json", b"\xff\xfe{}"])
 def test_fetch_state_garbage_body_reads_idle(monkeypatch, body):
-    monkeypatch.setattr(w.urllib.request, "urlopen", lambda *a, **k: _Resp(body))
+    bind_urlopen(monkeypatch, w, lambda *a, **k: _Resp(body))
     assert w._fetch_state() is None
 
 
@@ -127,22 +127,21 @@ def test_fetch_state_oversize_body_reads_idle(monkeypatch):
     # Trailing whitespace keeps EVERY prefix of the body valid JSON, so the
     # only thing that can refuse it is the byte cap itself (a truncated object
     # would read as idle for the wrong reason).
-    monkeypatch.setattr(w.urllib.request, "urlopen",
-                        lambda *a, **k: _Resp(b"{}" + b" " * 64))
+    bind_urlopen(monkeypatch, w, lambda *a, **k: _Resp(b"{}" + b" " * 64))
     assert w._fetch_state() is None
 
 
 def test_fetch_state_transport_error_reads_idle(monkeypatch):
     def _boom(*_a, **_k):
         raise ConnectionRefusedError("dashboard down")
-    monkeypatch.setattr(w.urllib.request, "urlopen", _boom)
+    bind_urlopen(monkeypatch, w, _boom)
     assert w._fetch_state() is None
 
 
 def test_fetch_state_programming_error_surfaces(monkeypatch):
     def _boom(*_a, **_k):
         raise RuntimeError("a bug, not a down dashboard")
-    monkeypatch.setattr(w.urllib.request, "urlopen", _boom)
+    bind_urlopen(monkeypatch, w, _boom)
     with pytest.raises(RuntimeError):
         w._fetch_state()
 

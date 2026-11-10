@@ -184,7 +184,7 @@ def test_history_real_values_are_unchanged():
     assert rec["game_length_s"] == int(j["game_length"])
     p0 = j["participants"][0]
     by_place = {p["placement"]: p for p in rec["players"]}
-    assert by_place[p0["placement"]]["time_eliminated_s"] == int(round(p0["time_eliminated"]))
+    assert by_place[p0["placement"]]["time_eliminated_s"] == round(p0["time_eliminated"])
 
 
 # -- S144-T-759: history_path ---------------------------------------------------

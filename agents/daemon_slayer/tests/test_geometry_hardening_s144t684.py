@@ -29,6 +29,7 @@ in-range output is unchanged; ``test_in_range_parity_*`` pins that.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import pytest
 
@@ -205,6 +206,6 @@ def test_magnitudes_are_always_finite_or_none():
 
 
 def test_module_is_ascii_and_lf():
-    raw = open(geometry.__file__, "rb").read()
+    raw = Path(geometry.__file__).read_bytes()
     assert all(b < 128 for b in raw)
     assert b"\r\n" not in raw

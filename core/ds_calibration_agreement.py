@@ -109,7 +109,7 @@ def load_records(path: Path | str | None = None) -> list[dict]:
     try:
         for part in log_generations(src):
             try:
-                with open(part, encoding="utf-8") as fh:
+                with part.open(encoding="utf-8") as fh:
                     raw_lines = fh.readlines()
             except FileNotFoundError:
                 # A rotation renamed this generation after the listing: its

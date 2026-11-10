@@ -183,6 +183,6 @@ print(round(worst, 3))
 
 def test_pathological_brace_commands_stay_under_the_rm829_budget():
     run = subprocess.run([sys.executable, "-c", _PROBE, str(REPO), "3"],
-                         capture_output=True, text=True, timeout=600, cwd=str(REPO))
+                         capture_output=True, text=True, timeout=600, cwd=str(REPO), check=False)
     assert run.returncode == 0, run.stderr[-2000:]
     assert float(run.stdout.strip()) < 1.0, run.stdout

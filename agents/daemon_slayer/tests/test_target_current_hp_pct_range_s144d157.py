@@ -92,7 +92,7 @@ def test_bruiser_ranker_refuses_out_of_range(snap, pct):
         _bruiser(snap, pct)
 
 
-@pytest.mark.parametrize("pct", (-1.0, 2.0))
+@pytest.mark.parametrize("pct", [-1.0, 2.0])
 def test_burst_and_ability_dps_contract_is_unchanged(snap, pct):
     # The sibling scorers that already validated: the shared message is the
     # contract this fix copies, so pin it here beside the new sites.
@@ -134,7 +134,7 @@ def served(snap):
 
 
 @pytest.mark.usefixtures("served")
-@pytest.mark.parametrize("pct", (-1.0, 2.0))
+@pytest.mark.parametrize("pct", [-1.0, 2.0])
 @pytest.mark.parametrize(
     "route, champion",
     [(server._route_rank, "Vayne"), (server._route_rank_bruiser, "Darius")],

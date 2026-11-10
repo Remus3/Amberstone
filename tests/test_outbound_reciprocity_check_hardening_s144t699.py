@@ -186,7 +186,7 @@ def test_payload_with_an_unlistable_subdirectory_is_unknown(tmp_path, monkeypatc
     real_scandir = os.scandir
 
     def fake_scandir(path="."):
-        if os.path.basename(os.fspath(path)) == "locked":
+        if Path(path).name == "locked":
             raise PermissionError(13, "denied", "locked")
         return real_scandir(path)
 

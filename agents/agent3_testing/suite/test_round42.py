@@ -122,6 +122,8 @@ def test_applier_rejects_too_many_changes(tmp_path: Path, monkeypatch) -> None:
                 {"file": "web/css/panels/base.css", "content": "a"},
                 {"file": "web/css/panels/header.css", "content": "b"},
                 {"file": "web/js/main.js", "content": "c" * 2500},
+                # next.js was retired (uiux lane, s159 landing); the cap rejects
+                # the five-change list before any path is read.
                 {"file": "web/js/panels/next.js", "content": "d"},
                 {"file": "web/index.html", "content": "e"},
             ],

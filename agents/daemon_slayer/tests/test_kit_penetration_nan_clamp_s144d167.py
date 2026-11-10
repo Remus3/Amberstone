@@ -26,8 +26,8 @@ _INF = float("inf")
 
 @pytest.mark.parametrize(
     "value,expected",
-    ((_NAN, 0.0), (-_INF, 0.0), (_INF, 1.0), (-0.2, 0.0), (0.0, 0.0),
-     (0.25, 0.25), (1.0, 1.0), (3.0, 1.0), ("junk", 0.0), (None, 0.0)),
+    [(_NAN, 0.0), (-_INF, 0.0), (_INF, 1.0), (-0.2, 0.0), (0.0, 0.0),
+     (0.25, 0.25), (1.0, 1.0), (3.0, 1.0), ("junk", 0.0), (None, 0.0)],
 )
 def test_clamp01(value, expected):
     assert kp._clamp01(value) == expected
@@ -50,7 +50,7 @@ def test_nan_crit_never_zeroes_the_target_armor():
     assert got == 100.0
 
 
-@pytest.mark.parametrize("champion", ("Darius", "Jhin"))
+@pytest.mark.parametrize("champion", ["Darius", "Jhin"])
 def test_nan_extra_pct_adds_nothing(champion):
     base = kp.resolve_kit_penetration(champion)
     got = kp.resolve_kit_penetration(champion, extra_pct=[_NAN])

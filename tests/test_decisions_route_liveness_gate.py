@@ -1,5 +1,5 @@
 """
-tests/test_decisions_route_liveness_gate.py
+tests/test_decisions_route_liveness_gate.py.
 
 S144-U-270 (s144 uiux): GET /api/decisions serves a pending coach decision
 only while the DecisionLoop that owns it is alive.

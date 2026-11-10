@@ -174,7 +174,7 @@ def test_unusable_record_start_falls_back_one_to_one_never_raises(bad):
     json.dumps(res, allow_nan=False)
 
 
-@pytest.mark.parametrize("bad", (*_BAD_NUMBERS, -1.0))
+@pytest.mark.parametrize("bad", [*_BAD_NUMBERS, -1.0])
 def test_unusable_tolerance_uses_the_default(bad):
     # NaN or negative made every advancing poll a new anchor; +inf made a
     # real pause never re-anchor.
@@ -221,7 +221,7 @@ def test_real_game_is_not_capped():
     assert res["anchors_capped"] is False
 
 
-@pytest.mark.parametrize("bad", (None, "x", float("nan"), float("inf"), True))
+@pytest.mark.parametrize("bad", [None, "x", float("nan"), float("inf"), True])
 def test_junk_game_time_marker_keeps_its_wall_stamp_through_resolve(bad):
     # Before: the marker was stored as game_time 0.0, so resolve() rewrote
     # its correct wall-stamp guess (30 s) to 0 + offset (35 s) - a seek to

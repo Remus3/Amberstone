@@ -103,8 +103,7 @@ def prose_seconds(forms: list[Mapping[str, Any]]) -> tuple[float, ...]:
                 if not _CC_WORD.search(sentence):
                     continue
                 for m in _SECONDS.finditer(sentence):
-                    for part in re.split(r"\s*[/:]\s*", m.group(1)):
-                        nums.add(float(part))
+                    nums.update(float(part) for part in re.split(r"\s*[/:]\s*", m.group(1)))
     return tuple(sorted(nums))
 
 

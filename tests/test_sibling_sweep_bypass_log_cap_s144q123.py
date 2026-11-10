@@ -189,6 +189,7 @@ def test_the_hook_shaped_script_run_rotates_an_oversize_log(tmp_path):
         [sys.executable, str(REPO_ROOT / "tools" / "sibling_name_sweep.py"),
          "--scan-file", str(blob), "--config-root", str(root)],
         capture_output=True, text=True, env=env, cwd=str(cwd), timeout=120,
+        check=False,
     )
     assert proc.returncode == sweep.EXIT_CLEAN, proc.stderr
     assert Path(str(log_path) + ".1").read_bytes() == old

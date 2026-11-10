@@ -28,12 +28,12 @@ found (each test below is named for its finding):
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
 
 import tools.lcu_push_watcher as w
+from tests._module_view import bind_urlopen
 
 
 def _cs_lines(port_a: int = 100, port_b: int = 200) -> list[str]:
@@ -68,7 +68,7 @@ def test_tailer_follows_a_size_rotation(tmp_path):
         _append(day, "A")
         assert t.poll() == ["A"]
         _append(day, "B")                         # written just before the rename
-        os.replace(day, tmp_path / "2026-07-11.log.1")
+        day.replace(tmp_path / "2026-07-11.log.1")
         _append(day, "C")                         # the handler's fresh file
         assert t.poll() == ["B", "C"]
         _append(day, "D")
@@ -286,15 +286,14 @@ class _Resp:
         return False
 
 
-@pytest.mark.parametrize("body", [b"[1, 2]", b"null", b"\"x\"", b"{bad", b"\xff\xfe"])
+@pytest.mark.parametrize("body", [b"[1, 2]", b"null", b'"x"', b"{bad", b"\xff\xfe"])
 def test_fetch_state_non_object_or_junk_body_is_none(monkeypatch, body):
-    monkeypatch.setattr(w.urllib.request, "urlopen", lambda *_a, **_k: _Resp(body))
+    bind_urlopen(monkeypatch, w, lambda *_a, **_k: _Resp(body))
     assert w._fetch_state() is None
 
 
 def test_fetch_state_object_body_is_returned(monkeypatch):
-    monkeypatch.setattr(w.urllib.request, "urlopen",
-                        lambda *_a, **_k: _Resp(b"{\"mode_key\": \"aram\"}"))
+    bind_urlopen(monkeypatch, w, lambda *_a, **_k: _Resp(b'{"mode_key": "aram"}'))
     assert w._fetch_state() == {"mode_key": "aram"}
 
 
@@ -302,13 +301,13 @@ def test_fetch_state_network_error_is_none_but_a_bug_surfaces(monkeypatch):
     def refuse(*_a, **_k):
         raise ConnectionRefusedError(10061, "refused")
 
-    monkeypatch.setattr(w.urllib.request, "urlopen", refuse)
+    bind_urlopen(monkeypatch, w, refuse)
     assert w._fetch_state() is None
 
     def bug(*_a, **_k):
         raise RuntimeError("programming error")
 
-    monkeypatch.setattr(w.urllib.request, "urlopen", bug)
+    bind_urlopen(monkeypatch, w, bug)
     with pytest.raises(RuntimeError):
         w._fetch_state()
 

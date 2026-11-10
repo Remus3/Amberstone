@@ -226,7 +226,7 @@ def log(m):
     print(line, flush=True)
     path = CTL / "controller.log"
     note = _rotate_controller_log(path)
-    with open(path, "a", encoding="utf-8", newline="\n") as f:
+    with path.open("a", encoding="utf-8", newline="\n") as f:
         f.write(note + line + "\n")
 
 def awrite(path, text):
@@ -709,7 +709,7 @@ def record_directive_outcome(cycle, body, sha_before, sha_after, done, verdict, 
            "tests": d.get("tests_pass"), "regress": bool(d.get("regressions")),
            "verdict": ((verdict or "").strip().splitlines() or [""])[0]}
     try:
-        with open(base / "directive_history.jsonl", "a", encoding="utf-8", newline="\n") as f:
+        with (base / "directive_history.jsonl").open("a", encoding="utf-8", newline="\n") as f:
             f.write(json.dumps(rec) + "\n")
     except OSError as e:
         log(f"directive_history append failed: {e}")
@@ -1295,7 +1295,7 @@ def _publish_claim(lock, data):
     removed."""
     tmp = lock.with_name(f"{lock.name}.claim-{os.getpid()}-{os.urandom(4).hex()}.tmp")
     try:
-        with open(tmp, "xb") as f:
+        with tmp.open("xb") as f:
             f.write(data)
         try:
             os.link(tmp, lock)
@@ -1305,7 +1305,7 @@ def _publish_claim(lock, data):
         except OSError:
             pass  # no hard links here: fall back to an exclusive create
         try:
-            with open(lock, "xb") as f:
+            with lock.open("xb") as f:
                 f.write(data)
         except FileExistsError:
             return False

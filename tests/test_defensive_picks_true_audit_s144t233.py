@@ -119,11 +119,12 @@ def test_f1_owned_string_is_not_iterated_per_character():
 
 # ---------------------------------------------------------------- F2 catalog drift
 
-@pytest.mark.skipif(not _ITEMS_FILE.is_file(), reason="tracked DDragon items file absent")
 def test_f2_every_catalog_id_is_a_purchasable_sr_item_of_that_name():
     """The curated ids drifted: 3001 is Evenshroud now (Abyssal Mask = 8020),
     and Adaptive Helm, Gargoyle Stoneplate, Silvermere Dawn are not SR
-    purchasable - the panel rendered the wrong icon and unbuyable picks."""
+    purchasable - the panel rendered the wrong icon and unbuyable picks.
+    The items file is tracked, so its absence is a failure, never a skip."""
+    assert _ITEMS_FILE.is_file(), "tracked DDragon items file absent"
     data = json.loads(_ITEMS_FILE.read_text(encoding="utf-8"))
     data = data.get("data", data)
     bad = []

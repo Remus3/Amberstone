@@ -200,14 +200,16 @@ def test_load_records_still_fails_soft_on_another_os_error(tmp_path, monkeypatch
     base.with_name(base.name + ".1").write_text(_row("g-old") + "\n",
                                                 encoding="utf-8")
     base.write_text(_row("g-new") + "\n", encoding="utf-8")
-    real_open = open
+    # load_records reads each generation through Path.open (PTH123), so the
+    # read fault sits there.
+    real_open = pathlib.Path.open
 
-    def denied(path, *args, **kwargs):
-        if pathlib.Path(path) == base:
+    def denied(self, *args, **kwargs):
+        if self == base:
             raise PermissionError(13, "Permission denied")
-        return real_open(path, *args, **kwargs)
+        return real_open(self, *args, **kwargs)
 
-    monkeypatch.setattr("builtins.open", denied)
+    monkeypatch.setattr(pathlib.Path, "open", denied)
     assert dca.load_records(base) == []
 
 

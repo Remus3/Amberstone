@@ -337,7 +337,7 @@ def remove_if_holds(path: Path, expected: bytes, *, keep_suffix: bool = True) ->
         # No hard links here: a plain rename back (the side file is never
         # deleted on this path, so the moved lock is not lost).
         with contextlib.suppress(OSError):
-            os.rename(side, path)
+            side.rename(path)
         return False
     with contextlib.suppress(OSError):
         side.unlink()

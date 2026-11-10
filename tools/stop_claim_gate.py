@@ -65,6 +65,7 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import string
 
 # MAIN 1254 #9: `parent.parent` assumed the hook lives in <repo>/tools/. A copy
 # at <repo>/.claude/hooks/ or at the repo root resolved the wrong repo, which
@@ -3155,7 +3156,7 @@ def _env_long_name(name):
 # quotes (measured on env 8.32; any other escape is refused, exit 125).
 _ENV_SPLIT_ESCAPES = {"f": "\f", "n": "\n", "r": "\r", "t": "\t", "v": "\v",
                       "#": "#", "$": "$", '"': '"', "'": "'", "\\": "\\"}
-_ENV_SPLIT_SPACE = " \t\n\r\v\f"
+_ENV_SPLIT_SPACE = string.whitespace
 _ENV_SPLIT_VAR = re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*\}")
 
 
