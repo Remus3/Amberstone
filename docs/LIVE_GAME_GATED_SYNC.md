@@ -6659,6 +6659,37 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
 - **G7-10** (was G10) B1 `det_coach_shadow` / WS3 `objective_playbook_shadow` / WS4
   `macro_response_shadow` flip gates (rows accruing ~37.6K / 33.6K / 32.7K on 2026-07-01; the flip
   DECISIONS are pending). SOURCE: commits `ee70536a` / `2cdf64cb` / `aec17657`.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 152, S144-G-143, source read at `ecef3bcbc`; no game
+  up; NOT a tick).** The filed counts are stale, accrual stopped on 08-02, and all three gates
+  still fail to support a flip - the macro one on a headline a constant beats. (1) COUNTS: the
+  three report tools re-run read-only over the main checkout's `data/` (`--path`; sha256 of all
+  three files identical before and after): `det_coach_shadow` total 60,721 rows (18,689
+  both-present), `objective_playbook_shadow` 46,474 (27,345 both-present; 2,482 test-leak rows
+  excluded, RM-872), `macro_response_shadow` 45,578 (15,171 both-present; 2,480 excluded), against
+  the filed ~37.6K / 33.6K / 32.7K of 2026-07-01. Last row 2026-08-02T22:34:15Z (det) and
+  22:29:50Z (objective, macro); the 2026-10-25 mtime on the two WS files is the RM-872 archive
+  split (LEDGER 1835), not accrual. Same stop as G7-05 / G7-06. (2) VERDICTS: det_coach HOLD
+  (domain alignment 294/18,689 = 0.0157; within-trade 5/256 = 0.0195); objective_playbook HOLD
+  (11,072/27,345 = 0.4049 < 0.70); macro_response REVIEW (11,075/15,171 = 0.73 >= 0.70,
+  `tools/macro_response_shadow_report.py:380`). (3) THE MACRO REVIEW IS DEGENERATE, NOT AGREEMENT:
+  Haiku's register is ACTIVE on 14,097 of the 15,171 both-present rows, so a constant "ACTIVE"
+  predictor scores 0.9292, 20 points above the det coach; the det register is constant per
+  `lead_state` on these rows (ahead 9,284 / even 2,391 all ACTIVE, behind 3,496 all PASSIVE; the
+  tool's own docstring `:27-28`), and the BEHIND bucket aligns 225/3,496 = 0.0644. The same
+  baseline beats the det side on objective (constant "dragon" 11,306/27,345 = 0.4135 vs 0.4049;
+  det names dragon on 24,478 rows, 0.895), and det_coach's det domain is one value (trade
+  x18,689). None of the three `_flip_hint`s (`tools/det_coach_shadow_report.py:514`,
+  `tools/objective_playbook_shadow_report.py:334`, `tools/macro_response_shadow_report.py:359`)
+  compares against a native majority-class baseline (grep `baseline|majority` over the three hits
+  classifier prose only). Filed as S144-G-144 (report-tool change, outside this lane's write set):
+  a gate clears only on alignment ABOVE the native majority share. (4) PREP for the next SR game,
+  stated before it: probe = the three commands with `--path <main>/data/<file>.jsonl --json`;
+  ACCRUAL PASS iff each file's last `ts` is after the game start and `total` grew; a flip is
+  operator-gated and never read off one game. SUBSTITUTION: the rates are COMPUTE over logged rows;
+  they show both coaches were fed, not that a deterministic line RENDERED. One game moves no
+  verdict (15K-27K comparable rows already), so the residual is an offline decision plus the
+  S144-G-144 tool fix, not a game wait: filed as a "Not actually live-gated" CANDIDATE only;
+  moving the row is a human doc edit.
 - **G7-11** (was G11) A3 tail: surface the DS-coach hints (anti-tank + scaling power-curve, SHADOW-only
   per item 328) only after `data/ds_coach_hints_shadow.jsonl` accrues + validates. SOURCE: RM-10.
 - **G7-12** (was G12) ADR-007 phase 3 prose-coach deprecation - after phase-1 detectors prove out in
