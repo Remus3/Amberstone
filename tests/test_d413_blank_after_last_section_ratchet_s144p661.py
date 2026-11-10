@@ -9,7 +9,11 @@ core/arena_coach_shadow, core/coaching_timestamps, core/district_fusion, lcu/lcu
 ops/rc_transactional_deploy) got the one blank line ruff asks for - whitespace inside a docstring only, no token
 changes outside a string, so behaviour and every line cite by symbol are unchanged.
 
-Not touched, and named in ``_BASELINE`` with their counts (34 sites in 29 files), so the baseline drains in later
+A second slice (S144-P-662) gave ten more core modules (aram_deterministic_coach, arena_augment_playline,
+arena_deterministic_coach, decision_detector, event_callouts, feature_policy, heal_threat, macro_context,
+macro_response, obj_participation) the same one blank line.
+
+Not touched, and named in ``_BASELINE`` with their counts (24 sites in 19 files), so the baseline drains in later
 slices or when the owner lands:
 
 - ``agents/daemon_slayer/`` and ``core/ds_*`` carry the ds lane's engine tree and its unlanded edits.
@@ -48,20 +52,10 @@ _BASELINE = {
     "agents/daemon_slayer/geometry.py": 3,
     "agents/daemon_slayer/missile.py": 1,
     "agents/daemon_slayer/recharge_ledger.py": 1,
-    "core/aram_deterministic_coach.py": 1,
-    "core/arena_augment_playline.py": 1,
-    "core/arena_deterministic_coach.py": 1,
-    "core/decision_detector.py": 1,
     "core/ds_antitank_hint.py": 1,
     "core/ds_calibration.py": 1,
     "core/ds_capability_gap.py": 1,
     "core/ds_scaling_hint.py": 1,
-    "core/event_callouts.py": 1,
-    "core/feature_policy.py": 1,
-    "core/heal_threat.py": 1,
-    "core/macro_context.py": 1,
-    "core/macro_response.py": 1,
-    "core/obj_participation.py": 1,
     "core/objective_playbook.py": 1,
     "core/post_game_rubric.py": 1,
     "core/post_game_score.py": 1,

@@ -1197,6 +1197,7 @@ class DecisionLoop:
             detectors:           count of registered detectors
             detector_errors:     detectors that raised during the last eval
             last_detector_error: "<fn>: <ExcType>: <msg>" for the last one
+
         """
         with self._heartbeat_lock:
             count = self._eval_count

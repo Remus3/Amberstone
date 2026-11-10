@@ -153,6 +153,7 @@ def build_macro_context(mode: object, game_time_s: object, *,
             ({name, killer_team, down_at_s[, dragon_type]}).
         lead: core.lead_projection.project_lead dict ({"state": ...}).
         zoi: v1 district seam - ACCEPTED AND IGNORED in fog-only v0.
+
     """
     del zoi  # v0 is fog-only; the kwarg is the documented v1 seam.
     try:

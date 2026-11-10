@@ -449,6 +449,7 @@ def build_block(
         action + fight_rule; [] when no binary verb maps), item_extra (the
         ARAM 7th-item "omit" filler), and objective (the deterministic
         tower-HP state-machine line; "" when no tower HP is known).
+
     """
     try:
         # Compute action + fight_rule ONCE so choices reuses them without

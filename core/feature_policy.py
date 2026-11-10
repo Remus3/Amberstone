@@ -350,6 +350,7 @@ def is_allowed(mode: str, feature: str) -> bool:
     feature : str
         "live_coaching" | "tft_vision_analysis" | "vod_record"
         (vod_record is default-OFF: see _DEFAULT_OFF_FEATURES).
+
     """
     try:
         _cache._check_reload()

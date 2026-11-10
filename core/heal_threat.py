@@ -240,6 +240,7 @@ def heal_threat_callout(
         ``{tag, line, eta_s, kind}`` with kind == 'heal_threat' and
         eta_s == None (a standing advisory, not a timed event, so the
         callouts panel renders the line with no ETA chip), or None.
+
     """
     if _norm_mode(mode) not in _HEAL_THREAT_MODES:
         return None

@@ -205,6 +205,7 @@ def lost_objective_response(
         game_time_s: current game time in seconds.
 
     Returns the directive string or ``None`` (no recent enemy loss). Fail-soft.
+
     """
     try:
         now_s = _as_float(game_time_s)

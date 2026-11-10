@@ -221,6 +221,7 @@ def compute_obj_participation(
         A single corrupt count (non-finite, negative, boolean, above
         ``_MAX_COUNT``) contributes 0.0 and the rest of the row and
         team still count.
+
     """
     # isinstance BEFORE truthiness: a non-str whose __bool__ raises (an
     # array-like) must fall soft too, not escape.
