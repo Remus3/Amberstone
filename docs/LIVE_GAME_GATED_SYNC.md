@@ -6522,6 +6522,35 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   number, not this one.
 - **G7-06** (was G6) DS calibration pipeline: needs **~20+ RANKED SR (queue 420)** games. Customs and
   Mayhem cannot feed it. SOURCE: RM-32.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 148, S144-G-138, source read at `4704d777b`; no game
+  up; NOT a tick).** The game-count threshold is already met; what the rail lacks is statistical
+  power and two stalled feeds, none of which one game moves. (1) THRESHOLD MET: the pipeline is BUILT
+  (RM-32, `core/ds_calibration_agreement.py` + `tools/ds_calibration_report.py`, `MIN_BUCKET_N = 20`
+  at `core/ds_calibration_agreement.py:78`). Calling `compute_ds_calibration_agreement_from_db`
+  in memory (no `--out` write) over the main checkout's `data/ds_calibration.jsonl` and
+  `data/rewind_history.db` (opened `mode=ro`) gives `ticks` 10469, `games_in_log` 110 (SR 104, ARENA
+  6), `games_joined` 50, of which **25 are queue 420** (14 of them wins), 17 queue 400, 2 SR with a
+  null queue, 6 Arena. So "~20+ ranked SR" is satisfied. (2) NOT A VERDICT: cells `SR/dps` n=299
+  follow 0.2341 `winrate_delta_shrunk` +0.0677, `SR/unknown` n=96 -0.0926, `ARENA/dps` n=26 -0.0185;
+  3 cells dropped below min_n. These are the same SR/dps numbers RM-32 recorded on 2026-07-25 as
+  inseparable from noise on one account, so the binding constraint is effect size versus corpus,
+  not a game count. (3) PRODUCER SILENT SINCE 2026-08-02: the log's newest `ts` is 2026-08-02
+  17:32 local (file mtime the same day); the producer is `core/ds_calibration.py:63 log_ds_run`,
+  called from the SR / ARAM / Arena / Brawl coach ticks, so it only grows while a coach tick runs
+  in a game. (4) OUTCOME FEED STALLED: the newest `matches.game_creation_ts` in
+  `rewind_history.db` is 2026-07-20 and the newest queue 420 game is 2026-06-30; 60 SR games in
+  the log (38 June, 21 July, 1 August) do not join. Cause of each miss NOT measured (a practice or
+  custom game never reaches Match-V5; an un-run ingest also misses). The automatic per-game writer
+  is `lib/rewind_live_writer.py` (`schedule_live_insert`, called at a non-TFT game end from frozen
+  `app/_game_lifecycle.py:222-223`, writing through `scripts/rewind_catchup.write_match`); the
+  batch writers are `scripts/rewind_catchup.py` and `scripts/rewind_scraper.py` (`INSERT OR IGNORE
+  INTO matches`). `agents/agent2_backend/game_ingest.py` writes `data/db/`, not this db. Why the
+  live writer added no match after 2026-07-20 (including the 2026-08-02 SR game) was NOT measured;
+  a new ranked game joins only once one of these writers lands it. VERDICT:
+  the row's stated gate is MET and stale. A residual exists but it is an accrual-plus-ingest rail,
+  not a drain row: re-run the report after the ingest has caught up, and decide on the delta's
+  confidence, never on a game count. Filed as S144-G-139 (re-word this row's gate to the delta
+  bound; measure why `rewind_live_writer` landed no match after 2026-07-20).
 - **G7-07** (was G7) `post_game_score` LR retrain at N>=20 real timelines (`core/post_game_score.py:220`).
   **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 147, S144-G-136, source read at `cf4681e61`; no game
   up; NOT a tick).** The accrual threshold was met before the row was filed, so this is not a rail
