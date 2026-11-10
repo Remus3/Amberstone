@@ -525,6 +525,7 @@ def wait_for_heartbeat(
 
     `previous_mtime` is a FILE mtime, so its comparison stays on the wall
     clock; only the timeout deadline is monotonic.
+
     """
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:

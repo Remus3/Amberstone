@@ -248,6 +248,7 @@ def log_arena_coach(
             sig so each round re-logs even when the action label repeats.
         path: jsonl target override (test seam).
         now_iso: ISO timestamp override (test seam).
+
     """
     try:
         # Live-game gate (item-386): only a real in-game liveclient tick

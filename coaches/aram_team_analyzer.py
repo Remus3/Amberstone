@@ -49,6 +49,7 @@ from champions.json range/damage/frontline/engage/sustain facts) with no LLM
 call (Haiku-elimination PRIMARY north star). The Haiku call survives only as a
 fail-soft fallback for a team too thin to judge (< 3 resolvable champs); it
 adds the "source" key ("deterministic" when the engine answered).
+
 """
 from __future__ import annotations
 

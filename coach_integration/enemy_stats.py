@@ -394,6 +394,7 @@ def compute_enemy_stats(
         finite and non-negative; caps applied to prevent runaway values.
         Junk input never raises: each junk field falls back to the next
         signal (enemy levels -> level -> clock -> level 1).
+
     """
     mode_key = _normalize_mode(mode)
     armor_base, armor_per_lv, mr_base, mr_per_lv, hp_base, hp_per_lv = (

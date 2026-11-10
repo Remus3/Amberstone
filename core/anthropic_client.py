@@ -72,6 +72,7 @@ def tracked_anthropic(
     anthropic.Anthropic
         Real client with `messages.create` shimmed to record after a
         successful response.
+
     """
     import anthropic  # imported lazily so tests can monkeypatch
     client = anthropic.Anthropic(api_key=api_key, base_url="https://api.anthropic.com")

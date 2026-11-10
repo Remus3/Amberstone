@@ -373,6 +373,7 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
           "summ_cmd":  {cmd, d, f}                                     | None,
           "raw_items": [str item names - for UI display]
         }
+
     """
     loadouts = _load_loadouts().get("champions", {}) or {}
     champ = _lookup_champ(loadouts, champion)

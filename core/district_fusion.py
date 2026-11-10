@@ -302,6 +302,7 @@ def fuse_districts(districts, lc_events, mode, game_time_s):
     Returns the districts_fused vector: one output row per (dict) input
     row, every input key copied through untouched, plus ``fused_present``
     and ``fusion_notes``. Never raises; catastrophic failure -> [].
+
     """
     try:
         if not isinstance(districts, list):

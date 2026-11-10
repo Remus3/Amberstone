@@ -155,6 +155,7 @@ def log_aram_coach(
     log could be attributed to the state that produced it while the raw
     decide_action inputs were absent from every row. Each degrades to null
     independently, so a partial read still yields an attributable row.
+
     """
     try:
         # Live-game gate (item-386): only a real in-game liveclient tick carries

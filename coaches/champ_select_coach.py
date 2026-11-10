@@ -40,6 +40,7 @@ Cost: one Haiku call per invocation (~$0.001), and no call at all for a state or
 key that cannot produce advice. SDK retries are off so a timeout cannot bill
 again unrecorded. Dashboard SHOULD debounce state changes so we don't burn one
 call per pick during active draft; nothing on the server does.
+
 """
 from __future__ import annotations
 
