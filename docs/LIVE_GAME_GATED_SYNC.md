@@ -4431,6 +4431,27 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   200.00, 425.00 at 150 bonus AD) is DOCUMENTED INTENT per `_lifeline_target_shield.py` - Shieldbow is
   the conservative representative magnitude, as the row already says. Modelling limit, not a defect.
   REMAINS (not a gate): the operator-gated default-ON flip. SOURCE: LEDGER 743.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 145, S144-G-132, source read at `134f4c72e`, DS patch
+  16.22.1, ENGINE_VERSION 1.291.0; no game up; NOT a tick).** The CLOSED verdict holds and the
+  measurement reproduces to the cent; items (2) and (3) are corrections. (1) REPRODUCES: same Yone target build and
+  Fizz burst build as above, `compute_ehp` lvl18 -> hp 2405.00 / armor 141.20 / mr 66.85, and
+  `compute_burst_damage` lvl18 with that target reads 3330.26 -> 2630.26, delta -700.00; with no
+  target modelled it reads 4488.00 -> 3788.00. `target_lifeline_shield` reads 700.00 at lvl18 and
+  400.00 at lvl9; Sterak 3053 0.00 at `target_bonus_hp=0` and 1200.00 at 2000; Maw 3156 200.00 and
+  425.00 at 150 bonus AD. (2) CITES DRIFTED, CONSUMER SET HOLDS: still exactly two engine consumers,
+  both default `False` by `inspect.signature` - `compute_burst_damage` (parameter `burst.py:536`,
+  branch `:1385`) and `compute_dps` (parameter `dps.py:793`, branch `:1965`). `rank_items_by_burst`
+  (`burst.py:1945`), `rank_at_level` (`ability_dps.py:333`) and `compute_rune_proc_damage`
+  (`rune_procs.py:859`) still lack the parameter, and no tracked non-test `.py` file outside
+  `burst.py`, `dps.py` and `_lifeline_target_shield.py` names it (prose docs and the DS CHANGELOG do). (3) THE "REMAINS" FLIP IS NOT PENDING: no HTTP
+  route parses the flag (`tests/test_ds_parity_map.py` `_UNREACHABLE_OK` lists it under both `/burst`
+  and `/dps`, an equality ratchet), and `agents/daemon_slayer/tests/test_stranded_hsp_seam_r197.py`
+  `STRANDED_TODAY` records it as operator-CLOSED s232, the conditional-target-state arc (CLAUDE.md
+  Settled). No flip is queued and no live residual exists; re-opening needs the operator (or MAIN)
+  to re-open s232 in writing. That ledger's reason text says "caster-state lifeline", but the seam
+  models the TARGET's shield (`_lifeline_target_shield.py` docstring); a label slip only, outside
+  this lane's write set (S144-G-133). The row's first paragraph carries a real match id; this
+  re-check does not repeat it, and scrubbing it belongs to RM-906.
 - **G4-09** (was B43) R60 `assume_hsp_amp` (wielder Heal/Shield Power) - **PARTIAL 2026-07-18, and
   CORPUS-CLOSABLE more strongly than first filed.** SETTLED HEADLESS on REAL builds, both halves the
   row names:
