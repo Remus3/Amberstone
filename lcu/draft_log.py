@@ -222,8 +222,8 @@ def store_draft(conn: sqlite3.Connection, game_id, rows, *,
             "INSERT INTO draft_log (game_id, " + ", ".join(_ROW_COLS)
             + ", queue_id, draft_source, captured_at) VALUES ("
             + ", ".join("?" * (len(_ROW_COLS) + 4)) + ")",
-            [(gid,) + tuple(r.get(c) for c in _ROW_COLS)
-             + (_as_int(queue_id, 0), DRAFT_SOURCE_LCU, now) for r in rows])
+            [(gid, *(r.get(c) for c in _ROW_COLS),
+              _as_int(queue_id, 0), DRAFT_SOURCE_LCU, now) for r in rows])
     return len(rows)
 
 

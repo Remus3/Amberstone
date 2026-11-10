@@ -78,7 +78,7 @@ REDUCTION_AXES = (
     "armor_reduction_pct", "armor_reduction_flat", "mr_reduction_pct", "mr_reduction_flat",
 )
 # Engine fields compared; armor_pen_flat has no DDragon axis.
-ENGINE_FIELDS = AXES + ("armor_pen_flat",) + REDUCTION_AXES
+ENGINE_FIELDS = (*AXES, "armor_pen_flat", *REDUCTION_AXES)
 
 _STATS_BLOCK = re.compile(r"<stats>(.*?)</stats>", re.DOTALL)
 _LINE_SPLIT = re.compile(r"<br\s*/?>", re.IGNORECASE)

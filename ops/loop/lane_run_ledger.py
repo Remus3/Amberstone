@@ -425,7 +425,7 @@ def fill_verifier_cap(text: str, cap: int = VERIFIER_ROUND_CAP) -> str:
     rows = text.split("\n")
     for i, row in enumerate(rows):
         if row.startswith(VERIFIER_GATE_ANCHOR):
-            return "\n".join(rows[:i + 1] + [line] + rows[i + 1:])
+            return "\n".join([*rows[:i + 1], line, *rows[i + 1:]])
     return text
 
 

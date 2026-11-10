@@ -477,7 +477,7 @@ def handle_ocr(body: bytes) -> dict:
     _OCR_EXC = (RuntimeError, OSError, ValueError, AttributeError,
                 TypeError, MemoryError)
     if isinstance(_bomb, type) and issubclass(_bomb, BaseException):
-        _OCR_EXC = _OCR_EXC + (_bomb,)
+        _OCR_EXC = (*_OCR_EXC, _bomb)
     # Track attempt/failure so a call where EVERY crop threw is not recorded
     # as a clean read - see the _record call at the end of this function.
     attempts = 0

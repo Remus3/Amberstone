@@ -6,7 +6,10 @@ operands were already a list / tuple of the same kind, and unpacking is the more
 tuple + list mix, unpacking does not), so a call that worked still returns an equal value of the same type.
 
 S144-P-271 held ``core/``; S144-P-272 added ``tools/`` (26 more findings in 16 modules, one under tools/tests/). ``_SCOPE``
-grows one directory per later slice (dashboard/, ops/ ... then tests/); S144-P-504 added ``tft/`` (5 findings) and ``scripts/`` (4 findings), listed in ``_FIXED_P504``. Nothing under a scoped prefix may have a finding and there is no baseline. The run uses NO config
+grows one directory per later slice (dashboard/, ops/ ... then tests/); S144-P-504 added ``tft/`` (5 findings) and ``scripts/`` (4 findings), listed in ``_FIXED_P504``. S144-P-647 added ``dashboard/``, ``lcu/``, ``vision_server/``,
+``ops/audit/`` and the one ``ops/loop/`` module without a sibling lane's edit (6 findings in 5 modules, ``_FIXED_P647``); the rest of
+``ops/loop/``, ``ops/launcher/`` (PKG-owned) and ``agents/`` (Daemon Slayer plus a supervisor another lane edits) still carry findings
+and join when their owners release them. Nothing under a scoped prefix may have a finding and there is no baseline. The run uses NO config
 (``--isolated``), so a per-file-ignore cannot hide a finding.
 """
 from __future__ import annotations
@@ -27,7 +30,10 @@ pytestmark = pytest.mark.skipif(
 )
 
 # Directories held at zero RUF005 findings. A new entry means that whole directory was swept first.
-_SCOPE = ("core/", "tools/", "tft/", "scripts/")
+_SCOPE = (
+    "core/", "tools/", "tft/", "scripts/",
+    "dashboard/", "lcu/", "vision_server/", "ops/audit/", "ops/loop/lane_run_ledger.py",
+)
 _FIXED = (
     "core/build_order_precompute.py",
     "core/build_order_variants.py",
@@ -68,6 +74,13 @@ _FIXED_P504 = (
     "tft/sources/tft_log.py",
     "tft/tft_prompt.py",
 )
+_FIXED_P647 = (
+    "dashboard/_deterministic_coaching.py",
+    "lcu/draft_log.py",
+    "ops/audit/item_pen_drift_check.py",
+    "ops/loop/lane_run_ledger.py",
+    "vision_server/_inference.py",
+)
 
 
 def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
@@ -105,7 +118,7 @@ def test_no_scoped_module_has_a_concatenation_finding(tracked):
 
 
 def test_the_fixed_modules_are_tracked_and_in_scope(tracked):
-    for rel in (*_FIXED, *_FIXED_P504):
+    for rel in (*_FIXED, *_FIXED_P504, *_FIXED_P647):
         assert rel in tracked, rel
         assert _in_scope(rel), rel
 
