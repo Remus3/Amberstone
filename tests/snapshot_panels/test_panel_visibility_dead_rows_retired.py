@@ -133,8 +133,8 @@ def test_premise_the_retired_ids_render_in_no_view(settings_page):
     assert got["views"] >= 12, got
     assert got["minimapNode"] is False, got
     assert got["nextNode"] is False, got
-    assert got["inMain"] == {i: True for i in SERVED_RETIRED}, got["inMain"]
-    assert got["boxes"] == {i: 0 for i in SERVED_RETIRED}, got["boxes"]
+    assert got["inMain"] == dict.fromkeys(SERVED_RETIRED, True), got["inMain"]
+    assert got["boxes"] == dict.fromkeys(SERVED_RETIRED, 0), got["boxes"]
 
 
 def test_every_tab_lists_only_the_panels_a_view_can_show(settings_page):
