@@ -2,10 +2,10 @@
 
 TC003 is not selected by ruff.toml. Measured 2026-11-10 with ``ruff check --isolated --line-length 120`` (target py39):
 94 findings tree-wide, 68 of them in ``tests/`` (``from pathlib import Path`` used only in test-function signatures).
-Fourteen of those modules (the ones no other lane branch changed) now carry the import under ``if TYPE_CHECKING:``;
+Twenty-eight of those modules (14 in S144-P-645, 14 more in S144-P-646; ones no other lane branch changed) now carry the import under ``if TYPE_CHECKING:``;
 each has ``from __future__ import annotations``, so the annotation is never evaluated at runtime.
 
-Scope is the named ``_FIXED`` set, not the tree: the other ~54 test modules and ~12 production modules are further
+Scope is the named ``_FIXED`` set, not the tree: the remaining ~40 test modules and ~12 production modules are further
 slices, and a tree baseline would be a long exception list rather than a ratchet. Move a module into ``_FIXED`` when its
 finding is fixed. The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding.
 """
@@ -42,6 +42,21 @@ _FIXED = (
     "tests/test_death_patterns_loader_hardening_s144t133.py",
     "tests/test_det_coach_shadow_report.py",
     "tests/test_det_coach_shadow_report_true_audit_s144t174.py",
+    # S144-P-646: the next fourteen.
+    "tests/test_ds_ability_data_status_rm95.py",
+    "tests/test_game_ingest_hardening_s144t163.py",
+    "tests/test_gen_archmap_gitignored_file_s144d14.py",
+    "tests/test_host_allowlist_rm759.py",
+    "tests/test_host_head_defects_rm773.py",
+    "tests/test_input_parser_true_audit_s144.py",
+    "tests/test_insight_detector_true_audit_s144t151.py",
+    "tests/test_item_wpa_audit_s144.py",
+    "tests/test_laning_verdicts_true_audit_s144.py",
+    "tests/test_league_settings.py",
+    "tests/test_loop_controller_disarm_rm506.py",
+    "tests/test_macro_response_shadow_report.py",
+    "tests/test_md_guard_selector_bound_argv_s144q40b.py",
+    "tests/test_md_guard_selector_option_args_s144q41.py",
 )
 
 

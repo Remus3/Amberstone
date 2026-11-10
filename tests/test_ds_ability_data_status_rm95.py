@@ -26,11 +26,14 @@ cache makes these tests pass or fail on ordering rather than on behavior.
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 import core.daemon_slayer_client as M
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _REAL_DS_DATA_DIR = M._DS_DATA_DIR
 

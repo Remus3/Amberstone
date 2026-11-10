@@ -25,11 +25,14 @@ import ast
 import os
 import shutil
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tools import md_guard_selector as mgs
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _GIT = shutil.which("git")
 needs_git = pytest.mark.skipif(_GIT is None, reason="git is not on PATH")

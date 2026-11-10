@@ -13,11 +13,14 @@ objective-category metric would false-near-zero. See the module docstring.
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 import tools.macro_response_shadow_report as rpt
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # The three real deterministic stagnation lines (core/macro_response.py), one per
 # lead_state. ahead/even classify ACTIVE (force/take); behind classifies PASSIVE

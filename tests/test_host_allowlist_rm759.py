@@ -32,13 +32,16 @@ import logging
 import socket
 import threading
 from http.server import ThreadingHTTPServer
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from core import http_host_gate as _host_gate
 from dashboard import _dispatch, _handler
 from dashboard._handler import Handler
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _HOST = "127.0.0.1"
 _CLOSED = (ConnectionResetError, ConnectionAbortedError)

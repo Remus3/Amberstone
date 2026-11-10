@@ -7,7 +7,7 @@ clean checkout / CI / non-Legion host never crashes. ASCII-only.
 """
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -16,6 +16,9 @@ from core.league_settings import (
     minimap_rect_payload,
     read_hud_settings,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # A faithful slice of the operator's live game.cfg (values confirmed live
 # 2026-06-21): leading blank lines, keys before the first section, [General]

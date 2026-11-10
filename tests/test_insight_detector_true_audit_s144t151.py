@@ -31,11 +31,14 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 import agents.agent4_coach_mentor.insight_detector as det
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class FakeScheduler:
