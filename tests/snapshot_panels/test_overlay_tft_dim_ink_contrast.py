@@ -12,8 +12,9 @@ frame) that is 4.48 - 4.53:1 live, and in the idle recede
 (overlay.css section 6, body[data-rc-idle="1"] .ovx-widget opacity 0.85 -
 the state the TFT HUD sits in most of a game, s136-T12) 3.52 - 3.83:1 over a
 black to white game pixel. Every other dimmed overlay ink rule is 0.55
-(overlay.css: the OBJECTIVE footer, --signal-dim and six others); these two
-were the only sub-0.55 ink rules in the overlay.
+(overlay.css: --signal-dim and others; the w-call OBJECTIVE footer was one
+until S144-U-288 lifted it to 0.62); these two were the only sub-0.55 ink
+rules in the overlay.
 
 THE FIX (web/js/lib/overlay_tft.js TFT_OVERLAY_CSS). Both rules take the
 overlay dim tier, alpha 0.55: 6.06 - 6.24:1 live, 4.63 - 4.99:1 idle. The

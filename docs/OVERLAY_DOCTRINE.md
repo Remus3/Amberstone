@@ -168,7 +168,7 @@ The palette is law. No color literal outside this table reaches a widget.
 | caution / urgent    | #C8AA6E  | the single Urgent caution hue (reuse gold)                 |
 | warn / behind       | #E8A33D  | lead-behind bar, severe STALE tag, TFT crit opponent chip (`--ovx-warn`; ambient bad news, never red) |
 | lethal / emergency  | #E84057  | the ONE pop-out: Emergency glow + `urgent` band; max once  |
-| neutral text        | #FFFFFF  | widget body ink (`--ovx-text`): ACTION verb full, OBJECTIVE footer @0.55 |
+| neutral text        | #FFFFFF  | widget body ink (`--ovx-text`): ACTION verb full, OBJECTIVE footer @0.62 (AA in the idle recede, S144-U-288) |
 | dmg physical        | #EB8A3A  | threat donut slice (`--ovx-dmg-physical` -> `--data-dmg-physical`, Y-07) |
 | dmg magic           | #A37CF7  | threat donut slice (`--ovx-dmg-magic` -> `--data-dmg-magic`)  |
 | dmg true            | #ECE8DF  | threat donut slice (`--ovx-dmg-true` -> `--data-dmg-true`)    |

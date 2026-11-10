@@ -380,7 +380,7 @@ export const TFT_OVERLAY_CSS = [
   "  font-size: var(--fs-sm); line-height: 1.2;",
   "}",
   // S144-U-273: the "-" no-data placeholder takes the overlay dim tier (0.55,
-  // as overlay.css's OBJECTIVE footer and --signal-dim). 0.45 read 4.48:1 on
+  // as overlay.css's --signal-dim and its 0.55 rules). 0.45 read 4.48:1 on
   // the nested backing live and 3.52 - 3.83:1 in the idle recede (widget
   // opacity 0.85); 0.55 reads 6.06:1 live, 4.63:1 idle, over any game pixel.
   'body[data-shell="overlay"] .ovt-panel .ovt-cell.is-empty .ovt-val {',

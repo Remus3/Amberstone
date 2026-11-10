@@ -32,7 +32,7 @@ body[data-shell="overlay"] {
    * over a white game pixel (arcane), under the WCAG 1.4.11 3:1 non-text floor;
    * this reads 3.41:1 or better idle, 4.59:1 or better live, in every theme. */
   --ovx-red-ink: 235, 91, 111;   /* #EB5B6F */
-  --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.55) - palette section 5 */
+  --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.62) - palette section 5 */
   /* Damage-type hues (Y-07, external reference P): the threat donut renders in
    * the overlay build widget, so its hues join the overlay table (doctrine
    * section 5). Same parts as the tokens.css --data-dmg-* tier; each clears
@@ -469,11 +469,18 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
  * surface. 2026-06-29: bumped 2 -> 3 lines (operator: objective truncated mid-
  * sentence); paired with the safe() tag-strip in active_match.js the prose is
  * shorter now, so 3 lines lands the full call without overrunning the card.
- * -webkit-box line-clamp is the cross-Chromium idiom. */
+ * -webkit-box line-clamp is the cross-Chromium idiom.
+ * S144-U-288: the ink is the 0.62 tier (the TFT cell label, the draft-elo red
+ * band), not the 0.55 dim tier. The call pane has one backing layer, so 0.55 read
+ * AA live (5.61 arcane - 6.11 terminal) but 4.18 arcane - 4.68 terminal in the
+ * idle recede (widget opacity 0.85). 0.62 reads 6.74 - 7.47 live, 4.84 - 5.58
+ * idle, over any game pixel, and stays under the full-white 14px / 700 ACTION
+ * verb on alpha, size and weight.
+ * Guard: tests/snapshot_panels/test_overlay_call_objective_contrast.py. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="objective"] > span:last-child {
   font-size: var(--fs-ov-sigil) !important;
   font-weight: 400;
-  color: rgba(var(--ovx-text), 0.55) !important;
+  color: rgba(var(--ovx-text), 0.62) !important;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;

@@ -293,7 +293,9 @@ def test_overlay_call_value_tiering(mock_server, pw_browser):
         # Tier colors apply over the inline color:var(--text) (needs !important).
         rn = _css(page, '#am-call-body > div[data-call-line="right-now"] > span:last-child', "color")
         assert "10, 200, 185" in rn, f"RIGHT NOW value not cyan (got {rn!r})"
-        assert "0.55" in _css(page, obj, "color"), "OBJECTIVE value not faint"
+        # S144-U-288: faint is the 0.62 tier (AA in the idle recede); the
+        # contrast and hierarchy pins live in test_overlay_call_objective_contrast.py.
+        assert "0.62" in _css(page, obj, "color"), "OBJECTIVE value not faint"
         # Eyebrow labels drop for data-ink (rule 8) - beats the inline display:block.
         assert _display(
             page, '#am-call-body > div[data-call-line="objective"] > span:first-child'
