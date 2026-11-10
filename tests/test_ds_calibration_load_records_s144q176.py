@@ -103,7 +103,7 @@ def test_skip_warning_counts_malformed_and_non_dict_lines_together(
 def test_skip_count_is_summed_across_rotation_generations(tmp_path, records):
     base = tmp_path / "ds_calibration.jsonl"
     base.with_name(base.name + ".1").write_text(
-        _row("g-old") + "\n[\"rotated\"]\n", encoding="utf-8")
+        _row("g-old") + '\n["rotated"]\n', encoding="utf-8")
     base.write_text("{ broken\n" + _row("g-new") + "\nnull\n", encoding="utf-8")
     assert [r["game_id"] for r in dca.load_records(base)] == ["g-old", "g-new"]
     assert _warnings(records) == [
