@@ -223,8 +223,7 @@ def _reset_state_for_tests() -> None:
     the transition flag deliberately suppresses repeat WARNINGs, which
     would otherwise make a second test in the same process unable to
     observe the log it is asserting on."""
-    global _file_lock_degraded, _episode_logged, _lock_dir_ready
-    global _episodes_logged_window, _last_episode_logged_at, _dir_epoch
+    global _file_lock_degraded, _episode_logged, _lock_dir_ready, _episodes_logged_window, _last_episode_logged_at, _dir_epoch
     with _stats_lock:
         for k in _stats:
             _stats[k] = 0
@@ -252,8 +251,7 @@ def _implicates_lock_dir(exc: BaseException) -> bool:
 
 
 def _note_file_lock_failure(reason: str, exc: BaseException) -> None:
-    global _file_lock_degraded, _episode_logged, _lock_dir_ready
-    global _episodes_logged_window, _last_episode_logged_at, _dir_epoch
+    global _file_lock_degraded, _episode_logged, _lock_dir_ready, _episodes_logged_window, _last_episode_logged_at, _dir_epoch
     # Re-arm the mkdir ONLY when the failure implicates the DIRECTORY. An
     # unconditional re-arm defeats the memo in precisely the state the memo
     # exists for: under a persistent antivirus block on the lock FILE, every

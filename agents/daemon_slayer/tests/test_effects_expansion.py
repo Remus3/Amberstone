@@ -1097,7 +1097,6 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
         # We assert this indirectly: replace Ravenous with a hypothetical
         # 65 AD pure-stat item - same DPS expected. Easier path: just
         # assert the proc *would* resolve to zero given Aatrox's rotations.
-        from agents.daemon_slayer.engine import build_champion
         from agents.daemon_slayer.dps import _phase_rotations
         rotations = _phase_rotations(self.snap, "Aatrox")
         for phase_rot in rotations.values():
@@ -7060,12 +7059,10 @@ class Batch55DDragonCoverageTests(unittest.TestCase):
     def test_ddragon_purchasable_coverage_complete(self) -> None:
         """Every DDragon purchasable item (gold>0, not 9xxx/55xxx) has an entry."""
         import json
-        import os
-        items_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..", "data",
-            "daemon_slayer", "16.10.1", "items.json"
-        )
-        items = json.load(open(items_path))["data"]
+        from pathlib import Path
+        items_path = (Path(__file__).absolute().parents[3] / "data"
+                      / "daemon_slayer" / "16.10.1" / "items.json")
+        items = json.loads(Path(items_path).read_text(encoding="utf-8"))["data"]
         covered = set(ITEM_EFFECTS.keys())
         missing = []
         for k, v in items.items():

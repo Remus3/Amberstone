@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 import sqlite3
 import sys
@@ -291,10 +290,10 @@ class IterDeathsTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
-        os.rmdir(self.tmpdir)
+        pathlib.Path(self.tmpdir).rmdir()
 
     def test_iter_deaths_returns_only_victim_self(self):
         conn = sqlite3.connect(str(self.db_path))
@@ -318,10 +317,10 @@ class ClassifyAllTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
-        os.rmdir(self.tmpdir)
+        pathlib.Path(self.tmpdir).rmdir()
 
     def test_classify_counts_match_fixture(self):
         conn = sqlite3.connect(str(self.db_path))
@@ -529,10 +528,10 @@ class IterRoleGradesTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
-        os.rmdir(self.tmpdir)
+        pathlib.Path(self.tmpdir).rmdir()
 
     def test_returns_one_per_non_blank_team_position(self):
         conn = sqlite3.connect(str(self.db_path))
@@ -828,11 +827,11 @@ class ObjParticipationWireTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -977,11 +976,11 @@ class HeraldEnrichmentWireTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -1093,11 +1092,11 @@ class VoidEnrichmentWireTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 
@@ -1209,11 +1208,11 @@ class TurretEnrichmentWireTests(unittest.TestCase):
 
     def tearDown(self):
         try:
-            os.remove(self.db_path)
+            self.db_path.unlink()
         except OSError:
             pass
         try:
-            os.rmdir(self.tmpdir)
+            pathlib.Path(self.tmpdir).rmdir()
         except OSError:
             pass
 

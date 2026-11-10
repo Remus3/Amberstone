@@ -52,7 +52,6 @@ if str(_ROOT) not in sys.path:
 # Reuse boots-engine constants from the live build planner so SR regen
 # + ARAM dedupe-with-boots-backfill stay in lockstep with the runtime.
 from core.build_order import (  # noqa: E402
-    _BOOTS_IDS,
     _BOOTS_NAMES,
     _BOOTSLESS_CHAMPS,
     _DEFAULT_BOOTS_BY_ARCHETYPE,

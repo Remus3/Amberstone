@@ -10,8 +10,6 @@ import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.ehp import (
-    EhpRankResult,
-    EhpRankedItem,
     compute_ehp,
     rank_items_by_ehp,
 )

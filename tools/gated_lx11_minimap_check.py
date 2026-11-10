@@ -173,7 +173,7 @@ def canvas_size(index_html: Path = INDEX_HTML) -> tuple[int, int]:
 
 def badge_radius(w: int) -> int:
     # dev.js _replayMapDraw: R = Math.round(W / 30); JS rounds .5 up
-    return int(math.floor(w / 30 + 0.5))
+    return math.floor(w / 30 + 0.5)
 
 
 def _dist(a, b) -> float:
@@ -189,7 +189,8 @@ def run_node_model(match: dict, w: int, h: int, node: str = "node") -> dict:
     try:
         proc = subprocess.run([node, "--input-type=module", "-e", _NODE_SRC],
                               input=payload, capture_output=True, text=True,
-                              encoding="utf-8", timeout=120, creationflags=flags)
+                              encoding="utf-8", timeout=120, creationflags=flags,
+                              check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise InputError(f"node did not run: {type(exc).__name__}") from exc
     if proc.returncode != 0:
@@ -323,7 +324,7 @@ def _cdist(px, col) -> float:
 
 
 def _px(img, x, y):
-    xi, yi = int(round(x)), int(round(y))
+    xi, yi = round(x), round(y)
     if not (0 <= xi < img.width and 0 <= yi < img.height):
         return None
     return img.getpixel((xi, yi))
@@ -370,8 +371,7 @@ def art_colours(img, step: int = 12) -> int:
     """Distinct RGB colours on a coarse grid: map art has many, a flat fill has one."""
     seen = set()
     for y in range(step // 2, img.height, step):
-        for x in range(step // 2, img.width, step):
-            seen.add(img.getpixel((x, y))[:3])
+        seen.update(img.getpixel((x, y))[:3] for x in range(step // 2, img.width, step))
     return len(seen)
 
 

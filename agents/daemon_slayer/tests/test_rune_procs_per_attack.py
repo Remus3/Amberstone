@@ -101,14 +101,14 @@ class FailSoftTests(unittest.TestCase):
 class AsciiHygieneTests(unittest.TestCase):
     def test_rune_procs_module_is_ascii(self):
         path = _DS_DIR / "rune_procs.py"
-        with open(path, "rb") as fh:
+        with Path(path).open("rb") as fh:
             data = fh.read()
         for i, b in enumerate(data):
             self.assertLess(b, 128, f"non-ASCII byte {b} at offset {i} in {path}")
 
     def test_this_test_file_is_ascii(self):
         path = Path(__file__).resolve()
-        with open(path, "rb") as fh:
+        with Path(path).open("rb") as fh:
             data = fh.read()
         for i, b in enumerate(data):
             self.assertLess(b, 128, f"non-ASCII byte {b} at offset {i} in {path}")

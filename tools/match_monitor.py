@@ -42,9 +42,9 @@ def snap() -> dict:
     out: dict = {"t": time.time()}
     f = fetch(f"{BASE}/latest-frame/meta", H)
     if f and "ts" in f: out["frame_age"] = round(time.time() - f["ts"], 1)
-    l = fetch(f"{BASE}/latest-lcu", H)
-    if l and "data" in l:
-        d = l["data"]
+    lcu = fetch(f"{BASE}/latest-lcu", H)
+    if lcu and "data" in lcu:
+        d = lcu["data"]
         out["lcu_phase"] = d.get("phase")
         cs = d.get("champ_select") or {}
         out["cs_champ"] = cs.get("my_champion")

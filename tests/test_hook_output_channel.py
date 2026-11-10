@@ -46,7 +46,7 @@ def _hook(name: str, stdin: str, cwd: Path) -> subprocess.CompletedProcess:
     env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_FILE_PATHS", "RC_FULL_SUITE")}
     return subprocess.run(
         [sys.executable, str(_HOOKS[name])], input=stdin, capture_output=True,
-        text=True, timeout=60, env=env, cwd=str(cwd),
+        text=True, timeout=60, env=env, cwd=str(cwd), check=False,
     )
 
 
@@ -154,7 +154,7 @@ def test_bom_payload_under_a_cp1252_console_still_reaches_the_hook(name, tmp_pat
     env = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_FILE_PATHS", "RC_FULL_SUITE")}
     env.update(PYTHONIOENCODING="cp1252", PYTHONUTF8="0")
     proc = subprocess.run([sys.executable, str(_HOOKS[name])], input=raw, capture_output=True,
-                          timeout=60, env=env, cwd=str(tmp_path))
+                          timeout=60, env=env, cwd=str(tmp_path), check=False)
     out = proc.stdout.decode("ascii", errors="replace")
     assert proc.returncode == 0, proc.stderr
     lines = out.splitlines()

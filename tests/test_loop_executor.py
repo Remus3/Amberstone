@@ -219,7 +219,7 @@ def _kit_launch_runs_the_registered_stub(monkeypatch: pytest.MonkeyPatch):
             raise FileNotFoundError(argv[0])
         return subprocess.run(stub, input=kw.get("input"), cwd=kw.get("cwd"),
                               capture_output=True, text=True, encoding="utf-8",
-                              errors="replace", timeout=kw.get("timeout"))
+                              errors="replace", timeout=kw.get("timeout"), check=False)
 
     monkeypatch.setattr(fleet_route, "_launch", _launch)
     yield
@@ -482,7 +482,7 @@ def _configured_hooks_path(root: Path) -> str:
     """core.hooksPath as GIT reports it - read independently of the module under
     test, so the expectation is not derived from the same code path it judges."""
     r = subprocess.run(["git", "-C", str(root), "config", "--get", "core.hooksPath"],
-                       capture_output=True, text=True, timeout=60)
+                       capture_output=True, text=True, timeout=60, check=False)
     return (r.stdout or "").strip() if r.returncode == 0 else ""
 
 
@@ -560,7 +560,7 @@ def _tracked_hook_repo(tmp_path: Path, *, executable: bool,
     # add records whatever the disk says, so the chmod lands after update-index
     # (a 0o755 before the add would make `executable=False` record 100755).
     for n in names:
-        os.chmod(hooks / n, 0o755 if executable else 0o644)
+        (hooks / n).chmod(0o755 if executable else 0o644)
     return hooks
 
 
@@ -599,7 +599,7 @@ def test_untracked_hooks_dir_is_not_reported_as_a_mode_breach(tmp_path: Path):
         # A real .git/hooks install is executable; write_text is not. Without
         # this the on-disk check below would fire on POSIX and this test would
         # pass or fail for a reason that has nothing to do with the index.
-        os.chmod(real / n, 0o755)
+        (real / n).chmod(0o755)
     _git(tmp_path, "config", "core.hooksPath", str(real))
     assert executor.gate_inactive_reason(tmp_path) is None
 
@@ -633,7 +633,7 @@ def test_the_on_disk_probe_is_a_documented_no_op_on_windows(tmp_path: Path):
     """Pin the platform contract itself, so the no-op is a decision not a surprise."""
     plain = tmp_path / "plain.sh"
     plain.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    os.chmod(plain, 0o644)
+    Path(plain).chmod(0o644)
     if os.name == "nt":
         assert executor._is_on_disk_executable(plain) is True, (
             "nt has no exec bit to read - inventing a breach there would block "

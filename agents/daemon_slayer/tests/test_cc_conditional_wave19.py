@@ -204,8 +204,7 @@ class Wave19PerFormParentResourceMatchesChampionTests(unittest.TestCase):
         for champ, keymap in self.snapshot["data"].items():
             seen = set()
             for forms in keymap.values():
-                for form in forms:
-                    seen.add(form.get("parent_resource"))
+                seen.update(form.get("parent_resource") for form in forms)
             if len(seen) > 1:
                 offenders.append((champ, sorted(s for s in seen if s)))
         self.assertEqual(

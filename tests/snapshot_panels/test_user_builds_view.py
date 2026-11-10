@@ -39,7 +39,6 @@ the build count rendered from the fixture, the build list mounted at least
 one row, and no unhandled JS errors fire. Screenshots the view for the audit
 trail (this is the capture the redesign cycle produces).
 """
-import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent

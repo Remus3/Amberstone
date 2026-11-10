@@ -294,8 +294,7 @@ def test_range_markup_census():
                 continue
             ident = ID_ATTR_RE.search(tag)
             found.add((rel, ident.group(1) if ident else tag.strip()))
-        for var in JS_RANGE_ASSIGN_RE.findall(text):
-            found.add((rel, var))
+        found.update((rel, var) for var in JS_RANGE_ASSIGN_RE.findall(text))
 
     expected = set(RANGE_MARKUP_CENSUS)
     assert found == expected, (

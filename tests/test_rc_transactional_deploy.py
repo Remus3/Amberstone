@@ -148,7 +148,7 @@ class ContainedPathTests(unittest.TestCase):
                 import _winapi
                 _winapi.CreateJunction(str(target), str(link))
             else:
-                os.symlink(target, link)
+                Path(link).symlink_to(target)
         except (OSError, ImportError, AttributeError):
             self.skipTest("cannot create a link here")
         with self.assertRaises(D.DeployPathError) as ctx:

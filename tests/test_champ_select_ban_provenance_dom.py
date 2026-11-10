@@ -137,7 +137,7 @@ class BanLabelBehaviorTests(unittest.TestCase):
         cls._harness.write_text(harness, encoding="utf-8")
         proc = subprocess.run(
             [_NODE, str(cls._harness)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, text=True, timeout=30, check=False,
         )
         if proc.returncode != 0:
             raise AssertionError(

@@ -49,6 +49,7 @@ import pytest
 
 from core import tft_stage_gate as g
 from tft import tft_state_reader as reader
+from itertools import starmap
 
 REPO = Path(__file__).resolve().parent.parent
 PACE = 20.0          # an explicit pace for rule tests; the reader's own is tested separately
@@ -79,7 +80,7 @@ def test_ordinal_follows_the_round_structure_and_inverts():
     assert g.ordinal(7, 4) == 4 + 5 * 7 + 4
     legal = [(s, r) for s in range(1, g.STAGE_MAX + 1)
              for r in range(1, (g.STAGE1_ROUNDS if s == 1 else g.STAGE_ROUNDS) + 1)]
-    seq = [g.ordinal(*sr) for sr in legal]
+    seq = list(starmap(g.ordinal, legal))
     assert seq == list(range(1, len(legal) + 1))
     for sr in legal:
         assert g.stage_round_of(g.ordinal(*sr)) == sr

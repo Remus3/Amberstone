@@ -9,7 +9,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
 
 _TOOLS = Path(__file__).resolve().parent.parent
 if str(_TOOLS) not in sys.path:

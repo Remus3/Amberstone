@@ -203,7 +203,7 @@ def test_f4_symlink_out_of_root_refused_char(tmp_path):
     outside = tmp_path / "secret.png"
     outside.write_bytes(b"s")
     try:
-        os.symlink(outside, root / "link.png")
+        (root / "link.png").symlink_to(outside)
     except (OSError, NotImplementedError):
         pytest.skip("symlink creation not permitted on this host")
     assert _static.resolve_safe_icon(root, "link.png") is None

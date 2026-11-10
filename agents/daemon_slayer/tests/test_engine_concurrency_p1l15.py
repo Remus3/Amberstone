@@ -56,7 +56,6 @@ from dataclasses import FrozenInstanceError
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from agents.daemon_slayer import ability_dps as ad_mod
 from agents.daemon_slayer import hybrid as hybrid_mod
 from agents.daemon_slayer.ability_dps import (
     compute_ability_dps,
@@ -109,50 +108,50 @@ def _public_scorer_calls(snap: DataSnapshot):
     for champ, lvl, items, mode in _CASES:
         yield (
             f"build_champion/{champ}/{mode}/{lvl}",
-            lambda c=champ, l=lvl, i=items, m=mode: build_champion(
-                snap, c, l, item_ids=i, mode=m
+            lambda c=champ, lv=lvl, i=items, m=mode: build_champion(
+                snap, c, lv, item_ids=i, mode=m
             ).to_dict(),
         )
         yield (
             f"dps/{champ}/{mode}/{lvl}",
-            lambda c=champ, l=lvl, i=items, m=mode: compute_dps(
-                snap, c, l, item_ids=i, mode=m, target_armor=80.0, target_mr=40.0
+            lambda c=champ, lv=lvl, i=items, m=mode: compute_dps(
+                snap, c, lv, item_ids=i, mode=m, target_armor=80.0, target_mr=40.0
             ).to_dict(),
         )
         yield (
             f"ehp/{champ}/{mode}/{lvl}",
-            lambda c=champ, l=lvl, i=items, m=mode: compute_ehp(
-                snap, c, l, item_ids=i, mode=m
+            lambda c=champ, lv=lvl, i=items, m=mode: compute_ehp(
+                snap, c, lv, item_ids=i, mode=m
             ).to_dict(),
         )
         yield (
             f"hps/{champ}/{mode}/{lvl}",
-            lambda c=champ, l=lvl, i=items, m=mode: compute_hps(
-                snap, c, l, item_ids=i, mode=m
+            lambda c=champ, lv=lvl, i=items, m=mode: compute_hps(
+                snap, c, lv, item_ids=i, mode=m
             ).to_dict(),
         )
         yield (
             f"hybrid/{champ}/{mode}/{lvl}",
-            lambda c=champ, l=lvl, i=items, m=mode: compute_hybrid(
-                snap, c, l, item_ids=i, mode=m, target_armor=70.0
+            lambda c=champ, lv=lvl, i=items, m=mode: compute_hybrid(
+                snap, c, lv, item_ids=i, mode=m, target_armor=70.0
             ).to_dict(),
         )
         yield (
             f"ability_dps/{champ}/{mode}/{lvl}",
-            lambda c=champ, l=lvl, i=items, m=mode: compute_ability_dps(
-                snap, c, l, item_ids=i, mode=m, target_armor=60.0, target_mr=50.0
+            lambda c=champ, lv=lvl, i=items, m=mode: compute_ability_dps(
+                snap, c, lv, item_ids=i, mode=m, target_armor=60.0, target_mr=50.0
             ).to_dict(),
         )
         yield (
             f"burst/{champ}/{mode}/{lvl}",
-            lambda c=champ, l=lvl, i=items, m=mode: compute_burst_damage(
-                snap, c, l, item_ids=i, mode=m, target_armor=55.0
+            lambda c=champ, lv=lvl, i=items, m=mode: compute_burst_damage(
+                snap, c, lv, item_ids=i, mode=m, target_armor=55.0
             ).to_dict(),
         )
         yield (
             f"rank/{champ}/{mode}/{lvl}",
-            lambda c=champ, l=lvl, i=items, m=mode: rank_items(
-                snap, c, l, current_item_ids=i, mode=m, top_n=8
+            lambda c=champ, lv=lvl, i=items, m=mode: rank_items(
+                snap, c, lv, current_item_ids=i, mode=m, top_n=8
             ).to_dict(),
         )
 

@@ -130,8 +130,7 @@ def _tree_hits() -> set[tuple[str, str]]:
             src = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        for _line, dotted in scan_source(src, tracked, names_of):
-            found.add((rel, dotted))
+        found.update((rel, dotted) for _line, dotted in scan_source(src, tracked, names_of))
     return found
 
 

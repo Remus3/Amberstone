@@ -31,14 +31,12 @@ from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.ehp import compute_ehp
 from agents.daemon_slayer._passive_mitigation_overrides import (
     _ACTIVE_DR_PROB,
-    _ASSUMED_ABILITY_RANK,
     _HAND_AUTHORED_DR_CHAMPS,
     _PASSIVE_MITIGATION_OVERRIDES,
     mitigation_multipliers,
 )
 
 SNAP = DataSnapshot.load()
-_IDX = _ASSUMED_ABILITY_RANK - 1  # per-rank read index (rank 4 -> index 3)
 
 
 def _mult(pct: float) -> float:

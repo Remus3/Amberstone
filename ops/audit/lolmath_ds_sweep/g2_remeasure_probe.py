@@ -20,7 +20,7 @@ PATCH = sys.argv[1] if len(sys.argv) > 1 else "16.12.1"
 
 
 def _load_json(path):
-    with open(path, encoding="utf-8") as fh:
+    with Path(path).open(encoding="utf-8") as fh:
         return json.load(fh)
 HERE = f"{ROOT}/ops/audit/lolmath_ds_sweep"
 SWEEP = f"{HERE}/lolmath_sweep.json"

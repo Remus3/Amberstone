@@ -53,7 +53,6 @@ log = logging.getLogger("rc.vision")
 _CFG_DIR = Path(r"C:\Riot Games\League of Legends\Config")
 _DEFAULT_GAME_CFG = _CFG_DIR / "game.cfg"
 _PERSISTED_NAME = "PersistedSettings.json"
-_DEFAULT_PERSISTED = _CFG_DIR / _PERSISTED_NAME
 
 # A real game.cfg is a few KB and PersistedSettings.json well under 1 MiB; a
 # mis-pointed RC_LEAGUE_CONFIG must not pull a huge file into every OCR tick.

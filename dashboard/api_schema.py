@@ -196,13 +196,3 @@ class TeamContextRefreshRequest(_AllowExtra):
     """
     queue_id: int = 0
     roster: list[TeamContextRosterSlot] = []
-
-
-# -- Common ---------------------------------------------------------------
-
-class OkResponse(_ForbidExtra):
-    ok: bool = True
-
-
-class ErrorResponse(_ForbidExtra):
-    error: str

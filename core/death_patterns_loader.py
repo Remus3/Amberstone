@@ -61,7 +61,7 @@ def _non_finite_constant(_name: str) -> None:
 def _safe_load(path: pathlib.Path) -> dict:
     """Read and parse the report; {} on ANY failure or a non-dict document."""
     try:
-        with open(path, "rb") as fh:
+        with path.open("rb") as fh:
             raw = fh.read(MAX_FILE_BYTES + 1)
     except (OSError, ValueError):
         return {}

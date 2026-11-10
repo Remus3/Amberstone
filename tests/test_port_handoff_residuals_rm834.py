@@ -82,7 +82,7 @@ def slow_holder():
 
 def _load_launcher(rel: str):
     """Load a launcher in isolation; it chdirs to the repo root at import."""
-    cwd = os.getcwd()
+    cwd = Path.cwd()
     try:
         spec = importlib.util.spec_from_file_location("_rm834_" + Path(rel).stem, _ROOT / rel)
         mod = importlib.util.module_from_spec(spec)

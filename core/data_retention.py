@@ -454,7 +454,7 @@ def _git_tracked_files(root: Path) -> frozenset[str]:
         flags = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
         res = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z"],
-            capture_output=True, timeout=30, creationflags=flags,
+            capture_output=True, timeout=30, creationflags=flags, check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return frozenset()

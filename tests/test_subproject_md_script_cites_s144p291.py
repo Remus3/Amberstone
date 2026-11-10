@@ -64,8 +64,7 @@ def _tree_hits() -> set[tuple[str, str]]:
     found: set[tuple[str, str]] = set()
     for rel in _scoped(tracked):
         src = (REPO_ROOT / rel).read_text(encoding="utf-8")
-        for _line, cited in scan_source(src, tracked):
-            found.add((rel, cited))
+        found.update((rel, cited) for _line, cited in scan_source(src, tracked))
     return found
 
 

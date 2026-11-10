@@ -203,7 +203,7 @@ def test_prune_keeps_the_last_two_exports(fixture_repo: Path, tmp_path: Path) ->
     for extra in (newer, older):
         extra.mkdir()
         (extra / "stale.txt").write_text("old export\n", encoding="ascii")
-    now = os.stat(final).st_mtime
+    now = final.stat().st_mtime
     os.utime(newer, (now + 100, now + 100))
     os.utime(older, (now - 100, now - 100))
 
@@ -227,7 +227,7 @@ def _plant(root: Path, name: str, *, age_s: float = 0.0) -> Path:
     d = root / name
     d.mkdir(parents=True)
     (d / "payload.txt").write_text("bytes\n", encoding="ascii")
-    stamp = os.stat(d).st_mtime - age_s
+    stamp = d.stat().st_mtime - age_s
     os.utime(d, (stamp, stamp))
     return d
 

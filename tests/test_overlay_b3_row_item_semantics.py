@@ -21,7 +21,6 @@ the build-module rows (the _dsIcon bm callers) switch to greying.
 
 from __future__ import annotations
 
-import re
 import unittest
 from pathlib import Path
 

@@ -30,7 +30,6 @@ FIX-NOW covered here
 """
 from __future__ import annotations
 
-import math
 import sqlite3
 import sys
 from pathlib import Path

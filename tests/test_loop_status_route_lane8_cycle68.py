@@ -27,6 +27,7 @@ import importlib
 import json
 import os
 import shutil
+import string
 import subprocess
 import sys
 import time
@@ -217,11 +218,11 @@ def test_f5_last_commit_reads_utf8_even_when_utf8_mode_is_off(tmp_path):
     subject = "caf" + chr(0xE9) + " " + chr(0xC1) + " ok"
     msg = tmp_path / "msg.txt"
     msg.write_bytes(subject.encode("utf-8") + b"\n")
-    assert subprocess.run(["git", "init", "-q", str(repo)], **run).returncode == 0
+    assert subprocess.run(["git", "init", "-q", str(repo)], **run, check=False).returncode == 0
     r = subprocess.run(
         ["git", "-C", str(repo), "-c", "user.name=t",
          "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false",
-         "commit", "-q", "--allow-empty", "-F", str(msg)], **run)
+         "commit", "-q", "--allow-empty", "-F", str(msg)], **run, check=False)
     assert r.returncode == 0, r.stderr
     # A child with UTF-8 mode OFF decodes subprocess text with the locale
     # codec, which is what RC's pythonw sees when PYTHONUTF8 is not in its
@@ -234,7 +235,7 @@ def test_f5_last_commit_reads_utf8_even_when_utf8_mode_is_off(tmp_path):
         "print(json.dumps(m._last_commit()))\n"
     )
     out = subprocess.run([sys.executable, "-X", "utf8=0", "-c", child],
-                         text=True, encoding="ascii", **run)
+                         text=True, encoding="ascii", **run, check=False)
     assert out.returncode == 0, out.stderr
     got = json.loads(out.stdout.strip().splitlines()[-1])
     assert got is not None
@@ -277,7 +278,7 @@ def test_f6_sentinel_valid_fields_still_pass(loopdir):
     _, body = _serve_strict()
     ld = body["last_done"]
     assert (ld["cycle"], ld["sha"], ld["tests_pass"], ld["regressions"],
-            ld["ts"]) == (9, "01234567", "?", True, 1717000000.5)
+            ld["ts"]) == (9, string.octdigits, "?", True, 1717000000.5)
 
 
 def test_f6_a_non_hex_sha_is_dropped(loopdir):

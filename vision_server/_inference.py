@@ -429,11 +429,11 @@ def handle_ocr(body: bytes) -> dict:
         _note_ocr_stack_missing(exc)
         return {"error": "pytesseract/PIL missing"}
     # winget install does not add Tesseract to PATH on Windows; pin to default.
-    import os.path as _osp
+    from pathlib import Path
     if (
         (not pytesseract.pytesseract.tesseract_cmd
-         or not _osp.isfile(pytesseract.pytesseract.tesseract_cmd))
-        and _osp.isfile(_TESSERACT_DEFAULT)
+         or not Path(pytesseract.pytesseract.tesseract_cmd).is_file())
+        and Path(_TESSERACT_DEFAULT).is_file()
     ):
         pytesseract.pytesseract.tesseract_cmd = _TESSERACT_DEFAULT
     results: dict = {}

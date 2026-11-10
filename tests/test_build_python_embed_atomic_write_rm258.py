@@ -196,7 +196,7 @@ def test_script_mode_imports_core_from_a_foreign_cwd(tmp_path):
     proc = subprocess.run(
         [sys.executable, "-c", code, str(_TOOL.parent), str(out)],
         cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        check=False, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert proc.returncode == 0, proc.stderr
     assert out.read_bytes() == b"a\nb\n"
     assert _litter(out.parent) == []

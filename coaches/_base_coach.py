@@ -187,7 +187,7 @@ def parse_fields(text: str, keys: list) -> dict:
     text = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', text)
     text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
     fields: dict = {}
-    raw_lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+    raw_lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
     for line in raw_lines:
         for key in keys:
             if line.lower().startswith(key + ":"):
@@ -648,7 +648,7 @@ class BaseCoach(abc.ABC):
             }
             path = _APP_DIR / "data" / "coach_tick_trace.jsonl"
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "a", encoding="utf-8", newline="\n") as f:
+            with path.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(json.dumps(rec) + "\n")
         # Complete raise set: OSError (mkdir / open / write), TypeError or
         # ValueError (float(dur_ms), json.dumps of a non-serializable

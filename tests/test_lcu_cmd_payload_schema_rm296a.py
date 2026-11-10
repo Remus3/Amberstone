@@ -67,7 +67,7 @@ def test_schema_matches_every_key_the_agent_reads():
     """Re-derive the agent's per-verb reads and compare - a schema that misses
     a key the agent consumes would STRIP it and break the action silently."""
     src = (ROOT / "tools" / "lcu_agent.py").read_text(encoding="utf-8").splitlines()
-    start = next(i for i, l in enumerate(src) if l.startswith("def execute_command"))
+    start = next(i for i, ln in enumerate(src) if ln.startswith("def execute_command"))
     end = next(i for i in range(start + 1, len(src)) if src[i].startswith("def "))
     reads: dict[str, set] = {}
     cur: list[str] = []

@@ -37,9 +37,9 @@ import urllib.error
 import urllib.request
 from urllib.parse import parse_qs, quote, urlparse
 
-from dashboard._dispatch import equals, prefix
+from dashboard._dispatch import equals
 from dashboard._errors import forward_upstream_error
-from dashboard._json_flags import FALSE_TOKENS, TRUE_TOKENS, coerce_json_flag
+from dashboard._json_flags import coerce_json_flag
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -256,10 +256,6 @@ def _coerce_override_summoners(value) -> tuple | None:
 # RM-414: the parser now lives in `dashboard/_json_flags.py` so the five
 # sibling routes read flags by the SAME rule; this wrapper keeps its name and
 # its push-everything default, with no behaviour change here.
-_PUSH_FLAG_FALSE = FALSE_TOKENS
-_PUSH_FLAG_TRUE = TRUE_TOKENS
-
-
 def _coerce_push_flag(payload, key: str):
     """Read one push_* flag. Returns True, False, or None for AMBIGUOUS.
 

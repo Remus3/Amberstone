@@ -17,7 +17,6 @@ These lock the two properties that make a seed safe to ship:
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import tempfile
 import unittest
@@ -25,12 +24,12 @@ from pathlib import Path
 
 from core import vision_profiles as vp
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_BASELINE_FILE = os.path.join(_ROOT, "data", "vision_regions.json")
+_ROOT = str(Path(__file__).absolute().parents[1])
+_BASELINE_FILE = str(Path(_ROOT) / "data" / "vision_regions.json")
 
 
 def _baseline() -> dict:
-    with open(_BASELINE_FILE, encoding="utf-8") as fh:
+    with Path(_BASELINE_FILE).open(encoding="utf-8") as fh:
         return json.load(fh)
 
 
@@ -79,8 +78,8 @@ class SeedProfilesTests(unittest.TestCase):
         self.assertEqual(sorted(d["regions"]), sorted(baseline))
         sx, sy = 3440 / 1920, 1440 / 1080
         for name, box in d["regions"].items():
-            l, t, r, b = box
-            self.assertTrue(0 <= l < r <= 3440, f"{name} x out of bounds: {box}")
+            left, t, r, b = box
+            self.assertTrue(0 <= left < r <= 3440, f"{name} x out of bounds: {box}")
             self.assertTrue(0 <= t < b <= 1440, f"{name} y out of bounds: {box}")
             src = baseline[name]
             self.assertEqual(box, [int(src[0] * sx), int(src[1] * sy),

@@ -520,7 +520,7 @@ def parse_team(team: dict, match_id: str) -> dict:
     return {
         "match_id":  match_id,
         "team_id":   team.get("teamId", 0),
-        "win":       int(bool(team.get("win", False))),
+        "win":       int(bool(team.get("win"))),
         "baron_first":       ob("baron",     "first"),
         "baron_kills":       ob("baron",     "kills"),
         "champion_first":    ob("champion",  "first"),
@@ -696,8 +696,7 @@ def main():
 
     # -- 2. Determine already-scraped matches ----------------------------------
     existing = set()
-    for row in conn.execute("SELECT match_id FROM matches"):
-        existing.add(row[0])
+    existing.update(row[0] for row in conn.execute("SELECT match_id FROM matches"))
     print(f"Already in DB: {len(existing)} matches")
 
     # -- 3. Iterate and scrape -------------------------------------------------

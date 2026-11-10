@@ -9,9 +9,9 @@ deterministic fallback sigmoid).
 """
 from __future__ import annotations
 
-import os
 import sqlite3
 import unittest
+from pathlib import Path
 
 from core import rune_wpa
 from core.smoothed_rates import shrink
@@ -356,7 +356,7 @@ class RuneNameTests(unittest.TestCase):
 
 class RealDbSmokeTests(unittest.TestCase):
     @unittest.skipUnless(
-        os.path.exists("data/rewind_history.db"),
+        Path("data/rewind_history.db").exists(),
         "rewind_history.db not present",
     )
     def test_real_db_returns_runes(self):
@@ -375,8 +375,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_files_are_ascii(self):
         for path in ("core/rune_wpa.py", "dashboard/routes_rune_wpa.py",
                      "tests/test_rune_wpa.py"):
-            with open(path, "rb") as f:
-                data = f.read()
+            data = Path(path).read_bytes()
             try:
                 data.decode("ascii")
             except UnicodeDecodeError as exc:

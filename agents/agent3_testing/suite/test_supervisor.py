@@ -1,7 +1,6 @@
 """Smoke tests: supervisor starts, WS+web ports open, DBs exist, migration ran."""
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import shutil
@@ -230,7 +229,8 @@ def test_supervisor_starts_and_binds_ports(tmp_path: Path) -> None:
     finally:
         # Hard kill - spec forbids Stop-Process, use taskkill.
         if sys.platform.startswith("win"):
-            subprocess.run(["taskkill", "/F", "/PID", str(proc.pid)], capture_output=True, timeout=10)
+            subprocess.run(["taskkill", "/F", "/PID", str(proc.pid)], capture_output=True, timeout=10,
+                           check=False)
         else:
             proc.kill()
         try:

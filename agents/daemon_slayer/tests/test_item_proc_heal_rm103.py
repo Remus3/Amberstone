@@ -262,9 +262,9 @@ class FeedProvenanceTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        with open(_PATCH_DIR / "items_meraki.json", encoding="utf-8") as fh:
+        with (_PATCH_DIR / "items_meraki.json").open(encoding="utf-8") as fh:
             cls.meraki = json.load(fh)["items"]
-        with open(_PATCH_DIR / "items.json", encoding="utf-8") as fh:
+        with (_PATCH_DIR / "items.json").open(encoding="utf-8") as fh:
             raw = json.load(fh)
         cls.ddragon = raw.get("data", raw)
 

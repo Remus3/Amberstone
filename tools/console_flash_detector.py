@@ -137,7 +137,7 @@ class _Win32:
                 return "?"
             # BASENAME ONLY. The full image path names the account home
             # directory on this box, and a capture is a tracked-file hazard.
-            return os.path.basename(buf.value) or "?"
+            return Path(buf.value).name or "?"
         finally:
             self.kernel32.CloseHandle(handle)
 

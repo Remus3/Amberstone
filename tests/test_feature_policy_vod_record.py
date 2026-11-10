@@ -12,8 +12,7 @@ from core import feature_policy as fp
 
 @pytest.fixture
 def cfg(tmp_path):
-    p = tmp_path / "feature_flags.json"
-    yield p
+    yield tmp_path / "feature_flags.json"
     fp._reload()
 
 

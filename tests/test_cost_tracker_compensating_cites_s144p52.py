@@ -162,7 +162,7 @@ def _node(src: str, rel: str, qual: str) -> ast.AST:
 
 def _have(rev: str) -> bool:
     probe = subprocess.run(["git", "cat-file", "-e", f"{rev}^{{commit}}"],
-                           cwd=ROOT, capture_output=True)
+                           cwd=ROOT, capture_output=True, check=False)
     return probe.returncode == 0
 
 

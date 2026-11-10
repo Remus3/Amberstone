@@ -482,7 +482,7 @@ def _set_block(prof: SetProfile, budget: int) -> str:
         rest -= len(body[-1]) + 1
     if prof.units_by_cost:
         body.append(_units_line(prof, max(60, rest - 1)))
-    return "\n".join([head] + body + tail)
+    return "\n".join([head, *body, *tail])
 
 
 def _meta_line(prof: SetProfile) -> str:

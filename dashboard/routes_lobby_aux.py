@@ -69,13 +69,12 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 from core.polled_json import atomic_write_json
-from dashboard._dispatch import equals, prefix
+from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 _TOP8_PATH = _DATA_DIR / "top8_list.json"
-_MATCH_DB = _DATA_DIR / "match_history.db"
 _REWIND_DB = _DATA_DIR / "rewind_history.db"
 
 _TOP8_MAX = 8

@@ -303,7 +303,7 @@ def _template_size(height, width):
         return None
     if m < _MIN_TPL:
         return None
-    s = int(round(_TPL_FRAC * m))
+    s = round(_TPL_FRAC * m)
     return max(_MIN_TPL, min(m, s))
 
 

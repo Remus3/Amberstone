@@ -74,7 +74,6 @@ CDRAGON_16_21: dict[str, tuple[float, float, float, float]] = {
     "226697": (15.0, 2.0, 1.0, 1.0),
     "126697": (15.0, 2.0, 0.667, 0.5),
 }
-_CDRAGON_PATCH = "16.21"
 _MELEE = "Talon"      # base attackrange 125
 _RANGED = "Caitlyn"   # base attackrange 650
 

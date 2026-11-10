@@ -116,8 +116,7 @@ def _suffix_index(tracked: frozenset[str]) -> frozenset[str]:
         parts = rel.split("/")
         n = len(parts)
         for end in range(1, n + 1):
-            for start in range(end):
-                out.add("/".join(parts[start:end]))
+            out.update("/".join(parts[start:end]) for start in range(end))
     return frozenset(out)
 
 
@@ -255,8 +254,7 @@ def _git_vanished() -> tuple[frozenset[str], frozenset[str]]:
     dirs: set[str] = set()
     for rel in gone:
         segs = rel.split("/")
-        for end in range(1, len(segs)):
-            dirs.add("/".join(segs[:end]))
+        dirs.update("/".join(segs[:end]) for end in range(1, len(segs)))
     # A directory that still holds tracked files has not vanished at all.
     dirs = {d for d in dirs if not any(t.startswith(d + "/") for t in _TRACKED)}
     return frozenset(gone), frozenset(dirs)

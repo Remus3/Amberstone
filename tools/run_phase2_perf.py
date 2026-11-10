@@ -62,7 +62,7 @@ def _stats(samples):
     s = sorted(samples)
     mean  = sum(s) / n
     med   = s[n // 2] if n % 2 else (s[n//2-1] + s[n//2]) / 2
-    p95   = s[int(math.ceil(0.95 * n)) - 1]
+    p95   = s[math.ceil(0.95 * n) - 1]
     return {
         "count":     n,
         "mean_us":   round(mean * 1e6, 2),
@@ -269,7 +269,7 @@ def _bench_placeholders(td: Path):
 
 def _bench_workers():
     from core.sr_aram_worker import SrAramWorker
-    from core.tft_worker import TftWorker, TftWorkerResult
+    from core.tft_worker import TftWorker
     import core.feature_policy as fp
 
     fp._reload()

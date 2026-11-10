@@ -65,7 +65,6 @@ def _write(tmp_path: Path, records) -> Path:
 
 # Reusable choice fragments mirroring the live vocabulary.
 _DET_TRADE_A = _choice("A", "Trade now", "ds-matchup")
-_DET_FARM_A = _choice("A", "Farm safe", "ds-matchup")
 _DET_BUILD_C = _choice("C", "Buy Bloodthirster", "ds-build")
 _NAT_TRADE_A = _choice("A", "Trade now", "lane-state")
 _NAT_FARM_A = _choice("A", "Farm safe", "lane-state")

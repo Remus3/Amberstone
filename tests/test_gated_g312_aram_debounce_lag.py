@@ -260,6 +260,6 @@ def test_marks_and_bound_premises_match_the_coach_source():
     assert "_STATE_DEBOUNCE_MAX_STALE_S = 45.0" in aram
     assert re.search(r'"game_time_s":\s+state\.get\("game_seconds",\s+0\)', aram)
     assert re.search(r"timeout\s+=\s+20,", aram)
-    assert re.search(r'"%s coach error: %s"', (ROOT / "core" / "safe_coach_output.py").read_text(encoding="utf-8"))
+    assert '"%s coach error: %s"' in (ROOT / "core" / "safe_coach_output.py").read_text(encoding="utf-8")
     base = (ROOT / "coaches" / "_base_coach.py").read_text(encoding="utf-8")
     assert '"mode":      self._MODE_NAME' in base and 'self._trace_coach_tick("coach", dt' in base

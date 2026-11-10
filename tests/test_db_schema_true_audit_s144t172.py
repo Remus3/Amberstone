@@ -26,7 +26,6 @@ foreign keys on, every mode file created, fail-closed on a corrupt database.
 from __future__ import annotations
 
 import gc
-import os
 import sqlite3
 import sys
 import warnings
@@ -144,7 +143,7 @@ def test_init_mode_closes_its_connection_when_schema_fails(db_dir, opened):
     with pytest.raises(sqlite3.DatabaseError):
         dbs.init_mode("brawl")
     assert opened and all(_is_closed(c) for c in opened)
-    os.remove(bad)  # WinError 32 here while a leaked handle is alive
+    bad.unlink()  # WinError 32 here while a leaked handle is alive
 
 
 # -- finding 2: open_db leaked a half-open connection on setup failure --------
@@ -156,7 +155,7 @@ def test_open_db_closes_connection_when_setup_fails(db_dir, opened):
         dbs.open_db("arena")
     assert excinfo.value is not None  # keeps the traceback alive on purpose
     assert opened and all(_is_closed(c) for c in opened)
-    os.remove(bad)  # WinError 32 here while the leaked handle is alive
+    bad.unlink()  # WinError 32 here while the leaked handle is alive
 
 
 def test_open_db_success_returns_an_open_wal_connection(db_dir):

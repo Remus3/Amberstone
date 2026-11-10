@@ -61,7 +61,7 @@ def head():
         return subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
                               capture_output=True, text=True, encoding="utf-8",
                               errors="replace", timeout=30,
-                              creationflags=NO_WINDOW).stdout.strip()
+                              creationflags=NO_WINDOW, check=False).stdout.strip()
     except (subprocess.SubprocessError, OSError):
         return ""
 

@@ -18,6 +18,7 @@ import io
 import subprocess
 import sys
 import tokenize
+from pathlib import Path
 
 from p3c24_b1b_sweep import PY_FILES, transform
 
@@ -45,7 +46,7 @@ def main() -> int:
     ok = True
     for rel in PY_FILES:
         h = toks(head_src(rel))
-        with open(rel, encoding="utf-8") as fh:
+        with Path(rel).open(encoding="utf-8") as fh:
             w = toks(fh.read().replace("\r\n", "\n"))
         if len(h) != len(w):
             print(f"FAIL {rel}: token count {len(h)} -> {len(w)}")

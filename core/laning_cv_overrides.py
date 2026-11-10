@@ -133,7 +133,7 @@ def cv_override(enemy_status: object, hp_fraction: object,
             if respawn is None:
                 reason = "Enemy dead - shove + take plates/prio"
             else:
-                reason = f"Enemy dead {int(round(respawn))}s - shove + take plates/prio"
+                reason = f"Enemy dead {round(respawn)}s - shove + take plates/prio"
             return {
                 "verdict": "shove", "confidence": "high",
                 "reason": reason, "kind": "enemy_dead",
@@ -146,7 +146,7 @@ def cv_override(enemy_status: object, hp_fraction: object,
             return {
                 "verdict": "back_off", "confidence": "mid",
                 "reason": (
-                    f"Enemy missing {int(round(missing))}s - "
+                    f"Enemy missing {round(missing)}s - "
                     "back off, ward, do not overextend"
                 ),
                 "kind": "enemy_missing",

@@ -74,7 +74,7 @@ def test_apply_swaps_through_the_shared_retry_with_a_per_writer_scratch(archive,
     assert scratch.parent == other.parent
     pattern = re.escape(_NAME) + rf"\.{os.getpid()}\.[0-9a-f]+\.tmp"
     assert re.fullmatch(pattern, scratch.name), scratch.name
-    assert os.path.samefile(keeper, other)
+    assert keeper.samefile(other)
     assert other.read_bytes() == _BYTES
     assert _leftovers(root) == []
 
@@ -89,7 +89,7 @@ def test_a_refused_swap_keeps_the_replay_and_leaves_no_scratch(archive, monkeypa
     assert rofl_dedupe.main(["--root", str(root), "--apply"]) == 1
 
     assert other.read_bytes() == _BYTES
-    assert not os.path.samefile(keeper, other)
+    assert not keeper.samefile(other)
     assert _leftovers(root) == []
 
 
@@ -101,4 +101,4 @@ def test_a_rerun_is_a_no_op(archive, monkeypatch):
                         lambda src, dst: calls.append((src, dst)))
     assert rofl_dedupe.main(["--root", str(root), "--apply"]) == 0
     assert calls == []
-    assert os.path.samefile(keeper, other)
+    assert keeper.samefile(other)

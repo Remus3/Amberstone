@@ -82,9 +82,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from daemon_slayer_wiki_ability_extract import (  # noqa: E402
     DATA_DIR,
-    HEADER_UA,
     WIKI_API,
-    _AP_WRAPPER_RE,
     _fetch,
     _MAX_TITLES_PER_BATCH,
     _redirect_target,

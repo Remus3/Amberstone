@@ -27,7 +27,6 @@ are wrong.
 import json
 import logging
 from http.server import BaseHTTPRequestHandler
-from typing import Callable
 
 from pydantic import ValidationError
 

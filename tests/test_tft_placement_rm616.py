@@ -37,7 +37,6 @@ ASCII-only authored content (CLAUDE.md hard rule).
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -354,8 +353,8 @@ def test_persist_is_append_only_per_source(tmp_path):
     assert path.read_bytes() == first, "an existing record is never overwritten"
     hist = tp.parse_history(_hist(), LOCAL_PUUID)[0]
     assert tp.persist(hist, store_dir=tmp_path) is True
-    assert sorted(os.listdir(tmp_path)) == ["1000000001.eog.json",
-                                            "1000000001.history.json"], "no tmp left"
+    assert sorted(entry.name for entry in tmp_path.iterdir()) == [
+        "1000000001.eog.json", "1000000001.history.json"], "no tmp left"
     assert tp.has_record(1000000001, store_dir=tmp_path) is True
     assert tp.has_record(1000000001, tp.SOURCE_HISTORY, store_dir=tmp_path) is True
     assert tp.has_record(5, store_dir=tmp_path) is False
@@ -370,7 +369,7 @@ def test_persist_refuses_junk(tmp_path):
                 {"game_id": "../x", "source": "eog"},
                 {"game_id": 5, "source": "other"}):
         assert tp.persist(bad, store_dir=tmp_path) is False
-    assert os.listdir(tmp_path) == []
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_latest_orders_by_end_time_and_skips_junk(tmp_path):

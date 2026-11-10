@@ -429,7 +429,7 @@ def test_rc_shell_phase_contract_runs_under_node():
     contract here too, so a pytest-only landing cannot leave it red."""
     done = subprocess.run(
         [_NODE, "--test", str(SHELL_CONTRACT)],
-        capture_output=True, text=True, timeout=60, cwd=str(ROOT / "rc-shell"),
+        capture_output=True, text=True, timeout=60, cwd=str(ROOT / "rc-shell"), check=False,
     )
     out = done.stdout + done.stderr
     assert done.returncode == 0, out[-2000:]
@@ -443,7 +443,7 @@ def test_rc_shell_phase_contract_runs_under_node():
 def test_pure_phase_suite_runs_under_node():
     done = subprocess.run(
         [_NODE, "--test", str(PHASE_TEST)],
-        capture_output=True, text=True, timeout=60, cwd=str(ROOT),
+        capture_output=True, text=True, timeout=60, cwd=str(ROOT), check=False,
     )
     assert done.returncode == 0, done.stdout[-2000:] + done.stderr[-2000:]
     # An exit 0 from a runner that collected nothing would pass the line above.

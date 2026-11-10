@@ -111,7 +111,7 @@ def test_picks_file_is_gitignored_and_untracked():
     assert "GITIGNORED" in _bullet("Storage")
     assert _tracked(_PICKS_FILE) == []
     res = subprocess.run(
-        ["git", "check-ignore", "-q", _PICKS_FILE], cwd=_REPO_ROOT,
+        ["git", "check-ignore", "-q", _PICKS_FILE], cwd=_REPO_ROOT, check=False,
     )
     assert res.returncode == 0, f"{_PICKS_FILE} is no longer ignored"
 

@@ -15,7 +15,7 @@ OUT = str(_DESKTOP / "LOLMATH_VS_DS_SWEEP.md")
 
 
 def _load_json(path):
-    with open(path, encoding="utf-8") as fh:
+    with Path(path).open(encoding="utf-8") as fh:
         return json.load(fh)
 
 
@@ -159,7 +159,7 @@ for cid, _kit, nb, ub, _dsm, _lmd, _dsd, _ov, _fl, gc in rows:
         normal_disp = nb if len(nb) >= 5 else cur
         L.append(f"| {cid} | {sh(normal_disp)} | {sh(ub)} |")
 
-with open(OUT, "w", encoding="utf-8", newline="\n") as fh:
+with Path(OUT).open("w", encoding="utf-8", newline="\n") as fh:
     fh.write("\n".join(L) + "\n")
 print("WROTE", OUT, "| rows", len(rows), "covered", covered)
 print("G1", len(mism), mism)

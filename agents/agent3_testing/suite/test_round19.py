@@ -5,7 +5,6 @@ import json
 import time
 from pathlib import Path
 
-import pytest
 
 from agents.agent1_lead import Scheduler
 

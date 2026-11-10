@@ -60,9 +60,6 @@ _DEFAULT_PROFILE: Dict[str, Any] = {
     ],
 }
 
-# How many ticks a subsystem pulse may lag before we treat it as dead
-_PULSE_STALE_S = 10.0
-
 
 def _utc() -> str:
     return datetime.now(timezone.utc).isoformat()

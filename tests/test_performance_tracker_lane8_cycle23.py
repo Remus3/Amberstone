@@ -152,7 +152,7 @@ class TestAtomicWriteUnderConcurrentReader(unittest.TestCase):
         _seed(self.target, "OLD")
         scratch = self.target.with_name("os_probe.scratch")
         scratch.write_text("NEW", encoding="utf-8")
-        with open(self.target, encoding="utf-8"):
+        with self.target.open(encoding="utf-8"):
             with self.assertRaises(PermissionError):
                 os.replace(scratch, self.target)
         scratch.unlink()

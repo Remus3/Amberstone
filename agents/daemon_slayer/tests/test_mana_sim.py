@@ -15,6 +15,7 @@ from __future__ import annotations
 import dataclasses
 import math
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.mana_sim import (
@@ -214,7 +215,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_is_ascii(self):
         import agents.daemon_slayer.mana_sim as mod
 
-        with open(mod.__file__, "rb") as fh:
+        with Path(mod.__file__).open("rb") as fh:
             raw = fh.read()
         try:
             raw.decode("ascii")

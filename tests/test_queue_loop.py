@@ -35,6 +35,7 @@ import importlib
 import inspect
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -163,21 +164,6 @@ def _loop_seams(**kw):
     # owns the True path).
     seams["should_yield"] = lambda: False
     return log, seams
-
-
-def _heads(*shas):
-    """A `head_sha` seam walking a scripted list, repeating the last answer.
-
-    The driver reads it before and after each cycle: an UNCHANGED answer is the
-    only push signal a driver that never looks inside the lane worktree can
-    have, so a test that wants the gate to fire must move it.
-    """
-    seq = list(shas)
-
-    def head_sha():
-        return seq.pop(0) if len(seq) > 1 else seq[0]
-
-    return head_sha
 
 
 def _new_head_every_call():
@@ -1604,7 +1590,7 @@ def test_NO_test_in_this_module_shells_out_for_ci():
     the live repo from the suite, which is a 45-minute runner and a race with
     whatever the queue lane is doing at the time.
     """
-    tree = ast.parse(open(__file__, encoding="utf-8").read())
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
     offenders = []
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -1804,7 +1790,7 @@ def _code_strings(path):
     module's own prose about the rule - the comments-cite-the-bug trap that made
     an earlier guard red.
     """
-    tree = ast.parse(open(path, encoding="utf-8").read())
+    tree = ast.parse(Path(path).read_text(encoding="utf-8"))
     docstrings = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,

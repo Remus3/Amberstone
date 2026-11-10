@@ -312,9 +312,9 @@ def compute_factors(team: list) -> dict:
     resolved = [(n, _lookup(n)) for n in _names(team, _TEAM_KINDS)]
     champs = [c for _, c in resolved if c]
     leans = [_damage_lean(c) for c in champs]
-    ad = sum(1 for l in leans if l == "ad")
-    ap = sum(1 for l in leans if l == "ap")
-    hybrid = sum(1 for l in leans if l == "hybrid")
+    ad = sum(1 for lean in leans if lean == "ad")
+    ap = sum(1 for lean in leans if lean == "ap")
+    hybrid = sum(1 for lean in leans if lean == "hybrid")
     ranged = sum(1 for c in champs if _stat_range(c) >= RANGED_MIN_RANGE)
     # Curated sets match the resolved DISPLAY name, so an id alias counts.
     names_norm = {_norm(c.get("name")) if c else _norm(n) for n, c in resolved}

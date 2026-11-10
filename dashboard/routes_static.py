@@ -172,7 +172,7 @@ def _serve_agent_file(h) -> None:
     if name not in _AGENT_ALLOWED:
         h._send(404, b"not found", "text/plain"); return
     try:
-        with open(APP_DIR / "tools" / name, "rb") as _f:
+        with (APP_DIR / "tools" / name).open("rb") as _f:
             body = _f.read(_AGENT_FILE_CAP + 1)
         if len(body) > _AGENT_FILE_CAP:
             log.warning("agent serve %s: over the %d-byte cap, refused",

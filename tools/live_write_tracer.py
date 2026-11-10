@@ -132,7 +132,7 @@ _SESSION_NODEID = "<collection-or-session>"
 _ATOMIC_TMP_SUFFIX = ".tmp"
 
 # Repo root, so the report writer can import core/ whatever the cwd.
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_ROOT = str(Path(__file__).absolute().parents[1])
 
 _state = None
 
@@ -432,7 +432,7 @@ def merge_reports(paths):
     replaced_by = {}
     opened_only = {}
     for path in paths:
-        with open(path, encoding="utf-8") as handle:
+        with Path(path).open(encoding="utf-8") as handle:
             report = json.load(handle)
         for key, value in report.get("wrote_units", {}).items():
             wrote_units[key] = wrote_units.get(key, 0) + value
@@ -471,7 +471,7 @@ def pytest_configure(config):
     global _state
     root = os.environ.get("RC_TRACER_ROOT")
     if not root:
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        root = str(Path(__file__).absolute().parents[1])
     root = os.path.abspath(root)
     report = os.environ.get("RC_TRACER_REPORT") or _default_report_path()
     report = os.path.abspath(report)
@@ -582,17 +582,17 @@ def main(argv=None):
 
     files = []
     for target in args.merge:
-        if os.path.isdir(target):
+        if Path(target).is_dir():
             files.extend(sorted(
-                os.path.join(target, name) for name in os.listdir(target)
-                if name.startswith("live_write_trace") and name.endswith(".json")))
+                str(entry) for entry in Path(target).iterdir()
+                if entry.name.startswith("live_write_trace") and entry.name.endswith(".json")))
         else:
             files.append(target)
     if not files:
         parser.error(f"no reports found under {args.merge}")
     payload = json.dumps(merge_reports(files), indent=2, sort_keys=True)
     if args.out:
-        with open(args.out, "w", encoding="ascii", newline="\n") as handle:
+        with Path(args.out).open("w", encoding="ascii", newline="\n") as handle:
             handle.write(payload)
         print(f"merged {len(files)} report(s) -> {args.out}")
     else:

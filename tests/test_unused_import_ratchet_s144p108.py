@@ -16,6 +16,36 @@ RM-1409 cleans twelve more stdlib leftovers (one each, in coaches, core,
 dashboard, game_reader, ops and tools; none re-exported, none patched by name in
 a test) and moves them from _BASELINE to FIXED.
 
+S144-P-470 cleans ten more (13 names: stdlib leftovers - datetime.timezone, json,
+typing.Callable, statistics.mean, sys, os - in coaches, core, dashboard, scripts
+and tools; none re-exported, none patched by name in a test, none touched by
+another lane branch) and moves them from _BASELINE to FIXED.
+
+S144-P-471 cleans four more (one each: time in ops/loop/lanes.py, re in
+tools/lcu_agent.py, dataclasses.field in tools/inbox_responder_runner.py,
+typing.Dict in tools/replay_session.py; none re-exported, none read or patched by
+name, none touched by another lane branch) and moves them from _BASELINE to FIXED.
+
+S144-P-472 cleans nine more modules (ten imports: migration_rewind.db_path, _writers.read_json,
+champion_loadout_align._BOOTS_IDS, ds_wiki_staleness_check.HEADER_UA and
+_AP_WRAPPER_RE, run_phase2_perf.TftWorkerResult, validate_loadouts.list_variants,
+session_steer's redundant local `import importlib`, which shadowed the
+top-level `import importlib.util`, and dashboard._dispatch.prefix in routes_loadout
+and routes_lobby_aux; none re-exported, none read or patched by name,
+none touched by another lane branch) and moves them from _BASELINE to FIXED.
+
+S144-P-479 cleans composition_advisor.py (seven names, all from champion_profiles:
+TANKS, FIGHTERS, AD_CHAMPS, AP_CHAMPS, HYBRID_CHAMPS, SUSTAIN_CHAMPS, MANA_CHAMPS;
+the module reads only CHAMPIONS from it, no tracked file reads
+``composition_advisor.<name>`` or imports one of them from it, and none is patched by
+name) and moves it from _BASELINE to FIXED.
+
+S144-P-500 clears core/build_order_variants.py: its one finding, ``SEED_CHAMPIONS`` imported from
+core.build_order_precompute, is a deliberate re-export (tests/test_build_order_variants.py reads
+``bov.SEED_CHAMPIONS`` to pin parity with HZ-B1), not a leftover. It now carries the explicit
+re-export spelling ``SEED_CHAMPIONS as SEED_CHAMPIONS`` that F401 honours, so the file moves from
+_BASELINE to FIXED with the import and its consumer both intact.
+
 The rest are in the shrinking _BASELINE (rel path -> count): frozen files, files
 another lane branch changed, the DS engine (lane ds), deliberate facades
 (``coaches/adaptation_hint.py`` re-exports its split modules, ``effects.py`` its
@@ -49,28 +79,53 @@ pytestmark = pytest.mark.skipif(
 FIXED = (
     "agents/agent1_lead/scheduler.py",
     "agents/agent2_backend/pipeline/orchestrator.py",
+    "agents/agent2_backend/migration_rewind.py",
     "agents/supervisor.py",
     "coach_integration/_coach.py",
+    "coaches/_adaptation_common.py",
+    "coaches/adaptation_hint_cli.py",
     "coaches/experimental_builder.py",
     "coaches/loadout_resolver.py",
     "coaches/replay_coach.py",
     "coaches/voice_coach.py",
+    "composition_advisor.py",
     "core/benchmarks.py",
+    "core/build_order_variants.py",
     "core/decision_detector.py",
     "core/feature_policy.py",
     "core/metrics_cache.py",
     "core/replay_history.py",
+    "core/rofl_stats_backfill.py",
+    "dashboard/_dispatch.py",
     "dashboard/_state_builder.py",
+    "dashboard/_writers.py",
     "dashboard/routes_duo_synergy.py",
+    "dashboard/routes_loadout.py",
+    "dashboard/routes_lobby_aux.py",
     "dashboard/routes_recordings.py",
     "game_reader/poller.py",
     "modes/shared_vision.py",
     "ops/loop/claude_stub.py",
     "ops/loop/done_sentinel.py",
+    "ops/loop/lanes.py",
     "ops/rc_incident_log.py",
+    "scripts/build_carry_benchmarks.py",
+    "scripts/build_champion_benchmarks.py",
+    "scripts/install_hooks.py",
+    "scripts/merge_refresh_builds.py",
     "tools/bootstrap_env_check.py",
+    "tools/champion_loadout_align.py",
+    "tools/dev_cli.py",
+    "tools/ds_wiki_staleness_check.py",
+    "tools/gated_lx01_draft_check.py",
+    "tools/inbox_responder_runner.py",
+    "tools/lcu_agent.py",
     "tools/live_flip_watcher.py",
+    "tools/replay_session.py",
+    "tools/run_phase2_perf.py",
+    "tools/session_steer.py",
     "tools/start_daemon_slayer.py",
+    "tools/validate_loadouts.py",
 )
 
 # Out of scope: test code, audit probes, the byte-pinned vendored kit and package
@@ -79,7 +134,6 @@ _SKIP_PREFIXES = ("tests/", "docs/", "ops/fleet_kit/", "ops/audit/", "agents/age
 
 # rel path -> number of unused imports it may keep. Only shrinks.
 _BASELINE = {
-    "agents/agent2_backend/migration_rewind.py": 1,
     "agents/daemon_slayer/_effects_data.py": 1,
     "agents/daemon_slayer/_effects_types.py": 1,
     "agents/daemon_slayer/_registries.py": 1,
@@ -91,33 +145,9 @@ _BASELINE = {
     "agents/daemon_slayer/scenario_matrix.py": 1,
     "agents/daemon_slayer/server.py": 1,
     "app/_game_lifecycle.py": 2,
-    "coaches/_adaptation_common.py": 1,
     "coaches/adaptation_hint.py": 33,
-    "coaches/adaptation_hint_cli.py": 1,
-    "composition_advisor.py": 7,
-    "core/build_order_variants.py": 1,
     "core/log_setup.py": 2,
-    "core/rofl_stats_backfill.py": 2,
-    "dashboard/_dispatch.py": 1,
-    "dashboard/_writers.py": 1,
-    "dashboard/routes_loadout.py": 1,
-    "dashboard/routes_lobby_aux.py": 1,
-    "ops/loop/lanes.py": 1,
-    "scripts/build_carry_benchmarks.py": 1,
-    "scripts/build_champion_benchmarks.py": 2,
-    "scripts/install_hooks.py": 1,
-    "scripts/merge_refresh_builds.py": 2,
     "tools/build_portable.py": 1,
-    "tools/champion_loadout_align.py": 1,
-    "tools/dev_cli.py": 1,
-    "tools/ds_wiki_staleness_check.py": 2,
-    "tools/gated_lx01_draft_check.py": 1,
-    "tools/inbox_responder_runner.py": 1,
-    "tools/lcu_agent.py": 1,
-    "tools/replay_session.py": 1,
-    "tools/run_phase2_perf.py": 1,
-    "tools/session_steer.py": 1,
-    "tools/validate_loadouts.py": 1,
     "web_dashboard.py": 18,
 }
 

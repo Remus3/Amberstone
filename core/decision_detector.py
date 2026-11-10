@@ -411,7 +411,7 @@ def detect_low_hp_backable(
         return None
 
     bucket = int(game_time // 60)
-    pct_int = int(round(pct * 100))
+    pct_int = round(pct * 100)
     return Decision(
         id=f"low_hp_back:{bucket}",
         type="low_hp_back",

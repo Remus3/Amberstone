@@ -20,6 +20,7 @@ import io
 import json
 import logging
 import os.path
+import string
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -161,8 +162,8 @@ def _scale_bbox(bbox, frame_w: int, frame_h: int) -> tuple:
         return tuple(bbox)
     sx = frame_w / base_w
     sy = frame_h / base_h
-    l, t, r, b = bbox
-    return (int(l * sx), int(t * sy), int(r * sx), int(b * sy))
+    left, top, right, bottom = bbox
+    return (int(left * sx), int(top * sy), int(right * sx), int(bottom * sy))
 
 
 def reload_regions() -> None:
@@ -192,10 +193,10 @@ def _ensure_tesseract() -> None:
     ``RC_TESSERACT_CMD`` with no code edit (refactor-plan P4.2 portability)."""
     import pytesseract
     cmd = pytesseract.pytesseract.tesseract_cmd
-    if cmd and os.path.isfile(cmd):
+    if cmd and Path(cmd).is_file():
         return
     for cand in _tesseract_candidates():
-        if cand and os.path.isfile(cand):
+        if cand and Path(cand).is_file():
             pytesseract.pytesseract.tesseract_cmd = cand
             return
 
@@ -281,14 +282,14 @@ def _apply_color_correction(img, color: dict):
             out = ImageEnhance.Contrast(out).enhance(contrast)
         if abs(gdev) > 1e-6:
             exp = max(0.3, min(3.0, 1.0 + 2.0 * gdev))
-            lut = [max(0, min(255, int(round(((i / 255.0) ** exp) * 255)))) for i in range(256)]
+            lut = [max(0, min(255, round(((i / 255.0) ** exp) * 255))) for i in range(256)]
             out = out.point(lut * 3)
         return out
     except Exception:  # noqa: BLE001
         return img
 
 
-def _ocr_int(img, allowlist: str = "0123456789") -> Optional[int]:
+def _ocr_int(img, allowlist: str = string.digits) -> Optional[int]:
     import pytesseract
     s = pytesseract.image_to_string(
         _preprocess(img),
@@ -398,7 +399,7 @@ def _bar_fill_pct(img, color: str = "green", settings: Optional[dict] = None) ->
             any_match = True
     if not any_match:
         return 0
-    return int(round((last_filled_col + 1) * 100 / w))
+    return round((last_filled_col + 1) * 100 / w)
 
 
 def _ally_ults_strip(img, slots: int = 4) -> Optional[list]:
@@ -462,7 +463,7 @@ def _ult_pct(img) -> Optional[int]:
                 lit += 1
     if total == 0:
         return None
-    return int(round(lit * 100 / total))
+    return round(lit * 100 / total)
 
 
 def _ocr_int_stack(img, channel: Optional[str] = None,

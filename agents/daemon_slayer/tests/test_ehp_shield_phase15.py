@@ -42,8 +42,6 @@ from agents.daemon_slayer._effects_types import (
     ANY,
     ItemShield,
     MAGICAL,
-    PHYSICAL,
-    TRUE,
 )
 from agents.daemon_slayer.ehp import (
     _RANGED_ATTACKRANGE_THRESHOLD,

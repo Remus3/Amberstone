@@ -12,7 +12,6 @@ Synthetic fixtures only. Grep-confirmed API surface:
 """
 import math
 
-import pytest
 
 from core.zoi_capability import (
     CAP_MAX,

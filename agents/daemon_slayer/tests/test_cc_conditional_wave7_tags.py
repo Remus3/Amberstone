@@ -58,6 +58,7 @@ Coverage classes:
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer import cc_conditional as cc
@@ -297,7 +298,7 @@ class AsciiHygieneTests(unittest.TestCase):
 
     def test_test_file_is_ascii_clean(self) -> None:
         text = __file__
-        with open(text, "rb") as f:
+        with Path(text).open("rb") as f:
             data = f.read()
         non_ascii = [
             (i, b) for i, b in enumerate(data) if b > 127

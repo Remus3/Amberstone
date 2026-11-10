@@ -230,9 +230,10 @@ def test_main_script_block_parses_under_node(html: str) -> None:
             capture_output=True,
             text=True,
             timeout=60,
+            check=False,
         )
     finally:
-        os.unlink(path)
+        Path(path).unlink()
     assert proc.returncode == 0, proc.stderr or proc.stdout
 
 

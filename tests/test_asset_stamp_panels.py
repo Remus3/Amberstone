@@ -16,7 +16,7 @@ from dashboard.routes_state import _asset_stamp_mtime
 def test_asset_stamp_reflects_panel_module_mtime():
     panel = APP_DIR / "web" / "js" / "panels" / "minimap_zoi.js"
     assert panel.exists(), "fixture panel module missing"
-    orig = os.path.getmtime(panel)
+    orig = panel.stat().st_mtime
     future = orig + 100_000.0  # well past any other web/ asset
     try:
         os.utime(panel, (future, future))

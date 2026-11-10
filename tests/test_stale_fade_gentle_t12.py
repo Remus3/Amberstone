@@ -100,7 +100,7 @@ def test_cadence_thresholds_unchanged():
 
 def test_idle_timer_unchanged():
     js = IDLE_JS.read_text(encoding="utf-8")
-    assert re.search(r"const IDLE_DELAY_MS = 8000;", js)
+    assert "const IDLE_DELAY_MS = 8000;" in js
 
 
 def test_dashboard_stale_cue_kept():

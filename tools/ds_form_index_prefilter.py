@@ -88,7 +88,7 @@ def main() -> int:
                     rows.append((champ, key, f"form0=NO-DMG best=form{bi}({bv:.0f})", names))
                 continue
             best_i = max(range(len(vals)),
-                         key=lambda i: vals[i] if vals[i] else -1)
+                         key=lambda i: vals[i] or -1)
             if best_i > 0 and vals[best_i] and vals[best_i] > base * 1.15:
                 rows.append((
                     champ, key,

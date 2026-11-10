@@ -156,8 +156,7 @@ def _client_expressible_names() -> frozenset[str]:
     for fn in ast.walk(tree):
         if isinstance(fn, ast.FunctionDef):
             a = fn.args
-            for arg in list(a.posonlyargs) + list(a.args) + list(a.kwonlyargs):
-                names.add(arg.arg)
+            names.update(arg.arg for arg in list(a.posonlyargs) + list(a.args) + list(a.kwonlyargs))
     for node in ast.walk(tree):
         # body["key"] = ... / body.get("key")
         if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant):

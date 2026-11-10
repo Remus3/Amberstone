@@ -219,7 +219,7 @@ def _git(args: list[str], root: str | None) -> str:
     try:
         out = subprocess.run(
             [*_GIT, *args], cwd=root or None, capture_output=True, **_CHILD_TEXT,
-            timeout=20, creationflags=_NO_WINDOW,
+            timeout=20, creationflags=_NO_WINDOW, check=False,
         )
         return out.stdout
     except (OSError, subprocess.SubprocessError):
@@ -350,7 +350,7 @@ def _compile_errors(pyfiles: list[str], root: str) -> list[str]:
     for rel in pyfiles:
         path = os.path.join(root, rel)
         try:
-            with open(path, "rb") as fh:
+            with pathlib.Path(path).open("rb") as fh:
                 source = fh.read()
         except OSError:
             continue
@@ -407,7 +407,7 @@ def _resolve_ruff() -> list[str] | None:
         try:
             probe = subprocess.run(
                 [*cmd, "--version"], capture_output=True, **_CHILD_TEXT,
-                timeout=30, creationflags=_NO_WINDOW,
+                timeout=30, creationflags=_NO_WINDOW, check=False,
             )
         except (OSError, subprocess.SubprocessError):
             continue
@@ -693,8 +693,8 @@ def _gate_commit(command: str, claude: bool) -> int:
     advisories: list[str] = []
     root = (
         _root_from_command(command)
-        or _git(["rev-parse", "--show-toplevel"], os.getcwd()).strip()
-        or os.getcwd()
+        or _git(["rev-parse", "--show-toplevel"], str(pathlib.Path.cwd())).strip()
+        or str(pathlib.Path.cwd())
     )
     staged = _staged_added(root)
     # 0. RM-422: new tracked paths over the Windows clone cap.
@@ -733,7 +733,7 @@ def _gate_commit(command: str, claude: bool) -> int:
 
     # 3. net-new ruff errors on staged .py
     pyfiles = [
-        p for p in staged if p.endswith(".py") and os.path.isfile(os.path.join(root, p))
+        p for p in staged if p.endswith(".py") and (pathlib.Path(root) / p).is_file()
     ]
     violations.extend(_compile_errors(pyfiles, root))
     ruff = _resolve_ruff() if pyfiles else None
@@ -764,6 +764,7 @@ def _gate_commit(command: str, claude: bool) -> int:
                 **_CHILD_TEXT,
                 timeout=RUFF_TIMEOUT_S,
                 creationflags=_NO_WINDOW,
+                check=False,
             )
         except (OSError, subprocess.SubprocessError) as exc:
             note = (f"ruff timed out / not runnable ({type(exc).__name__}) - fix or "

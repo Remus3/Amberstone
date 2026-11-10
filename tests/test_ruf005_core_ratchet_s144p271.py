@@ -6,7 +6,7 @@ operands were already a list / tuple of the same kind, and unpacking is the more
 tuple + list mix, unpacking does not), so a call that worked still returns an equal value of the same type.
 
 S144-P-271 held ``core/``; S144-P-272 added ``tools/`` (26 more findings in 16 modules, one under tools/tests/). ``_SCOPE``
-grows one directory per later slice (tft/, dashboard/, ops/ ... then tests/). Nothing under a scoped prefix may have a finding and there is no baseline. The run uses NO config
+grows one directory per later slice (dashboard/, ops/ ... then tests/); S144-P-504 added ``tft/`` (5 findings) and ``scripts/`` (4 findings), listed in ``_FIXED_P504``. Nothing under a scoped prefix may have a finding and there is no baseline. The run uses NO config
 (``--isolated``), so a per-file-ignore cannot hide a finding.
 """
 from __future__ import annotations
@@ -27,7 +27,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 # Directories held at zero RUF005 findings. A new entry means that whole directory was swept first.
-_SCOPE = ("core/", "tools/")
+_SCOPE = ("core/", "tools/", "tft/", "scripts/")
 _FIXED = (
     "core/build_order_precompute.py",
     "core/build_order_variants.py",
@@ -56,6 +56,17 @@ _FIXED = (
     "tools/rc_facts.py",
     "tools/repo_insights.py",
     "tools/tests/test_roster_decap_a26.py",
+)
+_FIXED_P504 = (
+    "scripts/repair_match_db_column_types.py",
+    "scripts/repair_tft_match_rows.py",
+    "scripts/tft_patch_delta.py",
+    "scripts/wakeup_prune.py",
+    "tft/assets/icon_cache.py",
+    "tft/rounds/accuracy.py",
+    "tft/rounds/schema.py",
+    "tft/sources/tft_log.py",
+    "tft/tft_prompt.py",
 )
 
 
@@ -94,7 +105,7 @@ def test_no_scoped_module_has_a_concatenation_finding(tracked):
 
 
 def test_the_fixed_modules_are_tracked_and_in_scope(tracked):
-    for rel in _FIXED:
+    for rel in (*_FIXED, *_FIXED_P504):
         assert rel in tracked, rel
         assert _in_scope(rel), rel
 

@@ -35,7 +35,6 @@ Design rules:
 """
 import subprocess
 import sys
-import os
 import shutil
 from pathlib import Path
 
@@ -80,6 +79,7 @@ def _run(args, *, cwd=None, capture=False):
             text=True,
             # git, py and cmd children write different pages; an undecodable byte must not raise
             errors="replace",
+            check=False,
         )
     except FileNotFoundError as exc:
         print(f"ERROR: command not found: {exc}")

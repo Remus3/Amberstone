@@ -21,8 +21,6 @@ MODE_BY_MAP: dict[int, str] = {
     30: "ARENA",
 }
 
-_ITEM_SLOTS = ("item0", "item1", "item2", "item3", "item4", "item5", "item6")
-
 
 def resolve_mode(map_id: int | None, game_mode: str | None) -> str | None:
     """Resolve a (map_id, game_mode) pair to a coarse mode bucket, or None if unmapped."""

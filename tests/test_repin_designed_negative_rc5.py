@@ -32,7 +32,7 @@ def _row(note, rc=1, **over):
 def _unknown_spawn(notes):
     def spawn(prompt, *, note, extra, log_path):
         notes.append(note)
-        open(log_path, "w", encoding="utf-8").close()
+        log_path.open("w", encoding="utf-8").close()
         return ({"rc": 1, "result": None, "error": None},
                 CompletedProcess(args=[], returncode=1, stdout=None, stderr=UNKNOWN_ERR + "\n"))
     return spawn

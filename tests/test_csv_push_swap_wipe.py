@@ -157,7 +157,7 @@ class SwapWipeBehaviorTests(unittest.TestCase):
         h = Path(cls._td) / "swapwipe.mjs"
         h.write_text(harness, encoding="utf-8")
         proc = subprocess.run([_NODE, str(h)], capture_output=True,
-                              text=True, timeout=30)
+                              text=True, timeout=30, check=False)
         if proc.returncode != 0:
             raise AssertionError(f"node harness failed: {proc.stderr}")
         cls.res = json.loads(proc.stdout)

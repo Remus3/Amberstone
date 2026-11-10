@@ -46,8 +46,6 @@ from tools.champion_loadout_collapse_to_paths import (
     collapse_payload,
     collapse_payload_modes,
     collapsed_key_for,
-    order_source_keys,
-    pick_primary_key,
     short_label_for,
 )
 

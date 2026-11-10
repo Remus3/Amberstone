@@ -116,7 +116,7 @@ def _parse_knob(raw: str) -> int:
 
 def _to_pct(triple: dict) -> dict:
     """round(fraction * 100) as int per axis (fractions sum ~1.0)."""
-    return {k: int(round(float(v) * 100)) for k, v in triple.items()}
+    return {k: round(float(v) * 100) for k, v in triple.items()}
 
 
 def _bad_request(h, msg: str) -> None:

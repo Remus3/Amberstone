@@ -20,11 +20,11 @@ Usage:
   python tools/p3_ascii_census.py --bom      # BOM + ps1-risk report only
 """
 import collections
-import os
+from pathlib import Path
 import subprocess
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = str(Path(__file__).absolute().parents[1])
 AUTH_EXT = {'.py', '.js', '.css', '.md', '.ps1', '.txt', '.xml', '.bat', '.cmd'}
 EXCL_PREFIX = ('docs/_archive/', 'data/',
                'agents/agent6_auditor/reports/', 'agents/agent6_auditor/proposals/')
@@ -42,7 +42,7 @@ def excluded(rel):
 def tracked():
     # RM-830: -z (no C-quoted non-ASCII names), decoded UTF-8.
     out = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"], capture_output=True,
-                         text=True, encoding="utf-8", errors="replace", timeout=60).stdout
+                         text=True, encoding="utf-8", errors="replace", timeout=60, check=False).stdout
     return [p for p in out.split("\0") if p]
 
 
@@ -61,10 +61,10 @@ def main():
     buckets = collections.defaultdict(list)
     bom8, utf16, ps1_bom, ps1_nonascii = [], [], {}, set()
     for rel in files:
-        ext = os.path.splitext(rel)[1].lower()
+        ext = Path(rel).suffix.lower()
         if ext not in AUTH_EXT or excluded(rel):
             continue
-        with open(os.path.join(ROOT, rel), 'rb') as fh:
+        with (Path(ROOT) / rel).open('rb') as fh:
             raw = fh.read()
         if raw[:3] == b'\xef\xbb\xbf':
             bom8.append(rel)

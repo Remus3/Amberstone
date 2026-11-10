@@ -45,7 +45,6 @@ The 1.8GB rewind_history.db is NEVER opened here.
 """
 from __future__ import annotations
 
-import glob
 import json
 import sys
 from pathlib import Path
@@ -168,8 +167,8 @@ def build_table(
     skipped_user_pick: list[str] = []
     skipped_no_win_anchor: list[str] = []
     considered = 0
-    for fp in sorted(glob.glob(str(Path(verdicts_dir) / "*.json"))):
-        verdict = json.loads(Path(fp).read_text(encoding="utf-8"))
+    for fp in sorted(Path(verdicts_dir).glob("*.json"), key=str):
+        verdict = json.loads(fp.read_text(encoding="utf-8"))
         champ = verdict.get("champion")
         if not champ or verdict.get("archetype_ok") is not False:
             continue

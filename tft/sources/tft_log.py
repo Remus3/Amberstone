@@ -103,7 +103,7 @@ def _open_shared(path: Path):
     tools/lcu_push_watcher.py `_win_open_shared_delete`). POSIX needs nothing.
     Raises OSError (the message carries no path: it can hold a user name)."""
     if sys.platform != "win32":
-        return open(path, "rb")
+        return Path(path).open("rb")
     import ctypes  # noqa: PLC0415 - Windows-only, imported lazily
     import msvcrt  # noqa: PLC0415
     from ctypes import wintypes  # noqa: PLC0415
@@ -189,7 +189,7 @@ def _epoch(m) -> Optional[float]:
         datetime.datetime(*parts)  # validates the calendar date / clock
     except ValueError:
         return None
-    return calendar.timegm(parts + (0, 0, 0)) + int(m["ms"]) / 1000.0
+    return calendar.timegm((*parts, 0, 0, 0)) + int(m["ms"]) / 1000.0
 
 
 def parse_line(line) -> Optional[LogEvent]:

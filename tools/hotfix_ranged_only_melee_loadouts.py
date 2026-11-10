@@ -43,10 +43,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from agents.daemon_slayer._melee_ranged import (  # noqa: E402
-    MELEE_RANGED_ATTACKRANGE_SPLIT,
-    attackrange_is_ranged,
-)
+from agents.daemon_slayer._melee_ranged import attackrange_is_ranged  # noqa: E402
 from core import polled_json  # noqa: E402
 from core.daemon_slayer_client import champion_attackrange  # noqa: E402
 from tools.champion_loadout_align import _detect_archetype  # noqa: E402
@@ -55,10 +52,6 @@ _LOADOUTS = _ROOT / "data" / "champion_loadouts.json"
 
 # Runaan's Hurricane display name(s) as they appear in the loadout lists.
 _RUNAAN = "Runaan's Hurricane"
-
-# Melee = base attackrange BELOW the shared canonical split (350, RM-123 -
-# mirrors rank.MELEE_ATTACKRANGE_CEILING + loadout_resolver + _melee_ranged).
-_MELEE_CEILING = MELEE_RANGED_ATTACKRANGE_SPLIT
 
 # Archetype-aware, melee-legal replacement chains. Every entry is outside the 7
 # unique-passive families and is NOT a heal/shield item, so the axis + clash
@@ -115,14 +108,12 @@ def apply(data: dict) -> int:
         if not _is_melee(champ):
             continue
         for var in (cd.get("variants") or {}).values():
-            changed = False
             for p in var.get("build_paths") or []:
                 if not isinstance(p, dict):
                     continue
                 new_items = _fix_items(p.get("key"), p, list(p.get("items") or []))
                 if new_items != list(p.get("items") or []):
                     p["items"] = new_items
-                    changed = True
                     touched += 1
             # Resync the variant-level items mirror to the primary path (the
             # s8 mirror guard requires variant.items == primary path items).
@@ -133,16 +124,12 @@ def apply(data: dict) -> int:
                 )
                 if list(var.get("items") or []) != list(prim.get("items") or []):
                     var["items"] = list(prim.get("items") or [])
-                    changed = True
             elif any(_norm(x) == _norm(_RUNAAN) for x in (var.get("items") or [])):
                 # Pathless variant: fix the mirror list directly.
                 var["items"] = _fix_items(
                     "", var, list(var.get("items") or [])
                 )
                 touched += 1
-                changed = True
-            if changed:
-                pass
     return touched
 
 

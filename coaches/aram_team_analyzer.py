@@ -234,7 +234,9 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
 
     # Sanity: swap target must be on the bench (LLMs hallucinate)
     if swap_to and swap_to not in bench:
-        norm = lambda s: "".join(c.lower() for c in s if c.isalnum())
+        def norm(s):
+            return "".join(c.lower() for c in s if c.isalnum())
+
         bench_norm = {norm(b): b for b in bench}
         match = bench_norm.get(norm(swap_to))
         if match:

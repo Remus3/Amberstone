@@ -17,7 +17,6 @@ import json
 import sqlite3
 import tempfile
 import unittest
-from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 

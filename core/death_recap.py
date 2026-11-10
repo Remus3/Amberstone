@@ -388,7 +388,7 @@ def format_line(row: Optional[Mapping]) -> str:
     shares = row.get("shares")
     if not shares:
         return f"Death recap (estimated): {champs or 'non-champion'} - no damage split"
-    pct = {k: int(round(100 * _num(shares.get(k)))) for k in ("physical", "magic", "true")}
+    pct = {k: round(100 * _num(shares.get(k))) for k in ("physical", "magic", "true")}
     return (f"Death recap (estimated): {champs} - "
             f"{pct['physical']}% physical / {pct['magic']}% magic / {pct['true']}% true")
 
@@ -450,7 +450,7 @@ def append_row(row: Mapping, path: Optional[Path] = None) -> bool:
         line = json.dumps(row, ensure_ascii=True, separators=(",", ":")) + "\n"
         with _write_lock:
             p.parent.mkdir(parents=True, exist_ok=True)
-            with open(p, "a", encoding="utf-8", newline="\n") as f:
+            with p.open("a", encoding="utf-8", newline="\n") as f:
                 f.write(line)
                 f.flush()
         return True
@@ -463,7 +463,7 @@ def read_rows(path: Optional[Path] = None) -> list[dict]:
     p = Path(path) if path is not None else DEFAULT_RECAPS_PATH
     out: list[dict] = []
     try:
-        with open(p, encoding="utf-8") as f:
+        with p.open(encoding="utf-8") as f:
             for raw_line in f:
                 line = raw_line.strip()
                 if not line:

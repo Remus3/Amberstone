@@ -20,6 +20,7 @@ from agents.daemon_slayer._ability_overrides import (
     NON_DAMAGE_BLOCKS,
 )
 from agents.daemon_slayer.ability_dps import _mitigation_factor
+import pathlib
 
 
 @pytest.fixture(scope="module")
@@ -125,5 +126,5 @@ def test_registries_well_formed():
 
 def test_overrides_module_is_ascii():
     import agents.daemon_slayer._ability_overrides as m
-    src = open(m.__file__, encoding="utf-8").read()
+    src = pathlib.Path(m.__file__).read_text(encoding="utf-8")
     assert all(ord(c) < 128 for c in src)

@@ -18,7 +18,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, ARENA_STATE, BRAWL_STATE, TFT_STATE
+from tests.fixtures.state_dicts import SR_STATE
 
 # -- Minimal raw Riot API fixtures (activePlayer + gameData + allPlayers) ------
 # These mirror the shape of /liveclientdata/allgamedata - not the processed

@@ -184,7 +184,7 @@ class AsciiHygieneTests(unittest.TestCase):
         # Anchored on __file__, not the process CWD, so this hygiene test
         # runs from any directory.
         path = Path(__file__).resolve()
-        with open(path, "rb") as fh:
+        with path.open("rb") as fh:
             raw = fh.read()
         # decode raises on the first non-ASCII byte
         self.assertTrue(raw.decode("ascii"))

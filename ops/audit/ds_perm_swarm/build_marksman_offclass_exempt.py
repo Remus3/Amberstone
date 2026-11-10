@@ -42,7 +42,6 @@ rewind_history.db is NEVER opened here.
 """
 from __future__ import annotations
 
-import glob
 import json
 import sys
 from pathlib import Path
@@ -106,8 +105,8 @@ def build_table(
     snap = snapshot if snapshot is not None else DataSnapshot.load()
     champions: dict[str, list[str]] = {}
     considered = 0
-    for fp in sorted(glob.glob(str(cross_eval_dir / "*.json"))):
-        data = json.loads(Path(fp).read_text(encoding="utf-8"))
+    for fp in sorted(Path(cross_eval_dir).glob("*.json"), key=str):
+        data = json.loads(fp.read_text(encoding="utf-8"))
         champ = data.get("champion")
         if not champ:
             continue

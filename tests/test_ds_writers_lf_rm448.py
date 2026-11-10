@@ -13,7 +13,6 @@ outside these globs are deliberately excluded - they will not re-run.
 from __future__ import annotations
 
 import ast
-import os
 import sys
 from pathlib import Path
 

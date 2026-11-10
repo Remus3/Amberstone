@@ -22,7 +22,6 @@ but stores a non-numeric one AS TEXT, so `''` landed in `kills`, `deaths`,
 """
 
 import json
-import sqlite3
 import sys
 import unittest
 from pathlib import Path

@@ -21,16 +21,16 @@ the JSON; the dataclass ``__post_init__`` still validates them at load.
 import argparse
 import dataclasses
 import json
-import os
+from pathlib import Path
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).absolute().parents[1]))
 
 from agents.daemon_slayer import cc_conditional as c  # noqa: E402
 
-_OUT = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "agents", "daemon_slayer", "cc_conditional_registry.json",
+_OUT = str(
+    Path(__file__).absolute().parents[1]
+    / "agents" / "daemon_slayer" / "cc_conditional_registry.json"
 )
 
 _NOTE = (
@@ -81,7 +81,7 @@ def main() -> int:
     text = render(build_payload())
     if args.check:
         try:
-            with open(_OUT, encoding="utf-8") as fh:
+            with Path(_OUT).open(encoding="utf-8") as fh:
                 on_disk = fh.read()
         except FileNotFoundError:
             print("MISSING", _OUT)
@@ -91,7 +91,7 @@ def main() -> int:
             return 1
         print("OK", _OUT)
         return 0
-    with open(_OUT, "w", encoding="utf-8", newline="\n") as f:
+    with Path(_OUT).open("w", encoding="utf-8", newline="\n") as f:
         f.write(text)
     print("WROTE", _OUT, len(text), "bytes")
     return 0

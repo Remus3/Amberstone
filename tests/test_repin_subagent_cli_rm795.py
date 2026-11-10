@@ -16,9 +16,9 @@ No test here starts a process or reaches the real CLI.
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
+from pathlib import Path
 from subprocess import CompletedProcess
 
 import pytest
@@ -80,7 +80,7 @@ def _events(version, *, spawn, answer, sub_tools=0, agent_input="", early=""):
 
 
 def _write(log_path, evs):
-    with open(log_path, "w", encoding="utf-8", newline="\n") as fh:
+    with Path(log_path).open("w", encoding="utf-8", newline="\n") as fh:
         fh.writelines(json.dumps(ev) + "\n" for ev in evs)
 
 
@@ -98,7 +98,7 @@ class FakeCli:
         extra = list(extra)
         if "--definitely-not-a-flag" in extra:
             rc = 0 if "unknown_accepted" in self.broken else 1
-            open(log_path, "w", encoding="utf-8").close()
+            Path(log_path).write_text("", encoding="utf-8")
             err = "" if rc == 0 else "error: unknown option '--definitely-not-a-flag'\n"
             return ({"rc": rc, "result": None, "error": None},
                     CompletedProcess(args=[], returncode=rc, stdout=None, stderr=err))
@@ -221,7 +221,7 @@ def test_measure_runs_every_control_in_order_through_the_spawn_seam(tmp_path):
     for call in cli.calls:
         assert call["note"].strip()
         assert "QXTESTCODE01" not in call["prompt"], "the codeword rides the flag only"
-        assert os.path.dirname(call["log_path"]) == str(tmp_path / "ev")
+        assert Path(call["log_path"]).parent == tmp_path / "ev"
     assert (tmp_path / "ev" / "summary.json").is_file()
 
 

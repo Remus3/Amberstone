@@ -56,9 +56,6 @@ _LC = {
     "hp_max": 1000,
 }
 
-_RULE_INPUT_KEYS = ("hp_pct", "wave_pct", "low_enemy_count", "lc_hp_pct")
-
-
 def _rows(path):
     return [
         json.loads(ln)

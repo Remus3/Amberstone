@@ -31,11 +31,9 @@ not averaged. We keep text-metric frequency maps so the coach can say
 """
 from __future__ import annotations
 import sqlite3
-import json
 import re
 from pathlib import Path
 from datetime import datetime, timezone
-from statistics import mean
 
 # Per-row weighting by provenance tier. Coach-confidence scaling - see
 # memory feedback_metric_provenance_tagging. source_truth = 1.0 baseline,

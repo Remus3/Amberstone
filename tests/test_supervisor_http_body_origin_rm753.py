@@ -22,7 +22,6 @@ tell "refused before dispatch" from "dispatched".
 """
 from __future__ import annotations
 
-import contextlib
 import json
 import socket
 import threading

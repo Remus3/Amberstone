@@ -115,9 +115,9 @@ def _driver_cycle(root: Path, lane: str) -> None:
     tmp = out.with_suffix(".md.tmp")
     tmp.write_bytes(b"directive v2 - a longer rendered prompt\n")
     tmp.replace(out)
-    with open(root / LP / f"s133_{lane}_cycles.jsonl", "a", encoding="ascii") as fh:
+    with (root / LP / f"s133_{lane}_cycles.jsonl").open("a", encoding="ascii") as fh:
         fh.write('{"cycle": 2}\n')
-    with open(root / LP / f"s133_{lane}_driver.log", "a", encoding="ascii") as fh:
+    with (root / LP / f"s133_{lane}_driver.log").open("a", encoding="ascii") as fh:
         fh.write("cycle 2\n")
 
 

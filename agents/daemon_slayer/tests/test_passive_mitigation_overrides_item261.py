@@ -12,6 +12,7 @@ level-scaled). The 4 actives amortize by conditional_probability=0.3.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer import ENGINE_VERSION
@@ -281,7 +282,7 @@ class EngineAndHygieneTests(unittest.TestCase):
         import agents.daemon_slayer._passive_mitigation_overrides as m
 
         for path in (m.__file__, __file__):
-            with open(path, "rb") as fh:
+            with Path(path).open("rb") as fh:
                 fh.read().decode("ascii")
 
     def test_entry_dataclass_constructs(self):

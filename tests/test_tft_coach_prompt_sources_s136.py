@@ -144,7 +144,8 @@ def test_plain_state_gold_wins_over_a_conflicting_vision_gold(_pin):
     assert "50g" not in prompt
 
 
-def test_unread_gold_is_unknown_not_zero(_pin):
+@pytest.mark.usefixtures("_pin")
+def test_unread_gold_is_unknown_not_zero():
     state = _d1_state(ocr={})  # OCR has read nothing yet
     assert state["gold"] == 0 and state["gold_known"] is False
     prompt = eng._build_prompt(state)
@@ -192,7 +193,8 @@ def test_vision_board_off_the_set_roster_is_dropped(_pin, caplog):
     assert "Zed" in dropped and "Gragas" in dropped
 
 
-def test_vision_board_with_no_roster_adds_no_board_line(_pin, monkeypatch):
+@pytest.mark.usefixtures("_pin")
+def test_vision_board_with_no_roster_adds_no_board_line(monkeypatch):
     monkeypatch.setattr(eng, "_resolved_set", lambda: None)
     prompt = eng._build_prompt({"stage": 2, "round": 2, "level": 4})
     assert not _line(prompt, "Board units:")
@@ -208,7 +210,8 @@ def test_vision_hp_never_shown_over_the_reader_health():
     assert "35" not in _line(prompt, "HP:")
 
 
-def test_vision_hp_dropped_when_no_authoritative_hp(_pin):
+@pytest.mark.usefixtures("_pin")
+def test_vision_hp_dropped_when_no_authoritative_hp():
     prompt = eng._build_prompt({"stage": 2, "round": 2, "level": 3, "health": None})
     hp_line = _line(prompt, "HP:")
     assert hp_line.startswith("HP: unknown"), hp_line

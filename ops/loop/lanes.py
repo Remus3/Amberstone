@@ -87,7 +87,6 @@ import json
 import logging
 import os
 import sys
-import time
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -393,7 +392,7 @@ def _open_stop(lane, root=None):
     with another reason replaces the first, and one resume closes the lane."""
     path = _resolve_root(root).parent / LANE_STATUS_LOG
     try:
-        with open(path, "rb") as fh:
+        with path.open("rb") as fh:
             fh.seek(0, os.SEEK_END)
             fh.seek(max(0, fh.tell() - _STATUS_TAIL_BYTES))
             tail = fh.read().decode("ascii", "replace")

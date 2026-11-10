@@ -140,7 +140,7 @@ def _rollback(root: Path, answer: bytes, inherit: dict[str, str] | None = None) 
     proc = subprocess.run(
         ["cmd.exe", "/d", "/c", str(root / "tools" / "rollback_last.cmd")],
         cwd=str(root), env=_env(inherit), input=answer, capture_output=True,
-        timeout=60, creationflags=_NO_WINDOW)
+        timeout=60, check=False, creationflags=_NO_WINDOW)
     return proc.stdout.decode("ascii", "replace")
 
 

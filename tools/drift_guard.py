@@ -154,7 +154,9 @@ def check_mirror_parity(
             # .claude/ side - a raw-byte compare would then report every
             # mirrored file as drifted on line endings alone. This guard
             # exists to catch two copies of a document DISAGREEING.
-            _norm = lambda b: b.replace(b"\r\n", b"\n")
+            def _norm(b):
+                return b.replace(b"\r\n", b"\n")
+
             if _norm(fa.read_bytes()) != _norm(fb.read_bytes()):
                 newer = fa if fa.stat().st_mtime > fb.stat().st_mtime else fb
                 out.append(Finding(
@@ -382,7 +384,7 @@ def check_untracked_authored(
         r = subprocess.run(
             ["git", "-C", str(root), "ls-files", "-z", f"{a}/"],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=60,
+            timeout=60, check=False,
         )
         if r.returncode != 0:
             continue
@@ -414,6 +416,7 @@ def check_git_hooks_path(root: pathlib.Path) -> list[Finding]:
         out = subprocess.run(
             ["git", "-C", str(root), "config", "core.hooksPath"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60,
+            check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return []

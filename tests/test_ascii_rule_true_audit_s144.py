@@ -23,7 +23,6 @@ Two holes, both measured failing on the pre-fix tree:
 from __future__ import annotations
 
 import importlib.util
-import os
 import sys
 from pathlib import Path
 
@@ -196,4 +195,4 @@ def test_non_str_text_is_a_type_error(bad):
 def test_rule_file_stays_ascii_and_lf():
     src = (REPO_ROOT / "tools" / "ascii_rule.py").read_bytes()
     assert all(b < 128 for b in src) and b"\r" not in src
-    assert os.path.basename(R.__file__) == "ascii_rule.py"
+    assert Path(R.__file__).name == "ascii_rule.py"

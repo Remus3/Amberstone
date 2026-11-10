@@ -106,8 +106,9 @@ def test_probe_is_live():
 def test_print_empty_string_and_bare_print_write_the_same_bytes():
     """The premise of the fix: the rewritten separator is byte-identical output."""
     old, new = io.StringIO(), io.StringIO()
+    empty = ""
     with contextlib.redirect_stdout(old):
-        print("")
+        print(empty)
     with contextlib.redirect_stdout(new):
         print()
     assert old.getvalue() == new.getvalue() == "\n"

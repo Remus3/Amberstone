@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from agents.agent2_backend.db_schema import MODE_DB_FILES, db_path, init_all, open_db
+from agents.agent2_backend.db_schema import MODE_DB_FILES, init_all, open_db
 
 logger = logging.getLogger("agent2.migration_rewind")
 

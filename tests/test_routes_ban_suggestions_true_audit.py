@@ -26,7 +26,6 @@ audit and was RED against the pre-audit module:
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from unittest import mock
 
@@ -108,7 +107,7 @@ def test_every_shipped_top_ban_icon_exists_case_exact(monkeypatch):
     # its icon must name a PNG that exists with EXACT case (the NTFS
     # case-insensitive open hid the Kha'Zix -> KhaZix.png miss).
     _reset_index(monkeypatch)
-    on_disk = set(os.listdir(ICON_DIR))
+    on_disk = {entry.name for entry in ICON_DIR.iterdir()}
     bans = json.loads(rbsu._BANS_PATH.read_text(encoding="utf-8"))
     h = _serve("/api/champ-select/ban-suggestions?top=10",
                {"patch": "x", "top_bans": bans["top_bans"]})

@@ -2,6 +2,7 @@
 slices + non-ASCII census (the W5 lighter lens scope probe)."""
 import json
 import os
+from pathlib import Path
 
 ROOT = "agents/daemon_slayer/tests"
 BANNED = {0x2013, 0x2014, 0x201C, 0x201D, 0x2018, 0x2019}  # em/en dash + smart quotes
@@ -15,8 +16,8 @@ for root, _, fs in os.walk(ROOT):
     for f in fs:
         if not f.endswith(".py"):
             continue
-        p = os.path.join(root, f).replace(os.sep, "/")
-        with open(p, encoding="utf-8", errors="replace") as fh:
+        p = (Path(root) / f).as_posix()
+        with Path(p).open(encoding="utf-8", errors="replace") as fh:
             text = fh.read()
         loc = text.count("\n") + 1
         files.append((loc, p))
@@ -42,8 +43,8 @@ print("non-ascii files:", len(census), "| BANNED-glyph files:", len(banned_hits)
 if banned_hits:
     print("BANNED:", json.dumps(banned_hits, indent=1))
 
-with open("ops/audit/p2w5h2_slices.json", "w", encoding="utf-8", newline="\n") as fh:
+with Path("ops/audit/p2w5h2_slices.json").open("w", encoding="utf-8", newline="\n") as fh:
     json.dump({chr(65 + i): bins[i] for i in range(6)}, fh, indent=1)
-with open("ops/audit/p2w5h2_nonascii_census.json", "w", encoding="utf-8", newline="\n") as fh:
+with Path("ops/audit/p2w5h2_nonascii_census.json").open("w", encoding="utf-8", newline="\n") as fh:
     json.dump(census, fh, indent=1)
 print("-> ops/audit/p2w5h2_slices.json + p2w5h2_nonascii_census.json")

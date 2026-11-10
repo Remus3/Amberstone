@@ -112,8 +112,7 @@ def _md_suffix_index(tracked_md) -> frozenset:
     suffixes = set()
     for path in tracked_md:
         parts = path.split("/")
-        for i in range(len(parts)):
-            suffixes.add("/".join(parts[i:]))
+        suffixes.update("/".join(parts[i:]) for i in range(len(parts)))
     return frozenset(suffixes)
 
 

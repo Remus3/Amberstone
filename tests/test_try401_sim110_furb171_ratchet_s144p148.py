@@ -11,11 +11,13 @@ None of the three rules is selected by ruff.toml. Measured 2026-11-05 with ``ruf
   short-circuit and the evaluation order are unchanged).
 - FURB171: ``tools/ds_cross_eval/probe_champion`` tested ``x in ("burst",)``; it is ``x == "burst"``.
 
-The baseline is the finding that stays: ``tools/upstream_drift_check.py`` is held by another lane branch
-at the time of this slice (its redirect-refusal work), so its one TRY401 is taken in a later cycle.
+``tools/upstream_drift_check.py`` was held by another lane branch at the time of this slice (its
+redirect-refusal work), so its one TRY401 stayed baselined; S144-P-537 took it (its ``main()`` now logs
+``logger.exception("upstream_drift_check hard error")``, the traceback carries the exception) and the baseline is
+empty: the three rules are held at zero.
 
 A baseline entry that stops offending fails ``test_baseline_is_exact`` until it is dropped; a new finding
-anywhere else fails ``test_no_new_findings``.
+anywhere fails ``test_no_new_findings``.
 
 Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the vendored
 ``ops/fleet_kit`` and the ``agents/agent3_testing/suite`` suite are out of scope. The run uses NO config
@@ -48,10 +50,8 @@ _OUT_OF_SCOPE = (
     "agents/agent3_testing/suite/",
     "ops/fleet_kit/",
 )
-# file -> finding count that stays (reasons in the module docstring). Only shrinks.
-_BASELINE = {
-    "tools/upstream_drift_check.py": 1,
-}
+# file -> finding count that stays (reasons in the module docstring). Empty since S144-P-537.
+_BASELINE: dict[str, int] = {}
 _FIXED = (
     "agents/agent2_backend/file_ingest.py",
     "agents/agent2_backend/pipeline/orchestrator.py",
@@ -59,6 +59,7 @@ _FIXED = (
     "core/hot_reload.py",
     "tools/ds_cross_eval/probe_champion.py",
     "tools/stop_claim_gate.py",
+    "tools/upstream_drift_check.py",
 )
 
 

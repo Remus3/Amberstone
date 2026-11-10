@@ -45,8 +45,10 @@ def write_coaching_ts(mode: str,
 
     Parameters
     ----------
-    mode        : "sr" | "aram" | "arena" | "brawl" | "tft"
-    runtime_dir : optional override for ops/runtime/ (test seam only)
+    mode : str
+        "sr" | "aram" | "arena" | "brawl" | "tft".
+    runtime_dir : Path, optional
+        Override for ops/runtime/ (test seam only).
 
     Non-fatal: errors are caught and logged at DEBUG level.
     """

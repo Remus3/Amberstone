@@ -108,7 +108,7 @@ def test_importing_the_script_makes_no_network_call_and_does_not_exit():
     r = subprocess.run(
         [sys.executable, "-I", "-c", _CHILD_IMPORT, str(ROOT)],
         capture_output=True, text=True, timeout=60, cwd=str(ROOT),
-        creationflags=no_window,
+        creationflags=no_window, check=False,
     )
     assert r.returncode == 0, (r.stdout[-1000:], r.stderr[-2000:])
     assert r.stdout.strip().splitlines() == ["urlopen calls at import: 0"], r.stdout

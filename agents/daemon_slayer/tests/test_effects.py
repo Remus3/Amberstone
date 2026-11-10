@@ -3,12 +3,10 @@
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot
-from agents.daemon_slayer.dps import DEFAULT_CRIT_BONUS, _armor_factor, compute_dps
+from agents.daemon_slayer.dps import DEFAULT_CRIT_BONUS, compute_dps
 from agents.daemon_slayer.effects import (
     ITEM_EFFECTS,
-    MAGICAL,
     PHYSICAL,
-    ItemEffect,
     PeriodicProc,
     collect_effects,
     total_crit_damage_bonus,

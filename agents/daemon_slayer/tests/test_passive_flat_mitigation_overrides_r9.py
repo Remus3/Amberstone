@@ -23,7 +23,6 @@ from agents.daemon_slayer._passive_flat_mitigation_overrides import (
     MAG,
     PHYS,
     TRUE,
-    PassiveFlatMitigationEntry,
     _ASSUMED_ABILITY_RANK,
     _ASSUMED_FLAT_DR_INSTANCES,
     _PASSIVE_FLAT_MITIGATION_OVERRIDES,

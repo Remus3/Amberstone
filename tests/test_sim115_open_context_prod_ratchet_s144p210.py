@@ -7,10 +7,9 @@ fixed: one-shot ``json.load(open(p))`` / ``open(p).read()`` reads and ``json.dum
 write inside a ``with`` block, so the handle is closed (and a write flushed) on the line that used it
 instead of whenever the interpreter collects it. Bytes written are unchanged (the LF writes keep ``newline``).
 
-The finding that stays: ``core/live_session_recorder.py`` ``_repair_torn_tail`` opens ``r+b`` inside a
-``try`` that exists only to map FileNotFoundError to "nothing to repair", then enters ``with fh:``. The
-handle is closed by that ``with``; moving the open into it would widen the except clause to the whole
-repair body. A baseline row that stops offending fails ``test_baseline_is_exact`` until it is dropped; a
+The one finding that stayed (``core/live_session_recorder.py`` ``_repair_torn_tail``, an ``r+b`` open inside a ``try``
+that maps FileNotFoundError to "nothing to repair", then ``with fh:``) is gone: S144-P-567 spelled it
+``path.open("r+b")``, which SIM115 does not flag, so the baseline is empty and the file joins ``_FIXED``. A baseline row that stops offending fails ``test_baseline_is_exact`` until it is dropped; a
 new finding anywhere else fails ``test_no_new_findings``.
 
 Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the vendored
@@ -43,10 +42,8 @@ _OUT_OF_SCOPE = (
     "agents/agent3_testing/suite/",
     "ops/fleet_kit/",
 )
-# file -> finding count that stays (reason in the module docstring). Only shrinks.
-_BASELINE = {
-    "core/live_session_recorder.py": 1,
-}
+# file -> finding count that stays (reason in the module docstring). Only shrinks; empty since S144-P-567.
+_BASELINE: dict[str, int] = {}
 _FIXED = (
     "ops/audit/lolmath_ds_sweep/g2_remeasure_probe.py",
     "ops/audit/lolmath_ds_sweep/g7_comp_harness.py",
@@ -60,6 +57,7 @@ _FIXED = (
     "tools/ds_cond_pair_prefilter.py",
     "tools/ds_execute_prefilter.py",
     "tools/p3_ascii_census.py",
+    "core/live_session_recorder.py",
 )
 
 

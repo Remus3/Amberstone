@@ -89,7 +89,7 @@ def iter_jsonl(path: Path) -> Iterator[dict]:
     skipped alone. A missing / unreadable file, or a read error part-way, ends
     the stream - never raised. A UTF-8 BOM on the first line is dropped."""
     try:
-        fh = open(path, "rb")  # noqa: SIM115 - closed in the finally below
+        fh = Path(path).open("rb")  # noqa: SIM115 - closed in the finally below
     except (OSError, ValueError):  # ValueError: an embedded NUL in the path
         return
     try:

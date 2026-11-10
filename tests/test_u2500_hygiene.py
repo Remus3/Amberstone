@@ -31,7 +31,6 @@ If this test fails on a re-introduction, run:
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest

@@ -337,7 +337,7 @@ def launch_child(cmd: list, child_log: Path) -> PopenChild:
     child_log.parent.mkdir(parents=True, exist_ok=True)
     child = None
     try:
-        with open(child_log, "ab") as fh:
+        with child_log.open("ab") as fh:
             proc = subprocess.Popen(
                 cmd, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT, creationflags=_flags()
             )
@@ -357,7 +357,7 @@ def _now() -> str:
 
 
 def _append(path: Path, row: dict) -> None:
-    with open(path, "ab") as fh:
+    with path.open("ab") as fh:
         fh.write((json.dumps(row) + "\n").encode("ascii"))
 
 

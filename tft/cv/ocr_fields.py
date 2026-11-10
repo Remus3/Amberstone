@@ -36,11 +36,13 @@ import logging
 import os
 import re
 import shutil
+import string
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from itertools import product
+from pathlib import Path
 from typing import Any, Callable, Iterable, Protocol
 
 from tft.cv import EXTRACTOR_VERSION
@@ -70,7 +72,7 @@ FIELD_CONF = {
     "scoreboard": 0.9, "traits": 0.98,
 }
 
-DIGITS = "0123456789"
+DIGITS = string.digits
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'"
 
 # A crop whose brightest text-channel percentile stays under this has no glyphs:
@@ -129,7 +131,7 @@ def _tesseract_cmd() -> str | None:
         cands = [os.environ.get("RC_TESSERACT_CMD") or "",
                  r"C:\Program Files\Tesseract-OCR\tesseract.exe"]
     for cand in cands:
-        if cand and os.path.isfile(cand):
+        if cand and Path(cand).is_file():
             return cand
     return shutil.which("tesseract")
 
@@ -144,7 +146,7 @@ class TesseractEngine:
         self._lock = threading.Lock()
 
     def available(self) -> bool:
-        return bool(self.cmd) and os.path.isfile(self.cmd)
+        return bool(self.cmd) and Path(self.cmd).is_file()
 
     def _warn_once(self, msg: str, *args) -> None:
         with self._lock:
@@ -1005,7 +1007,7 @@ def read_scoreboard(ctx: _Ctx, boxes: list) -> FieldValue:
     base = FIELD_CONF["scoreboard"] * ctx.factor
     confs = [base if i in keep else 0.0 for i in range(len(vals))]
     final = [v if i in keep else None for i, v in enumerate(vals)]
-    for i, _crop in enumerate(crops):
+    for i in range(len(crops)):
         if final[i] is not None or not signal[i]:
             continue
         above = [final[j] for j in range(i) if final[j] is not None]

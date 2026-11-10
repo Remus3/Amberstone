@@ -950,7 +950,7 @@ def _git_out(repo_root, *args) -> str:
     try:
         r = subprocess.run(["git", "-C", str(repo_root), *args],
                            capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=30,
+                           errors="replace", timeout=30, check=False,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError):
         return ""
@@ -983,7 +983,7 @@ def _git_is_ancestor(repo_root, a, b) -> bool:
     try:
         return subprocess.run(
             ["git", "-C", str(repo_root), "merge-base", "--is-ancestor", a, b],
-            capture_output=True, timeout=30,
+            capture_output=True, timeout=30, check=False,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode == 0
     except (OSError, subprocess.SubprocessError):
         return False
@@ -1497,7 +1497,7 @@ def _hook_index_modes(root, hooks) -> dict:
     try:
         r = subprocess.run(["git", "-C", str(root), "ls-files", "-s", "-z", "--", str(hooks)],
                            capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=30,
+                           errors="replace", timeout=30, check=False,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError):
         return {}
@@ -1567,7 +1567,7 @@ def gate_inactive_reason(repo_root) -> str | None:
     try:
         r = subprocess.run(["git", "-C", str(root), "config", "--get", "core.hooksPath"],
                            capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=30,
+                           errors="replace", timeout=30, check=False,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError) as e:
         return f"could not verify the commit gate: {e}"

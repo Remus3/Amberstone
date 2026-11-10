@@ -127,7 +127,7 @@ def load_salt(path=None) -> bytes:
         salt = secrets.token_bytes(32)
         try:
             p.parent.mkdir(parents=True, exist_ok=True)
-            with open(p, "xb") as fh:  # exclusive create: a concurrent creator wins
+            with p.open("xb") as fh:  # exclusive create: a concurrent creator wins
                 fh.write(salt)
             return salt
         except FileExistsError:
@@ -309,7 +309,7 @@ def scrub_violations(doc: Any) -> list:
 # ---------------------------------------------------------------- validation
 
 
-class _Invalid(ValueError):
+class _InvalidError(ValueError):
     pass
 
 
@@ -324,7 +324,7 @@ _SRC = frozenset(rs.SRC_VALUES)
 
 def _need(cond, msg):
     if not cond:
-        raise _Invalid(msg)
+        raise _InvalidError(msg)
 
 
 def _is_int(v):
@@ -406,7 +406,7 @@ def _v_text(v, name, maxlen=64, nullable=True):
     try:  # a lone surrogate (json.loads of a bare \ud800 escape) cannot be bound (s134 V3)
         v.encode("utf-8")
     except UnicodeEncodeError:
-        raise _Invalid(f"{name} is not encodable text") from None
+        raise _InvalidError(f"{name} is not encodable text") from None
     _need(_string_violation(v) is None, f"{name} carries an identity shape")
     return v
 
@@ -457,7 +457,7 @@ def _v_json(v, name):
     try:
         return json.dumps(v, ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (TypeError, ValueError):
-        raise _Invalid(f"{name} is not JSON-serialisable") from None
+        raise _InvalidError(f"{name} is not JSON-serialisable") from None
 
 
 def _v_str_list(v, name, nullable=True):
@@ -844,14 +844,14 @@ class RoundStore:
         return False
 
     def _submit(self, label, build) -> bool:
-        """Validate (build() raises _Invalid) and enqueue; never raises."""
+        """Validate (build() raises _InvalidError) and enqueue; never raises."""
         if self._closed:
             return self._drop("closed", label)
         if self.readonly or self._error is not None:
             return self._drop("unavailable", label)
         try:
             fn = build()
-        except _Invalid as exc:
+        except _InvalidError as exc:
             return self._drop("invalid", f"{label}: {exc}")
         except Exception as exc:  # noqa: BLE001 - a validator bug must not reach the poll loop
             return self._drop("invalid", f"{label}: {type(exc).__name__}")
@@ -950,7 +950,7 @@ class RoundStore:
                 elif name in rs.ROUND_PLAIN:
                     row[name] = _v_num(v, name)
                 else:
-                    raise _Invalid("upsert_round got a field outside the round table")
+                    raise _InvalidError("upsert_round got a field outside the round table")
             sql = _upsert_sql("round", tuple(row), ("match_id", "round_seq"))
             vals = tuple(row.values())
             return lambda conn: conn.execute(sql, vals)

@@ -109,7 +109,7 @@ def _run(tmp_path: Path, rel: str, *, embed: bool, stamp, lock: bool = True,
                if k.upper() not in ("EMBED_OK", "EMBED_WHY", "EMBED_WANT")}
     run_env.update(env or {})
     res = subprocess.run([str(cmd), "/d", "/c", str(bat)], capture_output=True, text=True,
-                         cwd=str(root), timeout=30, env=run_env)
+                         cwd=str(root), timeout=30, env=run_env, check=False)
     assert res.returncode == 0, res.stderr
     return res.stdout
 

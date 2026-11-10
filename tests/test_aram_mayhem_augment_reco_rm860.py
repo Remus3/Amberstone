@@ -388,7 +388,7 @@ class PanelRenderTests(_Stubbed):
             + "})();\n"
         )
         proc = subprocess.run([NODE, "-e", program], capture_output=True,
-                              text=True, timeout=60, encoding="utf-8")
+                              text=True, timeout=60, encoding="utf-8", check=False)
         if proc.returncode != 0:
             raise AssertionError(f"node exited {proc.returncode}\n"
                                  f"{proc.stdout}\n{proc.stderr}")
@@ -448,8 +448,7 @@ class PanelRenderTests(_Stubbed):
         for p in sorted((_PROJECT_ROOT / "data" / "daemon_slayer").glob(
                 "*/cherry_augments.json")):
             snap = json.loads(p.read_text(encoding="utf-8"))
-            for row in (snap.get("augments") or {}).values():
-                emitted.add(row.get("rarity"))
+            emitted.update(row.get("rarity") for row in (snap.get("augments") or {}).values())
         # Anchor: an empty or partial enumeration must not pass vacuously.
         self.assertTrue({"kSilver", "kGold", "kPrismatic", "kEventChoice"} <= emitted,
                         emitted)
@@ -484,7 +483,7 @@ class PanelRenderTests(_Stubbed):
             + "})();\n"
         )
         proc = subprocess.run([NODE, "-e", program], capture_output=True,
-                              text=True, timeout=60, encoding="utf-8")
+                              text=True, timeout=60, encoding="utf-8", check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         got = json.loads(proc.stdout.strip())
         unstyled = {r: got.get(r) for r in universe if got.get(r) not in styled}

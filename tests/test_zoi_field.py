@@ -14,7 +14,6 @@ source for the field is {team, cx, cy, r_frac, weight}; this module signs it
 """
 import math
 
-import pytest
 
 from core.zoi_field import field_dmz
 

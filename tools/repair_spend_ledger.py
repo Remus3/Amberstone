@@ -95,7 +95,7 @@ def synth_usd_per_call() -> float:
 
 
 def _micros(usd) -> int:
-    return int(round(float(usd or 0.0) * _MICRO))
+    return round(float(usd or 0.0) * _MICRO)
 
 
 def _atomic_write_json(target: Path, doc: dict) -> None:

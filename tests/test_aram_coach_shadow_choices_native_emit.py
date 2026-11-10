@@ -140,7 +140,7 @@ def test_shadow_row_records_the_live_choices_column(tmp_path):
     shadow_log_aram_coach(coach, lc, "aram", path=target,
                           live_path=live_artifact)
 
-    lines = [l for l in target.read_text(encoding="utf-8").splitlines() if l.strip()]
+    lines = [ln for ln in target.read_text(encoding="utf-8").splitlines() if ln.strip()]
     assert len(lines) == 1
     rec = json.loads(lines[0])
     assert [c["key"] for c in rec["live_haiku"]["choices"]] == ["A", "B"]

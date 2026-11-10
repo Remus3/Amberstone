@@ -40,6 +40,7 @@ defaults are asserted first because everything else is worthless without them.
 
 import json
 import unittest
+from pathlib import Path
 
 from agents.daemon_slayer import rank as rank_mod
 from agents.daemon_slayer.burst import rank_items_by_burst
@@ -276,7 +277,7 @@ class CombinedThesisTests(QuinnHarness):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_this_test_file_is_ascii(self):
-        with open(__file__, "rb") as fh:
+        with Path(__file__).open("rb") as fh:
             raw = fh.read()
         bad = [(i, b) for i, b in enumerate(raw) if b > 0x7F]
         self.assertEqual(bad, [], f"non-ASCII bytes in test file: {bad[:5]}")

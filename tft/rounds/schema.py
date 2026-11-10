@@ -24,6 +24,7 @@ reach a database file (s134 true-audit S1 / S2 / S3).
 from __future__ import annotations
 
 from types import MappingProxyType
+from itertools import starmap
 
 SCHEMA_VERSION = 1
 
@@ -42,7 +43,7 @@ VERDICTS = ("win", "loss", "draw", "pve_win", "pve_loss")  # section 1.4 row 15
 UNIT_PHASES = ("planning_start", "planning_end", "combat", "carousel")
 # frames / raw obs may also come from a mid-planning shop capture or an augment
 # overlay (section 3.2 step 1), so they take a slightly wider phase set
-CAPTURE_PHASES = UNIT_PHASES + ("planning", "augment")
+CAPTURE_PHASES = (*UNIT_PHASES, "planning", "augment")
 ZONES = ("board", "bench", "carousel")
 REFRESH_CAUSES = ("round_start", "reroll", "locked", "unknown")
 OFFER_KINDS = ("champion", "special", "empty")
@@ -241,7 +242,7 @@ def _create_table(name, cols, pk):
 
 def ddl_v1():
     """Every CREATE statement of schema v1, tables then indexes."""
-    stmts = [_create_table(*t) for t in TABLES]
+    stmts = list(starmap(_create_table, TABLES))
     declared = {name: {c for c, _t in cols} for name, cols, _pk in TABLES}
     for ix, table, cols in INDEXES:
         if table not in declared or any(c not in declared[table] for c in cols):

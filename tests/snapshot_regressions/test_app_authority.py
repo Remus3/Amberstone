@@ -15,7 +15,6 @@ Covers:
 
 No live Riot API, no Anthropic API, no Tk mainloop, no live artifact mutation.
 """
-import copy
 import queue
 import sys
 import threading
@@ -30,7 +29,6 @@ _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 # -- Import app symbols (no Tk mainloop started) -------------------------------
-import app as _app_module
 from app import OverlayApp
 from app import _game_lifecycle as _gl
 from app._game_lifecycle import GameLifecycleManager
@@ -771,7 +769,6 @@ class TestAppTftRuntimeAuthority(unittest.TestCase):
         produces the first authoritative TftSnapshot in the envelope.
         SrAramWorker did not author this.
         """
-        from tft.tft_state_reader import TftStateReader
         app = _make_headless_app()
         app._tft_mode = True
         app._was_in_game = True

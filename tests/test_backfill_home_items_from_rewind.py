@@ -18,7 +18,6 @@ timestamp-window resolution). ASCII-only.
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 import sys
 from datetime import datetime, timedelta

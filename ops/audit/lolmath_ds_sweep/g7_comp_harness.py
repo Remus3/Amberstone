@@ -32,7 +32,6 @@ Usage: python g7_comp_harness.py [PATCH]
 """
 from __future__ import annotations
 
-import collections
 import json
 import sys
 from pathlib import Path
@@ -48,7 +47,7 @@ HERE = f"{ROOT}/ops/audit/lolmath_ds_sweep"
 
 
 def _load_json(path):
-    with open(path, encoding="utf-8") as fh:
+    with Path(path).open(encoding="utf-8") as fh:
         return json.load(fh)
 
 # lolmath's constant default enemy comp (gen_md.py methodology: 4 squishy + 1 tank).

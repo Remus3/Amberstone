@@ -24,7 +24,6 @@ was a live render check, recorded in LEDGER 1167.
 """
 from __future__ import annotations
 
-import re
 import unittest
 from pathlib import Path
 

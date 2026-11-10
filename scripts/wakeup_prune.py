@@ -93,7 +93,7 @@ def _split_on_interior_headings(block: str) -> list[str]:
     if len(starts) <= 1:
         return [block]
     # Keep any pre-heading preamble attached to the first sub-block.
-    cut_points = [0] + starts[1:]
+    cut_points = [0, *starts[1:]]
     out: list[str] = []
     for i, start in enumerate(cut_points):
         end = cut_points[i + 1] if i + 1 < len(cut_points) else len(block)

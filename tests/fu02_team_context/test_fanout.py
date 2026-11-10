@@ -16,7 +16,6 @@ Covers (RC_TICKET_FU02 acceptance #5 + #6 + #9):
 """
 from __future__ import annotations
 
-import json
 import sys
 import tempfile
 import threading

@@ -18,6 +18,7 @@ Verbatim 16.11.1 effects_descriptions back each pinned value.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer.abilities import (
@@ -198,12 +199,12 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_ascii(self) -> None:
         import agents.daemon_slayer._passive_heal_overrides as m
 
-        with open(m.__file__, encoding="utf-8") as fh:
-            for i, line in enumerate(fh, 1):
+        with Path(m.__file__).open(encoding="utf-8") as fh:
+            for line in fh:
                 line.encode("ascii")  # raises on any non-ASCII byte
 
     def test_test_file_ascii(self) -> None:
-        with open(__file__, encoding="utf-8") as fh:
+        with Path(__file__).open(encoding="utf-8") as fh:
             for line in fh:
                 line.encode("ascii")
 

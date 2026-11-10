@@ -8,11 +8,13 @@ so truthiness is tested once either way and no call is repeated).
 The baseline is the findings that stay, each for a named reason:
 
 - ``app/_overlay_manager.py``: a frozen file (CLAUDE.md), not edited without operator approval.
-- ``tools/ddragon_mirror_refresh.py``, ``tools/upstream_drift_check.py``: held by another lane branch
-  at the time of this slice; the next cycle that sees them landed drops the rows.
-- ``tools/ds_form_index_prefilter.py`` and ``docs/_rsc_score/calibrate.py``: ruff offers no fix because the
-  tested expression is a call or has a side effect, so ``or`` would not be a pure rewrite.
-- ``docs/_rescore/tally.py``, ``docs/_rsc_score/tally_ab.py``: dated analysis scripts under docs/.
+- (``tools/ddragon_mirror_refresh.py`` and ``tools/upstream_drift_check.py`` were held by another lane
+  branch when this ratchet landed; S144-P-508 fixed both once no lane branch touched them, and they
+  moved from this baseline to ``_FIXED``.)
+- (``tools/ds_form_index_prefilter.py``, ``docs/_rsc_score/calibrate.py``, ``docs/_rescore/tally.py`` and
+  ``docs/_rsc_score/tally_ab.py`` were baselined here as "no ruff fix" / "dated scripts"; S144-P-593 read
+  each site: the tested expression is a plain name, a subscript or an indexed list element, with no call
+  and no side effect, so ``or`` is a pure rewrite, and the four moved to ``_FIXED``.)
 
 A baseline entry that stops offending fails ``test_baseline_is_exact`` until it is dropped; a new finding
 anywhere else fails ``test_no_new_findings``.
@@ -49,12 +51,6 @@ _OUT_OF_SCOPE = (
 # file -> finding count that stays (reasons in the module docstring). Only shrinks.
 _BASELINE = {
     "app/_overlay_manager.py": 1,
-    "docs/_rescore/tally.py": 1,
-    "docs/_rsc_score/calibrate.py": 1,
-    "docs/_rsc_score/tally_ab.py": 2,
-    "tools/ddragon_mirror_refresh.py": 1,
-    "tools/ds_form_index_prefilter.py": 1,
-    "tools/upstream_drift_check.py": 1,
 }
 _FIXED = (
     "coaches/loadout_resolver.py",
@@ -67,13 +63,19 @@ _FIXED = (
     "core/precomputed_laning_coach.py",
     "core/vision_server_argv.py",
     "dashboard/routes_lobby_aux.py",
+    "docs/_rescore/tally.py",
+    "docs/_rsc_score/calibrate.py",
+    "docs/_rsc_score/tally_ab.py",
     "ops/audit/ds_perm_swarm/run_consolidate.py",
     "ops/loop/repo_review.py",
     "scripts/postmortem_analyze.py",
     "tft/tft_live_analysis.py",
     "tft/tft_standalone.py",
     "tools/p3_ascii_census.py",
+    "tools/ddragon_mirror_refresh.py",
+    "tools/ds_form_index_prefilter.py",
     "tools/stop_claim_gate.py",
+    "tools/upstream_drift_check.py",
 )
 
 

@@ -65,7 +65,6 @@ _SR_ARTIFACT  = _PROJECT_DIR / "coaching_data.json"
 # -- Constants -------------------------------------------------------------
 
 _VALID_DECISIONS = {"allow", "disabled"}
-_SAFE_DEFAULT    = "allow"
 
 # Known modes and their known features
 _KNOWN_FEATURES: Dict[str, set] = {
@@ -346,9 +345,11 @@ def is_allowed(mode: str, feature: str) -> bool:
 
     Parameters
     ----------
-    mode    : "sr" | "aram" | "arena" | "brawl" | "tft"
-    feature : "live_coaching" | "tft_vision_analysis" | "vod_record"
-              (vod_record is default-OFF: see _DEFAULT_OFF_FEATURES)
+    mode : str
+        "sr" | "aram" | "arena" | "brawl" | "tft".
+    feature : str
+        "live_coaching" | "tft_vision_analysis" | "vod_record"
+        (vod_record is default-OFF: see _DEFAULT_OFF_FEATURES).
     """
     try:
         _cache._check_reload()

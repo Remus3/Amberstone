@@ -17,8 +17,8 @@ Verbatim 16.11.1 effects_descriptions back each pinned value.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
-from agents import daemon_slayer
 from agents.daemon_slayer.abilities import (
     AbilitiesSnapshot,
     DamageBlock,
@@ -47,8 +47,6 @@ _LINEAR_SEEDS = (
     ("Rakan", "Q", 0), ("Talon", "Q", 0),
 )
 _LEVEL_SCALED_SEEDS = (("Rakan", "Q", 0), ("Talon", "Q", 0))
-# item-250 bilinear seeds stay in the same registry.
-_BILINEAR_SEEDS = (("Viego", "P", 0), ("Karma", "W", 1), ("Kayn", "R", 0))
 
 
 def _snap() -> DataSnapshot:
@@ -224,7 +222,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_and_test_ascii_clean(self) -> None:
         import agents.daemon_slayer._passive_heal_overrides as mod
         for path in (mod.__file__, __file__):
-            with open(path, "rb") as fh:
+            with Path(path).open("rb") as fh:
                 raw = fh.read()
             raw.decode("ascii")  # raises if any non-ASCII byte
 

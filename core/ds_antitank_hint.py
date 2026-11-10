@@ -178,4 +178,4 @@ def _zero_result(champion: str, mode: str) -> dict:
     }
 
 
-__all__ = ["build_antitank_hint", "HIGH_HP_ENEMY_MIN", "ANTITANK_STRONG"]
+__all__ = ["ANTITANK_STRONG", "HIGH_HP_ENEMY_MIN", "build_antitank_hint"]

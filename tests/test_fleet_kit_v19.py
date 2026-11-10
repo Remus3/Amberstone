@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import subprocess
 from pathlib import Path
 
@@ -63,14 +62,14 @@ def test_status_board_config_is_tracked_ascii_lf_and_names_rc():
     # left in place, its v19 url / dataset_version keys are inert.
     assert json.loads(raw)["code"] == "RC"
     tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "ops/status_board.json"],
-                             cwd=ROOT, capture_output=True)
+                             cwd=ROOT, capture_output=True, check=False)
     assert tracked.returncode == 0
 
 
 def test_board_state_dir_is_gitignored():
     assert "ops/loop/control/board/" in _text(".gitignore").split("\n")
     ignored = subprocess.run(["git", "check-ignore", "-q", "ops/loop/control/board/state.json"],
-                             cwd=ROOT, capture_output=True)
+                             cwd=ROOT, capture_output=True, check=False)
     assert ignored.returncode == 0
 
 

@@ -449,7 +449,7 @@ if __name__ == "__main__":
     mid = args[0] if args else "NA1_5182398158"
     s = build_summary(mid)
     if not s:
-        logger.error(f"no summary produced for match_id={mid}")
+        logger.error("no summary produced for match_id=%s", mid)
         sys.exit(1)
     if write_flag:
         ok = write_to_client_coaching_data(s)

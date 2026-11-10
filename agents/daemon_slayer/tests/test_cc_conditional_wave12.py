@@ -101,13 +101,13 @@ Coverage classes:
 
 from __future__ import annotations
 
-import inspect
 import unittest
 from typing import Tuple
 
 from agents.daemon_slayer import ENGINE_VERSION
 from agents.daemon_slayer import cc_conditional as cc
 from agents.daemon_slayer.cc_pressure import compute_cc_pressure
+import pathlib
 
 
 class WaveTwelveSingedShapeTests(unittest.TestCase):
@@ -464,19 +464,19 @@ class WaveTwelveWiredSitesGrepTests(unittest.TestCase):
     """Wave 12 entries grep-match in cc_conditional.py source."""
 
     def test_singed_setdefault_call_present(self) -> None:
-        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
+        src = pathlib.Path(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md")).read_text(encoding="utf-8")
         self.assertIn(
             'registry.setdefault("Singed", {})["E"]', src
         )
 
     def test_alistar_setdefault_call_present(self) -> None:
-        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
+        src = pathlib.Path(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md")).read_text(encoding="utf-8")
         self.assertIn(
             'registry.setdefault("Alistar", {})["E"]', src
         )
 
     def test_sylas_setdefault_call_present(self) -> None:
-        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
+        src = pathlib.Path(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md")).read_text(encoding="utf-8")
         self.assertIn(
             'registry.setdefault("Sylas", {})[("E", 1)]', src
         )
@@ -497,7 +497,7 @@ class AsciiHygieneTests(unittest.TestCase):
 
     def test_test_file_is_ascii_clean(self) -> None:
         path = __file__
-        with open(path, "rb") as f:
+        with pathlib.Path(path).open("rb") as f:
             data = f.read()
         non_ascii = [
             (i, b) for i, b in enumerate(data) if b > 127
@@ -513,7 +513,7 @@ class AsciiHygieneTests(unittest.TestCase):
         # introduce non-ASCII bytes. The pre-existing module has some
         # carryover non-ASCII bytes from prior waves; this test only
         # asserts the wave 12 setdefault LINES are clean.
-        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
+        src = pathlib.Path(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md")).read_text(encoding="utf-8")
         for needle in (
             'registry.setdefault("Singed", {})["E"] = ConditionalCcEntry(',
             'registry.setdefault("Alistar", {})["E"] = ConditionalCcEntry(',

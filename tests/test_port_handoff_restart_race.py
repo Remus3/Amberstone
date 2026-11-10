@@ -214,7 +214,7 @@ def test_health_answers_needs_a_200_and_the_check(http_holder):
 # -- the two launchers ----------------------------------------------------------------
 def _load_launcher(rel: str):
     """Load a launcher in isolation; it chdirs to the repo root at import."""
-    cwd = os.getcwd()
+    cwd = Path.cwd()
     try:
         name = "_c10_" + Path(rel).stem
         spec = importlib.util.spec_from_file_location(name, _ROOT / rel)

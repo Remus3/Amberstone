@@ -109,8 +109,7 @@ def _tree_hits() -> set[tuple[str, str]]:
             prose = _prose((REPO_ROOT / rel).read_text(encoding="utf-8"))
         except (UnicodeDecodeError, OSError, SyntaxError):
             continue
-        for _line, cited in scan_source(prose, tracked):
-            found.add((rel, cited))
+        found.update((rel, cited) for _line, cited in scan_source(prose, tracked))
     return found
 
 

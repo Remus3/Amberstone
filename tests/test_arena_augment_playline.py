@@ -149,10 +149,11 @@ def test_percent_is_only_ever_a_percent_sign() -> None:
     holds without knowing which icon names Riot ships this patch.
     """
     for api, line in _served_lines():
-        for match in re.finditer("%", line):
-            prefix = line[:match.start()]
-            assert prefix[-1:].isdigit(), (
-                f"{api} served a non-numeric '%' at {match.start()}: {line!r}"
+        for at, char in enumerate(line):
+            if char != "%":
+                continue
+            assert line[:at][-1:].isdigit(), (
+                f"{api} served a non-numeric '%' at {at}: {line!r}"
             )
 
 

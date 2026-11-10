@@ -96,9 +96,9 @@ def test_rect_always_within_screen():
 
 def test_bbox_form_agrees_with_xywh():
     r = compute_minimap_rect(CAL_SCALE, False, 1920, 1080)
-    l, t, rr, b = r.as_bbox()
-    assert (l, t) == (r.x, r.y)
-    assert rr - l == r.w
+    left, t, rr, b = r.as_bbox()
+    assert (left, t) == (r.x, r.y)
+    assert rr - left == r.w
     assert b - t == r.h
 
 

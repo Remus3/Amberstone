@@ -5,7 +5,6 @@ No live TFT overlay, no live API, no raw Tk required.
 """
 import queue
 import sys
-import threading
 import time
 import unittest
 from pathlib import Path

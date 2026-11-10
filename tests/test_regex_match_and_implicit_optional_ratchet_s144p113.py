@@ -118,4 +118,4 @@ def test_the_escaped_needles_still_pin_their_message():
 
     assert re.search(re.escape("src.css"), "src.css")
     assert not re.search(re.escape("src.css"), "srcXcss")
-    assert re.search("src.css", "srcXcss")  # the pre-fix behaviour, kept as the control
+    assert re.search(r"src.css", "srcXcss")  # the pre-fix behaviour, kept as the control

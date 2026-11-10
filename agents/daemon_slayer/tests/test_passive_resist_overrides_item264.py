@@ -14,6 +14,7 @@ level active). The 2 actives amortize by conditional_probability=0.3.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer import ENGINE_VERSION
@@ -249,7 +250,7 @@ class AsciiHygieneTests(unittest.TestCase):
         import agents.daemon_slayer._passive_resist_overrides as mod
 
         for path in (mod.__file__, __file__):
-            with open(path, "rb") as fh:
+            with Path(path).open("rb") as fh:
                 raw = fh.read()
             try:
                 raw.decode("ascii")

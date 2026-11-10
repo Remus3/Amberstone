@@ -72,9 +72,6 @@ class _PlainDualProtocol(server._DualProtocolHTTPServer):
         return self.socket.accept()
 
 
-_CLASSES = (server._DualStackHTTPServer, _PlainDualProtocol)
-
-
 def _get(port: int, path: str = "/", timeout: float = 3.0) -> int:
     with urllib.request.urlopen(
             f"http://[{_HOST}]:{port}{path}", timeout=timeout) as resp:

@@ -251,7 +251,7 @@ class TestWritePendingUnderConcurrentReader:
         pending.write_text("[]", encoding="utf-8")
         scratch = tmp_path / "decisions_pending.os_probe"
         scratch.write_text("[]", encoding="utf-8")
-        with open(pending, encoding="utf-8"):
+        with pending.open(encoding="utf-8"):
             with pytest.raises(PermissionError):
                 os.replace(scratch, pending)
         scratch.unlink()

@@ -140,13 +140,15 @@ class TestAnyDrift:
 
 # --------------------------------------------------------------------------- sentinel round-trip
 class TestSentinelRoundTrip:
-    def test_missing_file_is_all_null_baseline(self, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_missing_file_is_all_null_baseline(self):
         prev = M.load_sentinel()
         assert prev["ddragon_version"] is None
         assert prev["meraki_content_patch"] is None
         assert prev["cdragon_content_version"] is None
 
-    def test_write_then_read_advances_values(self, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_write_then_read_advances_values(self):
         prev = M.load_sentinel()
         cur = {"ddragon_version": "16.11.1", "meraki_content_patch": "25.15",
                "cdragon_content_version": "buildA"}
@@ -161,7 +163,8 @@ class TestSentinelRoundTrip:
         # First-ever seeding is NOT drift -> last_drift_at stays null.
         assert back["last_drift_at"] is None
 
-    def test_last_drift_at_set_only_on_drift(self, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_last_drift_at_set_only_on_drift(self):
         # seed
         M.advance_sentinel(
             {"ddragon_version": None, "meraki_content_patch": None,
@@ -181,7 +184,8 @@ class TestSentinelRoundTrip:
         drifted = M.load_sentinel()
         assert drifted["last_drift_at"] is not None
 
-    def test_none_field_keeps_previous_on_advance(self, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_none_field_keeps_previous_on_advance(self):
         prev = {"ddragon_version": "16.11.1", "meraki_content_patch": "25.15",
                 "cdragon_content_version": "A", "updated_at": "x",
                 "last_drift_at": None}
@@ -212,7 +216,8 @@ class TestCheckOnly:
         after = _isolate_sentinel.read_text(encoding="utf-8")
         assert before == after  # sentinel untouched by --check-only
 
-    def test_exit_0_when_no_drift(self, monkeypatch, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_exit_0_when_no_drift(self, monkeypatch):
         _patch_probes(monkeypatch, ddragon="16.11.1", meraki="25.15", cdragon="A")
         assert M.main([]) == 0
         assert M.main(["--check-only"]) == 0
@@ -229,7 +234,8 @@ class TestDefaultMode:
         assert data["meraki_content_patch"] == "25.15"
         assert data["cdragon_content_version"] == "A"
 
-    def test_json_dump_written(self, monkeypatch, _isolate_sentinel, tmp_path):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_json_dump_written(self, monkeypatch, tmp_path):
         _patch_probes(monkeypatch, ddragon="16.11.1", meraki="25.15", cdragon="A")
         out = tmp_path / "report.json"
         assert M.main(["--json", str(out)]) == 0
@@ -257,7 +263,8 @@ class TestDefaultMode:
 
 # --------------------------------------------------------------------------- side effects
 class TestSideEffects:
-    def test_bridge_note_fires_once_on_drift(self, monkeypatch, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_bridge_note_fires_once_on_drift(self, monkeypatch):
         calls = []
         monkeypatch.setattr(M, "send_bridge_note",
                             lambda fields: calls.append(fields) or (True, "ok"))
@@ -270,7 +277,8 @@ class TestSideEffects:
         assert M.main(["--bridge-note"]) == 0
         assert len(calls) == 1
 
-    def test_bridge_note_not_fired_without_drift(self, monkeypatch, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_bridge_note_not_fired_without_drift(self, monkeypatch):
         calls = []
         monkeypatch.setattr(M, "send_bridge_note",
                             lambda fields: calls.append(fields) or (True, "ok"))
@@ -279,7 +287,8 @@ class TestSideEffects:
         M.main(["--bridge-note"])  # identical, no drift
         assert calls == []
 
-    def test_auto_refresh_fires_once_on_drift(self, monkeypatch, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_auto_refresh_fires_once_on_drift(self, monkeypatch):
         calls = []
         monkeypatch.setattr(M, "trigger_refresh",
                             lambda: calls.append(1) or (True, "ok"))
@@ -290,7 +299,8 @@ class TestSideEffects:
         assert M.main(["--auto-refresh"]) == 0
         assert len(calls) == 1
 
-    def test_side_effect_raise_does_not_crash_main(self, monkeypatch, _isolate_sentinel):
+    @pytest.mark.usefixtures("_isolate_sentinel")
+    def test_side_effect_raise_does_not_crash_main(self, monkeypatch):
         def _raise(*a, **k):
             raise RuntimeError("bridge exploded")
 

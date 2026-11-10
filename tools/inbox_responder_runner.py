@@ -38,7 +38,7 @@ import shutil
 import stat
 import sys
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Mapping, Optional
@@ -1883,7 +1883,7 @@ def run_once(*, cycle_id: str, root, repo_root, inbox, participants: Mapping[str
             return _terminate(result, "refused", problems[0], refused_stage="input")
         note_bytes = note_sink[0] if note_sink else b""
 
-        arrival = os.stat(note_path)
+        arrival = note_path.stat()
         arrived_iso = _iso(datetime.fromtimestamp(arrival.st_mtime))
         delivery_number = result.budget_consumed + 1
         reply_targets = (result.sender,)

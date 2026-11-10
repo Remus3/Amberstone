@@ -455,7 +455,7 @@ def test_garbage_and_a_directory_named_like_a_transcript_never_raise(tmp_path):
     transcript = _session(tmp_path, _main_rows(PUSH_CLAIM))
     sub = tmp_path / SID / "subagents"
     (sub / "agent-x.jsonl").mkdir(parents=True)
-    with open(sub / "agent-junk.jsonl", "wb") as handle:
+    with (sub / "agent-junk.jsonl").open("wb") as handle:
         handle.write(b"\xff\xfe\x00 binary junk\n")
         handle.write(("\n".join(_junk_lines()) + "\n").encode("ascii"))
     proc, report = _run(tmp_path, transcript)

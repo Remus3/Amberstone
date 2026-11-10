@@ -24,7 +24,6 @@ scope of /data/ui_mock/history.json. The 14d scope has 14 matches; Jinx is
 3 games (2W/1L -> 66.7% WR, avg KDA 4.78), so filtering champion=Jinx gives
 deterministic filtered-aggregate values.
 """
-import pytest
 from pathlib import Path
 
 SCREENSHOTS = Path(__file__).parent / "screenshots"

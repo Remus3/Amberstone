@@ -34,7 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -208,7 +208,7 @@ def _live_roots() -> dict:
     try:
         out = subprocess.run(["git", "rev-parse", "--git-common-dir"],
                              cwd=str(runner.ROOT), capture_output=True, text=True,
-                             timeout=30)
+                             timeout=30, check=False)
     except (OSError, subprocess.SubprocessError):
         return roots
     if out.returncode != 0:
@@ -885,11 +885,11 @@ def test_surface_auditor_resolves_dir_fd_relative_targets(tmp_path, monkeypatch)
     assert t("os.remove", ("x.md", 99)) == ["x.md"]
 
 
-@pytest.mark.skipif(not os.path.isdir("/proc/self/fd"), reason="needs /proc fd links")
+@pytest.mark.skipif(not Path("/proc/self/fd").is_dir(), reason="needs /proc fd links")
 def test_fd_dir_path_reads_the_proc_fd_link(tmp_path):
     fd = os.open(str(tmp_path), os.O_RDONLY)
     try:
-        assert os.path.samefile(_fd_dir_path(fd), str(tmp_path))
+        assert Path(_fd_dir_path(fd)).samefile(tmp_path)
     finally:
         os.close(fd)
     assert _fd_dir_path(-1) is None
@@ -967,7 +967,7 @@ def test_surface_auditor_matches_a_write_through_an_8dot3_short_name(tmp_path):
 def test_surface_auditor_matches_a_write_through_a_verbatim_prefix(tmp_path):
     inbox = tmp_path / "Sibling ZZ" / "moon_sync_inbox"
     inbox.mkdir(parents=True)
-    via = "\\\\?\\" + os.path.abspath(str(inbox / "g.txt"))
+    via = "\\\\?\\" + str((inbox / "g.txt").absolute())
     assert _audit_hits_for_write(inbox, via), f"no hit for a verbatim-prefix write {via}"
 
 
@@ -1110,7 +1110,7 @@ def _foreign_process_records(log: Path) -> None:
     flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
     done = subprocess.run([sys.executable, "-c", code, str(runner.ROOT), str(log)],
                           env=env, capture_output=True, text=True, timeout=120,
-                          creationflags=flags)
+                          creationflags=flags, check=False)
     assert done.returncode == 0, done.stderr
 
 
@@ -2457,7 +2457,7 @@ def _junction_note(world, tmp_path):
     target.mkdir()
     (target / "borrowed.txt").write_text("bytes from outside the inbox\n", encoding="ascii")
     made = subprocess.run(["cmd", "/c", "mklink", "/J", str(world.inbox / NOTE_NAME),
-                           str(target)], capture_output=True, text=True)
+                           str(target)], capture_output=True, text=True, check=False)
     if made.returncode != 0:
         pytest.skip("this account cannot create a junction here")
     return target
@@ -3583,7 +3583,7 @@ def test_a_junction_inbox_is_dropped_by_the_loader(tmp_path):
     target.mkdir()
     made = subprocess.run(["cmd", "/c", "mklink", "/J",
                            str(victim / "moon_sync_inbox"), str(target)],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, check=False)
     if made.returncode != 0:
         pytest.skip("this account cannot create a junction here")
     (repo / "ops" / "moon_sync_repos.json").write_text(
@@ -4074,7 +4074,7 @@ def test_trial_rows_exclude_dry_rows_and_other_agreements(world):
     result = world.drive()
     aid = result.agreement_id
     path = runner.metrics_path(world.log_root)
-    with open(path, "a", encoding="ascii", newline="\n") as fh:
+    with path.open("a", encoding="ascii", newline="\n") as fh:
         fh.write(json.dumps({"dry": True, "agreement_id": aid, "grammar": "A5"}) + "\n")
         fh.write(json.dumps({"dry": False, "agreement_id": "other", "grammar": "A5"}) + "\n")
         fh.write(json.dumps({"dry": False, "agreement_id": aid, "grammar": None}) + "\n")

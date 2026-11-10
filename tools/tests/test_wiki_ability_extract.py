@@ -624,13 +624,15 @@ class TestLoadChampionApinames:
 # --------------------------------------------------------------------------- engine-independence + ASCII
 class TestHygiene:
     def test_no_heavy_imports(self):
-        src = open(W.__file__, encoding="utf-8").read()
+        with Path(W.__file__).open(encoding="utf-8") as fh:
+            src = fh.read()
         assert "import requests" not in src
         assert "from agents" not in src
         assert "import agents" not in src
 
     def test_source_is_ascii(self):
-        data = open(W.__file__, encoding="utf-8").read()
+        with Path(W.__file__).open(encoding="utf-8") as fh:
+            data = fh.read()
         try:
             data.encode("ascii")
         except UnicodeEncodeError as e:

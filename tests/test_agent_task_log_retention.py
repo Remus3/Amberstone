@@ -66,7 +66,7 @@ def _glob_raises_under(root):
     try:
         control = Path(tempfile.mkdtemp(prefix="rm469_glob_control_"))
         try:
-            with open(control / "probe.txt", "wb") as fh:
+            with (control / "probe.txt").open("wb") as fh:
                 fh.write(b"rm469-control")
             names = sorted(p.name for p in control.glob("*.txt"))
             if names != ["probe.txt"]:

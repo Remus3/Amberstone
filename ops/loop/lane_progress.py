@@ -127,7 +127,7 @@ class LaneProgress:
         if not self._total:
             return 100
         left = len(self.cl.remaining())
-        return int(round(100 * (self._total - left) / self._total))
+        return round(100 * (self._total - left) / self._total)
 
     def _eta(self):
         etas = [r["eta_s"] for r in self.cl.remaining() if r.get("eta_s") is not None]

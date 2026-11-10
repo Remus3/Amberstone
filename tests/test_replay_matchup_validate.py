@@ -15,7 +15,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import pytest
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -30,6 +29,15 @@ class _FakeResult:
     """Minimal stand-in for MatchupResult - only net_swing is read."""
 
     net_swing: float
+
+
+def _stub_swing(swing):
+    """A matchup_fn stand-in that always reports ``net_swing=swing``."""
+
+    def stub(*a, **k):
+        return _FakeResult(net_swing=swing)
+
+    return stub
 
 
 def _make_db(path: Path, matches, participants, frames, events=None) -> None:
@@ -151,7 +159,7 @@ def test_select_sr_match_ids_filters_mode_and_timeline_and_limit(tmp_path):
 # --------------------------------------------------------------- score_pair tests
 def test_even_band_exclusion_works():
     pair = rv.LanePair("M", "MIDDLE", "Annie", "Ahri", 4000, 3000)
-    stub = lambda *a, **k: _FakeResult(net_swing=0.005)  # below default 0.02 band
+    stub = _stub_swing(0.005)  # below default 0.02 band
     status, agreed = rv.score_pair(pair, 6, snapshot=None, matchup_fn=stub)
     assert status == "even"
     assert agreed is False
@@ -160,7 +168,7 @@ def test_even_band_exclusion_works():
 def test_decisive_agreement_when_engine_and_gold_agree():
     # engine favors A (net_swing>0); gold favors A (4000>3000) -> agreed True
     pair = rv.LanePair("M", "TOP", "Garen", "Darius", 4000, 3000)
-    stub = lambda *a, **k: _FakeResult(net_swing=0.30)
+    stub = _stub_swing(0.30)
     status, agreed = rv.score_pair(pair, 6, snapshot=None, matchup_fn=stub)
     assert status == "decisive"
     assert agreed is True
@@ -169,7 +177,7 @@ def test_decisive_agreement_when_engine_and_gold_agree():
 def test_decisive_disagreement_when_engine_and_gold_disagree():
     # engine favors B (net_swing<0); gold favors A (4000>3000) -> disagree
     pair = rv.LanePair("M", "TOP", "Garen", "Darius", 4000, 3000)
-    stub = lambda *a, **k: _FakeResult(net_swing=-0.30)
+    stub = _stub_swing(-0.30)
     status, agreed = rv.score_pair(pair, 6, snapshot=None, matchup_fn=stub)
     assert status == "decisive"
     assert agreed is False
@@ -177,14 +185,16 @@ def test_decisive_disagreement_when_engine_and_gold_disagree():
 
 def test_gold_tie_excluded():
     pair = rv.LanePair("M", "TOP", "Garen", "Darius", 3000, 3000)
-    stub = lambda *a, **k: _FakeResult(net_swing=0.30)
+    stub = _stub_swing(0.30)
     status, agreed = rv.score_pair(pair, 6, snapshot=None, matchup_fn=stub)
     assert status == "gold_tie"
 
 
 def test_engine_none_excluded():
     pair = rv.LanePair("M", "TOP", "Garen", "Darius", 4000, 3000)
-    stub = lambda *a, **k: None
+    def stub(*a, **k):
+        return None
+
     status, agreed = rv.score_pair(pair, 6, snapshot=None, matchup_fn=stub)
     assert status == "engine_none"
 
@@ -215,7 +225,7 @@ def test_agreement_math_two_of_three_is_0667(tmp_path):
     )
     _make_db(db, [("M1", "CLASSIC", 1, 1000)], parts, frames)
 
-    stub = lambda *a, **k: _FakeResult(net_swing=0.25)  # always favors A
+    stub = _stub_swing(0.25)  # always favors A
     report = rv.run_validation(
         db_path=db,
         levels=[6],
@@ -244,7 +254,7 @@ def test_failsoft_skips_malformed_participant_row(tmp_path):
     parts.append(("M1", 11, 100, None, None))
     _make_db(db, [("M1", "CLASSIC", 1, 1000)], parts, frames)
 
-    stub = lambda *a, **k: _FakeResult(net_swing=0.25)
+    stub = _stub_swing(0.25)
     report = rv.run_validation(
         db_path=db, levels=[6], limit=0, gold_frame_min=10, snapshot=None, matchup_fn=stub
     )
@@ -258,7 +268,7 @@ def test_report_has_expected_keys(tmp_path):
     db = tmp_path / "t.db"
     parts, frames = _full_match("M1", {"TOP": ("Garen", 4000, "Darius", 3000)})
     _make_db(db, [("M1", "CLASSIC", 1, 1000)], parts, frames)
-    stub = lambda *a, **k: _FakeResult(net_swing=0.25)
+    stub = _stub_swing(0.25)
     report = rv.run_validation(
         db_path=db, levels=[6, 9], limit=0, gold_frame_min=10, snapshot=None, matchup_fn=stub
     )
@@ -343,7 +353,7 @@ def test_assists_empty_variants():
 
 def test_score_pair_trade_decisive_and_no_duel():
     pair = rv.LanePair("M", "TOP", "Garen", "Darius", 0, 0, pid_a=1, pid_b=6)
-    stub = lambda *a, **k: _FakeResult(net_swing=0.30)  # engine favors A
+    stub = _stub_swing(0.30)  # engine favors A
     # A out-kills B 2-0 -> duel favors A -> agree.
     status, agreed = rv.score_pair_trade(pair, 6, None, stub, a_kills_b=2, b_kills_a=0)
     assert status == "decisive" and agreed is True
@@ -360,7 +370,7 @@ def test_score_pair_trade_decisive_and_no_duel():
 
 def test_score_pair_trade_even_band_excludes():
     pair = rv.LanePair("M", "TOP", "Garen", "Darius", 0, 0, pid_a=1, pid_b=6)
-    stub = lambda *a, **k: _FakeResult(net_swing=0.005)  # below dead-band
+    stub = _stub_swing(0.005)  # below dead-band
     status, agreed = rv.score_pair_trade(pair, 6, None, stub, a_kills_b=2, b_kills_a=0)
     assert status == "even"
 
@@ -384,7 +394,7 @@ def test_run_trade_validation_report_shape_and_math(tmp_path):
         ("M1", "CHAMPION_KILL", 9, 4, "[]"),   # BOT: B solo-kills A -> disagree
     ]
     _make_db(db, [("M1", "CLASSIC", 1, 1000)], parts, frames, events)
-    stub = lambda *a, **k: _FakeResult(net_swing=0.25)  # always favors A
+    stub = _stub_swing(0.25)  # always favors A
     report = rv.run_trade_validation(
         db_path=db, levels=[6], limit=0, gold_frame_min=10, snapshot=None, matchup_fn=stub
     )
@@ -406,7 +416,7 @@ def test_run_trade_validation_no_duel_pairs_excluded(tmp_path):
     parts, frames = _full_match("M1", {"TOP": ("Garen", 0, "Darius", 0)})
     # no events at all -> the one pair never duels -> 0 decisive, 1 no_duel.
     _make_db(db, [("M1", "CLASSIC", 1, 1000)], parts, frames, [])
-    stub = lambda *a, **k: _FakeResult(net_swing=0.25)
+    stub = _stub_swing(0.25)
     report = rv.run_trade_validation(
         db_path=db, levels=[6], limit=0, gold_frame_min=10, snapshot=None, matchup_fn=stub
     )

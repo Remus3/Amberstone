@@ -196,7 +196,7 @@ def wr_pct(wins: int, resolved: int, ndigits: int | None = 1):
         return None
     pct = 100.0 * w / n
     if ndigits == 0:
-        return int(round(pct))
+        return round(pct)
     return round(pct, ndigits) if ndigits is not None else pct
 
 

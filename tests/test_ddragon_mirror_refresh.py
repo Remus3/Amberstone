@@ -8,7 +8,6 @@ manifest round-trip, and the fetch_one decision tree under mocked HTTP.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -487,7 +486,6 @@ def _fake_opener(monkeypatch, fake) -> None:
 
 def test_http_retries_on_url_error_then_succeeds(monkeypatch):
     import urllib.error as ue
-    from io import BytesIO
 
     class _FakeResp:
         status = 200

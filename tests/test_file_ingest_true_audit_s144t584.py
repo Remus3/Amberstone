@@ -219,7 +219,7 @@ def test_hostile_json_is_a_parse_failure_not_a_tick_abort(tmp_path, body):
 def test_rewrite_with_same_mtime_but_new_size_is_broadcast(tmp_path):
     p = tmp_path / "aram_coaching_data.json"
     p.write_text('{"v": 1}', encoding="utf-8")
-    st = os.stat(p)
+    st = p.stat()
     ws = _WS()
     ingest = fi.FileIngest(ws)
     _check(ingest, p)

@@ -206,7 +206,7 @@ def test_a_shallow_clone_really_would_answer_wrongly():
         pytest.skip("not a git checkout - no history to interrogate")
     shallow = subprocess.run(
         ["git", "rev-parse", "--is-shallow-repository"],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=60)
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=60, check=False)
     assert shallow.returncode == 0, f"git failed: {shallow.stderr}"
     assert shallow.stdout.strip() == "false", (
         "this checkout is SHALLOW. Every guard listed by "
@@ -217,7 +217,7 @@ def test_a_shallow_clone_really_would_answer_wrongly():
     deleted = subprocess.run(
         ["git", "log", "--all", "--diff-filter=DR", "--name-status",
          "--format="],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300, check=False)
     assert deleted.returncode == 0, f"git failed: {deleted.stderr}"
     lines = [ln for ln in deleted.stdout.splitlines() if ln.strip()]
     assert len(lines) > 100, (
@@ -321,7 +321,7 @@ def test_docs_guard_selector_picks_no_history_reading_module():
     assert selector.is_file(), f"{selector} missing - docs-guards.yml runs it"
     proc = subprocess.run(
         [sys.executable, str(selector)],
-        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300)
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=300, check=False)
     assert proc.returncode == 0, (
         f"md_guard_selector.py failed ({proc.returncode}): {proc.stderr[-800:]}"
     )

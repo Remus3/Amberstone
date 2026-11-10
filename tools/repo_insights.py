@@ -43,7 +43,7 @@ def _git(*args: str) -> str:
         out = subprocess.run(
             # RM-830: quotepath off, so --name-only / --numstat names are real.
             ["git", "-c", "core.quotepath=false", *args], cwd=str(ROOT), capture_output=True,
-            text=True, encoding="utf-8", errors="replace", timeout=120,
+            text=True, encoding="utf-8", errors="replace", timeout=120, check=False,
         )
         return out.stdout or ""
     except (subprocess.SubprocessError, OSError):

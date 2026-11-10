@@ -158,7 +158,7 @@ def _http_get(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> bytes:
                 continue
             raise
     # Unreachable: the loop returns or raises on the final attempt.
-    raise last_url_err if last_url_err else RuntimeError("unreachable")
+    raise last_url_err or RuntimeError("unreachable")
 
 
 # --------------------------------------------------------------------------- meraki helpers
@@ -585,7 +585,7 @@ def trigger_refresh() -> tuple[bool, str]:
     for cmd, label in runs:
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=120,
-                                  creationflags=_NO_WINDOW)
+                                  creationflags=_NO_WINDOW, check=False)
             ok = proc.returncode in (0, 1)
             all_ok = all_ok and ok
             details.append(f"{label} rc={proc.returncode}")
@@ -799,8 +799,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.spec_watch and _run_spec_watch() == 2:
             return 2
         return 0
-    except Exception as e:  # hard unexpected failure -> exit 2
-        logger.exception("upstream_drift_check hard error: %s", e)
+    except Exception:  # hard unexpected failure -> exit 2; the traceback carries the error
+        logger.exception("upstream_drift_check hard error")
         return 2
 
 

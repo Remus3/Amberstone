@@ -75,7 +75,8 @@ def test_helper_retries_a_throttle_then_succeeds(_no_waits):
     assert len(_no_waits) == 1
 
 
-def test_helper_retries_the_local_bucket_refusal_too(_no_waits):
+@pytest.mark.usefixtures("_no_waits")
+def test_helper_retries_the_local_bucket_refusal_too():
     fn = _throttled_then([1], outcome="rate_limited")
     assert riot_retry.fetch_unthrottled(fn) == ([1], False)
 

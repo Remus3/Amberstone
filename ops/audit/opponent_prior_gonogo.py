@@ -21,18 +21,18 @@ from __future__ import annotations
 
 import collections
 import json
-import os
 import sqlite3
 import statistics
+from pathlib import Path
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_ITEMS = os.path.join(_ROOT, "data", "meta", "ddragon_items.json")
-_DB = os.path.join(_ROOT, "data", "rewind_history.db")
+_ROOT = str(Path(__file__).absolute().parents[2])
+_ITEMS = str(Path(_ROOT, "data", "meta", "ddragon_items.json"))
+_DB = str(Path(_ROOT, "data", "rewind_history.db"))
 _MIN_ROWS = 30
 
 
 def _load_resist_index():
-    with open(_ITEMS, encoding="utf-8") as fh:
+    with Path(_ITEMS).open(encoding="utf-8") as fh:
         raw = json.load(fh)
     data = raw.get("data", raw)
     out = {}
@@ -73,7 +73,7 @@ def _analyze(con, mode, resist):
 
 
 def main():
-    if not os.path.exists(_DB):
+    if not Path(_DB).exists():
         print(f"NO DB at {_DB}")
         return
     resist = _load_resist_index()

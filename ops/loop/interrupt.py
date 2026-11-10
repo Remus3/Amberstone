@@ -238,7 +238,7 @@ def _taskkill(pid: int) -> bool:
     try:
         out = subprocess.run(["taskkill", "/F", "/PID", str(pid)],
                              capture_output=True, timeout=20,
-                             creationflags=_NO_WINDOW)
+                             creationflags=_NO_WINDOW, check=False)
         return out.returncode == 0
     except (OSError, subprocess.SubprocessError) as exc:
         log.warning("interrupt: taskkill %s failed: %s", pid, exc)

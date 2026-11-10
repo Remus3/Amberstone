@@ -127,7 +127,7 @@ from core.build_order_precompute import (
     DS_MODE_BY_KEY,
     EXIT_EMPTY_TABLE,
     EXIT_NO_ROSTER,
-    SEED_CHAMPIONS,  # re-exported for parity + tests (bov.SEED_CHAMPIONS)
+    SEED_CHAMPIONS,
     RosterUnavailableError,
     archetype_for,
     engine_version,
@@ -137,6 +137,11 @@ from core.build_order_precompute import (
 )
 from core.ds_antitank_hint import build_antitank_hint
 from core.polled_json import atomic_write_text
+
+# SEED_CHAMPIONS is imported above for no use in this module: tests/test_build_order_variants.py reads
+# `bov.SEED_CHAMPIONS` to pin parity with HZ-B1. Naming it here is the explicit re-export F401 honours (the
+# `X as X` spelling trips PLC0414 instead, which a zero ratchet bans).
+__all__ = ["SEED_CHAMPIONS"]
 
 # Project root: core/ -> <repo>\
 _ROOT = Path(__file__).resolve().parent.parent
@@ -573,9 +578,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = out_dir_for(patch, args.out or None)
     target_modes = DS_MODE_KEYS if args.mode == "all" else (args.mode,)
 
-    logger.info(f"build-order VARIANTS gen patch={patch} modes={target_modes} "
-          f"champions={len(champions)} level={args.level} "
-          f"dry_run={args.dry_run} out={out_dir}")
+    logger.info(
+        "build-order VARIANTS gen patch=%s modes=%s champions=%d level=%s "
+        "dry_run=%s out=%s",
+        patch, target_modes, len(champions), args.level, args.dry_run, out_dir,
+    )
 
     started = time.time()
     for mode_key in target_modes:
@@ -585,8 +592,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         champs, cells = _count_cells(payload)
         if args.dry_run:
-            logger.info(f"  [dry-run] {mode_key:5s}: {champs} champions, "
-                  f"{cells} non-empty orders (not written)")
+            logger.info("  [dry-run] %-5s: %s champions, %s non-empty orders (not written)",
+                        mode_key, champs, cells)
         elif cells == 0:
             # Mirrors the HZ-B1 guard: a mid-sweep engine death is swallowed
             # per-cell, so without this an all-empty variants table would
@@ -601,10 +608,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             out_path = out_dir / f"{_FILE_PREFIX}_{mode_key}.json"
             atomic_write(payload, out_path)
-            logger.info(f"  {mode_key:5s}: {champs} champions, {cells} non-empty "
-                  f"orders -> {out_path.name}")
+            logger.info("  %-5s: %s champions, %s non-empty orders -> %s",
+                        mode_key, champs, cells, out_path.name)
 
-    logger.info(f"done in {time.time() - started:.1f}s")
+    logger.info("done in %.1fs", time.time() - started)
     return 0
 
 

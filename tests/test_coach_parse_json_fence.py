@@ -15,6 +15,7 @@ via __new__ (avoids the coach's API-key/config init), mirroring item 244.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from coach_integration._coach import CoachIntegration
 
@@ -86,7 +87,7 @@ class LineFormatUnchangedTests(unittest.TestCase):
 
 class AsciiHygieneTests(unittest.TestCase):
     def test_test_file_ascii(self):
-        raw = open(__file__, encoding="utf-8").read()
+        raw = Path(__file__).read_text(encoding="utf-8")
         self.assertEqual(raw, raw.encode("ascii", "replace").decode("ascii"))
 
 

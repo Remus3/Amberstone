@@ -120,10 +120,10 @@ def _coerce_coord(value: object) -> int:
 
 def _validate(coords: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
     """Apply the shared bbox contract; raise ValueError on any violation."""
-    l, t, r, b = coords
+    left, top, right, bottom = coords
     if not all(0 <= c <= MAX_COORD for c in coords):
         raise ValueError(f"coord out of range [0, {MAX_COORD}]: {coords}")
-    if r <= l or b <= t:
+    if right <= left or bottom <= top:
         raise ValueError(f"r<=l or b<=t: {coords}")
     return coords
 
@@ -192,8 +192,8 @@ def parse_http_override(raw: str) -> tuple[int, int, int, int]:
     for p in stripped:
         if not _DIGITS.fullmatch(p):
             raise ValueError(f"not a plain integer: {_short_repr(p)}")
-    l, t, r, b = (int(p) for p in stripped)
-    return _validate((l, t, r, b))
+    left, top, right, bottom = (int(p) for p in stripped)
+    return _validate((left, top, right, bottom))
 
 
 def resolve(mode: str) -> Optional[tuple[int, int, int, int]]:

@@ -98,9 +98,9 @@ _MONTHS = {m: i + 1 for i, m in enumerate(
      "jul", "aug", "sep", "oct", "nov", "dec"))}
 _MON = r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
 _ISO_RE = re.compile(r"\b(20\d\d)-(\d\d)-(\d\d)\b")
-_MDY_RE = re.compile(_MON + r"\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d\d)\b", re.I)
+_MDY_RE = re.compile(_MON + r"\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d\d)\b", re.IGNORECASE)
 _DMY_RE = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+" + _MON + r",?\s+(20\d\d)\b",
-                     re.I)
+                     re.IGNORECASE)
 
 
 class UrllibHttp:
@@ -163,12 +163,9 @@ def _safe_date(y: int, m: int, d: int) -> Optional[str]:
 
 def changelog_dates(text: str) -> list:
     found = set()
-    for y, m, d in _ISO_RE.findall(text):
-        found.add(_safe_date(int(y), int(m), int(d)))
-    for mon, d, y in _MDY_RE.findall(text):
-        found.add(_safe_date(int(y), _MONTHS[mon.lower()[:3]], int(d)))
-    for d, mon, y in _DMY_RE.findall(text):
-        found.add(_safe_date(int(y), _MONTHS[mon.lower()[:3]], int(d)))
+    found.update(_safe_date(int(y), int(m), int(d)) for y, m, d in _ISO_RE.findall(text))
+    found.update(_safe_date(int(y), _MONTHS[mon.lower()[:3]], int(d)) for mon, d, y in _MDY_RE.findall(text))
+    found.update(_safe_date(int(y), _MONTHS[mon.lower()[:3]], int(d)) for d, mon, y in _DMY_RE.findall(text))
     found.discard(None)
     return sorted(found)
 

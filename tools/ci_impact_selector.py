@@ -357,13 +357,13 @@ def changed_paths(root: Path, base: str, head: str) -> Optional[List[str]]:
     for ref in (base, head):
         probe = subprocess.run([git, "cat-file", "-e", f"{ref}^{{commit}}"], cwd=str(root),
                                capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=60,
+                               errors="replace", timeout=60, check=False,
                                creationflags=_NO_WINDOW)
         if probe.returncode != 0:
             return None
     diff = subprocess.run([git, "diff", "--name-only", "-z", "--no-renames", base, head],
                           cwd=str(root), capture_output=True, timeout=300, creationflags=_NO_WINDOW,
-                          **_PATH_TEXT)
+                          check=False, **_PATH_TEXT)
     if diff.returncode != 0:
         return None
     return [_norm(p) for p in diff.stdout.split("\0") if p.strip()]
@@ -372,7 +372,7 @@ def changed_paths(root: Path, base: str, head: str) -> Optional[List[str]]:
 def _write(path: Optional[str], text: str, *, append: bool = False) -> None:
     if not path:
         return
-    with open(path, "a" if append else "w", encoding="utf-8", newline="\n") as fh:
+    with Path(path).open(mode="a" if append else "w", encoding="utf-8", newline="\n") as fh:
         fh.write(text)
 
 

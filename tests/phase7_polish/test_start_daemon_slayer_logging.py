@@ -25,7 +25,7 @@ def _load_module():
     The module does `os.chdir(_PROJECT_ROOT)` at import time; save/restore
     cwd so importing it for a unit test doesn't pollute sibling tests.
     """
-    cwd = os.getcwd()
+    cwd = Path.cwd()
     try:
         spec = importlib.util.spec_from_file_location(
             "start_daemon_slayer",
@@ -83,7 +83,6 @@ class TestLogStartup(unittest.TestCase):
 
     def test_line_format_preserved(self):
         # Exact legacy shape: "YYYY-MM-DD HH:MM:SS  msg\n" (two spaces).
-        import re
         with _CaptureStderr():
             SDS._log_startup("boot msg")
         line = SDS._LOG_FILE.read_text(encoding="utf-8")

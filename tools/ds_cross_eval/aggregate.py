@@ -8,7 +8,6 @@ Usage: python tools/ds_cross_eval/aggregate.py
 """
 from __future__ import annotations
 
-import glob
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -20,11 +19,11 @@ ROSTER = 172
 
 def load() -> list:
     out = []
-    for f in sorted(glob.glob(str(BASE / "verdicts" / "*.json"))):
+    for f in sorted((BASE / "verdicts").glob("*.json"), key=str):
         try:
-            out.append(json.loads(Path(f).read_text(encoding="utf-8")))
+            out.append(json.loads(f.read_text(encoding="utf-8")))
         except Exception as exc:  # noqa: BLE001
-            out.append({"champion": Path(f).stem, "scorer": "?",
+            out.append({"champion": f.stem, "scorer": "?",
                         "severity": "PARSE_ERR", "headline": str(exc),
                         "nominated_retune": ""})
     return out

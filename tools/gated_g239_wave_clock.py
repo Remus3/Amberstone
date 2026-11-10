@@ -86,7 +86,7 @@ def bracket(spawn_s: float) -> str:
 
 
 def clock(s: float) -> str:
-    whole = int(round(s))
+    whole = round(s)
     return f"{whole // 60}:{whole % 60:02d}"
 
 
@@ -207,7 +207,7 @@ def implied_spawns(records: list[dict], since: datetime) -> list[float]:
             spawn = gt + eta
             if not math.isfinite(spawn):
                 continue
-            seen.setdefault(int(round(spawn)), spawn)
+            seen.setdefault(round(spawn), spawn)
     return sorted(seen.values())
 
 

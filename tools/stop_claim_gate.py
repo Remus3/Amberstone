@@ -1729,7 +1729,7 @@ def audit(ev):
 
 def read_transcript(path):
     rows = []
-    with open(path, encoding="utf-8", errors="replace") as handle:
+    with Path(path).open(encoding="utf-8", errors="replace") as handle:
         for raw_line in handle:
             line = raw_line.strip()
             if not line:
@@ -2552,7 +2552,7 @@ def _scan_subagent_file(path, session_start=None):
     block is skipped on its own and never voids the file."""
     found = _new_subagent_evidence()
     uses, cwds, runs, deferred = {}, {}, [], []
-    with open(path, encoding="utf-8", errors="replace") as handle:
+    with Path(path).open(encoding="utf-8", errors="replace") as handle:
         for line in handle:
             if "tool_" not in line:
                 continue

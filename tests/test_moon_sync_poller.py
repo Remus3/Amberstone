@@ -507,7 +507,7 @@ def test_status_md_size_cap_5x250(state: Path, tmp_path: Path):
     codes = ("AAA", "BBB", "CCC", "DDD", "EEE")
     long_name = "z" * 130
     roots = []
-    for i, _code in enumerate(codes):
+    for i in range(len(codes)):
         root = tmp_path / f"sibling-{chr(ord('a') + i)}"
         (root / "moon_sync_inbox").mkdir(parents=True)
         for n in range(250):
@@ -886,7 +886,7 @@ def test_write_status_survives_a_reader_holding_the_target(state: Path):
     P.write_status({}, 1.0, 300, rows=[])
     target = state / "status.md"
     before = target.read_bytes()
-    handle = open(target, encoding="utf-8")
+    handle = target.open(encoding="utf-8")
     try:
         P.write_status({}, 2.0, 300, rows=[])
     finally:

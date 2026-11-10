@@ -8,10 +8,10 @@ the long names (``re.IGNORECASE``, ``re.MULTILINE``, ``re.DOTALL``, ``re.ASCII``
 alias and the long name are the same ``re.RegexFlag`` member, so no pattern changes, and every
 rewritten module compares equal as an AST once the alias names are mapped.
 
-Three files stay on a named baseline that only shrinks, each because it is not this lane's to edit:
-``tools/ds_feed_watch.py`` (``lane/ds`` carries an unlanded change to it, RM-1508),
+Two files stay on a named baseline that only shrinks, each because it is not this lane's to edit:
 ``tools/build_portable.py`` and ``ops/launcher/updater.py`` (PKG, main-session owned per
-``ops/loop/control/lane_exclusions_s144.txt``). A baseline entry that stops offending fails
+``ops/loop/control/lane_exclusions_s144.txt``). ``tools/ds_feed_watch.py`` left the baseline once
+``lane/ds`` carried no unlanded change to it (S144-P-599). A baseline entry that stops offending fails
 ``test_baseline_is_exact`` until it is dropped.
 
 Scope: production code. ``tests/``, ``tools/tests/``, ``agents/daemon_slayer``, the
@@ -49,7 +49,6 @@ _OUT_OF_SCOPE = (
 )
 # Only shrinks. See the module docstring for why each file is here.
 _BASELINE = frozenset({
-    "tools/ds_feed_watch.py",
     "tools/build_portable.py",
     "ops/launcher/updater.py",
 })
@@ -68,6 +67,7 @@ _FIXED = (
     "tools/bot_merge_check.py",
     "tools/build_third_party_notices.py",
     "tools/drift_guard.py",
+    "tools/ds_feed_watch.py",
     "tools/gated_lx11_minimap_check.py",
     "tools/perseus_sync.py",
     "tools/repo_insights.py",
@@ -145,4 +145,4 @@ def test_alias_and_long_name_are_the_same_flag():
     assert re.A is re.ASCII
     assert re.X is re.VERBOSE
     assert re.U is re.UNICODE
-    assert re.compile("a", re.I | re.M) == re.compile("a", re.IGNORECASE | re.MULTILINE)
+    assert re.compile(r"a", re.I | re.M) == re.compile(r"a", re.IGNORECASE | re.MULTILINE)

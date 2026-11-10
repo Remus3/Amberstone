@@ -17,12 +17,12 @@ Run: $env:LOCALAPPDATA/Programs/Python/Python314/python.exe ops/audit/ds_latency
 from __future__ import annotations
 
 import math
-import os
 import statistics
 import sys
 import time
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.insert(0, str(Path(__file__).absolute().parents[2]))
 
 from agents.daemon_slayer.data_loader import DataSnapshot  # noqa: E402
 from agents.daemon_slayer.beam import beam_search_build  # noqa: E402
@@ -48,7 +48,7 @@ def _bench(fn, n):
 
 def _p(ts, pct):
     ss = sorted(ts)
-    i = max(0, min(len(ss) - 1, int(math.ceil(pct / 100.0 * len(ss))) - 1))
+    i = max(0, min(len(ss) - 1, math.ceil(pct / 100.0 * len(ss)) - 1))
     return ss[i]
 
 

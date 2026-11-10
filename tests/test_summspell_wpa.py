@@ -10,9 +10,9 @@ the deterministic fallback sigmoid).
 """
 from __future__ import annotations
 
-import os
 import sqlite3
 import unittest
+from pathlib import Path
 
 from core import summoner_spell_wpa
 from core.smoothed_rates import shrink
@@ -350,7 +350,7 @@ class SpellNameTests(unittest.TestCase):
 
 class RealDbSmokeTests(unittest.TestCase):
     @unittest.skipUnless(
-        os.path.exists("data/rewind_history.db"),
+        Path("data/rewind_history.db").exists(),
         "rewind_history.db not present",
     )
     def test_real_db_returns_spells(self):
@@ -369,8 +369,7 @@ class AsciiHygieneTests(unittest.TestCase):
         for path in ("core/summoner_spell_wpa.py",
                      "dashboard/routes_summspell_wpa.py",
                      "tests/test_summspell_wpa.py"):
-            with open(path, "rb") as f:
-                data = f.read()
+            data = Path(path).read_bytes()
             try:
                 data.decode("ascii")
             except UnicodeDecodeError as exc:

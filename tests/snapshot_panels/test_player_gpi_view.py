@@ -21,7 +21,6 @@ element) and screenshot the rendered panel.
 Three states are exercised: a populated high-confidence radar (the screenshot),
 the insufficient-sample empty-state, and the 503/unavailable fail-soft line.
 """
-import pytest
 
 from pathlib import Path
 

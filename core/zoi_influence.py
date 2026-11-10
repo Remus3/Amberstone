@@ -414,7 +414,7 @@ def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5),
     else:
         demarcation = _demarcation((ca_x, ca_y), (ce_x, ce_y), wa, we)
         total = wa + we
-        ally_pct = int(round(wa / total * 100.0)) if total > 0.0 else 50
+        ally_pct = round(wa / total * 100.0) if total > 0.0 else 50
 
     ally_pct = int(_clamp(ally_pct, 0, 100))
 

@@ -94,7 +94,7 @@ def test_helper_keeps_an_existing_file_and_writes_an_absent_one_without_a_bom(tm
     done = subprocess.run(
         [_powershell(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy",
          "Bypass", "-File", str(script)],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, timeout=120, check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert done.returncode == 0, done.stderr
     assert keep.read_bytes() == b"tracked = 1\n"

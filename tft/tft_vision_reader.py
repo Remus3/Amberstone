@@ -142,8 +142,8 @@ def _scaled_bbox(bbox, size) -> Optional[tuple]:
         return None
     sx, sy = w / base_w, h / base_h
     left, top, right, bottom = bbox
-    box = (int(round(left * sx)), int(round(top * sy)),
-           int(round(right * sx)), int(round(bottom * sy)))
+    box = (round(left * sx), round(top * sy),
+           round(right * sx), round(bottom * sy))
     if not (0 <= box[0] < box[2] <= w and 0 <= box[1] < box[3] <= h):
         return None
     return box

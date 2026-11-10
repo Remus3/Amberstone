@@ -108,7 +108,7 @@ def curated_pct(curated_row: Dict) -> float:
 
 def is_ally_chain_only(curated_row: Dict) -> bool:
     """Read the optional ally_chain_only flag without ever writing it back."""
-    return bool(curated_row.get("ally_chain_only", False))
+    return bool(curated_row.get("ally_chain_only"))
 
 
 def assert_row_matches_ddragon(

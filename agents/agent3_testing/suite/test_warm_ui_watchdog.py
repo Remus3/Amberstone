@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -89,8 +89,8 @@ def test_watchdog_noop_when_not_warm() -> None:
     from agents.supervisor import Supervisor
 
     sup = Supervisor()
-    sup._ws = SimpleNamespace(push_subscribers=0)     # type: ignore
-    sup._warm_agent7 = _FakeWarm(warm=False)           # type: ignore
+    sup._ws = SimpleNamespace(push_subscribers=0)     # type: ignore[assignment]
+    sup._warm_agent7 = _FakeWarm(warm=False)           # type: ignore[assignment]
 
     async def drive():
         with patch("agents.supervisor.WARM_UI_CHECK_INTERVAL_SEC", 0.01), \

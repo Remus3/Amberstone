@@ -267,7 +267,7 @@ def build_rows(match_id: str, events: Iterable[lit.TapeEvent],
             raw["components"] = list(comps)
         row = {
             "match_id": match_id,
-            "timestamp_ms": int(round(t * 1000)),
+            "timestamp_ms": round(t * 1000),
             "event_type": event_type,
             "participant_id": pids.get((player, team_id)),
             "item_id": item_id,

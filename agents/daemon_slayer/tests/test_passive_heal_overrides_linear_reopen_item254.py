@@ -26,6 +26,7 @@ empty damage_blocks). Verbatim 16.11.1 effects_descriptions back each value.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer.abilities import (
@@ -47,10 +48,6 @@ _REOPEN_SEEDS = (
     ("Zac", "P", 0),
     ("DrMundo", "P", 0),
 )
-# Of those, the 2 that stay GATED (0 at the default resolve-off).
-_GATED_SEEDS = (("Mordekaiser", "R", 0), ("Illaoi", "P", 0))
-# ...and the 2 that resolve at the default (caster max HP).
-_RESTING_SEEDS = (("Zac", "P", 0), ("DrMundo", "P", 0))
 
 
 def _snap() -> DataSnapshot:
@@ -229,7 +226,7 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_and_test_ascii_clean(self) -> None:
         import agents.daemon_slayer._passive_heal_overrides as mod
         for path in (mod.__file__, __file__):
-            with open(path, "rb") as fh:
+            with Path(path).open("rb") as fh:
                 fh.read().decode("ascii")  # raises on any non-ASCII byte
 
 

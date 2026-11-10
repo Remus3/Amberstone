@@ -179,10 +179,10 @@ def scale_region(name, width, height, atlas=None):
         sy = height / _BASELINE_HEIGHT
         x0, y0, x1, y1 = rect
         return (
-            int(round(x0 * sx)),
-            int(round(y0 * sy)),
-            int(round(x1 * sx)),
-            int(round(y1 * sy)),
+            round(x0 * sx),
+            round(y0 * sy),
+            round(x1 * sx),
+            round(y1 * sy),
         )
     except Exception:  # noqa: BLE001 - fail-soft contract
         return None

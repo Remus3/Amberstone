@@ -350,17 +350,16 @@ class BootsInjectionTests(unittest.TestCase):
         # mirrors are map30=True in the live DS items.json. This is the
         # definitional justification for the remap (P6-G4 deferred tail).
         import json
-        import os
-        items_path = os.path.join(
-            "data", "daemon_slayer", "16.12.1", "items.json")
+        from pathlib import Path
+        items_path = Path("data", "daemon_slayer", "16.12.1", "items.json")
         # TRACKED in git, so it is present in every checkout INCLUDING a clean
         # CI one - the old "clean checkout" reason was wrong. Its absence means
         # the committed catalog was deleted, which is a failure not a skip.
         self.assertTrue(
-            os.path.exists(items_path),
+            items_path.exists(),
             f"tracked catalog {items_path} is missing from this checkout",
         )
-        with open(items_path, encoding="utf-8") as fh:
+        with items_path.open(encoding="utf-8") as fh:
             raw = json.load(fh)
         items = raw.get("data", raw)
         for bare, mirror in _BOOTS_ARENA_MIRROR.items():

@@ -127,15 +127,17 @@ def _app_dir(tmp_path, monkeypatch):
     return tmp_path
 
 
-def test_root_serves_the_new_ui_not_the_legacy_page(_app_dir):
+@pytest.mark.usefixtures("_app_dir")
+def test_root_serves_the_new_ui_not_the_legacy_page():
     h = _StubHandler("/")
     routes_static._serve_index(h)
     assert h.sent == [(200, _NEW_BODY, "text/html; charset=utf-8")]
 
 
 @pytest.mark.parametrize("path", ["/?ui=legacy", "/index.html?ui=legacy"])
+@pytest.mark.usefixtures("_app_dir")
 def test_ui_legacy_serves_the_legacy_page_even_when_the_new_ui_works(
-    _app_dir, path,
+    path,
 ):
     h = _StubHandler(path)
     routes_static._serve_index(h)

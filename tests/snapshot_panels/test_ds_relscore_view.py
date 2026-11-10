@@ -22,7 +22,6 @@ live #csv-ds-relscore mount with a synthetic locked-champ state and a stubbed
 then assert the horizontal bar fills are proportional to score_pct (the bar IS
 the hero element) and screenshot the rendered panel.
 """
-import pytest
 
 from pathlib import Path
 

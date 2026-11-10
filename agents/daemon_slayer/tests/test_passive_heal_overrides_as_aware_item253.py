@@ -24,6 +24,7 @@ Verbatim 16.11.1 effects_descriptions back the pinned value.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer._passive_damage_overrides import _per_100
@@ -181,11 +182,11 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_module_ascii(self) -> None:
         import agents.daemon_slayer._passive_heal_overrides as m
 
-        src = open(m.__file__, encoding="utf-8").read()
+        src = Path(m.__file__).read_text(encoding="utf-8")
         self.assertTrue(src.isascii())
 
     def test_self_ascii(self) -> None:
-        src = open(__file__, encoding="utf-8").read()
+        src = Path(__file__).read_text(encoding="utf-8")
         self.assertTrue(src.isascii())
 
 

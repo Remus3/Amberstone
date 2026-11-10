@@ -22,7 +22,7 @@ What the tests protect:
 from __future__ import annotations
 
 import importlib
-import json
+from pathlib import Path
 
 import pytest
 
@@ -184,7 +184,7 @@ def test_pending_filters_by_tier(chan):
 
 def test_a_malformed_line_is_skipped_not_fatal(chan):
     steer.append("good")
-    with open(chan / "STEER.jsonl", "a", encoding="utf-8") as fh:
+    with (chan / "STEER.jsonl").open("a", encoding="utf-8") as fh:
         fh.write("{ this is not json\n")
     steer.append("also good")
     assert [r["text"] for r in steer.pending()] == ["good", "also good"]
@@ -259,7 +259,7 @@ def test_the_log_survives_a_drain(chan):
 # --------------------------------------------------------------------------- contract
 def test_the_module_executes_nothing():
     """A steer is guidance. Nothing in this module may run a process."""
-    src = open(steer.__file__, encoding="utf-8").read()
+    src = Path(steer.__file__).read_text(encoding="utf-8")
     for forbidden in ("subprocess", "os.system", "Popen", "taskkill"):
         assert forbidden not in src, (
             f"{forbidden} in the steer channel - a queued steer must never be "
@@ -273,6 +273,6 @@ def test_interrupt_is_not_a_tier():
 
 def test_it_consumes_winmutex_rather_than_reimplementing_it():
     """winmutex.py is byte-identical-by-contract with the sibling repo."""
-    src = open(steer.__file__, encoding="utf-8").read()
+    src = Path(steer.__file__).read_text(encoding="utf-8")
     assert "winmutex" in src
     assert "CreateMutex" not in src, "the primitive is consumed, not re-written"

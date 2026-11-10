@@ -153,6 +153,7 @@ def test_producer_log_path_is_the_named_gitignored_file():
     assert '_LOG_PATH = Path(__file__).parent.parent / "data"' in src
     ignored = subprocess.run(
         ["git", "check-ignore", "-q", "data/ds_calibration.jsonl"], cwd=_REPO_ROOT,
+        check=False,
     )
     assert ignored.returncode == 0, "data/ds_calibration.jsonl must stay gitignored"
 

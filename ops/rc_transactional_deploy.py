@@ -495,6 +495,12 @@ def wait_for_heartbeat(
 
     Parameters
     ----------
+    health_file
+        Path of the supervisor-written health.json to poll.
+    previous_mtime
+        health_file mtime captured before the deploy action started.
+    timeout_seconds
+        How long to keep polling before giving up (returns False).
     expected_run_id
         The run_id that was active BEFORE the deploy.  If None, only
         mtime+alive is checked (legacy / no run_id in health.json).

@@ -19,7 +19,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 import core.feature_policy as fp
 from core.feature_policy import (
     write_disabled_placeholder,
-    _PROJECT_DIR, _SR_ARTIFACT, _DATA_DIR,
+    _PROJECT_DIR, _SR_ARTIFACT,
 )
 
 

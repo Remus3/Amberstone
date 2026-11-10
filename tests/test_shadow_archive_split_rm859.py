@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from pathlib import Path
 
 import pytest
 
@@ -177,7 +178,7 @@ def test_live_file_is_written_only_by_one_atomic_replace(live, archive,
     onto_live = [c for c in calls if c[1] == os.fspath(live)]
     assert len(onto_live) == 1
     src = onto_live[0][0]
-    assert os.path.dirname(src) == os.fspath(live.parent)
+    assert Path(src).parent == live.parent
     assert src != os.fspath(live)
     assert _leftovers(live.parent) == []
 

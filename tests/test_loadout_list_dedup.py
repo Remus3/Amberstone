@@ -25,15 +25,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEDUP_LIB = REPO_ROOT / "web" / "js" / "lib" / "dedup_fetch.js"
 
-# Call sites that MUST consume dedupFetch (NOT raw fetch) for the
-# coalesced endpoints. Each entry: (panel file, endpoint substring).
-_WIRED_SITES = (
-    ("web/js/panels/coach_decisions.js", "/api/decisions"),
-    ("web/js/panels/champ_select.js",   "/api/loadout/list"),
-    ("web/js/panels/item_build.js",     "/api/loadout/list"),
-)
-
-
 class DedupFetchLibTests(unittest.TestCase):
     """The helper module exists and exports the expected API."""
 

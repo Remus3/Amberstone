@@ -104,7 +104,7 @@ def test_a_refused_rotation_leaves_every_backup_intact(tmp_path):
     _fill(tmp_path / "w.log.1", 10, b"b")
     _fill(tmp_path / "w.log.2", 10, b"a")
 
-    with open(log, "ab"):  # a second handle holds the base file open
+    with log.open("ab"):  # a second handle holds the base file open
         rotated = log_rotation.rotate(log, backup_count=2)
 
     assert rotated is False
@@ -339,7 +339,7 @@ def test_root_logger_handler_with_a_held_file_does_not_recurse(tmp_path, capsys)
     handler.setLevel(logging.DEBUG)
     root = logging.getLogger()
     lg = logging.getLogger("lcu_agent")
-    holder = open(path, "a", encoding="utf-8")
+    holder = path.open("a", encoding="utf-8")
     root.addHandler(handler)
     try:
         for i in range(5):
@@ -521,4 +521,4 @@ def test_no_live_log_was_touched_by_this_module():
     live = (_ROOT / "logs").resolve()
     base = Path(agent._FILE_HANDLER.baseFilename).resolve()
     assert live not in base.parents, base
-    assert os.path.basename(base) == "lcu_agent.log"
+    assert base.name == "lcu_agent.log"

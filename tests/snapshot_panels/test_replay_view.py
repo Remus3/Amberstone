@@ -34,7 +34,6 @@ the Hextech gold corner-bracket motif (the reskin's signature cue), and no
 unhandled JS errors fire. Screenshots the view for the audit trail (this is
 the capture the redesign cycle produces -> screenshots/replay.png).
 """
-import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent

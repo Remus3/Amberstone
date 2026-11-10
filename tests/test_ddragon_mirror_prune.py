@@ -67,11 +67,9 @@ def test_prune_unlinks_stale_junction_without_touching_target(tmp_path):
     # Live mirror had 16.9.1 as a Windows junction -> 16.8.1; rmtree refuses
     # reparse points. Prune must unlink the link entry itself and leave the
     # target contents alone.
-    import os
     _mk(tmp_path, ["16.12.1", "_store"])
     try:
-        os.symlink(tmp_path / "_store", tmp_path / "16.9.1",
-                   target_is_directory=True)
+        (tmp_path / "16.9.1").symlink_to(tmp_path / "_store", target_is_directory=True)
     except OSError:
         import pytest
         pytest.skip("symlink creation not permitted")

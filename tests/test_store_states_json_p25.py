@@ -19,7 +19,6 @@ Symbols used (file:line at time of writing):
 """
 from __future__ import annotations
 
-import json
 import os
 import time
 from datetime import date

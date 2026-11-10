@@ -24,10 +24,7 @@ semi-tank fighter. ARAM rules apply to every game_mode the canonical router
 maps to MODE_ARAM, ARAM Mayhem (KIWI) included (S144-T-612).
 """
 
-from champion_profiles import (
-    CHAMPIONS, TANKS, FIGHTERS, AD_CHAMPS, AP_CHAMPS,
-    HYBRID_CHAMPS, SUSTAIN_CHAMPS, MANA_CHAMPS,
-)
+from champion_profiles import CHAMPIONS
 from core.game_snapshot import MODE_ARAM, mode_from_game_mode_string
 
 # -- Item property maps ---------------------------------------------------------

@@ -238,9 +238,9 @@ def test_wall_clock_step_back_does_not_extend_the_lifetime_cap():
             mock.patch.object(rs, "_sse_count", 0):
         try:
             rs._serve_state_stream(req)
-        except _Runaway:
+        except _Runaway as runaway:
             raise AssertionError(
-                "a wall clock stepped back kept the stream open past its cap")
+                "a wall clock stepped back kept the stream open past its cap") from runaway
         assert rs._sse_count == 0
     assert clock.sleeps <= 601
 

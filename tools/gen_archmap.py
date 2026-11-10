@@ -129,6 +129,7 @@ def _git_ignored() -> tuple[frozenset[str], frozenset[str]]:
             capture_output=True,
             timeout=60,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return frozenset(), frozenset()

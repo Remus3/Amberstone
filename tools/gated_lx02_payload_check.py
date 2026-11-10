@@ -274,7 +274,7 @@ def _rm673(forms: dict, champion_exact: int, reader: dict) -> str:
             return "CHAMPION_NAME_INEXACT"
         # the wire form is right, but the reader still fails on this capture
         # (no self-identification, or a mirror champion)
-        if reader.get("unknown", 0) or reader.get("ambiguous", 0):
+        if reader.get("unknown") or reader.get("ambiguous"):
             return "CHAMPION_NAME_READER_FAILS"
         return "CHAMPION_NAME"
     return "NO_RESULT"

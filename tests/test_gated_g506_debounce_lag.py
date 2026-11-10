@@ -6,7 +6,6 @@ no real Riot id, game id or match key.
 from __future__ import annotations
 
 import json
-import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -302,5 +301,5 @@ def test_marks_match_the_coach_source_strings():
     assert "Arena state-debounce: signature unchanged " in arena
     assert '"Arena: no fields parsed"' in arena
     assert '@safe_coach_output("Arena")' in arena
-    assert re.search(r'"%s coach error: %s"', (ROOT / "core" / "safe_coach_output.py").read_text(encoding="utf-8"))
+    assert '"%s coach error: %s"' in (ROOT / "core" / "safe_coach_output.py").read_text(encoding="utf-8")
     assert '_MODE_NAME     = "arena"' in arena

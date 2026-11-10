@@ -157,7 +157,7 @@ def wave_timing(minion_spawn_events: list, game_time_s: float | None) -> dict:
         # them is what keeps the countdown forward-looking instead of frozen on
         # an old anchor. The ordinal has to absorb the same projection or
         # next_is_cannon would be computed against a stale wave number.
-        unobserved = int(math.floor((now - last_spawn + _FLOOR_EPS_S) / interval))
+        unobserved = math.floor((now - last_spawn + _FLOOR_EPS_S) / interval)
         next_spawn = last_spawn + (unobserved + 1) * interval
         out["last_spawn_s"] = last_spawn
         out["wave_number"] = len(spawned) + unobserved

@@ -84,7 +84,7 @@ def canonical(name: Any) -> str:
 def _pct(sorted_vals: List[float], q: float) -> Optional[float]:
     if not sorted_vals:
         return None
-    idx = min(len(sorted_vals) - 1, max(0, int(math.ceil(q * len(sorted_vals))) - 1))
+    idx = min(len(sorted_vals) - 1, max(0, math.ceil(q * len(sorted_vals)) - 1))
     return round(sorted_vals[idx], 3)
 
 

@@ -24,7 +24,6 @@ import json
 from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_settings_spend_gate_focus import (
     _FOCUS,
-    _GATE_BOX,
     _close,
     _focus_gate,
     _gates,

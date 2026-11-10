@@ -392,8 +392,7 @@ def _load_hp_if_stale() -> None:
     failure or an HP-empty load is remembered by file signature so it is
     parsed and warned once, not on every lookup (RM-1468).
     """
-    global _hp_cache, _hp_cache_mtime, _hp_cache_patch, _byname_by_mode
-    global _hp_failed_sig
+    global _hp_cache, _hp_cache_mtime, _hp_cache_patch, _byname_by_mode, _hp_failed_sig
     path = _items_json_path()
     if path is None:
         logger.debug("items.json missing for current patch; HP cache empty")

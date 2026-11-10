@@ -135,7 +135,6 @@ Coverage classes:
 
 from __future__ import annotations
 
-import inspect
 import json
 import unittest
 from pathlib import Path
@@ -626,7 +625,7 @@ class WaveFifteenWiredSitesGrepTests(unittest.TestCase):
     """Wave 15 entries grep-match in the cc_conditional.py source."""
 
     def _source(self) -> str:
-        return open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
+        return Path(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md")).read_text(encoding="utf-8")
 
     def test_source_mentions_zac_q_setdefault(self) -> None:
         src = self._source()
@@ -679,7 +678,7 @@ class AsciiHygieneTests(unittest.TestCase):
         )
 
     def test_cc_conditional_wave_15_block_is_ascii(self) -> None:
-        src = open(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md"), encoding="utf-8").read()
+        src = Path(cc.__file__.replace("cc_conditional.py", "CC_CONDITIONAL_NOTES.md")).read_text(encoding="utf-8")
         # Slice from the "wave 15 expansion" header through the
         # end-of-builder; assert no non-ASCII bytes appear in that
         # slice. The earlier waves carry pre-existing non-ASCII bytes

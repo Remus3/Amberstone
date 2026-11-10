@@ -341,7 +341,7 @@ def _recall_outcome(economy: dict, next_item: Optional[Tuple[str, int]]) -> str:
     spike = str(economy.get("next_spike") or "spike")
     gold = economy.get("gold_at_band")
     try:
-        gold_s = f"{int(round(float(gold)))}g"
+        gold_s = f"{round(float(gold))}g"
     except (TypeError, ValueError):
         gold_s = "gold"
     if next_item and next_item[0]:

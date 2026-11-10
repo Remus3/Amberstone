@@ -179,7 +179,7 @@ def _http(method: str, url: str, *, headers: dict[str, str] | None = None,
                 continue
             raise
     # Unreachable: the loop above either returns or raises on the last attempt.
-    raise last_url_err if last_url_err else RuntimeError("unreachable")
+    raise last_url_err or RuntimeError("unreachable")
 
 
 def http_get(url: str, headers: dict[str, str] | None = None) -> HttpResult:
@@ -722,7 +722,7 @@ def prune_stale_versions(current: str, *, retain: int = RETAIN_VERSIONS,
             # mirror had 16.9.1 -> 16.8.1); rmtree refuses reparse points,
             # so unlink the link itself and leave its target alone.
             if d.is_symlink() or d.is_junction():
-                os.rmdir(d)
+                d.rmdir()
             else:
                 shutil.rmtree(d)
             logger.info("pruned stale mirror dir %s", d)

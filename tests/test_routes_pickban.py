@@ -5,6 +5,7 @@ operator WR per role + ban suggestions from rewind_history.db.
 """
 from __future__ import annotations
 
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -92,9 +93,9 @@ class TestNormalizeRole(unittest.TestCase):
 
 class TestPerformanceQuery(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -196,9 +197,9 @@ class TestS214CascadeAndMultiPick(unittest.TestCase):
     we can assert exact list contents without prior-test bleed-through."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -271,9 +272,9 @@ class TestMoodParamRemoved(unittest.TestCase):
     field; the deleted mood machinery is actually gone."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
         self._db_patch = mock.patch.object(
             routes_pickban, "_REWIND_DB", self.db_path,
         )
@@ -345,9 +346,9 @@ class TestMoodParamRemoved(unittest.TestCase):
 
 class TestBansQuery(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -421,9 +422,9 @@ class TestBansQuery(unittest.TestCase):
 
 class TestResolveOperatorPuuid(unittest.TestCase):
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -459,9 +460,9 @@ class TestEndToEnd(unittest.TestCase):
     """Smoke-test _serve_pickban_recs by stubbing the HTTP handler shim."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
         # Patch _REWIND_DB to point at the temp DB.
         self._db_patch = mock.patch.object(
             routes_pickban, "_REWIND_DB", self.db_path,
@@ -518,9 +519,9 @@ class TestChampRecordQuery(unittest.TestCase):
     headline + at-role qualifier. None when zero all-roles games."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -624,9 +625,9 @@ class TestWithAllyQuery(unittest.TestCase):
     team, regardless of what the operator played (assumption A2)."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -698,9 +699,9 @@ class TestVsEnemyQuery(unittest.TestCase):
     opposing team, anywhere (assumption A1 - not lane-strict)."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -771,9 +772,9 @@ class TestPersonalRecordEndToEnd(unittest.TestCase):
     """s239 - _serve_personal_record HTTP shape via the stubbed handler."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
         self._db_patch = mock.patch.object(
             routes_pickban, "_REWIND_DB", self.db_path)
         self._db_patch.start()
@@ -909,9 +910,9 @@ class TestLastInQueue(unittest.TestCase):
     of the top sub-panel."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -971,9 +972,9 @@ class TestStruggleBan(unittest.TestCase):
     encounters. Skips when the worst matchup is <50% loss rate."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
 
     def tearDown(self):
         self.db_path.unlink(missing_ok=True)
@@ -1075,9 +1076,9 @@ class TestPickBanEndToEndItem168(unittest.TestCase):
     """End-to-end shape pin for the item 168 response fields."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
         self._db_patch = mock.patch.object(
             routes_pickban, "_REWIND_DB", self.db_path,
         )
@@ -1260,9 +1261,9 @@ class TestCounterPicksRoute(unittest.TestCase):
     """RC2 E4: /api/champ-select/counter-picks route surface."""
 
     def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self._tmp.close()
-        self.db_path = Path(self._tmp.name)
+        fd, name = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        self.db_path = Path(name)
         routes_pickban._reset_caches()
         self._db_patch = mock.patch.object(
             routes_pickban, "_REWIND_DB", self.db_path)

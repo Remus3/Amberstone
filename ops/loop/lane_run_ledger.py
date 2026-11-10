@@ -152,7 +152,7 @@ def exit_marker(log) -> str:
         return ""
     try:
         path = Path(log)
-        with open(path, "rb") as fh:
+        with path.open("rb") as fh:
             size = path.stat().st_size
             if size > (64 << 10):
                 fh.seek(-(64 << 10), 2)
@@ -182,7 +182,7 @@ def read_jsonl(path, tail_bytes: int = USAGE_TAIL_BYTES) -> list:
     """Dict rows of a JSONL file; a bad line is skipped, a missing file is []."""
     try:
         path = Path(path)
-        with open(path, "rb") as fh:
+        with path.open("rb") as fh:
             if path.stat().st_size > tail_bytes:
                 fh.seek(-tail_bytes, 2)
             text = fh.read().decode("utf-8", "replace")

@@ -19,8 +19,9 @@ The baseline is the findings that stay, each for a named reason:
   comparisons of module globals back; they now read ``mt == _PRESETS_MTIME``.)
 - ``ops/launcher/update_cycle.py`` and ``tools/build_portable.py``: the packaged-app tree is owned by the
   main session (lane exclusions).
-- ``tools/daemon_slayer_abilities_extract.py``: a conditional-assign loop in an extractor; its PERF403
-  rewrite is left for a cycle that takes the extractor together with its SIM103 row.
+- (``tools/daemon_slayer_abilities_extract.py`` left this list in S144-P-526: its SIM103 row was fixed in
+  RM-1699 and the last PERF403, ``for field, vals in typed.items(): block[field] = vals``, is now
+  ``block.update(typed)`` - same keys, same insertion order, same overwrite rule.)
 
 A baseline entry that stops offending fails ``test_baseline_is_exact`` until it is dropped; a new finding
 anywhere else fails ``test_no_new_findings``.
@@ -59,7 +60,6 @@ _OUT_OF_SCOPE = (
 _BASELINE = {
     "ops/launcher/update_cycle.py": 3,
     "tools/build_portable.py": 1,
-    "tools/daemon_slayer_abilities_extract.py": 1,
 }
 _FIXED = (
     "agents/_supervisor_common.py",
@@ -70,6 +70,7 @@ _FIXED = (
     "core/minimap_blob_detect.py",
     "core/minimap_identity.py",
     "dashboard/routes_state.py",
+    "tools/daemon_slayer_abilities_extract.py",
     "tools/ds_cross_eval/probe_champion.py",
     "tools/ds_parity_map.py",
 )

@@ -11,10 +11,13 @@ tools/hotfix_kaisa_aram_ashe_sr_item263.py, tools/champion_loadout_align.py). Th
 S144-P-288 widens the scan to ``.ps1`` / ``.bat`` / ``.sh`` / ``.mjs`` / ``.js`` cites in the same production ``.py``
 prose: measured 2026-11-06, two bare cites (both in tools/build_portable.py, PKG-owned, named in ``_ALLOWED``).
 
-The rule: every cite of an untracked ``<top-dir>/<path>.py`` (or script extension above) needs a history word within three lines either side, or an
-entry in ``_ALLOWED`` (file, path) with the reason. ``_ALLOWED`` only shrinks: an entry that no longer matches a cite
-fails ``test_allowlist_is_exact``. ``test_scanner_is_live`` proves the scan reports a bare cite, accepts a marked one
-and ignores a tracked path, since an empty scan would pass for any reason.
+S144-P-484 adds ``web`` and ``mc`` to the top dirs and ``.css`` / ``.html`` to the extensions: measured 2026-11-08,
+eight production ``.py`` cites of an untracked ``web/`` path (``web/js/dashboard.js``, ``web/js/sim.js``,
+``web/mc/mc.js``, ``web/mc/arm_confirm.js``, ``web/js/panels/spike_cue.js``) in four files. Seven sat inside a sentence
+that says the file was deleted, quarantined or removed; the eighth (the second ``web/mc/mc.js`` in
+dashboard/_arm_confirm.py, eleven lines from its history word) is fixed with this guard. Three more are test inputs
+in the agent3 suite and are named in ``_ALLOWED``. A ``.json`` data cite is deliberately not scanned: the end-of-path
+lookahead stops ``items_index.json`` reading as ``items_index.js``.
 """
 from __future__ import annotations
 
@@ -24,10 +27,10 @@ import subprocess
 from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
 
 _TOP_DIRS = (
-    "core|tools|ops|app|lcu|dashboard|coaches|modes|agents|scripts|vision_server|coach_integration|lib|tft"
+    "core|tools|ops|app|lcu|dashboard|coaches|modes|agents|scripts|vision_server|coach_integration|lib|tft|web|mc"
 )
 _CITE_RE = re.compile(
-    rf"(?<![\w./-])((?:{_TOP_DIRS})/[A-Za-z0-9_./-]*[A-Za-z0-9_]\.(?:py|ps1|bat|sh|mjs|js))(?![\w])"
+    rf"(?<![\w./-])((?:{_TOP_DIRS})/[A-Za-z0-9_./-]*[A-Za-z0-9_]\.(?:py|ps1|bat|sh|mjs|js|css|html))(?![\w])"
 )
 _HISTORY_RE = re.compile(
     r"quarantin|remov|delet|retired|never existed|no longer|\bgone\b|was dropped|deprecat|superseded",
@@ -51,9 +54,15 @@ _ALLOWED = {
     # A file of the other repo this one adopted a helper from (S144-P-287: only the word "sibling" marked it before).
     ("core/ports.py", "tools/lw_ports.py"),
     # S144-P-288: tools/build_portable.py (PKG, main session owns it, so a lane cannot edit the docstring) names two
-    # startup scripts that were never tracked. FILED for the PKG owner; drop these when the cites are marked or gone.
+    # startup scripts that were never tracked. FILED for the PKG owner; drop these when the cites are marked or absent.
     ("tools/build_portable.py", "ops/autostart_on_login.bat"),
     ("tools/build_portable.py", "ops/launch_new_system.bat"),
+    # S144-P-484: test inputs. test_round42 feeds ui_applier paths of UI files that no longer exist and asserts each is
+    # REJECTED, so the cites are the fixture, not a pointer to working code (the suite lives under agents/, which this
+    # scan covers, unlike tests/).
+    ("agents/agent3_testing/suite/test_round42.py", "web/js/dashboard.js"),
+    ("agents/agent3_testing/suite/test_round42.py", "web/js/sim.js"),
+    ("agents/agent3_testing/suite/test_round42.py", "web/js/panels/sub/x.js"),
 }
 
 
@@ -90,8 +99,7 @@ def _tree_hits() -> set[tuple[str, str]]:
             src = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        for _line, cited in scan_source(src, tracked):
-            found.add((rel, cited))
+        found.update((rel, cited) for _line, cited in scan_source(src, tracked))
     return found
 
 
@@ -140,3 +148,18 @@ def test_a_weak_word_does_not_mark_a_cite_as_history():
     for strong in ("quarantined", "removed", "deleted", "retired", "never existed", "no longer", "gone",
                    "was dropped", "deprecated", "superseded"):
         assert scan_source(f"see tools/absent.py ({strong})\n", tracked) == [], strong
+
+
+def test_web_ui_cites_are_scanned_too():
+    """S144-P-484: ``web/`` and ``mc/`` paths are repo top dirs like ``core/``. Production docstrings cite
+    ``web/js/...`` and ``web/mc/...`` files (dashboard/_arm_confirm.py, mc/handler.py and agents/agent4_coach_mentor/
+    ui_applier.py cite removed ones, each with a history word), and the earlier top-dir list left that whole prefix
+    unscanned: a bare cite of a deleted panel module passed."""
+    tracked = frozenset({"web/js/main.js", "web/css/panels/base.css", "web/index.html"})
+    for cite in ("web/js/panels/absent.js", "web/mc/mc.js", "web/css/panels/absent.css", "web/absent.html", "mc/absent.js"):
+        assert scan_source(f"see {cite} for the wiring\n", tracked) == [(1, cite)], cite
+        assert scan_source(f"see {cite} (deleted)\n", tracked) == [], cite
+    for live in ("web/js/main.js", "web/css/panels/base.css", "web/index.html"):
+        assert scan_source(f"see {live} for the wiring\n", tracked) == [], live
+    # A data file is not a script cite: web/data/items_index.json must not read as web/data/items_index.js.
+    assert scan_source("loads web/data/items_index.json first\n", tracked) == []

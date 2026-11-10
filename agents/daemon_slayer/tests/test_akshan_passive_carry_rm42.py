@@ -52,7 +52,6 @@ import unittest
 from pathlib import Path
 
 from agents.daemon_slayer import _passive_damage_overrides as pdo
-from agents.daemon_slayer import rank
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.dps import compute_dps
 from agents.daemon_slayer.rank import rank_items

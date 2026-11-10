@@ -187,7 +187,7 @@ def build_row(result: dict[str, Any], *, scheduled_at: Any = None,
 def _append_line(path: Path, line: str) -> None:
     data = line.encode("ascii")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with _APPEND_LOCK, open(path, "a+b") as fh:
+    with _APPEND_LOCK, path.open("a+b") as fh:
         end = fh.seek(0, 2)
         if end > 0:
             fh.seek(end - 1)
@@ -259,7 +259,7 @@ def read_receipts(path: Path | None = None,
     out: deque[dict[str, Any]] = deque(maxlen=_window(limit))
     try:
         p = Path(path) if path is not None else RECEIPT_PATH
-        with open(p, encoding="utf-8", errors="replace") as fh:
+        with p.open(encoding="utf-8", errors="replace") as fh:
             for raw_line in fh:
                 raw = raw_line.strip()
                 if not raw:

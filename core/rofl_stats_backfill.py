@@ -262,7 +262,7 @@ def read_rofl_game_version(path) -> str:
     that overruns the file, non-ASCII version bytes, or a version carrying
     anything but digits and dots. Callers guard one exception type.
     """
-    with open(path, "rb") as handle:
+    with pathlib.Path(path).open("rb") as handle:
         head = handle.read(_VERSION_FIELD_END)
     if head[:4] != b"RIOT":
         raise ValueError(f"not a .rofl container: {path}")
@@ -419,7 +419,6 @@ def backfill_tracked_summary(
     the DB at all is reported in `net_new` (that is the INSERT path's job, see
     `backfill_participants`), not inserted here.
     """
-    import json
     import sqlite3
     from pathlib import Path
 
@@ -522,7 +521,6 @@ def backfill_participants(
     in `unresolved_champions` and stored as NULL rather than guessed; callers
     should treat a non-empty list as a failure.
     """
-    import json
     import sqlite3
     from pathlib import Path
 

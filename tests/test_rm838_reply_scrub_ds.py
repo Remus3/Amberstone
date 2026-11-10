@@ -285,8 +285,7 @@ def _leaks(path: Path) -> list[str]:
         safe: set[int] = set()
         for node in ast.walk(ast.Module(body=h.body, type_ignores=[])):
             if isinstance(node, ast.Call) and _sanctioned(node):
-                for sub in ast.walk(node):
-                    safe.add(id(sub))
+                safe.update(id(sub) for sub in ast.walk(node))
         for node in ast.walk(ast.Module(body=h.body, type_ignores=[])):
             if (isinstance(node, ast.Name) and node.id == h.name
                     and id(node) not in safe):

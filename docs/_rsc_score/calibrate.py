@@ -562,7 +562,7 @@ def cmd_tally(args):
     # ---- anchor 3: BORN-WRONG : DECAYED ----------------------------------
     subs = Counter()
     for r in ids:
-        fam, sub = maj[r]["origin"] if maj[r]["origin"] else (None, None)
+        fam, sub = maj[r]["origin"] or (None, None)
         if fam == "INHERITED":
             subs[sub] += 1
     bw, dec, unk = subs["BORN-WRONG"], subs["DECAYED"], subs["UNKNOWN"]

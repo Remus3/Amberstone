@@ -989,10 +989,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = out_dir_for(patch, args.out or None)
     target_modes = _MODE_KEYS if args.mode == "all" else (args.mode,)
 
-    logger.info(f"build-order precompute gen patch={patch} modes={target_modes} "
-          f"champions={len(champions)} level={args.level} "
-          f"score_by={args.score_by} "
-          f"dry_run={args.dry_run} out={out_dir}")
+    logger.info(
+        "build-order precompute gen patch=%s modes=%s champions=%d level=%s "
+        "score_by=%s dry_run=%s out=%s",
+        patch, target_modes, len(champions), args.level,
+        args.score_by, args.dry_run, out_dir,
+    )
 
     started = time.time()
     for mode_key in target_modes:
@@ -1002,8 +1004,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         champs, cells = _count_cells(payload)
         if args.dry_run:
-            logger.info(f"  [dry-run] {mode_key:5s}: {champs} champions, "
-                  f"{cells} non-empty orders (not written)")
+            logger.info("  [dry-run] %-5s: %s champions, %s non-empty orders (not written)",
+                        mode_key, champs, cells)
         elif cells == 0:
             # _engine_up() only catches an engine that was dead BEFORE the
             # sweep; one that dies mid-sweep is swallowed per-cell ("one bad
@@ -1019,10 +1021,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         else:
             out_path = out_dir / f"build_orders_{mode_key}.json"
             atomic_write(payload, out_path)
-            logger.info(f"  {mode_key:5s}: {champs} champions, {cells} non-empty "
-                  f"orders -> {out_path.name}")
+            logger.info("  %-5s: %s champions, %s non-empty orders -> %s",
+                        mode_key, champs, cells, out_path.name)
 
-    logger.info(f"done in {time.time() - started:.1f}s")
+    logger.info("done in %.1fs", time.time() - started)
     return 0
 
 

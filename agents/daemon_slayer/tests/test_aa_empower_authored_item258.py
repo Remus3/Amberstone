@@ -27,6 +27,7 @@ champions; the seam only injects under the flag.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer import ENGINE_VERSION
@@ -179,13 +180,13 @@ class AsciiHygieneTests(unittest.TestCase):
     def test_amp_overrides_module_is_ascii(self):
         import agents.daemon_slayer._ability_amp_overrides as mod
 
-        with open(mod.__file__, "rb") as fh:
+        with Path(mod.__file__).open("rb") as fh:
             raw = fh.read()
         bad = [(i, b) for i, b in enumerate(raw) if b > 0x7F]
         self.assertEqual(bad, [], f"non-ASCII bytes in _ability_amp_overrides.py: {bad[:5]}")
 
     def test_this_test_file_is_ascii(self):
-        with open(__file__, "rb") as fh:
+        with Path(__file__).open("rb") as fh:
             raw = fh.read()
         bad = [(i, b) for i, b in enumerate(raw) if b > 0x7F]
         self.assertEqual(bad, [], f"non-ASCII bytes in test file: {bad[:5]}")

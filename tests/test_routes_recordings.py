@@ -211,7 +211,7 @@ class AllowListTests(_Base):
 
     def test_relative_path_refused(self):
         # Relative to the process cwd it WOULD exist; it is still refused.
-        here = os.getcwd()
+        here = Path.cwd()
         os.chdir(self.tmp)
         self.addCleanup(os.chdir, here)
         self.sidecar("123", "media/game.mp4")
@@ -226,7 +226,7 @@ class AllowListTests(_Base):
             import _winapi
             _winapi.CreateJunction(str(target_dir), str(via))
         else:
-            os.symlink(target_dir, via, target_is_directory=True)
+            Path(via).symlink_to(target_dir, target_is_directory=True)
         return via / "g.mp4"
 
     def test_link_walk_stands_alone(self):
@@ -256,7 +256,7 @@ class AllowListTests(_Base):
     def test_symlinked_file_refused(self):
         link = self.media / "link.mp4"
         try:
-            os.symlink(self.video, link)
+            Path(link).symlink_to(self.video)
         except (OSError, NotImplementedError) as exc:
             self.skipTest(f"cannot create a symlink here: {exc}")
         self.sidecar("123", link)
@@ -271,7 +271,7 @@ class AllowListTests(_Base):
             import _winapi
             _winapi.CreateJunction(str(target_dir), str(via))
         else:
-            os.symlink(target_dir, via, target_is_directory=True)
+            Path(via).symlink_to(target_dir, target_is_directory=True)
         self.sidecar("123", via / "g.mp4")
         self.assertRefused(self.get("/api/recordings/123/video"))
         # the same file by its real path is fine
@@ -282,7 +282,7 @@ class AllowListTests(_Base):
         real = self.tmp / "planted.json"
         real.write_text(json.dumps({"obs_output_path": str(self.video)}), encoding="ascii")
         try:
-            os.symlink(real, self.rec_dir / "555.json")
+            (self.rec_dir / "555.json").symlink_to(real)
         except (OSError, NotImplementedError) as exc:
             self.skipTest(f"cannot create a symlink here: {exc}")
         self.assertRefused(self.get("/api/recordings/555/video"))

@@ -46,7 +46,6 @@ regression lock test_frozen_files_clean_of_banned_glyphs.
 """
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 from pathlib import Path

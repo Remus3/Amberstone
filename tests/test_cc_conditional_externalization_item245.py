@@ -78,7 +78,7 @@ class LoaderMatchesDataTests(unittest.TestCase):
         # The data file is in sync with what the loaders re-serialize.
         r = subprocess.run(
             [sys.executable, str(_GEN), "--check"],
-            cwd=str(_REPO), capture_output=True, text=True,
+            cwd=str(_REPO), capture_output=True, text=True, check=False,
         )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 

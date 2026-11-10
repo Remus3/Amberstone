@@ -24,7 +24,7 @@ import sys
 import time
 from pathlib import Path
 
-_OUT_DIR = Path(os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "rc-boot-verify"
+_OUT_DIR = (Path(os.environ["LOCALAPPDATA"]) if "LOCALAPPDATA" in os.environ else Path.home()) / "rc-boot-verify"
 _OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -38,6 +38,7 @@ def _last_boot_iso() -> str | None:
              "(Get-CimInstance Win32_OperatingSystem).LastBootUpTime."
              "ToString('o')"],
             capture_output=True, text=True, errors="replace", timeout=15,
+            check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return None

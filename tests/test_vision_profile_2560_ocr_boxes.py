@@ -13,14 +13,13 @@ drift. Every box must sit inside the 2560x1440 frame with left<right, top<bottom
 """
 from __future__ import annotations
 
-import glob
 import json
-import os
+from pathlib import Path
 
 import pytest
 
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_PROFILES = os.path.join(_ROOT, "data", "vision_profiles")
+_ROOT = str(Path(__file__).absolute().parents[1])
+_PROFILES = str(Path(_ROOT) / "data" / "vision_profiles")
 
 # scalar OCR fields that were previously absent from the 2560 profiles
 _REQUIRED_OCR = {
@@ -30,7 +29,7 @@ _REQUIRED_OCR = {
 
 
 def _profiles_2560():
-    return sorted(glob.glob(os.path.join(_PROFILES, "2560x1440_*.json")))
+    return sorted(str(p) for p in Path(_PROFILES).glob("2560x1440_*.json"))
 
 
 def _require_local_profiles():
@@ -46,18 +45,18 @@ def _require_local_profiles():
 
 def test_2560_profiles_carry_all_numeric_ocr_boxes():
     for path in _require_local_profiles():
-        d = json.loads(open(path, encoding="utf-8").read())
-        assert d.get("base") == [2560, 1440], f"{os.path.basename(path)} wrong base"
+        d = json.loads(Path(path).read_text(encoding="utf-8"))
+        assert d.get("base") == [2560, 1440], f"{Path(path).name} wrong base"
         regions = d.get("regions", {})
         missing = sorted(_REQUIRED_OCR - set(regions))
-        assert not missing, f"{os.path.basename(path)} missing OCR boxes: {missing}"
+        assert not missing, f"{Path(path).name} missing OCR boxes: {missing}"
 
 
 def test_2560_ocr_boxes_are_inside_frame_and_well_formed():
     for path in _require_local_profiles():
-        d = json.loads(open(path, encoding="utf-8").read())
+        d = json.loads(Path(path).read_text(encoding="utf-8"))
         for name, box in d.get("regions", {}).items():
             assert isinstance(box, list) and len(box) == 4, f"{name} not a 4-tuple"
-            l, t, r, b = box
-            assert 0 <= l < r <= 2560, f"{path}:{name} x out of frame: {box}"
+            left, t, r, b = box
+            assert 0 <= left < r <= 2560, f"{path}:{name} x out of frame: {box}"
             assert 0 <= t < b <= 1440, f"{path}:{name} y out of frame: {box}"

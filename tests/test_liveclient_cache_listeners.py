@@ -28,14 +28,18 @@ class ListenerApiTests(unittest.TestCase):
         self.assertIs(calls[0], snap)
 
     def test_add_listener_idempotent_by_identity(self):
-        fn = lambda s: None
+        def fn(s):
+            return None
+
         liveclient_cache.add_listener(fn)
         liveclient_cache.add_listener(fn)
         liveclient_cache.add_listener(fn)
         self.assertEqual(len(liveclient_cache._listeners), 1)
 
     def test_remove_listener(self):
-        fn = lambda s: None
+        def fn(s):
+            return None
+
         liveclient_cache.add_listener(fn)
         liveclient_cache.remove_listener(fn)
         self.assertEqual(len(liveclient_cache._listeners), 0)

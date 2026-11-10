@@ -40,6 +40,7 @@ from core.polled_json import atomic_write_bytes  # noqa: E402
 # is refused before a wiki socket opens (the stdlib default opener followed it
 # with no consent record).
 from lib.wiki_consent import WikiFetchRefused, open_consented  # noqa: E402
+from itertools import starmap
 
 # RM-1180: same set as lib/icons/downloader.py _IMAGE_MAGIC (RM-373), kept
 # local so this script does not pull in lib.http; a test pins agreement.
@@ -71,8 +72,9 @@ def collect_from_db() -> set[str]:
     conn = sqlite3.connect(DB_PATH)
     try:
         for slot in range(7):
-            for (iid,) in conn.execute(f"SELECT DISTINCT item{slot} FROM participants WHERE item{slot}>0"):
-                ids.add(str(iid))
+            ids.update(
+                starmap(str, conn.execute(f"SELECT DISTINCT item{slot} FROM participants WHERE item{slot}>0"))
+            )
     finally:
         conn.close()
     return ids

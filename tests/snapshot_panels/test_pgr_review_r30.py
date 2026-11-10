@@ -30,7 +30,6 @@ quick_review (my_chronic[0] = "Ahri R often held too long pre-6 spikes") and
 NO enriched roster, so the takeaway + collapsed rank-compare + default-tab +
 card-radius assertions all stand on authored, deterministic data.
 """
-import pytest
 from pathlib import Path
 
 SCREENSHOTS = Path(__file__).parent / "screenshots"

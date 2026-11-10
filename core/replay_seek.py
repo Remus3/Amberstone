@@ -355,7 +355,7 @@ def _sample_ms(sample: object) -> int:
         raise ValueError(f"sample time must be a finite number >= 0, "
                          f"got {t_s!r}")
     # round, never int(): 1.001 * 1000 is 1000.9999999999999.
-    return int(round(t_s * 1000))
+    return round(t_s * 1000)
 
 
 def to_timeline(samples) -> Timeline:

@@ -1206,9 +1206,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = out_dir_for(patch, args.out or None)
     target_modes = _MODE_KEYS if args.mode == "all" else (args.mode,)
 
-    logger.info(f"laning-scenarios gen patch={patch} modes={target_modes} "
-          f"champions={len(champions)} enemies={len(enemies)} bands={bands} "
-          f"dry_run={args.dry_run} out={out_dir}")
+    logger.info(
+        "laning-scenarios gen patch=%s modes=%s champions=%d enemies=%d bands=%s "
+        "dry_run=%s out=%s",
+        patch, target_modes, len(champions), len(enemies), bands, args.dry_run, out_dir,
+    )
 
     started = time.time()
     unregistered: list[str] = []
@@ -1226,9 +1228,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if not _lead.gold_income_is_registered(ds_mode):
             unregistered.append(mode_key)
             logger.warning(
-                f"  {mode_key:5s}: SKIPPED - no gross-income row registered for "
-                f"mode={ds_mode} in core.lead_projection, so this table would be "
-                f"the SR table under a {mode_key!r} header (RM-158)."
+                "  %-5s: SKIPPED - no gross-income row registered for "
+                "mode=%s in core.lead_projection, so this table would be "
+                "the SR table under a %r header (RM-158).",
+                mode_key, ds_mode, mode_key,
             )
             continue
         # RM-158 RESIDUAL, same gate one input over. The economy block is
@@ -1239,10 +1242,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if not _lead.level_curve_is_registered(ds_mode):
             unregistered.append(mode_key)
             logger.warning(
-                f"  {mode_key:5s}: SKIPPED - no levelling curve registered for "
-                f"mode={ds_mode} in core.lead_projection, so every band would "
-                f"resolve to the SR minute under a {mode_key!r} header "
-                f"(RM-158 residual)."
+                "  %-5s: SKIPPED - no levelling curve registered for "
+                "mode=%s in core.lead_projection, so every band would "
+                "resolve to the SR minute under a %r header "
+                "(RM-158 residual).",
+                mode_key, ds_mode, mode_key,
             )
             continue
         payload = generate_table(
@@ -1250,18 +1254,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         leaves = _count_leaves(payload)
         if args.dry_run:
-            logger.info(f"  [dry-run] {mode_key:5s}: {leaves} leaf cells (not written)")
+            logger.info("  [dry-run] %-5s: %s leaf cells (not written)", mode_key, leaves)
         else:
             out_path = out_dir / f"laning_scenarios_{mode_key}.json"
             atomic_write(payload, out_path)
-            logger.info(f"  {mode_key:5s}: {leaves} leaf cells -> {out_path.name}")
+            logger.info("  %-5s: %s leaf cells -> %s", mode_key, leaves, out_path.name)
 
-    logger.info(f"done in {time.time() - started:.1f}s")
+    logger.info("done in %.1fs", time.time() - started)
     if unregistered:
         logger.warning(
-            f"laning-scenarios gen: {len(unregistered)} mode(s) skipped for a "
-            f"missing gross-income row: {unregistered}. Register them in "
-            f"core.lead_projection._GOLD_EARNED_PER_MIN and re-run."
+            "laning-scenarios gen: %d mode(s) skipped for a "
+            "missing gross-income row: %s. Register them in "
+            "core.lead_projection._GOLD_EARNED_PER_MIN and re-run.",
+            len(unregistered), unregistered,
         )
         return 2
     return 0

@@ -114,6 +114,7 @@ def _run_cli(*args: str) -> subprocess.CompletedProcess:
         text=True,
         timeout=60,
         cwd=str(_REPO),
+        check=False,
     )
 
 

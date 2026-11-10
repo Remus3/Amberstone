@@ -209,7 +209,7 @@ def kill_pid(pid: int) -> bool:
     """``taskkill /F /PID`` (repo rule: never Stop-Process)."""
     try:
         r = subprocess.run(["taskkill", "/F", "/PID", str(int(pid))],
-                           capture_output=True, timeout=15,
+                           capture_output=True, timeout=15, check=False,
                            creationflags=_NO_WINDOW)
         return r.returncode == 0
     except Exception as exc:  # noqa: BLE001
@@ -224,7 +224,7 @@ def capture_stack(pid: int, app_dir: Path) -> Optional[Path]:
         return None
     try:
         r = subprocess.run([exe, "dump", "--pid", str(int(pid))],
-                           capture_output=True, timeout=30,
+                           capture_output=True, timeout=30, check=False,
                            creationflags=_NO_WINDOW)
         out = Path(app_dir) / "logs" / (
             f"vision_wedge_{time.strftime('%Y%m%d-%H%M%S')}_{int(pid)}.txt")

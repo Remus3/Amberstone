@@ -116,7 +116,7 @@ def test_record_carries_no_prompt_text_and_no_paths(tmp_path):
     # test_no_hardcoded_home_path.py red - a test asserting a home path is not
     # LOGGED, which hardcoded one to say so. The runtime value is unchanged, so
     # the assertion below is exactly as strong as it was.
-    fake_cwd = os.path.join("C:" + os.sep, "Users", "SOMEONE", "private")
+    fake_cwd = str(Path("C:" + os.sep, "Users", "SOMEONE", "private"))
     record_invocation(
         "UserPromptSubmit",
         {"prompt": "SECRETPROMPT", "cwd": fake_cwd, "session_id": "s1"},
@@ -432,7 +432,7 @@ def test_cli_does_not_hang_without_stdin(tmp_path):
     # expected exactly when DEVNULL is not a tty. Either way it never reaches
     # the live log; tests/test_hook_log_live_isolation.py proves the redirect
     # with an empty pipe, which is a non-tty on every OS.
-    with open(os.devnull, "rb") as nul:
+    with Path(os.devnull).open("rb") as nul:
         devnull_is_tty = nul.isatty()
     assert (tmp_path / "redirected.jsonl").exists() is (not devnull_is_tty), (
         "the redirect did not take effect, or a tty hand run was recorded")

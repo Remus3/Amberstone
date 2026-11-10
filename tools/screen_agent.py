@@ -441,12 +441,12 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
         # skip this cycle; the vision server keeps serving its cached frame.
         raise RuntimeError("no frame this cycle (transient - camera rebuilding)")
     if crop is not None:
-        l, t, r, b = crop
-        l = max(0, min(l, img.width))
-        t = max(0, min(t, img.height))
-        r = max(l + 1, min(r, img.width))
-        b = max(t + 1, min(b, img.height))
-        img = img.crop((l, t, r, b))
+        left, top, right, bottom = crop
+        left = max(0, min(left, img.width))
+        top = max(0, min(top, img.height))
+        right = max(left + 1, min(right, img.width))
+        bottom = max(top + 1, min(bottom, img.height))
+        img = img.crop((left, top, right, bottom))
     if drop_blank and _frame_blank(img):
         raise CaptureRefused("blank")
     if MAX_WIDTH and img.width > MAX_WIDTH:

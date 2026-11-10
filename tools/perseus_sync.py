@@ -31,20 +31,20 @@ Usage:
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 try:  # imported as tools.<mod> (tests) or run as a script from tools/
     from tools._perseus_rpc import read_json_reply
 except ImportError:  # pragma: no cover - script invocation
     from _perseus_rpc import read_json_reply
 
-PERSEUS_HOME = os.path.join(os.path.expanduser("~"), ".perseus-vault")
-PV = os.path.join(PERSEUS_HOME, "bin", "perseus-vault.exe")
-DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
+PERSEUS_HOME = str(Path.home() / ".perseus-vault")
+PV = str(Path(PERSEUS_HOME, "bin", "perseus-vault.exe"))
+DB = str(Path(PERSEUS_HOME, "data", "perseus-vault.db"))
 
 # perseus-vault.exe is a CONSOLE-subsystem binary (PE Subsystem=3), so a
 # parent WITHOUT a console of its own gets a new console window allocated
@@ -52,7 +52,7 @@ DB = os.path.join(PERSEUS_HOME, "data", "perseus-vault.db")
 # scheduling any of them under pythonw would surface the flash measured in
 # claude_quota_watch.py on 2026-08-01. Flagged now so that never happens.
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REPO = str(Path(__file__).absolute().parents[1])
 # The project slug is derived from THIS checkout (its main working tree), never
 # baked in: a literal publishes the machine's checkout path and goes stale the
 # day the checkout moves.
@@ -146,7 +146,7 @@ def slugify(text: str, limit: int = 70) -> str:
 
 
 def read_text(path: str) -> str:
-    with open(path, encoding="utf-8", errors="replace") as handle:
+    with Path(path).open(encoding="utf-8", errors="replace") as handle:
         return handle.read()
 
 
@@ -174,7 +174,7 @@ def settled_blocks(claude_md: str) -> list[str]:
 def parse_memory_file(path: str) -> tuple[str, str, str, str]:
     """Return (name, description, type, body) for a memory .md file."""
     raw = read_text(path)
-    name = os.path.basename(path)[:-3]
+    name = Path(path).name[:-3]
     description, mtype, body = "", "reference", raw
     front = re.match(r"^---\n(.*?)\n---\n(.*)$", raw, re.DOTALL)
     if front:
@@ -221,7 +221,7 @@ def sync(vault: Vault) -> dict:
         return True
 
     # 1. Settled - written via the CLI so --always-on can be set.
-    for block in settled_blocks(read_text(os.path.join(REPO, "CLAUDE.md"))):
+    for block in settled_blocks(read_text(str(Path(REPO, "CLAUDE.md")))):
         key = slugify(re.sub(r"[*`]", "", block[2:140]))
         body = json.dumps(
             {
@@ -238,7 +238,7 @@ def sync(vault: Vault) -> dict:
                 "--importance", "0.98", "--entity-type", "decision", "--always-on",
             ],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
-            creationflags=CREATE_NO_WINDOW,
+            creationflags=CREATE_NO_WINDOW, check=False,
         )
         if proc.returncode == 0:
             counts["settled"] += 1
@@ -246,11 +246,11 @@ def sync(vault: Vault) -> dict:
             failures.append(f"settled/{key}")
 
     # 2. Memory files.
-    if os.path.isdir(MEMDIR):
-        for filename in sorted(os.listdir(MEMDIR)):
+    if Path(MEMDIR).is_dir():
+        for filename in sorted(entry.name for entry in Path(MEMDIR).iterdir()):
             if not filename.endswith(".md") or filename == "MEMORY.md":
                 continue
-            name, desc, mtype, body = parse_memory_file(os.path.join(MEMDIR, filename))
+            name, desc, mtype, body = parse_memory_file(str(Path(MEMDIR, filename)))
             if remember(
                 mtype, slugify(name), body, desc,
                 [mtype, "rc-memory"], IMPORTANCE[mtype],
@@ -259,8 +259,8 @@ def sync(vault: Vault) -> dict:
                 counts["memory"] += 1
 
     # 3. LEDGER items.
-    ledger_path = os.path.join(REPO, "docs", "LEDGER.md")
-    if os.path.exists(ledger_path):
+    ledger_path = str(Path(REPO, "docs", "LEDGER.md"))
+    if Path(ledger_path).exists():
         for match in re.finditer(r"^(\d{1,5})\.\s+(.+)$", read_text(ledger_path), re.MULTILINE):
             number, text = match.group(1), match.group(2).strip()
             if len(text) < 30:
@@ -273,8 +273,8 @@ def sync(vault: Vault) -> dict:
 
     # 4. ROADMAP / BACKLOG sections.
     for filename, category in (("ROADMAP.md", "roadmap"), ("BACKLOG.md", "backlog")):
-        path = os.path.join(REPO, filename)
-        if not os.path.exists(path):
+        path = str(Path(REPO, filename))
+        if not Path(path).exists():
             continue
         parts = re.split(r"^(#{2,4} .+)$", read_text(path), flags=re.MULTILINE)
         for index in range(1, len(parts), 2):
@@ -315,7 +315,7 @@ def backfill(vault: Vault) -> tuple[int, int]:
 
 
 def main() -> int:
-    if not os.path.exists(PV):
+    if not Path(PV).exists():
         print(f"perseus-vault binary not found at {PV}", file=sys.stderr)
         return 2
 

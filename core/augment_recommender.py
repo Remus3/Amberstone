@@ -132,10 +132,6 @@ def _participant_for_puuid(detail: dict, puuid: str) -> Optional[dict]:
     return None
 
 
-def _scan_own_history(mode: str, db_path: Path) -> OwnHistory:
-    return _scan_own_history_checked(mode, db_path)[0]
-
-
 def _scan_own_history_checked(
     mode: str, db_path: Path,
 ) -> tuple[OwnHistory, Optional[str]]:

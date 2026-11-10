@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import ast
 
-import pytest
 
 from tests._repo_walk import REPO_ROOT, relative_posix, repo_files
 

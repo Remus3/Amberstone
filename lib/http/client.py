@@ -133,7 +133,7 @@ class ResponseTooLarge(HttpError):
     """
 
 
-class _BlocklistInvalid(Exception):
+class _BlocklistInvalidError(Exception):
     """Blocklist file parsed as JSON but is not the shape we require.
 
     Internal - callers see the effect (fail closed, or last known good),
@@ -163,10 +163,10 @@ def _require_str_list(value: Any, field: str) -> list[str]:
     if value is None:
         return []
     if not isinstance(value, list):
-        raise _BlocklistInvalid(f"{field} must be a list, got {type(value).__name__}")
+        raise _BlocklistInvalidError(f"{field} must be a list, got {type(value).__name__}")
     for i, item in enumerate(value):
         if not isinstance(item, str):
-            raise _BlocklistInvalid(
+            raise _BlocklistInvalidError(
                 f"{field}[{i}] must be a string, got {type(item).__name__}"
             )
     return value
@@ -176,7 +176,7 @@ def _parse_blocklist(raw: str) -> tuple[set[str], tuple[str, ...]]:
     """Parse and validate blocklist text. Raises on anything unexpected."""
     data = _json.loads(raw)
     if not isinstance(data, dict):
-        raise _BlocklistInvalid(
+        raise _BlocklistInvalidError(
             f"top level must be a JSON object, got {type(data).__name__}"
         )
     hosts = _require_str_list(data.get("hostnames"), "hostnames")
@@ -324,7 +324,7 @@ class HttpClient:
             try:
                 raw = self._blocklist_path.read_text(encoding="utf-8")
                 hosts, suffixes = _parse_blocklist(raw)
-            except (OSError, _json.JSONDecodeError, UnicodeDecodeError, _BlocklistInvalid) as e:
+            except (OSError, _json.JSONDecodeError, UnicodeDecodeError, _BlocklistInvalidError) as e:
                 # Record the bad file's mtime so we do not re-parse (and
                 # re-log) on every single is_blocked() call. A repair changes
                 # the mtime and triggers a fresh load.

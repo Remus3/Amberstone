@@ -30,7 +30,7 @@ import json
 import logging
 import time
 
-from dashboard._context import APP_DIR, read_json, read_json_checked
+from dashboard._context import APP_DIR, read_json_checked
 
 _log = logging.getLogger("rc.web_dashboard")
 

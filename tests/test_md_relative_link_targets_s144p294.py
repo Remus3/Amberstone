@@ -73,8 +73,7 @@ def _dirs(tracked: frozenset[str]) -> frozenset[str]:
     out: set[str] = {""}
     for p in tracked:
         parts = p.split("/")[:-1]
-        for i in range(1, len(parts) + 1):
-            out.add("/".join(parts[:i]))
+        out.update("/".join(parts[:i]) for i in range(1, len(parts) + 1))
     return frozenset(out)
 
 

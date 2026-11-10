@@ -20,7 +20,6 @@ Loaded by file path so the module's argv-driven CFG load needs no real launch
 from __future__ import annotations
 
 import importlib.util
-import json
 from pathlib import Path
 
 import pytest

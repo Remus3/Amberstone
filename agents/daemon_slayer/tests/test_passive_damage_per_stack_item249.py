@@ -14,6 +14,7 @@ NotSeeded test.
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from agents import daemon_slayer
 from agents.daemon_slayer.abilities import AbilitiesSnapshot
@@ -190,12 +191,12 @@ class EnginePinTests(unittest.TestCase):
 class AsciiHygieneTests(unittest.TestCase):
     def test_module_is_ascii(self) -> None:
         import agents.daemon_slayer._passive_damage_overrides as M
-        src = open(M.__file__, encoding="utf-8").read()
+        src = Path(M.__file__).read_text(encoding="utf-8")
         bad = [(i, c) for i, c in enumerate(src) if ord(c) > 127]
         self.assertEqual(bad, [], f"non-ASCII at {bad[:5]}")
 
     def test_test_file_is_ascii(self) -> None:
-        src = open(__file__, encoding="utf-8").read()
+        src = Path(__file__).read_text(encoding="utf-8")
         bad = [(i, c) for i, c in enumerate(src) if ord(c) > 127]
         self.assertEqual(bad, [], f"non-ASCII at {bad[:5]}")
 

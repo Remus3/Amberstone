@@ -313,7 +313,7 @@ def build_catalogue(set_number, docs, extract=None) -> Catalogue:
     planner_paths: dict = {}
     planner = docs.get(DOC_PLANNER)
     if isinstance(planner, dict):
-        keys = [set_name] + sorted(k for k in planner if k != set_name)
+        keys = [set_name, *sorted(k for k in planner if k != set_name)]
         for key in keys:
             for r in _rows(planner.get(key)):
                 if isinstance(r.get("character_id"), str):

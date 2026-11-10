@@ -55,7 +55,7 @@ def _engine_modules() -> list[str]:
 def _run(code: str, *args: str) -> dict:
     proc = subprocess.run([sys.executable, "-c", code, *args],
                           cwd=str(ROOT), capture_output=True, text=True,
-                          timeout=120, creationflags=_NO_WINDOW)
+                          timeout=120, creationflags=_NO_WINDOW, check=False)
     assert proc.returncode == 0, proc.stdout[-2000:] + proc.stderr[-2000:]
     return json.loads(proc.stdout.strip().splitlines()[-1])
 

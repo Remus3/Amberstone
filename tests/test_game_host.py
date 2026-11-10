@@ -10,7 +10,6 @@ import importlib
 import ipaddress
 import logging
 import os
-import re
 from pathlib import Path
 from urllib.parse import urlsplit
 

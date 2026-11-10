@@ -160,7 +160,7 @@ class PickProvenanceBehaviorTests(unittest.TestCase):
         harness_path.write_text(harness, encoding="utf-8")
         proc = subprocess.run(
             [_NODE, str(harness_path)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, text=True, timeout=30, check=False,
         )
         if proc.returncode != 0:
             raise AssertionError(
@@ -206,7 +206,7 @@ class AsciiHygieneTests(unittest.TestCase):
         self.assertEqual([b for b in Path(__file__).read_bytes() if b > 0x7F], [])
 
     def test_no_dash_glyph_drift_in_panel_source(self) -> None:
-        banned = re.compile("[\\u2013\\u2014\\u2018\\u2019\\u201c\\u201d]")
+        banned = re.compile(r"[\u2013\u2014\u2018\u2019\u201c\u201d]")
         self.assertIsNone(banned.search(_read_source()))
 
 

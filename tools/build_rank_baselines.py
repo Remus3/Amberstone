@@ -147,7 +147,7 @@ def _others_running() -> bool:
              "$_.CommandLine -like '*replay_roster_pull*' -or "
              "$_.CommandLine -like '*ladder_role_scout*' } | "
              "Measure-Object).Count"],
-            capture_output=True, text=True, errors="replace", timeout=30)
+            capture_output=True, text=True, errors="replace", timeout=30, check=False)
         return int((out.stdout or "0").strip() or 0) > 0
     except Exception:  # noqa: BLE001
         return False

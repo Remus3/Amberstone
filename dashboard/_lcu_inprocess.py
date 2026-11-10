@@ -76,9 +76,9 @@ the relay payload for those two keys:
 from __future__ import annotations
 
 import logging
-import os
 import threading
 import time
+from pathlib import Path
 
 from lcu.snapshot_shape import shape_snapshot
 
@@ -185,7 +185,7 @@ def _log_degrade(exc: BaseException) -> None:
         filename, lineno, func = "?", 0, "?"
         tb = exc.__traceback__
         while tb is not None:
-            filename = os.path.basename(tb.tb_frame.f_code.co_filename)
+            filename = Path(tb.tb_frame.f_code.co_filename).name
             lineno = tb.tb_lineno
             func = tb.tb_frame.f_code.co_name
             tb = tb.tb_next

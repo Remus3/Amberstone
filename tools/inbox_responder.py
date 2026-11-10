@@ -93,7 +93,7 @@ _READ_ONLY_ARGV: frozenset[tuple[str, ...]] = frozenset({
 _SHELL_META = ("&&", "||", ";", "|", ">", "<", "`", "$(", "\n", "\r")
 
 _ASCII_OK = set(string.printable)
-_HEX = set("0123456789abcdefABCDEF")
+_HEX = set(string.hexdigits)
 
 # The only roots a suite action may name. Not a path check - see _validate_suite.
 _SUITE_ROOTS: frozenset[str] = frozenset({"tests", "agents/daemon_slayer"})

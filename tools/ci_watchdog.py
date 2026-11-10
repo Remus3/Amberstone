@@ -530,7 +530,7 @@ def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 120,
         p = subprocess.run(
             cmd, cwd=str(cwd) if cwd else None, capture_output=True,
             text=True, encoding="utf-8", errors="replace",
-            timeout=timeout, creationflags=no_window, env=env,
+            timeout=timeout, creationflags=no_window, env=env, check=False,
         )
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except (OSError, subprocess.SubprocessError) as exc:

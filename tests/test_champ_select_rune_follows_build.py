@@ -26,7 +26,6 @@ Two layers (mirrors the repo's champ_select panel-DOM test convention):
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import subprocess
 import tempfile
@@ -228,7 +227,7 @@ class BehaviorTests(unittest.TestCase):
         cls._harness.write_text(harness, encoding="utf-8")
         proc = subprocess.run(
             [_NODE, str(cls._harness)],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, text=True, timeout=30, check=False,
         )
         if proc.returncode != 0:
             raise AssertionError(

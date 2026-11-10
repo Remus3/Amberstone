@@ -73,7 +73,7 @@ class DecisionsLogTailRM238(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "decisions_log.jsonl"
             row = json.dumps({"id": "x", "pad": "p" * 600})
-            with open(p, "w", encoding="utf-8") as f:
+            with p.open("w", encoding="utf-8") as f:
                 f.writelines(  # ~12 MB
                     row.replace('"x"', f'"d{i}"') + "\n" for i in range(20000))
             size = p.stat().st_size
@@ -89,7 +89,7 @@ class DecisionsLogTailRM238(unittest.TestCase):
     def test_all_junk_tail_is_capped_by_budget(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "decisions_log.jsonl"
-            with open(p, "w", encoding="utf-8") as f:
+            with p.open("w", encoding="utf-8") as f:
                 f.write(json.dumps({"id": "old"}) + "\n")
                 f.writelines(  # ~6 MB of torn lines
                     "{not json at all..\n" for _ in range(200000))

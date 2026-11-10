@@ -89,7 +89,7 @@ def _git(root, *args, timeout=120):
     env = dict(os.environ, GIT_TERMINAL_PROMPT="0")
     try:
         r = subprocess.run(["git", "-C", str(root), *args], capture_output=True,
-                           timeout=timeout, env=env, creationflags=_NO_WINDOW)
+                           timeout=timeout, env=env, creationflags=_NO_WINDOW, check=False)
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout.decode("utf-8", "replace") if r.returncode == 0 else None
@@ -144,7 +144,7 @@ def _log(root, row):
     path = Path(root) / LOG_REL
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "a", encoding="ascii", errors="replace", newline="\n") as f:
+        with path.open("a", encoding="ascii", errors="replace", newline="\n") as f:
             f.write(json.dumps(row, sort_keys=True) + "\n")
     except OSError:
         pass

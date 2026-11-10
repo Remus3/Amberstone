@@ -58,7 +58,6 @@ from agents.daemon_slayer.cc_conditional import (
     get_total_conditional_cc_seconds,
 )
 from agents.daemon_slayer.cc_pressure import (
-    CcPressureResult,
     compute_cc_pressure,
 )
 from agents.daemon_slayer.ehp import effective_cc_duration
