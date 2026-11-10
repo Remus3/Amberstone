@@ -201,9 +201,9 @@ class BootsConstantsLockStepTests(unittest.TestCase):
     def test_boots_names_match_migration_tool(self) -> None:
         """Sanity check: the migration tool's boots-name set is the
         same as this guard's set."""
-        from tools.champion_loadout_validate_meta import _BOOTS_DISPLAY_NAMES as tool_set
+        from tools.champion_loadout_validate_meta import _BOOTS_DISPLAY_NAMES as TOOL_SET
         self.assertEqual(
-            tool_set, _BOOTS_DISPLAY_NAMES,
+            TOOL_SET, _BOOTS_DISPLAY_NAMES,
             "Migration tool and drift guard boots-name sets diverged. "
             "Edit both in lock-step."
         )
@@ -211,9 +211,9 @@ class BootsConstantsLockStepTests(unittest.TestCase):
     def test_bootsless_champs_match_engine(self) -> None:
         """Sanity check: the bootsless champion set matches the engine
         authority at ``core.build_order._BOOTSLESS_CHAMPS``."""
-        from core.build_order import _BOOTSLESS_CHAMPS as engine_set
+        from core.build_order import _BOOTSLESS_CHAMPS as ENGINE_SET
         self.assertEqual(
-            engine_set, _BOOTSLESS_CHAMPS,
+            ENGINE_SET, _BOOTSLESS_CHAMPS,
             "Engine and drift guard bootsless-champ sets diverged. "
             "core.build_order is authoritative; sync this guard."
         )

@@ -192,6 +192,6 @@ def test_the_second_bundle_is_not_in_ruff_toml_select():
 
 def test_the_second_bundle_does_not_repeat_the_first():
     """Two bundles that both hold a rule are two places to forget to update: keep the sets disjoint."""
-    from tests.test_bug_class_lint_bundle_zero_ratchet_s144p319 import _PROBES as first
+    from tests.test_bug_class_lint_bundle_zero_ratchet_s144p319 import _PROBES as FIRST_PROBES
 
-    assert not sorted(set(_PROBES) & set(first))
+    assert not sorted(set(_PROBES) & set(FIRST_PROBES))

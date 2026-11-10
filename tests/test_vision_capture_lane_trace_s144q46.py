@@ -135,8 +135,8 @@ def test_encode_failure_is_counted_as_error(monkeypatch):
 def test_imagegrab_unimportable_is_counted_as_unavailable(monkeypatch):
     monkeypatch.setattr(ofs, "obs_frame_source_enabled", lambda: False)
     monkeypatch.setattr(_frame, "_gdi_gate", lambda: None)
-    import PIL as pil_pkg
-    monkeypatch.delattr(pil_pkg, "ImageGrab", raising=False)
+    import PIL as PIL_PKG
+    monkeypatch.delattr(PIL_PKG, "ImageGrab", raising=False)
     monkeypatch.setitem(sys.modules, "PIL.ImageGrab", None)
     assert _frame._fetch_frame_direct() is None
     lane = _gdi_lane()
