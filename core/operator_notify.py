@@ -128,6 +128,7 @@ class Notifier:
         raise NotImplementedError
 
     def __repr__(self) -> str:
+        """Return a repr with every secret-named attribute masked."""
         parts = []
         for k, v in sorted(vars(self).items()):
             shown = "***" if _SECRET_ATTR.search(k) and v else repr(v)

@@ -159,6 +159,7 @@ class DataSnapshot:
     _wiki_ability_alias: dict = field(default_factory=dict, repr=False, compare=False)
 
     def __post_init__(self) -> None:
+        """Build the private wiki-ability alias map from ``wiki_ability_stats``."""
         alias: dict = {}
         stats = self.wiki_ability_stats if isinstance(self.wiki_ability_stats, dict) else {}
         for key, rec in stats.items():

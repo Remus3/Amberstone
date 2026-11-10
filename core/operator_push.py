@@ -360,6 +360,7 @@ class NtfyNotifier(_on.Notifier):
         self._sweep = sweep
 
     def __repr__(self) -> str:
+        """Return a repr that omits the server, topic and token."""
         # Server, topic and token are all capabilities: none is shown.
         return (f"NtfyNotifier(timeout_s={self.timeout_s}, "
                 f"tailnet_suffix={self.tailnet_suffix!r})")
