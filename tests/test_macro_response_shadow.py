@@ -1,9 +1,10 @@
-# Tests for core/macro_response_shadow.py - the RC2 P5.7 (WS4) do-not-flip-blind
-# shadow log. Records the deterministic macro response row alongside the native
-# Haiku objective prose for a future served-field flip's agreement gate.
-#
-# Covers: a fresh write (fields verbatim), a None-macro silent-tick record,
-# coarse-state dedup, the exact-game_time freshness guard, and fail-soft.
+"""Tests for core/macro_response_shadow.py - the RC2 P5.7 (WS4) do-not-flip-blind
+shadow log. Records the deterministic macro response row alongside the native
+Haiku objective prose for a future served-field flip's agreement gate.
+
+Covers: a fresh write (fields verbatim), a None-macro silent-tick record,
+coarse-state dedup, the exact-game_time freshness guard, and fail-soft.
+"""
 from __future__ import annotations
 
 import json

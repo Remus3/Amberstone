@@ -1,20 +1,21 @@
-# Tests for core/macro_decision_tree.py (ZOI Wave-2 agent-macro, fog-only v0)
-# and its wiring into dashboard/_deterministic_coaching.py.
-#
-# Grep-confirmed API surfaces:
-#   - registry-of-pure-predicates doctrine: core/decision_detector.py:133-142
-#     (DECISION_REGISTRY - list of pure fns, purely additive).
-#   - callout schema {tag, line, eta_s, kind}: core/event_callouts.py:220-228.
-#   - has_capability fail-CLOSED ward gate: core/mode_capabilities.py:80-95.
-#   - advisory chain + 3-row clamp: dashboard/_deterministic_coaching.py
-#     _compute_uncached (macro_response kind="macro_response"
-#     core/macro_response.py:295 - the NEW decision-tree kind is "macro",
-#     no collision).
-#   - vision fog per-enemy shape: core/vision_tracker.py:376-388.
-#   - load_vision_state test seam: core/laning_cv_overrides.py:62-72
-#     (lazy-imported per call by _stamp_vision_summary, so patching the
-#     module attribute works - same pattern as
-#     tests/test_deterministic_coaching_wire.py:630-649).
+"""Tests for core/macro_decision_tree.py (ZOI Wave-2 agent-macro, fog-only v0)
+and its wiring into dashboard/_deterministic_coaching.py.
+
+Grep-confirmed API surfaces:
+  - registry-of-pure-predicates doctrine: core/decision_detector.py:133-142
+    (DECISION_REGISTRY - list of pure fns, purely additive).
+  - callout schema {tag, line, eta_s, kind}: core/event_callouts.py:220-228.
+  - has_capability fail-CLOSED ward gate: core/mode_capabilities.py:80-95.
+  - advisory chain + 3-row clamp: dashboard/_deterministic_coaching.py
+    _compute_uncached (macro_response kind="macro_response"
+    core/macro_response.py:295 - the NEW decision-tree kind is "macro",
+    no collision).
+  - vision fog per-enemy shape: core/vision_tracker.py:376-388.
+  - load_vision_state test seam: core/laning_cv_overrides.py:62-72
+    (lazy-imported per call by _stamp_vision_summary, so patching the
+    module attribute works - same pattern as
+    tests/test_deterministic_coaching_wire.py:630-649).
+"""
 from __future__ import annotations
 
 import json

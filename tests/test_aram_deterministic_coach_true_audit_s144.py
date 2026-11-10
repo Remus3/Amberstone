@@ -1,14 +1,15 @@
-# s144 true-audit of core/aram_deterministic_coach.py (lane 8, one file).
-#
-# build_block documents that each field degrades INDEPENDENTLY and that it
-# never raises. Measured before this fix: one >1e308 int hp_pct or
-# owned_item_count, an inf gold or a 5000-digit gold raised out of a helper
-# that sat outside its own try and blanked EVERY field of the block; a bool or
-# a str was read as a number (False tower HP read "Enemy tower down - push to
-# their base", "2" low enemies promoted ALL-IN); out-of-range values were
-# banded (hp -5 read FALL BACK, a -5 tower read destroyed, 2.9 low enemies read
-# 2); and the reasons map copied any value through to the shadow jsonl (a NaN
-# wrote a bare NaN token, an object made json.dumps raise and lost the record).
+"""s144 true-audit of core/aram_deterministic_coach.py (lane 8, one file).
+
+build_block documents that each field degrades INDEPENDENTLY and that it
+never raises. Measured before this fix: one >1e308 int hp_pct or
+owned_item_count, an inf gold or a 5000-digit gold raised out of a helper
+that sat outside its own try and blanked EVERY field of the block; a bool or
+a str was read as a number (False tower HP read "Enemy tower down - push to
+their base", "2" low enemies promoted ALL-IN); out-of-range values were
+banded (hp -5 read FALL BACK, a -5 tower read destroyed, 2.9 low enemies read
+2); and the reasons map copied any value through to the shadow jsonl (a NaN
+wrote a bare NaN token, an object made json.dumps raise and lost the record).
+"""
 from __future__ import annotations
 
 import json

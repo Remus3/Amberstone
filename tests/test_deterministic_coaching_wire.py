@@ -1,14 +1,15 @@
-# Tests for the Haiku-elimination wave 3 deterministic coaching wire (item 265 W3A).
-#
-# Covers dashboard/_deterministic_coaching.py:
-#   - _build_game_state field mapping (coach-wins-then-lc; enemy_comp from lc).
-#   - compute_deterministic returns the 3 keys + is fail-soft (never raises).
-#   - the TTL cache calls the underlying laning path ONCE within TTL, recomputes
-#     after monotonic fast-forward.
-#   - resolve_choices: deterministic-FIRST, else native, else synth, else [].
-#   - ASCII hygiene on the 2 new/edited files (no non-ASCII in the added lines).
-#
-# All laning calls are monkeypatched so NO real DS-engine network call happens.
+"""Tests for the Haiku-elimination wave 3 deterministic coaching wire (item 265 W3A).
+
+Covers dashboard/_deterministic_coaching.py:
+  - _build_game_state field mapping (coach-wins-then-lc; enemy_comp from lc).
+  - compute_deterministic returns the 3 keys + is fail-soft (never raises).
+  - the TTL cache calls the underlying laning path ONCE within TTL, recomputes
+    after monotonic fast-forward.
+  - resolve_choices: deterministic-FIRST, else native, else synth, else [].
+  - ASCII hygiene on the 2 new/edited files (no non-ASCII in the added lines).
+
+All laning calls are monkeypatched so NO real DS-engine network call happens.
+"""
 from __future__ import annotations
 
 import os

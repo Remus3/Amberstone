@@ -1,1 +1,1 @@
-# tests/fixtures/__init__.py
+"""Shared test fixtures: golden snapshots, synthetic logs, replay and Live Client samples."""

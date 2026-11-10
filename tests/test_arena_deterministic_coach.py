@@ -1,11 +1,12 @@
-# Tests for core.arena_deterministic_coach - the Stage 2 pure assembler.
-#
-# build_block assembles the 7 deterministic Arena coach fields (action,
-# round_strategy, fight_rule, augment_advice, anvil_advice,
-# target_priority, risk - the live artifact keys written at
-# coaches/arena_coach.py:781-787). It is PURE (primitives in, dict out),
-# fail-soft (never raises), and partial-read friendly (works from
-# whatever inputs are present on a given tick).
+"""Tests for core.arena_deterministic_coach - the Stage 2 pure assembler.
+
+build_block assembles the 7 deterministic Arena coach fields (action,
+round_strategy, fight_rule, augment_advice, anvil_advice,
+target_priority, risk - the live artifact keys written at
+coaches/arena_coach.py:781-787). It is PURE (primitives in, dict out),
+fail-soft (never raises), and partial-read friendly (works from
+whatever inputs are present on a given tick).
+"""
 from __future__ import annotations
 
 from core.arena_deterministic_coach import build_block

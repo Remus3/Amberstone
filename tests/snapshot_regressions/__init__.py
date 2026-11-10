@@ -1,1 +1,1 @@
-# tests/snapshot_regressions/__init__.py
+"""Snapshot and app authority regression tests."""

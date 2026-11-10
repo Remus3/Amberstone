@@ -1,4 +1,4 @@
-"""D100 / D104 - a production module and a production package carry a docstring (S144-P-633).
+"""D100 / D104 - a production or root-tests module and package carry a docstring (S144-P-633, S144-P-636).
 
 ruff.toml does not select D100 (missing module docstring) or D104 (missing package docstring) and no
 earlier ratchet covers them. Five production packages (``core``, ``modes``, ``modules``, ``ops``,
@@ -11,9 +11,13 @@ One baseline row stays: ``core/safe_coach_output.py`` (another lane branch chang
 leaves it; the merger or the owning lane adds the docstring and drops the row). The row can only
 shrink: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails.
 
-Scope: tracked ``.py`` files. ``tests/``, any ``*/tests/`` directory and the vendored ``ops/fleet_kit``
-are out of scope (the test-side findings are a separate slice). The run uses NO config
-(``--isolated``) so a per-file-ignore cannot hide a finding.
+S144-P-636 brought the root ``tests/`` tree in: 17 test modules whose leading ``#`` comment block is now
+the module docstring (text unchanged) and 14 test packages (``tests`` itself and 13 subpackages) with a
+one-line docstring. ``test_package_docstring_is_set`` covers those packages too.
+
+Scope: tracked ``.py`` files, including the root ``tests/`` tree. Any nested ``*/tests/`` directory
+(``tools/tests``, ``agents/daemon_slayer/tests``: other lanes' trees) and the vendored ``ops/fleet_kit``
+are out of scope. The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding.
 """
 from __future__ import annotations
 
@@ -36,7 +40,6 @@ pytestmark = pytest.mark.skipif(
 
 _RULES = "D100,D104"
 _OUT_OF_SCOPE = (
-    "tests/",
     "tools/tests/",
     "ops/fleet_kit/",
 )
@@ -50,6 +53,20 @@ _FIXED_PACKAGES = (
     "modules",
     "ops",
     "ops.audit",
+    "tests",
+    "tests.fixtures",
+    "tests.fixtures.snapshots",
+    "tests.fu01_minimap",
+    "tests.fu02_team_context",
+    "tests.phase2_smoke",
+    "tests.phase4_dispatch_validate",
+    "tests.phase7_polish",
+    "tests.phase8_smoke",
+    "tests.phase_b_champ_select",
+    "tests.preflip_mode",
+    "tests.rc2_l3",
+    "tests.snapshot_panels",
+    "tests.snapshot_regressions",
 )
 
 

@@ -1,20 +1,21 @@
-# Tests for core/macro_context.py - the fog-only MacroContext snapshot (ZOI
-# Wave-2 agent-macro, decision-tree v0).
-#
-# Grep-confirmed API surfaces the fixtures mirror:
-#   - per-enemy fog shape {champion, team, level, is_dead, respawn_in_s,
-#     visible, missing_for_s, last_seen_pos, last_seen_t, last_seen_zone}:
-#     core/vision_tracker.py:376-388
-#   - objective_events shape {name, killer_team, down_at_s[, dragon_type]}:
-#     core/event_callouts.py:196-217 (_last_kill_t) + :671-677
-#     (_is_elemental_drake)
-#   - SR schedule constants SR_DRAGON_FIRST_S=300 / SR_DRAGON_RESPAWN_S=300 /
-#     SR_BARON_FIRST_S=1200 / SR_BARON_RESPAWN_S=360:
-#     core/event_callouts.py:66-69
-#   - lead shape {"state": "ahead"/"even"/"behind", ...}:
-#     core/lead_projection.py:231-250
-#   - phase_for boundaries (early < 600s): core/lead_projection.py:70-71,
-#     :170-182
+"""Tests for core/macro_context.py - the fog-only MacroContext snapshot (ZOI
+Wave-2 agent-macro, decision-tree v0).
+
+Grep-confirmed API surfaces the fixtures mirror:
+  - per-enemy fog shape {champion, team, level, is_dead, respawn_in_s,
+    visible, missing_for_s, last_seen_pos, last_seen_t, last_seen_zone}:
+    core/vision_tracker.py:376-388
+  - objective_events shape {name, killer_team, down_at_s[, dragon_type]}:
+    core/event_callouts.py:196-217 (_last_kill_t) + :671-677
+    (_is_elemental_drake)
+  - SR schedule constants SR_DRAGON_FIRST_S=300 / SR_DRAGON_RESPAWN_S=300 /
+    SR_BARON_FIRST_S=1200 / SR_BARON_RESPAWN_S=360:
+    core/event_callouts.py:66-69
+  - lead shape {"state": "ahead"/"even"/"behind", ...}:
+    core/lead_projection.py:231-250
+  - phase_for boundaries (early < 600s): core/lead_projection.py:70-71,
+    :170-182
+"""
 from __future__ import annotations
 
 import dataclasses
