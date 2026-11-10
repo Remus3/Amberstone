@@ -22,11 +22,13 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 from core import polled_json
 from ops import rc_self_monitor as rsm
+
+if TYPE_CHECKING:
+    import pytest
 
 NOW = 2_000_000_000.0
 AGE = 3600.0

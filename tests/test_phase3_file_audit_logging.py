@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 import ops.phase3_file_audit as pfa
+
+if TYPE_CHECKING:
+    import pytest
 
 
 class _FakeTask:
