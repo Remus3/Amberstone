@@ -1,4 +1,6 @@
-"""tests/test_aram_coach_shadow_choices_native_emit.py
+"""Regression pins for the ARAM shadow log `choices` column and the shared parser.
+
+tests/test_aram_coach_shadow_choices_native_emit.py
 
 Regression pin for the ARAM shadow log's once-always-empty live `choices`
 column, and for the ARAM coach reading that column through the SHARED parser.

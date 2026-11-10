@@ -38,6 +38,7 @@ class _FakeConn:
     """Stands in for http.client.HTTPSConnection. Counts requests; can be
     told to raise on a specific 0-based request index to simulate a peer
     that dropped a kept-alive socket."""
+
     instances = []
 
     def __init__(self, host, port, timeout=None, context=None):

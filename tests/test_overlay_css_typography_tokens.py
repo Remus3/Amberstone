@@ -1,4 +1,5 @@
-"""
+"""R8: TYPOGRAPHY guard for the Electron overlay surface.
+
 tests/test_overlay_css_typography_tokens.py
 
 R8 (DIRECTOR REFILL 2026-06-19) - TYPOGRAPHY guard for the Electron overlay

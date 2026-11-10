@@ -190,7 +190,7 @@ def test_named_symbol_holds(qual, text):
         "that names it (RM-1295)")
 
 
-@pytest.mark.parametrize("qual", ("load_json", "safe_write"))
+@pytest.mark.parametrize("qual", ["load_json", "safe_write"])
 def test_swallowing_callee_has_no_raise(qual):
     # The D-class prose says no exception from these two can reach the
     # caller's handler; a raise statement in either body would make it wrong

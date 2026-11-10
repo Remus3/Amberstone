@@ -1,12 +1,13 @@
-# Tests for core/objective_playbook.py - the RC2 P5.5 (WS3) deterministic
-# objective playbook callout. Joins the objective schedule (event_callouts) with
-# the macro lead read (lead_projection) into ONE kind="playbook" directive row.
-#
-# Covers: the (objective x lead-state) truth table, elder wildcard, soonest
-# covered-objective selection (plates/spikes skipped), phase gating
-# (baron mid/late, elder late), CV upgrades (enemy dead -> free; >=3 missing ->
-# contest) and their near-window gate, eta passthrough, fail-soft on garbage,
-# callout shape, the <=12-word line budget, and ASCII hygiene.
+"""Tests for core/objective_playbook.py - the RC2 P5.5 (WS3) deterministic
+objective playbook callout. Joins the objective schedule (event_callouts) with
+the macro lead read (lead_projection) into ONE kind="playbook" directive row.
+
+Covers: the (objective x lead-state) truth table, elder wildcard, soonest
+covered-objective selection (plates/spikes skipped), phase gating
+(baron mid/late, elder late), CV upgrades (enemy dead -> free; >=3 missing ->
+contest) and their near-window gate, eta passthrough, fail-soft on garbage,
+callout shape, the <=12-word line budget, and ASCII hygiene.
+"""
 from __future__ import annotations
 
 import unittest

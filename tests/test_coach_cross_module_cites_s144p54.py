@@ -75,7 +75,7 @@ def test_no_line_number_cite_in_site(rel, cls, name):
         "symbol instead (RM-1298)")
 
 
-@pytest.mark.parametrize(("rel", "cls", "name", "needle"), (
+@pytest.mark.parametrize(("rel", "cls", "name", "needle"), [
     ("coaches/_base_coach.py", "BaseCoach", "__init__",
      "register_coach (core.hotkeys) is"),
     ("coaches/_base_coach.py", "BaseCoach", "_record_coach_call",
@@ -84,7 +84,7 @@ def test_no_line_number_cite_in_site(rel, cls, name):
      "core.feature_policy._TFT_LIVE_DISABLED_PAYLOAD"),
     ("coaches/tft_coach.py", "Coach", "_default_payloads",
      "tft.tft_live_analysis.TftLiveAnalysis._write (its `out` literal holds"),
-))
+])
 def test_site_names_the_symbol(rel, cls, name, needle):
     seg = " ".join(_segment(rel, cls, name).replace("#", " ").split())
     assert needle in seg, f"{rel} {cls}.{name} no longer names {needle!r}"

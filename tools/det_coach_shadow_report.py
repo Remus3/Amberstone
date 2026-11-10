@@ -567,7 +567,9 @@ def build_report(path: Path) -> dict:
 
 
 def _out(text: str) -> None:
-    """Print one human-summary line as ASCII. Mode / champion / engine strings
+    """Print one human-summary line as ASCII.
+
+    Mode / champion / engine strings
     come from the log, and a valid JSON row can carry a lone surrogate or a
     character the console code page lacks; either raised UnicodeEncodeError
     out of main (s144 true-audit). Non-ASCII is backslash-escaped instead.

@@ -241,6 +241,7 @@ def _powershell_parse(blocks: list[_Block], tmp_path: Path) -> dict[str, dict]:
         capture_output=True,
         text=True,
         timeout=120,
+        check=False,
     )
     assert proc.returncode == 0, (
         f"PowerShell parse probe failed (rc={proc.returncode}): {proc.stderr}"

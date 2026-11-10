@@ -1,4 +1,6 @@
-"""tests/test_gated_frame_readback.py
+"""The one-command S6 frame read-back absorbs the two traps that cost two gated cycles.
+
+tests/test_gated_frame_readback.py
 
 `tools/gated_frame_readback.py` is the one-command S6 read-back for lane 9. Two
 s134 gated cycles lost that read-back to two traps it must now absorb:

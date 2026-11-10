@@ -26,9 +26,12 @@ from __future__ import annotations
 
 import json
 import tracemalloc
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tools.det_coach_shadow_report as rpt
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _choice(key, label, source_tag):

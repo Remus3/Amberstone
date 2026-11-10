@@ -72,7 +72,7 @@ print(round(worst, 3), where)
 def _probe(names, scale):
     run = subprocess.run([sys.executable, "-c", _PROBE, str(REPO), ",".join(names), str(scale),
                           str(REPEATS), repr(SHAPES)],
-                         capture_output=True, text=True, timeout=300, cwd=str(REPO))
+                         capture_output=True, text=True, timeout=300, cwd=str(REPO), check=False)
     assert run.returncode == 0, run.stderr[-2000:]
     worst, _, where = run.stdout.strip().partition(" ")
     return float(worst), where

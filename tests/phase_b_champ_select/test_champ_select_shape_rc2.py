@@ -466,7 +466,7 @@ class TestConnectionAgnostic(unittest.TestCase):
         )
         res = subprocess.run(
             [sys.executable, "-c", probe],
-            cwd=str(_PROJECT_ROOT), capture_output=True, text=True)
+            cwd=str(_PROJECT_ROOT), capture_output=True, text=True, check=False)
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertIn("cs_session_is_dict", res.stdout)
 

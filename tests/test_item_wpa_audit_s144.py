@@ -28,13 +28,16 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
 
 from core import item_wpa
 from tests.test_item_wpa import IE, _add_match, _build_db
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _SCHEMA = """
 CREATE TABLE matches (

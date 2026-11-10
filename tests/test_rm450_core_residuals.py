@@ -432,12 +432,12 @@ class _FakeCv2:
     reads = 0
 
     @classmethod
-    def imread(cls, path, flag):
+    def imread(cls, path, _flag):
         cls.reads += 1
         return None if cls.fail else "img:" + Path(path).stem
 
     @classmethod
-    def imdecode(cls, buf, flag):
+    def imdecode(cls, buf, _flag):
         # s144 cycle 132 (RM-1624): vision_template_match decodes the file
         # BYTES; the fixture icon's bytes are its stem.
         cls.reads += 1

@@ -102,7 +102,7 @@ def _run_node(script: str, module: Path = CALLOUTS_JS) -> dict:
     full = script.replace("__URI__", module.resolve().as_uri())
     res = subprocess.run(
         [node, "--input-type=module", "-e", full],
-        capture_output=True, text=True, cwd=str(REPO), timeout=30,
+        capture_output=True, text=True, cwd=str(REPO), timeout=30, check=False,
     )
     assert res.returncode == 0, f"node failed: {res.stderr.strip()}"
     return json.loads(res.stdout)
@@ -247,8 +247,11 @@ def test_render_is_idempotent_across_a_steady_state_tick():
 
 
 def test_callouts_render_caps_at_three_rows():
-    """STRUCTURE contract: up to 3 rows. (The overlay clamps further to 2 via
-    overlay.css:266; the JS cap is the source-side bound.)"""
+    """STRUCTURE contract: up to 3 rows.
+
+    The overlay clamps further to 2 via overlay.css:266; the JS cap is the
+    source-side bound.
+    """
     out = _run_node(
         "import {renderCallouts} from '__URI__';"
         + _DOM_STUB

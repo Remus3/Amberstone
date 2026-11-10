@@ -1,4 +1,5 @@
-"""
+"""Regression guard: a deduped active-match panel repaints after its mount is cleared.
+
 tests/snapshot_panels/test_render_dedup_reshow.py
 
 Regression guard for a SILENT RENDER-GATE class surfaced by the R27 broader

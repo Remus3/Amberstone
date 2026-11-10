@@ -1,4 +1,5 @@
-"""
+"""OQ4: quiet-by-default motion sweep of the infinite CSS animation loops.
+
 tests/test_motion_reduce_sweep_oq4.py
 
 OQ4 (QA45, operator-queue 2026-07-01) - quiet-by-default motion sweep of the

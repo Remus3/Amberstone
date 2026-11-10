@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import json
 import time
-from pathlib import Path
-
+from typing import TYPE_CHECKING
 
 from agents.agent1_lead import Scheduler
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # -- Scheduler.recent_events -----------------------------------------

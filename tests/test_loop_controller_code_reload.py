@@ -1,4 +1,5 @@
-"""
+"""The loop controller reloads changed director-prompt code instead of running a stale copy.
+
 tests/test_loop_controller_code_reload.py
 
 MEASURED 2026-07-27: three consecutive loop cycles shipped a fix to the director

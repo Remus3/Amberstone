@@ -94,7 +94,7 @@ def _cli(*args, ctl, home):
     return subprocess.run(
         [sys.executable, str(REPO_ROOT / "tools" / "session_intent.py"),
          *args], capture_output=True, text=True, env=env,
-        cwd=str(REPO_ROOT), timeout=120, **kw)
+        cwd=str(REPO_ROOT), timeout=120, check=False, **kw)
 
 
 @pytest.mark.parametrize("mode", ["--consume", "--write-prompt"])
@@ -228,7 +228,7 @@ def test_a_junction_out_of_the_base_falls_back(home, tmp_path):
             pytest.skip("cannot create a directory link here")
         made = subprocess.run(
             ["cmd", "/c", "mklink", "/J", str(link), str(outside)],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, text=True, timeout=60, check=False,
             creationflags=subprocess.CREATE_NO_WINDOW)
         if made.returncode != 0:
             pytest.skip("cannot create a junction here")

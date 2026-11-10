@@ -318,8 +318,9 @@ def test_recent_stripe_encodes_win_loss(mock_server, pw_browser):
 
 
 def test_momentum_headline_gated_to_three_games(mock_server, pw_browser):
-    """HOME_QA H6/FE3: the today-summary headline text only populates at
-    >= 3 games today. A 1-2 game day leaves the text empty (too small a
+    """HOME_QA H6/FE3: the today-summary headline text only populates at >= 3 games today.
+
+    A 1-2 game day leaves the text empty (too small a
     sample to headline); a >= 3 game day writes the "N games - avg KDA"
     summary. (Updated 2026-07-05, Task 6 spec 7.1 absorb: the element
     itself is now permanently hidden via its index.html `hidden` attribute

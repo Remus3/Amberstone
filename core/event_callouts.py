@@ -1172,6 +1172,7 @@ def next_callouts(
         Sorted active-first, then ascending ETA, None-ETA last.
         Neutral-objective callouts are SR-only; ARAM and Arena return
         spike callouts only.
+
     """
     m = _norm_mode(mode)
     if m not in _KNOWN_MODES:

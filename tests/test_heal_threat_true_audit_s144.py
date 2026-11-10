@@ -1,18 +1,19 @@
-# s144 true-audit of core/heal_threat.py - the anti-heal / Grievous-Wounds
-# callout fed by the Live Client item pools and the enemy roster.
-#
-# H1: a NaN / inf float or a >4300-digit int item id raised out of every
-#     public entry point (ValueError / OverflowError from int() / str()),
-#     although the module promises "never raises".
-# H2: a non-integral float id was truncated into a real id (3072.9 counted as
-#     Bloodthirster, 3165.7 as an ally Morellonomicon); ids now follow the
-#     same vocabulary as dashboard/_liveclient._item_id.
-# H3: the callout line echoed the raw foreign champion string (markup,
-#     zero-width or non-ASCII letters, control characters, unbounded length);
-#     it now names the curated canonical display name only.
-#
-# Tests whose names start with test_char_ are characterization tests that
-# passed before the fix too; they pin behaviour the rewrite must keep.
+"""s144 true-audit of core/heal_threat.py - the anti-heal / Grievous-Wounds
+callout fed by the Live Client item pools and the enemy roster.
+
+H1: a NaN / inf float or a >4300-digit int item id raised out of every
+    public entry point (ValueError / OverflowError from int() / str()),
+    although the module promises "never raises".
+H2: a non-integral float id was truncated into a real id (3072.9 counted as
+    Bloodthirster, 3165.7 as an ally Morellonomicon); ids now follow the
+    same vocabulary as dashboard/_liveclient._item_id.
+H3: the callout line echoed the raw foreign champion string (markup,
+    zero-width or non-ASCII letters, control characters, unbounded length);
+    it now names the curated canonical display name only.
+
+Tests whose names start with test_char_ are characterization tests that
+passed before the fix too; they pin behaviour the rewrite must keep.
+"""
 from __future__ import annotations
 
 import unittest

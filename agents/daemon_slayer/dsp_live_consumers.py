@@ -39,10 +39,9 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 
 from ._passive_ally_grant_overrides import ally_flat_hp_grant, ally_resist_grant
-from .data_loader import DataSnapshot
 from .ehp import EhpResult, compute_ehp
 from .enemy_runes import (
     enemy_antiheal_pct,
@@ -57,6 +56,9 @@ from .summoners import (
     summoner_cc_discount_pct,
     summoner_incoming_dr_pct,
 )
+
+if TYPE_CHECKING:
+    from .data_loader import DataSnapshot
 
 __all__ = [
     "SummonerFightAdjustments",

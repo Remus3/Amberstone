@@ -1142,7 +1142,8 @@ class TestTftFirstEntryWorkerIngress(unittest.TestCase):
     # -- M4. _drain_tft_q authors the first authoritative TFT payload ---------
 
     def test_drain_tft_q_authors_first_tft_payload_after_worker_entry(self):
-        """
+        """The full chain from a TFT worker entry to the first TFT payload.
+
         Full chain:
           1. WorkerResult(TFT) -> _process_worker_result() -> TFT detected, payload=None
           2. TftWorkerResult  -> _drain_tft_q() -> first TftSnapshot authored

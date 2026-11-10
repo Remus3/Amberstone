@@ -91,7 +91,7 @@ def _usage(*lines: str, timeout: float = 30.0) -> tuple[int, list[dict], str]:
         [NODE, str(USAGE_JS)], input="".join(f"{ln}\n" for ln in lines),
         capture_output=True, text=True, encoding="utf-8", timeout=timeout,
         cwd=str(ROOT), env=env,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False)
     replies = [json.loads(ln) for ln in proc.stdout.splitlines() if ln.strip()]
     return proc.returncode, replies, proc.stderr
 

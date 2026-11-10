@@ -125,7 +125,7 @@ _DOT_AXIS_READ = re.compile(r"(?<![\w])\.axis\b")
 
 
 def _in_scan_scope(rel: Path) -> bool:
-    """This test's own scope: non-test ``.py`` outside ``_SCAN_SKIP_DIRS``.
+    """The test's own scope: non-test ``.py`` outside ``_SCAN_SKIP_DIRS``.
 
     ``rel`` is RELATIVE to the walk root - matching absolute parts is the trap
     ``tests/_repo_walk.py`` documents (a checkout living under

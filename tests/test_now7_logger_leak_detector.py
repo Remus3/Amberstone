@@ -327,7 +327,7 @@ def _run(proj, env, *extra_args):
         [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-p", "no:randomly",
          "-p", "tests._logger_leak_report", "--rootdir", str(proj), *extra_args, str(proj)],
         cwd=str(proj), env=env, capture_output=True, text=True, timeout=120,
-        creationflags=flags,
+        creationflags=flags, check=False,
     )
 
 

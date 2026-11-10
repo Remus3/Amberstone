@@ -631,6 +631,7 @@ class ArtifactSignal:
         self.stale_after_override_s = stale_after_override_s
 
     def __repr__(self) -> str:
+        """Return a short repr naming the signal kind and path."""
         return f"ArtifactSignal(kind={self.kind!r}, path={self.path!r})"
 
     @property

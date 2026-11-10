@@ -4,11 +4,14 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from agents.agent2_backend.db_schema import SCHEMA_STATEMENTS
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

@@ -132,8 +132,9 @@ def test_a_zero_byte_exact_profile_is_treated_as_absent(isolated):
 
 
 def test_an_empty_but_valid_exact_profile_still_wins(isolated):
-    """``{}`` PARSES, so it is a real tier-1 hit and the seed is not consulted.
-    (_regions() then ignores it separately, because it requires truthy
+    """An empty but valid exact profile is a tier-1 hit and the seed is not consulted.
+
+    ``{}`` PARSES, so it is real. (_regions() then ignores it separately, because it requires truthy
     regions.)"""
     isolated.mkdir(parents=True, exist_ok=True)
     vp.profile_path(_FULL_KEY_3440).write_text("{}", encoding="utf-8")

@@ -1,4 +1,5 @@
-"""
+"""Visual proof for the reworked Electron-overlay stats mini-panel (no in-panel role select).
+
 tests/snapshot_panels/test_overlay_stats_role.py
 
 VISUAL PROOF for the reworked Electron-overlay stats mini-panel (w-stats,

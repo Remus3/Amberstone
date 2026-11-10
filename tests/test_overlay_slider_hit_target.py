@@ -1,4 +1,5 @@
-"""
+"""HIT-TARGETS class guard for range inputs (slider thumb drag targets).
+
 tests/test_overlay_slider_hit_target.py
 
 HIT-TARGETS class guard for range inputs (slider thumb drag targets).

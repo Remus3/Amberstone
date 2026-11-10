@@ -134,7 +134,7 @@ class ToolContractTests(unittest.TestCase):
         # design: this one names the one-command fix in its own message.
         proc = subprocess.run(
             [sys.executable, str(_TOOL), "--check"],
-            capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            capture_output=True, text=True, cwd=str(_REPO_ROOT), check=False,
         )
         self.assertEqual(
             proc.returncode, 0,

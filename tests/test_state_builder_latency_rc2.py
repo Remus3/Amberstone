@@ -59,8 +59,9 @@ def _patches(self, *, lcu_delay=0.0, lc_delay=0.0,
 class StatePipelineLatencyTests(unittest.TestCase):
 
     def test_liveclient_overlaps_lcu(self):
-        """The two independent relay round-trips run concurrently, not
-        serially. Proven by ordering, not total wall-clock: the liveclient
+        """The two independent relay round-trips run concurrently, not serially.
+
+        Proven by ordering, not total wall-clock: the liveclient
         call must START before the lcu call FINISHES. (Total build time is
         confounded by cold-import cost of the deterministic/cooldowns
         stages, so a wall-clock threshold is unreliable; the start/end

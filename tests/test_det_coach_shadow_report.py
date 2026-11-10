@@ -8,11 +8,14 @@ on brittle string equality of the human dump.
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 import tools.det_coach_shadow_report as rpt
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _choice(key, label, source_tag):

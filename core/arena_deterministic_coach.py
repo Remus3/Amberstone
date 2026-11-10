@@ -352,6 +352,7 @@ def build_block(
         augment_advice, anvil_advice, target_priority, risk, choices. All
         seven string columns plus ``choices`` (the list-typed A/B array
         derived from action + fight_rule; [] on no signal).
+
     """
     # Read hp and the camp phase ONCE, so every field sees the same values.
     hp = _real_number(hp_pct, 0.0, _HP_PCT_MAX)

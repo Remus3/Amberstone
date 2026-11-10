@@ -70,16 +70,14 @@ class ConventionPinTests(unittest.TestCase):
     """The missing-health convention is REUSED from ehp.py, never re-invented."""
 
     def test_missing_hp_share_equals_the_ehp_module_constant(self):
-        from agents.daemon_slayer.ehp import (
-            _MISSING_HP_SHARE_FOR_HEALS as ehp_share,
-        )
+        from agents.daemon_slayer import ehp
 
-        self.assertEqual(_MISSING_HP_SHARE_FOR_HEALS, ehp_share)
+        self.assertEqual(_MISSING_HP_SHARE_FOR_HEALS, ehp._MISSING_HP_SHARE_FOR_HEALS)
 
     def test_fight_window_equals_the_ehp_module_constant(self):
-        from agents.daemon_slayer.ehp import _FIGHT_WINDOW_S as ehp_window
+        from agents.daemon_slayer import ehp
 
-        self.assertEqual(_FIGHT_WINDOW_S, ehp_window)
+        self.assertEqual(_FIGHT_WINDOW_S, ehp._FIGHT_WINDOW_S)
 
     def test_window_uptime_is_derived_not_hand_typed(self):
         self.assertAlmostEqual(

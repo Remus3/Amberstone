@@ -1,4 +1,5 @@
-"""
+"""OQ8 History per-session W-L header rollup contract.
+
 tests/test_history_session_wl_oq8.py
 
 OQ8 (QA37, operator-queue 2026-07-01) - History per-session W-L header

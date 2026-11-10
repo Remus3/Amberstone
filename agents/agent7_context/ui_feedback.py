@@ -144,6 +144,7 @@ _RGB_COLOR = r"rgba?\(\s*[0-9.%\s,/+-]+\)"
 @dataclass
 class UIProposalResult:
     """Return type for every parse path, including refusals."""
+
     filed: list[str] = field(default_factory=list)
     reply: str = ""
     intent: str = "ui_feedback"

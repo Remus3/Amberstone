@@ -1,4 +1,6 @@
-"""Regression tests for the item-189 coach refactor (2026-05-25):
+"""Regression tests for the item-189 coach refactor (2026-05-25).
+
+The refactor covers:
 
   1. The 4 in-game coach prompts no longer emit `Immediate:` / `Next:`
      prose - the Choices JSON array is the primary actionable surface.

@@ -53,6 +53,7 @@ class Augment:
     tooltip: str = ""
 
     def __post_init__(self) -> None:
+        """Default ``calculations`` to an empty dict when the caller passed None."""
         # frozen dataclass: bypass setattr for the default-None case.
         if self.calculations is None:
             object.__setattr__(self, "calculations", {})

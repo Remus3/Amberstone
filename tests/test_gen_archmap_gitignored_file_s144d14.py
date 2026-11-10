@@ -18,12 +18,15 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 import tools.gen_archmap as gam
 from tests._module_view import bind_subprocess
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 pytestmark = pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
 
@@ -80,6 +83,7 @@ def test_git_reports_the_decoys_as_bare_ignored_file_entries(repo):
         ["git", "-C", str(repo), "ls-files", "-z", "--others", "--ignored",
          "--exclude-standard", "--directory"],
         capture_output=True,
+        check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     entries = {e for e in out.stdout.decode("utf-8").split("\0") if e}

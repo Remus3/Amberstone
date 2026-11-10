@@ -91,6 +91,7 @@ def test_fixture_really_ignores_the_decoys(repo):
         ["git", "-C", str(repo), "check-ignore", *sorted(_IGNORED)],
         capture_output=True,
         text=True,
+        check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     assert sorted(out.stdout.split()) == sorted(_IGNORED)

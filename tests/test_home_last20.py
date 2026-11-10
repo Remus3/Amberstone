@@ -200,8 +200,9 @@ class HomeSummaryLast20Tests(unittest.TestCase):
 
 
 class SeasonWrRemovedGuardTests(unittest.TestCase):
-    """HOME_QA H5: the ranked season-WR readout was removed - the
-    _compute_season_wr builder is gone and no season_wr key ships in the
+    """HOME_QA H5: the ranked season-WR readout stays removed.
+
+    The _compute_season_wr builder is gone and no season_wr key ships in the
     home payload. (This file kept its last20 coverage above; the former
     ComputeSeasonWrTests / HomeSummarySeasonWrTests classes were converted
     to these deletion guards.)"""

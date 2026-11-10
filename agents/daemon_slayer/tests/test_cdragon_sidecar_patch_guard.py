@@ -32,13 +32,15 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 from agents.daemon_slayer.abilities import (
     AbilitiesSnapshot,
     cdragon_sidecar_patch,
 )
+
+if TYPE_CHECKING:
+    import pytest
 
 _PATCH = "99.9.9"
 _STALE = "99.6.6"

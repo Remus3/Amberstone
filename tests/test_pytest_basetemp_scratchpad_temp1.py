@@ -121,7 +121,7 @@ def _run(tmp_path: Path, basetemp: Path):
          "-c", str(probe / "pytest.ini"), "--basetemp", str(basetemp),
          str(probe / "test_probe_basetemp.py")],
         cwd=str(REPO), env=env, capture_output=True, text=True, timeout=120,
-        **kwargs,
+        check=False, **kwargs,
     )
 
 

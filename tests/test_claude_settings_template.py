@@ -248,7 +248,8 @@ def _run_line(cmd: str, env_over: dict, stdin: str = "{}") -> subprocess.Complet
     env["CLAUDE_PROJECT_DIR"] = str(ROOT).replace("\\", "/")
     env.update(env_over)
     return subprocess.run([sh, "-c", cmd], input=stdin, env=env, capture_output=True,
-                          text=True, encoding="utf-8", errors="replace", timeout=60)
+                          text=True, encoding="utf-8", errors="replace", timeout=60,
+                          check=False)
 
 
 def _context_line(proc: subprocess.CompletedProcess, event: str) -> str:

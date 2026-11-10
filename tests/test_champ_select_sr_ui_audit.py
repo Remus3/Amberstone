@@ -135,7 +135,7 @@ def test_champ_select_css_is_ascii() -> None:
 
 
 def test_this_guard_is_ascii() -> None:
-    """This guard file itself must be 7-bit ASCII."""
+    """The guard file itself must be 7-bit ASCII."""
     na = _non_ascii(Path(__file__).read_bytes())
     assert not na, (
         "tests/test_champ_select_sr_ui_audit.py has " + str(len(na))

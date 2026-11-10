@@ -14,9 +14,12 @@ from __future__ import annotations
 import json
 import math
 import sqlite3
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

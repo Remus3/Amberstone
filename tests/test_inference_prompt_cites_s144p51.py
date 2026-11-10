@@ -118,7 +118,7 @@ def _symbol(src: str, cls: str | None, name: str) -> ast.AST:
 
 def _have(rev: str) -> bool:
     probe = subprocess.run(["git", "cat-file", "-e", f"{rev}^{{commit}}"],
-                           cwd=ROOT, capture_output=True)
+                           cwd=ROOT, capture_output=True, check=False)
     return probe.returncode == 0
 
 
@@ -128,7 +128,7 @@ def _git_show(spec: str) -> str:
     return out.stdout.decode("utf-8")
 
 
-@pytest.mark.parametrize("rel", (ARENA, ARAM))
+@pytest.mark.parametrize("rel", [ARENA, ARAM])
 def test_no_inference_line_cite(rel):
     hits = [(n, line.strip()) for n, line in enumerate(_src(rel).splitlines(), 1)
             if BANNED_INFERENCE.search(line)]

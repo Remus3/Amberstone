@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Tuple
 
 # ---------------------------------------------------------------------------
 # fences
@@ -55,7 +55,7 @@ class NonceCollision(Exception):
     """
 
 
-def find_fences(text: Union[str, bytes, bytearray]) -> List[Tuple[str, str]]:
+def find_fences(text: str | bytes | bytearray) -> List[Tuple[str, str]]:
     """Return `(kind, nonce)` for every fence marker in `text`, in order.
 
     `kind` is `BEGIN` or `END`; `nonce` is the 16 hex characters when the marker

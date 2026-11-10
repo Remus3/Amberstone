@@ -825,7 +825,8 @@ class _TaintScan(ast.NodeVisitor):
         finally:
             self._tainted = saved
 
-    visit_Lambda = visit_GeneratorExp = _visit_deferred
+    # ast.NodeVisitor dispatches on the node class name, so the mixedCase attribute names are the API.
+    visit_Lambda = visit_GeneratorExp = _visit_deferred  # noqa: N815
 
     def visit_Call(self, node):
         name = _call_name(node)

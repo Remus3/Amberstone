@@ -100,7 +100,7 @@ def _launch(args, tmp_path, env_over=None):
     env.update(env_over or {})
     return subprocess.run([bash, (KIT / "fleet_hook.sh").as_posix(), *args], input="{}",
                           cwd=tmp_path, env=env, capture_output=True, text=True,
-                          encoding="utf-8", errors="replace", timeout=60)
+                          encoding="utf-8", errors="replace", timeout=60, check=False)
 
 
 # ---------------------------------------------------------------- step 1

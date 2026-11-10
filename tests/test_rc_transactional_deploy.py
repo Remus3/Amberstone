@@ -96,7 +96,7 @@ class ContainedPathTests(unittest.TestCase):
     def test_rejects_absolute_path(self) -> None:
         # Measured: Path(root) / Path("C:/Windows/Temp/x") == C:/Windows/Temp/x
         # on Windows - an absolute right-hand side DISCARDS the root entirely.
-        absolute = "C:/Windows/Temp/rc_escape.txt" if os.name == "nt" else "/tmp/rc_escape.txt"
+        absolute = "C:/Windows/Temp/rc_escape.txt" if os.name == "nt" else "/srv/rc_escape.txt"
         with self.assertRaises(D.DeployPathError) as ctx:
             D.contained_path(self.root, absolute)
         # Assert WHICH guard fired. `relative_to` would also reject this

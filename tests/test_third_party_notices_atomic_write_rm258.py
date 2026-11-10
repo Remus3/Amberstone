@@ -116,7 +116,7 @@ def test_script_mode_writes_through_core_from_a_foreign_cwd(tmp_path):
     proc = subprocess.run(
         [sys.executable, str(_TOOL), *_argv(tmp_path, out)],
         cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        check=False, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert "ModuleNotFoundError" not in proc.stderr, proc.stderr
     assert proc.returncode == 1, proc.stderr
     assert out.is_file()

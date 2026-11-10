@@ -424,6 +424,7 @@ class LcuPregame:
         2-item tuple / list of exact ids counts as a known current pair:
         the string "47" used to read as (4, 7) and (4.9, 7.2) truncated
         to it, both skipping a PATCH that was owed (RM-1034).
+
         """
         s1, s2 = _valid_id(spell1_id), _valid_id(spell2_id)
         if s1 is None or s2 is None:

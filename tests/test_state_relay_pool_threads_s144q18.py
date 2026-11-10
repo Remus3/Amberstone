@@ -121,7 +121,7 @@ def got(tmp_path_factory) -> dict:
     proc = subprocess.run(
         [sys.executable, "-c", _CHILD], cwd=str(tmp_path), env=env,
         capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=180, creationflags=_FLAGS)
+        timeout=180, creationflags=_FLAGS, check=False)
     assert proc.returncode == 0, f"child failed rc={proc.returncode}:\n{proc.stderr[-1500:]}"
     lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
     assert lines, f"child printed nothing:\n{proc.stderr[-1500:]}"

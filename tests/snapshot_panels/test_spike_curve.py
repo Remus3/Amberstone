@@ -1,4 +1,5 @@
-"""
+"""Contract tests for the Spike Curve Sparkline panel.
+
 tests/snapshot_panels/test_spike_curve.py
 
 Contract tests for the Spike Curve Sparkline panel
@@ -373,8 +374,9 @@ def test_phase_strip_mjs_exists_and_covers_failsoft():
 
 
 def test_no_inline_label_overflow():
-    """40px is too short for inline labels per brief - confirm the JS
-    renders only an aria-label / <title> for accessibility, not visible
+    """40px is too short for inline labels per brief - confirm the JS renders no visible text.
+
+    The JS renders only an aria-label / <title> for accessibility, not visible
     text. (Operator decision: tooltip on hover only.)"""
     src = _read(JS_PATH)
     # <text> is only allowed if commented out or absent; the SVG should

@@ -1,4 +1,5 @@
-"""
+"""R117 F1 team item-value differential: wiring contract tests.
+
 tests/snapshot_panels/test_item_value_diff.py
 
 Contract tests for the R117 F1 team item-value differential

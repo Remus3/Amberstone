@@ -51,6 +51,7 @@ def write_coaching_ts(mode: str,
         Override for ops/runtime/ (test seam only).
 
     Non-fatal: errors are caught and logged at DEBUG level.
+
     """
     # P2-W1-B (2026-06-11): honor the non-fatal contract for non-str modes
     # too - mode.lower() on None/int raised AttributeError before the try.

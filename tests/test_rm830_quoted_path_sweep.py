@@ -138,7 +138,7 @@ def test_ci_impact_selector_git_tracked_decodes_utf8(tmp_path, git_env):
     out = subprocess.run(
         [sys.executable, "-X", "utf8=0", "-c", code,
          str(_TOOLS / "ci_impact_selector.py"), str(repo)],
-        capture_output=True, env=env,
+        capture_output=True, env=env, check=False,
     )
     assert out.returncode == 0, out.stderr.decode("utf-8", "replace")[-600:]
     assert json.loads(out.stdout.decode("ascii")) == ["base.txt", rel]
@@ -276,7 +276,7 @@ def _child(module_path: Path, body: str, *args: str):
     )
     env = {k: v for k, v in os.environ.items() if k not in ("PYTHONUTF8", "PYTHONIOENCODING")}
     out = subprocess.run([sys.executable, "-X", "utf8=0", "-c", code, str(module_path), *args],
-                         capture_output=True, env=env)
+                         capture_output=True, env=env, check=False)
     assert out.returncode == 0, out.stderr.decode("utf-8", "replace")[-600:]
     return json.loads(out.stdout.decode("ascii"))
 

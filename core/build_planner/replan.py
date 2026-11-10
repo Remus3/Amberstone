@@ -393,6 +393,7 @@ class ReplanConfig:
     trinket_upgrade_min_stage: str = "mid"   # free Stealth -> Farsight upgrade gated to mid+
 
     def __post_init__(self):
+        """Refuse a threshold set whose hysteresis band is degenerate."""
         # Band-invariant guard: schmitt_drop < schmitt_add must hold or the
         # hysteresis degenerates into latch-everything / latch-nothing.
         if self.schmitt_drop >= self.schmitt_add:

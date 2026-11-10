@@ -131,7 +131,9 @@ def test_replay_pane_has_corner_brackets(mock_server, pw_browser):
 
 
 def test_no_em_dashes_or_smart_quotes():
-    """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the new
+    """Hard rule: ASCII-only authored text in the new test and its fixture.
+
+    0 bytes above 0x7F in the new
     test + the replay fixture it drives. (primitives.css / replay_events.css
     carry CSS-escaped non-ASCII sigils, not literal glyphs; mirroring the
     sibling view tests, the CSS is not ASCII-checked here - only this
@@ -149,7 +151,7 @@ def test_no_em_dashes_or_smart_quotes():
 # RM-1183: the module docstring cites the router, CSS and mock-loader
 # sites it describes by SYMBOL, never by file:line. Its line citations
 # (main.js:958-959, main.js:781, header.css:663) had all drifted - the
-# CSS one named a path that does not exist (web/css/header.css; the
+# CSS one named a path that never existed (web/css/header.css; the
 # file is web/css/panels/header.css) - and main.js line numbers move on
 # every edit above them. Each anchor below must appear verbatim in the
 # docstring AND in the source file it names, so a rename of the source

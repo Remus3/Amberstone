@@ -16,9 +16,11 @@ No engine state is touched; this module is pure given a CrossEval + a ChampModeW
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from .cross_eval_loader import CrossEval
-from .win_anchor import ChampModeWin
+if TYPE_CHECKING:
+    from .cross_eval_loader import CrossEval
+    from .win_anchor import ChampModeWin
 
 
 @dataclass(frozen=True)

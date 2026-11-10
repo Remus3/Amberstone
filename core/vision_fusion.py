@@ -297,6 +297,7 @@ def fuse_reads(
         {field: {"value", "source", "confidence"}} plus a "_notes" list of
         provenance tags. Never raises; catastrophic failure -> {"_notes":
         ["fusion_error"]}.
+
     """
     try:
         notes: list = []

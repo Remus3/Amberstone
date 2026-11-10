@@ -142,6 +142,7 @@ _OUTPUT = (
 @dataclass(frozen=True)
 class SetProfile:
     """What the resolved set's ingested files say - nothing else."""
+
     set_number: int
     set_name: str            # meta _set_name, "" when absent
     source: str              # "cdragon" | "meta" | "none"

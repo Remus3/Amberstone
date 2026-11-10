@@ -14,7 +14,9 @@ from core import snowball_elasticity as se
 
 
 def _conn(matches, participants, frames):
-    """matches:      (match_id, map_id, has_timeline, tracked_team_id, tracked_win)
+    """Build an in-memory DB from the three row lists.
+
+    matches:      (match_id, map_id, has_timeline, tracked_team_id, tracked_win)
     participants:    (match_id, participant_id, team_id)
     frames:          (match_id, timestamp_ms, participant_id, total_gold)
     """

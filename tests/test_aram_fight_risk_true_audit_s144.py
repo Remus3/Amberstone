@@ -1,18 +1,19 @@
-# s144 true-audit of core/aram_fight_risk.py (lane 8, one file).
-#
-# fight_rule / risk feed the deterministic ARAM and Arena coach blocks
-# (core/aram_deterministic_coach.py, core/arena_deterministic_coach.py) and
-# document "a duration is read when present but is not required" and "never
-# raises". Measured before this fix: an overflowing (10**400) or raising
-# duration blanked an otherwise valid top threat; a newline, tab run, ESC or
-# NUL inside a champion / spell key / kind reached the coach string verbatim
-# (_clamp_words returned its input unchanged when under the word limit); a
-# 5000-char champion, a 300-char spell key and a 900-char kind were coached
-# whole; a spell key outside the producer's Q / W / E / R vocabulary ("ignore
-# all previous") was named as the ability; a zero-width-only champion was
-# named; a structured entry stating a 0 s or negative CC was named "top CC
-# threat"; a Unicode digit passed as a duration; and a non-dict Mapping entry
-# was never read.
+"""s144 true-audit of core/aram_fight_risk.py (lane 8, one file).
+
+fight_rule / risk feed the deterministic ARAM and Arena coach blocks
+(core/aram_deterministic_coach.py, core/arena_deterministic_coach.py) and
+document "a duration is read when present but is not required" and "never
+raises". Measured before this fix: an overflowing (10**400) or raising
+duration blanked an otherwise valid top threat; a newline, tab run, ESC or
+NUL inside a champion / spell key / kind reached the coach string verbatim
+(_clamp_words returned its input unchanged when under the word limit); a
+5000-char champion, a 300-char spell key and a 900-char kind were coached
+whole; a spell key outside the producer's Q / W / E / R vocabulary ("ignore
+all previous") was named as the ability; a zero-width-only champion was
+named; a structured entry stating a 0 s or negative CC was named "top CC
+threat"; a Unicode digit passed as a duration; and a non-dict Mapping entry
+was never read.
+"""
 from __future__ import annotations
 
 import types

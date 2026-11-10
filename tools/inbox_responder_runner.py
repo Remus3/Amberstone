@@ -1158,7 +1158,7 @@ def load_participants(repo_root) -> tuple:
 
 
 def _trim(path: Path, keep: int = INVOCATION_LOG_KEEP) -> None:
-    """This log's OWN trimmer. The hook log's 32 KB rule would evict hook fires.
+    """Trim this log with its OWN trimmer; the hook log's 32 KB rule would evict hook fires.
 
     RM-258: through core.polled_json (per-writer scratch name, fsync, bounded
     WinError 5 retry, scratch removed on failure). A failed trim stays silent;

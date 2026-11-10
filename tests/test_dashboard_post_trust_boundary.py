@@ -191,7 +191,9 @@ class TestSchemaContractIsHonest:
             "learns the truth from the module they are editing")
 
     def test_extra_policy_per_wired_post_path_is_pinned(self):
-        """3 of 5 allow extra. That may be the right call for forward-compat,
+        """Pin the extra-field policy of each wired POST path (3 of 5 allow extra).
+
+        That may be the right call for forward-compat,
         but it must be a DELIBERATE one - this test makes a change visible.
         (4 of 6 until RM-762 removed /api/speak and its model.)"""
         from dashboard._dispatch import _REQUEST_MODELS

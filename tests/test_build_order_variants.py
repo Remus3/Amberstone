@@ -425,8 +425,8 @@ class PatchAndPathTests(unittest.TestCase):
         self.assertNotEqual(p.name, bop._db_path("sr", "16.11.1").name)
 
     def test_out_dir_override_wins(self):
-        d = bov.out_dir_for("16.11.1", "/tmp/whatever")
-        self.assertEqual(d, Path("/tmp/whatever"))
+        d = bov.out_dir_for("16.11.1", "/override/whatever")
+        self.assertEqual(d, Path("/override/whatever"))
 
 
 class SeedTableTests(unittest.TestCase):

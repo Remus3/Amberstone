@@ -169,7 +169,7 @@ def _weights_dict(role: str) -> dict[str, float]:
 
 
 def _serve_post_game_rubric(h) -> None:
-    """GET /api/post-game-rubric?match_id=<id>"""
+    """GET /api/post-game-rubric?match_id=<id>."""
     try:
         qs = parse_qs(urlparse(h.path).query)
         match_id = (qs.get("match_id") or [""])[0].strip()

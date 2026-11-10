@@ -947,7 +947,7 @@ def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
     # so it outranks the WS4 stagnation/lost-objective response; when it is
     # None the chain (and the served bytes) are unchanged.
     advisory = dt_macro or macro or soul or heal
-    callouts = callouts[:2] + [advisory] if advisory is not None else callouts[:3]
+    callouts = [*callouts[:2], advisory] if advisory is not None else callouts[:3]
 
     # ZOI map-control callout from the minimap blob dots (item 567 slice 3).
     # Appended here inside _compute_uncached so the callouts list is complete
@@ -962,7 +962,7 @@ def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
             from core.zoi_influence import zoi_callout
             co = zoi_callout(zoi)
             if co is not None:
-                callouts = callouts + [co]
+                callouts = [*callouts, co]
         except Exception:  # noqa: BLE001
             pass
 
@@ -997,6 +997,7 @@ def compute_deterministic(coach: dict, lc: dict | None, mode_key: str,
         ``lead_projection`` (dict). ``choices`` is the DETERMINISTIC laning
         source - empty when the engine is down or no enemy is resolvable, in
         which case build_state falls back to the coach's native / synth choices.
+
     """
     # S134 P0: "client" / "game" borrow the SR tables (_MODE_KEY_TO_UPPER) so
     # an SR game whose mode flag lags its :2999 feed still gets coached. With
@@ -1106,6 +1107,7 @@ def resolve_coach_fields(coach: dict, det: dict | None, lc: dict | None,
         None). Fields are empty strings when no deterministic data is available.
 
     Fail-soft: any error yields the all-empty dict; never raises.
+
     """
     det = det if isinstance(det, dict) else {}
     lc = lc if isinstance(lc, dict) else {}

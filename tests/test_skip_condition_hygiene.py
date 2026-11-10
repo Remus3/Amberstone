@@ -168,7 +168,7 @@ _NON_LFS_TRACKED = _TRACKED - _LFS_TRACKED
 
 
 def _chain_matches_any(chain: str, pool: frozenset[str]) -> bool:
-    """Does `chain` name any path in `pool`, under `_is_tracked_chain`'s rule?
+    """Say whether `chain` names any path in `pool`, under `_is_tracked_chain`'s rule.
 
     `_is_tracked_chain` asks the same question against a precomputed suffix
     index of the WHOLE tracked set; this asks it against an arbitrary subset,
@@ -1509,7 +1509,7 @@ _ENV_TOKENS = frozenset({"environ", *_ENV_CALLS})
 
 
 def _names_the_environment(node: ast.AST, model: _Model, scope: ast.AST, resolve: bool = True) -> bool:
-    """Cheap SYNTACTIC test: does `node` mention the environment?
+    """Cheap SYNTACTIC test of whether `node` mentions the environment.
 
     A pre-filter, never a credit. It decides only whether a receiver is worth
     treating as an environment probe, and one level of name binding is

@@ -322,7 +322,7 @@ def test_restored_db_with_older_mtime_is_reread(corpus, tmp_path):
     st = path.stat()
     other = _make_db(tmp_path / "restore" / "r.db",
                      [_row("T_1", lvl=10), _row("T_2", lvl=16)])
-    os.replace(other, path)
+    other.replace(path)
     older = st.st_mtime_ns - 3_600_000_000_000
     os.utime(path, ns=(older, older))
     assert bench.role_bracket_grid()["mid"]["mid"]["n"] == 2

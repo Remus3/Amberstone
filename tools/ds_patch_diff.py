@@ -82,7 +82,7 @@ def _pct_change(old: Any, new: Any) -> Optional[float]:
 
 
 def _keep(old: Any, new: Any, min_pct: float) -> bool:
-    """Should this change survive the --min-pct filter?
+    """Say whether this change survives the --min-pct filter.
 
     Non-numeric changes are ALWAYS kept - a rename or a tag flip has no percent.
     """

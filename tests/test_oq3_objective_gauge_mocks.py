@@ -1,4 +1,5 @@
-"""
+"""OQ3: characterization contract for the objective-gauge overlay mockups.
+
 tests/test_oq3_objective_gauge_mocks.py
 
 OQ3 (OPERATOR-DECIDED 2026-07-01, QA11) - characterization contract for the

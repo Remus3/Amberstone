@@ -1,4 +1,5 @@
-"""
+"""R36: HIT-TARGETS guard for the Electron-overlay launcher control center.
+
 tests/test_overlay_launcher_hit_targets.py
 
 R36 (DIRECTOR REFILL 2026-06-30) - HIT-TARGETS guard for the Electron-overlay

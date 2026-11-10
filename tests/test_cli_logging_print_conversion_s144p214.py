@@ -40,7 +40,7 @@ def _run_module(module: str, *args: str) -> subprocess.CompletedProcess:
         kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
     return subprocess.run(
         [sys.executable, "-m", module, *args],
-        cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", timeout=120, **kwargs,
+        cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", timeout=120, check=False, **kwargs,
     )
 
 

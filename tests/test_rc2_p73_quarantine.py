@@ -75,7 +75,7 @@ def test_quarantined_gone_from_tools():
 
 def _git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=str(ROOT),
-                          capture_output=True, text=True, timeout=60)
+                          capture_output=True, text=True, timeout=60, check=False)
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")

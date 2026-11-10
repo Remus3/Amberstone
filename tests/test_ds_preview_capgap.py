@@ -33,6 +33,7 @@ class _Handler:
     Mirrors the harness in tests/test_routes_ds_preview_scorer.py - routes
     only touch ``self._send(status, body, content_type)``.
     """
+
     def __init__(self) -> None:
         self.status: int = 0
         self.body: bytes = b""

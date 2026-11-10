@@ -124,6 +124,7 @@ class PipelineOrchestrator:
                   "curated":    {"present": bool, "path": "..." | None},
               }
             }
+
         """
         scraper_mode = MODE_TO_SCRAPER_MODE[mode]
         out: dict = {

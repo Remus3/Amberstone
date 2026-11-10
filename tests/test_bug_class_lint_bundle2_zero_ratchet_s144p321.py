@@ -147,7 +147,7 @@ def _ruff(rules: str, args: list[str], stdin: str | None = None) -> list[dict]:
     proc = subprocess.run(
         [sys.executable, "-m", "ruff", "check", "--isolated", "--target-version", "py39",
          "--no-fix", "--no-cache", "--output-format", "json", "--select", rules, *args],
-        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, **kwargs,
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, check=False, **kwargs,
     )
     # ruff exits 1 when it reports anything; 2 is a real failure (for instance a removed rule code).
     assert proc.returncode in (0, 1), proc.stderr[-400:]
@@ -192,6 +192,6 @@ def test_the_second_bundle_is_not_in_ruff_toml_select():
 
 def test_the_second_bundle_does_not_repeat_the_first():
     """Two bundles that both hold a rule are two places to forget to update: keep the sets disjoint."""
-    from tests.test_bug_class_lint_bundle_zero_ratchet_s144p319 import _PROBES as first
+    from tests.test_bug_class_lint_bundle_zero_ratchet_s144p319 import _PROBES as FIRST_PROBES
 
-    assert not sorted(set(_PROBES) & set(first))
+    assert not sorted(set(_PROBES) & set(FIRST_PROBES))

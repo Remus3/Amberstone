@@ -98,7 +98,7 @@ class _Case(unittest.TestCase):
     def write(self, data: dict) -> None:
         tmp = self.path.with_suffix(".tmp")
         tmp.write_bytes(json.dumps(data).encode("utf-8"))
-        os.replace(tmp, self.path)
+        tmp.replace(self.path)
 
     def serve(self) -> _Handler:
         h = _Handler()

@@ -229,7 +229,8 @@ def test_cli_runs_as_a_bare_script_with_the_var_unset(tmp_path):
     env["RC_HEADLESS_ENV_FORCE_UNSET"] = "1"
     env["RC_HEADLESS_ENV_LOG"] = str(tmp_path / "r.log")
     p = subprocess.run([sys.executable, str(REPO / "ops" / "loop" / "headless_env.py"), "--url"],
-                       cwd=str(tmp_path), env=env, capture_output=True, text=True, timeout=60)
+                       cwd=str(tmp_path), env=env, capture_output=True, text=True, timeout=60,
+                       check=False)
     assert p.returncode == he.EXIT_REFUSED, p.stderr
     assert p.stdout == ""
 

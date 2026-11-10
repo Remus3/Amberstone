@@ -161,8 +161,8 @@ class ReferenceStatesRouteTests(unittest.TestCase):
             {"state": "base", "exists": True, "width": 2560, "height": 1440},
             {"state": "self_dead", "exists": True, "width": 2560, "height": 1440},
         ]
-        with _patch(vc.vp, "list_reference_states", lambda config_key=None: ["base", "self_dead"]), \
-                _patch(vc.vp, "load_reference",
+        with _Patch(vc.vp, "list_reference_states", lambda config_key=None: ["base", "self_dead"]), \
+                _Patch(vc.vp, "load_reference",
                        lambda config_key=None, state=None: {"ok": True, "width": 2560, "height": 1440}):
             h = _FakeHandler("/api/vision-reference-states")
             vc._serve_reference_states_get(h)
@@ -179,7 +179,7 @@ class ReferenceStatesRouteTests(unittest.TestCase):
 
 class ReferencePostRouteTests(unittest.TestCase):
     def test_ingest_happy_returns_ok_payload(self):
-        with _patch(vc.vp, "ingest_reference_from_path",
+        with _Patch(vc.vp, "ingest_reference_from_path",
                     lambda path, state, config_key=None: {
                         "ok": True, "state": state, "width": 2560, "height": 1440,
                         "config_key": "cfgX"}):
@@ -202,7 +202,7 @@ class ReferencePostRouteTests(unittest.TestCase):
             self.assertFalse(payload["ok"])
 
     def test_ingest_failure_returns_400(self):
-        with _patch(vc.vp, "ingest_reference_from_path",
+        with _Patch(vc.vp, "ingest_reference_from_path",
                     lambda path, state, config_key=None: {
                         "ok": False, "error": "dims mismatch"}):
             h = _FakeHandler("/api/vision-reference")
@@ -226,7 +226,7 @@ class FrameStatePassthroughTests(unittest.TestCase):
             return {"ok": True, "b64": "B", "width": 2560, "height": 1440,
                     "age_s": 1.0, "config_key": "c", "format": "jpeg"}
 
-        with _patch(vc.vp, "load_reference", _load_reference):
+        with _Patch(vc.vp, "load_reference", _load_reference):
             h = _FakeHandler("/api/vision-frame?source=reference&state=self_dead")
             vc._serve_frame_get(h)
         self.assertEqual(seen.get("state"), "self_dead")
@@ -235,7 +235,7 @@ class FrameStatePassthroughTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
 
 
-class _patch:
+class _Patch:
     """Tiny context-manager monkeypatch (setattr on enter, restore on exit)."""
 
     def __init__(self, obj, name, value):

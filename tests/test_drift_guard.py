@@ -542,7 +542,7 @@ class GitHooksPathTests(unittest.TestCase):
 
     @requires_armed_hook_gate
     def test_live_repo_points_at_the_tracked_dir(self) -> None:
-        """This repo must stay pointed at .githooks.
+        """The repo must stay pointed at .githooks.
 
         Pinned as a real assertion, not a smoke check: when this pointer moved,
         three tracked guards stopped running and nothing surfaced it for long

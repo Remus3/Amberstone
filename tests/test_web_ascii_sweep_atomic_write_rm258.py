@@ -112,7 +112,7 @@ def test_script_mode_resolves_core_from_a_foreign_cwd(tmp_path):
         [sys.executable, str(_ROOT / "tools" / "web_ascii_sweep.py"),
          "--no-such-option"],
         cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False)
     # Usage error (exit 2) means the module imported, core included, and
     # argparse ran; no file was touched.
     assert proc.returncode == 2, proc.stderr

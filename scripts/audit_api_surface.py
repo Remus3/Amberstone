@@ -1,4 +1,5 @@
-"""
+"""Report every Riot-adjacent HTTP endpoint the codebase touches, as CSV or Markdown.
+
 scripts/audit_api_surface.py
 ----------------------------
 Greps the codebase for every Riot-adjacent HTTP endpoint we touch (LCU,

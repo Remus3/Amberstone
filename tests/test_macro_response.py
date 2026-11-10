@@ -1,13 +1,14 @@
-# Tests for core/macro_response.py - the RC2 P5.7 (WS4) deterministic
-# lost-objective + stagnation macro response. Off Live Client objective-kill
-# events + the macro lead read, NOT a Claude call.
-#
-# Covers: lost-objective detection (enemy kill within the loss window, the
-# (name x lead-state) truth table + the baron/herald wildcard), the recency +
-# killer-team + window gates, stagnation gating (game-time floor, state-stable
-# window, recent-objective veto, inhib-down veto) and its 3 lead-keyed lines,
-# lost-takes-precedence-over-stagnation, the callout shape, the <=12-word line
-# budget, ASCII hygiene, and fail-soft on garbage.
+"""Tests for core/macro_response.py - the RC2 P5.7 (WS4) deterministic
+lost-objective + stagnation macro response. Off Live Client objective-kill
+events + the macro lead read, NOT a Claude call.
+
+Covers: lost-objective detection (enemy kill within the loss window, the
+(name x lead-state) truth table + the baron/herald wildcard), the recency +
+killer-team + window gates, stagnation gating (game-time floor, state-stable
+window, recent-objective veto, inhib-down veto) and its 3 lead-keyed lines,
+lost-takes-precedence-over-stagnation, the callout shape, the <=12-word line
+budget, ASCII hygiene, and fail-soft on garbage.
+"""
 from __future__ import annotations
 
 import unittest

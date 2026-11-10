@@ -17,6 +17,7 @@ from tests._timing_budget import fleet_test_guard
 
 class FakeReader:
     """Stub GameReader that returns a canned state then None."""
+
     def __init__(self, states):
         self._states = list(states)
         self._idx = 0
@@ -31,6 +32,7 @@ class FakeReader:
 
 class FakeCoach:
     """Stub CoachIntegration that records submit_state calls."""
+
     def __init__(self):
         self.submitted = []
     def submit_state(self, state):

@@ -55,7 +55,7 @@ def _touch(root: Path, rel: str, data: bytes = b"x", old: bool = True) -> Path:
 def _age_dir(path: Path) -> None:
     for dirpath, _dirs, files in os.walk(path):
         for f in files:
-            os.utime(os.path.join(dirpath, f), (_OLD, _OLD))
+            os.utime(Path(dirpath) / f, (_OLD, _OLD))
         os.utime(dirpath, (_OLD, _OLD))
 
 

@@ -55,7 +55,9 @@ class TabStripTests(unittest.TestCase):
                              f"legacy data-tab-panel={legacy!r} still in HTML")
 
     def test_ai_analysis_tab_starts_active(self):
-        """AI Analysis is the default landing tab as of the R30 autopsy-first
+        """AI Analysis is the default landing tab.
+
+        As of the R30 autopsy-first
         reframe (ledger 604, `021318cd`): the view opens on the WPA/win-prob
         autopsy, not the Build roster scoreboard (gemini's named trap). Build
         receded to 3rd. (s220 S4 made Build default; R30 moved it.)"""
@@ -165,7 +167,9 @@ class LegacyMigrationTests(unittest.TestCase):
         self.assertNotIn('"comp", "chart", "timeline", "insights"', js)
 
     def test_set_empty_state_does_not_reference_dead_id(self):
-        """s220 S5 carry-forward: lm-build-pending was a dead id in the
+        """The _setEmptyState forEach names no dead pending id (s220 S5 carry-forward).
+
+        lm-build-pending was a dead id in the
         _setEmptyState forEach loop (no matching element in index.html;
         getElementById no-ops). RM-339: lm-tl-pending was dead in this
         same list on the day this test was written - S4 had already

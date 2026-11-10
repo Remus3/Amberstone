@@ -1,4 +1,6 @@
-"""RM-607 wiring (merger ruling): the tape is installed and persisted ONLY
+"""RM-607 wiring: the live item tape is installed and persisted only behind RC_ITEM_TAPE.
+
+RM-607 wiring (merger ruling): the tape is installed and persisted ONLY
 behind ``RC_ITEM_TAPE`` (default OFF), through non-frozen seams:
 
   * core/liveclient_cache.py ``_install_optional_taps`` installs the listener;

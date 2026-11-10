@@ -5,9 +5,12 @@ import json
 import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # -- /api/env auto_analyze exposure ----------------------------------

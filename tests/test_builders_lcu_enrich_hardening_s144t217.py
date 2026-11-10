@@ -28,12 +28,15 @@ from __future__ import annotations
 import json
 import math
 import sqlite3
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
 
 from dashboard import builders_lcu_enrich as ble
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _PUUID = "synthetic-puuid-me"
 

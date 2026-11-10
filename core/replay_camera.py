@@ -487,6 +487,7 @@ class Intrinsics:
     fov: float = 0.0
 
     def __post_init__(self):
+        """Require finite intrinsics, a positive focal length and a non-negative fov."""
         for name in ("principal_x", "principal_y", "focal_px", "ground_y",
                      "fov"):
             _required_finite(getattr(self, name), name)

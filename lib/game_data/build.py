@@ -27,10 +27,12 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core.polled_json import atomic_write_bytes
-from lib.game_data.fetch import Fetched
+
+if TYPE_CHECKING:
+    from lib.game_data.fetch import Fetched
 
 ROSTER_SOURCE = "ddragon"
 

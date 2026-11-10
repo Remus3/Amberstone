@@ -25,11 +25,14 @@ import ast
 import os
 import shutil
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tools import md_guard_selector as mgs
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _GIT = shutil.which("git")
 needs_git = pytest.mark.skipif(_GIT is None, reason="git is not on PATH")
@@ -182,7 +185,7 @@ def _git_lists_md(repo: Path, argv: str, cwd) -> bool:
     words = _argv_words(ast.parse(argv, mode="eval").body)
     run_in = repo if cwd is None else repo / ast.literal_eval(cwd)
     out = subprocess.run([_GIT, *words[1:]], cwd=str(run_in), env=_git_env(),
-                         capture_output=True, text=True, timeout=60)
+                         capture_output=True, text=True, timeout=60, check=False)
     assert out.returncode == 0, (argv, out.stderr)
     return any(line.endswith(".md") for line in out.stdout.splitlines())
 

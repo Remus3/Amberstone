@@ -107,6 +107,7 @@ class TestSrCoachGateOnGameMode(unittest.TestCase):
 
 class _AramSentinel:
     """Distinct from RiftSnapshot so the two payload branches cannot be confused."""
+
     raw_state = None
 
 

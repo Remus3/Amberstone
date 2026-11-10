@@ -320,7 +320,8 @@ def test_no_other_character_case_folds_onto_a_deleted_one():
 # ---------------------------------------------------------------------------
 def _git(repo: Path, *args: str) -> str:
     proc = subprocess.run(
-        ["git", *args], cwd=repo, capture_output=True, text=True, timeout=60
+        ["git", *args], cwd=repo, capture_output=True, text=True, timeout=60,
+        check=False,
     )
     assert proc.returncode == 0, proc.stderr
     return proc.stdout

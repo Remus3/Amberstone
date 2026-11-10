@@ -143,7 +143,7 @@ def test_gitignore_names_the_v12_runtime_paths(rel):
     named = {"ops/loop/control/claims/x.json": "ops/loop/control/claims/",
              "ops/loop/control/locks/git.lock": "ops/loop/control/locks/"}.get(rel, rel)
     assert named in gi, f"{named} not named in .gitignore"
-    r = subprocess.run(["git", "-C", str(ROOT), "check-ignore", "-q", rel])
+    r = subprocess.run(["git", "-C", str(ROOT), "check-ignore", "-q", rel], check=False)
     assert r.returncode == 0, rel
 
 

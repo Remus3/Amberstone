@@ -446,6 +446,7 @@ def test_the_gate_runs_green_on_this_tree():
         capture_output=True,
         text=True,
         timeout=1800,
+        check=False,
     )
     assert proc.returncode == 0, proc.stdout[-4000:] + proc.stderr[-4000:]
     assert "coverage:" in proc.stdout

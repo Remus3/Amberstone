@@ -456,7 +456,7 @@ def _read_events(conn: sqlite3.Connection, match_id: str,
 
 
 def _serve_replay_events(h) -> None:
-    """GET /api/replay/events?match_id=<id>[&include=items,skills,...]"""
+    """GET /api/replay/events?match_id=<id>[&include=items,skills,...]."""
     try:
         match_id, include, err = _parse_query(h.path)
         if err is not None:

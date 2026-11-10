@@ -1540,7 +1540,7 @@ def test_a_short_claim_is_still_a_claim():
 
 
 def test_a_block_quoted_premise_line_above_the_real_field_does_not_shadow_it():
-    """This loop's directives quote the PRIOR directive routinely, indented. A
+    """The loop's directives quote the PRIOR directive routinely, indented. A
     first-match scan reads the quote and goes silent on the live field - a false
     NEGATIVE, which is the direction this whole guard exists to close."""
     body = f"""GROUNDED-AGAINST: HEAD={_HEAD[:8]} LEDGER-TOP=1081 CHAIN-LAST=cycle 12

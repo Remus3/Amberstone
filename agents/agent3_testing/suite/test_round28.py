@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _init(tmp_path: Path, monkeypatch):
@@ -149,6 +152,7 @@ def test_cli_enemies_surface_in_hint(tmp_path: Path, monkeypatch, capsys) -> Non
 def test_cli_requires_champion_when_not_trends(tmp_path: Path, monkeypatch) -> None:
     """argparse should error when --champion missing & --trends absent."""
     import pytest
+
     from coaches.adaptation_hint import main
     _init(tmp_path, monkeypatch)
     with pytest.raises(SystemExit):

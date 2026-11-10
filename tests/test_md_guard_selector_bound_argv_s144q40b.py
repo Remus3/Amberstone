@@ -1,4 +1,6 @@
-"""RM-1146 (2): the docs-guards selector (`tools/md_guard_selector.py`
+"""RM-1146 (2): the docs-guards selector ties a bound argv name to its cwd= call.
+
+The docs-guards selector (`tools/md_guard_selector.py`
 `index_walk_reasons`) did not tie an argv bound to a NAME to the call that
 runs it with `cwd=`:
 
@@ -26,11 +28,14 @@ import ast
 import os
 import shutil
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tools import md_guard_selector as mgs
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _GIT = shutil.which("git")
 needs_git = pytest.mark.skipif(_GIT is None, reason="git is not on PATH")
@@ -344,7 +349,7 @@ def test_each_oracle_verdict_is_what_git_does(scratch_repo, key):
     words, cwd, lists_md = _ORACLE[key]
     run_in = scratch_repo if cwd is None else scratch_repo / cwd
     out = subprocess.run([_GIT, *words], cwd=str(run_in), env=_git_env(),
-                         capture_output=True, text=True, timeout=60)
+                         capture_output=True, text=True, timeout=60, check=False)
     assert out.returncode == 0, (key, out.stderr)
     assert any(line.endswith(".md") for line in out.stdout.splitlines()) is lists_md, key
 

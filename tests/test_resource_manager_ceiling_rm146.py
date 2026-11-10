@@ -1,4 +1,6 @@
-"""tests/test_resource_manager_ceiling_rm146.py
+"""RM-146 guard: the memory ceiling sits above RC's normal in-game working set.
+
+tests/test_resource_manager_ceiling_rm146.py
 
 RM-146: the memory ceiling must sit ABOVE RC's normal in-game working set.
 

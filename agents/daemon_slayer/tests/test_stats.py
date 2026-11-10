@@ -1,3 +1,4 @@
+"""Daemon Slayer stat scaling: level growth multiplier, scaled stats, attack speed, level guard, item aggregate."""
 import unittest
 
 from agents.daemon_slayer.stats import (

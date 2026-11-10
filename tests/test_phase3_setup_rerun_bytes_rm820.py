@@ -108,6 +108,6 @@ def test_installer_parses_under_windows_powershell_51() -> None:
         "Write-Output ('ERRORS=' + $e.Count)"
     )
     proc = subprocess.run([str(PS51), "-NoProfile", "-Command", command],
-                          capture_output=True, text=True, timeout=90,
+                          capture_output=True, text=True, timeout=90, check=False,
                           creationflags=0x08000000 if os.name == "nt" else 0)
     assert "ERRORS=0" in proc.stdout, f"{proc.stdout}\n{proc.stderr}"

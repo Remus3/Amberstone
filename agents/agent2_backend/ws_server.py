@@ -59,12 +59,14 @@ import time
 from collections.abc import Iterable, Sequence
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
 import websockets
 from websockets.asyncio.server import ServerConnection, serve
-from websockets.http11 import Request, Response
+
+if TYPE_CHECKING:
+    from websockets.http11 import Request, Response
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _LOG_ROOT = _PROJECT_ROOT / "logs" / "ws"

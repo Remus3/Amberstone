@@ -74,11 +74,11 @@ def test_named_symbol_still_exists(rel, needle):
     assert needle in _read(rel), f"{rel} lost {needle!r}; re-point the comment"
 
 
-@pytest.mark.parametrize("needle", (
+@pytest.mark.parametrize("needle", [
     "LCUClient._auto_accept_tick", "LCUClient._request",
     "LCUClient.get_all_rune_pages", "RuneWriter._id_to_name",
     "RuneWriter start", "(LEDGER item 506)",
-))
+])
 def test_module_still_names_what_it_cites(needle):
     text = "".join(_read(rel) for rel in FILES)
     assert needle in text, needle

@@ -101,7 +101,7 @@ def _query(args, cwd) -> str:
     diagnostic a caller would otherwise lose.
     """
     p = subprocess.run(["git", *args], cwd=str(cwd),
-                       capture_output=True, text=True, env=_env())
+                       capture_output=True, text=True, env=_env(), check=False)
     assert p.returncode == 0, (
         f"git {' '.join(args)} failed with rc={p.returncode} in {cwd} - an "
         f"empty stdout here is a FAILURE, not an empty answer. stderr: "

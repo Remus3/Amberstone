@@ -1,9 +1,10 @@
-# Tests for core/heal_threat.py - the deterministic anti-heal / Grievous-Wounds
-# nudge (aggregator-A-style heal-threat tracker; Haiku-elimination, competitor #2).
-#
-# Covers: the curated-champion + sustain-item fire logic, ally-anti-heal
-# suppression, display-name normalization, int|str item-id coercion, mode
-# gating, fail-soft on garbage, callout shape, and ASCII hygiene.
+"""Tests for core/heal_threat.py - the deterministic anti-heal / Grievous-Wounds
+nudge (aggregator-A-style heal-threat tracker; Haiku-elimination, competitor #2).
+
+Covers: the curated-champion + sustain-item fire logic, ally-anti-heal
+suppression, display-name normalization, int|str item-id coercion, mode
+gating, fail-soft on garbage, callout shape, and ASCII hygiene.
+"""
 from __future__ import annotations
 
 import unittest

@@ -21,12 +21,15 @@ fixtures) and the shipped table (real champions).
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from core import archetype_picks as ap
 from ops.audit.ds_perm_swarm import build_aram_archetype_override as bld
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture(autouse=True)

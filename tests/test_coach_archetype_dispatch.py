@@ -24,6 +24,7 @@ from coach_integration.archetype_dispatch import (
 class _Stats:
     """Stub for coach_integration.enemy_stats.EnemyStats - duck-typed by
     the helper via getattr(..., 'armor'/'mr'/'max_hp'/'bonus_hp')."""
+
     def __init__(self, armor=80.0, mr=30.0, max_hp=2000.0, bonus_hp=500.0):
         self.armor = armor
         self.mr = mr

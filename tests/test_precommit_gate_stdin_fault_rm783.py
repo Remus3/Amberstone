@@ -154,7 +154,7 @@ def test_the_script_under_a_cp1252_console_still_blocks(tmp_path):
     env["PYTHONUTF8"] = "0"
     payload = _claude_commit("a" + _A_MACRON + "b").encode("utf-8")
     proc = subprocess.run([sys.executable, str(GATE)], input=payload, cwd=tmp_path,
-                          env=env, capture_output=True, timeout=60)
+                          env=env, capture_output=True, timeout=60, check=False)
     err = proc.stderr.decode("utf-8", errors="replace")
     assert proc.returncode == 2, (proc.returncode, err)
     assert "banned glyph" in err

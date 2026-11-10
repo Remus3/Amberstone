@@ -412,7 +412,7 @@ def test_nul_root_in_per_host_config_is_unknown_and_exits_inconclusive(
     assert rc == orc.EXIT_INCONCLUSIVE
 
 
-@pytest.mark.parametrize("kind", ("real_dir", "dir_link"))
+@pytest.mark.parametrize("kind", ["real_dir", "dir_link"])
 def test_directory_inbox_still_lists_both_halves(tmp_path, kind):
     """Positive control: without it, a _scan that returned None for EVERYTHING
     would pass both tests above."""
@@ -594,7 +594,7 @@ def _is_within(candidate: str, root: Path) -> bool:
 
 
 def test_default_render_carries_no_path_and_no_filename(tmp_path):
-    """This repo is PUBLIC and the sweep gates every push. The report is meant
+    """The repo is PUBLIC and the sweep gates every push. The report is meant
     to be pasteable, so it names slots and digests - never a configured path,
     and not even a note filename, since a slug is free text a sender chose."""
     local, sibs = _make_tree(tmp_path, 2)

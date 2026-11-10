@@ -164,7 +164,7 @@ def _probe(installer: str) -> dict:
     proc = subprocess.run(
         [sys.executable, "-c", _PROBE, installer, json.dumps(names)],
         cwd=str(ROOT), capture_output=True, text=True, timeout=180,
-        encoding="utf-8",
+        check=False, encoding="utf-8",
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     assert proc.returncode == 0, proc.stdout[-2000:] + proc.stderr[-4000:]
     return json.loads(proc.stdout.strip().splitlines()[-1])

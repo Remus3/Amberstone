@@ -1,4 +1,6 @@
-"""tests/test_resource_manager_hardening_s144.py
+"""Hardening tests for core/resource_manager.py (s144 cycle 221).
+
+tests/test_resource_manager_hardening_s144.py
 
 Lane-8 (true-audit) hardening of core/resource_manager.py, s144 cycle 221.
 

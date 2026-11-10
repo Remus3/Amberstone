@@ -97,6 +97,7 @@ class Constraint:
     hard: bool = False
 
     def __post_init__(self) -> None:
+        """Reject a malformed constraint, then freeze its value."""
         if not isinstance(self.name, str) or not self.name:
             raise ValueError("constraint name must be a non-empty str")
         if self.name == LEGALITY:

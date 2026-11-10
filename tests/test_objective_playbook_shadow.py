@@ -1,11 +1,12 @@
-# Tests for core/objective_playbook_shadow.py - the RC2 P5.5 (WS3) do-not-flip-
-# blind shadow writer. Records the deterministic playbook directive alongside the
-# native Haiku `objective` prose so a future served-objective flip can be
-# agreement-gated before it changes any served output.
-#
-# Covers: record shape + fields, native_objective capture, None-playbook record,
-# coarse-state dedup, the exact-game_time freshness guard, and fail-soft (never
-# raises, bad input -> None).
+"""Tests for core/objective_playbook_shadow.py - the RC2 P5.5 (WS3) do-not-flip-
+blind shadow writer. Records the deterministic playbook directive alongside the
+native Haiku `objective` prose so a future served-objective flip can be
+agreement-gated before it changes any served output.
+
+Covers: record shape + fields, native_objective capture, None-playbook record,
+coarse-state dedup, the exact-game_time freshness guard, and fail-soft (never
+raises, bad input -> None).
+"""
 from __future__ import annotations
 
 import json

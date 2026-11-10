@@ -55,7 +55,7 @@ def test_the_minimal_pair_that_reproduced_now6_is_green():
     """
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", _LEAKER, _VICTIM, "-q", "-p", "no:cacheprovider"],
-        cwd=str(ROOT), capture_output=True, text=True,
+        cwd=str(ROOT), capture_output=True, text=True, check=False,
     )
     tail = proc.stdout[-4000:] + proc.stderr[-2000:]
     assert proc.returncode == 0, (

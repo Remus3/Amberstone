@@ -386,7 +386,7 @@ def test_a_separate_process_picks_a_different_scratch_name(tmp_path, monkeypatch
     polled_json.atomic_write_json(target, {"k": 1})
     proc = subprocess.run(
         [sys.executable, "-c", _CHILD_SCRATCH_NAME, _repo_root(), str(target)],
-        capture_output=True, text=True, timeout=120)
+        capture_output=True, text=True, timeout=120, check=False)
     assert proc.returncode == 0, proc.stderr
     theirs = proc.stdout.strip()
     assert theirs, proc.stderr

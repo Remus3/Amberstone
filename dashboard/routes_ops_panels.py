@@ -57,17 +57,17 @@ def _serve(h, key: str, fn) -> None:
 
 
 def _serve_seam_map(h) -> None:
-    """GET /api/ops/seam-map"""
+    """GET /api/ops/seam-map."""
     _serve(h, "seam-map", ops_panels.compute_seam_map)
 
 
 def _serve_drift_strip(h) -> None:
-    """GET /api/ops/drift-strip"""
+    """GET /api/ops/drift-strip."""
     _serve(h, "drift-strip", ops_panels.compute_drift_strip)
 
 
 def _serve_gated_queue(h) -> None:
-    """GET /api/ops/gated-queue"""
+    """GET /api/ops/gated-queue."""
     _serve(h, "gated-queue", ops_panels.compute_gated_queue)
 
 

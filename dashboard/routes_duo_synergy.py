@@ -182,7 +182,7 @@ def _qs_str(qs: dict, key: str, default: str = "") -> str:
     return str(val or default).strip()
 
 
-class _BadQuery(ValueError):
+class _BadQueryError(ValueError):
     """A query value outside its shape. ``code`` is the fixed, server-authored
     400 error string; the offending value is never carried."""
 
@@ -201,24 +201,24 @@ def _first(qs: dict, key: str) -> str:
 
 def _qs_champ(qs: dict, key: str) -> str:
     """A champion parameter: "" when absent or blank, else the stripped
-    value when it fits ``_CHAMP_RE``; anything else raises ``_BadQuery``."""
+    value when it fits ``_CHAMP_RE``; anything else raises ``_BadQueryError``."""
     val = _first(qs, key).strip(_ASCII_BLANKS)
     if not val:
         return ""
     if not _CHAMP_RE.fullmatch(val):
-        raise _BadQuery(f"{key}_invalid")
+        raise _BadQueryError(f"{key}_invalid")
     return val
 
 
 def _qs_top_n(qs: dict) -> int:
     """top_n: absent or blank reads the default; ASCII digits are clamped to
     1.._MAX_TOP_N; anything else (a sign, "1_1", non-ASCII digits) raises
-    ``_BadQuery``. int() alone accepted all of those."""
+    ``_BadQueryError``. int() alone accepted all of those."""
     val = _first(qs, "top_n").strip(_ASCII_BLANKS)
     if not val:
         return _DEFAULT_TOP_N
     if not _TOP_N_RE.fullmatch(val):
-        raise _BadQuery("top_n_invalid")
+        raise _BadQueryError("top_n_invalid")
     return max(1, min(int(val), _MAX_TOP_N))
 
 
@@ -460,7 +460,7 @@ def _serve_duo_synergy(h) -> None:
             bot_lock, bot_hover, sup_lock, sup_hover = (
                 _qs_champ(qs, key) for key in _CHAMP_PARAMS)
             top_n = _qs_top_n(qs)
-        except _BadQuery as bad:
+        except _BadQueryError as bad:
             # A fixed code, never the value; nothing cached, seed untouched.
             h._send(400, json.dumps({"ok": False, "error": bad.code})
                     .encode("utf-8"), "application/json")

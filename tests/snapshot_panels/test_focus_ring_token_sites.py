@@ -1,4 +1,5 @@
-"""
+"""RM-1017: no :focus-visible rule feeds the box-shadow `--focus-ring` token to `outline:`.
+
 tests/snapshot_panels/test_focus_ring_token_sites.py
 RM-1017 (s144 uiux): `--focus-ring` (web/css/tokens.css, re-declared per
 theme in web/css/themes.css) is a BOX-SHADOW value, "0 0 0 2px <color>".

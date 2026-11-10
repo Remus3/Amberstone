@@ -262,7 +262,7 @@ def _open_rewind_db_ro() -> sqlite3.Connection:
 
 
 def _serve_rune_wpa(h) -> None:
-    """GET /api/rune-wpa?min_n=20&queue_id=&patch="""
+    """GET /api/rune-wpa?min_n=20&queue_id=&patch= (query params)."""
     try:
         query, err = _parse_query(h.path)
         if err is not None:

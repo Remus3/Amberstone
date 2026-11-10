@@ -29,11 +29,14 @@ import gc
 import sqlite3
 import sys
 import warnings
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 import agents.agent2_backend.db_schema as dbs
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _REAL_CONNECT = sqlite3.connect
 _CORRUPT = b"this is not a sqlite database header" * 8

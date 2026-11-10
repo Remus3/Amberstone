@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import json
 import math
-import pathlib
+from typing import TYPE_CHECKING
 
 import pytest
 
 from core import death_patterns_loader as dpl
+
+if TYPE_CHECKING:
+    import pathlib
 
 
 def _raw(tmp_path: pathlib.Path, text, name: str = "dp.json") -> pathlib.Path:

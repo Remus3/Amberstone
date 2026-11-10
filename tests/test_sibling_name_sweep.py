@@ -654,6 +654,7 @@ def test_a_halting_runs_full_stderr_contains_no_literal(tmp_path: Path, synth_cf
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert proc.returncode == sweep.EXIT_HALT, proc.stdout + proc.stderr
     combined = proc.stdout + proc.stderr
@@ -681,6 +682,7 @@ def test_usage_error_exits_one():
         [sys.executable, str(REPO_ROOT / "tools" / "sibling_name_sweep.py")],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert proc.returncode == sweep.EXIT_USAGE
 
@@ -702,6 +704,7 @@ def test_an_argparse_argument_error_exits_one_and_not_two():
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert proc.returncode == sweep.EXIT_USAGE, proc.stdout + proc.stderr
     assert proc.returncode != sweep.EXIT_HALT
@@ -741,6 +744,7 @@ def test_bypass_env_proceeds_but_still_prints_the_report(tmp_path: Path):
         capture_output=True,
         text=True,
         env=env,
+        check=False,
     )
     assert proc.returncode == sweep.EXIT_CLEAN
     assert "BYPASS" in (proc.stdout + proc.stderr)
@@ -1039,6 +1043,7 @@ def test_worktree_cli_reports_armed(tmp_path: Path):
         capture_output=True,
         text=True,
         env=env,
+        check=False,
     )
     assert proc.returncode == sweep.EXIT_CLEAN, proc.stderr
     assert "ARMED" in proc.stderr
@@ -1564,6 +1569,7 @@ def test_the_cli_announces_the_narrowing_on_stderr(tmp_path: Path):
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
     assert proc.returncode == sweep.EXIT_CLEAN, proc.stdout + proc.stderr
     assert "2 NARROWED" in proc.stderr

@@ -175,7 +175,7 @@ def test_the_audit_probe_root_is_the_repo_root():
 
 
 def test_the_three_level_parents_spelling_is_the_old_string_for_a_ds_test_path():
-    """S144-P-533: agents/daemon_slayer/tests/x.py reaches the repo root with parents[3] (the old
+    """S144-P-533: a DS test file (agents/daemon_slayer/tests/<name>.py) reaches the repo root with parents[3] (the old
     normpath(join(dirname, '..', '..', '..')) string) and the DS package dir with parents[1]."""
     here = str(Path(__file__).absolute().parents[1] / "agents" / "daemon_slayer" / "tests" / "x.py")
     old_root = os.path.normpath(os.path.join(_OLD_DIRNAME(here), "..", "..", ".."))

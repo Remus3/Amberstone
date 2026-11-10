@@ -19,11 +19,14 @@ from __future__ import annotations
 
 import ast
 import importlib
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests._repo_walk import REPO_ROOT
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _FACADE_REL = "coaches/adaptation_hint.py"
 

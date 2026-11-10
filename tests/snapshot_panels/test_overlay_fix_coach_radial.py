@@ -1,4 +1,5 @@
-"""
+"""Rendered-pixel regressions for the 2026-07-12 overlay-fix slice (coach table, item radial, build row).
+
 tests/snapshot_panels/test_overlay_fix_coach_radial.py
 
 Rendered-pixel regressions for the 2026-07-12 overlay-fix slice (operator flagged

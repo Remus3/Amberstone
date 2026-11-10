@@ -37,7 +37,7 @@ def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
     proc = subprocess.run(
         [sys.executable, "-m", "ruff", "check", "--isolated", "--target-version", "py39",
          "--no-fix", "--no-cache", "--output-format", "json", "--select", _RULES, *args],
-        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, **kwargs,
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, check=False, **kwargs,
     )
     # ruff exits 1 when it reports anything; 2 is a real failure.
     assert proc.returncode in (0, 1), proc.stderr[-400:]
@@ -84,7 +84,7 @@ def test_the_safe_spellings_are_not_flagged():
 
 
 def test_ruff_toml_still_waives_both_rules():
-    """This ratchet exists because ruff.toml waives B006 and B008; if the waiver is lifted the ordinary lint covers
+    """The ratchet exists because ruff.toml waives B006 and B008; if the waiver is lifted the ordinary lint covers
     it and this file should be retired, not left as a second copy."""
     text = (REPO_ROOT / "ruff.toml").read_text(encoding="utf-8")
     ignore_block = text.split("ignore = [", 1)[1].split("]", 1)[0]

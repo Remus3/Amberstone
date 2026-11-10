@@ -58,6 +58,7 @@ import copy
 import math
 import sqlite3
 import stat as stat_mod
+import string
 import threading
 import time
 from pathlib import Path
@@ -96,8 +97,9 @@ _BRACKET_EARLY_MAX_S = 840    # < 14:00
 _BRACKET_MID_MAX_S = 1500     # nominal 14:00 - 24:59 label; >= 840 folds to mid
 
 # ASCII whitespace only: str.strip() with no argument also eats NBSP, NEL,
-# U+3000 and the ASCII separators U+001C-U+001F.
-_ASCII_BLANKS = " \t\n\r\v\f"
+# U+3000 and the ASCII separators U+001C-U+001F. string.whitespace is exactly
+# the six ASCII blanks (space, tab, LF, CR, VT, FF).
+_ASCII_BLANKS = string.whitespace
 
 # Seconds before a failed rebuild is retried when the corpus signature has not
 # changed (a changed signature retries at once).
@@ -351,12 +353,6 @@ def _scan() -> dict | None:
             "kda": _stat(lists["kda"]),
         }
     return grid
-
-
-def _build_grid() -> dict:
-    """One uncached scan; {} on any DB error (kept for direct callers)."""
-    grid = _scan()
-    return grid if grid is not None else {}
 
 
 def role_bracket_grid() -> dict:

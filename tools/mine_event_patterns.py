@@ -220,7 +220,7 @@ def holdout_side(match_id: str, frac: float) -> str:
 
 
 def holdout_verdict(train: dict, test: dict) -> str:
-    """Does the held-out half say the same thing as the mined half?
+    """Say whether the held-out half agrees with the mined half.
 
     Direction is checked, not just magnitude. A row that separates one way on
     the mined matches and the other way on the held-out ones is REFUTED by the

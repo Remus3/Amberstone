@@ -119,7 +119,7 @@ def logs(tmp_path, monkeypatch):
             log.write_bytes((header + "\n".join(lines) + "\n").encode("ascii"))
 
         def append(self, lines):
-            with open(log, "ab") as fh:
+            with log.open("ab") as fh:
                 fh.write(("\n".join(lines) + "\n").encode("ascii"))
 
         def write_eog(self, **kw):
@@ -253,10 +253,10 @@ def test_incremental_append_and_rotation(logs):
 
 def test_partial_last_line_waits_for_its_newline(logs):
     logs.write(STARTUP + QUEUE)
-    with open(logs.path, "ab") as fh:
+    with logs.path.open("ab") as fh:
         fh.write(IN_GAME[:60].encode("ascii"))
     assert _state()["lobby_state"] == "Matchmaking"
-    with open(logs.path, "ab") as fh:
+    with logs.path.open("ab") as fh:
         fh.write((IN_GAME[60:] + "\n").encode("ascii"))
     assert _state()["lobby_state"] == "InGame"
 

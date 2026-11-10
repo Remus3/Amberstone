@@ -26,7 +26,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Union
+from typing import Callable
 
 import pytest
 
@@ -71,7 +71,7 @@ class StoreStates:
     date-keyed store (the spend ledger) resolves its name at build time."""
 
     name: str
-    filename: Union[str, Callable[[], str]]
+    filename: str | Callable[[], str]
     make_empty: Callable[[Path], None]
     make_populated: Callable[[Path], None]
     is_sqlite: bool = False
@@ -122,7 +122,7 @@ def json_store(name: str, filename, empty, populated) -> StoreStates:
     return StoreStates(name, filename, _maker(empty), _maker(populated))
 
 
-def sqlite_store(name: str, filename, schema: Union[str, Callable[[], str]],
+def sqlite_store(name: str, filename, schema: str | Callable[[], str],
                  seed: Callable[[sqlite3.Connection], None]) -> StoreStates:
     """A sqlite store. EMPTY = the schema with zero rows; POPULATED = the
     schema plus `seed(conn)`. `schema` may be a callable so the production

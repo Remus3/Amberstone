@@ -1,16 +1,17 @@
-# s144 true-audit of core/arena_deterministic_coach.py (lane 8, one file).
-#
-# build_block documents that each field degrades INDEPENDENTLY and that it
-# never raises. Measured before this fix: a bool or a str hp_pct was a reading
-# (True read "Your HP 1%" and KITE BACK, " 6e1 " read 60%); hp was not banded
-# (-50 read KITE BACK with "Your HP -50%", 1e300 printed a 300-digit HP line);
-# alive_teams took a str ("3"), truncated 2.7 to 2 and printed -5, 0 and
-# 1000000 teams; a NaN, "false" or [0] camp_phase routed BUY ITEMS although the
-# producer only ever writes a bool (coaches/arena_coach.py vision schema); a
-# 10**400 low-opponent count promoted ALL IN while an integral 2.0 did not; a
-# tuple build order was not an order and a head carrying a newline or 5000
-# chars was coached verbatim; and one raise inside the round_strategy or
-# anvil helper blanked EVERY field of the block.
+"""s144 true-audit of core/arena_deterministic_coach.py (lane 8, one file).
+
+build_block documents that each field degrades INDEPENDENTLY and that it
+never raises. Measured before this fix: a bool or a str hp_pct was a reading
+(True read "Your HP 1%" and KITE BACK, " 6e1 " read 60%); hp was not banded
+(-50 read KITE BACK with "Your HP -50%", 1e300 printed a 300-digit HP line);
+alive_teams took a str ("3"), truncated 2.7 to 2 and printed -5, 0 and
+1000000 teams; a NaN, "false" or [0] camp_phase routed BUY ITEMS although the
+producer only ever writes a bool (coaches/arena_coach.py vision schema); a
+10**400 low-opponent count promoted ALL IN while an integral 2.0 did not; a
+tuple build order was not an order and a head carrying a newline or 5000
+chars was coached verbatim; and one raise inside the round_strategy or
+anvil helper blanked EVERY field of the block.
+"""
 from __future__ import annotations
 
 import json

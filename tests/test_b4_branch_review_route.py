@@ -158,7 +158,7 @@ def test_bare_matcher_does_not_claim_the_runs_path():
 
 
 def test_no_anthropic_call_and_no_write(corpus):
-    """This route is read-only by construction; a regression that made it
+    """The route is read-only by construction; a regression that made it
     write would corrupt the validation corpus."""
     before = corpus.read_bytes()
     _get("/api/branch-review")

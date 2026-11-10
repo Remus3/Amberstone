@@ -20,9 +20,11 @@ executor (four git reads: three test the exit code, the fourth reads the empty `
 ``git config --get`` for an unset key), lane_launcher (the
 ``_git`` helper, whose callers read ``returncode``, and a best-effort ``taskkill``) and queue_loop
 (a ``taskkill``, the ``gh`` runner and an ``ls-remote``, each of which tests ``returncode``); the
-rest sit in the baseline below, which only shrinks. Held back on purpose: ``tools/credential_history_scan.py`` and
-``tools/sibling_name_sweep.py`` (another lane branch changed them), the packaging files, and the
-gated one-shot probes not yet audited. A baseline row that stops offending fails
+rest sit in the baseline below, which only shrinks. Held back on purpose: ``tools/credential_history_scan.py``
+(another lane branch changed it), the packaging files, and the gated one-shot probes not yet audited.
+``tools/sibling_name_sweep.py`` was held back the same way until the s158 rebase brought main's copy in;
+its three git reads (``_git``, ``_has_object``, ``_is_ancestor``) each test ``returncode`` themselves, so
+all three state ``check=False`` and the module moved from the baseline to ``_FIXED``. A baseline row that stops offending fails
 ``test_baseline_is_exact`` until it is dropped; a new finding anywhere else fails
 ``test_no_new_findings``.
 
@@ -70,7 +72,6 @@ _BASELINE = {
     "tools/build_portable.py": 1,
     "tools/credential_history_scan.py": 1,
     "tools/run_packaged_smoke.py": 6,
-    "tools/sibling_name_sweep.py": 2,
 }
 _FIXED = (
     "coaches/voice_coach.py",
@@ -110,6 +111,7 @@ _FIXED = (
     "tools/replay_chain_watch.py",
     "tools/repo_insights.py",
     "tools/scheduled_boot_verify.py",
+    "tools/sibling_name_sweep.py",
     "tools/sibling_sweep_ci.py",
     "tools/timeline_ingest.py",
     "tools/truth_gate.py",

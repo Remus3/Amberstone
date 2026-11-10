@@ -103,7 +103,7 @@ class NodeSuiteRuns(unittest.TestCase):
         proc = subprocess.run(
             [NODE, "--test", str(MODULE_MJS.relative_to(ROOT))],
             cwd=str(ROOT), capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=300, **kwargs)
+            errors="replace", timeout=300, check=False, **kwargs)
         out = proc.stdout + proc.stderr
         tally = {k: int(v) for k, v in _TALLY.findall(out)}
         self.assertEqual(proc.returncode, 0, out[-3000:])

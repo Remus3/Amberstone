@@ -211,7 +211,7 @@ def test_importing_the_engine_loads_no_daemon_slayer_module():
             "print('BAD=' + ','.join(bad))\n")
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
     proc = subprocess.run([sys.executable, "-c", code], cwd=str(REPO_ROOT), capture_output=True,
-                          text=True, timeout=120, creationflags=flags)
+                          text=True, timeout=120, check=False, creationflags=flags)
     assert proc.returncode == 0, proc.stderr
     assert "BAD=\n" in proc.stdout or proc.stdout.strip() == "BAD=", proc.stdout
 

@@ -832,7 +832,7 @@ def test_sidecar_dir_is_gitignored():
     from pathlib import Path
     root = Path(__file__).resolve().parent.parent
     r = subprocess.run(["git", "-C", str(root), "check-ignore", "-q",
-                        "data/recordings/7001.json"], capture_output=True)
+                        "data/recordings/7001.json"], capture_output=True, check=False)
     assert r.returncode == 0
 
 

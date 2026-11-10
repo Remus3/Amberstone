@@ -1,9 +1,10 @@
-# Tests for core.arena_target_rule - the Stage 1 pure Arena kill-order line.
-#
-# target_priority applies the Arena coach's documented kill order
-# (coaches/arena_coach.py:148 - carries first, tanks last) to an
-# already-classified opponent list. The frontline classification itself
-# happens in the wiring layer; these tests pass the sets directly.
+"""Tests for core.arena_target_rule - the Stage 1 pure Arena kill-order line.
+
+target_priority applies the Arena coach's documented kill order
+(coaches/arena_coach.py:148 - carries first, tanks last) to an
+already-classified opponent list. The frontline classification itself
+happens in the wiring layer; these tests pass the sets directly.
+"""
 from __future__ import annotations
 
 from core.arena_target_rule import target_priority

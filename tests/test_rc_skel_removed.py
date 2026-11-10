@@ -1,4 +1,5 @@
-"""
+"""Guard: the dormant rc-skel loading-skeleton mechanism stays removed.
+
 tests/test_rc_skel_removed.py
 
 Guard: the dormant rc-skel loading-skeleton mechanism is permanently removed

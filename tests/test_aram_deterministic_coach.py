@@ -1,14 +1,15 @@
-# Tests for core.aram_deterministic_coach - the Stage 2 pure assembler.
-#
-# build_block assembles the 6 deterministic ARAM coach fields (action,
-# fight_rule, risk, reset_item, item_build, item_build_reasons) from the
-# Stage 1 rules + the existing ARAM build / hint surfaces. It is PURE
-# (primitives in, dict out), fail-soft (never raises), and partial-read
-# friendly (works from whatever inputs are present).
-#
-# No DS-engine network call happens: the build-table + hint reasons are
-# passed in as already-resolved primitives by the dashboard wiring layer,
-# so these unit tests construct them directly.
+"""Tests for core.aram_deterministic_coach - the Stage 2 pure assembler.
+
+build_block assembles the 6 deterministic ARAM coach fields (action,
+fight_rule, risk, reset_item, item_build, item_build_reasons) from the
+Stage 1 rules + the existing ARAM build / hint surfaces. It is PURE
+(primitives in, dict out), fail-soft (never raises), and partial-read
+friendly (works from whatever inputs are present).
+
+No DS-engine network call happens: the build-table + hint reasons are
+passed in as already-resolved primitives by the dashboard wiring layer,
+so these unit tests construct them directly.
+"""
 from __future__ import annotations
 
 from core.aram_deterministic_coach import build_block

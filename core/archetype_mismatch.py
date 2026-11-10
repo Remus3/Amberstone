@@ -262,6 +262,7 @@ def _copy_entry(entry: dict) -> dict:
 class NudgeResult:
     """Result of a single mismatch evaluation. Caller wraps into the
     ``state.archetype_nudge`` payload."""
+
     fired: bool
     phase: str = "pending"
     champion: str = ""

@@ -56,6 +56,7 @@ class HealthBlock(_AllowExtra):
 
 class StateResponse(_AllowExtra):
     """Shape returned by GET /api/state (polled at 500 ms by the dashboard)."""
+
     mode_key: str = "client"
     coach_source: str = ""
     health: HealthBlock = HealthBlock()
@@ -82,6 +83,7 @@ class PeerHealth(_AllowExtra):
 
 class HealthAllResponse(_AllowExtra):
     """Shape returned by GET /api/health/all."""
+
     status: str = "unknown"  # "green" | "yellow" | "red" | "unknown"
     rc: dict[str, Any] = {}
     vision: dict[str, Any] = {}
@@ -114,6 +116,7 @@ class InputRequest(_ForbidExtra):
 
 class CommandRequest(_ForbidExtra):
     """Valid commands: "force_vision" | "refresh" | "clear_pregame"."""
+
     command: str
 
 
@@ -158,6 +161,7 @@ class BuildOrderRequest(_AllowExtra):
 
 class ArchetypeNudgeDismissRequest(_ForbidExtra):
     """s184 - operator clicked the chip's X. Server is idempotent."""
+
     champion: str
 
 
@@ -181,6 +185,7 @@ class ArchetypeNudgePayload(_AllowExtra):
 class TeamContextRosterSlot(_AllowExtra):
     """One row of the 10-player champ-select roster posted by the
     Legion LCU agent on `ChampSelect` transition."""
+
     puuid: str = ""
     summoner_name: str = ""
     team_id: int = 0               # 100 = ally side, 200 = enemy side
@@ -194,5 +199,6 @@ class TeamContextRefreshRequest(_AllowExtra):
     at champ-select. queue_id drives the ranked-name-blanking gate
     once FU02's enrichment fan-out lands.
     """
+
     queue_id: int = 0
     roster: list[TeamContextRosterSlot] = []

@@ -305,6 +305,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     in match_history.db today (only operator-centric stats); the
     wrong_team section degrades gracefully until the Riot Match-V5
     enrich flow ships.
+
     """
     right: list[dict] = []
     wrong_team: list[dict] = []
@@ -550,6 +551,7 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
         "history_count": int,   # how many rows backed the Quick Review baseline
         "quick_review": {right, wrong_team, my_chronic},  # see _compute_quick_review
       }
+
     """
     import json
     # s220: baseline window is operator-configurable from the Settings

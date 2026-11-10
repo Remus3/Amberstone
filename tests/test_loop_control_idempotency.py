@@ -832,7 +832,7 @@ def test_concurrent_duplicate_key_fires_the_side_effect_exactly_once(
     assert out["a"][0] == 200 and out["b"][0] == 200
     # The waiter gets the OWNER's settled answer, unchanged, flagged replayed -
     # the same contract a sequential replay already had, so the client in
-    # web/mc/mc.js needs no change.
+    # web/mc/mc.js (since deleted) needed no change.
     assert out["b"][1]["replayed"] is True
     assert out["b"][1]["detail"] == "halt_save queued"
     assert "replayed" not in out["a"][1]
@@ -893,7 +893,7 @@ def test_an_in_flight_duplicate_is_refused_in_a_shape_every_panel_renders(
     """A duplicate that outlasts the wait is REFUSED, not reported as failed.
 
     Each Mission Control panel renders its own way and only _mcFire
-    (web/mc/mc.js:161, queue_intent) treats a bare ok=false as a refusal;
+    (web/mc/mc.js:161, queue_intent; the file was since deleted) treats a bare ok=false as a refusal;
     _mcFireLane (mc.js:221) and _mcIrqFire (mc.js:363) branch on `refused` and
     otherwise fall through to "<label> failed:". Without `refused` the operator
     would be told a still-running INTERRUPT had FAILED. The text must also not

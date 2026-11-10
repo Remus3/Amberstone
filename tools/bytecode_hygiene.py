@@ -93,7 +93,8 @@ def tracked_paths(root: Path) -> set[str]:
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise GitIndexError(f"git ls-files failed: {exc}") from exc
 
-    resolved = Path(os.path.abspath(root))
+    # normpath(absolute()) is abspath without resolving links (resolve() would).
+    resolved = Path(os.path.normpath(Path(root).absolute()))
     if any(part.casefold() == ".git" for part in resolved.parts):
         raise GitIndexError("git ls-files failed: root is inside a .git directory")
     own_git = (resolved / ".git").exists()
@@ -123,23 +124,24 @@ def _err(proc: subprocess.CompletedProcess) -> str:
     return proc.stderr.decode("utf-8", "replace").strip()
 
 
-def _is_link(path: str) -> bool:
-    return os.path.islink(path) or os.path.isjunction(path)
+def _is_link(path: str | os.PathLike) -> bool:
+    return Path(path).is_symlink() or os.path.isjunction(path)
 
 
-def _dir_size(path: str) -> int:
+def _dir_size(path: str | os.PathLike) -> int:
     total = 0
     for dirpath, dirnames, filenames in os.walk(path):
-        dirnames[:] = [d for d in dirnames if not _is_link(os.path.join(dirpath, d))]
+        here = Path(dirpath)
+        dirnames[:] = [d for d in dirnames if not _is_link(here / d)]
         for f in filenames:
             try:
-                total += os.lstat(os.path.join(dirpath, f)).st_size
+                total += os.lstat(here / f).st_size
             except OSError:
                 pass
     return total
 
 
-def _size(path: str) -> int:
+def _size(path: str | os.PathLike) -> int:
     try:
         return os.lstat(path).st_size
     except OSError:
@@ -151,7 +153,8 @@ def _classify_pyc(rel: str, name: str, dirpath: str) -> str | None:
 
     A temp or .pyc counts only inside ``__pycache__``, except under the inbox,
     where every one counts wherever it sits."""
-    in_cache = os.path.basename(dirpath) == "__pycache__"
+    here = Path(dirpath)
+    in_cache = here.name == "__pycache__"
     in_inbox = rel.split("/", 1)[0] == _INBOX
     if not (in_cache or in_inbox):
         return None
@@ -161,8 +164,8 @@ def _classify_pyc(rel: str, name: str, dirpath: str) -> str | None:
         return None
     if in_inbox:
         return "inbox_pyc"
-    stem = os.path.join(os.path.dirname(dirpath), name.split(".", 1)[0])
-    if any(os.path.exists(stem + suffix) for suffix in _SOURCE_SUFFIXES):
+    stem = name.split(".", 1)[0]
+    if any((here.parent / f"{stem}{suffix}").exists() for suffix in _SOURCE_SUFFIXES):
         return None
     return "orphan_pyc"
 
@@ -179,13 +182,14 @@ def find_candidates(root: Path, tracked: set[str] | None = None) -> list[Candida
     for dirpath, dirnames, filenames in os.walk(top):
         rel_dir = os.path.relpath(dirpath, top).replace(os.sep, "/")
         rel_dir = "" if rel_dir == "." else rel_dir
+        here = Path(dirpath)
         keep = []
         for d in dirnames:
-            full = os.path.join(dirpath, d)
+            full = here / d
             rel = f"{rel_dir}/{d}" if rel_dir else d
             if fold(rel) in _PRUNE_REL or fold(d) == ".git" or _is_link(full):
                 continue
-            if os.path.exists(os.path.join(full, ".git")):
+            if (full / ".git").exists():
                 continue  # a nested checkout or worktree: not ours to clean
             if d == _CACHE:
                 if rel_dir and fold(rel) not in tracked_dirs:
@@ -199,7 +203,7 @@ def find_candidates(root: Path, tracked: set[str] | None = None) -> list[Candida
                 continue
             cls = _classify_pyc(rel, name, dirpath)
             if cls is not None:
-                out.append(Candidate(rel, cls, _size(os.path.join(dirpath, name))))
+                out.append(Candidate(rel, cls, _size(here / name)))
     out.sort(key=lambda c: c.rel)
     return out
 

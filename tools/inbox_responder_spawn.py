@@ -40,7 +40,7 @@ import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Union
+from typing import Any, Callable, Mapping, Optional
 
 from ops.loop import headless_env
 from tools import inbox_responder_procs as procs
@@ -156,7 +156,7 @@ def CLAUDE_ARGV_TAIL(cfg) -> list[str]:  # noqa: N802 - a constant-shaped builde
     ]
 
 
-def _derive_exe(shim: Union[str, Path, None]) -> Optional[Path]:
+def _derive_exe(shim: str | Path | None) -> Optional[Path]:
     """The native binary that sits under an npm shim, if it is really there."""
     if not shim:
         return None
@@ -230,8 +230,8 @@ def child_env(parent_env: Mapping[str, str]) -> dict:
 
 def build_request(
     cfg,
-    envelope: Union[bytes, str],
-    cwd: Union[str, Path],
+    envelope: bytes | str,
+    cwd: str | Path,
     kill_budget: procs.KillBudget,
     *,
     env: Mapping[str, str],
@@ -298,13 +298,13 @@ def real_spawner(req: SpawnRequest) -> SpawnResult:
     )
 
 
-def _as_text(stdout: Union[bytes, str]) -> str:
+def _as_text(stdout: bytes | str) -> str:
     if isinstance(stdout, bytes):
         return stdout.decode("utf-8", "replace")
     return stdout
 
 
-def parse_result(stdout: Union[bytes, str]) -> Optional[dict]:
+def parse_result(stdout: bytes | str) -> Optional[dict]:
     """Read the measured result record. Returns None when nothing parsed.
 
     The fields are the ones measured on 2.1.251, cache tokens included, so a

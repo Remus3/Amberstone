@@ -34,11 +34,14 @@ and it served fabricated or wrong-shaped values on:
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 import core.laning_verdicts as lv
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _INF = float("inf")
 _NAN = float("nan")

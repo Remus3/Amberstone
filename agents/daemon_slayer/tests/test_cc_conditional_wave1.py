@@ -580,7 +580,7 @@ class AggregatorWaveOneTests(unittest.TestCase):
 
 
 class AsciiHygieneTests(unittest.TestCase):
-    """This test file is pure ASCII."""
+    """The test file is pure ASCII."""
 
     def test_this_test_file_is_ascii_clean(self) -> None:
         src_path = pathlib.Path(__file__)

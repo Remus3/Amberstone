@@ -287,8 +287,8 @@ class PatchResolveTests(unittest.TestCase):
             self.assertEqual(gen.resolve_patch(), gen._FALLBACK_PATCH)
 
     def test_out_dir_override_wins(self):
-        d = gen.out_dir_for("16.11.1", "/tmp/whatever")
-        self.assertEqual(d, Path("/tmp/whatever"))
+        d = gen.out_dir_for("16.11.1", "/override/whatever")
+        self.assertEqual(d, Path("/override/whatever"))
 
     def test_out_dir_default_uses_patch(self):
         d = gen.out_dir_for("16.99.9", None)

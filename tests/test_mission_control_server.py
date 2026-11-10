@@ -32,7 +32,7 @@ def _import_probe(module: str, forbidden: list[str]) -> tuple[int, str]:
     )
     proc = subprocess.run(
         [sys.executable, "-c", code],
-        cwd=str(ROOT), capture_output=True, text=True, timeout=120,
+        cwd=str(ROOT), capture_output=True, text=True, timeout=120, check=False,
     )
     return proc.returncode, proc.stdout + proc.stderr
 
@@ -367,7 +367,9 @@ def test_live_get_is_open(live_mc):
 
 
 def test_live_static_traversal_is_refused(live_mc):
-    """Escape target is main.py, not a doc: a real tracked file at the repo
+    """A live static-route traversal escape is refused.
+
+    Escape target is main.py, not a doc: a real tracked file at the repo
     root, so the resolved path exists and the guard has something to refuse.
     (Deliberately not a .md path - the docs-guard test selector treats any
     single-line whitespace-free `*.md` string literal as "this module reads

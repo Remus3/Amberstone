@@ -104,6 +104,7 @@ class OverlaySettingsRc2Test(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,
         )
         self.assertEqual(
             proc.returncode,

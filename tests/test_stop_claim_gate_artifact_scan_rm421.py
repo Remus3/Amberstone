@@ -82,7 +82,8 @@ def test_artifact_finding_never_blocks_an_armed_gate(tmp_path):
                           "cwd": str(ROOT), "stop_hook_active": False})
     proc = subprocess.run([sys.executable, str(GATE), "--arm", "--report", str(report),
                            "--history", str(tmp_path / "h.jsonl")],
-                          input=payload, capture_output=True, text=True, cwd=str(ROOT))
+                          input=payload, capture_output=True, text=True, cwd=str(ROOT),
+                          check=False)
     assert proc.returncode == 0
     assert proc.stdout == "", "an advisory-only run emits no Stop feedback"
     data = json.loads(report.read_text(encoding="utf-8"))

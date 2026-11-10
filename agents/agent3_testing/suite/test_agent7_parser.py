@@ -1,12 +1,15 @@
 """Unit tests for Agent 7 input parser (rule-based path only)."""
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from agents.agent1_lead import Scheduler, TaskStatus
 from agents.agent7_context import InputParser
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

@@ -559,7 +559,8 @@ def test_rm258_importing_the_watchdog_leaves_sys_path_alone():
     )
     r = subprocess.run([sys.executable, "-c", code], cwd=str(root),
                        capture_output=True, text=True, timeout=60,
-                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                       check=False)
     assert r.returncode == 0, r.stderr
 
 

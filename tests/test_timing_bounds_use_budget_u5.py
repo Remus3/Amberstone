@@ -140,7 +140,8 @@ class _Scanner(ast.NodeVisitor):
         self.generic_visit(node)
         self.scope_timing.pop()
 
-    visit_AsyncFunctionDef = visit_FunctionDef
+    # ast.NodeVisitor dispatches on the node class name, so the mixedCase attribute name is the API.
+    visit_AsyncFunctionDef = visit_FunctionDef  # noqa: N815
 
     def _timing(self, node: ast.AST) -> bool:
         if _is_clock_diff(node) or _mentions_elapsed(node):

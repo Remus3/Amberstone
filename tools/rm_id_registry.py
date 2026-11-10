@@ -550,7 +550,7 @@ def scan_paths(root: Path) -> tuple[Path, ...]:
 
 
 def audit(root: Path = REPO_ROOT) -> AuditResult:
-    """Is the pinned next-free id actually free?"""
+    """Check that the pinned next-free id is actually free."""
     pin = live_pin(read(root / PIN_DOC))
     scanned = scan_paths(root)
     collisions: list[tuple[str, Occurrence]] = []

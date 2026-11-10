@@ -1,4 +1,4 @@
-"""Print a dry-run prune manifest of stale IGNORED local files (RM-714).
+r"""Print a dry-run prune manifest of stale IGNORED local files (RM-714).
 
 Each row is one candidate a declared rule matched, with its size and a
 consumer verdict:
@@ -136,23 +136,23 @@ def _require_repo(root: Path) -> None:
 def _match(root: Path, rule: Rule) -> list[tuple[str, str]]:
     """(rel, full) for each entry the rule names; lists one directory only."""
     parent, _, leaf = rule.pattern.rpartition("/")
-    base = os.path.join(str(root), *parent.split("/")) if parent else str(root)
+    base = Path(root).joinpath(*parent.split("/")) if parent else Path(root)
     if not any(ch in leaf for ch in "*?["):
-        full = os.path.join(base, leaf)
-        return [(rule.pattern, full)] if os.path.lexists(full) else []
+        full = base / leaf
+        return [(rule.pattern, str(full))] if os.path.lexists(full) else []
     try:
         names = sorted(e.name for e in os.scandir(base))
     except OSError:
         return []
     pre = f"{parent}/" if parent else ""
-    return [(pre + n, os.path.join(base, n)) for n in names if fnmatch.fnmatchcase(n, leaf)]
+    return [(pre + n, str(base / n)) for n in names if fnmatch.fnmatchcase(n, leaf)]
 
 
 def _inside_link(root: Path, rel: str) -> bool:
     """True when the entry or any directory between it and the root is a link."""
-    cur = str(root)
+    cur = Path(root)
     for part in rel.split("/"):
-        cur = os.path.join(cur, part)
+        cur = cur / part
         if bh._is_link(cur):
             return True
     return False
@@ -160,13 +160,14 @@ def _inside_link(root: Path, rel: str) -> bool:
 
 def _newest_mtime(full: str) -> float:
     newest = os.lstat(full).st_mtime
-    if not os.path.isdir(full):
+    if not Path(full).is_dir():
         return newest
     for dirpath, dirnames, filenames in os.walk(full):
-        dirnames[:] = [d for d in dirnames if not bh._is_link(os.path.join(dirpath, d))]
+        here = Path(dirpath)
+        dirnames[:] = [d for d in dirnames if not bh._is_link(here / d)]
         for name in (*filenames, *dirnames):
             try:
-                newest = max(newest, os.lstat(os.path.join(dirpath, name)).st_mtime)
+                newest = max(newest, os.lstat(here / name).st_mtime)
             except OSError:
                 pass
     return newest
@@ -178,7 +179,7 @@ def _holds_checkout(full: str) -> bool:
     for dirpath, dirnames, filenames in os.walk(full):
         if ".git" in dirnames or ".git" in filenames:
             return True
-        dirnames[:] = [d for d in dirnames if not bh._is_link(os.path.join(dirpath, d))]
+        dirnames[:] = [d for d in dirnames if not bh._is_link(Path(dirpath) / d)]
     return False
 
 
@@ -240,7 +241,7 @@ def find_candidates(root: Path, rules: tuple[Rule, ...] | None = None,
         if _inside_link(root, rel):
             skip("link")
             continue
-        is_dir = os.path.isdir(full)
+        is_dir = Path(full).is_dir()
         if key in tracked or (is_dir and key in tracked_dirs):
             skip("tracked")
             continue

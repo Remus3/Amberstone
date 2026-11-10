@@ -1,11 +1,12 @@
-# Tests for core.arena_action_rule - the Stage 1 pure Arena action verdict.
-#
-# decide_action encodes the operator's own Arena Haiku prompt rules
-# (coaches/arena_coach.py _SYSTEM_PROMPT: the ARENA PRIORITY DECISION TREE
-# block, the CAMP PHASE block and the OUTPUT FORMAT Action line) as a
-# deterministic ladder. It is pure, fail-soft
-# (never raises), and has no live wiring - these tests construct every
-# input directly.
+"""Tests for core.arena_action_rule - the Stage 1 pure Arena action verdict.
+
+decide_action encodes the operator's own Arena Haiku prompt rules
+(coaches/arena_coach.py _SYSTEM_PROMPT: the ARENA PRIORITY DECISION TREE
+block, the CAMP PHASE block and the OUTPUT FORMAT Action line) as a
+deterministic ladder. It is pure, fail-soft
+(never raises), and has no live wiring - these tests construct every
+input directly.
+"""
 from __future__ import annotations
 
 import math

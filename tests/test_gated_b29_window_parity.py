@@ -1,4 +1,6 @@
-"""tests/test_gated_b29_window_parity.py
+"""Window-parity gathering tool: the QA6 + QA13 evidence contracts.
+
+tests/test_gated_b29_window_parity.py
 
 `tools/gated_b29_window_parity.py` gathers design evidence for the (was B29) QA6 +
 QA13 row in GATE 2. The contracts pinned here: a process handle opens only for an

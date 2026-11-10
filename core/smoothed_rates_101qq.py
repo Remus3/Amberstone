@@ -179,6 +179,7 @@ class DuoRec:
     smoothed_rate is the Laplace-smoothed doublewinrate; sample-size
     weighted so thin pairings get pulled toward 0.5.
     """
+
     bot: str
     sup: str
     bot_id: int
@@ -200,6 +201,7 @@ class SoloRec:
     win-rate aggregated (mean across appearances). itemp is the mean
     itemp_bot across appearances (proxy for play-rate share).
     """
+
     champ: str
     champ_id: int
     role: str

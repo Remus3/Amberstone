@@ -69,9 +69,9 @@ def rect_area(r) -> int:
 
 
 def rect_intersection(a, b) -> Rect:
-    l, t = max(a[0], b[0]), max(a[1], b[1])
+    left, t = max(a[0], b[0]), max(a[1], b[1])
     r, btm = min(a[2], b[2]), min(a[3], b[3])
-    return (l, t, max(l, r), max(t, btm))
+    return (left, t, max(left, r), max(t, btm))
 
 
 def _valid_rect(r) -> bool:

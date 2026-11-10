@@ -66,7 +66,7 @@ def _child(code: str, cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
         [sys.executable, "-c", f"import sys; sys.path.insert(0, r'{REPO}');\n" + code],
         cwd=str(cwd), env=dict(os.environ), capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=120, creationflags=_FLAGS)
+        encoding="utf-8", errors="replace", timeout=120, creationflags=_FLAGS, check=False)
 
 
 def _last_line(proc: subprocess.CompletedProcess) -> str:

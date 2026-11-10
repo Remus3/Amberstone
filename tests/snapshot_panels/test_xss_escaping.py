@@ -1,4 +1,5 @@
-"""
+"""Regression coverage: dynamic data is escaped on the web surface.
+
 tests/snapshot_panels/test_xss_escaping.py
 
 Regression coverage for the P2-W3 web-surface audit (DEEP-AUDIT cycle 13).
@@ -52,6 +53,7 @@ def _run_node(module_rel: str, script: str) -> dict:
     res = subprocess.run(
         [node, "--input-type=module", "-e", full],
         capture_output=True, text=True, cwd=str(REPO), timeout=30,
+        check=False,
     )
     assert res.returncode == 0, f"node failed: {res.stderr.strip()}"
     return json.loads(res.stdout)

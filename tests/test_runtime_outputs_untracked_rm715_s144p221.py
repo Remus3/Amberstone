@@ -44,7 +44,9 @@ pytestmark = pytest.mark.skipif(_GIT is None, reason="git not on PATH - cannot r
 
 
 def _git(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run([_GIT, *args], cwd=REPO_ROOT, capture_output=True, text=True, timeout=120)
+    return subprocess.run(
+        [_GIT, *args], cwd=REPO_ROOT, capture_output=True, text=True, timeout=120, check=False
+    )
 
 
 def test_none_of_the_runtime_outputs_is_tracked() -> None:
@@ -62,7 +64,7 @@ def test_each_runtime_output_is_ignored(rel: str) -> None:
     assert proc.returncode == 0, f"{rel} is not matched by any .gitignore rule"
 
 
-@pytest.mark.parametrize("rel", ("data/coach_cache/aram.json", "data/rewind_scraper_old.log"))
+@pytest.mark.parametrize("rel", ["data/coach_cache/aram.json", "data/rewind_scraper_old.log"])
 def test_a_sibling_of_each_shape_is_ignored_too(rel: str) -> None:
     proc = _git("check-ignore", "-q", "--no-index", "--", rel)
     assert proc.returncode in (0, 1), proc.stderr[-300:]

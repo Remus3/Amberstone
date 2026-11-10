@@ -43,7 +43,7 @@ def test_module_constant_resolves_to_loopback_without_override():
         [sys.executable, "-c",
          "from agents._supervisor_common import BIND_HOST; print(BIND_HOST)"],
         cwd=ROOT, env=env, capture_output=True, text=True, timeout=60,
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
     )
     assert out.returncode == 0, out.stderr[-500:]
     assert out.stdout.strip() == "127.0.0.1"

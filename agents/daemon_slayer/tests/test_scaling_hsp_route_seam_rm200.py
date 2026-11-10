@@ -70,11 +70,11 @@ import pkgutil
 import textwrap
 import unittest
 
-from .. import server as S
-from ..data_loader import DataSnapshot
-from ..ehp import compute_ehp
-from ..sustain import compute_sustain
-from .._hsp_amp import sum_wielder_hsp_pct
+from agents.daemon_slayer import server as S
+from agents.daemon_slayer.data_loader import DataSnapshot
+from agents.daemon_slayer.ehp import compute_ehp
+from agents.daemon_slayer.sustain import compute_sustain
+from agents.daemon_slayer._hsp_amp import sum_wielder_hsp_pct
 
 SEAM = "assume_scaling_hsp_grants"
 

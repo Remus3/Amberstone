@@ -1,12 +1,13 @@
-# Tests for core.ward_cue.compute_ward_cue (QA1 overlay ward-ready glyph cue).
-#
-# The cue is fed by the active player's Live Client items[] block. Live Client
-# emits NO ward/trinket cast events (core/ward_producer.py infers placements
-# from inventory deltas for that reason), so the only live ready-signal we
-# have is the per-item ``canUse`` boolean (the same field core/ward_producer.py
-# reads): for a ward trinket canUse True means off-cooldown / ready to place. Control ward (2055) readiness is "you hold one"
-# (count >= 1). This module is the pure extractor; no frontend panel reads the
-# field today (the overlay panel was deleted, the backend kept).
+"""Tests for core.ward_cue.compute_ward_cue (QA1 overlay ward-ready glyph cue).
+
+The cue is fed by the active player's Live Client items[] block. Live Client
+emits NO ward/trinket cast events (core/ward_producer.py infers placements
+from inventory deltas for that reason), so the only live ready-signal we
+have is the per-item ``canUse`` boolean (the same field core/ward_producer.py
+reads): for a ward trinket canUse True means off-cooldown / ready to place. Control ward (2055) readiness is "you hold one"
+(count >= 1). This module is the pure extractor; no frontend panel reads the
+field today (the overlay panel was deleted, the backend kept).
+"""
 
 from core.ward_cue import (
     CONTROL_WARD_ID,

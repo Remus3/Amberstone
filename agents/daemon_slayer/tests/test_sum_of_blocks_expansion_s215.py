@@ -50,7 +50,7 @@ def _snap() -> DataSnapshot:
 # --- Registry shape - 4 new entries ------------------------------------------
 
 
-class Phase599_21RegistrySeedTests(unittest.TestCase):
+class Phase599P21RegistrySeedTests(unittest.TestCase):
     """The 4 new (champion, key) entries are present with expected values.
 
     Thresh extends from s203 single-int {E: 2} to sum {E: [1, 2]}; the
@@ -87,7 +87,7 @@ class Phase599_21RegistrySeedTests(unittest.TestCase):
 # --- Arithmetic parity - sum == sum of forced singletons ---------------------
 
 
-class Phase599_21AbilityDpsTests(unittest.TestCase):
+class Phase599P21AbilityDpsTests(unittest.TestCase):
     """Sum-of-blocks entries deliver canonical single-target totals.
 
     Pattern mirrors ``test_sum_of_blocks.AbilityDpsSumOfBlocksTests``:
@@ -196,7 +196,7 @@ class Phase599_21AbilityDpsTests(unittest.TestCase):
 # --- Backward-compat - s207 seed entries preserved ---------------------------
 
 
-class Phase599_21BackwardCompatTests(unittest.TestCase):
+class Phase599P21BackwardCompatTests(unittest.TestCase):
     """The s207 seed entries (Camille/Malphite/Heimerdinger/Katarina)
     still resolve identically post-s215; the s193 Thresh.E single-int
     entry has been intentionally lifted to a list (other s203 entries
@@ -244,7 +244,7 @@ class Phase599_21BackwardCompatTests(unittest.TestCase):
 # --- ENGINE_VERSION pin ------------------------------------------------------
 
 
-class Phase599_21EngineVersionTests(unittest.TestCase):
+class Phase599P21EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents import daemon_slayer
         # s231 (Phase 5.9.31) bumped to 1.3.0; pin tracks current.

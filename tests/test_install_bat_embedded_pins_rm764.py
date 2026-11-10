@@ -220,7 +220,7 @@ def _run_step2(tmp_path: Path, option_b: bool, **state) -> tuple[str, str, list]
     bat.write_bytes(("\r\n".join(head + _step2() + tail) + "\r\n").encode("ascii"))
     proc = subprocess.run(
         ["cmd.exe", "/d", "/c", str(bat)], cwd=str(tmp_path), env=env,
-        capture_output=True, timeout=120,
+        capture_output=True, timeout=120, check=False,
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     out = proc.stdout.decode("ascii", "replace")
     log = tmp_path / "setup.log"

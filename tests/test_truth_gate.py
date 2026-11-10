@@ -189,7 +189,7 @@ def test_default_suite_cmd_interpreter_has_pytest():
     import subprocess
     from tools import truth_gate
     exe = shlex.split(truth_gate.DEFAULT_SUITE_CMD.replace("\\", "/"))[0]
-    probe = subprocess.run([exe, "-c", "import pytest"], capture_output=True)
+    probe = subprocess.run([exe, "-c", "import pytest"], capture_output=True, check=False)
     assert probe.returncode == 0, (
         f"DEFAULT_SUITE_CMD interpreter {exe!r} cannot import pytest: "
         f"{probe.stderr.decode(errors='replace')}")

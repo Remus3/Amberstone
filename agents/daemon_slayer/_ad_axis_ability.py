@@ -18,9 +18,13 @@ imports it at module level, which is safe because ``hybrid`` already imports
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .ability_dps import compute_ability_dps
 from .cast_propensity import propensity_adjusted_dps_delta
-from .data_loader import DataSnapshot
+
+if TYPE_CHECKING:
+    from .data_loader import DataSnapshot
 
 
 # Damage types the AD-axis ability term credits (RM-39 / RM-43). PHYSICAL is

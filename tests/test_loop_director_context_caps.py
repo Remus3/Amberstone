@@ -1,4 +1,5 @@
-"""
+"""Loop director context caps: the director prompt stays under its size budget.
+
 tests/test_loop_director_context_caps.py
 
 Loop-infra fix (2026-07-01): the director call went out with a 572KB prompt

@@ -460,7 +460,7 @@ class OcrResourceTests(unittest.TestCase):
 
 
 class SecretHandlingTests(unittest.TestCase):
-    """This module holds the only Anthropic client that runs vision calls, so
+    """The module holds the only Anthropic client that runs vision calls, so
     it sits directly on the API-key path. No value it RETURNS may carry the
     key: the returned dict is serialised straight onto the wire by
     ``vision_server/_http._j``."""

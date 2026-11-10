@@ -90,6 +90,7 @@ class EventRing:
         self._lock = threading.Lock()
 
     def __len__(self) -> int:
+        """Return how many events the ring currently holds."""
         with self._lock:
             return len(self._buf)
 

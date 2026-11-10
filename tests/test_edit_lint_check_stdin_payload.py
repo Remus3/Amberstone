@@ -377,7 +377,7 @@ def test_cli_reads_a_recorded_payload(tmp_path):
     proc = subprocess.run(
         [sys.executable, str(REPO_ROOT / "tools" / "edit_lint_check.py")],
         input=payload, capture_output=True, text=True, timeout=30, env=env,
-        cwd=str(tmp_path),
+        cwd=str(tmp_path), check=False,
     )
     assert proc.returncode == 0
     ctx = json.loads(proc.stdout.strip())["hookSpecificOutput"]["additionalContext"]

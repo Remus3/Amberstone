@@ -45,11 +45,11 @@ import sys
 import textwrap
 import unittest
 
-from .. import server as S
-from ..data_loader import DataSnapshot
-from ..ehp import compute_ehp
-from ..sustain import compute_sustain
-from .._hsp_amp import sum_wielder_hsp_pct
+from agents.daemon_slayer import server as S
+from agents.daemon_slayer.data_loader import DataSnapshot
+from agents.daemon_slayer.ehp import compute_ehp
+from agents.daemon_slayer.sustain import compute_sustain
+from agents.daemon_slayer._hsp_amp import sum_wielder_hsp_pct
 
 SERVER_PATH = pathlib.Path(S.__file__)
 SERVER_SRC = SERVER_PATH.read_text(encoding="utf-8")
@@ -926,7 +926,7 @@ class StrandedSeamDefaultTypeAxisRM333(unittest.TestCase):
         # byte-identical (13 of 21 champions reorder on the ability scorer, 3 of
         # 21 on carry), so a default flip would turn the measured-rate
         # assertions in test_cast_rate_canonical_keys.py into tautologies.
-        from .. import ult_rates
+        from agents.daemon_slayer import ult_rates
         self.assertIs(ult_rates.APPLY_CANONICAL_CAST_RATE_KEYS, False)
         sig = inspect.signature(ult_rates.get_spell_casts_per_sec)
         self.assertIsNone(sig.parameters["apply_canonical_cast_rate_keys"].default)

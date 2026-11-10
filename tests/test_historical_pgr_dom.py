@@ -188,7 +188,9 @@ class Hist2NoClobberInvariantTests(unittest.TestCase):
         self.assertNotIn("getElementById('lm-hero')", js)
 
     def test_panel_does_not_import_live_pgr_render(self):
-        """Importing fetchAndRenderLastMatch / renderLastMatch would run the
+        """The detached panel does not import the live PGR render.
+
+        Importing fetchAndRenderLastMatch / renderLastMatch would run the
         live PGR render against the lm- DOM. The detached panel must own its
         render path, not borrow the singleton's. (A prose mention of the
         filename in a comment is fine - only an actual import statement is

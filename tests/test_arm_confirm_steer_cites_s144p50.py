@@ -13,6 +13,7 @@ What the cites meant, in the tree each was written against:
     `web/mc/mc.js:133`               -> const _mcArm = createArmController(...)
     `web/mc/arm_confirm.js:89-100`   -> arm(), which calls disarm(true) first
     `web/mc/mc.js:285` / `:483`      -> _mcArm.arm(id) / _mcArm.arm(sc.id)
+                                        (every web/mc row: a deleted file)
     `web/mc/mc.js:338`               -> _mcArm.arm(_MC_IRQ_ID)
     `web/mc/mc.js:665,668,800,802`   -> the Resume / Stop loop / directive /
                                         Clear buttons, direct _loopControl()

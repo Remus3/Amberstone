@@ -66,7 +66,7 @@ def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
     proc = subprocess.run(
         [sys.executable, "-m", "ruff", "check", "--isolated", "--target-version", "py39",
          "--no-fix", "--no-cache", "--output-format", "json", *args],
-        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, **kwargs,
+        cwd=REPO_ROOT, capture_output=True, text=True, timeout=300, input=stdin, check=False, **kwargs,
     )
     # ruff exits 1 when it reports anything; 2 is a real failure.
     assert proc.returncode in (0, 1), proc.stderr[-400:]

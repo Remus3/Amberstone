@@ -277,7 +277,9 @@ def test_existing_autoaccept_toggle_also_posts_pref(mock_server, pw_browser):
 
 
 def test_no_em_dashes_or_smart_quotes():
-    """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the new
+    """Hard rule: ASCII-only authored text in the new test and its fixture.
+
+    0 bytes above 0x7F in the new
     test + the lobby fixture it drives. (header.css carries pre-existing
     non-ASCII glyphs that predate this slice; mirroring the sibling view
     tests, the CSS is not ASCII-checked here - only this slice's authored

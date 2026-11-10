@@ -49,9 +49,12 @@ import json
 import logging
 import sqlite3
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 MODES = ("aram", "sr_ranked")
 

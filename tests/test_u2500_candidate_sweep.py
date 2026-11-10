@@ -159,7 +159,7 @@ def test_item_187_reachable_file_is_u2500_clean(rel_posix: str, pre: int) -> Non
 
 def _git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=str(_REPO_ROOT),
-                          capture_output=True, text=True, timeout=60)
+                          capture_output=True, text=True, timeout=60, check=False)
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git not on PATH")
@@ -271,7 +271,7 @@ def test_item_187_swept_set_size() -> None:
 
 
 def test_this_drift_guard_is_ascii() -> None:
-    """This test file MUST be 7-bit ASCII (no literal U+2500 glyph, no
+    """The test file MUST be 7-bit ASCII (no literal U+2500 glyph, no
     em-dash, no smart-quote, no other non-ASCII codepoint).
     """
     raw = Path(__file__).read_bytes()

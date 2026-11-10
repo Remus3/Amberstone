@@ -581,7 +581,7 @@ class NoOverrideFileDefaultPreservationTests(unittest.TestCase):
 
 
 class AsciiHygieneTests(unittest.TestCase):
-    """This test file + the module are pure ASCII."""
+    """The test file + the module are pure ASCII."""
 
     def test_self_source_has_no_unicode_punctuation(self):
         path = pathlib.Path(__file__)

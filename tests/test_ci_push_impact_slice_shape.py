@@ -160,13 +160,13 @@ def test_both_playwright_caches_use_one_pinned_action_and_one_key():
 
 # ---- item 1: how many full suites each event runs ----------------------------
 
-@pytest.mark.parametrize("event", ("pull_request", "workflow_dispatch", "schedule"))
+@pytest.mark.parametrize("event", ["pull_request", "workflow_dispatch", "schedule"])
 def test_non_push_events_run_the_full_dual_suite_exactly_once(event):
     ran = _dual_suite_runs(event, mode="")
     assert len(ran) == 1, (event, ran)
 
 
-@pytest.mark.parametrize("mode", ("slice", "none"))
+@pytest.mark.parametrize("mode", ["slice", "none"])
 def test_an_ordinary_push_runs_no_full_dual_suite(mode):
     assert _dual_suite_runs("push", mode) == []
 
@@ -282,7 +282,7 @@ def test_named_fast_guards_are_still_in_the_check_job(must_run):
     assert must_run in [s.get("name") for s in _check_steps()]
 
 
-@pytest.mark.parametrize("event", ("push", "pull_request", "workflow_dispatch"))
+@pytest.mark.parametrize("event", ["push", "pull_request", "workflow_dispatch"])
 def test_check_runs_on_every_event_but_the_schedule(event):
     assert _eval_if(_jobs()["check"].get("if"), event=event) is True
     assert _eval_if(_jobs()["check"].get("if"), event="schedule") is False

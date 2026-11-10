@@ -1,4 +1,6 @@
-"""tests/test_gated_vision_pillow.py
+"""The process-side S6 read-back: which Pillow the running vision process has mapped.
+
+tests/test_gated_vision_pillow.py
 
 `tools/gated_vision_pillow.py` reads the process side of the S6 read-back: which
 Pillow the RUNNING :8889 vision process has mapped, and whether that Pillow was

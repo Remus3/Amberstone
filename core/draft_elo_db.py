@@ -62,7 +62,7 @@ import operator
 import os
 import sqlite3
 from pathlib import Path, PurePath
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional
 
 from core import smoothed_rates as _sr
 
@@ -103,7 +103,7 @@ def _resolve_db_path() -> Path:
     return Path(env) if env else _REWIND_DB
 
 
-def open_ro(db_path: Optional[Union[Path, str]] = None) -> sqlite3.Connection:
+def open_ro(db_path: Optional[Path | str] = None) -> sqlite3.Connection:
     """Open the rewind_history db read-only. Returns a Connection.
 
     ``db_path`` defaults to ``_resolve_db_path()`` (honors RC_REWIND_DB).

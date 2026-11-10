@@ -196,7 +196,8 @@ def test_rm258_stamp_works_when_run_as_a_script(tmp_path):
     env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
     r = subprocess.run([sys.executable, "-c", code], cwd=str(tmp_path), env=env,
                        capture_output=True, text=True, timeout=60,
-                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                       check=False)
     assert r.returncode == 0, r.stderr
     assert sc.read_session(p) == 9
 

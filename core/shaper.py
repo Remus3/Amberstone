@@ -76,6 +76,7 @@ class ShaperState:
     utility_nudge: int = 0
 
     def __post_init__(self) -> None:
+        """Require every nudge to be an int inside the knob range."""
         for name, val in (
             ("damage_nudge", self.damage_nudge),
             ("survivability_nudge", self.survivability_nudge),

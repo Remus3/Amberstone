@@ -1,4 +1,5 @@
-"""
+"""Catch rewind_history.db up to the present through the official Riot Web API.
+
 scripts/rewind_catchup.py
 -------------------------
 Catches rewind_history.db up to the present using the official Riot Web API

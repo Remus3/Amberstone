@@ -48,12 +48,12 @@ def test_measured_tft_queues_map_to_tft(qid):
     assert queue_modes.is_tft_queue(qid)
 
 
-@pytest.mark.parametrize("qid", (1090, 1100, 1130))
+@pytest.mark.parametrize("qid", [1090, 1100, 1130])
 def test_existing_tft_queues_still_tft(qid):
     assert queue_modes.is_tft_queue(qid)
 
 
-@pytest.mark.parametrize("qid", (420, 450, 2400, 1750, 0, None, "x"))
+@pytest.mark.parametrize("qid", [420, 450, 2400, 1750, 0, None, "x"])
 def test_league_and_unknown_queues_are_not_tft(qid):
     assert not queue_modes.is_tft_queue(qid)
 
@@ -311,11 +311,11 @@ _LOADOUT_CMDS = (
 
 
 @pytest.mark.parametrize("cmd", _LOADOUT_CMDS, ids=lambda c: c["cmd"])
-@pytest.mark.parametrize("state", (
+@pytest.mark.parametrize("state", [
     {"phase": "ChampSelect", "champ_select": {"queue_id": 1090}},
     {"phase": "Lobby", "lobby": {"queue_id": 0, "game_mode": "TFT"}},
     {"phase": "InProgress", "game_queue_id": 6110},
-), ids=("cs-queue", "lobby-mode", "in-game-queue"))
+], ids=("cs-queue", "lobby-mode", "in-game-queue"))
 def test_agent_refuses_league_loadout_commands_in_tft(agent, cmd, state):
     agent._note_live_queue(state)
     fake, calls = _agent_fake(_session(1090))
@@ -399,11 +399,11 @@ def test_team_context_league_positive_control():
 # ------------------------------------------------- Match-V5 timeline attach
 
 
-@pytest.mark.parametrize("detail", (
+@pytest.mark.parametrize("detail", [
     {"platformId": "NA1", "gameId": 1, "gameMode": "TFT", "queueId": 1090},
     {"platformId": "NA1", "gameId": 1, "queueId": 1160},
     {"platformId": "NA1", "gameId": 1, "mapId": 22},
-))
+])
 def test_timeline_attach_never_asks_match_v5_for_tft(detail):
     from core import riot_api
     from dashboard import builders_lcu_enrich as ble
@@ -445,14 +445,14 @@ def _staged(pin):
             rlw._reset_staging_for_tests()
 
 
-@pytest.mark.parametrize("pin", (
+@pytest.mark.parametrize("pin", [
     {"target_id": "NA1_5", "queue_id": 1090, "game_mode": "TFT",
      "riot_id": None},
     {"target_id": "NA1_5", "queue_id": 6110, "game_mode": "",
      "riot_id": None},
     {"target_id": "NA1_5", "queue_id": None, "game_mode": "TFT",
      "riot_id": None},
-))
+])
 def test_rewind_writer_excludes_tft_without_any_riot_call(pin):
     res = _staged(pin)
     assert res["status"] == "tft_excluded", res
@@ -598,12 +598,12 @@ def _game_end(monkeypatch, tmp_path, app):
     return calls
 
 
-@pytest.mark.parametrize("app_args", (
+@pytest.mark.parametrize("app_args", [
     ({}, True),
     ({"game_mode": "TFT", "data_source": "tft_standalone"}, False),
     ({"data_source": "tft_standalone"}, False),
     ({"game_mode": "TFT"}, False),
-), ids=("tft-mode", "state-tft-standalone", "standalone-tag", "state-tft"))
+], ids=("tft-mode", "state-tft-standalone", "standalone-tag", "state-tft"))
 def test_tft_game_end_rates_tft_and_skips_league_work(monkeypatch, tmp_path,
                                                       app_args):
     state, tft = app_args

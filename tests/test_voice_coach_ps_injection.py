@@ -169,7 +169,7 @@ class PowerShellEndToEndTests(_Base):
         r = subprocess.run(
             [str(_PS51), "-NoProfile", "-NonInteractive", "-Command", stub],
             env=kwargs.get("env"), capture_output=True, timeout=60,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=False,
         )
         return r.stdout.decode("utf-8", "replace").splitlines()
 

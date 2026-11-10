@@ -387,7 +387,7 @@ class ScorerUnitsJsConsumptionTests(unittest.TestCase):
         )
         out = subprocess.run(
             ["node", "--input-type=module", "-e", script],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True, text=True, timeout=30, check=False,
         )
         self.assertEqual(
             out.returncode, 0,

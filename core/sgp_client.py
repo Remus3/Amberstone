@@ -265,6 +265,7 @@ class SgpClient:
         self._transport = transport or _urllib_transport
 
     def __repr__(self) -> str:
+        """Return a repr that carries the region and never the token."""
         # Explicit so a later field addition cannot pull the token into a log.
         return f"SgpClient(region={self.region!r})"
 
