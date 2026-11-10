@@ -167,7 +167,7 @@ class Slice1KitConversionTests(QuinnHarness):
 
     def test_off_axis_channel_is_left_at_face_value(self):
         # Deliberate over-fire guard, the Blackfire shape from RM-86. Edge of
-        # Night (3814) carries 350 HP and IS a real Quinn core item; an
+        # Night (3814) carries 250 HP and IS a real Quinn core item; an
         # off_axis_stat below 1.0 penalises it at 0.05x and demotes her own
         # build. HP converting to zero DPS is true of EVERY AD carry, so it is
         # a class-wide statement, not Quinn kit signal.
