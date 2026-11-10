@@ -254,6 +254,7 @@ def test_stop_closes_the_listening_socket():
 class _ForeignHold(BaseHTTPRequestHandler):
     """A stdlib handler that holds its request until released: another
     module's ThreadingHTTPServer serving in the same worker (RM-1029)."""
+
     release = threading.Event()
 
     def do_GET(self):

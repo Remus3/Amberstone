@@ -24,6 +24,7 @@ class _Handler:
     The real handler is an http.server.BaseHTTPRequestHandler subclass;
     routes only touch ``self._send(status, body, content_type)``.
     """
+
     def __init__(self) -> None:
         self.status: int = 0
         self.body: bytes = b""

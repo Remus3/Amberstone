@@ -176,6 +176,7 @@ def test_mark_calls_the_rm637_replay_buffer_hook(fake_2999, tmp_path, monkeypatc
 
 class _Bad(BaseHTTPRequestHandler):
     """Fake :2999 failure shapes: 'garbage' body, 'http500', 'hang'."""
+
     mode = "garbage"
 
     def do_GET(self):  # noqa: N802

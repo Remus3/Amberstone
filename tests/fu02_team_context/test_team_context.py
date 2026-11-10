@@ -65,6 +65,7 @@ def _full_roster_slot() -> dict:
 
 class _FakeHandler:
     """Minimal _send-capturing stub used for direct route tests."""
+
     def __init__(self, headers: dict | None = None,
                  client_addr: tuple = ("127.0.0.1", 0)):
         self.headers = headers or {}

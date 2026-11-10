@@ -419,6 +419,7 @@ class ScorerUnitTests(unittest.TestCase):
 
 class _Stats:
     """Duck-typed coach_integration.enemy_stats.EnemyStats stub."""
+
     def __init__(self, armor=80.0, mr=30.0, max_hp=2000.0, bonus_hp=500.0):
         self.armor = armor
         self.mr = mr

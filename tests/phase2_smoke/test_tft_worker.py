@@ -16,6 +16,7 @@ from tests._timing_budget import fleet_test_guard
 
 class FakeLiveAnalysis:
     """Stub TftLiveAnalysis - no Tk."""
+
     def __init__(self):
         self.started = False
     def start(self): self.started = True
@@ -26,6 +27,7 @@ class FakeLiveAnalysis:
 
 class FakeEngine:
     """Stub TftCoachEngine - records submit calls."""
+
     def __init__(self):
         self.submitted = []
         self._last_call = 0
@@ -36,6 +38,7 @@ class FakeEngine:
 
 class FakeReader:
     """Stub TftStateReader - returns canned states then None."""
+
     def __init__(self, states):
         self._states = list(states)
         self._idx = 0

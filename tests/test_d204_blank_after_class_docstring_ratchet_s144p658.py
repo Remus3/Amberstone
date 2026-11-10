@@ -9,14 +9,20 @@ A second slice (S144-P-659, 2026-11-10) did the same for eight more small produc
 coach_integration/enemy_stats, coaches/tft_coach, core/archetype_mismatch, config_validator, decision_detector,
 liveclient_cache; 8 findings, whitespace only).
 
-Not touched, and named in ``_BASELINE`` with their counts (43 sites in 24 files), because someone else owns them:
+A third slice (S144-P-660, 2026-11-10) did the same for the eleven test modules the baseline had left for later
+(fu02_team_context/test_team_context, phase2_smoke x2, snapshot_panels/test_mock_server_teardown_s144q13,
+test_build_order, test_coach_archetype_dispatch, test_ds_preview_capgap, test_hotkey_moment_mark,
+test_jade_coach_path, test_lcu_pool, test_routes_ds_preview_scorer; 14 findings, whitespace only), so the
+baseline holds no repo-lane test module any more.
+
+Not touched, and named in ``_BASELINE`` with their counts (29 sites in 13 files), because someone else owns them:
 
 - ``core/game_snapshot.py`` is a frozen file (CLAUDE.md).
 - ``ops/launcher/updater.py`` is PKG-owned (the lane exclusion list).
 - ``agents/daemon_slayer/`` is the ds lane's engine tree.
 - ``core/coaching_payload.py`` and ``dashboard/view_router_state.py`` carry another lane's unlanded edits.
 - ``agents/agent0_gatekeeper/evaluator.py`` and ``core/damage_mix.py`` carry the true-audit lane's unlanded edits.
-- the rest are test modules left for a later slice.
+- ``agents/daemon_slayer/tests/test_rank.py`` belongs to the ds lane with the rest of its tree.
 
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned (three findings there, in one file).
 The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
@@ -57,17 +63,6 @@ _BASELINE = {
     "core/game_snapshot.py": 5,
     "dashboard/view_router_state.py": 1,
     "ops/launcher/updater.py": 1,
-    "tests/fu02_team_context/test_team_context.py": 1,
-    "tests/phase2_smoke/test_sr_aram_worker.py": 2,
-    "tests/phase2_smoke/test_tft_worker.py": 3,
-    "tests/snapshot_panels/test_mock_server_teardown_s144q13.py": 1,
-    "tests/test_build_order.py": 1,
-    "tests/test_coach_archetype_dispatch.py": 1,
-    "tests/test_ds_preview_capgap.py": 1,
-    "tests/test_hotkey_moment_mark.py": 1,
-    "tests/test_jade_coach_path.py": 1,
-    "tests/test_lcu_pool.py": 1,
-    "tests/test_routes_ds_preview_scorer.py": 1,
 }
 
 
