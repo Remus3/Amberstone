@@ -7,15 +7,13 @@ can never match a champion key, so Bone Plating earned ZERO EHP. This is the sam
 structural gap the R132 ``_rune_resist_grants`` registry filled for the resist
 axis, and the ``_rune_resist_grants`` module docstring (its "Only three ids are
 SEEDED" allowlist paragraph) names 8473 explicitly as REJECTED from that registry
-because it is "a flat per-instance damage BLOCK" rather than a resist add. That
-rejection note points at the PERCENT registry (``_passive_mitigation_overrides``);
-the correct lane is the FLAT sibling ``_passive_flat_mitigation_overrides``, which
-is what this module extends. The rejection itself is right - only the lane name in
-that comment is imprecise.
+because it is "a flat per-instance damage BLOCK" rather than a resist add, and
+names this module as the registry that owns it. This module is the rune-keyed
+extension of the FLAT champion sibling ``_passive_flat_mitigation_overrides``.
 
-Ground truth, quoted VERBATIM from ``data/meta_build/ddragon/16.14.1/
-runesReforged.json`` (id 8473, longDesc; the shortDesc is byte-identical and
-``data/meta/ddragon_runes.json`` carries the same text):
+Ground truth, quoted VERBATIM from the DDragon ``runesReforged.json`` (id 8473,
+longDesc, identical in every vendored snapshot 16.11.1..16.22.1; the shortDesc
+is byte-identical and ``data/meta/ddragon_runes.json`` carries the same text):
 
   "After taking damage from an enemy champion, the next 3 spells or attacks you
    receive from them deal 30-60 (based on level) less damage.<br><br>Duration:
@@ -62,7 +60,8 @@ sibling's Leona W seed). The reasoning, in both directions:
     expected uptime midpoint", the ``PassiveFlatMitigationEntry`` docstring).
 
 0.25 is therefore a documented conservative midpoint, not a guess, and it is
-pinned by ``tests/test_rune_flat_mitigation_rm101.py`` with a strict
+pinned by ``agents/daemon_slayer/tests/test_rune_flat_mitigation_rm101.py``
+with a strict
 ``< 0.3`` ratchet so a later pass cannot quietly raise it.
 
 AXIS IS ``ANY``: "spells or attacks" is untyped in the rune text, so the block
@@ -70,7 +69,7 @@ applies to physical, magical and true damage alike and credits all three EHP
 numerators.
 
 NO CAP FIELD: unlike every champion seed in the flat sibling (each carries a
-``cap_frac`` for an "up to 50% of the instance" clause), the 16.14.1 Bone Plating
+``cap_frac`` for an "up to 50% of the instance" clause), the live Bone Plating
 text states NO per-instance cap. The field is therefore ABSENT rather than
 defaulted to the sibling's 0.5 - an unstated number stays unstated.
 
@@ -164,7 +163,7 @@ class RuneFlatMitigationEntry:
     the field exists so a future alias cannot silently double-credit.
 
     NOTE the deliberate ABSENCE of a ``cap_frac`` field: the champion sibling
-    carries one for its "up to 50% of the instance" clauses, but the 16.14.1 Bone
+    carries one for its "up to 50% of the instance" clauses, but the live Bone
     Plating text states no cap, and an unstated number stays unstated.
     """
 
@@ -178,7 +177,7 @@ class RuneFlatMitigationEntry:
 
 
 _RUNE_FLAT_MITIGATION: dict[str, RuneFlatMitigationEntry] = {
-    # 8473 Bone Plating (Resolve, slot 2) - verbatim 16.14.1 longDesc: "After
+    # 8473 Bone Plating (Resolve, slot 2) - verbatim live longDesc: "After
     # taking damage from an enemy champion, the next 3 spells or attacks you
     # receive from them deal 30-60 (based on level) less damage. Duration: 1.5s
     # Cooldown: 55s". Per-level flat 30->60 on ANY damage type, an EXACT stated 3

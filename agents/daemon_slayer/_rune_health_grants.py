@@ -22,8 +22,8 @@ for the RESIST registry ("8451 Overgrowth max health") because max health is not
 a resist. This module is the lane that rejection pointed at. Both
 runes' self-side survivability was therefore worth exactly ZERO EHP.
 
-DDragon 16.14.1 ``data/meta_build/ddragon/16.14.1/runesReforged.json`` longDescs,
-quoted VERBATIM (re-read from raw source for this slice, not paraphrased):
+The DDragon ``runesReforged.json`` longDescs, identical in every vendored
+snapshot 16.11.1..16.22.1, quoted VERBATIM:
 
   * 8437 GraspOfTheUndying: "Every 4s in combat, your next basic attack on a
     champion will:<li>Deal bonus magic damage equal to 3.5% of your max health<li>
@@ -49,14 +49,14 @@ DDragon-cited, on the ENEMY side in ``enemy_runes.py``:
 ``ENEMY_RUNE_THREATS[8437]``). They are RESTATED here rather than imported: an
 import would create a cycle risk and couple a survivability registry to the
 enemy-threat seam, which is a different consumer with a different flip gate. The
-restatement is held safe by ``tests/test_rune_health_grants_r136.py``
+restatement is held safe by
+``agents/daemon_slayer/tests/test_rune_health_grants_r136.py``
 (``GraspCoefficientAntiDriftTests``), which imports BOTH sides - it lives outside
 the production import graph, so it can hold the pair at once and goes RED the
 moment either side is edited alone. That test is the reason this restatement is
-not drift-prone. NOTE: ``enemy_runes.py`` cites patch 16.12.1 and this module
-cites 16.14.1; all three Grasp magnitudes are unchanged across those patches
-(re-verified against the 16.14.1 longDesc above), which is why the equality guard
-holds today.
+not drift-prone. NOTE: ``enemy_runes.py`` cites patch 16.12.1; all three Grasp
+magnitudes sit in the longDesc above, which is unchanged across the whole
+vendored range, which is why the equality guard holds today.
 
 THE STACK-COUNT PROXY (convention COPIED, not invented). Both runes accumulate
 over a whole game and we have no live stack feed, exactly the problem
@@ -119,7 +119,8 @@ champion lookup is needed here and this module stays import-pure.
 PERCENT-OF-MAX-HP IS TAKEN ON THE CALLER'S RESOLVED POOL. Overgrowth's 3.5% reads
 the ``max_hp`` the caller passes - the RESOLVED build health - and NOT a total
 that already includes this registry's own flat grants. That is the same contract
-GUARD 2 of ``tests/test_rune_resist_signature_convention_r134.py`` pins for
+GUARD 2 of
+``agents/daemon_slayer/tests/test_rune_resist_signature_convention_r134.py`` pins for
 ``total_armor``: feeding peer grant-lane output back into a grant lane is
 grant-on-grant compounding and makes the result depend on the SOURCE ORDER of the
 peer registries. The flat and percent terms here are peers; neither compounds the
@@ -143,7 +144,7 @@ import math
 from dataclasses import dataclass
 from typing import Iterable
 
-# --- Grasp of the Undying (8437) - EXACT DDragon 16.14.1 magnitudes -----------
+# --- Grasp of the Undying (8437) - EXACT DDragon magnitudes -------------------
 # Restated from the enemy-side twin so the two lanes cannot drift; see the module
 # docstring for the enemy_runes.py field citations and the anti-drift test that
 # enforces the equality.
@@ -156,7 +157,7 @@ _GRASP_PERM_HP_PER_PROC: float = 5.0
 # effective" (ENEMY_RUNE_THREATS[8437].ranged_factor).
 _GRASP_RANGED_FACTOR: float = 0.40
 
-# --- Overgrowth (8451) - EXACT DDragon 16.14.1 magnitudes --------------------
+# --- Overgrowth (8451) - EXACT DDragon magnitudes ----------------------------
 # "permanently gaining 3 maximum health for every 8".
 _OVERGROWTH_HP_PER_BLOCK: float = 3.0
 _OVERGROWTH_ABSORBS_PER_BLOCK: float = 8.0
@@ -452,8 +453,8 @@ def rune_health_grants(
     total that already includes this registry's own grants: Overgrowth's 3.5%
     reads the resolved pool only, so the flat and percent terms stay peers and
     neither compounds the other (the ``total_armor`` contract of GUARD 2 in
-    ``tests/test_rune_resist_signature_convention_r134.py``, applied to the
-    numerator).
+    ``agents/daemon_slayer/tests/test_rune_resist_signature_convention_r134.py``,
+    applied to the numerator).
 
     ``level`` indexes both conservative stack-count proxies. ``is_ranged`` is the
     wielder's ranged status - ``compute_ehp`` already has it as ``is_ranged =
