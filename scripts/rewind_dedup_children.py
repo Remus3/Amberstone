@@ -1,4 +1,5 @@
-"""
+"""Remove duplicated child rows from rewind_history.db matches (dry run by default).
+
 scripts/rewind_dedup_children.py
 --------------------------------
 Recovery for rewind_history.db matches whose child rows were written more

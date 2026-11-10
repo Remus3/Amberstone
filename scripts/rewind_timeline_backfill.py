@@ -1,4 +1,5 @@
-"""
+"""Re-fetch timelines for rewind_history.db rows a Riot 429 left at has_timeline=0.
+
 scripts/rewind_timeline_backfill.py
 -----------------------------------
 One-shot recovery for rewind_history.db rows that a Riot 429 may have

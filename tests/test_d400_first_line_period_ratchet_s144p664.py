@@ -65,6 +65,12 @@ mine_event_patterns, rm_id_registry, vision_atlas_validate) gained a one-line su
 reworded as a statement, or a summary line above a path-led or wrapped opening), 15 sites, so the baseline is now
 101 sites in 90 files.
 
+Tenth slice (S144-P-675): ten more modules (scripts audit_api_surface, patch_champion, rewind_catchup,
+rewind_dedup_children, rewind_scraper, rewind_timeline_backfill, team_planner_sync and tools
+champion_loadout_cleanup_pollution_item213, champion_loadout_invariants, champion_loadout_sweep_item_s8) gained a
+one-line summary ending in a period above their path-led opening, 10 sites, so the baseline is now 91 sites in 80
+files.
+
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
 """
@@ -148,14 +154,7 @@ _BASELINE = {
     "ops/rc_self_monitor.py": 2,
     "ops/rc_state_validator.py": 1,
     "ops/rc_supervisor.py": 1,
-    "scripts/audit_api_surface.py": 1,
-    "scripts/patch_champion.py": 1,
     "scripts/prune_synthetic_matches.py": 1,
-    "scripts/rewind_catchup.py": 1,
-    "scripts/rewind_dedup_children.py": 1,
-    "scripts/rewind_scraper.py": 1,
-    "scripts/rewind_timeline_backfill.py": 1,
-    "scripts/team_planner_sync.py": 1,
     "scripts/wakeup_prune.py": 1,
     "tests/snapshot_panels/test_overlay_hotkey_hints.py": 1,
     "tests/snapshot_panels/test_overlay_launcher_menu.py": 1,
@@ -167,10 +166,7 @@ _BASELINE = {
     "tft/tft_coach_engine.py": 1,
     "tft/tft_ocr_reader.py": 1,
     "tft/tft_vision_reader.py": 1,
-    "tools/champion_loadout_cleanup_pollution_item213.py": 1,
     "tools/champion_loadout_collapse_to_paths.py": 1,
-    "tools/champion_loadout_invariants.py": 1,
-    "tools/champion_loadout_sweep_item_s8.py": 1,
     "tools/gated_g303_variant_reach.py": 1,
     "tools/gated_g314_tower_input.py": 1,
     "tools/gated_g5_focus_layout.py": 1,

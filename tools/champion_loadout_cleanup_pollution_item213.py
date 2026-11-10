@@ -1,4 +1,6 @@
-"""tools/champion_loadout_cleanup_pollution_item213.py
+"""Clean item / rune / summoner-spell pollution out of every champion loadout.
+
+tools/champion_loadout_cleanup_pollution_item213.py
 
 Item 213 (2026-05-28) - comprehensive loadout-data pollution cleanup.
 

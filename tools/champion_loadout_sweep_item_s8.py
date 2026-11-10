@@ -1,4 +1,6 @@
-"""tools/champion_loadout_sweep_item_s8.py
+"""Sweep data/champion_loadouts.json for pollution and length across all six axes.
+
+tools/champion_loadout_sweep_item_s8.py
 
 Item s8 (2026-06-10) - 6-axis full-roster loadout pollution + length
 sweep over data/champion_loadouts.json.

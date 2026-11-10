@@ -1,4 +1,5 @@
-"""
+"""Patch aram_champion_builds.json one champion at a time from modular patch files.
+
 scripts/patch_champion.py - Modular champion data patcher for aram_champion_builds.json
 
 Usage (subcommands, from the repo root; patch files live in data/meta_build/patches/):

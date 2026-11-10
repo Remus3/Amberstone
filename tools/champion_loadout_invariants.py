@@ -1,4 +1,6 @@
-"""tools/champion_loadout_invariants.py
+"""Shared invariants for the champion-loadout data pipeline.
+
+tools/champion_loadout_invariants.py
 
 Item s8 (2026-06-10) - shared invariants for the champion-loadout data
 pipeline. Single source for two operator-set rules that every producer

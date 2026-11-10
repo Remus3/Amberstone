@@ -1,4 +1,5 @@
-"""
+"""Scrape match history from rewind.lol into rewind_history.db.
+
 scripts/rewind_scraper.py
 -------------------------
 Scrapes match history from rewind.lol for SamplePlayer#Trist (NA).
