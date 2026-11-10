@@ -73,7 +73,7 @@
    "online_stage": "LATE",
    "magnitude": 0.8,
    "conditional": false,
-   "source_quote": "At full stardust and full AP build, Breath of Light and Falling Star deal extreme damage with very high AP ratios; stardust amplifies base ratios multiplicatively at max stacks"
+   "source_quote": "At full stardust and full AP build, Breath of Light and Falling Star deal extreme damage with very high AP ratios; Stardust permanently adds max-health damage and extra range / radius to his abilities"
   },
   {
    "champion": "Aurora",
@@ -226,7 +226,7 @@
    "online_stage": "EARLY",
    "magnitude": 0.95,
    "conditional": false,
-   "source_quote": "Cosmic Creator (P): damaging abilities against enemies generate permanent Stardust stacks that keep augmenting Breath of Light, Astral Flight and Singularity all game"
+   "source_quote": "Cosmic Creator (P): damaging abilities against enemies generate permanent Stardust stacks that keep augmenting Breath of Light, Astral Flight, Singularity and Falling Star all game"
   },
   {
    "champion": "Aurora",
@@ -253,7 +253,7 @@
    "online_stage": "EARLY",
    "magnitude": 0.75,
    "conditional": false,
-   "source_quote": "Traveler's Call (P): every Chime collected permanently raises Meep damage (+10 per 5 Chimes) and the Meep count throughout the entire game"
+   "source_quote": "Traveler's Call (P): Chimes collected permanently raise Meep damage (+10 per 5 Chimes) and the Meep count throughout the entire game"
   },
   {
    "champion": "Belveth",

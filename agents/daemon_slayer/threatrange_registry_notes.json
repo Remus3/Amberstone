@@ -5905,7 +5905,7 @@
    "kind": "POKE",
    "magnitude": 0.75,
    "conditional": true,
-   "source_quote": "Calibrum Q fires Crescendum shot at ~1450 range; conditional on Calibrum being active weapon"
+   "source_quote": "Calibrum Q fires Moonshot at ~1450 range; conditional on Calibrum being active weapon"
   },
   {
    "champion": "Aphelios",
@@ -5914,7 +5914,7 @@
    "kind": "BURST",
    "magnitude": 0.55,
    "conditional": true,
-   "source_quote": "Infernum W Onslaught AoE cone at weapon range ~550; conditional on Infernum being active gun"
+   "source_quote": "Infernum W Duskwave AoE cone at weapon range ~550; conditional on Infernum being active gun"
   },
   {
    "champion": "Aphelios",

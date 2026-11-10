@@ -29,15 +29,21 @@ Molten Fissure) and still pass every guard.
   changes engine data (Tier-2), so they are pinned below as known departures,
   each asserted still present; fixing one fails the pin until it is removed.
   Other leads are legitimate context, also pinned: Aphelios's weapon names
-  (his passive forms) open his weapon-dependent Q / W rows, Karma's Q rows
-  are the Mantra-empowered cast, and the Pantheon E, Renekton E and Tahm
-  Kench Q texts quote their empowered or stack-bonus versions.
+  (his passive forms) open his weapon-dependent Q rows, Karma's Q rows are
+  the Mantra-empowered cast, and the Pantheon E, Renekton E and Tahm Kench
+  Q texts quote their empowered or stack-bonus versions.
 
 MEASURED 2026-11-10 (patch 16.22.1, ENGINE 1.291.0, 2826 sidecar rows):
-before the fix 29 quotes led on another slot's ability (6 name slips, 12
-mis-keyed rows, 11 context leads) and 3 led on a non-ability "<Name>
+before the fix 29 quotes led on another slot's ability (6 name slips, 14
+mis-keyed rows, 9 context leads) and 3 led on a non-ability "<Name>
 (<slot>)"; one more quote (Aurelion Sol BASE) named the pre-rework Star
 Surge. The ten slips are fixed; the 23 others are pinned below.
+
+LIMITS (a clean run is not proof every quote is right): only the FIRST
+ability name is checked, a possessive opening ("Ekko's ...") is not
+stripped, names under 4 characters are skipped, and a stale or invented
+name without a "(<slot>)" suffix is caught only where a test names it
+(Star Surge below). Magnitudes and ranges in the quotes are not checked.
 """
 
 from __future__ import annotations
@@ -85,6 +91,10 @@ _MIS_KEYED: dict[tuple[str, str, str, str], str] = {
         "W's Abyssal Dive keyed to R; the W row holds R's Devour",
     ("objdamage", "Heimerdinger", "W", "H-28G Evolution Turret"):
         "Q's turrets; his W is Hextech Micro-Rockets",
+    ("threatrange", "Aphelios", "W", "Infernum"):
+        "Infernum's Q form (Duskwave cone) keyed to W; his W is the Phase swap",
+    ("zonecontrol", "Aphelios", "W", "Infernum"):
+        "Crescendum's Q form (Sentry turret) keyed to W; his W is Phase",
 }
 
 _CONTEXT_LEADS: dict[tuple[str, str, str, str], str] = {
@@ -92,12 +102,8 @@ _CONTEXT_LEADS: dict[tuple[str, str, str, str], str] = {
         "the Q active is chosen by the main-hand weapon (a passive form)",
     ("threatrange", "Aphelios", "Q", "Calibrum"):
         "the Q active is chosen by the main-hand weapon (a passive form)",
-    ("threatrange", "Aphelios", "W", "Infernum"):
-        "the weapon whose Q the W swap readies (a passive form)",
     ("waveclear", "Aphelios", "Q", "Infernum"):
         "the Q active is chosen by the main-hand weapon (a passive form)",
-    ("zonecontrol", "Aphelios", "W", "Infernum"):
-        "the weapon the W swap places off-hand (a passive form)",
     ("mobility", "Pantheon", "E", "Mortal Will"):
         "E's text quotes the Mortal Will empowered recast",
     ("cc_output", "TahmKench", "Q", "An Acquired Taste"):
@@ -265,6 +271,28 @@ class TestQuoteAbilityNames(unittest.TestCase):
                 )
                 self.assertEqual(_leading_name(text, names[champ]), want)
                 self.assertIn(slot, names[champ][want])
+
+    def test_aphelios_quotes_pair_each_weapon_with_its_own_q_form(self) -> None:
+        # The snapshot pairs passive weapon form i with Q form i (Infernum
+        # with Duskwave, Severum with Onslaught, ...). A quote naming exactly
+        # one weapon and one Q form must name a matching pair.
+        kit = self.abilities["Aphelios"]
+        weapons = {f["name"]: f["form_index"] for f in kit["P"] if f["form_index"]}
+        q_forms = {f["name"]: f["form_index"] for f in kit["Q"] if f["form_index"]}
+        self.assertEqual(sorted(weapons.values()), sorted(q_forms.values()))
+        checked = 0
+        for axis, entries in self.sidecars.items():
+            for e in entries:
+                if e["champion"] != "Aphelios":
+                    continue
+                quote = e["source_quote"]
+                w = [n for n in weapons if n in quote]
+                q = [n for n in q_forms if n in quote]
+                if len(w) == 1 and len(q) == 1:
+                    checked += 1
+                    with self.subTest(axis=axis, quote=quote):
+                        self.assertEqual(weapons[w[0]], q_forms[q[0]])
+        self.assertGreater(checked, 0)
 
     def test_no_quote_cites_aurelion_sols_pre_rework_q(self) -> None:
         # Star Surge was Aurelion Sol's Q before his rework; the live Q is
