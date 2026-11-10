@@ -1493,7 +1493,7 @@ function _amTftBoardNode(board, emptyText, asOf) {
     li.className = "am-tft-unit";
     const label = `${u.name}, ${u.star} star${u.items.length ? ", " + u.items.join(", ") : ", no items"}`;
     li.setAttribute("aria-label", label);
-    li.title = label;  // full item names when the items line is clamped
+    li.title = label;  // the whole label on hover; the items line is never clamped
     const top = document.createElement("div");
     top.className = "am-tft-unit-top";
     const name = document.createElement("span");

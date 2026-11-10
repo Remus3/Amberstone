@@ -397,13 +397,14 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
  * the filled lists occupy the SAME box: the pane grid sizes its rows from
  * content, and a board landing at round 1 used to grow every pane ~31px
  * (measured, 1920x920 fixture). Board: eyebrow + two chip rows (a level-10
- * board) of a name line and three item lines (S144-U-290: the item line
- * wraps, below); more units scroll inside. 212px at the v2.1 tokens, inside
- * the 336px BUILD body at 1920x920, so the pane grid does not move.
- * Lobby: eyebrow + eight rows. */
+ * board) of a name line and four item lines (S144-U-291: the item line
+ * wraps whole, below; four lines hold 8725 of the 9139 three-crafted-item
+ * sets at 1920x920); a longer chip or more units scroll inside. 252px at
+ * the v2.1 tokens, inside the 336px BUILD body at 1920x920, so the pane
+ * grid does not move. Lobby: eyebrow + eight rows. */
 #view-active-match .am-tft-board-wrap {
   height: calc(var(--fs-xs) * 1.2 + 6px
-               + 2 * (var(--fs-sm) * 1.25 + 3 * var(--fs-xs) * 1.25 + 8px)
+               + 2 * (var(--fs-sm) * 1.25 + 4 * var(--fs-xs) * 1.25 + 8px)
                + 6px);
   overflow-y: auto;
 }
@@ -523,21 +524,20 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
 #view-active-match .am-tft-unit-star[data-star="1"] {
   color: var(--text-dim);
 }
-/* S144-U-290: the items wrap, clamped at three lines (a unit holds at most
- * three items). One nowrap line cut the recorded "Guinsoos Rageblade" - a
- * chip's ONE item - at the 1920x920 baseline (146px of text in a 142px
- * chip) and showed half of "BF Sword / Guinsoos Rageblade". The chip title
- * still carries every name whole for a clamped line. */
+/* S144-U-290: the items wrap. One nowrap line cut the recorded "Guinsoos
+ * Rageblade" - a chip's ONE item - at the 1920x920 baseline (146px of text
+ * in a 142px chip). S144-U-291: and they are never clamped. A three-line
+ * clamp cut 3608 of the 9139 three-crafted-item sets at the baseline
+ * ("Infinity Edge / Last Whisper / Guinsoo's Rageblade" is four lines) and
+ * most sets with a Radiant item, leaving a hover on the title as the only
+ * read. A longer chip grows its row inside the fixed board box above; the
+ * board scrolls and the RM-1771 "+N BELOW" cue counts what it pushed. */
 #view-active-match .am-tft-unit-items {
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: 1.25;
   white-space: normal;
   overflow-wrap: break-word;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
 }
 #view-active-match .am-tft-unit-items.is-empty {
   font-style: italic;
