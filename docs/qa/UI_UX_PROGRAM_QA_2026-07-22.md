@@ -2426,3 +2426,21 @@ DONE 2026-11-06 (s144 uiux cycle 167, S144-U-177, Tier-1 CSS + snapshot guard). 
 - Registered in the RM-1132 theme-swap audit (`test_theme_swap_reads_settled.py`). Found while registering: the inventory test there was already red on the lane, because S144-U-293 (`test_tft_last_match_baseline_contrast`), S144-U-295 (`test_tft_active_match_theme_contrast`) and S144-U-296 (`test_tft_strip_hp_band_colour`) landed without joining the audit. All four join now: seventy-four modules, thirty-nine contrast, thirty-one sheeted; the contrast probe gains a `size` axis (its first size) for the strip pin. Each new module's reads are settled in all six themes.
 - `tests/guard_data/web_live_half/css_other.txt` (overlay.css row) and `js_lib.txt` (overlay_tft.js row) re-captured.
 - Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).
+
+### S144-U-298 - every text line of the three TFT overlay widgets is pinned at AA live and in the idle recede in all six themes; no defect (s144 uiux cycle 290)
+
+- Target: cycle 289's two NEXT CANDIDATES.
+  - (a) The TFT Post Game Review at the companion size. A scratch copy of the S144-U-293 pin at 923x1280, 721x900 and 400x800 (six themes each): no text under AA, no block text box cut, no horizontal page overflow. Only the last lobby row sits below the fold at 721x900 and 400x800 (1155 and 1748 px), which is vertical page scroll, not a defect. No pin added.
+  - (b) The overlay lobby crit chip in the idle recede. Measured inside a sweep of every text line of `#ovt-hud`, `#ovt-board` and `#ovt-lobby` (the live `?overlay=1&theme=<t>` route, 1920x1080, the `tft_overlay_feed` payload, worst of five game pixels): 8.17 live, 5.82 idle. No defect.
+- The sweep, lowest first, the same in all six themes: the "-" value and the OUT chip (0.55 dim tier) 6.06 / 4.63; the three pane titles (gold 0.90, 11 px / 700) 6.63 / 4.96; the crit chip 8.17 / 5.82; everything else 5.0 or more idle. A max-content probe (level 10, gold 999, twelve 3-star units with long names, seven 100 HP chips, an "as of" clock in every head) found no cut box and no widget overflow.
+- Ruling: pin the whole sweep, not the next single element. Three earlier pins each read one element (S144-U-273 placeholder and OUT chip, S144-U-297 vitals HP band); two of them found a defect, and the titles (the tightest unpinned line, 4.96 idle) had no pin at all.
+- 5-phase audit (headless, six themes):
+  - STRUCTURE: test-only; no DOM, box or class change.
+  - TYPOGRAPHY: every line is under 18.66 px, so the 4.5:1 floor applies to all (pinned).
+  - HIT-TARGETS: the TFT widgets stay click-through; nothing in them is interactive.
+  - ASCII: 0 non-ASCII and 0 CR in every touched file.
+  - HIERARCHY: unchanged. The crit chip keeps `--ovx-warn` (RM-950); the brightest ink stays the values and chips.
+- Pin: new `tests/snapshot_panels/test_overlay_tft_text_contrast.py` (8): six themes at AA live and idle over every line; a coverage case in hextech and arcane that the sweep read the three titles, the source tag, three head clocks, six labels and values, nine units and seven chips (2 crit, 4 low, 1 OUT). Positive control (scratch, reverted): title ink 0.70 and the crit chip in `--ovx-red` failed 6 of 8 (titles 3.65 idle, crit chip 4.45 live / 3.36 idle).
+- Registered in the RM-1132 theme-swap audit: seventy-five modules, forty contrast, thirty-two sheeted.
+- Found while registering: `test_contrast_modules_hold_their_sheet_and_no_sleep` there was already red on the lane (red on HEAD 12b65e040 too). Cycle 289 registered S144-U-295 (`test_tft_active_match_theme_contrast`) and S144-U-296 (`test_tft_strip_hp_band_colour`) as sheeted, but both sheets also carry `animation: none !important;`, and the check demanded the exact shared sheet. Ruling: a named `_SHEET_EXTRA` map (module -> the one extra declaration), so each of the two is still checked byte-exact and any other drift still fails; the two pins keep their stronger sheet.
+- Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).

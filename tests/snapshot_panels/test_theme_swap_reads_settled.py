@@ -353,7 +353,15 @@ was red) and the module of S144-U-297:
     chain and its widget's opacity in one evaluate live and one idle (the
     widget's own opacity transition is also switched off inline for that
     read). It joins the contrast pin below.
-This module pins all seventy-four verdicts at runtime with each test's own opener,
+Audit (2026-11-10, s144 uiux cycle 290, S144-U-298, the same detector):
+  - test_overlay_tft_text_contrast: boot-stamped (?theme=), never swaps
+    in-page; it waits for the Lobby HP widget to show a crit chip on the
+    live ?overlay=1 route (no mock, the tft_overlay_feed payload), adds the
+    transitions-off sheet, then reads every text line of the three TFT
+    widgets, its backing chain and its widget's opacity in one evaluate
+    live and one idle (each widget's own opacity transition is switched
+    off inline for that read). It joins the contrast pin below.
+This module pins all seventy-five verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -442,7 +450,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The seventy-four modules audited above, keyed by file name.
+# The seventy-five modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_empty_line_contrast.py",
@@ -496,6 +504,7 @@ _COVERED = {
     "test_overlay_hotkey_hint_contrast.py",
     "test_overlay_lead_bar_contrast.py",
     "test_overlay_tft_hp_band_contrast.py",
+    "test_overlay_tft_text_contrast.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_pgr_text_contrast.py",
     "test_replay_match_row_text_contrast.py",
@@ -1311,9 +1320,10 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The thirty-nine contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# The forty contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
 # U-242, U-243, U-245, U-250, U-251, U-253, U-255, U-269, U-272, U-275,
-# U-277, U-278, U-279, U-280, U-281, U-288, U-293, U-295, U-296, U-297):
+# U-277, U-278, U-279, U-280, U-281, U-288, U-293, U-295, U-296, U-297,
+# U-298):
 # each one's _measure extra arguments after (mock_server, pw_browser, theme),
 # taken from its own constants (its first viewport, its first mode, the TFT
 # footer state, the mixed Session scenario, its first surface, its first size).
@@ -1346,6 +1356,7 @@ _CONTRAST = {
     "test_overlay_hotkey_hint_contrast": ("mode",),
     "test_overlay_lead_bar_contrast": (),
     "test_overlay_tft_hp_band_contrast": (),
+    "test_overlay_tft_text_contrast": (),
     "test_pgr_text_contrast": ("mode", "vp"),
     "test_replay_match_row_text_contrast": (),
     "test_session_hygiene_inert_contrast": ("vp", "scenario"),
@@ -1358,7 +1369,7 @@ _CONTRAST = {
     "test_user_builds_text_contrast": ("vp",),
     "test_zoi_debug_readout": ("vp",),
 }
-# The thirty-one whose opener adds the sheet before its first interaction.
+# The thirty-two whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
@@ -1383,6 +1394,7 @@ _CONTRAST_SHEETED = (
     "test_overlay_hotkey_hint_contrast",
     "test_overlay_lead_bar_contrast",
     "test_overlay_tft_hp_band_contrast",
+    "test_overlay_tft_text_contrast",
     "test_pgr_text_contrast",
     "test_replay_match_row_text_contrast",
     "test_session_hygiene_inert_contrast",
@@ -1392,6 +1404,13 @@ _CONTRAST_SHEETED = (
     "test_user_builds_text_contrast",
     "test_zoi_debug_readout",
 )
+# Sheeted modules whose sheet is this module's sheet plus one declaration
+# (S144-U-298: U-295 and U-296 also stop animations; the exact-sheet check
+# was red on the lane from their registration in cycle 289 until this map).
+_SHEET_EXTRA = {
+    "test_tft_active_match_theme_contrast": "animation: none !important;",
+    "test_tft_strip_hp_band_colour": "animation: none !important;",
+}
 
 # Force style on every element, then list every transition / animation
 # running anywhere in the page: what the module's next colour read would see.
@@ -1575,7 +1594,9 @@ def test_contrast_modules_hold_their_sheet_and_no_sleep():
     for name in (*_CONTRAST_SHEETED, "test_historical_pgr_text_contrast"):
         mod = importlib.import_module(f"tests.snapshot_panels.{name}")
         src = (_HERE / f"{name}.py").read_text(encoding="utf-8")
-        assert mod._SHEET == _SHEET, name
+        extra = _SHEET_EXTRA.get(name)
+        want = _SHEET if extra is None else _SHEET.replace(" }", f" {extra} }}")
+        assert mod._SHEET == want, name
         assert "add_style_tag(content=_SHEET)" in src, name
 
 
