@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from agents.agent2_backend.db_schema import SCHEMA_STATEMENTS
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _make_postgame_db(path: Path) -> None:

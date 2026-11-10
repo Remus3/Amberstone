@@ -5,9 +5,12 @@ file order: the first test proves a default Scheduler starts its compactor, the
 second that it did not outlive the first test."""
 from __future__ import annotations
 
-import threading
+from typing import TYPE_CHECKING
 
 from agents.agent1_lead import Scheduler
+
+if TYPE_CHECKING:
+    import threading
 
 _SEEN: list[threading.Thread] = []
 
