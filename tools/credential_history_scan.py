@@ -122,7 +122,12 @@ def list_blobs(rev_args: Sequence[str], root: Path = ROOT,
     When ``sizes`` is given it is filled with {blob_sha: size in bytes}, so an
     over-cap blob can be skipped without streaming it through the pipe.
     """
-    out = _git(["rev-list", "--objects", *rev_args], root=root)
+    # Same feed as added_lines (S144-Q-128): a plain-rev range goes on stdin
+    # (Windows command-line cap); `--all` / `--not` stay on argv.
+    feed = stdin_revs(rev_args)
+    out = _git(["rev-list", "--objects",
+                *(["--stdin"] if feed is not None else rev_args)],
+               stdin=feed.encode() if feed is not None else None, root=root)
     candidates: dict[str, str] = {}
     for line in out.decode("utf-8", "replace").splitlines():
         sha, _, path = line.partition(" ")

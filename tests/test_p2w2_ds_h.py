@@ -50,6 +50,7 @@ import asyncio
 import io
 import json
 import logging
+import os
 import threading
 from pathlib import Path
 from unittest import mock
@@ -379,8 +380,10 @@ def _isolated_lock_pair(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
     for mod in (common, sup_mod):
         monkeypatch.setattr(mod, "STATE_DIR", state, raising=False)
         monkeypatch.setattr(mod, "LOCKFILE", state / "lockfile", raising=False)
-    (state / "lockfile").write_text("{}", encoding="utf-8")
-    (state / "lockfile.sentinel").write_bytes(b"424242")
+    # S144-Q-132: stop() removes each file only while it carries THIS
+    # process's claim, so the pair is seeded as this process's own.
+    (state / "lockfile").write_text(json.dumps({"pid": os.getpid()}), encoding="utf-8")
+    (state / "lockfile.sentinel").write_bytes(str(os.getpid()).encode("ascii"))
     return state
 
 

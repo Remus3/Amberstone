@@ -5,7 +5,8 @@ time. In a tree whose loops and dashboard routes load sibling modules by path (t
 ``sys.path``) the one question that matters is where the NAME or PATH comes from: a literal or repo-relative path is a
 module-binding convenience; a value from a request, a config file or a data file is code execution. Nothing forced such
 a site to be written down. Measured 2026-11-07 by AST over every tracked production ``.py`` (outside ``tests/``,
-``docs/`` and the vendored ``ops/fleet_kit/``): 68 calls, each its own ``(file, call, scope)`` site, listed in ``_SITES``.
+``docs/`` and the vendored ``ops/fleet_kit/``): 68 calls, each its own ``(file, call, scope)`` site, listed in ``_SITES``
+(69 since S144-Q-123 added the sibling sweep's core/log_rotation load, 70 with headless_env's).
 
 Result of the measurement: every target is one of
 - ``LITERAL`` - a string / path literal, or a module constant, at the call;
@@ -70,6 +71,8 @@ _SITES = {
     ("ops/loop/drain_waves_2_3.py", "spec_from_file_location", "_load_by_path"): _SIBLING,
     ("ops/loop/executor.py", "spec_from_file_location", "_fleet_route_module"): _LITERAL,
     ("ops/loop/fleet_route.py", "spec_from_file_location", "_load"): _SIBLING,
+    ("ops/loop/headless_env.py", "spec_from_file_location", "_log_rotation"):
+        "LITERAL: the module constant _LOG_ROTATION_FILE, this checkout's core/log_rotation.py from __file__ (S144-Q-123)",
     ("ops/loop/inbox_tick.py", "import_module", "_bind_kit"): _SIBLING,
     ("ops/loop/inbox_tick.py", "spec_from_file_location", "_bind_kit"): _SIBLING,
     ("ops/loop/inbox_tick.py", "spec_from_file_location", "module"): _POLY,
@@ -117,6 +120,8 @@ _SITES = {
     ("tools/session_checklist.py", "spec_from_file_location", "_load"): _SIBLING,
     ("tools/session_steer.py", "import_module", "_load_steer"): _LITERAL,
     ("tools/session_steer.py", "spec_from_file_location", "_load_steer"): _LITERAL,
+    ("tools/sibling_name_sweep.py", "spec_from_file_location", "_log_rotation"):
+        "LITERAL: the module constant _LOG_ROTATION_FILE, this checkout's core/log_rotation.py from __file__ (S144-Q-123)",
     ("tools/slot_bucket_audit.py", "spec_from_file_location", "_load_slots"): _LITERAL,
     ("tools/tft_cv_accuracy.py", "import_module", "load_extractor"):
         "OPERATOR: --extractor package.module:function typed on the command line of an offline accuracy CLI",
@@ -204,7 +209,7 @@ def test_every_production_dynamic_load_is_a_named_site():
     gone = sorted(set(_SITES) - found)
     assert not new, f"new dynamic module load (add it to _SITES with its target source): {new}"
     assert not gone, f"stale _SITES entry (drop it): {gone}"
-    assert calls == 68, f"call count moved to {calls}; a second call in a listed scope needs a look"
+    assert calls == 70, f"call count moved to {calls}; a second call in a listed scope needs a look"
 
 
 def test_every_site_names_its_target_source():

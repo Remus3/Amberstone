@@ -10,6 +10,9 @@ isinstance(dict) dance, with subtle variations. This module centralises:
   - atomic_write_json(path, payload): write-then-rename
   - read_json_dict(path, default): always returns a dict; corrupt/non-dict
     files yield the default
+  - remove_if_holds(path, expected): remove a lock / claim file only while
+    it still holds the bytes the caller read (S144-Q-139; the shared break
+    of the ops/loop and supervisor singleton locks)
 
 RM-264 (2026-10-04): the PolledJsonFile wrapper class this module used to
 advertise was REMOVED - it had zero production instantiations in five weeks,
@@ -33,6 +36,7 @@ lost and the reader sees the OLD content - stale, but never torn.
 """
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
 import logging
@@ -281,3 +285,60 @@ def read_json_dict(path: Path, default: Optional[dict] = None) -> dict:
         _log.warning("polled_json: %s is not a dict (got %s)", path, type(data).__name__)
         return fallback
     return data
+
+
+def remove_if_holds(path: Path, expected: bytes, *, keep_suffix: bool = True) -> bool:
+    """Remove ``path`` only if it still holds ``expected`` (S144-Q-139).
+
+    True when it is gone (removed here, or already gone); False when it holds
+    anything else or cannot be moved (left in place, or put back). The one
+    copy of the compare-and-remove break that RM-691 (ops/loop/inbox_tick.py),
+    S144-Q-131 (ops/loop/drain_waves_2_3.py), S144-Q-132
+    (agents/_supervisor_common.py) and S144-Q-138 (ops/loop/loop_controller.py,
+    through inbox_tick) use to break a stale lock or drop their own claim.
+
+    The file is first renamed to a unique side name, so the bytes compared are
+    the bytes removed; a mismatch is put back with a no-overwrite hard link.
+    Side name: ``<stem>.break-<pid>-<hex><suffix>`` (``keep_suffix``, so a
+    ``.lock`` side file stays under the test guard's ``*.lock`` IGNORE), else
+    ``<name>.break-<pid>-<hex>`` (the supervisor's, which its ``lockfile.*.tmp``
+    orphan reaper never matches). On Windows a file its creator still holds
+    open cannot be renamed, so the move fails and nothing is taken.
+
+    Residual (accepted; needs three breakers inside one rename window after a
+    crash left a stale lock): while B holds A's fresh lock aside, C can create
+    the lock; B's put-back then loses to C and A's lock is gone, so A and C
+    both run. Two breakers can no longer do it.
+    """
+    tag = f"break-{os.getpid()}-{os.urandom(4).hex()}"
+    if keep_suffix:
+        side = path.with_name(f"{path.stem}.{tag}{path.suffix}")
+    else:
+        side = path.with_name(f"{path.name}.{tag}")
+    try:
+        os.rename(path, side)
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    try:
+        held = side.read_bytes()
+    except OSError:
+        held = None
+    if held == expected:
+        with contextlib.suppress(OSError):
+            side.unlink()
+        return True
+    try:
+        os.link(side, path)
+    except FileExistsError:
+        pass  # a lock created since the rename is newer still; it stays
+    except OSError:
+        # No hard links here: a plain rename back (the side file is never
+        # deleted on this path, so the moved lock is not lost).
+        with contextlib.suppress(OSError):
+            os.rename(side, path)
+        return False
+    with contextlib.suppress(OSError):
+        side.unlink()
+    return False

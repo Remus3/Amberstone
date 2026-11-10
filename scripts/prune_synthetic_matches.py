@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from core.ds_calibration import log_generations  # noqa: E402
 from core.polled_json import atomic_write_text  # noqa: E402
 
 MATCH_DB = ROOT / "data" / "match_history.db"
@@ -115,12 +116,9 @@ def prune_match_db(dry_run: bool) -> dict:
     return {"named": n_named, "empty_zero": n_empty_zero, "deleted": deleted}
 
 
-def prune_ds_calibration(dry_run: bool) -> dict:
-    if not DS_JSONL.exists():
-        print(f"  {DS_JSONL} missing; skipping")
-        return {}
-    lines = DS_JSONL.read_text(encoding="utf-8").splitlines()
-    n_in = len(lines)
+def _split_synthetic(lines: list[str]) -> tuple[list[str], list[dict]]:
+    """(lines to keep verbatim, synthetic rows to drop). A non-JSON line is
+    kept: the prune only removes what it can name as synthetic."""
     keep: list[str] = []
     drop: list[dict] = []
     for line in lines:
@@ -141,28 +139,56 @@ def prune_ds_calibration(dry_run: bool) -> dict:
             drop.append(entry)
         else:
             keep.append(line)
-    print(f"  ds_calibration.jsonl entries: {n_in}")
-    print(f"    would drop: {len(drop)}")
+    return keep, drop
+
+
+def prune_ds_calibration(dry_run: bool) -> dict:
+    """Drop synthetic rows from every generation of the calibration log.
+
+    S144-Q-123: core/ds_calibration.py rotates the log at its size cap and
+    core/ds_calibration_agreement.py reads the rotated generations too, so a
+    synthetic row in ``.1`` / ``.2`` would still reach the agreement join.
+    Each generation is pruned on its own; one with nothing to drop is not
+    rewritten. The counts are summed over the chain.
+    """
+    parts = log_generations(DS_JSONL)
+    if not parts:
+        print(f"  {DS_JSONL} missing; skipping")
+        return {}
+    n_in = n_drop = n_kept = 0
+    plans: list[tuple[Path, list[str], int]] = []
+    for part in parts:
+        lines = part.read_text(encoding="utf-8").splitlines()
+        keep, drop = _split_synthetic(lines)
+        n_in += len(lines)
+        n_drop += len(drop)
+        n_kept += len(keep)
+        if drop:
+            plans.append((part, keep, len(drop)))
+    print(f"  ds_calibration.jsonl entries: {n_in} in {len(parts)} file(s)")
+    print(f"    would drop: {n_drop}")
 
     if dry_run:
-        return {"in": n_in, "would_drop": len(drop), "dropped": 0,
-                "kept": len(keep)}
-    if not drop:
-        return {"in": n_in, "dropped": 0, "kept": len(keep)}
+        return {"in": n_in, "would_drop": n_drop, "dropped": 0,
+                "kept": n_kept}
+    if not n_drop:
+        return {"in": n_in, "dropped": 0, "kept": n_kept}
 
-    bak = backup_path(DS_JSONL, "prune-synthetic")
-    if bak.exists():
-        bak = bak.with_suffix(bak.suffix + f"-{int(time.time())}")
-    print(f"  Backing up -> {bak.name}")
-    shutil.copy2(DS_JSONL, bak)
-    # RM-1124: core/ds_calibration.py log_ds_run appends to this file on
-    # every coaching tick, so a prune run while RC is up can meet a held
-    # handle. polled_json retries the rename, writes LF bytes and never
-    # leaves its scratch file. An append that lands between the read above
-    # and this rename is still lost: run the prune with RC stopped.
-    atomic_write_text(DS_JSONL, "\n".join(keep) + ("\n" if keep else ""))
-    print(f"  Wrote {len(keep)} kept entries")
-    return {"in": n_in, "dropped": len(drop), "kept": len(keep)}
+    for part, keep, dropped in plans:
+        bak = backup_path(part, "prune-synthetic")
+        if bak.exists():
+            bak = bak.with_suffix(bak.suffix + f"-{int(time.time())}")
+        print(f"  Backing up -> {bak.name}")
+        shutil.copy2(part, bak)
+        # RM-1124: core/ds_calibration.py log_ds_run appends to the base file
+        # on every coaching tick, so a prune run while RC is up can meet a
+        # held handle. polled_json retries the rename, writes LF bytes and
+        # never leaves its scratch file. An append (or a rotation) that lands
+        # between the read above and this rename is still lost or misplaced:
+        # run the prune with RC stopped.
+        atomic_write_text(part, "\n".join(keep) + ("\n" if keep else ""))
+        print(f"  {part.name}: dropped {dropped}, wrote {len(keep)} kept entries")
+    return {"in": n_in, "dropped": n_drop, "kept": n_kept}
 
 
 def main() -> int:

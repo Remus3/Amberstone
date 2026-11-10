@@ -123,8 +123,10 @@ from agents._supervisor_common import (
     _sentinel_path,
     _verify_decisions_version,
     acquire_lock,
+    append_agent_log,
     log,
     refresh_lock,
+    release_lock_files,
     release_lock_ownership,
     smb_credential_present,
 )
@@ -184,6 +186,7 @@ __all__ = [
     "log",
     "main",
     "refresh_lock",
+    "release_lock_files",
     "release_lock_ownership",
     "shutil",
     "smb_credential_present",
@@ -447,13 +450,11 @@ class Supervisor:
             # _sentinel_path() rather than a second STATE_DIR-based literal:
             # the two derivations are identical by default but DIVERGE under a
             # LOCKFILE-only relocation, which is exactly the footgun class this
-            # row exists to close.
+            # row exists to close. S144-Q-132: each file goes only while it
+            # carries THIS process's claim (release_lock_files); an unlink by
+            # path deleted another supervisor's live claim.
             release_lock_ownership()
-            for p in (LOCKFILE, _sentinel_path()):
-                try:
-                    p.unlink(missing_ok=True)
-                except OSError:
-                    pass
+            release_lock_files()
             log.info("supervisor stopped")
         finally:
             logging.raiseExceptions = _prev_raise
@@ -622,12 +623,13 @@ class Supervisor:
         while new deterministic ops can register handlers here.
         """
         log_path = LOG_ROOT / f"agent{task.owner_agent}.log"
-        with log_path.open("a", encoding="utf-8", newline="\n") as f:
-            f.write(
-                f"{_iso_now()} DETERMINISTIC agent={task.owner_agent} "
-                f"task={task.id} op={task.op} "
-                f"payload={json.dumps(task.payload, default=str)[:400]}\n"
-            )
+        # S144-Q-123: through the capped writer, never a plain append.
+        append_agent_log(
+            log_path,
+            f"{_iso_now()} DETERMINISTIC agent={task.owner_agent} "
+            f"task={task.id} op={task.op} "
+            f"payload={json.dumps(task.payload, default=str)[:400]}\n",
+        )
 
         # Op-specific handlers - grow this registry carefully.
         if task.op == "game-summary":

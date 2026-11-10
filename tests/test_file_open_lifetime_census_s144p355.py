@@ -17,7 +17,11 @@ file opens in 144 files, 198 of them ``with`` items and 16 not (5 WITH_NAME, 1 F
 tools/det_coach_shadow_report.iter_jsonl, 10 NAMED rows in 9 functions; the 2026-11-07 row
 converted tools/p3_ascii_sweep.py's ``tokenize.tokenize(path.open("rb").readline)`` to a
 ``with`` and closed the handle tools/lcu_push_watcher._open_shared stranded when the ``seek``
-after the open raised). The kinds seen:
+after the open raised). Re-measured 2026-11-09 with the queue lane's commits: 212 opens in 143
+files, 196 ``with`` items and 16 not (S144-Q-123 moved the agents/ log writers to a shared rotating
+handler in agents/_supervisor_common.py, -6 +1; S144-Q-138 gave ops/loop/loop_controller.py two
+exclusive-create opens; S144-Q-123 gave ops/loop/headless_env.py one for its refusal-log cap).
+The kinds seen:
 builtin ``open``, ``io.open``, ``codecs`` / ``gzip`` / ``bz2`` / ``lzma`` / ``tarfile`` ``.open``,
 ``os.fdopen`` and ``zipfile.ZipFile``, plus a ``<receiver>.open(`` method call (``Path.open``)
 whose first argument is a mode string (``Image.open(src)`` and ``RoundStore.open(path)`` are not
@@ -41,7 +45,7 @@ _OUT_OF_SCOPE = ("tests/", "ops/fleet_kit/", "agents/agent3_testing/suite/", "do
 _OPEN_MODULES = {"io", "codecs", "gzip", "bz2", "lzma", "tarfile"}
 _MODE = re.compile(r"^[rwaxbt+U]{1,4}$")
 
-_MEASURED_TOTAL = 214
+_MEASURED_TOTAL = 212
 _MEASURED_NOT_WITH = 16
 
 _SINK = ("a process-lifetime --log-file sink for a one-shot CLI: it replaces sys.stdout and "

@@ -21,8 +21,9 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core import log_rotation
 from core.log_rotation import LFRotatingFileHandler
-from core.polled_json import atomic_write_text
+from core.polled_json import atomic_write_text, remove_if_holds
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -74,6 +75,53 @@ def _resolve_log_root(environ=os.environ) -> Path:
 
 
 LOG_ROOT = _resolve_log_root()
+
+# S144-Q-123 (RM-718 residue): the size cap on LOG_ROOT/agent<N>.log. Nothing
+# else bounds those files - core/log_retention sweeps only the top-level
+# logs/*.log* and prune_task_logs only ages out task-*.log - and agent6.log was
+# measured at 2,078,244 B (15,811 rows since 2026-04-22) on 2026-11-08. Read at
+# call time, so a test can lower it.
+AGENT_LOG_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+AGENT_LOG_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
+
+
+def _rotate_agent_log(path: Path) -> str:
+    """Rotate an agent log BEFORE an append when it is at or over the cap.
+
+    Returns the one-line refusal note to write ahead of the row when the
+    rotation is refused (another process holds the file), else "". Recovers a
+    crashed rotation's scratch even under the cap (this is the writer's open).
+    Never raises: a failing cap must not cost a task its row.
+    """
+    try:
+        log_rotation.recover_orphans(path, AGENT_LOG_BACKUPS)
+        try:
+            oversize = path.stat().st_size >= AGENT_LOG_MAX_BYTES
+        except OSError:
+            return ""
+        if not oversize:
+            return ""
+        err = log_rotation.try_rotate(path, AGENT_LOG_BACKUPS)
+        return "" if err is None else log_rotation.refusal_note(path, err)
+    except Exception:  # noqa: BLE001 - the cap is best effort; the row is not
+        return ""
+
+
+def append_agent_log(path: Path, text: str) -> None:
+    """Append ``text`` (one or more LF-terminated rows) to an agent<N>.log.
+
+    The one writer for the per-agent rollup logs (agents/supervisor.py
+    _run_deterministic, agents/_supervisor_ephemeral.py spawn_ephemeral_llm):
+    creates the dir, rotates at AGENT_LOG_MAX_BYTES keeping AGENT_LOG_BACKUPS
+    generations, then appends LF rows. Only the open / write can raise, as the
+    plain appends it replaces did.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    note = _rotate_agent_log(path)
+    with path.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(note + text)
+
 
 # CAUTION: these resolve at IMPORT time, and tests/test_ports.py asserts the
 # repo-wide port registry equals these two values. Pass the overrides in a
@@ -400,6 +448,37 @@ _SENTINEL_CONFLICT_LOGGED_AT: float = 0.0
 # the same silence in a different costume.
 _SENTINEL_CONFLICT_LOG_INTERVAL_S = 300.0
 
+# S144-Q-132: an EMPTY (or unparseable) sentinel younger than this is a live
+# starter's claim between its O_EXCL create and its pid write, not a stale one,
+# so acquire_lock refuses it rather than reclaiming it. Older, it is a claim
+# whose writer crashed in that gap, and is reclaimed as before. The gap is two
+# syscalls; the margin covers a starved or suspended starter.
+EMPTY_SENTINEL_GRACE_S = 10.0
+
+
+def _remove_if_holds(path: Path, expected: bytes) -> bool:
+    """Remove ``path`` only if it still holds ``expected`` (S144-Q-132).
+
+    True when it is gone (removed here, or already gone); False when it holds
+    anything else or cannot be moved (left in place, or put back). The break is
+    the shared ``core.polled_json.remove_if_holds`` (S144-Q-139; mechanism,
+    Windows open-handle behaviour and the accepted three-starter residual are
+    documented there). ``keep_suffix=False`` keeps this module's side name
+    ``<name>.break-<pid>-<hex>``, which ``_reap_orphan_lockfile_tmps``
+    (``lockfile.*.tmp``) never matches.
+    """
+    return remove_if_holds(path, expected, keep_suffix=False)
+
+
+def _parse_sentinel_pid(raw: bytes | None) -> int:
+    """The pid a sentinel's bytes name, 0 when empty, unparseable or absent."""
+    if not raw:
+        return 0
+    try:
+        return int(raw.decode("ascii").strip() or "0")
+    except (UnicodeDecodeError, ValueError):
+        return 0
+
 
 def acquire_lock() -> bool:
     """Acquire the supervisor singleton lock.
@@ -408,6 +487,12 @@ def acquire_lock() -> bool:
     for the claim step, then writing the metadata to the real lockfile.
     Stale sentinels (dead pid) are reclaimed after the exclusive-create
     fails.
+
+    S144-Q-132: the reclaim judges the sentinel from ONE read of its bytes and
+    removes it only while it still holds those bytes (``_remove_if_holds``).
+    It used to unlink by path, so a starter that read a dead pid could delete
+    the fresh claim another starter had made since, and both ran. A young
+    empty sentinel is a claim in flight and is refused, not reclaimed.
     """
     global _LOCK_OWNER_PID, _LOCK_OWNER_SENTINEL
     STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -434,22 +519,37 @@ def acquire_lock() -> bool:
     except FileExistsError:
         pass
 
-    # Sentinel exists - check if the owning pid is still alive.
+    # Sentinel exists - read its claim ONCE; every decision below, and the
+    # break itself, uses these bytes (S144-Q-132).
     try:
-        prior_pid = int(sentinel.read_text(encoding="ascii").strip() or "0")
-    except (OSError, ValueError):
-        prior_pid = 0
+        seen: bytes | None = sentinel.read_bytes()
+    except OSError:
+        seen = None  # released (or unreadable) since the O_EXCL: retry below
+    prior_pid = _parse_sentinel_pid(seen)
 
     if prior_pid and _pid_alive(prior_pid):
         log.error("another supervisor is alive (pid=%s) - aborting", prior_pid)
         return False
 
-    # Stale sentinel - reclaim atomically.
+    if seen is not None and not prior_pid:
+        try:
+            age = time.time() - sentinel.stat().st_mtime
+        except OSError:
+            age = EMPTY_SENTINEL_GRACE_S  # gone or unreadable: not in flight
+        # abs(): a clock stepped back must not hold a crashed claim for hours.
+        if abs(age) < EMPTY_SENTINEL_GRACE_S:
+            log.error(
+                "sentinel %s carries no pid and is %.1fs old - another "
+                "starter's claim is in flight; aborting", sentinel, age)
+            return False
+
+    # Stale sentinel - reclaim: remove it only while it still holds the bytes
+    # read above, so a fresh claim made since then is never deleted.
     log.warning("reclaiming stale lock from pid=%s", prior_pid)
-    try:
-        sentinel.unlink()
-    except OSError:
-        pass
+    if seen is not None and not _remove_if_holds(sentinel, seen):
+        log.error("lost race to another reclaiming starter "
+                  "(the sentinel changed after it was read)")
+        return False
     try:
         fd = os.open(str(sentinel), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         try:
@@ -654,6 +754,46 @@ def release_lock_ownership() -> None:
     global _LOCK_OWNER_PID, _LOCK_OWNER_SENTINEL
     _LOCK_OWNER_PID = None
     _LOCK_OWNER_SENTINEL = None
+
+
+def release_lock_files() -> None:
+    """Remove the lock pair, each file only while it carries this process's
+    claim (S144-Q-132).
+
+    ``Supervisor.stop`` used to unlink both by path with no owner check, so a
+    supervisor stopping after another had taken the lock deleted that one's
+    live claim. Now the sentinel goes only while its bytes are this pid, and
+    the lockfile only while its JSON ``pid`` is this pid; each is removed
+    through ``_remove_if_holds`` on the bytes just read, and each is judged on
+    its own. A foreign or unreadable file stays. Paths come from
+    ``_sentinel_path()`` / ``LOCKFILE`` (RM-173: never a second literal).
+    Idempotent; never raises.
+    """
+    mine = str(os.getpid()).encode("ascii")
+    sentinel = _sentinel_path()
+    try:
+        seen = sentinel.read_bytes()
+    except OSError:
+        seen = None
+    if seen is not None:
+        if seen.strip() == mine:
+            _remove_if_holds(sentinel, seen)
+        else:
+            log.info("leaving sentinel %s in place: it names pid=%s, not "
+                     "this process", sentinel, _parse_sentinel_pid(seen) or "?")
+    try:
+        raw = LOCKFILE.read_bytes()
+    except OSError:
+        return
+    try:
+        pid = json.loads(raw.decode("utf-8")).get("pid")
+    except (UnicodeDecodeError, ValueError, AttributeError):
+        pid = None
+    if pid == os.getpid():
+        _remove_if_holds(LOCKFILE, raw)
+    else:
+        log.info("leaving lockfile %s in place: it names pid=%s, not this "
+                 "process", LOCKFILE, pid)
 
 
 def lock_health() -> dict[str, object]:

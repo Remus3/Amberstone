@@ -54,6 +54,7 @@ unmeasured under pythonw, so the reasoning stands.)
 """
 import argparse
 import bisect
+import contextvars
 import hashlib
 import itertools
 import json
@@ -2700,13 +2701,51 @@ def _assigned(statement, variables):
         value = ps.group(2) if ps.group(2) is not None else (
             words[2] if len(words) == 3 else _UNSET)
         variables[ps.group(1).lower()] = _expand(value, variables)
+        _held_kind(variables, ps.group(1).lower(), powershell=True)
         return True
     pairs = [_BASH_ASSIGN.fullmatch(word) for word in words]
     if not all(pairs):
         return False
     for pair in pairs:
         variables[pair.group(1).lower()] = _expand(pair.group(2), variables)
+        _held_kind(variables, pair.group(1).lower(), powershell=False)
     return True
+
+
+# S144-Q-157: the names a PowerShell assignment set, kept in VARIABLES under
+# a key no `$NAME` can spell (_VAR_REF names are \w+, so _expand never reads
+# it). PowerShell passes a variable as ONE argument; bash splits an unquoted
+# one into words, so _held_words expands the two differently.
+_PS_HELD = "\x00ps-held\x00"
+_HELD_SPLIT = re.compile(r"""[\s'"]""")
+
+
+def _held_kind(variables, name, powershell):
+    names = set(variables.get(_PS_HELD, ()))
+    if powershell:
+        names.add(name)
+    else:
+        names.discard(name)
+    variables[_PS_HELD] = frozenset(names)
+
+
+def _held_words(statement, variables):
+    """S144-Q-157: STATEMENT's words after expansion, a PowerShell variable
+    (_PS_HELD; `$env:NAME = ...` is one too) kept as one word, a bash one
+    split."""
+    powershell = variables.get(_PS_HELD, frozenset())
+
+    def sub(match):
+        name = match.group(1) or match.group(2)
+        if name is None:
+            return match.group(0)
+        value = variables.get(name.lower(), _UNSET)
+        if name.lower() in powershell and _HELD_SPLIT.search(value):
+            # Quoted so _tokens keeps it one word; a value with no space or
+            # quote is one word as it is (also inside "..." in PowerShell).
+            return "'" + value.replace("'", "") + "'"
+        return value
+    return _tokens(_VAR_REF.sub(sub, statement))
 
 
 def _join(base, path):
@@ -2726,8 +2765,12 @@ def _git_target(here, words):
     """The directory a `git ...` statement acts on, from HERE."""
     start = next((i for i, word in enumerate(words)
                   if re.split(r"[\\/]", word)[-1].lower() in ("git", "git.exe")), None)
+    if _wrapper_moves(words if start is None else words[:start]):
+        return None  # S144-Q-136: `env -C dir git ...` runs elsewhere
     if start is None:
         return here
+    if _sets_git_location(words[:start]):
+        return None  # `GIT_DIR=x git -C y ...`: another repo, fail closed
     target, i = here, start + 1
     while i < len(words) and words[i].startswith("-"):
         word = words[i]
@@ -2777,16 +2820,70 @@ def _git_target(here, words):
 # `git -c 'core.hooksPath=/dev/null' commit`) and `git commit -n`. A quoted
 # flag that is the VALUE of a message / search option stays data. Past
 # BYPASS_NEST_MAX only an EV_BYPASS flag fails closed (a bare `-n` beside a
-# git word is too common to count blind). Still missed, filed under the same
-# id: a flag from a QUOTED assignment, a git call inside a quoted assignment,
-# `& 'git'`, `cmd /c`, `iex`, `Start-Process`, `env bash -c`, `wsl -e`,
-# `bash --rcfile x -c`, `-EncodedCommand`, an escaped quote in a launcher.
+# git word is too common to count blind). Part 2 (_launcher_script, EXTRA
+# only) reads more launchers: `env` / `wsl` wrappers, bash `--rcfile x` /
+# `--init-file x`, `cmd /c` and `iex` / `Invoke-Expression`. Still missed,
+# filed under the same id: a flag from a QUOTED assignment, a git call inside
+# a quoted string that is not the whole value (`x="a $(git ...)"`),
+# `Start-Process -ArgumentList`, `-EncodedCommand`, an escaped quote in a
+# launcher. S144-Q-136 (_wrapper_moves, both walks): a git statement behind
+# a moving `env -C dir` / `env -S` / `wsl --cd` is placed None, not at the
+# caller's directory; env's options are read as getopt does (`-iC dir`,
+# `--ch dir`, a split `-S` string; also for a launcher behind env); a
+# GIT_DIR / GIT_WORK_TREE / GIT_COMMON_DIR word before the git word is
+# None. S144-Q-135 (EXTRA only, _assignment_command) reads the command
+# an assignment runs - `$r = bash -c '...'`, `r=$(bash -c '...')`,
+# `x="$(git push --no-verify)"` - and a bash `NAME=x` prefix before a
+# launcher. S144-Q-143 (EXTRA only, _env_split_bypass) reads a git command
+# inside an `env -S` / `--split-string` string (`env -S "git commit -n"`),
+# which the stripper blanked; such a statement is placed None. S144-Q-145
+# (EXTRA only) also reads that string the way env splits it
+# (_env_split_string: `\_` separates, quotes, escapes, `#`, `\c`), beside
+# the plain reading, for a git command and for a launcher behind env -S.
+# S144-Q-147 (EXTRA only): after `git commit` / merge / rebase / cherry-pick
+# / revert / pull / am / commit-tree, `-S` (gpg-sign) and `-e` (edit) take no
+# next-word value, so `git commit -S -n` counts (_GIT_FLAG_ONLY_IN).
+# S144-Q-146 (EXTRA only, _prefix_unwrapped): a launcher behind a prefix
+# command is read - `nohup` / `time` / `nice` / `sudo` / `stdbuf` /
+# `timeout` / `exec` / `command` / `setsid`, each with its own options -
+# so `nohup bash -c 'git push --no-verify'` counts; `sudo -D` / `-i` / `-R`
+# place their statements None (also before a plain git word,
+# _wrapper_moves), and `command -v` / `sudo -l` / `sudo -e` run nothing.
+# S144-Q-149 (EXTRA only, _am_no_verify): `git am -n` is --no-verify, read
+# with am's own short options (`-3n`, `-C <n>`, `-p <num>`); `-m` after
+# `git am` (--message-id) or `git rebase` (--merge) is a flag, not a
+# message option, so the word after it is read as an option.
+# S144-Q-150 (EXTRA only): a second, FULL reading of prefix options is walked
+# beside the S144-Q-146 one (getopt_long abbreviations: `nice --adj 5`,
+# `timeout --sig KILL 5`; sudo `--auth-type` / `--login-class`; `sudo -h
+# host`, placed None like `--host`); `xargs`, `doas` and `builtin` are
+# prefix commands and `eval` runs its joined words as a script.
+# S144-Q-156 (EXTRA only): a word an option took as its value is not judged
+# as an option itself, so `git commit -m -am --no-verify` / `-m -- -n` count
+# (git hands a value option the next word whatever it looks like).
+# S144-Q-151 (EXTRA only, _long_abbrev_bypass): git takes an unambiguous
+# prefix of a long option, so `git commit --no-veri` counts, from the
+# shortest prefix git 2.53 accepted per subcommand (_BYPASS_LONG_MIN).
+# S144-Q-154 (EXTRA only): more prefix commands, read from each tool's
+# getopt string: ionice, chrt, taskset, flock (`file -c string` too),
+# watch (its words joined for `sh -c` unless `-x`), unbuffer, su and
+# util-linux script (a permuted `-c string`; a login su is placed None;
+# BSD script runs the words after its file), and BSD xargs -J / -R / -S.
 BYPASS_NEST_MAX = 4
 _SHELL_LAUNCHERS = frozenset({"bash", "sh", "zsh", "dash"})
 _PS_LAUNCHERS = frozenset({"pwsh", "powershell"})
 _SHELL_VALUE_OPTS = frozenset({"-o", "+o", "-O", "+O"})
+# S144-Q-127 part 2 (read only when EXTRA is on, so extra=False stays RM-698).
+_BASH_LONG_VALUE_OPTS = frozenset({"--rcfile", "--init-file"})
+_WRAPPERS = frozenset({"env", "wsl"})
+_WSL_VALUE_OPTS = frozenset({"-d", "--distribution", "-u", "--user",
+                             "--shell-type", "--distribution-id"})
+_IEX_HEADS = frozenset({"iex", "invoke-expression"})
 _CONTINUATION = re.compile(r"[\\`]\r?\n")
 _BYPASS_GIT_WORD = re.compile(r"\bgit\b")
+# S144-Q-145 (EXTRA only): a git word behind an `env -S` separator escape
+# (`env\_-S\_git\\_commit`, `FOO=1\_git`), where `\b` sees no boundary.
+_ENV_SPLIT_GIT_WORD = re.compile(r"(?<=\\_)git\b")
 
 
 def _bypass_in_text(text):
@@ -2804,7 +2901,12 @@ def _head_name(word):
 # S144-Q-127. A raw-text hint that a short option cluster holding `n`, or a
 # quote-split `'core.hooksPath'=x`, is present, so _has_bypass parses a
 # command whose raw text EV_BYPASS does not match.
-_PARSE_HINT = re.compile(r"(?<![\w-])-[A-Za-z]*n|core\.hooksPath", re.IGNORECASE)
+# S144-Q-145: or one behind an `env -S` separator escape (`git\_commit\_-n`).
+# S144-Q-149: a digit may sit in the cluster (`git am -3n`).
+# S144-Q-151: or an abbreviated `--no-verify` / `--no-gpg-sign` (`--no-veri`).
+_PARSE_HINT = re.compile(
+    r"(?:(?<![\w-])|(?<=\\_))(?:-[A-Za-z0-9]*n|--no-[gv])|core\.hooksPath",
+    re.IGNORECASE)
 _BYPASS_FLAG_WORD = re.compile(r"--no-verify|--no-gpg-sign|core\.hooksPath\s*=.*",
                                re.IGNORECASE | re.DOTALL)
 # Options whose next word is a VALUE (a message, a search string, a file), so
@@ -2823,24 +2925,65 @@ _COMMIT_VALUE_SHORTS = frozenset("mFcCtSu")
 # Of those, the ones whose value may be the NEXT word when a cluster ends in
 # them (`-am msg`); -S / -u take only an attached value, -c / -C see above.
 _DATA_SHORTS = frozenset("mFt")
+# S144-Q-147: the subcommands where a _GIT_DATA_OPTS short is a FLAG, so the
+# next word is not its value (measured `git <sub> -h`, git 2.53): `-S` is
+# `--gpg-sign[=<key-id>]` (attached key id only), `-e` is `--edit`.
+# Elsewhere (log / diff pickaxe `-S`, grep `-e`) they still take the next word.
+# S144-Q-149: `-m` is `--message-id` in am and `--merge` in rebase (flags);
+# a short cluster ending in a letter listed here is read the same way. In am,
+# git takes `--message` / `--committer` as abbreviations of the flags
+# `--message-id` / `--committer-date-is-author-date` (measured: `git am
+# --message --abort` runs --abort); rebase takes `--committer` the same way
+# (measured: `git rebase --committer --no-verify` skips pre-rebase).
+_GIT_FLAG_ONLY_IN = {
+    "-S": frozenset({"commit", "merge", "rebase", "cherry-pick", "revert",
+                     "pull", "am", "commit-tree"}),
+    "-e": frozenset({"commit", "merge", "cherry-pick", "revert", "tag"}),
+    "-m": frozenset({"am", "rebase"}),
+    # S144-Q-155: `-t` is `--tags` in pull (a flag), `--template <file>` in
+    # commit (a value). fetch reads `-t` / `-m` as flags too but has no
+    # hook-bypass option, so it is not listed. `-F` is a value in every
+    # subcommand that has a hook-bypass option.
+    "-t": frozenset({"pull"}),
+    # Same root: `--squash` is a flag in merge / pull, `--squash <commit>`
+    # in commit (measured `git <sub> -h`, git 2.53).
+    "--squash": frozenset({"merge", "pull"}),
+    "--message": frozenset({"am"}),
+    "--committer": frozenset({"am", "rebase"}),
+}
 
 
-def _is_data_slot(prev):
-    """True when the word after PREV is an option's value."""
+def _is_data_slot(prev, sub=None):
+    """True when the word after PREV is an option's value. SUB is the git
+    subcommand PREV belongs to (lower case), or None before / without one."""
     if prev is None:
         return False
     if prev in _GIT_DATA_OPTS:
-        return True
-    return bool(re.fullmatch(r"-[A-Za-z]+", prev)) and prev[-1] in _DATA_SHORTS
+        return sub not in _GIT_FLAG_ONLY_IN.get(prev, ())
+    if not re.fullmatch(r"-[A-Za-z]+", prev):
+        return False
+    # S144-Q-152 (_SUB_VALUE_SHORTS, below): a value letter before the last
+    # one took the rest of the cluster, so the next word is not its value.
+    # Count-only: this only removes data slots.
+    values = _SUB_VALUE_SHORTS.get(sub, frozenset())
+    if any(letter in values for letter in prev[1:-1]):
+        return False
+    return (prev[-1] in _DATA_SHORTS
+            and sub not in _GIT_FLAG_ONLY_IN.get("-" + prev[-1], ()))
 
 
 def _commit_no_verify(words):
     """True when WORDS (after `commit`) carry `-n` in a short cluster."""
     prev = None
     for word in words:
+        # S144-Q-156: a word an option took as its value (even "--") is not
+        # an option, and the word after it is judged afresh (prev cleared).
+        if _is_data_slot(prev, "commit"):
+            prev = None
+            continue
         if word == "--":
             return False
-        if not _is_data_slot(prev) and re.fullmatch(r"-[A-Za-z]+", word):
+        if re.fullmatch(r"-[A-Za-z]+", word):
             for letter in word[1:]:
                 if letter == "n":
                     return True
@@ -2850,40 +2993,1319 @@ def _commit_no_verify(words):
     return False
 
 
+# S144-Q-149: `git am` options (measured `git am -h`, git 2.53). `-n` is
+# --no-verify; `-C <n>` / `-p <num>` take a value (the rest of the cluster,
+# or the next word when the cluster ends in them); `-S` takes only an
+# attached key id; every other short (`-3`, `-i`, `-q`, `-s`, `-u`, `-k`,
+# `-m`, `-c`, `-r`) is a flag. A long option is read only when spelled in
+# full: an abbreviation (`--white -n`) reads its value as an option, which
+# counts more, never less.
+_AM_VALUE_SHORTS = frozenset("Cp")
+_AM_LONG_VALUE_OPTS = frozenset({
+    "--quoted-cr", "--whitespace", "--directory", "--exclude", "--include",
+    "--patch-format", "--resolvemsg", "--empty",
+})
+
+
+# S144-Q-152: the short options that take a value (required or optional),
+# per subcommand (measured `git <sub> -h`, git 2.53). git gives the rest of a
+# cluster to the FIRST of them, so in `git commit -Cm x` the `-C` takes "m"
+# and `x` is a free word, not a message. A subcommand not listed here reads
+# a cluster by its last letter alone, as before. Integer-only shorts (commit
+# `-U`, cherry-pick / revert `-m` mainline, rebase `-C`, pull `-j`) are left
+# out: git refuses a letter value for them (measured), so a cluster that
+# reaches them never runs. pull `-r` is listed: it takes an abbreviated mode
+# (`-rm` = merges, `-ri` = interactive, measured). am `-C` / `-p` are listed
+# (_AM_VALUE_SHORTS): am hands them to git apply, which takes `-pt`; `-Ct`
+# fails only at the apply stage, after `--no-verify` has already skipped the
+# applypatch-msg hook, so `git am --continue` can land the patch without it
+# (pre-applypatch still runs on --continue; measured). tag is not listed: it
+# has no hook-bypass option to count.
+_SUB_VALUE_SHORTS = {
+    "commit": _COMMIT_VALUE_SHORTS,
+    "merge": frozenset("sXmFS"),
+    "cherry-pick": frozenset("XS"),
+    "revert": frozenset("XS"),
+    "commit-tree": frozenset("pmFS"),
+    "rebase": frozenset("xsXS"),
+    "pull": frozenset("rsXSo"),
+    "push": frozenset("o"),
+    "am": _AM_VALUE_SHORTS | frozenset("S"),
+}
+
+
+def _am_no_verify(words):
+    """S144-Q-149: True when WORDS (after `am`) carry `-n` in a short
+    cluster that is not an option's value."""
+    value_next = False
+    for word in words:
+        if value_next:
+            value_next = False
+            continue
+        if word == "--":
+            return False
+        if word in _AM_LONG_VALUE_OPTS:
+            value_next = True
+            continue
+        if re.fullmatch(r"-[A-Za-z0-9]+", word):
+            for k, letter in enumerate(word[1:], 1):
+                if letter == "n":
+                    return True
+                if letter == "S":
+                    break
+                if letter in _AM_VALUE_SHORTS:
+                    value_next = k == len(word) - 1
+                    break
+    return False
+
+
+# S144-Q-151: per subcommand, the shortest prefix of each bypass flag git
+# accepts (measured with git 2.53.0 on real hooks / a failing gpg.program;
+# a shorter one is refused as ambiguous, rc 129: `--no-ver` with
+# `--no-verbose`, merge / pull `--no-verif` with `--no-verify-signatures`).
+# cherry-pick / revert take only the full spelling, so they are not listed;
+# the full flags stay counted everywhere by _BYPASS_FLAG_WORD. git reads long
+# options case-sensitively and refuses `--no-veri=x`, so the match is exact.
+_BYPASS_LONG_MIN = {
+    "commit": (("--no-verify", 9), ("--no-gpg-sign", 6)),
+    "push": (("--no-verify", 9),),
+    "rebase": (("--no-verify", 9), ("--no-gpg-sign", 6)),
+    "am": (("--no-verify", 6), ("--no-gpg-sign", 6)),
+    "merge": (("--no-gpg-sign", 6),),
+    "pull": (("--no-gpg-sign", 6),),
+    "commit-tree": (("--no-gpg-sign", 6),),
+}
+
+
+def _long_abbrev_bypass(words, sub):
+    """S144-Q-151: True when WORDS (after subcommand SUB) hold an accepted
+    abbreviation of a bypass flag (_BYPASS_LONG_MIN) that is not an option's
+    value; a "--" that is not a value ends the options."""
+    table = _BYPASS_LONG_MIN.get(sub)
+    if not table:
+        return False
+    prev = None
+    for word in words:
+        if _is_data_slot(prev, sub):
+            prev = None
+            continue
+        if word == "--":
+            return False
+        if any(len(word) >= shortest and flag.startswith(word)
+               for flag, shortest in table):
+            return True
+        prev = word
+    return False
+
+
 def _git_words_bypass(words):
     """S144-Q-127: True when WORDS (one statement, quotes removed) hold a git
     word followed by an exact bypass flag that is not an option's value, or
-    are a `git commit` whose options include `-n`."""
+    are a `git commit` or (S144-Q-149) `git am` whose options include `-n`."""
     start = next((i for i, word in enumerate(words) if _head_name(word) == "git"), None)
     if start is None:
         return False
     rest = words[start + 1:]
-    prev = None
-    for word in rest:
-        if not _is_data_slot(prev) and _BYPASS_FLAG_WORD.fullmatch(word):
-            return True
-        prev = word
     i = 0
     while i < len(rest) and rest[i].startswith("-"):
         option, eq, _value = rest[i].partition("=")
         if option in (_GIT_VALUE_OPTS | _GIT_PATH_OPTS) and not eq:
             i += 1
         i += 1
-    return i < len(rest) and rest[i].lower() == "commit" and _commit_no_verify(rest[i + 1:])
+    sub = rest[i].lower() if i < len(rest) else None
+    prev = None
+    for k, word in enumerate(rest):
+        # S144-Q-147: after the subcommand a data slot is judged by it.
+        # S144-Q-156: a consumed value clears prev, so `-m -am --no-verify`
+        # reads the flag as an option, as git's parse-options does.
+        if _is_data_slot(prev, sub if k > i else None):
+            prev = None
+            continue
+        if _BYPASS_FLAG_WORD.fullmatch(word):
+            return True
+        prev = word
+    if _long_abbrev_bypass(rest[i + 1:], sub):
+        return True
+    if sub == "am":
+        return _am_no_verify(rest[i + 1:])
+    return sub == "commit" and _commit_no_verify(rest[i + 1:])
 
 
-def _launcher_script(words):
+# S144-Q-136: GNU env's long options (getopt_long takes any unambiguous
+# prefix, `--ch` = `--chdir`) and the ones that take a value.
+_ENV_LONG_OPTS = ("argv0", "block-signal", "chdir", "debug", "default-signal",
+                  "ignore-environment", "ignore-signal", "list-signal-handling",
+                  "null", "split-string", "unset")
+# `-a` / `--argv0` (coreutils 9.x) is NOT read as taking a value: this
+# box's env 8.32 rejects it, and reading `env -a bash -c '...'` as argv0
+# `bash` would stop counting a script the older walk counted.
+_ENV_LONG_VALUE_OPTS = frozenset({"chdir", "split-string", "unset"})
+_ENV_SHORT_VALUE_OPTS = "CSu"
+
+
+def _env_long_name(name):
+    """The env long option NAME abbreviates, or None (unknown / ambiguous)."""
+    if name in _ENV_LONG_OPTS:
+        return name
+    found = [option for option in _ENV_LONG_OPTS if option.startswith(name)]
+    return found[0] if name and len(found) == 1 else None
+
+
+# S144-Q-145: the backslash escapes env's `-S` string reads outside single
+# quotes (measured on env 8.32; any other escape is refused, exit 125).
+_ENV_SPLIT_ESCAPES = {"f": "\f", "n": "\n", "r": "\r", "t": "\t", "v": "\v",
+                      "#": "#", "$": "$", '"': '"', "'": "'", "\\": "\\"}
+_ENV_SPLIT_SPACE = " \t\n\r\v\f"
+_ENV_SPLIT_VAR = re.compile(r"\$\{[A-Za-z_][A-Za-z0-9_]*\}")
+
+
+def _env_split_string(text):
+    """S144-Q-145: the arguments GNU env's `-S` / `--split-string` makes of
+    TEXT, or None for a string env refuses (exit 125). Measured on env 8.32:
+    whitespace separates; outside quotes `\\_` separates too (a run of
+    separators is one) and inside double quotes it is a space; `\\t` and
+    the other _ENV_SPLIT_ESCAPES are that character inside an argument; a
+    single-quoted string reads only `\\\\` and `\\'` and keeps the other
+    known escapes as written (`'\\_'`); `#` starting a word
+    and `\\c` (outside double quotes) end the string; `${NAME}` is kept as
+    written (env expands it). Refused: any other escape (in single quotes
+    too, verifier round 1: `'\\q'`, `'\\ '`), a trailing
+    backslash, an unterminated quote, `\\c` in double quotes and a `$`
+    that does not start `${NAME}`."""
+    words, word, quote, i = [], None, None, 0
+    while i < len(text):
+        ch = text[i]
+        if quote == "'":
+            if ch == "'":
+                quote = None
+            elif ch == "\\" and text[i + 1:i + 2] in ("\\", "'"):
+                i += 1
+                word += text[i]
+            elif ch == "\\" and text[i + 1:i + 2] not in (*_ENV_SPLIT_ESCAPES, "_", "c"):
+                return None  # env refuses `'\q'` / `'\ '` even in single quotes
+            else:
+                word += ch
+            i += 1
+            continue
+        if ch == "\\":
+            escape = text[i + 1:i + 2]
+            i += 2
+            if escape == "_" and not quote:
+                if word is not None:
+                    words.append(word)
+                    word = None
+            elif escape == "_":
+                word += " "
+            elif escape == "c" and not quote:
+                return words if word is None else [*words, word]
+            elif escape and escape in _ENV_SPLIT_ESCAPES:
+                word = (word or "") + _ENV_SPLIT_ESCAPES[escape]
+            else:
+                return None
+            continue
+        if ch == "$":
+            var = _ENV_SPLIT_VAR.match(text, i)
+            if var is None:
+                return None
+            word = (word or "") + var.group(0)
+            i = var.end()
+            continue
+        if quote == '"':
+            if ch == '"':
+                quote = None
+            else:
+                word += ch
+        elif ch in _ENV_SPLIT_SPACE:
+            if word is not None:
+                words.append(word)
+                word = None
+        elif ch == "#" and word is None:
+            return words
+        elif ch in "'\"":
+            quote, word = ch, word or ""
+        else:
+            word = (word or "") + ch
+        i += 1
+    if quote:
+        return None
+    return words if word is None else [*words, word]
+
+
+def _env_options(rest, escapes=False):
+    """S144-Q-136: GNU `env`'s options and NAME=VALUE words in REST, read as
+    getopt reads them (a short cluster `-iC dir` / `-iCdir`, a long
+    abbreviation `--ch dir`): (its command words, the `-C` / `--chdir`
+    values in order, whether `-S` / `--split-string` split a string). A
+    split string's words are read as more of env's arguments, as env does:
+    with the plain tokenizer, or with ESCAPES (S144-Q-145) the way env
+    splits it (_env_split_string; a string env refuses keeps the plain
+    reading), a bash `\\ ` gluing the string's next word back on."""
+    rest, dirs, split, i = list(rest), [], False, 0
+    while i < len(rest) and rest[i].startswith("-"):
+        word = rest[i]
+        if word == "--":
+            i += 1
+            break
+        option, value, step = None, "", 1
+        if word.startswith("--"):
+            name, eq, value = word[2:].partition("=")
+            option = _env_long_name(name)
+            if option in _ENV_LONG_VALUE_OPTS and not eq:
+                value = rest[i + 1] if i + 1 < len(rest) else ""
+                step = 2
+        else:
+            for k, letter in enumerate(word[1:], 1):
+                if letter in _ENV_SHORT_VALUE_OPTS:
+                    option, value = letter, word[k + 1:]
+                    if not value:
+                        value = rest[i + 1] if i + 1 < len(rest) else ""
+                        step = 2
+                    break
+        if option in ("chdir", "C"):
+            dirs.append(value)
+        if option in ("split-string", "S"):
+            split = True
+            # S144-Q-145: bash reads `env -S git\ commit` as one argument;
+            # the gate's tokenizer split it at the escaped space.
+            while (escapes and i + step < len(rest)
+                   and (len(value) - len(value.rstrip("\\"))) % 2):
+                value = f"{value[:-1]} {rest[i + step]}"
+                step += 1
+            words = _env_split_string(value) if escapes else None
+            rest[i:i + step] = _tokens(value) if words is None else words
+            continue
+        i += step
+    while i < len(rest) and _BASH_ASSIGN.fullmatch(rest[i]):
+        i += 1
+    return rest[i:], dirs, split
+
+
+def _env_unwrapped(rest, escapes=False):
+    """`env`'s command words after its options and NAME=VALUE words (a
+    `-S` string split into them, with env's escapes when ESCAPES), and
+    whether `-C` / `--chdir` moved it."""
+    command, dirs, _split = _env_options(rest, escapes)
+    return command, bool(dirs)
+
+
+# Variables that point git at a repository other than the working directory.
+_GIT_LOCATION_VARS = frozenset({"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR"})
+
+
+def _sets_git_location(words):
+    """True when a NAME=VALUE word in WORDS sets a _GIT_LOCATION_VARS name
+    (upper-cased: Windows environment names are case-insensitive)."""
+    return any(match.group(1).upper() in _GIT_LOCATION_VARS
+               for match in map(_BASH_ASSIGN.fullmatch, words) if match)
+
+
+# A command word as a wrapper name: basename, lower case, no `.exe`, and
+# no `NAME=` / `$(` / `(` / backtick in front (`r=$(env -C dir git ...)`).
+_WRAPPER_WORD = re.compile(r"[\\/=(`]")
+
+
+def _wrapper_moves(words):
+    """S144-Q-136: True when an `env` / `wsl` word in WORDS (the words in
+    front of a git word) runs what follows elsewhere: `env -C` / `--chdir`
+    in any spelling, `env -S` (its string may hold a `-C`), `wsl --cd` /
+    `wsl ~`. Every such word counts, not only a leading one (`nohup env -C`,
+    `time env -C`, `if env -C`, `r=$(env -C ...)`, verifier round 5). Such
+    a git statement is placed None (fail closed), never at the `-C`
+    directory, by decision (2026-11-09, s144 queue lane): verifier rounds
+    1-3 found real RC commits that a placement - or a narrower git-word
+    search - stopped counting (an earlier `export GIT_DIR=<rc>`,
+    `env -C W nohup env GIT_DIR=<rc> git`), because a repo can be named in
+    more ways than this walk reads. Against the pre-S144-Q-136 walk it
+    counts less ONLY where no git bypass runs against RC (verifier round 4,
+    147,596 commands): an env option cluster a real env 8.32 rejects
+    (`env -iu bash -c ...`), or a statement no shell runs as git
+    (`cd git commit -n`) whose old catch-all None a newly read env launcher
+    placed outside RC now displaces. Reverses if: the walk tracks every git
+    location source (environment, config, `-c`)."""
+    for i, word in enumerate(words):
+        name = _WRAPPER_WORD.split(word)[-1].lower().removesuffix(".exe")
+        if name == "env":
+            _command, dirs, split = _env_options(words[i + 1:])
+            if dirs or split:
+                return True
+        elif name == "wsl" and _wsl_unwrapped(words[i + 1:])[1]:
+            return True
+        elif name in _PREFIX_MOVES and any(
+                _prefix_unwrapped(name, words[i + 1:], full)[1] for full in (False, True)):
+            # S144-Q-146: `sudo -D dir git ...`, `sudo -i git ...`; S144-Q-150:
+            # either reading (`sudo --chd dir git ...`, `sudo -h host git ...`)
+            return True
+    return False
+
+
+def _env_split_words(words):
+    """S144-Q-143: env's command words for each `env` word in WORDS (every
+    one, as in _wrapper_moves) whose `-S` / `--split-string` string env
+    splits into more arguments, with a nested `env -S` string spliced in
+    too. S144-Q-145: read twice, with the plain tokenizer and with env's
+    own escapes (_env_options ESCAPES), and both kept (count-only,
+    monotone by construction: the S144-Q-143 reading is never replaced).
+    One left-to-right pass per reading: each splice drops the `-S` word
+    and the string's quotes, so it ends, and a run of `env -S` words costs
+    a list copy each, not a walk per suffix."""
+    found = []
+    for escapes in (False, True):
+        spliced, starts, i = list(words), [], 0
+        while i < len(spliced):
+            if _WRAPPER_WORD.split(spliced[i])[-1].lower().removesuffix(".exe") == "env":
+                command, _dirs, split = _env_options(spliced[i + 1:], escapes)
+                if split:
+                    spliced[i + 1:] = command
+                    starts.append(i + 1)
+            i += 1
+        found.extend(c for c in (spliced[start:] for start in starts) if c not in found)
+    return found
+
+
+def _env_split_bypass(words):
+    """S144-Q-143: True when a git command that an `env -S` string in WORDS
+    (one statement, quotes removed) splits out carries a bypass
+    (_git_words_bypass): `env -S "git commit --no-verify"`."""
+    return any(_git_words_bypass(command) for command in _env_split_words(words))
+
+
+def _wsl_unwrapped(rest):
+    """`wsl`'s command words after its options, and whether `--cd` or `~`
+    moved it (the distribution's own path namespace is not placed)."""
+    moved, i = False, 0
+    while i < len(rest):
+        word = rest[i]
+        if word in ("-e", "--exec", "--"):
+            return rest[i + 1:], moved
+        if word == "~":
+            moved = True
+        elif word == "--cd":
+            moved = True
+            i += 1
+        elif word in _WSL_VALUE_OPTS:
+            i += 1
+        elif not word.startswith("-"):
+            break
+        i += 1
+    return rest[i:], moved
+
+
+# S144-Q-146 (read only when EXTRA is on): commands that run the command
+# after their own options, read like a wrapper: name -> (short options that
+# take a value, long options that take a value). Measured from each tool's
+# usage (GNU coreutils nohup / nice / stdbuf / timeout, GNU time, sudo
+# 1.9, bash's `time` / `exec` / `command`, util-linux setsid).
+_PREFIX_COMMANDS = {
+    "nohup": ("", frozenset()),
+    "time": ("of", frozenset({"output", "format"})),
+    "nice": ("n", frozenset({"adjustment"})),
+    "sudo": ("acgpCDrtTuUR", frozenset({
+        "user", "group", "prompt", "close-from", "chdir", "role", "type",
+        "command-timeout", "other-user", "host", "chroot"})),
+    "stdbuf": ("ioe", frozenset({"input", "output", "error"})),
+    "timeout": ("sk", frozenset({"signal", "kill-after"})),
+    "exec": ("a", frozenset()),
+    "command": ("", frozenset()),
+    "setsid": ("", frozenset()),
+    # S144-Q-150: GNU findutils xargs (-e / -i / -l and --eof / --replace /
+    # --max-lines take an OPTIONAL attached value only), OpenBSD doas, and
+    # bash's `builtin` (in front of `exec` / `command` / `eval`).
+    "xargs": ("aEdILnPs", frozenset({
+        "arg-file", "delimiter", "max-args", "max-procs", "max-chars",
+        "process-slot-var"})),
+    "doas": ("auC", frozenset()),
+    "builtin": ("", frozenset()),
+    # S144-Q-154, read from each tool's getopt string (none is installed on
+    # this box): util-linux ionice `+n:c:p:P:u:tVh`, chrt
+    # `+abdD:fiphmoP:T:rRvV` (then a numeric priority), taskset `+apchV`
+    # (then a mask), flock `+sexnoFuw:E:hV?` (then a lock file, and an exact
+    # `-c string` or the command), su `c:fg:G:lmpPs:hVw:` and script
+    # `ac:B:eE:fI:O:o:qm:T:t::Vh` (both permute; `-c` runs a string through
+    # a shell), procps-ng watch `+bCced::ghq:n:prs:tvwx` (joins its words
+    # for `sh -c` unless `-x`), and expect's `unbuffer [-p]`.
+    "ionice": ("ncpPu", frozenset({"class", "classdata", "pid", "pgid", "uid"})),
+    "chrt": ("DPT", frozenset({"sched-runtime", "sched-period",
+                               "sched-deadline"})),
+    "taskset": ("", frozenset()),
+    "flock": ("wE", frozenset({"timeout", "wait", "conflict-exit-code"})),
+    "watch": ("nqs", frozenset({"interval", "equexit", "shotsdir"})),
+    "unbuffer": ("", frozenset()),
+    "su": ("cCgGsw", frozenset({
+        "command", "session-command", "group", "supp-group", "shell",
+        "whitelist-environment"})),
+    "script": ("cEIOBTmo", frozenset({
+        "command", "echo", "log-in", "log-out", "log-io", "log-timing",
+        "logging-format", "output-limit"})),
+}
+# Options after which the prefix runs no command (`command -v` prints a
+# path, `sudo -l` lists, `sudo -e` edits files, `sudo -v` / `-K` / `-V`,
+# `doas -C` checks a config file, `doas -L` clears its persisted login).
+_PREFIX_NO_RUN = {
+    "command": frozenset({"v", "V"}),
+    "sudo": frozenset({"e", "l", "v", "K", "V", "edit", "list", "validate",
+                       "remove-timestamp", "version", "help"}),
+    "xargs": frozenset({"help", "version"}),
+    "doas": frozenset({"C", "L"}),
+    # S144-Q-154: ionice / chrt / taskset `-p` (and ionice `-P` / `-u`)
+    # act on running processes; chrt `-m` prints the priority limits.
+    "ionice": frozenset({"p", "P", "u", "pid", "pgid", "uid", "h", "V",
+                         "help", "version"}),
+    "chrt": frozenset({"p", "pid", "m", "max", "h", "V", "help", "version"}),
+    "taskset": frozenset({"p", "pid", "h", "V", "help", "version"}),
+    "flock": frozenset({"h", "V", "help", "version"}),
+    "watch": frozenset({"h", "v", "help", "version"}),
+    "su": frozenset({"h", "V", "help", "version"}),
+    "script": frozenset({"h", "V", "help", "version"}),
+}
+# Options that run the command somewhere else (`sudo -D dir`, `sudo -i`
+# starts in the target user's home, `sudo -R` a chroot; S144-Q-150: `sudo
+# -h host` / `--host` on a remote host).
+_PREFIX_MOVES = {"sudo": frozenset({"D", "chdir", "R", "chroot", "i", "login",
+                                    "h", "host"}),
+                 # S144-Q-154: a login su (`-l`, `--login`, or a bare `-`,
+                 # read in _script_prefix_unwrapped) starts in the target
+                 # user's home.
+                 "su": frozenset({"l", "login"})}
+# Prefixes that take bash `NAME=VALUE` words before the command (`time` is
+# a keyword in front of a simple command; sudo reads them as environment).
+_PREFIX_ASSIGNS = frozenset({"time", "sudo"})
+# S144-Q-150, read only by the FULL reading of _prefix_unwrapped: sudo
+# value options S144-Q-146 did not list (sudo 1.9 `--auth-type` = -a,
+# `--login-class` = -c), and sudo's `-h`, which takes a following word that
+# is no option as a remote host (`-h host`; a NAME=VALUE word read as the
+# host is dropped by _PREFIX_ASSIGNS anyway).
+_PREFIX_LONG_MORE = {"sudo": frozenset({"auth-type", "login-class"})}
+# S144-Q-154, read only in a THIRD reading (FULL_BSD: the full reading plus
+# these letters): BSD xargs `-J replstr` / `-R replacements` / `-S
+# replsize` take a value (GNU xargs has none of the three). Read in the
+# plain reading they stopped counting `xargs -R bash -c '...'` (verifier
+# round 1), and read in the full one `xargs -R nice --adj 5 bash -c '...'`
+# (round 2), so both keep them flags and FULL_BSD is walked beside them.
+_PREFIX_SHORT_MORE = {"xargs": "JRS"}
+FULL_BSD = 2
+_PREFIX_HOST_SHORT = {"sudo": "h"}
+# Short options declared with an OPTIONAL value (getopt `x::`): the rest of
+# the cluster is the value (`xargs -en`, `xargs -id`, `sudo -hhost`), so the
+# letter ends the cluster; only sudo's `-h` also takes a next word. xargs
+# `-l` is optional too, but its value is a number, which holds no letter.
+_PREFIX_OPTIONAL_SHORTS = {"sudo": "h", "xargs": "ei", "watch": "d",
+                           "script": "t"}
+# S144-Q-154: the options that hand a prefix a STRING a shell runs (su `-c`
+# / `-C`, util-linux script `-c`), read wherever they stand (both tools
+# permute their arguments); getopt keeps the last one.
+_PREFIX_SCRIPT_OPTS = {
+    "su": (frozenset("cC"), frozenset({"command", "session-command"})),
+    "script": (frozenset("c"), frozenset({"command"})),
+}
+# The BSD `script [-adkpqr] [-t time] [file [command ...]]` value options.
+_SCRIPT_BSD_VALUES = "tT"
+_PRIORITY = re.compile(r"[+-]?\d+")
+
+
+def _long_names(name, option, long_values):
+    """S144-Q-150: the long options OPTION names for prefix NAME as GNU
+    getopt_long reads it: an exact name first, else every known name it
+    abbreviates (an ambiguous abbreviation is an error to the tool; the
+    plain reading is walked beside this one, so naming all can only add)."""
+    known = (long_values | _PREFIX_NO_RUN.get(name, frozenset())
+             | _PREFIX_MOVES.get(name, frozenset()))
+    known = {o for o in known if len(o) > 1}
+    if option in known or not option:
+        return {option}
+    return {o for o in known if o.startswith(option)} or {option}
+
+
+def _prefix_unwrapped(name, rest, full=False):
+    """S144-Q-146: the command words of prefix command NAME (a
+    _PREFIX_COMMANDS key) after its options REST, and whether it moved the
+    command; ([], False) when it runs none. FULL (S144-Q-150, EXTRA only,
+    walked BESIDE the plain reading, never instead of it) reads the options
+    as getopt_long does: an abbreviated long option (`nice --adj 5`,
+    `timeout --sig KILL`), _PREFIX_LONG_MORE, and `sudo -h host`."""
+    if name in _PREFIX_SCRIPT_OPTS:
+        return _script_prefix_unwrapped(name, rest, full)
+    short_values, long_values = _PREFIX_COMMANDS[name]
+    host = _PREFIX_HOST_SHORT.get(name, "") if full else ""
+    optional = _PREFIX_OPTIONAL_SHORTS.get(name, "") if full else ""
+    if full:
+        long_values = long_values | _PREFIX_LONG_MORE.get(name, frozenset())
+    if full == FULL_BSD:
+        short_values = short_values + _PREFIX_SHORT_MORE.get(name, "")
+    seen, i = set(), 0
+    while i < len(rest) and rest[i].startswith("-") and rest[i] != "-":
+        word = rest[i]
+        if word == "--":
+            i += 1
+            break
+        if word.startswith("--"):
+            option, eq, _value = word[2:].partition("=")
+            names = _long_names(name, option, long_values) if full else {option}
+            seen |= names
+            if names & long_values and not eq:
+                i += 1
+        else:
+            for k, letter in enumerate(word[1:], 1):
+                seen.add(letter)
+                if letter in short_values:
+                    if k == len(word) - 1:
+                        i += 1  # `-n 5`; `-n5` carries its value
+                    break
+                if letter in optional:
+                    # An optional attached value ends the cluster; sudo's
+                    # `-h` also takes the next word that is no option as
+                    # its host (`-h host`; `-hhost` and `-h=host` attach).
+                    if letter == host and k == len(word) - 1 and i + 1 < len(rest) \
+                            and not rest[i + 1].startswith("-"):
+                        i += 1
+                    break
+        i += 1
+    if seen & _PREFIX_NO_RUN.get(name, frozenset()):
+        return [], False
+    rest = rest[i:]
+    if name in ("timeout", "taskset"):
+        rest = rest[1:]  # its DURATION / its mask or cpu list
+    elif name == "chrt" and rest and _PRIORITY.fullmatch(rest[0]):
+        rest = rest[1:]  # its priority (optional for some policies)
+    elif name == "flock":
+        rest = rest[1:]  # its lock file or descriptor
+        if rest and rest[0] in ("-c", "--command"):
+            # flock runs the one word after an exact -c through $SHELL -c
+            return (["sh", "-c", rest[1]] if len(rest) > 1 else []), False
+    elif name == "watch" and not ("x" in seen or any(
+            len(o) > 1 and "exec".startswith(o) for o in seen)):
+        # without -x, watch joins its words and runs them through sh -c
+        return (["sh", "-c", " ".join(rest)] if rest else []), False
+    if name in _PREFIX_ASSIGNS:
+        while len(rest) > 1 and _BASH_ASSIGN.fullmatch(rest[0]):
+            rest = rest[1:]
+    return rest, bool(seen & _PREFIX_MOVES.get(name, frozenset()))
+
+
+def _script_options(name, rest, full):
+    """S144-Q-154: the options of permuting prefix NAME (su, script) read
+    wherever they stand: (the last script string, the letters / names seen,
+    the words that are no option, in order)."""
+    short_values, long_values = _PREFIX_COMMANDS[name]
+    script_short, script_long = _PREFIX_SCRIPT_OPTS[name]
+    optional = _PREFIX_OPTIONAL_SHORTS.get(name, "")
+    script, seen, positional, i = None, set(), [], 0
+    while i < len(rest):
+        word = rest[i]
+        if word == "--":
+            positional.extend(rest[i + 1:])
+            break
+        if word == "-" or not word.startswith("-"):
+            positional.append(word)
+        elif word.startswith("--"):
+            option, eq, value = word[2:].partition("=")
+            names = _long_names(name, option, long_values) if full else {option}
+            seen |= names
+            if names & long_values and not eq:
+                value = rest[i + 1] if i + 1 < len(rest) else None
+                i += 1
+            if names & script_long and value is not None:
+                script = value
+        else:
+            for k, letter in enumerate(word[1:], 1):
+                seen.add(letter)
+                if letter in short_values:
+                    value = word[k + 1:]
+                    if not value:
+                        value = rest[i + 1] if i + 1 < len(rest) else None
+                        i += 1
+                    if letter in script_short and value is not None:
+                        script = value
+                    break
+                if letter in optional:
+                    break
+        i += 1
+    return script, seen, positional
+
+
+def _script_prefix_unwrapped(name, rest, full):
+    """S144-Q-154: _prefix_unwrapped for su and script. su runs its `-c`
+    string through the target user's shell (a login su - `-`, `-l`,
+    `--login` - in that user's home: moved) and no visible command without
+    one (a `-c string` handed on to that shell after the user counts too);
+    util-linux script runs its `-c` string through `sh -c`, the BSD script
+    the words after its file."""
+    script, seen, positional = _script_options(name, rest, full)
+    if seen & _PREFIX_NO_RUN.get(name, frozenset()):
+        return [], False
+    if name == "su":
+        moved = bool(seen & _PREFIX_MOVES["su"]) or "-" in positional
+        if script is None:
+            # the words after the user go to the shell: a short cluster
+            # holding `c` (`-c`, `-lc`) hands it the next word as a script
+            script = next((positional[j + 1] for j in range(1, len(positional) - 1)
+                           if positional[j][:1] == "-" and positional[j][1:2] != "-"
+                           and "c" in positional[j][1:]), None)
+        return (["sh", "-c", script] if script is not None else []), moved
+    if script is not None:
+        return ["sh", "-c", script], False
+    i = 0
+    while i < len(rest) and rest[i].startswith("-") and rest[i] != "-":
+        word = rest[i]
+        i += 1
+        if word == "--":
+            break
+        if not word.startswith("--"):
+            for k, letter in enumerate(word[1:], 1):
+                if letter in _SCRIPT_BSD_VALUES:
+                    i += k == len(word) - 1  # `-t 0`; `-t0` carries it
+                    break
+    return rest[i + 1:], False
+
+
+# S144-Q-153 (read only when EXTRA is on): reserved words that open a
+# statement and run the command after them, measured with GNU bash 5.2
+# (`if true; then bash -c '...'; fi`, `while x; do ...`, `else ...`,
+# `elif ...`, `until ...`, `! ...`, `{ ...; }`, `( ... )`); compared in
+# lower case, so a PowerShell statement that STARTS `else { ... }` or
+# `do { ... }` reads too.
+_SH_KEYWORD_HEADS = frozenset({"then", "do", "else", "elif", "if", "while",
+                               "until", "!", "{", "("})
+# S144-Q-158 (read only when EXTRA is on): PowerShell runs the block after
+# a condition head and its `( ... )` (`if ($x) {`, `elseif`, `while`,
+# `foreach`) or a block head (`else {`, `do {`, `try {`, `finally {`,
+# `catch [Type] {`), and a statement may open with the `}` that closes the
+# block before it (`} else {`); measured with Windows PowerShell 5.1.
+_PS_CONDITION_HEADS = frozenset({"if", "elseif", "while", "foreach"})
+_PS_BLOCK_HEADS = frozenset({"else", "do", "try", "finally", "catch"})
+# The same heads at the start of a statement's raw text, for an assignment
+# behind them (`then r=$(bash -c '...')`).
+_SH_KEYWORD_HEAD_TEXT = re.compile(
+    r"^(?:(?:then|do|else|elif|if|while|until|!|\{)(?=\s)\s*|\(\s*)*",
+    re.IGNORECASE)
+# S144-Q-158: the brace reading of the same, beside it (never instead):
+# `} else { $r = bash -c '...'`, `if ($x) { $r = ...` (a condition nests
+# its parentheses at most two deep here).
+_PS_CONDITION_TEXT = r"\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)"
+_PS_BRACE_HEAD_TEXT = re.compile(
+    r"^(?:\}\s*|(?:if|elseif|while|foreach)\s*" + _PS_CONDITION_TEXT
+    + r"\s*\{\s*|(?:else|do|try|finally|catch(?:\s*\[[^\]]*\])*)\s*\{\s*"
+    r"|(?:then|do|else|elif|if|while|until|!|\{)(?=\s)\s*|\(\s*)*",
+    re.IGNORECASE)
+
+
+def _ps_brace_head_end(words):
+    """S144-Q-158: the index of the first word after a PowerShell brace head
+    at the start of WORDS, and that word with a glued `{` removed (`{bash`,
+    `($x){bash`), or None when WORDS do not open with one. A condition head
+    needs its balanced `( ... )` and then `{`; a block head needs its `{`
+    (`catch` may name `[Type]` words first). Anything else is None, so the
+    S144-Q-153 reading of `if (bash -c '...')` is kept."""
+    head = words[0].lower()
+    i = 1
+    if head in _PS_CONDITION_HEADS:
+        if i >= len(words) or not words[i].startswith("("):
+            return None
+        depth = 0
+        while i < len(words):
+            word = words[i]
+            for k, char in enumerate(word):
+                depth += (char == "(") - (char == ")")
+                if depth == 0:
+                    tail = word[k + 1:]
+                    break
+            else:
+                i += 1
+                continue
+            i += 1
+            if tail:
+                # `($x){` / `($x){bash`: the block opens in this word
+                if not tail.startswith("{"):
+                    return None
+                return (i, None) if tail == "{" else (i - 1, tail[1:])
+            break
+        else:
+            return None
+    elif head in _PS_BLOCK_HEADS:
+        while head == "catch" and i < len(words) and words[i].startswith("["):
+            i += 1
+    else:
+        return None
+    if i >= len(words) or not words[i].startswith("{"):
+        return None
+    return (i + 1, None) if words[i] == "{" else (i, words[i][1:])
+
+
+def _keyword_unwrapped(words, braces=False):
+    """S144-Q-153: WORDS without leading shell keyword heads
+    (_SH_KEYWORD_HEADS) and the `(` of a subshell glued to the first word
+    (`(bash -c '...')`; bash reads `((bash ...) )` as two subshells too).
+    S144-Q-158: BRACES is a second reading that also drops a leading `}`
+    and PowerShell brace heads with their condition and `{`
+    (_ps_brace_head_end). It is walked BESIDE the first, never instead:
+    PowerShell runs the condition too (`if (bash -c '...') { ... }`)."""
+    words = list(words)
+    i = 0
+    while i < len(words):
+        if braces and words[i] == "}":
+            i += 1
+            continue
+        brace = _ps_brace_head_end(words[i:]) if braces else None
+        if brace is not None:
+            step, glued = brace
+            i += step
+            if glued is not None:
+                words[i] = glued
+            continue
+        if words[i].lower() not in _SH_KEYWORD_HEADS:
+            break
+        i += 1
+    rest = words[i:]
+    if rest and rest[0].startswith("(") and rest[0].lstrip("("):
+        rest[0] = rest[0].lstrip("(")
+    return rest
+
+
+def _keyword_readings(words):
+    """S144-Q-158: _keyword_unwrapped's reading of WORDS, then its BRACES
+    reading when that differs."""
+    plain = _keyword_unwrapped(words)
+    braced = _keyword_unwrapped(words, braces=True)
+    return [plain] if braced == plain else [plain, braced]
+
+
+def _unwrap_lead(words, braces=False):
+    """_unwrapped's first steps: WORDS without keyword heads
+    (_keyword_unwrapped) and then bash `NAME=VALUE` prefixes."""
+    words = _keyword_unwrapped(words, braces)
+    while words and len(words) > 1 and _BASH_ASSIGN.fullmatch(words[0]):
+        words = words[1:]
+    return words
+
+
+def _wrapped_head(words, braces=False):
+    """S144-Q-163: True when _unwrapped would read a wrapper or prefix
+    command at the head of WORDS. Only those read ESCAPES (`env`) and FULL
+    (a prefix command), so with False every option pair gives _unwrapped's
+    plain answer."""
+    lead = _unwrap_lead(words, braces)
+    return bool(lead) and ((head := _head_name(lead[0])) in _WRAPPERS
+                           or head in _PREFIX_COMMANDS)
+
+
+def _unwrapped(words, escapes=False, full=False, braces=False):
+    """WORDS without leading `env` / `wsl` wrappers, bash `NAME=VALUE`
+    environment prefixes (S144-Q-135) or prefix commands (S144-Q-146:
+    `nohup`, `time`, `nice`, `sudo`, ... with their options), and whether
+    one changed directory; WORDS is None when a wrapper cannot be read.
+    ESCAPES (S144-Q-145) reads an `env -S` string with env's own escapes;
+    FULL (S144-Q-150) reads each prefix's options as getopt_long does.
+    S144-Q-153: shell keyword heads first (`then`, `do`, `!`, ...), and
+    the `!` bash allows after `time` (`time ! cmd`); BRACES reads them with
+    _keyword_unwrapped's S144-Q-158 brace reading."""
+    moved = False
+    words = _unwrap_lead(words, braces)
+    while words and ((head := _head_name(words[0])) in _WRAPPERS
+                     or head in _PREFIX_COMMANDS):
+        if head == "env":
+            words, step = _env_unwrapped(words[1:], escapes)
+        elif head == "wsl":
+            words, step = _wsl_unwrapped(words[1:])
+        else:
+            words, step = _prefix_unwrapped(head, words[1:], full)
+            if head == "time":
+                while words and words[0] == "!":
+                    words = words[1:]
+        moved = moved or step
+    return words, moved
+
+
+# S144-Q-135 (read only when EXTRA is on). An assignment statement whose
+# value RUNS a command: PowerShell runs a bare command, `(...)`, `$(...)` or
+# `@(...)` on the right side; bash runs a value that is one `$(...)` or
+# `` `...` `` substitution; both run a substitution inside double quotes. A
+# single-quoted value is a literal in both shells, and bash `r=(...)` is an
+# array of words. Only a substitution that is the WHOLE value is read
+# (`x="a $(cmd) b"` is not, filed under S144-Q-127).
+# S144-Q-141: a PowerShell target may carry type literals (`[string]$r`,
+# `[List[string]]$r`, `[ValidateNotNull()][string]$r`), a scope or drive
+# (`$global:r`, `$env:R`), braces (`${r}`, `${my var}`), an index or a
+# member (`$r[0]`, `$o.p`), several targets (`$a, $b`), a compound operator
+# (`-=`, `*=`, `/=`, `%=`, `??=`), and a chain (`$a = $b = cmd`).
+_PS_TYPE = r"\[(?:[^\[\]]|\[(?:[^\[\]]|\[[^\[\]]*\])*\])*\]"
+_PS_TARGET = (rf"(?:{_PS_TYPE}\s*)*(?:\$\{{[^}}]+\}}|\$(?:\w+:)?\w+)"
+              r"(?:\.\w+|\[[^\]]*\])*")
+_PS_ASSIGN_HEAD = re.compile(
+    rf"{_PS_TARGET}(?:\s*,\s*{_PS_TARGET})*\s*(?:[-+*/%]|\?\?)?=(?!=)\s*",
+    re.IGNORECASE)
+_SH_ASSIGN_HEAD = re.compile(
+    r"(?:(?:export|local|readonly|declare|typeset)(?:\s+-\w+)*\s+)?[A-Za-z_]\w*\+?=")
+
+
+def _substituted(value, powershell):
+    """The command of a VALUE that is one command substitution, or None."""
+    if value.startswith('"'):
+        value = value[1:-1] if len(value) > 1 and value.endswith('"') else value[1:]
+        # In double quotes `(...)` / `@(...)` are literal text, and a
+        # backtick is PowerShell's escape character, not a substitution.
+        if not value.startswith("$(" if powershell else ("$(", "`")):
+            return None
+    opens = ("$(", "(", "@(") if powershell else ("$(",)
+    for opener in opens:
+        if value.startswith(opener):
+            body = value[len(opener):]
+            return body.removesuffix(")")
+    if not powershell and value.startswith("`"):
+        body = value[1:]
+        return body.removesuffix("`")
+    return None
+
+
+def _assignment_command(statement, braces=False):
+    """S144-Q-135: the command an assignment STATEMENT (raw text) runs, or
+    None when it is not an assignment or its value runs nothing.
+    S144-Q-153: read behind shell keyword heads (`then r=$(...)`).
+    S144-Q-158: BRACES reads behind PowerShell brace heads instead
+    (_PS_BRACE_HEAD_TEXT); see _assignment_commands."""
+    head_text = _PS_BRACE_HEAD_TEXT if braces else _SH_KEYWORD_HEAD_TEXT
+    text = head_text.sub("", statement.strip())
+    ps = _PS_ASSIGN_HEAD.match(text)
+    if ps:
+        value = text[ps.end():].strip()
+        while (chained := _PS_ASSIGN_HEAD.match(value)) is not None:
+            value = value[chained.end():].strip()  # `$a = $b = cmd`
+        body = _substituted(value, powershell=True)
+        if body is None and value and value[0] not in "'\"$":
+            body = value  # `$r = bash -c '...'`: PowerShell runs it
+        return body or None
+    sh = _SH_ASSIGN_HEAD.match(text)
+    if sh:
+        return _substituted(text[sh.end():].strip(), powershell=False) or None
+    return None
+
+
+def _assignment_commands(statement):
+    """S144-Q-158: _assignment_command's body, then its BRACES body when it
+    differs (`if ($x) { $r = bash -c '...'`); both are walked, so the
+    S144-Q-153 body (`if ($r = bash -c '...') { ...`) is never lost."""
+    bodies = [_assignment_command(statement)]
+    braced = _assignment_command(statement, braces=True)
+    if braced not in bodies:
+        bodies.append(braced)
+    return [body for body in bodies if body is not None]
+
+
+# S144-Q-164 (read only when EXTRA is on): PowerShell evaluates the
+# condition of `if`, `elseif`, `while`, `foreach` (and `do { } while`), the
+# value of `switch [-option ...] (...)` and the init clause of `for (...;`,
+# so a `$( ... )` / `@( ... )` inside those parentheses runs its command;
+# measured with Windows PowerShell 5.1 (a `$(` in double quotes runs too,
+# one in single quotes or behind a backtick does not). The later `for`
+# clauses sit past a statement break (_STATEMENT_BREAK splits at `;`), the
+# S144-Q-162 cause. _PS_STATEMENT_HEAD is one brace head at a position: a
+# `}`, a lone `{`, a block head with its `{`, or a condition head up to its
+# `(`; _PS_HEAD_STEP (below) is the scan's step.
+_PS_STATEMENT_HEAD = re.compile(
+    r"\s*(?:[{}]|(?:else|do|try|finally|catch(?:\s*\[[^\]]*\])*)\s*\{"
+    r"|(?P<cond>(?:if|elseif|while|foreach|for|switch(?:\s+-\w+)*)\s*\())",
+    re.IGNORECASE)
+# S144-Q-169: the scan also reads the condition of `do { } until (...)`
+# (measured with PS 5.1: it runs like `do { } while (...)`). `until` alone
+# is no statement: PowerShell reads `until (...)` as a command named
+# `until` whose `( ... )` argument runs before the lookup fails (measured),
+# so the scan reads it the same. _PS_STATEMENT_HEAD, which decides a
+# pipeline's mode (_ps_pipeline_mode) and drops a statement pipeline, has
+# no `until`: a pipeline opening with `until (` stays a command
+# (`if (until (..))`, counted before this too).
+_PS_HEAD_STEP = re.compile(
+    r"\s*(?:[{}]|(?:else|do|try|finally|catch(?:\s*\[[^\]]*\])*)\s*\{"
+    r"|(?P<cond>(?:if|elseif|while|until|foreach|for"
+    r"|switch(?:\s+-\w+)*)\s*\())",
+    re.IGNORECASE)
+_PS_BLOCK_OPEN = re.compile(r"\s*\{")
+# How deep _ps_group nests plain `( ... )` / `{ ... }` groups before it
+# stops (count-only: nothing past it is read, and no RecursionError).
+_PS_GROUP_MAX = 32
+
+
+def _ps_group(text, i, close, subs, depth, groups=None, expression=False):
+    """S144-Q-164: scan TEXT from I to the CLOSE (`)` or `}`) that ends
+    this group, appending the body of each `$( ... )` / `@( ... )` met to
+    SUBS (a plain group nested in it is scanned for them too). Quote-aware:
+    a single-quoted span is literal; in double quotes only `$(` opens a
+    substitution and a backtick escapes. Returns the index after CLOSE, or
+    None when the group does not close (a substitution cut off there reads
+    to the end of TEXT) or nests past _PS_GROUP_MAX.
+
+    S144-Q-165: with GROUPS (a list), the body of each bare `( ... )` group
+    met at any depth outside a substitution is appended to it too, outer
+    before inner (a None slot is held while a group is open; callers drop
+    None): each `(` that _ps_paren_kind calls a group, read in the mode
+    _ps_pipeline_mode gives the text from I (EXPRESSION forces expression
+    mode). Nothing is collected in a statement (`(if (..) { .. })`), a
+    scriptblock (`{ .. }`) or after a `(` that is a parse error; a hash
+    literal (`@{ .. }`) is read."""
+    if depth > _PS_GROUP_MAX:
+        return None
+    lo = i
+    command = False
+    if groups is not None and not expression:
+        mode = _ps_pipeline_mode(text, i)
+        if mode == "statement":
+            groups = None
+        command = mode == "command"
+    n = len(text)
+    quoted = False
+    while i < n:
+        char = text[i]
+        if char == "`":
+            i += 2
+            continue
+        if quoted:
+            if char == '"':
+                if text.startswith('"', i + 1):
+                    i += 2  # `""` is a quote inside the string
+                    continue
+                quoted = False
+            elif text.startswith("$(", i):
+                i = _ps_substitution(text, i + 2, subs, depth)
+                if i is None:
+                    return None
+                continue
+            i += 1
+            continue
+        if char == close:
+            return i + 1
+        if char == '"':
+            quoted = True
+        elif char == "'":
+            end = text.find("'", i + 1)  # `''` re-enters at the next quote
+            if end < 0:
+                return None
+            i = end
+        elif char in "$@" and text.startswith("(", i + 1):
+            i = _ps_substitution(text, i + 2, subs, depth)
+            if i is None:
+                return None
+            continue
+        elif char in "({":
+            kind = None
+            if groups is not None:
+                if char == "(":
+                    kind = _ps_paren_kind(text, i, lo, command)
+                else:
+                    # a `{ ... }` scriptblock is a value, not a run
+                    # (measured: `if ({ (..) })` runs nothing); a hash
+                    # literal's values run (`if (@{a=(..)})`)
+                    kind = "args" if text[i - 1:i] == "@" else "dead"
+            slot = None
+            if kind == "group":
+                slot = len(groups)
+                groups.append(None)
+            start = i + 1
+            # a method's arguments and a hash literal's values are read in
+            # expression mode (`$s.Contains(a (..))`, `@{a = 5 (..)}` do not
+            # parse; a command-valued `@{a = foo (..)}` is left uncounted)
+            i = _ps_group(text, start, ")" if char == "(" else "}", subs,
+                          depth + 1, groups if kind in ("group", "args") else None,
+                          expression=kind == "args")
+            if i is None:
+                return None
+            if slot is not None:
+                groups[slot] = (start, i - 1)
+            continue
+        i += 1
+    return None
+
+
+def _ps_pipeline_mode(text, i):
+    """S144-Q-165: how PowerShell reads the pipeline whose text starts at I:
+    "statement" when it opens with a statement keyword or a block (in a
+    group it runs nothing: measured, PS 5.1), "command" when it opens with
+    a command name or the call operator `&`, else "expression"."""
+    if _PS_STATEMENT_HEAD.match(text, i) is not None:
+        return "statement"
+    n = len(text)
+    while i < n and text[i] in " \t":
+        i += 1
+    if i < n and (text[i].isalpha() or text[i] in "_&"):
+        return "command"
+    return "expression"
+
+
+def _ps_paren_kind(text, i, lo, command):
+    """S144-Q-165: what the `(` at I opens, in a group or pipeline whose text
+    starts at LO and is read in COMMAND mode or not: "group" (a bare group,
+    which runs), "args" (a method's argument list, `$s.Contains(`: its
+    contents are expressions, so a bare command there runs nothing) or
+    "dead" (a parse error: nothing in the script runs). Measured with PS
+    5.1: in command mode every `(` is a group (`Write-Output 'a' (..)`,
+    `Write-Output a.b(..)` run); in expression mode a `(` first in its
+    group or after an operator (`-not(`, `-eq (`, `+`), a cast (`[int] (`)
+    or an opening is a group, a glued one after a member is "args", and one
+    after a value (`$a (`, `5 (`, `'a' (`, `(1)(`, `$x -eq foo (`, `-1 (`,
+    `$y-1 (`, `$x++ (`, a here-string's `'@ (`) or a spaced one after a
+    member (`$s.Contains (`) is "dead". An operator is one of
+    _PS_OPERATORS after a space or an opening (`-Path (`, `-foo (` are
+    dead), the unary `-not` / `-bnot` only where no value precedes it; a
+    static member needs `::` (`$env:Path(` is a variable). In command mode
+    a glued method paren whose chain back over letters, digits, `_`, `.`
+    and `:` reaches a `$` (`Write-Output $s.Contains(`) is "args" too
+    (verifier round 4, each measured)."""
+    end = i
+    while end > lo and text[end - 1] in " \t":
+        end -= 1
+    if end == lo:
+        return "group"
+    last = text[end - 1]
+    word = last.isalnum() or last == "_"
+    k = end
+    while word and k > lo and (text[k - 1].isalnum() or text[k - 1] == "_"):
+        k -= 1
+    before = text[k - 1] if word and k > lo else ""
+    if command:
+        if before == "." and end == i:
+            j = k - 1
+            while j > lo and (text[j - 1].isalnum() or text[j - 1] in "_.:"):
+                j -= 1
+            if j > lo and text[j - 1] == "$":
+                return "args"
+        return "group"
+    if last in "'\")}@" or (last in "+-" and text[end - 2:end - 1] == last):
+        return "dead"
+    if not word:
+        return "group"
+    if before == "." or (before == ":" and k - 2 >= lo and text[k - 2] == ":"):
+        return "args" if end == i else "dead"
+    name = text[k:end].lower()
+    if before == "-" and name in _PS_OPERATORS:
+        ahead = text[k - 2] if k - 2 >= lo else " "
+        if not (ahead.isalnum() or ahead in "_$"):
+            if name in ("not", "bnot") and _ps_after_value(text, k - 1, lo):
+                return "dead"
+            return "group"
+    return "dead"
+
+
+# S144-Q-165: the PowerShell operators spelled `-name` (comparison ones
+# also with a `c` / `i` case prefix).
+_PS_OPERATORS = frozenset(
+    [prefix + name for name in (
+        "eq", "ne", "gt", "ge", "lt", "le", "like", "notlike", "match",
+        "notmatch", "contains", "notcontains", "in", "notin", "replace",
+        "split") for prefix in ("", "c", "i")]
+    + ["join", "is", "isnot", "as", "and", "or", "xor", "not", "band",
+       "bor", "bxor", "bnot", "shl", "shr", "f"])
+
+
+def _ps_after_value(text, end, lo):
+    """S144-Q-165: True when the token ending at END (spaces skipped, not
+    before LO) is a value, so a unary operator after it does not parse
+    (`$x -bnot (..)`); an operator (`-eq -not (..)`) or an opening is not."""
+    while end > lo and text[end - 1] in " \t":
+        end -= 1
+    if end == lo:
+        return False
+    last = text[end - 1]
+    if last in "'\")]}":
+        return True
+    if not (last.isalnum() or last == "_"):
+        return False
+    k = end
+    while k > lo and (text[k - 1].isalnum() or text[k - 1] == "_"):
+        k -= 1
+    return not (k > lo and text[k - 1] == "-" and text[k:end].lower() in _PS_OPERATORS)
+
+
+def _ps_substitution(text, start, subs, depth):
+    """S144-Q-164: append the body of the substitution whose text starts at
+    START to SUBS and return the index after its `)` (None when it does not
+    close: the rest of TEXT is the body). Substitutions nested in the body
+    are not collected; the body is walked as a command, which reads them."""
+    end = _ps_group(text, start, ")", [], depth + 1)
+    subs.append(text[start:] if end is None else text[start:end - 1])
+    return end
+
+
+def _ps_condition_bodies(statement):
+    """S144-Q-164: the body of each `$( ... )` / `@( ... )` in the condition
+    of a PowerShell condition head at the start of STATEMENT (raw text),
+    walking past the brace heads before and between them (`} elseif (..) {`,
+    `if ($x) { if (..) {`, `do { } while (..)`); [] for any other
+    statement."""
+    return _ps_condition_scan(statement)[0]
+
+
+def _ps_condition_pipelines(statement):
+    """S144-Q-165: for each condition _ps_condition_bodies walks, the
+    condition's own pipeline (the part after `in` for foreach; read to the
+    end of STATEMENT when the condition does not close, as a `for` init
+    clause cut at its `;` does; left out when it is one bare group), then
+    the body of each bare `( ... )` group in it (_ps_group), outer before
+    inner, leaving out any that opens with a statement keyword or a block;
+    [] for any other statement."""
+    return _ps_condition_scan(statement)[1]
+
+
+# S144-Q-165: what `foreach (` holds before its pipeline: the loop
+# variable and `in`.
+_PS_FOREACH_IN = re.compile(r"\s*\$(?:\{[^}]*\}|[\w:?]+)\s+in(?![\w-])\s*",
+                            re.IGNORECASE)
+
+
+def _ps_condition_scan(statement):
+    """(substitution bodies, pipelines) of the PowerShell conditions at the
+    start of STATEMENT in one linear pass: _ps_condition_bodies (S144-Q-164)
+    and _ps_condition_pipelines (S144-Q-165)."""
+    subs, pipes = [], []
+    pos = 0
+    while (step := _PS_HEAD_STEP.match(statement, pos)) is not None:
+        pos = step.end()
+        cond = step.group("cond")
+        if cond is None:
+            continue
+        begin = pos
+        if cond[:7].lower() == "foreach":
+            # the pipeline starts after `in`; with no `in` the script does
+            # not parse (measured) and no group in it is read
+            loop = _PS_FOREACH_IN.match(statement, pos)
+            begin = None if loop is None else loop.end()
+        slot = len(pipes)
+        pipes.append(None)
+        pos = _ps_group(statement, pos if begin is None else begin, ")", subs, 1,
+                        None if begin is None else pipes)
+        if begin is not None:
+            pipe = statement[begin:] if pos is None else statement[begin:pos - 1]
+            # an expression-mode condition (`$x -eq ..`, `-not (..)`, `(..)`)
+            # runs only its groups and substitutions, since a bare command in
+            # it does not parse (measured: `if ($x -eq git commit -n)`); an
+            # assignment (`if ($r = ..)`, a `for` init clause) runs its value
+            if _ps_pipeline_mode(pipe, 0) == "command" or _assignment_commands(pipe):
+                pipes[slot] = pipe
+        if pos is None:
+            break
+        brace = _PS_BLOCK_OPEN.match(statement, pos)
+        if brace is None:
+            break
+        pos = brace.end()
+    spans = [pipe for pipe in pipes if isinstance(pipe, tuple)]
+    bodies = iter(_ps_group_bodies(statement, spans))
+    pipes = [next(bodies) if isinstance(pipe, tuple) else pipe for pipe in pipes]
+    # A pipeline or group that opens with a statement keyword or a block
+    # (`(if (..) { .. })`, `({ .. })`) runs nothing: measured, PS 5.1.
+    return subs, [pipe for pipe in pipes if pipe is not None and pipe.strip()
+                  and _PS_STATEMENT_HEAD.match(pipe) is None]
+
+
+def _ps_group_bodies(text, spans):
+    """S144-Q-165: the body of each group span (START, END) of TEXT (in the
+    pre-order _ps_group collects them), with the body of every group nested
+    in it emptied to `()`: each nested group is walked as its own body, so
+    the text walked stays linear in TEXT however deep the groups nest
+    (verifier round 5: 30 nested levels walked whole were 547k chars)."""
+    bodies = []
+    for index, (start, end) in enumerate(spans):
+        pieces = []
+        pos = start
+        child = index + 1
+        while child < len(spans) and spans[child][0] < end:
+            child_start, child_end = spans[child]
+            pieces.append(text[pos:child_start])
+            pos = child_end
+            child += 1
+            while child < len(spans) and spans[child][0] < child_end:
+                child += 1  # a grandchild: inside the emptied child
+        pieces.append(text[pos:end])
+        bodies.append("".join(pieces))
+    return bodies
+
+
+def _cmd_script(rest):
+    """The command line of `cmd /c ...` / `cmd /k ...` (`//c` from Git Bash)."""
+    for i, word in enumerate(rest):
+        if not word.startswith("/"):
+            return None
+        if word.lstrip("/").lower() in ("c", "k"):
+            return " ".join(rest[i + 1:]) or None
+    return None
+
+
+def _launcher_script(words, extra=True, escapes=False, full=False,
+                     braces=False):
     """The quoted script of a `bash -c` / `sh -c` / `pwsh -Command` statement
-    (WORDS, quotes removed), or None for any other statement."""
+    (WORDS, quotes removed), or None for any other statement. With EXTRA
+    (S144-Q-127 part 2) also behind `env` / `wsl` wrappers, after a bash
+    `--rcfile x` / `--init-file x`, and for `cmd /c` and `iex`; a script
+    a wrapper moved (`env -C`, `wsl --cd`, `wsl ~`) starts with a `cd` to
+    an unknown directory, so its statements are placed None (fail closed).
+    ESCAPES reads an `env -S` string with env's escapes (S144-Q-145); FULL
+    reads prefix options as getopt_long does (S144-Q-150); BRACES reads
+    behind PowerShell brace heads (S144-Q-158)."""
+    moved = False
+    if extra:
+        words, moved = _unwrapped(words, escapes, full, braces)
+        if not words:
+            return None
+    script = _launcher_head_script(words, extra)
+    if script is not None and moved:
+        script = f"cd {_UNSET} && {script}"
+    return script
+
+
+# The (ESCAPES, FULL) pairs _launcher_scripts reads a wrapped statement
+# with. S144-Q-154: FULL_BSD is a third reading, walked beside both.
+_UNWRAP_OPTION_PAIRS = ((False, False), (True, False), (False, True),
+                        (True, True), (False, FULL_BSD), (True, FULL_BSD))
+
+
+def _launcher_scripts(words, extra=True):
+    """S144-Q-145: _launcher_script's script, plus with EXTRA the one read
+    with env's `-S` escapes (`env -S 'bash\\_-c\\_"..."'`) and (S144-Q-150)
+    the ones read with prefix options in full (`nice --adj 5 bash -c ...`)
+    when they differ: all are walked (count-only, the plain reading is
+    never replaced). S144-Q-158: each again behind PowerShell brace heads
+    when WORDS open with one (`if ($x) { bash -c '...'`).
+    S144-Q-163: a reading with no wrapper or prefix command at its head
+    (_wrapped_head) is read once, not once per option pair: every pair
+    gives the same script there, so no script is lost."""
+    scripts = [_launcher_script(words, extra)]
+    if extra:
+        braced = len(_keyword_readings(words)) > 1
+        for braces in (False, True) if braced else (False,):
+            pairs = _UNWRAP_OPTION_PAIRS if _wrapped_head(words, braces) \
+                else ((False, False),)
+            for escapes, full in pairs:
+                more = _launcher_script(words, extra, escapes=escapes,
+                                        full=full, braces=braces)
+                if more not in scripts:
+                    scripts.append(more)
+    return [script for script in scripts if script is not None]
+
+
+def _launcher_head_script(words, extra):
+    """_launcher_script for WORDS whose first word is the launcher itself."""
     # A PowerShell `& pwsh ...` needs no case here: _STATEMENT_BREAK splits
     # on a bare `&`, so the launcher is already the first word.
     head = _head_name(words[0])
     rest = words[1:]
+    if extra and head == "cmd":
+        return _cmd_script(rest)
+    if extra and head in _IEX_HEADS:
+        if rest and len(rest[0]) > 1 and rest[0].startswith("-") and \
+                "command".startswith(rest[0][1:].lower()):
+            rest = rest[1:]
+        return " ".join(rest) or None
+    if extra and head == "eval":
+        # S144-Q-150: bash runs eval's words, joined, as a script in the
+        # same shell; a leading `--` ends eval's (empty) option list.
+        if rest and rest[0] == "--":
+            rest = rest[1:]
+        return " ".join(rest) or None
     if head in _SHELL_LAUNCHERS:
         i = 0
         while i < len(rest):
             word = rest[i]
             if word in _SHELL_VALUE_OPTS:
+                i += 2
+                continue
+            # A dash word is never the value: `bash --rcfile -c 'x'` keeps
+            # the RM-698 reading, so this can only count more.
+            if (extra and word in _BASH_LONG_VALUE_OPTS and i + 1 < len(rest)
+                    and not rest[i + 1].startswith("-")):
                 i += 2
                 continue
             if word == "--" or not word.startswith(("-", "+")):
@@ -2914,57 +4336,436 @@ def _statements(raw):
     return parts
 
 
-def _readings(command):
+def _readings(command, extra=False, top=False):
     """COMMAND without heredoc bodies, as written and (when it differs) with
     line continuations joined: a bash backslash or a PowerShell backtick
     before a newline continues a statement, but PowerShell reads that
-    backslash as the end of a path, so both readings are kept."""
+    backslash as the end of a path, so both readings are kept.
+    S144-Q-158 (EXTRA only): each reading again with a statement break
+    before a PowerShell `}` that a block keyword follows (_brace_broken),
+    walked beside it, so the block after `if ($x) { a } else {` reads too.
+    S144-Q-174 (a): _brace_broken trusts a reading only when TOP (the tool
+    call's own command, never a launcher's argument or a fragment the walk
+    took out of one) and the reading IS the command (no heredoc span cut,
+    no continuation joined)."""
     raw = _HEREDOC.sub(" ", command)
     joined = _CONTINUATION.sub(" ", raw)
-    return [raw] if joined == raw else [raw, joined]
+    texts = [raw] if joined == raw else [raw, joined]
+    for text in list(texts) if extra else ():
+        broken = _brace_broken(text, trusted=top and text == command)
+        if broken not in texts:
+            texts.append(broken)
+    return texts
 
 
-def _has_bypass(command, depth=0, extra=True):
+# S144-Q-158: a `}` that closes a PowerShell block another block follows
+# in the same statement (`if ($x) { a } else { b }`, `} catch {`).
+_PS_BLOCK_CLOSE = re.compile(r"\}(?=\s*(?:else|elseif|catch|finally)\b)",
+                             re.IGNORECASE)
+# S144-Q-170: a `}` that a `while` / `until` condition follows
+# (`do { a; b } until (..)`, `}until(..)`). PowerShell evaluates it (a
+# do-loop condition, or a bare `until (..)` command whose argument runs:
+# S144-Q-169), but a `;` or `|` inside the block left it in a statement
+# that opens with a command, and the condition scan reads only from a
+# statement's start. Measured with Windows PowerShell 5.1.
+_PS_LOOP_CLOSE = re.compile(r"\}(?=\s*(while|until)\s*\()", re.IGNORECASE)
+# S144-Q-170: the statement heads whose block a `while` / `until` condition
+# may follow, by the kind of block they open: a head before a `( ... )`
+# and one before the `{` itself. "try" is a statement block, but a `try`
+# with no catch / finally is a parse error, so no break follows it; only
+# a "do" block takes a `while (..)` with no body after it (a `while` after
+# any other block is a statement that needs its `{ }`: measured).
+_PS_PAREN_BLOCK_KINDS = {"if": "if", "elseif": "if", "while": "loop",
+                         "foreach": "loop", "for": "loop"}
+_PS_WORD_BLOCK_KINDS = {"do": "do", "try": "try", "else": "loop",
+                        "catch": "catch", "finally": "loop"}
+# The block a head must follow (`} else {`, `} catch {`), by head. A
+# second untyped catch is a parse error (verifier round 2), so a catch
+# follows only the try.
+_PS_AFTER_KINDS = {"elseif": ("if",), "else": ("if",),
+                   "catch": ("try",), "finally": ("try", "catch")}
+
+
+def _ps_back(masked, i, newlines=False):
+    """S144-Q-170: I moved back over spaces and tabs (and line breaks with
+    NEWLINES) before it."""
+    gap = " \t\r\n" if newlines else " \t"
+    while i > 0 and masked[i - 1] in gap:
+        i -= 1
+    return i
+
+
+def _ps_word_back(masked, i):
+    """S144-Q-170: (start, lower-cased text) of the word ending before I,
+    spaces and tabs skipped (the text is "" when no word ends there)."""
+    end = _ps_back(masked, i)
+    start = end
+    while start > 0 and (masked[start - 1].isalnum() or masked[start - 1] in "_-:"):
+        start -= 1
+    return start, masked[start:end].lower()
+
+
+def _ps_statement_start(masked, k, kinds, context, head=""):
+    """S144-Q-170: True when the word at K opens a statement. CONTEXT is the
+    stack of open brackets ((char, statements allowed) pairs); statements
+    start only at the top level, in a `$( )` / `@( )` or in a statement
+    block, never in a hash literal, a class / enum / switch body, a
+    scriptblock value, a group or an argument list (verifier round 2). There
+    the word stands first, or after a `;`, a line break, the `$(` / `@(`, or
+    the `{` / `}` of a statement block (KINDS; a `try` block's `}` does not:
+    a `try` needs its catch / finally; S144-Q-174 (a): nor a "top-do"
+    block's, where only its `while` / `until` condition may follow). A `do`
+    also counts after `=` or a
+    single `|` (measured, PS 5.1: `$x = do { .. } until (..)` runs, and
+    `1 | do` reads `do` as a command whose arguments run)."""
+    if context and not context[-1][1]:
+        return False
+    j = _ps_back(masked, k)
+    if j == 0:
+        return True
+    char = masked[j - 1]
+    if char in ";\n(":
+        return True  # a `(` here is the `$(` / `@(` that CONTEXT allowed
+    if char == "{":
+        return kinds.get(j - 1) is not None
+    if char == "}":
+        return kinds.get(j - 1) not in (None, "try", "top-do")
+    if head == "do" and char == "=":
+        return True
+    return head == "do" and char == "|" and masked[j - 2:j - 1] != "|"
+
+
+def _ps_block_kind(masked, i, kinds, opens, context):
+    """S144-Q-170: the kind of block the `{` at I opens ("if", "do", "try",
+    "catch", "loop"), or None when it is no statement block _brace_broken
+    knows: `if` / `elseif` / `while` / `foreach` / `for` and their `( ... )`,
+    `do`, `try`, `else`, `catch` (with at most one `[Type]`), `finally`,
+    `function NAME`, `filter NAME`, each where PowerShell reads it as that
+    statement (_ps_statement_start, or right after the block it belongs
+    to). OPENS maps each `)` / `]` index to its opening one; CONTEXT is
+    _ps_statement_start's."""
+    j = _ps_back(masked, i)
+    if j > 0 and masked[j - 1] == ")":
+        o = opens.get(j - 1)
+        if o is None:
+            return None
+        k, word = _ps_word_back(masked, o)
+        kind = _PS_PAREN_BLOCK_KINDS.get(word)
+    elif j > 0 and masked[j - 1] == "]":  # `catch [Type] {`
+        o = opens.get(j - 1)
+        if o is None:
+            return None
+        k, word = _ps_word_back(masked, o)
+        kind = "catch" if word == "catch" else None
+    else:
+        k, word = _ps_word_back(masked, j)
+        kind = _PS_WORD_BLOCK_KINDS.get(word)
+        if kind is None and word:
+            k, head = _ps_word_back(masked, k)  # `function NAME {`
+            if head not in ("function", "filter"):
+                return None
+            kind, word = "loop", head
+    if kind is None:
+        return None
+    if word in _PS_AFTER_KINDS:
+        # the block before is a statement block only where CONTEXT allows one
+        j = _ps_back(masked, k, newlines=True)
+        after = j > 0 and masked[j - 1] == "}" and kinds.get(j - 1) in _PS_AFTER_KINDS[word]
+        return kind if after else None
+    return kind if _ps_statement_start(masked, k, kinds, context, word) else None
+
+
+def _ps_top_do(masked, k, context):
+    """S144-Q-174 (a): True when the `do` at K is certainly a do statement:
+    in no bracket at all (CONTEXT empty), and first in MASKED, right after a
+    `;`, or first on a line whose last non-blank character before it is a
+    `)`, `}` or `;`. Anything else may be a command, an argument word or a
+    NAME, or continue an expression (measured, PS 5.1, cycle 227: `1 | do`,
+    `x=do`, `}` + ` do` on one line, a `do` on the line after a trailing `|`
+    or `,`, a `do` in a `( )` the scan takes for a subexpression; this
+    cycle's verifier round 1: after a line ending in a word, since a
+    keyword that takes a name reads the `do` on the next line as that name
+    - `data` + line break + `do { } if (1) { a; b } until (S)` parses as a
+    data statement, an `if` and an `until` command, and runs S; so do
+    `function`, `filter`, `workflow`, `configuration`, `class` and
+    `enum`). Narrower than PowerShell on purpose: a missed do statement
+    keeps the S144-Q-170 reading."""
+    if context:
+        return False
+    j = _ps_back(masked, k)
+    if j == 0 or masked[j - 1] == ";":
+        return True
+    if masked[j - 1] != "\n":
+        return False
+    j = _ps_back(masked, k, newlines=True)
+    return j == 0 or masked[j - 1] in ")};"
+
+
+# S144-Q-174 (a): text this scan cannot read as PowerShell does (cycle
+# 227's verifier rounds 1 to 7): a comment (`#`, `<# #>`), an escape or a
+# line continuation (a backtick), any `$` (a braced name `${x'}` whose
+# quote _QUOTED pairs, a `$( )` whose quotes it pairs wrongly, a bash
+# expansion before PowerShell reads the text), any backslash (a bash
+# `$'..'` or `".."` escape: `\x20` is a space to PowerShell), the
+# stop-parsing token `--%`, a here-string (`@"`, `@'`), or any character but
+# printable ASCII, tab, LF and CR (a typographic quote or dash, a vertical
+# tab or a form feed PowerShell reads as a space).
+_PS_UNREAD = re.compile(r"[#`$\\]|--%|@[\"']|[^\t\n\r\x20-\x7e]")
+
+
+def _ps_trusted(text):
+    """S144-Q-174 (a): True when TEXT holds nothing _PS_UNREAD names. A
+    measured list, not a proof; outside it every do block keeps kind
+    "do"."""
+    return not _PS_UNREAD.search(text)
+
+
+def _ps_loop_block_closes(masked, trusted=False):
+    """S144-Q-170: {index of each `}` in MASKED (quotes masked) that closes a
+    statement block (_ps_block_kind) other than a `try` block: its kind}.
+    After such a `}` a `until (..)` runs (a do-loop condition, or a bare
+    `until` command whose argument runs), and after a "do" block a
+    `while (..)` does too (measured, PS 5.1: `do { a; b } until (..)`,
+    `do { a; b } while (..)`, `if (..) { a; b } until (..)`,
+    `function f { a; b } until (..)`, `try { } catch { a; b } until (..)`).
+    Any other block is left alone: a scriptblock or hash value before the
+    keyword is a parse error (`{ a; b } until (..)`, `$x = { .. } until
+    (..)`, `-not { .. } until (..)`, `[void] { .. } until (..)`,
+    `return { .. } until (..)`), and so is `try { a; b } until (..)`. A
+    backtick-escaped bracket is no bracket; text whose `( )` / `{ }` do not
+    balance is a parse error, so nothing is returned for it. One forward
+    pass; each backward look reads only the gap and word next to one
+    bracket, so the cost stays linear.
+
+    S144-Q-174 (a): when TRUSTED (the caller's word that this is the tool
+    call's own command as written and _ps_trusted), a "do" block whose `do`
+    is _ps_top_do is "top-do": its `}` opens no statement, so in `do { }
+    if (1) { a; b } until (..)` (a parse error, nothing runs) the `if`
+    block is none and its `until` is not broken out."""
+    kinds, braces, opens, squares, context = {}, [], {}, [], []
+    i, n = 0, len(masked)
+    while i < n:
+        char = masked[i]
+        if char == "`":
+            i += 2
+            continue
+        if char == "(":
+            context.append(("(", i > 0 and masked[i - 1] in "$@", i))
+        elif char == "[":
+            squares.append(i)
+        elif char == "]":
+            if squares:
+                opens[i] = squares.pop()
+        elif char == "{":
+            kind = _ps_block_kind(masked, i, kinds, opens, context)
+            if kind == "do" and trusted:
+                k, _word = _ps_word_back(masked, _ps_back(masked, i))
+                if _ps_top_do(masked, k, context):
+                    kind = "top-do"
+            kinds[i] = kind
+            braces.append(kind)
+            context.append(("{", kind is not None, i))
+        elif char in ")}":
+            if not context or context[-1][0] != ("(" if char == ")" else "{"):
+                return {}
+            opens[i] = context.pop()[2]
+            if char == "}":
+                kinds[i] = braces.pop()
+        i += 1
+    if context:
+        return {}
+    return {i: kind for i, kind in kinds.items()
+            if masked[i] == "}" and kind not in (None, "try")}
+
+
+def _brace_broken(text, trusted=False):
+    """S144-Q-158: TEXT with a newline (a statement break) before each
+    _PS_BLOCK_CLOSE outside quotes; the `}` opens the next statement, where
+    _keyword_unwrapped drops it with the block head after it.
+
+    S144-Q-170: and before each _PS_LOOP_CLOSE whose block is a statement
+    block (_ps_loop_block_closes; a `while` only after a `do` block), so
+    the `} while (..)` / `} until (..)` condition opens its statement and
+    the condition scan (_ps_condition_scan) reads it.
+
+    S144-Q-174 (a): TRUSTED (from _readings) and _ps_trusted(TEXT) let the
+    scan name a "top-do" block (_ps_loop_block_closes), a do block too."""
+    masked = _QUOTED.sub(lambda m: "x" * len(m.group(0)), text)
+    closes = [match.start() for match in _PS_BLOCK_CLOSE.finditer(masked)]
+    loops = [(match.start(), match.group(1).lower())
+             for match in _PS_LOOP_CLOSE.finditer(masked)]
+    if loops:
+        blocks = _ps_loop_block_closes(masked, trusted and _ps_trusted(text))
+        closes = sorted(closes + [i for i, word in loops if i in blocks
+                                  and (word == "until"
+                                       or blocks[i] in ("do", "top-do"))])
+    pieces, start = [], 0
+    for close in closes:
+        j = close
+        while j > 0 and masked[j - 1].isspace():
+            j -= 1
+        if j == 0 or masked[j - 1] in ";\n|&":
+            continue  # the `}` already opens its statement
+        pieces.extend((text[start:close], "\n"))
+        start = close
+    pieces.append(text[start:])
+    return "".join(pieces)
+
+
+# S144-Q-157: a variable reference (`$F`, `${F}`, `$env:F`), so _has_bypass
+# also walks a command whose bypass flag is held in a variable.
+_VAR_USE = re.compile(r"\$(?:\{\w+\}|(?:env:)?\w+)", re.IGNORECASE)
+
+
+def _has_bypass(command, depth=0, extra=True, expand=True):
     """True when COMMAND runs a hook-bypassing git statement (RM-698): the
     old whole-command rule, or a launcher script that passes this test, or
     (S144-Q-127, unless EXTRA is False) a statement _git_words_bypass flags.
     The old rule runs FIRST and alone decides a True, so this can never count
     less than it did: a raw-text precheck in front of it lost `git -c
-    core.hooksPath""=x`, which only matches once the quotes are stripped."""
+    core.hooksPath""=x`, which only matches once the quotes are stripped.
+
+    S144-Q-157 (EXTRA and EXPAND only): each reading's assignments are
+    recorded (_assigned) and a statement whose words change under _expand
+    is walked again on the expanded words (`F=-n; git commit $F`). The raw
+    walk is unchanged and runs exactly when it did, so this only adds. A
+    launcher script is walked with no variables: a child shell does not
+    see the parent's unexported assignments (`bash -c '... $F'`).
+
+    S144-Q-163: each (COMMAND, DEPTH, EXTRA, EXPAND) is walked once per
+    top-level call (_memo_scope); the walk is a pure function of the four,
+    so a repeat (a nested launcher's script, named by the raw walk and the
+    held walk at every level) returns what the walk would."""
+    return _memo_scope(_memo_has_bypass, command, depth, extra, expand)
+
+
+# S144-Q-163: the _has_bypass answers of the running top-level call (a
+# dict, keyed by its four arguments), or None between calls. A scope opens
+# at the outermost _has_bypass or _bypass_targets call and closes when it
+# returns or raises, so nothing is carried from one call to the next (a
+# test that patches a helper between two calls sees its patch).
+_BYPASS_MEMO = contextvars.ContextVar("stop_claim_gate_bypass_memo",
+                                      default=None)
+
+
+def _memo_scope(func, *args):
+    """FUNC(*ARGS) inside a _BYPASS_MEMO scope, opening one if none is open."""
+    if _BYPASS_MEMO.get() is not None:
+        return func(*args)
+    token = _BYPASS_MEMO.set({})
+    try:
+        return func(*args)
+    finally:
+        _BYPASS_MEMO.reset(token)
+
+
+def _memo_has_bypass(command, depth, extra, expand):
+    memo = _BYPASS_MEMO.get()
+    key = (command, depth, extra, expand)
+    if key not in memo:
+        memo[key] = _has_bypass_walk(command, depth, extra, expand)
+    return memo[key]
+
+
+def _has_bypass_walk(command, depth, extra, expand):
+    """_has_bypass's walk, unmemoised at this level (see _has_bypass)."""
     if _bypass_in_text(command):
         return True
     flagged = bool(EV_BYPASS.search(command))
     hinted = flagged or (extra and bool(_PARSE_HINT.search(command)))
-    if len(command) > COMMAND_PARSE_MAX or not (
-            hinted and _BYPASS_GIT_WORD.search(command)):
+    git_word = _BYPASS_GIT_WORD.search(command) or (
+        extra and _ENV_SPLIT_GIT_WORD.search(command))
+    parsed = bool(hinted and git_word)
+    held = bool(extra and expand and git_word and _VAR_USE.search(command))
+    if len(command) > COMMAND_PARSE_MAX or not (parsed or held):
         return False
     if depth > BYPASS_NEST_MAX:
         return flagged  # fail closed: the raw script holds a flag and a git word
-    for text in _readings(command):
+    for text in _readings(command, extra, top=depth == 0):
+        variables = {}
         for statement in _statements(text):
-            words = _tokens(statement.strip().lstrip("({").rstrip(")}").strip())
-            if extra and words and _git_words_bypass(words):
+            bare = statement.strip().lstrip("({").rstrip(")}").strip()
+            words = _tokens(bare)
+            if parsed and _raw_words_bypass(statement, words, depth, extra, expand):
                 return True
-            script = _launcher_script(words) if words else None
-            if script is not None and _has_bypass(script, depth + 1, extra):
+            if not held:
+                continue
+            expanded = _held_words(bare, variables)
+            if expanded != words and (
+                    _held_bypass(words, expanded)
+                    or any(_has_bypass(script, depth + 1, extra)
+                           for script in _launcher_scripts(expanded, extra))):
                 return True
+            _assigned(bare, variables)
     return False
 
 
-def _placed(command, here, variables, depth, extra=True):
+def _held_bypass(words, expanded):
+    """S144-Q-157: True when EXPANDED (a statement's words after
+    _held_words; WORDS are its raw words) is a bypass the raw words hide.
+    The git word must be the statement's own (in WORDS) or its expanded head
+    (`C="git commit -n"; $C`), so a held string handed to another command
+    (`m="git commit -n"; echo $m`) is data, not a git statement.
+    Returns "git", "split" (only an `env -S` string, placed None like
+    S144-Q-143) or "" for none.
+    S144-Q-158: the expanded head is read behind keyword and brace heads
+    too (`if x; then $C; fi`), never instead of the first word."""
+    if not expanded or expanded == words:
+        return ""
+    own_git = (_head_name(expanded[0]) == "git"
+               or any(lead and _head_name(lead[0]) == "git"
+                      for lead in _keyword_readings(expanded))
+               or any(_head_name(word) == "git" for word in words))
+    if own_git and _git_words_bypass(expanded):
+        return "git"
+    return "split" if _env_split_bypass(expanded) else ""
+
+
+def _raw_words_bypass(statement, words, depth, extra, expand):
+    """One statement of _has_bypass's raw walk: its own words (EXTRA), the
+    launcher scripts they name, and (EXTRA) the command an assignment runs."""
+    if extra and words and (_git_words_bypass(words) or _env_split_bypass(words)):
+        return True
+    for script in _launcher_scripts(words, extra) if words else ():
+        if _has_bypass(script, depth + 1, extra, expand):
+            return True
+    bodies = _statement_bodies(statement) if extra else ()
+    return any(_has_bypass(body, depth + 1, extra, expand) for body in bodies)
+
+
+def _statement_bodies(statement):
+    """The commands a STATEMENT (raw text) runs inside itself and that are
+    walked like a launcher script: an assignment's (S144-Q-135,
+    _assignment_commands), then each substitution in a PowerShell condition
+    (S144-Q-164, _ps_condition_bodies), then each condition's own pipeline
+    and bare group (S144-Q-165, _ps_condition_pipelines), each once."""
+    bodies = _assignment_commands(statement)
+    subs, pipes = _ps_condition_scan(statement)
+    seen = set(bodies)
+    for body in subs + pipes:
+        if body not in seen:
+            seen.add(body)
+            bodies.append(body)
+    return bodies
+
+
+def _placed(command, here, variables, depth, extra=True, expand=True):
     """The directory of each bypass-looking git statement in COMMAND, in
     every reading (_readings), walking a launcher script with its own copy
     of HERE and VARIABLES. EXTRA=False is the RM-698 walk without the
-    S144-Q-127 statements (_git_words_bypass)."""
+    S144-Q-127 statements (_git_words_bypass); EXPAND=False is the walk
+    without the S144-Q-157 expanded-word statements."""
     if depth > BYPASS_NEST_MAX:
         return [None]
     targets = []
-    for text in _readings(command):
-        targets.extend(_placed_reading(text, here, dict(variables), depth, extra=extra))
+    for text in _readings(command, extra, top=depth == 0):
+        targets.extend(_placed_reading(text, here, dict(variables), depth,
+                                       extra=extra, expand=expand))
     return targets
 
 
-def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
+def _placed_reading(raw, here, variables, depth, legacy=False, extra=True,
+                    expand=True):
     """One reading of _placed. LEGACY is the pre-RM-698 walk exactly: no
     assignment placement, no launcher scripts, no S144-Q-127 statements."""
     targets = []
@@ -2975,29 +4776,71 @@ def _placed_reading(raw, here, variables, depth, legacy=False, extra=True):
         words = _tokens(_expand(statement, variables))
         stripped = strip_command_noise(statement)
         hit = bool(EV_BYPASS.search(stripped) and _BYPASS_GIT_WORD.search(stripped))
+        split = False
+        raw_words = _tokens(statement)
         if not hit and not legacy and extra:
-            hit = _git_words_bypass(_tokens(statement))
+            hit = _git_words_bypass(raw_words)
+            if not hit and _env_split_bypass(raw_words):
+                # S144-Q-143: a git command split out of `env -S "..."` is
+                # placed None (fail closed, the S144-Q-136 decision), never
+                # by a git word _git_target finds elsewhere in the statement.
+                hit = split = True
+        # S144-Q-157: a statement flagged only on its expanded words is a
+        # hit too; it never suppresses the assignment-body walk below, so
+        # a target the walk without expansion found is still found.
+        held = ""
+        if not hit and not legacy and extra and expand:
+            held = _held_bypass(raw_words, _held_words(statement, variables))
+            split = held == "split"
+        bodies = () if legacy or not extra or hit else _statement_bodies(text)
+        hit = hit or bool(held)
+        for body in bodies:
+            # S144-Q-135: the command an assignment runs (S144-Q-164: or a
+            # substitution in a PowerShell condition), walked like a
+            # launcher script (its own copy of HERE and VARIABLES). A HIT
+            # statement is already placed from its own words below.
+            targets.extend(_placed(body, here, variables, depth + 1, extra=extra,
+                                   expand=expand))
         if _assigned(statement, variables):
             # `$out = git push --no-verify` (PowerShell) RUNS what it assigns.
             if hit and not legacy:
-                targets.append(_git_target(here, words))
+                targets.append(None if split else _git_target(here, words))
             continue
         if not words:
             continue
         head = words[0].lower()
-        if head in _CD_WORDS:
+        readings = _keyword_readings(words) if extra and not legacy else [words]
+        behind = [bare for bare in readings if bare != words and bare and (
+            bare[0].lower() in _CD_WORDS
+            or bare[0].lower() in ("popd", "pop-location"))]
+        if behind:
+            # S144-Q-153: a cd behind a keyword head (`then cd x`) may not
+            # run, so the directory after it is unknown (fail closed). A
+            # bypass the statement itself runs (`then cd $(git commit -n)`)
+            # is placed None too, never dropped.
+            if readings[0] not in behind:
+                # S144-Q-158: only the brace reading is a cd (`if (bash -c
+                # '...') { cd x`); the launchers the plain reading names
+                # are still walked from HERE, as before.
+                for script in _launcher_scripts(words, extra):
+                    targets.extend(_placed(script, here, variables, depth + 1,
+                                           extra=extra, expand=expand))
+            if hit:
+                targets.append(None)
+            here = None
+        elif head in _CD_WORDS:
             path = next((w for w in words[1:] if not w.startswith("-")), None)
             here = _join(here, path) if path is not None else None
         elif head in ("popd", "pop-location"):
             here = None
         else:
-            script = None if legacy else _launcher_script(words)
-            if script is not None:
-                targets.extend(_placed(script, here, variables, depth + 1, extra=extra))
+            for script in () if legacy else _launcher_scripts(words, extra):
+                targets.extend(_placed(script, here, variables, depth + 1,
+                                       extra=extra, expand=expand))
             if hit:
                 # An absolute `git -C` places the statement even when HERE
                 # is unknown; a relative one from an unknown HERE stays None.
-                targets.append(_git_target(here, words))
+                targets.append(None if split else _git_target(here, words))
     return targets
 
 
@@ -3017,19 +4860,43 @@ def _bypass_targets(command, cwd):
     S144-Q-127 keeps the same promise one level up: when the RM-698
     predicate alone counts COMMAND and the RM-698 walk places nothing, its
     fail-closed None stays, so a quoted-flag statement placed outside RC
-    cannot hide a launcher-only bypass nothing could place."""
+    cannot hide a launcher-only bypass nothing could place.
+
+    S144-Q-163: its _has_bypass calls share one memo scope."""
+    return _memo_scope(_bypass_targets_walk, command, cwd)
+
+
+def _bypass_targets_walk(command, cwd):
+    """_bypass_targets inside its memo scope."""
     if len(command) > COMMAND_PARSE_MAX:
         return [None]
     if not _has_bypass(command):
         return []
     here = _host_path(cwd) if cwd else None
-    targets = _placed(command, here, {}, 0)
+    # S144-Q-157: the expanded-word statements are placed only for a command
+    # that the walk without them does not count, so every command counted
+    # before keeps exactly the targets it had.
+    expand = not _has_bypass(command, expand=False)
+    targets = _placed(command, here, {}, 0, expand=expand)
     if _bypass_in_text(command) and not _placed_reading(
             _HEREDOC.sub(" ", command), here, {}, 0, legacy=True):
         targets.append(None)
     if (targets and None not in targets and _has_bypass(command, extra=False)
             and not _placed(command, here, {}, 0, extra=False)):
         targets.append(None)
+    if not expand and targets and None not in targets:
+        # S144-Q-158 (verifier round 2): a command the walk without
+        # expansion counts may still hold a bypass only expansion places
+        # (`F=-n; git commit $F; bash -c 'git -C <other> commit -n'`): its
+        # targets are added, never swapped in, so this only adds targets.
+        # A None already counts every statement (_bypass_hits_rc), so a
+        # fail-closed answer is kept exactly as it was.
+        unmatched = list(targets)
+        for target in _placed(command, here, {}, 0):
+            if target in unmatched:
+                unmatched.remove(target)
+            else:
+                targets.append(target)
     return targets or [None]
 
 

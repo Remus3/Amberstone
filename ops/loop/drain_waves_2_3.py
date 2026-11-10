@@ -25,7 +25,7 @@ Files (all gitignored, written atomically):
   ops/loop/control/drain/*.json                     per-run result / input files
   ops/loop/control/drain/*.out.txt                  per-run final text + stderr
   ops/runtime/drain_waves_2_3_result.json           final result
-  logs/drain_waves_2_3.log                          launcher log
+  logs/drain_waves_2_3.log                          launcher log (5 MiB x 3, rotated)
 
 Kit choices (FLEET-COMMON item 10): writes_code=True everywhere, so the kit picks
 `opus`; effort is the kit's pick for the note (medium): fleet_route passes the
@@ -76,6 +76,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.polled_json import atomic_write_text  # noqa: E402
+# The shared compare-and-remove lock break (S144-Q-139), bound as `_remove_if`.
+from core.polled_json import remove_if_holds as _remove_if  # noqa: E402
+# S144-Q-123 (RM-718 residue): logs/drain_waves_2_3.log is size-capped through
+# the shared rotation helper, reached on the same repo-root path entry as
+# core.polled_json above. The log has no in-repo reader, so a plain rotation
+# costs no consumer.
+from core import log_rotation  # noqa: E402
 TASK = "drain-waves-2-3"
 CALLER = "drain_waves_2_3"
 PROMPTS = ROOT / "ops" / "loop" / "prompts"
@@ -91,7 +98,13 @@ DRAIN_DIR = CONTROL / "drain"
 STOP_FILE = CONTROL / "DRAIN_STOP"
 RESULT = ROOT / "ops" / "runtime" / "drain_waves_2_3_result.json"
 LOCK = ROOT / "ops" / "runtime" / "drain_waves_2_3.lock"
+# S144-Q-131: an EMPTY (or unparseable) lock younger than this is another
+# launcher's claim between its O_EXCL create and its write, not a stale one.
+# Older, its writer crashed in that gap and the lock is reclaimed.
+EMPTY_LOCK_GRACE_S = 10.0
 LOG = ROOT / "logs" / "drain_waves_2_3.log"
+LOG_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+LOG_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
 WT_BASE = ROOT / ".claude" / "worktrees"
 
 BUILD_TIMEOUT_S = 7200
@@ -133,13 +146,43 @@ _sleep = time.sleep  # seam for tests
 
 # ---------------------------------------------------------------- io helpers
 
+def _rotate_log(path: Path) -> str:
+    """Rotate the launcher log BEFORE an append when it is at or over the cap
+    (S144-Q-123, RM-718 residue). Called under _log_lock, so no build / verify
+    thread appends into a file another is renaming.
+
+    Returns the one-line refusal note to write ahead of the line when the
+    rotation is refused (another process holds the file), else "". Recovers a
+    crashed rotation's scratch even under the cap. Never raises: a failing cap
+    must not cost the run its audit line, so any error falls back to a plain
+    append to the file as it is.
+    """
+    try:
+        log_rotation.recover_orphans(path, LOG_BACKUPS)
+        try:
+            oversize = path.stat().st_size >= LOG_MAX_BYTES
+        except OSError:
+            return ""
+        if not oversize:
+            return ""
+        err = log_rotation.try_rotate(path, LOG_BACKUPS)
+        if err is None or isinstance(err, FileNotFoundError):
+            # FileNotFoundError: the file went between the stat and the rotate,
+            # so nothing was refused and the append starts a fresh file.
+            return ""
+        return log_rotation.refusal_note(path, err)
+    except Exception:  # noqa: BLE001 - the cap is best effort; the line is not
+        return ""
+
+
 def _say(msg: str) -> None:
     line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {msg}"
     with _log_lock:
         try:
             LOG.parent.mkdir(parents=True, exist_ok=True)
+            note = _rotate_log(LOG)
             with LOG.open("a", encoding="ascii", errors="replace", newline="\n") as fh:
-                fh.write(line + "\n")
+                fh.write(note + line + "\n")
         except OSError:
             pass
         if sys.stdout is not None:  # pythonw: stdout is None
@@ -537,28 +580,67 @@ def _pid_alive(pid: int) -> bool:
         return True
 
 
-def _take_lock() -> bool:
+def _lock_pid(raw: bytes | None) -> int:
+    """The pid a lock's bytes name (first field), 0 when empty or unparseable.
+    Reads both the current `<pid> <token>` claim and the older pid-only one."""
+    try:
+        return int((raw or b"").decode("ascii").split()[0])
+    except (UnicodeDecodeError, ValueError, IndexError):
+        return 0
+
+
+def _take_lock(clock=time.time) -> bytes | None:
+    """Take the launcher lock. Returns this launcher's CLAIM (the exact bytes
+    written; `_drop_lock` wants it back) or None when another launcher holds it.
+
+    S144-Q-131 (RM-691's root cause): the lock is judged from ONE read of its
+    bytes and broken only through `_remove_if`, which removes it only while it
+    still holds those bytes, so a fresh lock another launcher made since the
+    read is never deleted. A young empty lock is a claim in flight: refused.
+
+    Residual (POSIX only, accepted): two launchers breaking one OLD empty lock
+    both read b""; if C renames B's re-created lock before B writes its claim,
+    the bytes still match and both run. On Windows the rename of a file B
+    still holds open fails, so `_remove_if` leaves it."""
     LOCK.parent.mkdir(parents=True, exist_ok=True)
     for _ in range(2):
+        # pid + a random token: two takes by one pid still differ, so a release
+        # can tell this launcher's claim from a later one.
+        claim = f"{os.getpid()} {os.urandom(8).hex()}".encode("ascii")
         try:
             fd = os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            try:
-                os.write(fd, str(os.getpid()).encode("ascii"))
-            finally:
-                os.close(fd)
-            return True
         except FileExistsError:
             try:
-                pid = int(LOCK.read_text(encoding="ascii").strip() or 0)
-            except (OSError, ValueError):
-                pid = 0
-            if pid and _pid_alive(pid):
-                return False
-            try:
-                LOCK.unlink()  # stale lock of a dead launcher: a pid record, not data
+                seen = LOCK.read_bytes()
             except OSError:
-                return False
-    return False
+                continue  # gone (released or broken meanwhile): retry O_EXCL
+            pid = _lock_pid(seen)
+            if pid and _pid_alive(pid):
+                return None
+            if not pid:
+                try:
+                    age = clock() - LOCK.stat().st_mtime
+                except OSError:
+                    age = EMPTY_LOCK_GRACE_S  # gone: not in flight
+                # abs(): a clock stepped back must not hold a crashed claim.
+                if abs(age) < EMPTY_LOCK_GRACE_S:
+                    return None
+            if not _remove_if(LOCK, seen):
+                return None  # changed since it was read: another launcher holds it
+            continue
+        try:
+            os.write(fd, claim)
+        finally:
+            os.close(fd)
+        return claim
+    return None
+
+
+def _drop_lock(claim) -> None:
+    """Release the launcher lock only while it still carries this launcher's
+    claim (S144-Q-131); a lock another launcher took meanwhile is left alone."""
+    if isinstance(claim, bytes) and claim:
+        _remove_if(LOCK, claim)
 
 
 # ---------------------------------------------------------------- main
@@ -579,7 +661,8 @@ def _finish(state: dict, status: str, code: int) -> int:
 def run(waves=None) -> int:
     waves = list(WAVES) if waves is None else list(waves)
     needed = runs_needed(waves)
-    if not _take_lock():
+    claim = _take_lock()
+    if not claim:
         _say("another drain_waves_2_3 launcher holds the lock - exiting")
         return 3
     os.environ["CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS"] = BG_WAIT_MS  # this process + children only
@@ -626,10 +709,7 @@ def run(waves=None) -> int:
         _say(f"FAILED {state['error']}")
         return _finish(state, "failed", 1)
     finally:
-        try:
-            LOCK.unlink()
-        except OSError:
-            pass
+        _drop_lock(claim)
 
 
 def dry_run(waves=None) -> int:

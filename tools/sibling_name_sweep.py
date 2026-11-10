@@ -2208,11 +2208,69 @@ def bypass_log_display() -> str:
         return path.as_posix()
 
 
+# S144-Q-123 (RM-718 residue): the bypass log grew forever (302,269 B and 159
+# reports on 2026-11-08; no reader in code). It now rotates before the append
+# at the shared RM-718 bound, 5 MiB x (1 + 2 backups), so the oldest
+# generation of reports is dropped past about 15 MiB.
+BYPASS_LOG_MAX_BYTES = 5 * 1024 * 1024
+BYPASS_LOG_BACKUPS = 2
+# The hook runs this file as a SCRIPT (sys.path[0] is tools/), so
+# `from core import log_rotation` does not resolve there: load it by path,
+# lazily, only on a bypass. One entry once tried: the module, or None.
+_LOG_ROTATION_FILE = Path(__file__).resolve().parent.parent / "core" / "log_rotation.py"
+_LOG_ROTATION_CACHE: list[Any] = []
+
+
+def _log_rotation() -> Any:
+    """core/log_rotation loaded from this checkout by file path, or None when
+    it cannot be loaded (the bypass report is then a plain append). Cached."""
+    if _LOG_ROTATION_CACHE:
+        return _LOG_ROTATION_CACHE[0]
+    mod = None
+    try:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "_rc_sibling_sweep_log_rotation", _LOG_ROTATION_FILE)
+        if spec is not None and spec.loader is not None:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+    except Exception:  # noqa: BLE001 - a failed load must never cost the BYPASS record
+        mod = None
+    _LOG_ROTATION_CACHE.append(mod)
+    return mod
+
+
+def _rotate_bypass_log(log_path: Path) -> str:
+    """Rotate ``log_path`` when it is at or over the cap, before the append.
+    Returns a refusal note to write ahead of the report, or "". Never raises:
+    a cap that cannot run leaves the report appended to the oversize file, so
+    no BYPASS record is ever dropped for the cap."""
+    rot = _log_rotation()
+    if rot is None:
+        return ""
+    try:
+        rot.recover_orphans(log_path, BYPASS_LOG_BACKUPS)
+        try:
+            oversize = log_path.stat().st_size >= BYPASS_LOG_MAX_BYTES
+        except OSError:
+            return ""
+        if not oversize:
+            return ""
+        err = rot.try_rotate(log_path, BYPASS_LOG_BACKUPS)
+        return rot.refusal_note(log_path, err) if err is not None else ""
+    except (OSError, ValueError, AttributeError, TypeError):
+        return ""
+
+
 def _append_bypass_log(text: str) -> None:
     try:
         log_path = bypass_log_path()
         log_path.parent.mkdir(parents=True, exist_ok=True)
+        note = _rotate_bypass_log(log_path)
         with open(log_path, "a", encoding="utf-8", newline="\n") as fh:
+            if note:
+                fh.write(note)
             fh.write(text + "\n")
     except OSError:
         _emit("[sibling-sweep] BYPASS log could not be written.")

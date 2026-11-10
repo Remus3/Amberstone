@@ -104,6 +104,20 @@ except ModuleNotFoundError:
         Path(__file__).resolve().parents[2] / "core" / "polled_json.py",
     ).atomic_write_bytes
 
+# S144-Q-123 (RM-718 residue): controller.log is size-capped through the shared
+# rotation helper, same import-then-bind shape as polled_json above. The cap is
+# the RM-718 bound, well above the newest-bytes window the dashboard's
+# routes_loop_status reads from the live file (LOG_READ_CAP_BYTES).
+try:
+    from core import log_rotation
+except ModuleNotFoundError:
+    log_rotation = _bind_path(
+        "rc_core_log_rotation",
+        Path(__file__).resolve().parents[2] / "core" / "log_rotation.py",
+    )
+CONTROLLER_LOG_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+CONTROLLER_LOG_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
+
 # FLEET-KIT v7 item 13 d: the per-cycle session checklist, mirrored to the log
 # and to progress/loop.json in the MAIN checkout. Same import-then-bind shape as
 # polled_json above, so the test suite's redirect of the package module (see
@@ -184,11 +198,36 @@ RUN_ID = ""  # minted in main(); namespaces slot payloads across concurrent runs
 # `failed_over` was dropped with the vendor failover on 2026-08-01.
 _ADJ_STATE = {"active": "", "usd": {}}
 
+def _rotate_controller_log(path):
+    """Rotate controller.log BEFORE an append when it is at or over the cap.
+
+    Returns the one-line refusal note to write ahead of the line when the
+    rotation is refused (another process holds the file), else "". Recovers a
+    crashed rotation's scratch even under the cap (this is the writer's open).
+    Never raises: a failing cap must not cost the loop its audit line, so any
+    error falls back to a plain append to the file as it is.
+    """
+    try:
+        log_rotation.recover_orphans(path, CONTROLLER_LOG_BACKUPS)
+        try:
+            oversize = path.stat().st_size >= CONTROLLER_LOG_MAX_BYTES
+        except OSError:
+            return ""
+        if not oversize:
+            return ""
+        err = log_rotation.try_rotate(path, CONTROLLER_LOG_BACKUPS)
+        return "" if err is None else log_rotation.refusal_note(path, err)
+    except Exception:  # noqa: BLE001 - the cap is best effort; the line is not
+        return ""
+
+
 def log(m):
     line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {m}"
     print(line, flush=True)
-    with open(CTL / "controller.log", "a", encoding="utf-8", newline="\n") as f:
-        f.write(line + "\n")
+    path = CTL / "controller.log"
+    note = _rotate_controller_log(path)
+    with open(path, "a", encoding="utf-8", newline="\n") as f:
+        f.write(note + line + "\n")
 
 def awrite(path, text):
     """Atomic write of a polled control file - STOP (from stop()), cycle.txt.
@@ -1164,23 +1203,118 @@ def claim_repo():
     gemini.ready and claude.done.
 
     Returns the run_id. Exits nonzero if another live controller holds the repo.
+
+    S144-Q-138: the claim is EXCLUSIVE. This used to check exists() plus a pid
+    read and then awrite() its record over whatever was there, so two
+    controllers started together both proceeded (both saw no lock, or both read
+    the same dead pid and the second overwrote the first one's live record).
+    Now a new lock is published only where none exists (_publish_claim), a
+    stale lock is broken only while it still holds the bytes read (RM-691's
+    inbox_tick._remove_if, shared rather than copied), and a lock that changed
+    under us is judged again from the top. The own-pid case keeps its plain
+    overwrite: restart_for_new_code's execv keeps the pid, and this process
+    already owns that lock.
     """
     lock = CTL / "RUNNING.lock"
-    if lock.exists():
-        rec = rjson(lock, {})
-        holder = int(rec.get("pid", 0) or 0)
-        if holder and holder != os.getpid() and slots.pid_alive(holder):
-            sys.stderr.write(
-                f"another controller is already running in this repo "
-                f"(pid={holder} run_id={rec.get('run_id')} since {rec.get('ts')}). "
-                f"Stop it first, or delete {lock} if it is a stale leftover.\n")
-            sys.exit(2)
-        log(f"reclaiming stale RUNNING.lock (pid={holder} not alive)")
-    run_id = uuid.uuid4().hex[:8]
-    awrite(lock, json.dumps({"pid": os.getpid(), "run_id": run_id,
-                             "ts": time.time(), "repo": str(ROOT)}))
-    awrite(CTL / "run_id.txt", run_id)
-    return run_id
+    me = os.getpid()
+    for _ in range(CLAIM_ATTEMPTS):
+        try:
+            raw = lock.read_bytes()
+        except FileNotFoundError:
+            raw = None
+        except OSError:
+            # Share-locked for a moment (a replace or a reader); read it again
+            # rather than mistaking an unreadable lock for a stale one.
+            time.sleep(CLAIM_RETRY_SLEEP_S)
+            continue
+        if raw is not None:
+            rec = _parse_running_lock(raw)
+            holder = rec["pid"]
+            if holder == me:
+                run_id = uuid.uuid4().hex[:8]
+                awrite(lock, _running_lock_text(run_id))
+                awrite(CTL / "run_id.txt", run_id)
+                return run_id
+            if holder and slots.pid_alive(holder):
+                sys.stderr.write(
+                    f"another controller is already running in this repo "
+                    f"(pid={holder} run_id={rec.get('run_id')} since {rec.get('ts')}). "
+                    f"Stop it first, or delete {lock} if it is a stale leftover.\n")
+                sys.exit(2)
+            log(f"reclaiming stale RUNNING.lock (pid={holder} not alive)")
+            if not inbox_tick._remove_if(lock, raw):
+                continue  # it changed since the read: judge the new holder
+        run_id = uuid.uuid4().hex[:8]
+        if _publish_claim(lock, _running_lock_text(run_id).encode("utf-8")):
+            awrite(CTL / "run_id.txt", run_id)
+            return run_id
+        # Another controller created the lock since the read: judge it.
+    sys.stderr.write(
+        f"could not claim {lock} in {CLAIM_ATTEMPTS} attempts: it kept "
+        f"changing under this controller (another controller starting?).\n")
+    sys.exit(2)
+
+
+# S144-Q-138: bounded re-judgments of a lock that keeps changing, and the pause
+# before re-reading a lock that is share-locked for a moment.
+CLAIM_ATTEMPTS = 5
+CLAIM_RETRY_SLEEP_S = 0.05
+
+
+def _running_lock_text(run_id):
+    return json.dumps({"pid": os.getpid(), "run_id": run_id,
+                       "ts": time.time(), "repo": str(ROOT)})
+
+
+def _parse_running_lock(raw):
+    """The RUNNING.lock record as a dict whose "pid" is an int; anything that is
+    not a JSON object with an integer pid reads as pid 0 (reclaimable). The
+    old reader crashed claim_repo on a JSON list or a non-numeric pid."""
+    try:
+        rec = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        rec = None
+    if not isinstance(rec, dict):
+        return {"pid": 0}
+    try:
+        pid = int(rec.get("pid", 0) or 0)
+    except (TypeError, ValueError):
+        pid = 0
+    return {**rec, "pid": pid}
+
+
+def _publish_claim(lock, data):
+    """Create `lock` holding `data` only where no lock exists. True when this
+    call created it; False when a lock is already there.
+
+    The bytes go to a unique scratch file first and are hard-linked into place
+    (os.link never overwrites), so a reader never sees an empty or half-written
+    record. Without hard links on the volume: an exclusive create plus one
+    write, where a reader can see an empty lock for that one write (and an
+    empty record reads as pid 0, reclaimable). The scratch file is always
+    removed."""
+    tmp = lock.with_name(f"{lock.name}.claim-{os.getpid()}-{os.urandom(4).hex()}.tmp")
+    try:
+        with open(tmp, "xb") as f:
+            f.write(data)
+        try:
+            os.link(tmp, lock)
+            return True
+        except FileExistsError:
+            return False
+        except OSError:
+            pass  # no hard links here: fall back to an exclusive create
+        try:
+            with open(lock, "xb") as f:
+                f.write(data)
+        except FileExistsError:
+            return False
+        return True
+    finally:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
 
 
 def cycle_checklist(cycle, *, root=None, emit=None):

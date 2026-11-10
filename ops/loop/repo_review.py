@@ -40,7 +40,7 @@ Files (all gitignored; written atomically):
   ops/runtime/repo_review/findings/<bid>.json   parsed findings + run meta
   ops/runtime/repo_review/summary.json          compile output
   ops/loop/control/progress/repo-review.json    item-12 progress + checklist
-  logs/repo_review.log                          driver log
+  logs/repo_review.log                          driver log (5 MiB x 3, rotated)
 Halt switch: ops/loop/control/REPO_REVIEW_STOP (checked before every spawn).
 
 Usage:
@@ -185,13 +185,43 @@ _state_lock = threading.Lock()
 
 # ---------------------------------------------------------------- io helpers
 
+def _rotate_log(path: Path) -> str:
+    """Rotate the driver log BEFORE an append when it is at or over the cap
+    (S144-Q-123, RM-718 residue). Called under _log_lock, so no worker thread
+    appends into a file another is renaming.
+
+    Returns the one-line refusal note to write ahead of the line when the
+    rotation is refused (another process holds the file), else "". Recovers a
+    crashed rotation's scratch even under the cap. Never raises: a failing cap
+    must not cost the run its audit line, so any error falls back to a plain
+    append to the file as it is.
+    """
+    try:
+        log_rotation.recover_orphans(path, LOG_BACKUPS)
+        try:
+            oversize = path.stat().st_size >= LOG_MAX_BYTES
+        except OSError:
+            return ""
+        if not oversize:
+            return ""
+        err = log_rotation.try_rotate(path, LOG_BACKUPS)
+        if err is None or isinstance(err, FileNotFoundError):
+            # FileNotFoundError: the file went between the stat and the rotate,
+            # so nothing was refused and the append starts a fresh file.
+            return ""
+        return log_rotation.refusal_note(path, err)
+    except Exception:  # noqa: BLE001 - the cap is best effort; the line is not
+        return ""
+
+
 def _say(msg: str) -> None:
     line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {msg}"
     with _log_lock:
         try:
             LOG.parent.mkdir(parents=True, exist_ok=True)
+            note = _rotate_log(LOG)
             with LOG.open("a", encoding="ascii", errors="replace", newline="\n") as fh:
-                fh.write(line + "\n")
+                fh.write(note + line + "\n")
         except OSError:
             pass
         if sys.stdout is not None:
@@ -244,6 +274,17 @@ try:
 except ModuleNotFoundError:
     _atomic_write_bytes = _load_by_path(
         "rc_core_polled_json", ROOT / "core" / "polled_json.py").atomic_write_bytes
+
+# S144-Q-123 (RM-718 residue): logs/repo_review.log is size-capped through the
+# shared rotation helper, same import-then-bind shape as polled_json above and
+# the same sys.modules name ops/loop/loop_controller.py binds it under. The log
+# has no in-repo reader, so a plain rotation costs no consumer.
+try:
+    from core import log_rotation
+except ModuleNotFoundError:
+    log_rotation = _load_by_path("rc_core_log_rotation", ROOT / "core" / "log_rotation.py")
+LOG_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+LOG_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
 
 
 def _fleet_route():
