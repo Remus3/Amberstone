@@ -17,9 +17,10 @@ nothing wave-shaped is even backfillable from the match corpus. A spawn clock
 knows WHEN a wave left the nexus; it cannot know WHERE that wave sits in a lane,
 who last hit into it, or which way it is pushing. Deriving a lane state from
 spawn timing would be fabrication, and a wrong precompute is worse than no
-precompute - the dead 3-lane readout (``_renderWaveState`` in ``web/js/panels/next.js``) stays
-dead until a real producer exists. ``tests/test_wave_timing.py`` pins the
-returned key set exactly, so adding one of those keys fails the suite.
+precompute - the dead 3-lane readout the never-rendered NEXT panel carried was
+retired with that panel (S144-U-265), and a real producer needs a new surface.
+``tests/test_wave_timing.py`` pins the returned key set exactly, so adding one
+of those keys fails the suite.
 
 Every value is honest-None when unknown, and a no-data call returns ALL keys
 None rather than a partially-guessed readout.

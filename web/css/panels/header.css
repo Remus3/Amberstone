@@ -75,6 +75,23 @@ header .self-spells.hidden {
   display: inline-flex !important;
   opacity: 0.55;   /* faded rather than gone - still readable at a glance */
 }
+/* S144-U-240: the 0.55 fade sank the zone pill's 16px "-" (not WCAG large
+ * text) to 2.99 - 3.36:1 in every theme and the CS pill's 21px "CS" label
+ * to 2.99:1 in hextech. These two placeholders drop the fade instead: their
+ * text, the CS value included, is --text-faint at full strength (5:1 or
+ * more) on --surface at 55 percent, the look the fade gave the fill. A
+ * stale zone class left on a hidden pill (map_state.js keeps it) paints no
+ * red / green / gold call and does not pulse. The vision and heartbeat
+ * placeholders are 21px / 900 large text and keep the fade (3:1 or more). */
+header .zone-pill.hidden,
+header .cs-pill.hidden {
+  opacity: 1;
+  color: var(--text-faint);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  animation: none;
+  box-shadow: none;
+}
+header .cs-pill.hidden b { color: var(--text-faint); }
 /* (2026-04-26) Hide the WIN pill in CLIENT mode per user - "client panel
  * does not need the hp,mana, win% pills". Visual-only hide; JS still
  * populates #win-pct-val so any future ALT-tab indicator or aftergame
@@ -1064,9 +1081,12 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 .lq-cancel .lq-btn-line1,
 .lq-cancel .lq-btn-line2 { color: var(--canvas); }
-/* RM-1208: held (aria-disabled) during a queue pop - no hover fill. */
+/* RM-1208: held (aria-disabled) during a queue pop - no hover fill.
+ * S144-U-250: the hover lightens toward --text, the .lq-find:hover
+ * precedent. Mixing toward --canvas darkened the red under the dark label
+ * and dropped it from 4.88 - 5.64:1 at rest to 3.43 - 3.90:1 on hover. */
 .lq-cancel:hover:not(:disabled):not([aria-disabled="true"]) {
-  background: color-mix(in srgb, var(--bad) 80%, var(--canvas));
+  background: color-mix(in srgb, var(--bad) 85%, var(--text));
   border-color: var(--bad);
 }
 
@@ -1258,10 +1278,15 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   background: var(--info-soft);
   border-color: var(--info);
 }
+/* S144-U-251: the current label mixes --clock 80 percent toward --text
+ * (the RM-1550 lift). Bare --clock on this --gold-soft wash read 4.41:1 in
+ * arcane at 18 px / 700, which is not large text. Frame and wash keep the
+ * bare --clock. Pinned by
+ * tests/snapshot_panels/test_lobby_mode_menu_current_contrast.py. */
 .lq-mode-item.is-current {
   background: var(--gold-soft);
   border-color: var(--clock);
-  color: var(--clock);
+  color: color-mix(in oklab, var(--clock) 80%, var(--text));
 }
 /* RM-1312: no rule here left the UA `auto` ring on the queue items of
  * both the Lobby mode menu and the Home Find Match picker, and the Home
@@ -1270,14 +1295,13 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * Pinned by tests/snapshot_panels/test_home_find_match_picker_focus.py. */
 .lq-mode-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.lobby-view-leader-tag {
-  /* UI scale v2.1: 12 -> --fs-xs (16). */
-  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.16em;
-  color: var(--clock); padding: 3px 9px;
-  background: var(--gold-soft); border-radius: 999px;
-}
+/* S144-U-252: the leader pill rule is retired; its only emitter (the
+ * hidden #lv-leader-tag stub) left index.html in E11, and the member-row
+ * crown marks the leader. */
 
-/* ---- s162 v4: Friends / Recently Played panel ---- */
+/* ---- s162 v4: Friends / Recently Played panel, now the My Top 8 heading ---- */
+/* S144-U-248: the retired friends-row rules (lv-friends-list, lv-fr-*)
+ * had no render site in web/ after the 2026-07-04 repurpose and are gone. */
 /* s162 v8 -> 2026-07-06: the My Top 8 title was grid-anchored over
  * the rank column (col 4). Operator wants it truly panel-centered -
  * plain block + text-align center. */
@@ -1295,11 +1319,6 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lv-friends-title-text {
   text-align: center;
 }
-.lv-friends-list {
-  list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 3px;
-}
-.lv-fr-row.is-placeholder { opacity: 0.5; }
 
 /* ---- s162 v5: My Top 8 panel ---- */
 .lv-top8-list {
@@ -1322,7 +1341,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   font-size: var(--fs-xs);  /* E11 audit: 14 -> --fs-xs (16) floor */
   min-height: 30px;
 }
-.lv-top8-row.is-placeholder { opacity: 0.5; border: 1px dashed var(--border-soft); }
+/* S144-U-237: the empty slot dropped `opacity: 0.5`. Folded over its
+ * "-" cells (--text) it read 3.93:1 arcane to 4.80 terminal, under AA
+ * 4.5 in five of six themes, and this program rejects dimming text by
+ * opacity. The dashed border still marks the slot as empty; the "-"
+ * paints --text-dim, the same secondary mark as the unranked line and
+ * the party roster's empty slot, still under the --text names. */
+.lv-top8-row.is-placeholder { border: 1px dashed var(--border-soft); }
+.lv-top8-row.is-placeholder .lv-top8-cell { color: var(--text-dim); }
 /* RM-980: the row carried `cursor: pointer`, but no handler is bound
  * to it (_wireTop8Actions wires only [data-action] descendants), so the
  * name / games / role / rank cells showed a hand and did nothing. The
@@ -1333,15 +1359,19 @@ body[data-view="lobby"]          #home-overlay { display: none; }
  * without overpowering. is-in-party (green) wins if both apply.
  * RC2 Hextech reskin: lower-priority (offline) member context is also
  * pushed to --dim so it recedes from the glance hierarchy - the online
- * roster reads at full --text weight, offline names sit back at --dim. */
+ * roster reads at full --text weight, offline names sit back at --dim.
+ * S144-U-237: the row dropped `opacity: 0.72` (and its 0.92 hover).
+ * Stacked on the --dim cells it sank the offline name, games, role and
+ * tag to 3.31-4.13:1 and its unranked line to 2.36-2.78, under AA in
+ * every theme, and its icon buttons to 3.98-4.26 in five. The red
+ * tint plus --dim alone keep an offline friend reading dimmer than an
+ * online one: 4.91-6.54 after. */
 .lv-top8-row.is-offline {
   background: color-mix(in srgb, var(--bad) 12%, var(--surface-alt));
-  opacity: 0.72;
 }
 .lv-top8-row.is-offline .lv-top8-name,
 .lv-top8-row.is-offline .lv-top8-cell { color: var(--dim); }
 .lv-top8-row.is-offline:hover {
-  opacity: 0.92;
   border-color: var(--bad);
 }
 .lv-top8-search {
@@ -1402,10 +1432,13 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 /* s162 v16: unranked Top 8 entries fall back to "LVL ### : Unranked"
  * - same italic dim treatment as PARTY's .lv-party-empty so the two
- * panels read consistently when a friend hasn't placed yet. */
+ * panels read consistently when a friend hasn't placed yet.
+ * S144-U-237: --text-dim, not --text-faint, matching the S144-U-202
+ * lift of .lv-party-empty it mirrors: --text-faint read 3.64:1 arcane
+ * to 4.59 terminal on the Top 8 row, under AA in five of six themes. */
 .lv-top8-rank-empty {
   font-size: var(--fs-xs);  /* E11 audit: 14 -> --fs-xs (16) floor */
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-style: italic;
   font-weight: 600;
   letter-spacing: 0;
@@ -1536,71 +1569,6 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lv-top8-spacer-reorder { width: 26px; }
 .lv-top8-spacer-remove  { width: 26px; }
 .lv-top8-spacer-dot     { width: 14px; }   /* s162 v10: replaces removed online dot in search row */
-.lv-fr-row {
-  display: grid;
-  /* 8 sections: name | icon | games | role | rank | team+kda | copy | invite */
-  grid-template-columns: 1.2fr 32px 0.8fr 0.5fr 1.3fr 1fr 28px 28px;
-  gap: 6px;
-  align-items: center;
-  padding: 3px 6px;
-  background: var(--surface-alt);
-  border-radius: 6px;
-  font-size: var(--fs-xs);  /* E11 audit: 13 -> --fs-xs (16) floor */
-}
-.lv-fr-name {
-  font-weight: 800; color: var(--text); font-size: var(--fs-xs);  /* E11 R4: 14 -> 16 floor */
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.lv-fr-icon {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--canvas);
-  display: flex; align-items: center; justify-content: center;
-}
-.lv-fr-icon img { width: 100%; height: 100%; object-fit: cover; }
-.lv-fr-games {
-  font-size: var(--fs-xs); color: var(--text); text-align: right;  /* E11 R4: 12 -> 16 floor */
-  font-weight: 700;
-}
-.lv-fr-role {
-  font-size: var(--fs-xs); color: var(--text-dim); text-align: center;  /* E11 R4: 11 -> 16 floor */
-  font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
-}
-.lv-fr-rank {
-  display: flex; align-items: center; justify-content: flex-start;
-}
-.lv-fr-team {
-  display: flex; align-items: center; justify-content: flex-start;
-  gap: 4px; cursor: help;
-}
-.lv-fr-team-mark {
-  font-size: var(--fs-xs); font-weight: 900; letter-spacing: 0.08em;  /* E11 R4: 13 -> 16 floor */
-}
-.lv-fr-team-enemy .lv-fr-team-mark { color: var(--bad); }
-.lv-fr-team-ally  .lv-fr-team-mark { color: var(--good); }
-.lv-fr-team-kda {
-  font-size: var(--fs-xs); color: var(--text-dim);  /* E11 R4: 12 -> 16 floor */
-  font-family: "SF Mono", Consolas, monospace;
-}
-.lv-fr-copy,
-.lv-fr-invite {
-  /* E11 V2: keep the compact 24x24 visible button but add a transparent
-   * 44x44 centered ::before so the click target hits the fingertip floor
-   * (mirrors .lv-member-action / .lv-mc-copy). E11 R4: 12px -> --fs-xs. */
-  position: relative;
-  width: 24px; height: 24px;
-  font-size: var(--fs-xs);
-}
-.lv-fr-copy::before,
-.lv-fr-invite::before {
-  content: "";
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 44px; height: 44px;
-  transform: translate(-50%, -50%);
-}
-.lv-fr-invite:hover { color: var(--good); border-color: var(--good); }
 
 /* ---- s162 v4: Party panel ---- */
 .lv-party-title {
@@ -1805,12 +1773,14 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lobby-members-list .lobby-member-row.is-selected {
   border-color: var(--text);
 }
-/* s162 v13: empty PARTY slots - dashed border + 50% opacity, mirroring
+/* s162 v13: empty PARTY slots - dashed border (was + 50% opacity), mirroring
  * the Top 8 placeholder treatment. The renderer always emits 5 row
  * slots; unfilled slots show this style and auto-populate when a
- * member joins (LCU push) or depopulate when they leave. */
+ * member joins (LCU push) or depopulate when they leave.
+ * S144-U-237: `opacity: 0.5` removed. Over the --text-dim "-" mark it
+ * read 2.69:1 hextech to 2.97 terminal; the dashed border and the
+ * transparent fill still mark the slot as empty. */
 .lobby-members-list .lobby-member-row.is-placeholder {
-  opacity: 0.5;
   border: 1px dashed var(--border-soft);
   background: transparent;
   cursor: default;
@@ -2030,15 +2000,28 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .lv-mc-row.is-selected {
   border-color: var(--text);
 }
+/* S144-U-238: the empty slot no longer dims by row opacity. At 0.65 its
+ * --text-dim cells (champ, points, kda) read 3.24 to 3.95:1, under AA in
+ * all six themes (measured headless, PARTY MAINS tab, solo lobby). The
+ * dashed border marks the slot as empty; every "-" sentinel paints
+ * --text-dim at full alpha (5.54 to 7.46:1 measured after), still under
+ * a filled row's --text / party-colour names. Only the disabled copy
+ * button keeps the old dimming (a disabled control has no contrast
+ * floor, and it should not read as pressable). */
 .lv-mc-row.is-placeholder {
   border-style: dashed;
   border-color: var(--border-soft);
-  opacity: 0.65;
   /* E11 R4: tighten empty reserved rows a touch to offset the tokenized
    * font bump - the slot still holds its place with "-" sentinels so no
    * reflow when data lands, just a shorter empty box. */
   min-height: calc(var(--hit-min) - 6px);
 }
+.lv-mc-row.is-placeholder :is(.lv-mc-summoner-name, .lv-mc-party-champ,
+    .lv-mc-mastery-level, .lv-mc-mastery-points, .lv-mc-result,
+    .lv-mc-kda) {
+  color: var(--text-dim);
+}
+.lv-mc-row.is-placeholder .lv-mc-copy { opacity: 0.65; }
 .lv-mc-summoner-name {
   /* UI scale v2.1: 12 -> --fs-xs (16). */
   font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.08em;

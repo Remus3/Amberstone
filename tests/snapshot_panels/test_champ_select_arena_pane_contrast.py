@@ -23,11 +23,18 @@ toward --text, so it stays tinted and clears AA on every theme. The 11px
 tag size is a documented operator exception (item 178/181, pinned by
 tests/test_csv_typography_v21_floor.py), so it is NOT changed here.
 
-The empty partner slot (.csv-duo-cell.is-empty, opacity 0.55, "?" /
-"ALLY" / "waiting...") is a deliberately dimmed placeholder for a slot
-with no player in it; it is excluded from the AA floor, and the test pins
-that it is the ONLY dimmed element, because the shared surface helper
-ignores opacity.
+S144-U-271 (s144 uiux cycle 265) reverses RM-1197's exclusion of the
+empty slots. The empty partner slot (.csv-duo-cell.is-empty: "?" /
+"ALLY" / "waiting...") and the empty enemy slot (.csv-arena-cell.is-empty
+in #csv-enemies-list: "?" / "-") were faded with opacity 0.55 on the whole
+cell. MEASURED the same way: the empty "ALLY" tag read 2.89 (hextech) to
+3.33 (terminal):1, and the empty enemy "-" 4.42:1 on arcane. The S144-U-243
+ruling governs an empty state: its text drops the opacity and takes
+--text-dim. Both cells now keep only their dashed border as the empty cue,
+every text in them sits at opacity 1 and reaches AA, and it stays dimmer
+than the filled cell beside it (the hierarchy test below). The shared
+surface helper ignores opacity, so every measured element must render at
+opacity 1.
 """
 import pytest
 
@@ -48,7 +55,8 @@ _MEASURE = """async () => {
   };
   const out = [];
   const hosts = [['duo', '.csv-duo-row'], ['mine', '.csv-augments'],
-                 ['pick', '.csv-augment-options']];
+                 ['pick', '.csv-augment-options'],
+                 ['enemy', '#csv-enemies-list']];
   for (const [state, sel] of hosts) {
     const host = document.querySelector('#view-champ-select ' + sel);
     if (!host) continue;
@@ -57,9 +65,13 @@ _MEASURE = """async () => {
           (n) => n.nodeType === 3 && n.textContent.trim())) continue;
       if (!e.checkVisibility()) continue;
       const s = surface(e);
+      const cell = e.closest('.csv-duo-cell, .csv-arena-cell');
       out.push([state, e.className, e.textContent,
                 s ? over(rgba(getComputedStyle(e).color), s) : null, s,
-                op(e), !!e.closest('.csv-duo-cell.is-empty')]);
+                op(e),
+                !!e.closest('.csv-duo-cell.is-empty, .csv-arena-cell.is-empty'),
+                parseFloat(getComputedStyle(e).fontSize),
+                cell ? getComputedStyle(cell).borderTopStyle : '']);
     }
   }
   return out;
@@ -127,18 +139,58 @@ def test_arena_pane_text_reaches_aa_on_its_surface(theme, measured,
                        ("pick", "csv-augments-title"),
                        ("pick", "csv-empty")]:
         assert _by(rows, state, cls), f"{cls} ({state}) not rendered"
+    # S144-U-271: the empty enemy slots are measured too (the fixture leaves
+    # some sub-team cells unpicked), beside the filled ones.
+    assert _by(rows, "enemy", "csv-arena-cell-name", empty=True), rows
+    assert _by(rows, "enemy", "csv-arena-cell-name"), rows
     low = []
-    for state, cls, text, fg, bg, opacity, empty in rows:
-        if empty:
-            continue
-        # The surface helper ignores opacity: a dimmed live element would
-        # read AA here while rendering faint, so refuse one outright.
-        assert opacity == 1, f"{cls!r} ({state}) rendered at {opacity}"
+    for state, cls, text, fg, bg, opacity, _empty, size, _border in rows:
+        # The surface helper ignores opacity: a dimmed element would read AA
+        # here while rendering faint, so refuse one outright - empty slots
+        # included (S144-U-271).
+        assert opacity == 1, f"{cls!r} {text.strip()!r} ({state}) rendered at {opacity}"
         assert fg and bg, f"no resolved surface under {cls!r}"
         r = _ratio(fg, bg)
-        if r < 4.5:
+        # WCAG 1.4.3: 3:1 for large text (24px and up), 4.5:1 otherwise.
+        if r < (3.0 if size >= 24 else 4.5):
             low.append(f"{cls} {text.strip()!r} ({state}) {r:.2f}:1")
-    assert not low, f"{theme}: under 4.5:1 - " + "; ".join(low)
+    assert not low, f"{theme}: under AA - " + "; ".join(low)
+
+
+@pytest.mark.parametrize("theme", _THEMES)
+def test_empty_slots_read_as_empty_below_the_filled_cells(
+        theme, measured, mock_server, pw_browser):
+    # S144-U-271: with the cell-wide fade gone, the empty cue is the dashed
+    # border plus --text-dim text, and an empty slot's text never outshines
+    # the filled cell next to it.
+    rows = _rows(measured, mock_server, pw_browser, theme)
+    e_duo = [r for r in rows if r[0] == "duo" and r[6]]
+    e_enemy = [r for r in rows if r[0] == "enemy" and r[6]]
+    assert e_duo and e_enemy, rows
+    for r in e_duo + e_enemy:
+        assert r[8] == "dashed", f"{theme}: empty {r[1]!r} cell lost its dashed border"
+    for r in _by(rows, "duo", "csv-duo-cell-name") + _by(
+            rows, "enemy", "csv-arena-cell-name"):
+        assert r[8] == "solid", f"{theme}: filled {r[1]!r} cell is not solid"
+    # The empty partner slot's words ("ALLY" / "waiting...") are --text-dim,
+    # the tone of the filled ALLY tag on the same --surface-2 cell.
+    ally = [t for t in _by(rows, "duo", "csv-duo-cell-tag")
+            if t[2].strip() == "ALLY"]
+    assert ally, rows
+    words = [r for r in e_duo if "csv-duo-cell-icon" not in r[1].split()]
+    assert {r[2].strip() for r in words} == {"ALLY", "waiting..."}, words
+    for r in words:
+        assert r[3][:3] == ally[0][3][:3], (
+            f"{theme}: empty {r[2].strip()!r} is {r[3][:3]}, not --text-dim"
+            f" {ally[0][3][:3]}")
+    filled_duo = min(_lum(n[3]) for n in _by(rows, "duo", "csv-duo-cell-name"))
+    for r in words:
+        assert _lum(r[3]) < filled_duo, (
+            f"{theme}: empty {r[2].strip()!r} as bright as a picked name")
+    filled_enemy = min(_lum(n[3]) for n in _by(rows, "enemy", "csv-arena-cell-name"))
+    for r in _by(rows, "enemy", "csv-arena-cell-name", empty=True):
+        assert _lum(r[3]) < filled_enemy, (
+            f"{theme}: empty enemy {r[2].strip()!r} as bright as a picked name")
 
 
 @pytest.mark.parametrize("theme", _THEMES)

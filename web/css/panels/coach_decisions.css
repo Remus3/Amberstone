@@ -70,6 +70,14 @@
 .coach-decision-btn[data-choice="give"]    { color: var(--signal-info); }
 .coach-decision-btn[data-choice="skip"]    { color: var(--text-faint); }
 .coach-decision-btn:hover     { background: rgba(255, 255, 255, 0.08); }
+/* S144-U-269: the hover fill lightens the surface under SKIP's
+ * --text-faint label to 3.73:1 - 4.20:1, under AA, so SKIP lifts to
+ * --text-dim under the pointer. Its rest colour stays --text-faint, so
+ * it is still the quietest button at rest. Every button draws the
+ * dashboard's 2 px --accent keyboard ring. Guard:
+ * tests/snapshot_panels/test_coach_decisions_banner_contrast.py. */
+.coach-decision-btn[data-choice="skip"]:hover { color: var(--text-dim); }
+.coach-decision-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .coach-decision-btn:active    { transform: translateY(1px); }
 .coach-decision-btn:disabled  { opacity: 0.4; cursor: default; }
 @keyframes coachDecisionIn {

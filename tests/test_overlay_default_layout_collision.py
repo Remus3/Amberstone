@@ -17,7 +17,15 @@ the comment's promise.
 
 HEIGHT MODEL. overlay_layout._applyPos gives every widget
 --ovx-maxh = max(140, H - y - 16) with overflow-y:auto, so the painted height
-is min(natural content height, that cap). Each natural height below is either a
+is min(natural content height, that cap). The one exception is a TALL widget
+(registry `tall: true`) whose y is in the lower half (y > H * 0.5): it is
+bottom-anchored 16 px above the field's bottom and grows UPWARD, capped at
+max(140, H - 32), so its box is (x, H - 16 - h) .. (x + w, H - 16)
+(S144-U-282). S144-U-283: that cap also stops TALL_FLOOR_GAP px below any
+PRIMARY-tier widget (registry `tier: "primary"`, w-call) sharing its
+column, so h is also capped at H - 16 - (primary bottom + gap); the
+overflow is dropped whole, last section first (overlay_layout
+_fitDropGroups). Each natural height below is either a
 LIVE MEASUREMENT from a headless overlay probe (cited per entry) or, for a
 data-gated panel that no repo fixture populates, a conservative row-count
 estimate. Conservative here means "at least as tall as the panel can get" -
@@ -46,17 +54,26 @@ MAXH_FLOOR = 140
 
 # Natural (uncapped) content height per widget id. Provenance per entry.
 NATURAL_H = {
-    # MEASURED, headless Chromium overlay probe at 1920x1080 (?ui_mock=1&mode=sr
+    # MEASURED, headless Chromium overlay probe at 1920x1080 (?ui_mock=1&mode=<m>
     # &overlay=1, the drive path tests/snapshot_panels/test_overlay_view.py
-    # _open_overlay uses): scrollHeight 670, painted 594 against the y=470 cap.
-    "w-build": 670,
+    # _open_overlay uses), bottom-anchored so nothing is clipped (S144-U-282):
+    # sr 722 (capability-gap chip + rerank module + THREATS), arena 643,
+    # aram / mayhem 601, brawl 582. Re-measured S144-U-283 with the data-gated
+    # DEFENSE and COUNTER rows populated (tests/snapshot_panels/
+    # test_overlay_build_grown_fit.py payloads), uncapped: sr 1005 (top 59),
+    # arena 927, aram / mayhem 885. The tallest is the conservative one; the
+    # primary-widget floor caps it below w-call.
+    "w-build": 1005,
     # MEASURED, same probe: scrollHeight 925 / painted 927 (settings strip +
     # fight-model knobs). The leaner live-SSE envelope renders it at 713, so 927
     # is the tall end and therefore the conservative one.
     "w-ovds": 927,
     # MEASURED, same probe: 175 with the populated CALL fixture (104 on the
-    # leaner live-SSE envelope). Rounded up.
-    "w-call": 180,
+    # leaner live-SSE envelope). Rounded up. Re-measured S144-U-282 (same probe,
+    # 1920x1080): sr 190, aram 175 - the sr call grew, so 190 is the budget.
+    # Re-measured S144-U-283 (same probe): sr 190, aram 175, brawl 211,
+    # mayhem 226 - mayhem is the tallest, so 226 is the budget.
+    "w-call": 226,
     # MEASURED, live-SSE SR envelope probe (the tests/snapshot_panels/
     # test_next_buy_view.py _SR_STATE drive path): 102. Rounded up.
     "w-objgauges": 110,
@@ -98,6 +115,11 @@ _ENTRY = re.compile(
     r'\{\s*id:\s*"(?P<id>[^"]+)"\s*,\s*sel:\s*"(?P<sel>[^"]+)"'
     r"[^{}]*?\bx:\s*(?P<x>-?\d+)\s*,\s*y:\s*(?P<y>-?\d+)"
 )
+# A registry entry flagged `tall: true` (one object literal, no nesting).
+_TALL = re.compile(r'\{[^{}]*?\bid:\s*"([^"]+)"[^{}]*?\btall:\s*true\b[^{}]*\}')
+# A registry entry's tier (one object literal, no nesting).
+_TIER = re.compile(r'\{[^{}]*?\bid:\s*"([^"]+)"[^{}]*?\btier:\s*"([^"]+)"[^{}]*\}')
+_FLOOR_GAP = re.compile(r"^const TALL_FLOOR_GAP = (\d+);", re.M)
 _CSS_RULE = re.compile(r"(?P<sel>[^{}]+)\{(?P<body>[^{}]*)\}", re.S)
 _OVX_W = re.compile(r"--ovx-w:\s*(\d+)px")
 _DEFAULT_W = re.compile(r"width:\s*var\(--ovx-w,\s*(\d+)px\)")
@@ -108,6 +130,8 @@ def _parse_widgets(js: str):
     block = _WIDGETS_BLOCK.search(js)
     assert block, "WIDGETS array not found in overlay_layout.js"
     out = [m.groupdict() for m in _ENTRY.finditer(block.group(1))]
+    tall = set(_TALL.findall(block.group(1)))
+    tiers = dict(_TIER.findall(block.group(1)))
     launcher = _LAUNCHER_LINE.search(js)
     assert launcher, "LAUNCHER entry not found in overlay_layout.js"
     lm = _ENTRY.search(launcher.group(1))
@@ -116,7 +140,15 @@ def _parse_widgets(js: str):
     for w in out:
         w["x"] = int(w["x"])
         w["y"] = int(w["y"])
+        w["tall"] = w["id"] in tall
+        w["tier"] = tiers.get(w["id"], "")
     return out
+
+
+def _floor_gap(js: str) -> int:
+    m = _FLOOR_GAP.search(js)
+    assert m, "const TALL_FLOOR_GAP not found in overlay_layout.js"
+    return int(m.group(1))
 
 
 def _id_for_class(html: str, cls: str):
@@ -181,15 +213,36 @@ def _boxes():
     html = INDEX_HTML.read_text(encoding="utf-8")
     widgets = _parse_widgets(js)
     widths = _parse_widths(css, html, widgets)
+    gap = _floor_gap(js)
     out = {}
+    tall_bottom = []
     for w in widgets:
         wid = w["id"]
         assert wid in NATURAL_H, (
             f"{wid} has no documented height budget - add one to NATURAL_H "
             "(with its provenance) before shipping a new widget default")
+        if w["tall"] and w["y"] > DESIGN_H * 0.5:
+            tall_bottom.append(w)
+            continue
         cap = max(MAXH_FLOOR, DESIGN_H - w["y"] - BOTTOM_MARGIN)
         h = min(NATURAL_H[wid], cap)
         out[wid] = (w["x"], w["y"], w["x"] + widths[wid], w["y"] + h)
+    primary = [out[w["id"]] for w in widgets
+               if w["tier"] == "primary" and w["id"] in out]
+    for w in tall_bottom:
+        wid = w["id"]
+        # _applyPos bottom-anchor: grows upward from H - 16, capped at H - 32
+        # and (S144-U-283) at the floor under a primary widget in its column.
+        bottom = DESIGN_H - BOTTOM_MARGIN
+        x1, x2 = w["x"], w["x"] + widths[wid]
+        cap = DESIGN_H - 2 * BOTTOM_MARGIN
+        for b in primary:
+            floor = b[3] + gap
+            if (min(x2, b[2]) - max(x1, b[0]) > 0 and b[1] < bottom
+                    and floor <= bottom - MAXH_FLOOR):
+                cap = min(cap, bottom - floor)
+        h = min(NATURAL_H[wid], max(MAXH_FLOOR, cap))
+        out[wid] = (x1, bottom - h, x2, bottom)
     return out
 
 
@@ -212,6 +265,28 @@ class DefaultLayoutCollision(unittest.TestCase):
         self.assertIn("w-build", self.boxes)
         self.assertIn("w-ovds", self.boxes)
         self.assertIn("w-launcher", self.boxes)
+
+    def test_tall_flag_parsed_and_w_build_bottom_anchored(self):
+        # S144-U-282: w-build is the registry's TALL widget, and its default y
+        # sits in the lower half so it takes the bottom-anchored path at the
+        # real overlay height; its modelled box ends 16 px above the bottom.
+        js = LAYOUT_JS.read_text(encoding="utf-8")
+        tall = {w["id"] for w in _parse_widgets(js) if w["tall"]}
+        self.assertEqual(tall, {"w-build"})
+        x1, y1, x2, y2 = self.boxes["w-build"]
+        self.assertEqual(y2, DESIGN_H - BOTTOM_MARGIN)
+        # S144-U-283: the grown box (1005) is capped at the floor under w-call
+        # (its box bottom + TALL_FLOOR_GAP), not left to grow over it.
+        gap = _floor_gap(LAYOUT_JS.read_text(encoding="utf-8"))
+        self.assertEqual(gap, 12)
+        self.assertEqual(y1, self.boxes["w-call"][3] + gap)
+        self.assertLess(y2 - y1, NATURAL_H["w-build"])
+
+    def test_w_call_is_the_primary_widget(self):
+        # S144-U-283: the floor keys on the primary tier; w-call is the only one.
+        js = LAYOUT_JS.read_text(encoding="utf-8")
+        primary = {w["id"] for w in _parse_widgets(js) if w["tier"] == "primary"}
+        self.assertEqual(primary, {"w-call"})
 
     def test_widths_resolved_from_css(self):
         # The two widths the reported defect turns on, read from overlay.css.

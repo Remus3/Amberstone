@@ -30,7 +30,11 @@ ADV_FIXTURES = [
     "adv_empty_strings",
     "adv_out_of_range",
 ]
-GAME_PANELS = ["right-now", "next", "item-build", "minimap"]
+# S144-U-264: the never-rendered Map State shell (#minimap) is retired
+# (test_minimap_panel_shell_retired.py), so it has no node to capture.
+# S144-U-265: so is the never-rendered NEXT panel
+# (test_next_panel_retired.py).
+GAME_PANELS = ["right-now", "item-build"]
 
 
 @pytest.mark.parametrize("fixture_name", FIXTURES)
@@ -58,7 +62,7 @@ def test_panels(fixture_name, mock_server, pw_browser):
         # panels" contract working, we inject a stylesheet override below
         # that nullifies the s219 hide rule for this URL only. This test
         # is specifically scoped to the legacy in-game panels (#right-now,
-        # #next, #item-build, #minimap) which live in main - the new
+        # #item-build) which live in main - the new
         # Post Game Review section has its own panel-snapshot coverage in
         # a separate test if needed.
         url = mock_server.url + "/#last-match"

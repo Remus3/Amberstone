@@ -83,6 +83,14 @@ def test_every_web_js_module_parses_as_an_es_module():
     script = r"""
 const files = JSON.parse(process.argv[1]);
 const bad = [];
+// A timer a module registered while it evaluated, and that throws later
+// (no DOM in node), is a runtime throw too - out of scope like the catch
+// below - and must not crash the harness before it reports. S144-U-264:
+// map_state.js's import stopped throwing at its top, so its 1 s spell
+// tick now runs here and reads `document`.
+process.on('uncaughtException', (e) => {
+  if (e && e.name === 'SyntaxError') bad.push({file: '<timer>', msg: String(e.message)});
+});
 (async () => {
   for (const f of files) {
     try {
@@ -94,6 +102,8 @@ const bad = [];
     }
   }
   console.log(JSON.stringify(bad));
+  // Exit now: a module timer must not run on after the report.
+  process.exit(0);
 })();
 """
     out = subprocess.run(

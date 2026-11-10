@@ -13,10 +13,10 @@
 //   Next             ~8s refresh                  -> ~16s / ~48s.
 //   Item Build:      event-driven                 -> 90s / 5min.
 
-import { _to12, el, fmtList, safe, fitText, logLine, isArenaPayload, classifyAction, _opGlyph, _formatRelativeAge, htmlToText, renderTooltipHtml } from './lib/helpers.js';
+import { _to12, el, safe, logLine, _opGlyph, htmlToText, renderTooltipHtml } from './lib/helpers.js';
 import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
-import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
-import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
+import { ITEMS, CHAMPS, DDRAGON_FALLBACK_VERSION, _resolveItemId, _resolveChampId, _resolveSpell } from './lib/items_index.js';
+import { makeStreamGate } from './lib/idempotent_render.js';
 import { applyTheme, resolveBootTheme } from './lib/theme.js';
 import {
   armScrollAway, dismissStrandedLayers, modalClosing, modalLayerRendered,
@@ -25,19 +25,20 @@ import {
 import { isSpaceActivated, isTypingTarget } from './panels/review_player_model.js';
 
 // -- Panel modules ---------------------------------------------------------
-import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
+import { RN, renderRightNow, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
 import { renderCoachChoices } from './panels/coach_choices.js';
 import { renderCallouts, renderLead } from './panels/callouts.js';
 import { startPersonalContextPolling } from './panels/personal_context.js';
-import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
-import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
-import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
-// RM-1211 siblings: both are called below (the self-spell cooldown key and the
-// foreground ZOI redraw) but were never exported or imported - each call threw
-// a ReferenceError. Guard: tests/test_web_js_unimported_calls_s144q43.py.
-import { _spellKey, renderMinimapCanvases } from './panels/map_state.js';
+// S144-U-265: the never-rendered NEXT panel module is retired.
+import { IB, renderItemBuild } from './panels/item_build.js';
+import { renderMinimap, _fmtMMSS } from './panels/map_state.js';
+// RM-1211: the self-spell cooldown key is called below but was never exported
+// or imported - each call threw a ReferenceError. (Its sibling, the tab-return
+// ZOI redraw, left with the retired minimap canvases, S144-U-258.)
+// Guard: tests/test_web_js_unimported_calls_s144q43.py.
+import { _spellKey } from './panels/map_state.js';
 import { renderAugmentReco } from './panels/augment_reco.js';
-import { handleChampSelect, renderChampSelectCoach, renderChampSelectView, csMockFixtureUrl } from './panels/champ_select.js';
+import { handleChampSelect, renderChampSelectView, csMockFixtureUrl } from './panels/champ_select.js';
 import { csAdaptationRequest } from './lib/cs_adaptation.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderScreenRead } from './panels/screen_read.js';
@@ -67,8 +68,10 @@ import { refreshBranchReview } from './panels/branch_review.js';
 // clobbers the live PGR.
 import { wireHistoricalPgrOnce, renderHistoricalPgr } from './panels/historical_pgr.js';
 import { createLobbyDuoSynergy, lobbyDuoSynergyHtml } from './panels/lobby_duo_synergy.js';
-import { renderCoachDecisions, renderRecentCoachCalls } from './panels/coach_decisions.js';
-import { _settingsRefresh, renderSpendGates, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
+// S144-U-268: loaded for its module-scope /api/decisions poll; main.js calls
+// none of its exports (guard: tests/test_web_js_unused_named_imports_s144u268.py).
+import './panels/coach_decisions.js';
+import { _settingsRefresh, renderSpendGates, _replayViewWireOnce, _replayViewRefresh } from './panels/dev.js';
 import { renderBuildInsights } from './panels/build_insights.js';
 // HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
 import { initOverlayPulse } from './overlay_pulse.js';
@@ -500,7 +503,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
 
   // state, CADENCE imported from lib/state.js
-  // (spellCds is added to state at runtime below)
 
   // -- Helpers ---------------------------------------------------------
   // The visible connection state now lives in the heartbeat pill's color:
@@ -614,24 +616,24 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // !driveNow for client/sr-without-coach-data). Coach ticks for
     // in-game modes overwrite this with "RC - <champ> - <MODE> - <t>".
     try { document.title = "RC · " + (tag || "client").toUpperCase(); } catch (_) {}
-    // Mode-aware CSS hook for minimap panel (SR underlay only on SR).
-    const mmPanel = document.querySelector(".panel-minimap");
-    if (mmPanel) mmPanel.className = "panel panel-minimap mode-" + tag;
+    // S144-U-264: the Map State panel's mode class hook is retired with the
+    // never-rendered panel shell.
     // body[data-mode] drives mode-scoped layout rules (in-game Adaptation
     // shrink, aftergame panel reassignment, TFT map-state swap, etc.).
     document.body.dataset.mode = tag;
     // Panel title swaps per mode (queue #3 aftergame reassignment).
     //   in-game (sr/aram/arena/brawl/tft):
-    //     MAP STATE / RIGHT NOW / NEXT / STATS
+    //     RIGHT NOW / STATS
     //   client (lobby + aftergame):
-    //     WHAT WENT / SESSION SUMMARY / ADVICE / GAME SENSE
+    //     SESSION SUMMARY / GAME SENSE
+    // S144-U-264: the Map State title (MAP STATE / WHAT WENT) is retired
+    // with its never-rendered panel shell; S144-U-265 retired the NEXT /
+    // ADVICE title with the never-rendered NEXT panel.
     const inGame = ["sr","aram","arena","brawl","tft"].includes(tag);
     const titles = inGame
-      ? { mm: "MAP STATE", rn: "RIGHT NOW", nx: "NEXT", adapt: "STATS" }
-      : { mm: "WHAT WENT", rn: "SESSION SUMMARY", nx: "ADVICE", adapt: "GAME SENSE" };
-    const mmT    = el("mm-panel-title");    if (mmT)    mmT.textContent    = titles.mm;
+      ? { rn: "RIGHT NOW", adapt: "STATS" }
+      : { rn: "SESSION SUMMARY", adapt: "GAME SENSE" };
     const rnT    = el("rn-panel-title");    if (rnT)    rnT.textContent    = titles.rn;
-    const nxT    = el("nx-panel-title");    if (nxT)    nxT.textContent    = titles.nx;
     const adaptT = el("adapt-panel-title"); if (adaptT) adaptT.textContent = titles.adapt;
     // RC2 E1: the in-game <-> out-game context just flipped (mode changed), so
     // re-resolve the per-panel visibility for the new context. Self-guards on
@@ -1248,7 +1250,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
   }
 
-  // fmtList, safe, fitText, logLine, isArenaPayload, classifyAction imported from lib/helpers.js
 
 
   // -- WHAT WENT view (aftergame Map State replacement) --------------
@@ -1492,7 +1493,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   const champPill = el("champion-pill");
   let championPillState = { name: null, source: null };
 
-  // CHAMPS, SPELLS, _resolveChampId, _resolveSpell imported from lib/items_index.js.
 
   function setChampionPill(name, source) {
     if (!champPill) return;
@@ -1592,7 +1592,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     renderCoachChoices(state.latest || p);
     renderLead(state.latest || p);
     renderCallouts(state.latest || p);
-    renderNext(p);
     renderItemBuild(p);
     renderAugmentReco(p);
     renderMinimap(p);
@@ -1705,7 +1704,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (_VIEW.current === "champ-select") renderChampSelectView(_csResolveLcu());
     renderStats(p);
     renderGameSense(p);
-    renderWhatWent(p);
     renderDigest(p);
     maybeRefreshAdaptation(p);
   }
@@ -1758,9 +1756,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const now = Date.now() / 1000;
     for (const [panelKey, elm, rootElm] of [
       ["right_now",  RN.staleness, RN.root],
-      ["next",       NX.staleness, NX.root],
       ["item_build", IB.staleness, IB.root],
-      ["minimap",    MM.staleness, MM.root],
+      // S144-U-264 / S144-U-265: the never-rendered Map State shell's and
+      // NEXT panel's rows are retired.
     ]) {
       const touched = state.lastTouch[panelKey];
       if (!touched) {
@@ -5961,8 +5959,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         if (isOpen) {
           closeModeMenu(false);
         } else {
-          // Highlight the current queue
-          const lcu = (state.latest && state.latest.lcu) || {};
+          // Highlight the current queue. S144-U-251: read the lobby through
+          // _lobbyResolveLcu(), as the card above does, so under ?ui_mock=1
+          // the menu marks the fixture's queue instead of Practice Tool
+          // (qid 0 from an empty state.latest.lcu). Outside ui_mock it
+          // returns the same state.latest.lcu object as before.
+          const lcu = _lobbyResolveLcu();
           const lobby = lcu.lobby || null;
           const curQid = (lobby && lobby.queue_id) | 0;
           modeMenu.querySelectorAll(".lq-mode-item").forEach((it) => {
@@ -6813,327 +6815,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   refreshEnv();
   setInterval(refreshEnv, 15000);
 
-  // -- Minimap image polling ------------------------------------------
-  // Polls /api/minimap-crop on a fast cadence when the dedicated Legion
-  // minimap stream is live (5-10Hz pre-cropped JPEGs on source=minimap),
-  // otherwise the supervisor falls back to crop-from-full-frame which is
-  // bounded by the 2s full-frame upload cadence - pointless to poll
-  // faster than that. We pick the interval based on which path served
-  // the last response: JPEG = fast stream, PNG = slow re-crop.
-  const MINIMAP_MODES = new Set(["sr", "aram", "brawl"]);
-  const MINIMAP_INTERVAL_FAST = 500;    // 2Hz when fast stream is live
-  const MINIMAP_INTERVAL_SLOW = 2000;   // 0.5Hz fallback
-  let minimapTimer = null;
-  let minimapInterval = MINIMAP_INTERVAL_SLOW;
-  let lastMinimapMode = null;
-  // S144-U-227: the Map State panel (#minimap) sits in the top-level
-  // <main>, which every view hides (header.css, the body[data-view] main
-  // list, RM-1552) and the overlay shell hides too (overlay.css
-  // main > .panel), so it is never on screen. Its two polls (this one and
-  // refreshVisionOverlay below) still asked the server every 500 ms all
-  // game. Both now send nothing while the panel has no layout box; they
-  // resume by themselves if a view renders it again.
-  // Guard: tests/snapshot_panels/test_home_minimap_polls_need_rendered_panel.py.
-  function _minimapPanelShown() {
-    return !!MM.root && MM.root.getClientRects().length > 0;
-  }
-  // S144-U-226: a poll request still unanswered after this is aborted and
-  // settles as a failure (the image reads STALE). Above both cadences, so
-  // a slow answer is not cut off by the next tick (the same 5 s as the
-  // vision-state polls, VT_FETCH_TIMEOUT_MS below).
-  const MINIMAP_FETCH_TIMEOUT_MS = 5000;
-  // The one open /api/minimap-crop request of this poll, or null.
-  let minimapInflight = null;
+  // S144-U-257: the minimap image poll that lived here is retired. It
+  // asked the supervisor's minimap crop route (500 ms on the fast
+  // stream, 2 s otherwise) for the live crop image of the Map State panel (#minimap), which
+  // renders in no view, so since S144-U-227 its panel gate kept it from
+  // ever sending. The Active Match MAP pane keeps its own base-image
+  // fallback to that route (panels/active_match.js), an <img> src.
+  // Guard: tests/snapshot_panels/test_minimap_crop_image_retired.py.
 
-  // Give up on the open request, if any: its answer will never paint.
-  function _dropMinimapInflight() {
-    const req = minimapInflight;
-    if (!req) return;
-    minimapInflight = null;
-    if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
-    if (req.ctl) req.ctl.abort();
-  }
-
-  async function refreshMinimap() {
-    if (document.hidden) return;
-    if (!MINIMAP_MODES.has(state.mode)) {
-      _dropMinimapInflight();
-      MM.imgWrap.classList.add("hidden");
-      lastMinimapMode = null;
-      return;
-    }
-    // item 281: minimap-crop crops a LIVE game frame; with no game running
-    // the vision server has no frame and every poll 502s (spammed the
-    // console every 2s in an idle ARAM lobby). Gate on a live game.
-    const _lcMM = (state.latest && state.latest.liveclient) || null;
-    if (!_lcMM || !Object.keys(_lcMM).length) {
-      _dropMinimapInflight();
-      MM.imgWrap.classList.add("hidden");
-      lastMinimapMode = null;
-      return;
-    }
-    // S144-U-227: nothing to show it in. Give up on the open request too,
-    // so its answer never paints.
-    if (!_minimapPanelShown()) {
-      _dropMinimapInflight();
-      return;
-    }
-    // S144-U-226: one request open at a time. This poll used to send one
-    // every tick (500 ms on the fast stream) with no timeout, so a server
-    // that stopped answering collected an open request per tick, the
-    // image never read STALE, and a request still open when the game
-    // ended could land later and show the minimap again. A tick that
-    // finds a request still open sends nothing; one unanswered after
-    // MINIMAP_FETCH_TIMEOUT_MS is aborted (body read included) and
-    // settles as a failure, so the next tick asks again; leaving the game
-    // or the minimap modes gives up on it (above). An answer that lands
-    // after its request was given up on never paints.
-    // A request sent for another minimap mode (SR -> ARAM) is given up on:
-    // its image is the old map.
-    if (minimapInflight && minimapInflight.mode !== state.mode) {
-      _dropMinimapInflight();
-    }
-    if (minimapInflight) return;
-    const ctl = (typeof AbortController === "function")
-      ? new AbortController() : null;
-    const req = { timer: null, ctl, mode: state.mode };
-    minimapInflight = req;
-    // True once, for the request that is still the open one.
-    const settle = () => {
-      if (minimapInflight !== req) return false;
-      minimapInflight = null;
-      if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
-      return true;
-    };
-    req.timer = setTimeout(() => {
-      req.timer = null;
-      if (!settle()) return;
-      if (ctl) ctl.abort();
-      MM.imgWrap.classList.add("stale");
-    }, MINIMAP_FETCH_TIMEOUT_MS);
-    const tNow = Date.now();
-    const bust = tNow - (tNow % minimapInterval);
-    let painting = false;
-    try {
-      const resp = await fetch(`/api/minimap-crop?mode=${state.mode}&_=${bust}`,
-        ctl ? { signal: ctl.signal } : undefined);
-      if (!resp.ok) {
-        if (settle()) MM.imgWrap.classList.add("hidden");
-        return;
-      }
-      const blob = await resp.blob();
-      if (!settle()) return;
-      // The mode moved on while this answer was on its way: the next tick
-      // asks for the new map instead.
-      if (req.mode !== state.mode) return;
-      // From here on this answer is the current one; a throw while
-      // painting it still marks the image STALE (catch below).
-      painting = true;
-      if (blob.type !== "image/png" && blob.type !== "image/jpeg") {
-        MM.imgWrap.classList.add("hidden");
-        return;
-      }
-      // Adapt the polling cadence to which path served us. JPEG comes
-      // from the fast Legion minimap stream; PNG from the slow re-crop.
-      const desired = (blob.type === "image/jpeg")
-        ? MINIMAP_INTERVAL_FAST : MINIMAP_INTERVAL_SLOW;
-      if (desired !== minimapInterval) {
-        minimapInterval = desired;
-        if (minimapTimer) clearInterval(minimapTimer);
-        minimapTimer = setInterval(refreshMinimap, minimapInterval);
-      }
-      // Revoke previous blob URL to avoid leaks.
-      const prev = MM.img.dataset.blobUrl;
-      if (prev) { try { URL.revokeObjectURL(prev); } catch (_) {} }
-      const url = URL.createObjectURL(blob);
-      MM.img.dataset.blobUrl = url;
-      MM.img.src = url;
-      const size = (blob.size / 1024).toFixed(1);
-      MM.imgCaption.textContent = `${state.mode.toUpperCase()} · ${size} KB · ${_to12(new Date())}`;
-      MM.imgWrap.classList.remove("hidden", "stale");
-      lastMinimapMode = state.mode;
-    } catch (e) {
-      if (settle() || painting) MM.imgWrap.classList.add("stale");
-    }
-  }
-  minimapTimer = setInterval(refreshMinimap, minimapInterval);
-  refreshMinimap();   // fire once on load
-
-  // -- Vision-tracker overlay on the live minimap ---------------------
-  // Reads /api/vision-state (written by core/vision_tracker), projects
-  // game coords onto the rendered minimap image, draws dots:
-  //   - bright dot at current position when visible
-  //   - faded ghost dot at last_seen_pos with "Xs" label when missing
-  // Skips when no game is running or the minimap image isn't displayed.
-  const VT_OVERLAY = el("mm-vt-overlay");
-  const VT_INTERVAL_MS = 500;
-  // SR / ARAM map sizes in game units (Howling Abyss is smaller than SR).
-  const VT_MAP_SIZE = { CLASSIC: 14800, ARAM: 13800, KIWI: 13800,
-                        URF: 14800, NEXUSBLITZ: 14800, ULTBOOK: 14800 };
-  // Mirror of core/vision_tracker._SHARED_VISION_MODES - modes where the
-  // whole map is visible to both teams and Live Client emits no positions.
-  const VT_SHARED_VISION = new Set(["ARAM", "KIWI"]);
-  // S144-U-225: a poll request still unanswered after this is aborted and
-  // settles as a failure. Above one tick, so a slow answer is not cut off
-  // by the next tick (the Active Match MAP poll uses the same 5 s,
-  // active_match.js _AM_MAP_FETCH_TIMEOUT_MS).
-  const VT_FETCH_TIMEOUT_MS = 5000;
-  // The one open /api/vision-state request of this poll, or null.
-  let vtInflight = null;
-
-  async function refreshVisionOverlay() {
-    if (!VT_OVERLAY) return;
-    if (document.hidden) return;
-    // S144-U-227: the dots and the #mm-state line it paints are both in
-    // the Map State panel; send nothing while it is not rendered.
-    if (!_minimapPanelShown()) return;
-    // S144-U-225: one request open at a time. This poll used to send one
-    // every 500 ms tick, on every view, with no timeout, so a server that
-    // stopped answering collected an open request per tick and a late
-    // answer could paint over a newer one. A tick that finds a request
-    // still open sends nothing; one unanswered after VT_FETCH_TIMEOUT_MS
-    // is aborted (body read included) and settles as a failure, so the
-    // next tick asks again. An answer that lands after its request was
-    // given up on never paints.
-    if (vtInflight) return;
-    const ctl = (typeof AbortController === "function")
-      ? new AbortController() : null;
-    const req = { timer: null };
-    vtInflight = req;
-    // True once, for the request that is still the open one.
-    const settle = () => {
-      if (vtInflight !== req) return false;
-      vtInflight = null;
-      if (req.timer !== null) { clearTimeout(req.timer); req.timer = null; }
-      return true;
-    };
-    req.timer = setTimeout(() => {
-      req.timer = null;
-      if (!settle()) return;
-      if (ctl) ctl.abort();
-      VT_OVERLAY.style.display = "none";
-    }, VT_FETCH_TIMEOUT_MS);
-    // Fetch first so the shared-vision pill can update even when the
-    // minimap PNG isn't currently visible (image still loading, etc.).
-    let vs;
-    try {
-      const r = await fetch("/api/vision-state",
-        ctl ? { signal: ctl.signal } : undefined);
-      if (!r.ok) {
-        if (settle()) VT_OVERLAY.style.display = "none";
-        return;
-      }
-      vs = await r.json();
-    } catch (_) {
-      if (settle()) VT_OVERLAY.style.display = "none";
-      return;
-    }
-    if (!settle()) return;
-    if (!vs || !vs.enemies || Object.keys(vs.enemies).length === 0) {
-      VT_OVERLAY.style.display = "none";
-      return;
-    }
-    // Shared-vision modes (ARAM/KIWI) - Live Client has no positions, so
-    // the dot-overlay won't draw anything useful, but vision_tracker still
-    // produces a meaningful summary (visible/dead counts, on_bridge zone).
-    // Drive the MAP STATE pill from that summary.
-    const sharedVision = VT_SHARED_VISION.has((vs.game_mode || "").toUpperCase());
-    if (sharedVision && MM.status) {
-      const sum = vs.summary || {};
-      const visibleCount = sum.visible_count | 0;
-      const deadCount = sum.dead_count | 0;
-      const sig = `${visibleCount}|${deadCount}`;
-      if (MM.status._sharedSig !== sig) {
-        _renderMmStateLine(MM.status, `${visibleCount} on bridge · ${deadCount} dead`);
-        MM.status._sharedSig = sig;
-        MM.status.classList.remove("hidden");
-        if (!MM.status.classList.contains("live")) {
-          MM.status.className = "minimap-state live";
-        }
-      } else {
-        // Same summary - refresh the timestamp so "Xs ago" stays at 0
-        // instead of climbing while data is actually fresh.
-        MM.status._lastT = Date.now();
-      }
-    }
-    if (!MM.imgWrap || MM.imgWrap.classList.contains("hidden")) {
-      VT_OVERLAY.style.display = "none";
-      return;
-    }
-    // Size the canvas to the rendered <img> bounds (it's centered in the
-    // wrap with margin auto and padded - getBoundingClientRect gives the
-    // post-layout box we need to align to).
-    const img = MM.img;
-    if (!img.complete || !img.naturalWidth) {
-      VT_OVERLAY.style.display = "none"; return;
-    }
-    const imgRect = img.getBoundingClientRect();
-    const wrapRect = MM.imgWrap.getBoundingClientRect();
-    const w = Math.round(imgRect.width);
-    const h = Math.round(imgRect.height);
-    if (w < 4 || h < 4) { VT_OVERLAY.style.display = "none"; return; }
-    VT_OVERLAY.style.display = "block";
-    VT_OVERLAY.style.left = (imgRect.left - wrapRect.left) + "px";
-    VT_OVERLAY.style.top  = (imgRect.top  - wrapRect.top)  + "px";
-    VT_OVERLAY.style.width  = w + "px";
-    VT_OVERLAY.style.height = h + "px";
-    if (VT_OVERLAY.width !== w)  VT_OVERLAY.width  = w;
-    if (VT_OVERLAY.height !== h) VT_OVERLAY.height = h;
-
-    const ctx = VT_OVERLAY.getContext("2d");
-    ctx.clearRect(0, 0, w, h);
-
-    const mapSize = VT_MAP_SIZE[(vs.game_mode || "").toUpperCase()] || 14800;
-    function project(x, z) {
-      // Game origin = bottom-left, z grows up. Canvas y grows down -> flip.
-      const px = (x / mapSize) * w;
-      const py = h - (z / mapSize) * h;
-      return [px, py];
-    }
-
-    for (const [name, e] of Object.entries(vs.enemies)) {
-      if (e.is_dead) continue;
-      const pos = e.last_seen_pos;
-      if (!pos || typeof pos.x !== "number") continue;
-      const [px, py] = project(pos.x, pos.z);
-
-      if (e.visible) {
-        // Bright current-position dot
-        ctx.beginPath();
-        ctx.arc(px, py, 5, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(240, 126, 139, 0.95)";
-        ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      } else {
-        // Ghost dot at last-seen, fading with missing time
-        const missing = e.missing_for_s || 0;
-        const alpha = Math.max(0.25, 1.0 - missing / 30);
-        ctx.beginPath();
-        ctx.arc(px, py, 5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(240, 126, 139, ${alpha * 0.5})`;
-        ctx.fill();
-        ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = `rgba(240, 126, 139, ${alpha})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // "Xs" missing label above the ghost dot
-        ctx.font = "bold 10px Lato, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const label = `${Math.round(missing)}s`;
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
-        ctx.strokeText(label, px, py - 12);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
-        ctx.fillText(label, px, py - 12);
-      }
-    }
-  }
-  setInterval(refreshVisionOverlay, VT_INTERVAL_MS);
-  refreshVisionOverlay();
+  // S144-U-256: the vision-tracker overlay poll that lived here is retired.
+  // Every 500 ms it asked /api/vision-state to draw enemy dots over the
+  // minimap image (retired by S144-U-257) and, in ARAM / KIWI, to write the MAP STATE line;
+  // both sat in #minimap, which renders in no view, so since S144-U-227
+  // its panel gate kept it from ever sending. The Active Match MAP pane
+  // keeps its own poll of that route (panels/active_match.js).
 
   // Fleet Health sub-view was removed (no markup in index.html since
   // before s171). The dead poll of /api/health/peer + sig-based
@@ -7608,17 +7303,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     radar.hidden = false;
     showPlayerGpi(btn.dataset.mode || "sr", radar.id);
   });
-  // Map underlay brightness override: ?map-br=0.55&map-sat=0.6
-  (function mapFilterOverride() {
-    const q = new URLSearchParams(location.search);
-    const br = parseFloat(q.get("map-br"));
-    const sat = parseFloat(q.get("map-sat"));
-    if (!isNaN(br) || !isNaN(sat)) {
-      const style = document.createElement("style");
-      style.textContent = `.mm-canvas-stack::before { filter: saturate(${isNaN(sat)?0.55:sat}) brightness(${isNaN(br)?0.7:br}) !important; }`;
-      document.head.appendChild(style);
-    }
-  })();
 
   // -- Keyboard shortcuts -------------------------------------------
   // RM-1323: a letter shortcut belongs to the page, never to a control that
@@ -7710,8 +7394,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       e.preventDefault();
       return;
     }
-    // Z toggles "zen" mode - hides Next + Adaptation panels so the grid
-    // re-composes around Minimap + Right Now + Item Build. Uses body data
+    // Z toggles "zen" mode - hides the Adaptation panel (the Next panel and
+    // the Map State shell are retired, S144-U-264 / S144-U-265) so the grid
+    // re-composes around Right Now + Item Build. Uses body data
     // attribute so CSS does the rest. Zen is the default view, so we
     // persist "0" on opt-out (not "" - restorePrefs treats null as on).
     if ((e.key === "z" || e.key === "Z") && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -7791,15 +7476,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     clearTimeout(toast._t);
     toast._t = setTimeout(() => toast.classList.remove("show"), 3500);
   }
-
-  // When the tab returns to foreground, flush a pending ZOI redraw.
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && state.pendingZoi) {
-      const p = state.pendingZoi;
-      state.pendingZoi = null;
-      renderMinimapCanvases(p);
-    }
-  });
 
   // -- Auto-hide cursor after idle ---------------------------------
   // For monitor-2 fullscreen display the cursor is distracting. Hide it

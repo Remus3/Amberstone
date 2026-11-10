@@ -757,6 +757,147 @@ _KNOWN_BROKEN: tuple[tuple[str, str, str, str], ...] = (
         ("docs/specs/leap/LEAP-07-build-coherence-calibration-r2.md",
          "docs/ORCHESTRATION_PLAN.md:362"),
     )
+) + (
+    # 2026-11-09, S144-U-258 (session 144 uiux lane). The never-rendered
+    # minimap canvas stack and its painters were retired, so map_state.js
+    # shrank from 752 lines to 464 and main.js from 8419 to 8400, and the two
+    # citations below now run past the end of their file. Both are dated
+    # reads, not live pointers: the RM-125 table is the glyph census "measured
+    # at commit 35c6730f" (that map_state.js glyph is gone - the module left
+    # the ASCII baseline at S144-U-256), and the BACKLOG.md RM-1658 row says
+    # "file:line as read at b0eb6698b". Re-pointing either would make it
+    # claim a line it never read. BACKLOG.md is the research lane's in s144;
+    # when that row is re-worded the guard reports the entry as no longer
+    # broken and it is deleted here.
+    (
+        "docs/RM125_web_live_glyph_adjudication.md",
+        "web/js/panels/map_state.js:699",
+        "HISTORICAL",
+        "The RM-125 live-glyph census row for a map_state.js separator, as "
+        "measured at 35c6730f; the module is 464 lines after S144-U-258 and "
+        "carries no live glyph since S144-U-256.",
+    ),
+    (
+        "BACKLOG.md",
+        "main.js:8390-8405",
+        "HISTORICAL",
+        "The RM-1658 row's main.js cite is 'file:line as read at b0eb6698b'; "
+        "main.js is 8400 lines after S144-U-258 removed two dead blocks, so "
+        "the sha-qualified range runs past the end of today's file.",
+    ),
+) + tuple(
+    # 2026-11-09, S144-U-260 (session 144 uiux lane). The never-rendered
+    # WHAT WENT view was retired, so right_now.js shrank from 577 lines to
+    # 552 and web/index.html from 2513 to 2501. The RM-125 census rows below
+    # are the same dated read as the S144-U-258 entry above ("measured at
+    # 35c6730f"): their glyph lines already sat elsewhere before this cut
+    # (today 474-477), so re-pointing them would make the census claim a
+    # line it never read.
+    (doc, raw, "HISTORICAL",
+     "An RM-125 live-glyph census cite into right_now.js as measured at "
+     "35c6730f; the module is 552 lines after S144-U-260 retired the WHAT "
+     "WENT render.")
+    for doc, raw in (
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:563"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:563-565"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:564"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:565"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/right_now.js:566"),
+    )
+) + (
+    # Same cut: docs/PACKAGING_PLAN.md S15 is a LIVING doc whose second
+    # inline <script> now sits at web/index.html:2494, so this one IS
+    # repairable - but the plan is main-session-owned in s144 (lane
+    # exclusions). Merger follow-up: re-point it to :2494, then delete this
+    # entry (the guard reports it as no longer broken).
+    (
+        "docs/PACKAGING_PLAN.md",
+        "web/index.html:2507",
+        "ROT",
+        "S15's CSP blocker cites the second inline <script>, which is at "
+        "web/index.html:2494 (it was already at 2506, not 2507, before "
+        "S144-U-260 cut the file to 2501 lines and pushed the cite past the "
+        "end); the plan is the main session's in s144, so a lane cannot "
+        "re-point it.",
+    ),
+) + tuple(
+    # 2026-11-09, S144-U-261 (session 144 uiux lane). The dead tower / team
+    # score / game time chip writes were retired, so map_state.js shrank
+    # from 464 lines to 446. These RM-125 census rows are the same dated
+    # read as the S144-U-258 entry above ("measured at 35c6730f"); the zone
+    # labels they name already sat elsewhere before this cut, so
+    # re-pointing them would make the census claim a line it never read.
+    (doc, raw, "HISTORICAL",
+     "An RM-125 live-glyph census cite into map_state.js as measured at "
+     "35c6730f; the module is 446 lines after S144-U-261 retired the dead "
+     "chip writes.")
+    for doc, raw in (
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/map_state.js:452"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/map_state.js:456"),
+    )
+) + (
+    # 2026-11-09, S144-U-262 (session 144 uiux lane). The never-rendered
+    # Map State objective rows, their 1 s countdown tick and their CSS were
+    # retired: map_state.js shrank from 446 lines to 348, item_build.css
+    # from 500 to 454 and grid.css from 88 to 58. Each cite below is a
+    # dated read that named lines this cut removed or moved, so re-pointing
+    # would make it claim a line it never read.
+    (
+        "docs/RM125_web_live_glyph_adjudication.md",
+        "web/js/panels/map_state.js:439",
+        "HISTORICAL",
+        "An RM-125 live-glyph census cite into map_state.js as measured at "
+        "35c6730f; the module is 348 lines after S144-U-262 retired the "
+        "objective rows and their countdown tick.",
+    ),
+    (
+        "docs/qa/DESIGN_SYSTEM_MAP_2026-07-22.md",
+        "grid.css:68",
+        "HISTORICAL",
+        "The 2026-07-22 design-system map's fintech-RGB census; grid.css is "
+        "58 lines after S144-U-262 retired the dead objective column and "
+        "chip-row rules that sat near the cited line.",
+    ),
+    (
+        "docs/qa/DESIGN_SYSTEM_MAP_2026-07-22.md",
+        "item_build.css:163-498",
+        "HISTORICAL",
+        "The 2026-07-22 design-system map's fintech-RGB census range; "
+        "item_build.css is 454 lines after S144-U-262 retired the objective "
+        "countdown cues and progress fill (two of the cited halos).",
+    ),
+) + tuple(
+    # 2026-11-09, S144-U-265 (session 144 uiux lane). The never-rendered
+    # NEXT panel was retired and its module web/js/panels/next.js deleted.
+    # These RM-125 census rows are the same dated read as the S144-U-258
+    # entry above ("measured at 35c6730f"); the glyphs they name left the
+    # tree with the module, so there is no line to re-point them to.
+    (doc, raw, "DELETED",
+     "An RM-125 live-glyph census cite into web/js/panels/next.js as "
+     "measured at 35c6730f; S144-U-265 deleted the module with the "
+     "never-rendered NEXT panel.")
+    for doc, raw in (
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:36"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:62"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:66"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:150"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:151"),
+        ("docs/RM125_web_live_glyph_adjudication.md", "web/js/panels/next.js:173"),
+    )
+) + (
+    # Same cut: web/index.html shrank from 2481 lines to 2469, so the
+    # BACKLOG.md RM-1658 row's badge cite ("file:line as read at
+    # b0eb6698b") now runs past the end. It is a sha-qualified read like
+    # the main.js:8390-8405 entry above; BACKLOG.md is the research
+    # lane's in s144, so a lane does not re-word it.
+    (
+        "BACKLOG.md",
+        "web/index.html:2475",
+        "HISTORICAL",
+        "The RM-1658 row's #advisory-badge cite is 'file:line as read at "
+        "b0eb6698b'; web/index.html is 2469 lines after S144-U-265 retired "
+        "the NEXT panel markup, so the sha-qualified line runs past the end.",
+    ),
 )
 
 _REASON_FAMILIES = frozenset({"EXTERNAL", "DELETED", "HISTORICAL", "ROT"})

@@ -480,7 +480,7 @@ TARGETS = [
         "key": "w-call OBJECTIVE footer",
         "sel": ('body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] '
                 '#am-call-body > div[data-call-line="objective"] > span:last-child'),
-        "rule": "overlay.css call-line objective span (rgba(--ovx-text, 0.55), --fs-ov-sigil 12px)",
+        "rule": "overlay.css call-line objective span (rgba(--ovx-text, 0.62), --fs-ov-sigil 12px)",
     },
     {
         # w-call carries NO .am-pane-head in the shipped markup (measured: the

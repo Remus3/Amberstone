@@ -64,6 +64,7 @@ into the same sweep.
 import copy
 from pathlib import Path
 
+from tests import _css_split
 from tests.snapshot_panels.test_lobby_render_stability import (
     _POLL_LCU,
     _TOP8_SEED,
@@ -415,38 +416,76 @@ def test_no_oversized_overlay_covers_a_neighbour(mock_server, pw_browser):
     assert not errors, f"JS errors [overlay sweep]: {errors[:3]}"
 
 
-def test_lv_fr_overlay_ruleset_still_has_no_markup():
-    """Tripwire for the one sibling site that could not be measured.
+# The retired Friends / Recently Played row (S144-U-248). The lobby panel
+# was repurposed to My Top 8 on 2026-07-04 (LOBBY_QA D1) and its renderer
+# deleted; only its CSS was left behind. "lv-fr-" and "lv-friends-list"
+# are the retired names; .lv-friends-title / -title-text are still live
+# (the My Top 8 heading in web/index.html) and are deliberately not here.
+_RETIRED_FRIENDS_TOKENS = ("lv-fr-", "lv-friends-list")
 
-    header.css carries the same 44x44 ::before idiom on .lv-fr-copy /
-    .lv-fr-invite - two 24x24 buttons in ADJACENT 28px grid columns of
-    .lv-fr-row, which is the horizontal form of exactly this defect.
-    MEASURED 2026-09-04: nothing in web/ ever emits those classes, so
-    zero elements exist and the rules are unreachable. They are left
-    untouched rather than "fixed" blind.
 
-    If someone wires the friends row up, this goes red and points them
-    at the measurement instead of letting a second dead control ship."""
-    producers = []
+def _web_files(suffixes):
+    files = []
     for path in sorted(WEB.rglob("*")):
-        if not path.is_file():
-            continue
-        if path.suffix.lower() not in {".js", ".html", ".json", ".mjs"}:
-            continue
-        try:
-            text = path.read_text(encoding="utf-8", errors="ignore")
-        except OSError:  # pragma: no cover - unreadable file
-            continue
-        if "lv-fr-copy" in text or "lv-fr-invite" in text:
+        if path.is_file() and path.suffix.lower() in suffixes:
+            files.append(path)
+    return files
+
+
+def test_retired_friends_row_has_no_markup_producer():
+    """Tripwire kept from 2026-09-04: nothing in web/ emits the retired
+    friends-row classes. The old 24x24 copy / invite buttons sat in
+    ADJACENT 28px grid columns under a 44x44 ::before overlay, the
+    horizontal form of the overlap the tests above measure. If someone
+    wires a friends row back up, author its CSS fresh and measure its hit
+    targets with document.elementFromPoint before shipping it."""
+    producers = []
+    for path in _web_files({".js", ".html", ".json", ".mjs"}):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        if any(tok in text for tok in _RETIRED_FRIENDS_TOKENS):
             producers.append(str(path.relative_to(ROOT)))
     assert producers == [], (
-        "web/ now emits .lv-fr-copy / .lv-fr-invite markup (" +
-        ", ".join(producers) + "). Those rules still carry the RM-338 "
-        "44x44 ::before overlay on 24x24 buttons that sit ~34px apart "
-        "in adjacent grid columns. Measure the hit targets with "
-        "document.elementFromPoint and bound the overlay in the "
-        "horizontal axis before shipping the markup."
+        "web/ now emits retired friends-row markup (" +
+        ", ".join(producers) + "). Its old CSS was removed as dead "
+        "(S144-U-248); author the row's rules fresh and bound any "
+        "44x44 hit-target overlay in the horizontal axis."
     )
+
+
+def test_retired_friends_row_css_is_gone():
+    """S144-U-248: the .lv-fr-* family (13 class names, incl. the
+    .lv-fr-row.is-placeholder rule filed as likely dead) and
+    .lv-friends-list had no render site in web/, so every rule was
+    unreachable. They are removed, not left as a second dead control
+    for the next audit to measure."""
+    css_files = _web_files({".css"})
+    assert len(css_files) > 20, "CSS enumeration found almost nothing"
+    assert any(p.name == "header.css" for p in css_files), (
+        "header.css missing from the CSS enumeration"
+    )
+    hits = []
+    for path in css_files:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        for n, line in enumerate(text.splitlines(), 1):
+            if any("." + tok in line for tok in _RETIRED_FRIENDS_TOKENS):
+                hits.append(f"{path.relative_to(ROOT)}:{n}: {line.strip()}")
+    assert hits == [], (
+        "retired friends-row selectors are back in web/ CSS:\n" +
+        "\n".join("    " + h for h in hits)
+    )
+
+
+def test_my_top8_heading_rules_survive_the_friends_retirement():
+    """The friends retirement must not take the live My Top 8 heading
+    with it: web/index.html renders .lv-friends-title and
+    .lv-friends-title-text, so both rules stay in header.css."""
+    html = (WEB / "index.html").read_text(encoding="utf-8")
+    # Plan rule 5 (RM-726): read the header.css family, so the check holds
+    # once the split moves the heading rules into a sibling sheet.
+    css = _css_split.family_text("web/css/panels/header.css")
+    for cls in ("lv-friends-title", "lv-friends-title-text"):
+        assert f'class="{cls}"' in html, f"{cls} no longer rendered"
+        assert f".{cls} {{" in css, f".{cls} rule missing from header.css"
 
 
 def test_no_em_dashes_or_smart_quotes():

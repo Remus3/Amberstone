@@ -70,3 +70,18 @@ test("_detectRole returns null when neither lane nor class resolves", () => {
   assert.strictEqual(_detectRole(null), null);
   assert.strictEqual(_detectRole({}), null);
 });
+
+// S144-U-274: a Brawl game (URF / ARURF / One for All / Nexus Blitz reach rc
+// mode "brawl") gets its own no-seed bench mode instead of the SR default, so
+// the panel never badges an SR rank-tier average beside it.
+test("_benchMode maps brawl to its own no-seed mode; unset still defaults to SR", () => {
+  const { _benchMode, _NO_SEED_MODES } = __test;
+  assert.strictEqual(_benchMode("brawl"), "BRAWL");
+  assert.strictEqual(_benchMode("BRAWL"), "BRAWL");
+  assert.ok(_NO_SEED_MODES.BRAWL && _NO_SEED_MODES.ARENA);
+  assert.strictEqual(_benchMode("sr"), "SR");
+  assert.strictEqual(_benchMode("aram"), "ARAM");
+  assert.strictEqual(_benchMode(""), "SR");
+  assert.strictEqual(_benchMode(undefined), "SR");
+  assert.ok(!_NO_SEED_MODES.SR && !_NO_SEED_MODES.ARAM);
+});

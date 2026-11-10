@@ -62,7 +62,16 @@ const WIDGETS = [
   { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient", label: "Callouts" },
   // w-threat (Threat / CDs, .am-pane-cd) removed 2026-07-05 (operator): the enemy
   // CD ledger guessed at cooldowns the Live Client API does not expose - not needed.
-  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build", tall: true },
+  // S144-U-282: y is a LOWER-HALF flag for this TALL widget, not a top edge.
+  // _applyPos bottom-anchors a tall widget only when y > H * 0.5. The old y 470
+  // was the lower half at H 920 but the UPPER half at the real overlay height
+  // (H 1080, any screen through ovscale), so there it was top-anchored at
+  // --ovx-maxh 594 and the .am-pane clip at y 1064 sliced the THREATS eyebrow
+  // (sr, under the capability-gap chip) and the third Arena enemy row. 600 takes
+  // the bottom-anchored path at every H below 1200: bottom 16 px, growing upward
+  // with its content. tests/test_overlay_default_layout_collision.py models the
+  // grown box and keeps it clear of w-call.
+  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 600, tier: "ambient", label: "Build", tall: true },
   // 2026-07-27 collision sweep (see the registry recheck note below): 430 put
   // this 210px column 52px UNDER w-build's 412px box (right edge 482) for 537px
   // of height, which truncated build text in-game. 490 clears that edge by 8px
@@ -245,6 +254,192 @@ let _inited = false;
 // corner. See _applyPos.
 const TALL_IDS = new Set(WIDGETS.filter((w) => w.tall).map((w) => w.id));
 
+// S144-U-283: a bottom-anchored TALL widget grows upward with its content, and
+// live w-build adds two data-gated sections no fixture painted (the s171.6
+// DEFENSE row, the R102 COUNTER row): measured headless at 1920x1080 they grew
+// the sr box to top 59, over w-call (130 - 320), the doctrine's ONE primary
+// widget. So the grown box stops TALL_FLOOR_GAP design px below any visible
+// PRIMARY widget that shares its column (_tallFloorTop), and _fitDropGroups
+// drops the trailing [data-ovx-drop] sections whole until the content fits.
+// A primary widget too low to leave TALL_MIN_H of room is ignored: the operator
+// put it there, and capping under it would collapse the build to nothing.
+const TALL_FLOOR_GAP = 12;
+const TALL_MIN_H = 140;
+const PRIMARY_WIDGETS = WIDGETS.filter((w) => w.tier === "primary");
+
+// Pure: the top edge (design px) a bottom-anchored tall widget spanning
+// [left, right] with its bottom edge at `anchor` may grow up to, given the
+// design-px boxes of the visible primary widgets; null when none applies.
+function _tallFloorTop(left, right, anchor, boxes, gap = TALL_FLOOR_GAP) {
+  let floor = null;
+  for (const b of boxes || []) {
+    if (!b || !(Math.min(right, b.right) - Math.max(left, b.left) > 0)) continue;
+    const top = b.bottom + gap;
+    if (!(b.top < anchor) || top > anchor - TALL_MIN_H) continue;
+    if (floor === null || top > floor) floor = top;
+  }
+  return floor;
+}
+
+// Design-px boxes of the visible primary widgets other than `el`.
+function _primaryBoxes(el, z) {
+  const out = [];
+  for (const w of PRIMARY_WIDGETS) {
+    const p = document.querySelector(w.sel);
+    if (!p || p === el || p.classList.contains("ovx-hidden")) continue;
+    if (typeof p.checkVisibility === "function" && !p.checkVisibility()) continue;
+    const r = p.getBoundingClientRect();
+    if (!(r.height >= 1)) continue;
+    out.push({ left: r.left / z, right: r.right / z, top: r.top / z, bottom: r.bottom / z });
+  }
+  return out;
+}
+
+// True when `el` clips content: its own box, or a direct child that clips (the
+// .am-pane widgets are flex columns, so #am-build-body shrinks to the cap and
+// overflows inside its own overflow box while the widget itself reads full).
+function _overflows(el) {
+  if (el.scrollHeight > el.clientHeight) return true;
+  for (const k of el.children) {
+    if (!(k.clientHeight > 0) || k.scrollHeight <= k.clientHeight) continue;
+    if (getComputedStyle(k).overflowY !== "visible") return true;
+  }
+  return false;
+}
+
+// S144-U-283: all-or-nothing trailing sections. The tall widget's clip used to
+// slice whatever ran past its max-height (S144-U-282 measured the THREATS
+// eyebrow cut through). Every node carrying data-ovx-drop="<key>" belongs to
+// the section <key>; sections are dropped (data-ovx-dropped, display:none in
+// overlay.css) from the LAST one in document order up, until the content fits
+// the clip. Unmarked content (the rerank module) is never dropped. Recomputed
+// from scratch on every _applyPos, which _watchTall (S144-U-284) re-runs on
+// any re-render or row resize, so a section comes back as soon as it fits.
+function _fitDropGroups(el) {
+  for (const n of el.querySelectorAll("[data-ovx-dropped]")) n.removeAttribute("data-ovx-dropped");
+  if (el.classList.contains("ovx-hidden") || !_overflows(el)) return 0;
+  const groups = new Map();
+  for (const n of el.querySelectorAll("[data-ovx-drop]")) {
+    const k = n.dataset.ovxDrop;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(n);
+  }
+  const keys = [...groups.keys()];
+  let dropped = 0;
+  for (let i = keys.length - 1; i >= 0 && _overflows(el); i--) {
+    const nodes = groups.get(keys[i]);
+    // A section that paints nothing (its renderer hid it) frees no room.
+    if (!nodes.some((n) => n.getBoundingClientRect().height > 0)) continue;
+    for (const n of nodes) n.setAttribute("data-ovx-dropped", "");
+    dropped += 1;
+  }
+  return dropped;
+}
+
+// S144-U-284: refit a tall widget the moment its fit inputs change, not only
+// through the body-wide observer's 150 ms _placeAll. Measured headless: a
+// rebuilt build body (innerHTML = "" plus fresh nodes without the dropped
+// mark) painted its trailing sections sliced for up to 150 ms; a row that grew
+// with no childList change (a late image, a font swap, a class toggle) and a
+// w-call that grew ran no fit at all. Two observers per tall widget:
+// - a MutationObserver on its own subtree (childList only - the fit writes
+//   attributes and styles, never children, so it cannot re-trigger itself),
+//   whose callback runs as a microtask, before the next frame paints;
+// - a ResizeObserver on the widget, its rows (children and grandchildren) and
+//   the primary widgets, whose refit is deferred to the next animation frame:
+//   refitting inside the callback would resize observed rows at the same
+//   depth and raise a ResizeObserver loop error. The fit is deterministic, so
+//   the size change it causes settles after one more frame.
+// A refit is skipped mid-drag (the drag owns top/left; the drop re-applies).
+const _tallWatch = new Map();
+
+// S144-U-285: the ids of the widgets being dragged right now, written by the
+// drag's begin / end (_installDrag). Every re-place path - _placeAll (the
+// body-wide and game-family observers), the resize handler and the tall
+// refit - asks _midDrag before calling _applyPos. _applyPos bottom-anchors a
+// tall widget whose stored y is in the lower half, while the drag tracks the
+// cursor by top, so an unguarded re-place snapped a held widget away from the
+// cursor on every panel repaint. Keyed by id as well as by the class, so a
+// mount swapped mid-drag (none is today; _liveEl guards it) stays held: a
+// fresh node carries no ovx-dragging class.
+const _dragIds = new Set();
+
+function _midDrag(el, id) {
+  if (_dragIds.has(id)) return true;
+  try {
+    return !!(el && el.classList && el.classList.contains("ovx-dragging"));
+  } catch (_e) {
+    return false;
+  }
+}
+
+function _tallTargets(el) {
+  const out = [el];
+  for (const k of el.children) {
+    out.push(k);
+    for (const g of k.children) out.push(g);
+  }
+  return out;
+}
+
+function _primaryNodes(el) {
+  const out = [];
+  for (const w of PRIMARY_WIDGETS) {
+    const n = document.querySelector(w.sel);
+    if (n && n !== el) out.push(n);
+  }
+  return out;
+}
+
+function _watchTall(el, w) {
+  const hasMO = typeof MutationObserver === "function";
+  const hasRO = typeof ResizeObserver === "function";
+  if (!hasMO && !hasRO) return; // headless stub: _placeAll still re-fits
+  let st = _tallWatch.get(w.id);
+  if (st && st.el === el) {
+    // Same widget node: re-sync only if a primary node was replaced.
+    const prim = _primaryNodes(el);
+    if (prim.length !== st.prim.length || prim.some((n, i) => n !== st.prim[i])) st.sync();
+    return;
+  }
+  if (st) {
+    if (st.mo) st.mo.disconnect();
+    if (st.ro) st.ro.disconnect();
+    if (st.raf) cancelAnimationFrame(st.raf);
+  }
+  st = { el, mo: null, ro: null, raf: 0, prim: [], sync: () => {} };
+  _tallWatch.set(w.id, st);
+  const refit = () => {
+    if (!el.isConnected || _midDrag(el, w.id)) return;
+    _applyPos(el, _posFor(w));
+  };
+  if (hasRO) {
+    st.ro = new ResizeObserver(() => {
+      if (st.raf) return;
+      st.raf = requestAnimationFrame(() => {
+        st.raf = 0;
+        refit();
+      });
+    });
+    st.sync = () => {
+      st.ro.disconnect();
+      st.prim = _primaryNodes(el);
+      // border-box: a padding or border change moves the painted edge but
+      // not the content box, which is all the default observation reports.
+      for (const t of _tallTargets(el)) st.ro.observe(t, { box: "border-box" });
+      for (const t of st.prim) st.ro.observe(t, { box: "border-box" });
+    };
+  }
+  if (hasMO) {
+    st.mo = new MutationObserver(() => {
+      refit();
+      st.sync(); // the rows were replaced: observe the new ones
+    });
+    st.mo.observe(el, { childList: true, subtree: true });
+  }
+  st.sync();
+}
+
 // Keep at least this many design-px of a widget's top-left corner (where the drag
 // handle lives) on-screen so a drag - or a stale saved position - can NEVER strand
 // a panel off-screen / fully behind the minimap with no grabbable handle (operator
@@ -361,10 +556,17 @@ function _applyPos(el, p) {
   // clears `bottom` while moving and re-applies this on drop. Recomputed on resize.
   const isTall = TALL_IDS.has(el.dataset && el.dataset.ovxId);
   if (isTall && p.y > H * 0.5) {
-    el.style.left = _scalePos(_clampXY(p.x, 0, W, H).x, p.scale) + "px";
+    const left = _clampXY(p.x, 0, W, H).x;
+    el.style.left = _scalePos(left, p.scale) + "px";
     el.style.top = "auto";
     el.style.bottom = _scalePos(16, p.scale) + "px";
-    el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(H - 32)) + "px");
+    // S144-U-283: stop below a primary widget in the same column. The cap is a
+    // screen distance, so it is divided by the panel scale (zoom multiplies it).
+    const s = Number.isFinite(p.scale) && p.scale > 0 ? p.scale : 1;
+    const right = left + el.getBoundingClientRect().width / z;
+    const floor = _tallFloorTop(left, right, H - 16, _primaryBoxes(el, z));
+    const room = floor === null ? Infinity : (H - 16 - floor) / s;
+    el.style.setProperty("--ovx-maxh", Math.max(TALL_MIN_H, Math.round(Math.min(H - 32, room))) + "px");
   } else {
     const c = _clampXY(p.x, p.y, W, H);
     el.style.left = _scalePos(c.x, p.scale) + "px";
@@ -386,6 +588,7 @@ function _applyPos(el, p) {
     el.style.opacity = ""; // standard prop - clearing the string removes it
   }
   el.classList.toggle("ovx-hidden", p.hidden || p.modeOff === true || p.phaseOff === true);
+  if (isTall) _fitDropGroups(el);
 }
 
 function _bodyZoom() {
@@ -516,11 +719,11 @@ function _winOff(type, fn) {
 // should grab the drag: the small handle (always - the passive quick-drag via
 // data-rc-zone) AND, in ACTIVE mode, the whole widget body (operator 2026-06-27:
 // "in ACTIVE I expect to drag the panel, not hunt a 3px grip"). Capture is set
-// on `el`, and move/up listeners live on `el` AND (mid-drag only) on `window`:
-// panel renderers rebuild these mounts (replaceWith / innerHTML), and a mount
-// swap mid-drag used to orphan the el-only listeners and silently kill the drag
-// - the same death the operator hit whenever capture failed and the cursor left
-// the 3px handle (RM-05 round-2 symptom b).
+// on `el`, and move/up listeners live on `el` AND (mid-drag only) on `window`,
+// so the drag survives when capture fails and the cursor leaves the 3px handle
+// (RM-05 round-2 symptom b). A renderer that rebuilds the mount's OWN contents
+// (e.g. the rn-* mounts; others write a body child) drops the handle CHILD, but
+// keeps `el`, its listeners and classes (no renderer swaps a mount node).
 function _installDrag(el, w) {
   // One drag closure per mount, forever (RM-126). _placeAll re-runs _makeHandle
   // on the SAME persistent el after every renderer rebuild, so an unguarded
@@ -537,8 +740,8 @@ function _installDrag(el, w) {
   let scale = 1;  // panel zoom, captured at drag start (item 9 - see _scalePos)
   let hadZone = false; // el's own [data-rc-zone] state, restored on drop
 
-  // The mount can be swapped by its renderer mid-drag; style writes must land
-  // on the node that is actually painting, not the orphaned one we wired.
+  // Defensive: no renderer swaps a mount today, but if one ever did mid-drag,
+  // style writes must land on the node actually painting, not the orphan.
   const _liveEl = () => {
     try {
       if (el.isConnected === false && typeof document !== "undefined" && document.querySelector) {
@@ -577,6 +780,7 @@ function _installDrag(el, w) {
   const end = (e) => {
     if (!dragging) return;
     dragging = false;
+    _dragIds.delete(w.id);
     el.classList.remove("ovx-dragging");
     // Drop the temporary zone mark unless the widget is a zone in its own
     // right (w-enemyspells) - stripping that would kill its tap-to-interact.
@@ -617,6 +821,7 @@ function _installDrag(el, w) {
       Number.isFinite(oh) && oh > 0 ? oh * scale : NaN);
     originX = eff.x;
     originY = eff.y;
+    _dragIds.add(w.id);
     el.classList.add("ovx-dragging");
     // The rc-shell zone machine (clickthrough_zones.js) hit-tests e.target per
     // pointermove; once capture retargets moves to `el`, the handle's own
@@ -725,9 +930,9 @@ function _makeHotkeyHint(el, w) {
 }
 
 // Attach the right-click hide listener once per mount. Idempotent: a dataset
-// flag survives re-renders that keep the same node, and _placeAll re-runs the
-// whole pass after a renderer rebuilds a mount (a fresh node has no flag, so the
-// listener re-attaches). Mirrors _makeHandle's double-attach guard.
+// flag survives re-renders (they keep the same node), and if a mount node were
+// ever swapped, _placeAll's next pass wires the fresh node (it has no flag, so
+// the listener re-attaches). Mirrors _makeHandle's double-attach guard.
 function _makeHideMenu(el, w) {
   if (el.dataset.ovxHideMenu === "1") return;
   el.dataset.ovxHideMenu = "1";
@@ -762,10 +967,12 @@ function _placeAll() {
     // interactive on hover in PASSIVE, no ACTIVE toggle needed. (A/B/C #rn-choices
     // is already a static zone in clickthrough_zones.js.)
     if (w.zone) el.setAttribute("data-rc-zone", "");
-    _applyPos(el, _posFor(w));
+    // The drag owns a held widget's position; the drop re-applies it.
+    if (!_midDrag(el, w.id)) _applyPos(el, _posFor(w));
     _makeHandle(el, w);
     _makeHideMenu(el, w);
     _makeHotkeyHint(el, w);
+    if (TALL_IDS.has(w.id)) _watchTall(el, w);
   }
 }
 
@@ -1104,8 +1311,11 @@ function _renderMenu(menu) {
 }
 
 // Create the launcher mount once (idempotent: returns the existing node on a
-// re-render). Mounted as a direct #am-grid child (NOT inside a pane) so its
-// position:fixed is viewport-relative, matching the doctrine cues.
+// re-render). Mounted as a direct document.body child (outside every view
+// section and pane) so its position:fixed is viewport-relative and no view or
+// phase wrapper can hide the escape hatch (S144-U-287: an earlier "#am-grid"
+// lookup never matched - web/index.html carries only the class am-grid - so
+// body was always the real host; the code now says so).
 function _ensureLauncher() {
   // best-effort: a locked-down / minimal document (or a host with no appendChild)
   // must never throw into resetOverlayLayout / init - the launcher is additive.
@@ -1117,7 +1327,7 @@ function _ensureLauncher() {
       _makeHotkeyHint(el, LAUNCHER);
       return el;
     }
-    const host = document.querySelector("#am-grid") || document.body;
+    const host = document.body;
     if (!host || typeof host.appendChild !== "function") return null;
 
     el = document.createElement("div");
@@ -1259,7 +1469,7 @@ export function initOverlayLayout() {
   window.addEventListener("resize", () => {
     for (const w of _registry()) {
       const el = document.querySelector(w.sel);
-      if (el) _applyPos(el, _posFor(w));
+      if (el && !_midDrag(el, w.id)) _applyPos(el, _posFor(w));
     }
   });
 
@@ -1280,10 +1490,10 @@ export function initOverlayLayout() {
     // still re-places on every flip it makes.
   }
 
-  // Survive re-renders. The lead / choices / callouts mounts are rebuilt by
-  // their panel renderers (replaceWith / innerHTML), which drops the .ovx-widget
-  // class AND the drag handle. A debounced observer re-runs the idempotent
-  // _placeAll so positioning + handles re-attach after every re-render. The
+  // Survive re-renders. Some renderers rebuild a mount's OWN contents (e.g.
+  // #rn-lead / #rn-choices / #rn-callouts `innerHTML`), dropping our handle (and
+  // any hotkey hint) CHILD; the node and its .ovx-widget class stay. A debounced
+  // observer re-runs the idempotent _placeAll to re-attach them. The
   // observer disconnects around its own DOM writes so handle-appends do not
   // re-trigger it (no feedback loop).
   let reTimer = 0;
@@ -1329,6 +1539,15 @@ export const _internals = {
   LAUNCHER,
   PANEL_SETS,
   TALL_IDS,
+  TALL_FLOOR_GAP,
+  TALL_MIN_H,
+  _tallFloorTop,
+  _fitDropGroups,
+  _overflows,
+  _watchTall,
+  _tallTargets,
+  _tallWatch,
+  _midDrag,
   _clampXY,
   _effectiveXY,
   MIN_VISIBLE,

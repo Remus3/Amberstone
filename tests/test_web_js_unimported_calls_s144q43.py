@@ -17,7 +17,8 @@ module parse) both stay green. Measured at local main fc123ec87, three sites:
   champ-select view render) was skipped on every LCU envelope of a pick.
 - web/js/main.js called `_spellKey` (the self-spell cell's cooldown key).
 - web/js/main.js called `renderMinimapCanvases` (the deferred ZOI redraw when
-  the tab returns to the foreground).
+  the tab returns to the foreground; S144-U-258 retired that redraw and
+  S144-U-289 renamed the function renderZonePill).
   Both are module-local to web/js/panels/map_state.js and were not exported.
 
 s162 (2026-05-10) fixed four calls of this exact class in the same function
@@ -273,7 +274,8 @@ def test_the_tokenizer_still_sees_the_anchor_declarations():
     map_state = set(_FUNC_DECL.findall(blank(tree["web/js/panels/map_state.js"])))
     assert "fetchAdaptation" in main
     assert "handleLcuEnvelope" in main
-    assert {"_spellKey", "renderMinimapCanvases"} <= map_state
+    # S144-U-289 renamed the second RM-1211 site renderZonePill.
+    assert {"_spellKey", "renderZonePill"} <= map_state
     # Measured 238 at local main fc123ec87; a floor well below it.
     assert len(main) >= 150, f"only {len(main)} function declarations in main.js"
 

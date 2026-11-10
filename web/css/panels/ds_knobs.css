@@ -149,8 +149,13 @@
   color: var(--dim);
 }
 
+/* S144-U-279: --faint read AA live on the overlay build widget but 3.81 -
+ * 4.10:1 in its idle recede (widget opacity 0.85) in all six themes;
+ * --text-dim is the S144-U-243 / S144-U-272 empty-state tier its twin
+ * .ovds-empty already uses. Guard:
+ * tests/snapshot_panels/test_overlay_build_knobs_empty_contrast.py. */
 .dsk-empty {
   font-size: var(--fs-xs, 16px);
-  color: var(--faint);
+  color: var(--text-dim);
   padding: 4px 0;
 }

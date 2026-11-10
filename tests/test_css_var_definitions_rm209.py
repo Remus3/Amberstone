@@ -17,7 +17,7 @@ WHAT COUNTS AS DEFINED. Either a declaration in any scanned file
 (`--x: value`), or a runtime write from a JS module
 (`el.style.setProperty("--x", ...)`). The runtime-written set is DISCOVERED
 by scanning rather than hardcoded, so it cannot go stale as panels come and
-go: --bar-pct / --pct / --ring-pct / --buy-pct / --csv-champname-col /
+go: --bar-pct / --ring-pct / --buy-pct / --csv-champname-col /
 --ovx-maxh / --ovx-scale / --rc-overlay-opacity / --rc-overlay-scale are all
 correct as authored and pass on their writers, with no allowlist to maintain.
 
@@ -149,7 +149,9 @@ def test_both_scan_halves_are_live():
     # declared tokens
     assert {"--surface-3", "--text", "--border", "--signal-info"} <= defined
     # runtime-written tokens, discovered by scan rather than allowlisted
-    assert {"--bar-pct", "--ring-pct", "--pct", "--ovx-scale"} <= defined
+    # (--pct left with the retired Map State objective rows: its JS writer
+    # and its CSS reader went together.)
+    assert {"--bar-pct", "--ring-pct", "--ovx-scale"} <= defined
     # a reference the tree really makes
     assert "--fs-sm" in refs
 

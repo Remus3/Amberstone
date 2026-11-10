@@ -27,7 +27,16 @@ body[data-shell="overlay"] {
   --ovx-good: 55, 208, 138;      /* #37D08A lead-ahead / good band */
   --ovx-warn: 232, 163, 61;      /* #E8A33D Hextech warn */
   --ovx-red: 232, 64, 87;        /* #E84057 the ONE emergency pop-out */
-  --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.55) - palette section 5 */
+  /* S144-U-275: the urgent band's glyph + bar ink on the call pane. Same hue as
+   * --ovx-red, lighter only: --ovx-red reads 2.90:1 there in the idle recede
+   * over a white game pixel (arcane), under the WCAG 1.4.11 3:1 non-text floor;
+   * this reads 3.41:1 or better idle, 4.59:1 or better live, in every theme. */
+  --ovx-red-ink: 235, 91, 111;   /* #EB5B6F */
+  /* S144-U-297: the same red as TEXT (the TFT vitals crit HP value, 18 px bold,
+   * under large-text size, so 4.5:1). --ovx-red reads 4.45:1 live and 3.36:1
+   * idle there; this reads 6.38:1 live and 4.71:1 idle, every theme. */
+  --ovx-red-text: 239, 118, 135; /* #EF7687 */
+  --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.62) - palette section 5 */
   /* Damage-type hues (Y-07, external reference P): the threat donut renders in
    * the overlay build widget, so its hues join the overlay table (doctrine
    * section 5). Same parts as the tokens.css --data-dmg-* tier; each clears
@@ -86,6 +95,14 @@ body[data-shell="overlay"] {
    * semantic status borders (good/red/warn/cyan) and the head-rule / hover /
    * minimap-outline accents stay intentional and are NOT routed through this. */
   --ovx-panel-border: rgba(var(--ovx-gold), 0.70);
+}
+
+/* S144-U-299: the threat donut placeholder sigil (w-build THREATS strip) takes
+ * the 0.75 neutral body-ink tier, not the dashboard --text-dim: no colour
+ * outside the --ovx-* table reaches a widget. Its old literal #888 read 3.53:1
+ * live and 2.90:1 idle (arcane) over a white game pixel. */
+body[data-shell="overlay"] .threat-donut-sigil {
+  fill: rgba(var(--ovx-text), 0.75);
 }
 
 /* 1. Transparent canvas. The game shows through; only widgets paint. zoom (not
@@ -192,14 +209,25 @@ body[data-shell="overlay"] #view-active-match .am-tft-stat-label {
 body[data-shell="overlay"] #view-active-match .am-tft-stat-value {
   font-size: var(--fs-ov-call);
 }
-/* GPU-light: canvas / sparkline / DS-analysis widgets off. */
+/* GPU-light: canvas / sparkline / DS-analysis widgets off. S144-U-280: the
+ * three cards QA 2026-07-03 B20/B22 relocated onto the BUILD pane after this
+ * rule was written (eight-axis profile, fight-model card, Stat Sandbox form)
+ * are off too. w-build is the next-item rerank (doctrine section 4), and
+ * w-ovds is the overlay's own fight-model pane. Painted, the fight-model card
+ * and the Stat Sandbox took 504 px of the 594 px clipped widget, so
+ * #am-build-body (flex 1 1 auto, min-height 0) was squeezed to 28 px and the
+ * Daemon Slayer ranks, the Meta / Ultimate rows, the shaper strip and the
+ * THREATS strip all sat below the widget's clip. */
 body[data-shell="overlay"] #am-spike-curve,
 body[data-shell="overlay"] #am-spike-markers,
 body[data-shell="overlay"] #am-ward-heat,
 body[data-shell="overlay"] .am-pane-build .ds-sweep,
 body[data-shell="overlay"] .am-pane-build .ds-matchup,
 body[data-shell="overlay"] .am-pane-build .ds-combo,
-body[data-shell="overlay"] .am-pane-build .ds-relscore {
+body[data-shell="overlay"] .am-pane-build .ds-relscore,
+body[data-shell="overlay"] .am-pane-build .ds-profile,
+body[data-shell="overlay"] .am-pane-build .ds-knobs,
+body[data-shell="overlay"] .am-pane-build .ds-statcheck {
   display: none !important;
 }
 
@@ -302,12 +330,18 @@ body[data-shell="overlay"] #rn-choices:not([hidden]):not(.ovx-hidden),
 body[data-shell="overlay"] #rn-callouts:not([hidden]):not(.ovx-hidden) {
   display: flex !important;
 }
-/* Lead pill direction accent (good/bad left border) survives the Hextech frame. */
+/* Lead pill direction accent (good/caution left border) survives the Hextech
+ * frame. S144-U-277: behind takes the caution hue --ovx-warn, never red - w-lead
+ * is an AMBIENT widget and red is the ONE pop-out (doctrine rule 4, section 5),
+ * as for the severe STALE tag and the TFT crit opponent chip. --ovx-red here
+ * was a second red on the field and read 2.85:1 in the idle recede over a white
+ * game pixel, under the 3:1 non-text floor; --ovx-warn reads 4.93:1 or better.
+ * The tag beside it prints the state word, so the bar is never the only cue. */
 body[data-shell="overlay"] #rn-lead.rc-lead-ahead:not([hidden]) {
   border-left: 3px solid rgb(var(--ovx-good));
 }
 body[data-shell="overlay"] #rn-lead.rc-lead-behind:not([hidden]) {
-  border-left: 3px solid rgb(var(--ovx-red));
+  border-left: 3px solid rgb(var(--ovx-warn));
 }
 /* Lead pill backing + glance floor. callouts.css backs the pill with a faint
  * white wash + sizes the line at --fs-md (22) and the tag at --signal-dim; the
@@ -320,8 +354,11 @@ body[data-shell="overlay"] #rn-lead {
 body[data-shell="overlay"] #rn-lead .rc-lead-line {
   font-size: var(--fs-sm);
 }
+/* S144-U-302: the tag ink rises from 0.55 to 0.70 (the S144-U-278 reminder
+ * tier, still under the 0.75 / 0.92 body-ink tiers): 0.55 read 4.14:1 in the
+ * idle recede over a white game pixel. */
 body[data-shell="overlay"] #rn-lead .rc-lead-tag {
-  color: rgba(var(--ovx-text), 0.55);
+  color: rgba(var(--ovx-text), 0.70);
 }
 /* Density clamp: S1 callouts show the 2 nearest-ETA rows (doctrine rule 1). */
 body[data-shell="overlay"] #rn-callouts .rc-co-row:nth-child(n+3) {
@@ -331,12 +368,18 @@ body[data-shell="overlay"] #rn-callouts .rc-co-row:nth-child(n+3) {
  * cyan). The NOW chip lights cyan; the upcoming chip is a faint gold info read
  * instead of the fintech grey --signal-dim. callouts.css owns the base rules
  * (.rc-co-eta + .rc-co-eta.rc-co-now); these overlay-scoped overrides win on
- * specificity. */
+ * specificity.
+ * S144-U-302: both chips sit on the inset-row backing (rgba(--ovx-bg-nested,
+ * 0.9), the S144-U-301 objective chip precedent), not the base 0.06 white wash
+ * or a 0.18 cyan tint, which LIGHTENED the row under the ink: idle over a white
+ * game pixel the upcoming chip read 3.94:1 and the NOW chip 4.15:1. The hue
+ * stays on the ink and (NOW) the border. */
 body[data-shell="overlay"] .rc-co-eta {
+  background: rgba(var(--ovx-bg-nested), 0.9);
   color: rgba(var(--ovx-gold), 0.85);
 }
 body[data-shell="overlay"] .rc-co-eta.rc-co-now {
-  background: rgba(var(--ovx-cyan), 0.18);
+  background: rgba(var(--ovx-bg-nested), 0.9);
   border-color: rgb(var(--ovx-cyan));
   color: rgb(var(--ovx-cyan));
 }
@@ -350,6 +393,13 @@ body[data-shell="overlay"] #rn-choices .rc-chip {
 body[data-shell="overlay"] #rn-choices .rc-trigger,
 body[data-shell="overlay"] #rn-choices .rc-rebranch {
   display: none;
+}
+/* S144-U-302: the per-chip Alt+N pick key takes the S144-U-278 reminder
+ * treatment (0.70 neutral ink on the nested backing): the base 0.06 white wash
+ * and --signal-dim 0.55 ink read 4.11:1 in the idle recede over a white pixel. */
+body[data-shell="overlay"] #rn-choices .rc-hotkey {
+  background: rgba(var(--ovx-bg-nested), 0.9);
+  color: rgba(var(--ovx-text), 0.70);
 }
 
 /* 4b. THE PRIMARY widget (w-call): the ONE action right now. Full gold frame +
@@ -408,8 +458,10 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
  * .am-call-glyph; the band drives a glyph color + a 3px color-bar left border.
  * urgent=red (the ONE reserved emergency pop-out, rule 4 - painted only on this
  * single primary action, never a flood) / fight=gold (the single caution hue) /
- * good=green. The verb text stays white (the rule above, doctrine line 164) - the
- * band is carried by the glyph + bar, never by recoloring the verb. This is the
+ * good=green. Urgent paints --ovx-red-ink, the same red lifted to the 3:1
+ * non-text floor in the idle recede (S144-U-275; the glyph is aria-hidden and
+ * repeats the bar, so it is a graphical object, not text). The verb text stays
+ * white (the rule above, doctrine line 164) - the band is carried by the glyph + bar, never by recoloring the verb. This is the
  * preattentive channel the section-6 combat shed leans on (see the
  * "7. Combat declutter" block below). The band-
  * specific rules trail the generic [data-call-band] rule so equal-specificity
@@ -423,10 +475,10 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   color: rgba(var(--ovx-text), 0.55);
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="urgent"] {
-  border-left-color: rgb(var(--ovx-red));
+  border-left-color: rgb(var(--ovx-red-ink));
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="urgent"] .am-call-glyph {
-  color: rgb(var(--ovx-red));
+  color: rgb(var(--ovx-red-ink));
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="fight"] {
   border-left-color: rgb(var(--ovx-gold));
@@ -445,11 +497,18 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
  * surface. 2026-06-29: bumped 2 -> 3 lines (operator: objective truncated mid-
  * sentence); paired with the safe() tag-strip in active_match.js the prose is
  * shorter now, so 3 lines lands the full call without overrunning the card.
- * -webkit-box line-clamp is the cross-Chromium idiom. */
+ * -webkit-box line-clamp is the cross-Chromium idiom.
+ * S144-U-288: the ink is the 0.62 tier (the TFT cell label, the draft-elo red
+ * band), not the 0.55 dim tier. The call pane has one backing layer, so 0.55 read
+ * AA live (5.61 arcane - 6.11 terminal) but 4.18 arcane - 4.68 terminal in the
+ * idle recede (widget opacity 0.85). 0.62 reads 6.74 - 7.47 live, 4.84 - 5.58
+ * idle, over any game pixel, and stays under the full-white 14px / 700 ACTION
+ * verb on alpha, size and weight.
+ * Guard: tests/snapshot_panels/test_overlay_call_objective_contrast.py. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="objective"] > span:last-child {
   font-size: var(--fs-ov-sigil) !important;
   font-weight: 400;
-  color: rgba(var(--ovx-text), 0.55) !important;
+  color: rgba(var(--ovx-text), 0.62) !important;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
@@ -521,6 +580,15 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-strip {
   flex-wrap: nowrap;
 }
+/* S144-U-281: the "+Ndps" power delta (build_module.css .bm-delta, bare
+ * --accent) read 4.48:1 in the idle recede on arcane, whose accent is a muted
+ * lavender (#ad9dbd), on the 0.9 nested backing. The RM-1550 lift toward
+ * --text keeps the accent hue and holds AA live and idle in every theme. The
+ * dashboard copy keeps the bare accent (6.12:1 at worst, opaque pane).
+ * Pinned by tests/snapshot_panels/test_overlay_build_delta_contrast.py. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-delta {
+  color: color-mix(in oklab, var(--accent, #6cf) 80%, var(--text, #fff));
+}
 /* BATCH C #1 (2026-07-06): the objective gauges are now ONE horizontal row of
  * 3 dials (objective_gauges.css .og-grid). Three 88px dials + 2x8px gaps need
  * ~280px; the default --ovx-w:210px clipped the 3rd dial, so widen w-objgauges
@@ -566,6 +634,14 @@ body[data-shell="overlay"] #aram-balance-panel {
  * it; the dashboard surface keeps its head. Reclaims a full row of height in the
  * cramped in-game build widget. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .am-pane-head {
+  display: none !important;
+}
+
+/* S144-U-283: a trailing build section the capped widget cannot hold is
+ * dropped WHOLE (overlay_layout._fitDropGroups stamps data-ovx-dropped on its
+ * eyebrow and strip), never sliced by the clip. !important because the strips
+ * carry an inline display:flex, which would beat a plain rule. */
+body[data-shell="overlay"] .ovx-widget [data-ovx-dropped] {
   display: none !important;
 }
 
@@ -690,18 +766,28 @@ body[data-shell="overlay"] .ovx-hidden {
   display: none !important;
 }
 /* RC-HOTKEY-HINTS (doctrine section 11): the small reminder inside an interactive
- * widget. Neutral ink at the OBJECTIVE footer's alpha on the overlay's smallest type
- * token: never a status hue, never moving, never a hit target (pointer-events:none,
- * so it is not a click-through zone either). Absolute beside the drag handle, so it
- * takes no layout and a widget's box does not change for it. */
+ * widget. Neutral ink on the overlay's smallest type token: never a status hue,
+ * never moving, never a hit target (pointer-events:none, so it is not a
+ * click-through zone either). Absolute beside the drag handle, so it takes no
+ * layout and a widget's box does not change for it.
+ * S144-U-278: the reminder carries its OWN nested backing (the inset-row
+ * rgba(--ovx-bg-nested, 0.9) every widget row uses) and 0.70 ink. At 0.55 ink
+ * with no backing of its own it read 1.00:1 under the launcher (outside every box
+ * with a background, so the game pixel was its backing), 2.36:1 on the 0.58
+ * see-through w-choices wash, and 4.18 - 4.48:1 in the idle recede inside
+ * w-build / w-ovds. Now >= 4.5:1 live and idle over any game pixel, wherever a
+ * widget places it. Guard: tests/snapshot_panels/test_overlay_hotkey_hint_contrast.py. */
 body[data-shell="overlay"] .ovx-hotkey-hint {
   position: absolute;
   top: 6px;
   right: 30px;
   z-index: 1;
+  padding: 0 2px;
+  border-radius: 2px;
+  background: rgba(var(--ovx-bg-nested), 0.9);
   font-size: var(--fs-ov-sigil);
   line-height: 1;
-  color: rgba(var(--ovx-text), 0.55);
+  color: rgba(var(--ovx-text), 0.70);
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
@@ -724,6 +810,7 @@ body[data-shell="overlay"] .ovx-launcher > .ovx-hotkey-hint {
   top: 35px;
   left: -24px;
   right: auto;
+  padding: 0 1px; /* S144-U-278: the backing pill still clears x 70 */
   letter-spacing: -0.03em;
 }
 /* No text to read in a fight (rule 3, section 6). */

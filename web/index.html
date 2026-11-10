@@ -416,68 +416,14 @@
   </section>
 
   <main aria-label="Coaching panels">
-    <section id="minimap" class="panel panel-minimap">
-      <div class="panel-head">
-        <span class="panel-title" id="mm-panel-title">MAP STATE</span>
-        <span class="staleness" data-for="minimap">-</span>
-      </div>
-      <div class="panel-body minimap-body">
-        <div class="phase-strip hidden" id="phase-strip" aria-hidden="true">
-          <div class="phase-seg phase-early"></div>
-          <div class="phase-seg phase-mid"></div>
-          <div class="phase-seg phase-late"></div>
-          <div class="phase-marker" id="phase-marker"></div>
-        </div>
-        <!-- Image + ZOI/position canvas stack. Order (2026-04-24): image
-             first, state chip second (below the image), then gold diff.
-             The minimap is the hero - the state chip ("ZOI - N ally - M
-             enemy") sits under it so the eye lands on the map first. -->
-        <div class="minimap-img-wrap hidden" id="mm-img-wrap">
-          <img id="mm-img" alt="minimap crop" />
-          <canvas id="mm-vt-overlay" class="mm-vt-overlay"></canvas>
-          <span class="minimap-img-caption" id="mm-img-caption">-</span>
-        </div>
-        <div class="mm-canvas-stack hidden" id="mm-canvas-stack">
-          <canvas id="mm-zoi-canvas" class="mm-zoi-canvas" width="720" height="720"></canvas>
-          <canvas id="mm-pos-canvas" class="mm-pos-canvas" width="720" height="720"></canvas>
-        </div>
-        <div class="minimap-state" id="mm-state">awaiting liveclient data...</div>
-        <div class="zoi-debug hidden" id="zoi-debug" aria-hidden="true"></div>
-        <!-- Team gold diff - slim bar showing our team's gold lead / deficit. -->
-        <div class="gold-diff hidden" id="gold-diff" title="Team item value (gold worth of items on board) - ally vs enemy">
-          <div class="gold-diff-track">
-            <div class="gold-diff-fill" id="gold-diff-fill"></div>
-            <div class="gold-diff-center"></div>
-          </div>
-          <div class="gold-diff-label"><span id="gold-diff-val">-</span> item value</div>
-        </div>
-        <!-- Tower/score/game-time chips removed 2026-04-23 - all three
-             signals live on the header row 2 group already, no value in
-             duplicating them inside the map panel. -->
-        <!-- Objectives - full-width rows with state text (in-game view). -->
-        <div class="minimap-grid" id="mm-objectives-view">
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-dragon"/></svg>Dragon</span><span id="mm-dragon">-</span></div>
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-baron"/></svg>Baron</span><span id="mm-baron">-</span></div>
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-herald"/></svg>Herald</span><span id="mm-herald">-</span></div>
-          <!-- Atakhan removed 2026-04-23: not present in the live season. -->
-          <!-- Ally/Enemy team strips removed 2026-04-23: giving minimap panel more visual space. -->
-        </div>
-        <!-- WHAT WENT view (client/aftergame mode). Bullets of positives
-             (what went well) + negatives (what went wrong) so the reader
-             gets a 30-second readback of the match. Populated by
-             renderWhatWent() from p.what_went_good / p.what_went_bad. -->
-        <div class="what-went-view" id="mm-whatwent-view">
-          <div class="what-went-section what-went-good">
-            <div class="what-went-title">WHAT WENT GOOD</div>
-            <ul class="what-went-list" id="ww-good"><li class="ww-empty">-</li></ul>
-          </div>
-          <div class="what-went-section what-went-bad">
-            <div class="what-went-title">WHAT WENT BAD</div>
-            <ul class="what-went-list" id="ww-bad"><li class="ww-empty">-</li></ul>
-          </div>
-        </div>
-      </div>
-    </section>
+    <!-- S144-U-264: the Map State panel shell (MAP STATE title, staleness
+         tag, empty body) is retired. It sat here in <main>, which renders
+         in no view and not in the overlay shell (S144-U-246), and every
+         part it held had been retired by S144-U-254..U-262: the item-value
+         bar moved to the Active Match MAP pane (U-255), the header zone
+         pill keeps the ZOI read, the overlay objective chips keep the
+         countdowns. Guard:
+         tests/snapshot_panels/test_minimap_panel_shell_retired.py. -->
 
     <section id="right-now" class="panel panel-right-now">
       <div class="panel-head">
@@ -549,24 +495,12 @@
       </div>
     </section>
 
-    <section id="next" class="panel panel-next">
-      <div class="panel-head">
-        <span class="panel-title" id="nx-panel-title">NEXT</span>
-        <span class="staleness" data-for="next">-</span>
-      </div>
-      <div class="panel-body">
-        <div class="action-mid" id="nx-next">-</div>
-        <div class="kv">
-          <span>Objective</span><span id="nx-objective">-</span>
-        </div>
-        <div class="kv">
-          <span>Positioning</span><span id="nx-positioning">-</span>
-        </div>
-        <div class="kv">
-          <span>Waves</span><span id="nx-wave">-</span>
-        </div>
-      </div>
-    </section>
+    <!-- S144-U-265: the NEXT panel (title, staleness tag, headline and
+         its Objective / Positioning / Waves rows) is retired with the
+         module that painted it. It sat here in <main>, which renders in
+         no view and not in the overlay shell, so it had 0 client rects
+         while every state envelope still repainted it. Guard:
+         tests/snapshot_panels/test_next_panel_retired.py. -->
 
     <section id="item-build" class="panel panel-item-build">
       <div class="panel-head">
@@ -2369,7 +2303,10 @@
                am- prefix avoids colliding with champ-select's
                csv-sugg-capability-gap mount (both views live in the DOM).
                Styling inherits from web/css/panels/capability_gap.css. -->
-          <div class="capability-gap" id="am-sugg-capability-gap" hidden></div>
+          <!-- S144-U-283: data-ovx-drop makes the chip the LAST section the
+               overlay fit drops (overlay_layout._fitDropGroups), after the
+               build body's THREATS, COUNTER and DEFENSE. -->
+          <div class="capability-gap" id="am-sugg-capability-gap" data-ovx-drop="capgap" hidden></div>
           <div class="ds-combo" id="csv-sugg-ds-combo" hidden></div>
           <div class="ds-relscore" id="csv-ds-relscore" hidden></div>
           <!-- QA 2026-07-03 B20/B22: ds-profile / ds-knobs / ds-statcheck
@@ -2404,6 +2341,26 @@
           <div class="am-pane-body" id="am-map-body">
             <div class="am-empty">Static mode map + ZOI/threat overlay will render here mid-game.</div>
           </div>
+          <!-- S144-U-255: the R117 F1 team item-value bar (map_state.js
+               renderItemValueDiff). It lived in the #minimap panel inside the
+               top-level <main>, which every view and the overlay shell hide,
+               so it never rendered. Here it sits under the map on the
+               dashboard; overlay.css keeps this pane off the HUD. Outside
+               #am-map-body, whose innerHTML the map render replaces. -->
+          <div class="gold-diff hidden" id="gold-diff" title="Team item value (gold worth of items on board) - ally vs enemy">
+            <div class="gold-diff-track">
+              <div class="gold-diff-fill" id="gold-diff-fill"></div>
+              <div class="gold-diff-center"></div>
+            </div>
+            <div class="gold-diff-label"><span id="gold-diff-val">-</span> item value</div>
+          </div>
+          <!-- S144-U-245: the ?debug=1 zone-pressure readout (map_state.js).
+               It lived in the #minimap panel inside the top-level <main>,
+               which every view and the overlay shell hide, so it never
+               rendered. Here it sits under the map, beside the header zone
+               pill it explains. Outside #am-map-body, whose innerHTML the
+               map render replaces. -->
+          <div class="zoi-debug hidden" id="zoi-debug" aria-hidden="true"></div>
         </div>
         <!-- Riot compliance 2026-08-11: the am-pane-cd summoner + ultimate
              cooldown ledger was REMOVED (banned enemy summoner-spell cooldown

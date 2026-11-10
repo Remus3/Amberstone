@@ -6,8 +6,7 @@
 // decommissioned cross-Claude bridge pending-tasks panel. The bridge
 // parts (renderBridgePending + its /api/bridge/pending poll) were dropped;
 // the coach rendering below is preserved byte-for-byte in behavior.
-import { el, safe, _formatRelativeAge } from '../lib/helpers.js';
-import { state } from '../lib/state.js';
+import { el, _formatRelativeAge } from '../lib/helpers.js';
 import { dedupFetch } from '../lib/dedup_fetch.js';
 
 

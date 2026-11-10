@@ -1,5 +1,5 @@
 // Item Build panel - owned/recommended tiles, DS picks, in-game build switcher.
-import { el, safe, isArenaPayload } from '../lib/helpers.js';
+import { el, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList, diffVariantItemIds } from '../lib/items_index.js';
 import { formatDsDelta } from '../lib/scorer_units.js';

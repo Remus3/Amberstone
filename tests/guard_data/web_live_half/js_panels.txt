@@ -1,7 +1,7 @@
 # Live-half digests for web/js/panels/ - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-767e77a148a7942a49476956769c71a5206c5e381ad14c8497e992d23c9614de  web/js/panels/active_match.js
+2fce0d12cab74b87ceb5471bfa4b4c8aa385b66d783f739bf25d479561081ffa  web/js/panels/active_match.js
 
 b6eb81ecc296b6388abb6481800ea54e7ad05b8bb5eb6918c9dd0e4654dab13d  web/js/panels/aram_balance.js
 
@@ -25,9 +25,9 @@ d5247ab1b73693e40ee7f9a215ed31eb27d31b8e5e979b8a2d9f86cfa7657b92  web/js/panels/
 
 f41861da536c4bf13ffca118dab04e833a61636c7d983029d41cbf1a019fc297  web/js/panels/coach_choices.js
 
-1cdfc27f8e351e702d0b0b6188a5072bf7a1334325b00a66ab77e760defb3b4b  web/js/panels/coach_decisions.js
+d864ad293a48f36278f999c6bfa6abe3311778dd23a4d164691cc5213ee9d7fa  web/js/panels/coach_decisions.js
 
-1e9865ac94653a1c91a3f7c80ddc61485cae787d368fa45eb947ad52c2c5211b  web/js/panels/dev.js
+9d09b8464ddb77b5a42cf5e8b5e1e054716dda26c61d6188f8df63ca4c69325c  web/js/panels/dev.js
 
 7dd55b0dcf03acc31d15f108c2739067467d6626507e5d61e5f30909badb4f44  web/js/panels/draft_elo.js
 
@@ -55,23 +55,21 @@ a2a349dc5faec89c7f80a70b42acb052af39f0cefe8029169f5e90a59d01acdf  web/js/panels/
 
 fd11a5fce98b2e3c10733a0a167cc80769a9d860aa3d3705bddfb89aa2f16ece  web/js/panels/historical_pgr.js
 
-41074b6955340a12804a06e35296360767ba0af7ec7aba25f024287a2ddf55b3  web/js/panels/item_build.js
+1515670f62f8306d930c6c57d82aca9f1d20bd7ddefaa6227fb04bb9e1480e33  web/js/panels/item_build.js
 
 0400592f999febbb3d03718a94ac255539cf3d52c39f33820003ae421e186fc9  web/js/panels/last_match.js
 
 0bb7ed5f80c5996f8cabccfa5e78317d8b5393cccbfe896ad01bb3193063ea40  web/js/panels/lobby_duo_synergy.js
 
-e83857d6558823dac4c91b37e1bd804c65594635f4a16b20fcaafcde55c7802d  web/js/panels/map_state.js
+2c6d4fe66c2db9e08b2feead0897cf21d9c21512ec5354509db6386e241634ef  web/js/panels/map_state.js
 
 d9d4065b05235618c6e1bfda607aabe23998d191f41ca550085e737849ba5e53  web/js/panels/minimap_rect.js
 
-8edfa41013fd08b613e5fe28cdb803cca4646e35bf6874bb3617ac128bc5341d  web/js/panels/minimap_zoi.js
-
-f0b07a4950435d18f5ec5542512870c024a8deb231731b26617c83c2d9b7d8cc  web/js/panels/next.js
+4613650899bf004149a8acefd303e7418939cf0749924e4f065c5d5187ab89ee  web/js/panels/minimap_zoi.js
 
 7596db5a77709dab113efde56462634bcb66b237da4374027f628febb693bafd  web/js/panels/next_buy.js
 
-1beefa164e0ff1ea5c0c5316b35ce179358119c83b442abadb2930d892c87208  web/js/panels/objective_chips.js
+a5c03c160aa9ce1b00f5dbcab81d3d1caac9b615ec3c3189c1c3d93ac5962d2b  web/js/panels/objective_chips.js
 
 61e938c2d59f03f9f55b22036dcce182efb567e4b5df704d17c96683526cf055  web/js/panels/objective_gauges.js
 
@@ -81,7 +79,7 @@ f0b07a4950435d18f5ec5542512870c024a8deb231731b26617c83c2d9b7d8cc  web/js/panels/
 
 51af9ecf54afc7178bcee14a15be4e414d31ed0af7c15192ea0b0012dda8a3de  web/js/panels/overlay_ds_controls.js
 
-73fe6d7301f15a54fce04824172a33750b82f24cb5864dde9915423044c53a62  web/js/panels/panel_visibility.js
+9c9e58e8f505533dbe4f1d451309998a1ebf596f6b3fba8f7f7ddfd94d87211d  web/js/panels/panel_visibility.js
 
 53ccf4f124d0e27f23102c1d6cd32d18aa19917027376858c788ec1b287c6cd0  web/js/panels/patch_impact.js
 
@@ -115,7 +113,7 @@ f3587a627ebe71a69cf0cedd646c91da5de8441fa6820eccb59ab15f8828a3cb  web/js/panels/
 
 39c791ee5589d59710e88889571b66f2c052a798becdee117ba580abb9183fb9  web/js/panels/review_player_model.js
 
-e84993b4511a2ccc74c2f8b901e7a863f0b61690cea0eff7e5e0083ca8e318b1  web/js/panels/right_now.js
+9e8a0300e30c32e8c6f6d43076261cab8dacdc3a7244fc2bb414ec979df9a814  web/js/panels/right_now.js
 
 00214afbcdae737517478920a9c19e1bc858ac6a09cd2fc7ccf2d2d095e879c6  web/js/panels/screen_read.js
 
@@ -127,11 +125,11 @@ c7ad9651f34b2daf3679dd1fdc0096f8f909a182839338d62d3843769b6343c5  web/js/panels/
 
 88c6997ddbc67174b65ed541c3f90c0e15047dace266ecb025449abd25e9b1ce  web/js/panels/spike_markers.js
 
-2e4175ccbe2260462fbabe613250047b66bcc4c1ab5e3441c4adabaf6e74ff38  web/js/panels/stats_panel.js
+ea864e8773c4600f9fbdc9073f38277ea336c7cb46fb3da95eea6b8e38e22b7d  web/js/panels/stats_panel.js
 
 44cd21164d6e45c3dc0f5a930fb2bdcc2ae489f06e69f020644a17c002013344  web/js/panels/team_context.js
 
-7ae03507b86fa79092b17675f4bc59c835676781b44ee2df56cb2e3605c4d6ff  web/js/panels/threat_donut.js
+7c04d56f4a758f18ff785b0c7a870e822f2b4ed0a897db44af96ef6bf5d2ea20  web/js/panels/threat_donut.js
 
 6202ef2f8af3121b15af5dbb334a22379d71f1186d8ff80da2f1534668d6bdb6  web/js/panels/ward_heat.js
 

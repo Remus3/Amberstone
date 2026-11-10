@@ -1,7 +1,7 @@
 # Live-half digests for web/ - one `<sha256>  <path>` row per source, a
 # blank line after each. Never hand-edit: re-capture as the note on
 # tests/test_web_ascii_sweep.py _LIVE_HALF_ROWS says.
-449947f03d5d2a6283a163f9306992af3daeddb4140db9a9953b7bfe93e535c8  web/index.html
+09f317b41350bd63797408dced2fc495b9e80f699cf9aca60dcb1cb295a88e66  web/index.html
 
 040bb40b3d7d3f277e999e1b04c81d91450832ab2d1b7a55812e6cf6e550806c  web/legacy_index.html
 

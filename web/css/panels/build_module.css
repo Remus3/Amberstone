@@ -19,12 +19,18 @@
   gap: 3px;
 }
 
-/* eyebrow label above each row strip */
+/* eyebrow label above each row strip.
+   S144-U-233: --text-dim, not --text-faint. Bold 16 px is not WCAG large
+   text, so the floor is 4.5:1, and --text-faint measured 4.31:1 on the
+   BUILD pane's surface on arcane (4.39 ember, 4.46 hextech, 4.48 moonlit).
+   The Daemon Slayer eyebrow keeps its #6cf headline colour below. Pinned in
+   every theme by
+   tests/snapshot_panels/test_ui_mock_active_match_build_eyebrows.py. */
 .bm-row-label {
   font-size: var(--fs-xs, 16px);
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: var(--text-faint, #9aa0b5);
+  color: var(--text-dim, #9ab0cc);
   text-transform: uppercase;
 }
 
@@ -64,9 +70,21 @@
 }
 
 /* BATCH A: the Daemon Slayer (live) row is the headline - its label reads in the
-   #6cf overlay cyan; Meta / Ultimate keep the faint eyebrow above. */
+   #6cf overlay cyan; Meta / Ultimate keep the dim eyebrow above. */
 .bm-live > .bm-row-label {
   color: #6cf;
+}
+
+/* The "+Ndps" power delta under each Daemon Slayer item (active_match.js
+   _dsIcon; the LIVE row only). C2 UI-audit: the --fs-xs floor, weight 600, the
+   theme accent. S144-U-281 moved these values off an inline style so the
+   overlay can lift the ink (overlay.css, w-build); pinned by
+   tests/snapshot_panels/test_overlay_build_delta_contrast.py. */
+.bm-delta {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--accent, #6cf);
+  margin-top: 2px;
 }
 
 /* Row3 - the four DS fight-model knobs in a compact horizontal strip */

@@ -113,7 +113,12 @@ function _placeholder(parentEl, label, tooltip) {
   // sigil, not body text. Documented per the R13 v2.1 fixture audit
   // (2026-06-22) - mirrors the cd_ledger.css density operator-exceptions.
   txt.setAttribute("font-size", "12");
-  txt.setAttribute("fill", "#888");
+  // S144-U-299: the sigil ink is CSS-owned (.threat-donut-sigil in
+  // active_match.css, re-pointed onto --ovx-text in overlay.css). The old
+  // literal #888 read 2.90:1 idle in the overlay build widget. currentColor
+  // is the fallback: the row's own ink, never a colour literal.
+  txt.setAttribute("class", "threat-donut-sigil");
+  txt.setAttribute("fill", "currentColor");
   txt.setAttribute("font-weight", "700");
   txt.textContent = label || "?";
   svg.appendChild(txt);

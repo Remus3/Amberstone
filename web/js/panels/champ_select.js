@@ -1,16 +1,11 @@
 // Champ Select panel - full-page view rendered during ChampSelect
 // phase: pick&ban + build chooser + SR Draft Theatre + analyzer.
-// _ib* functions live in item_build.js (avoid circular dep).
-import { el, safe, fmtList, isArenaPayload, escHtml } from '../lib/helpers.js';
+import { el, escHtml } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
-import { ITEMS, CHAMPS, _normItemName, _resolveItemId, _resolveChampId } from '../lib/items_index.js';
+import { ITEMS, CHAMPS } from '../lib/items_index.js';
 import { sumImg, sumName } from '../lib/summoner_spells.js';
 import { itemTooltipHtml, keystoneTooltipHtml, preloadLolDescriptions } from '../lib/lol_descriptions.js';
 import { championTags, preloadChampionTags } from '../lib/champion_tags.js';
-import {
-  _ibPushItems, _ibFetchAndRender, _ibSetStatus,
-  _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice,
-} from './item_build.js';
 // QA 2026-07-03 slice A (B6+B7): the standalone DS-vs-Enemy-Comp card was
 // merged into the build chooser as a compact ordered-sequence strip; the
 // strip reuses the /api/build-order data path via these two exports.

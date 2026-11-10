@@ -176,18 +176,18 @@ def test_build_order_push_button_keeps_hit_min() -> None:
 
 def test_map_state_canvas_labels_documented_exception() -> None:
     """The map_state.js minimap canvas labels (objective D/B/H markers + the YOU
-    badge) are sub-floor (11px / 13px) by necessity: they are 2D-canvas spatial
-    annotations sized to fit dot glyphs on a ~312px-rendered minimap, NOT DOM
-    body text, so they cannot consume a CSS var(--fs-*) token. Pin that each
-    carries an inline operator-exception rationale so a maintainer cannot bump
-    them blind."""
+    badge) were sub-floor (11px / 13px) under an inline operator-exception: 2D
+    canvas spatial annotations, not DOM text. S144-U-258 retired them with the
+    never-rendered canvas stack they were drawn on, so the exception has no
+    subject left: pin that no canvas font, and so no sub-floor canvas label,
+    comes back without a new reviewed exception."""
     text = MAP_STATE_JS.read_text(encoding="utf-8")
-    for needle in ('ctx.font = "bold 11px', 'ctx.font = "bold 13px'):
-        assert needle in text, f"map_state.js: canvas font {needle!r} not found"
-    assert "operator-exception" in text.lower(), (
-        "map_state.js: the canvas sub-floor labels are missing their inline "
-        "operator-exception rationale."
-    )
+    assert "function renderZonePill(" in text, (
+        "map_state.js: scan anchor missing (the zone pill entry point)")
+    for needle in ("ctx.font", 'bold 11px', 'bold 13px'):
+        assert needle not in text, (
+            f"map_state.js: retired canvas label {needle!r} is back; a canvas "
+            "label below the type floor needs a new operator-exception")
 
 
 # em/en-dash + smart-quote bytes (chr() so this file stays ASCII-clean against

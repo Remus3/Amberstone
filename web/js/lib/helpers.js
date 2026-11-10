@@ -53,7 +53,7 @@ export function stripCoachTags(s) {
 
 // Null-safe string trim. Also strips the coach bracket-timer tags (a no-op
 // for non-coach values, which carry no single-letter bracket tags), so every
-// render sink that already routes through safe() - right_now.js + next.js -
+// render sink that already routes through safe() - right_now.js -
 // inherits a tag-free, untruncated coach string and a clean clipboard copy.
 export function safe(s) {
   if (s == null) return "";

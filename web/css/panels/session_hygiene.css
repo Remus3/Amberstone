@@ -55,7 +55,13 @@
 }
 #session-hygiene-card .sh-state.sh-state-green   { color: var(--signal-good); }
 #session-hygiene-card .sh-state.sh-state-yellow  { color: var(--signal-warn); }
-#session-hygiene-card .sh-state.sh-state-red     { color: var(--signal-bad); }
+/* S144-U-239: red TEXT takes the RM-1550 lift (70 percent red toward --text
+ * in oklab). Bare --signal-bad read 4.44 arcane / 4.48 moonlit at 16 px, under
+ * AA. The chip border keeps the bare red, so the light still reads by hue. */
+#session-hygiene-card .sh-state.sh-state-red {
+  color: color-mix(in oklab, var(--signal-bad) 70%, var(--text));
+  border-color: var(--signal-bad);
+}
 #session-hygiene-card .sh-state.sh-state-unknown { color: var(--signal-dim); }
 
 /* Basis sentence + flag lines: always rendered (placeholder text when empty)
@@ -82,7 +88,9 @@
   line-height: 1.5;
   color: var(--signal-warn);
 }
-#session-hygiene-card .sh-flag.is-override { color: var(--signal-bad); }
+#session-hygiene-card .sh-flag.is-override {
+  color: color-mix(in oklab, var(--signal-bad) 70%, var(--text));
+}
 #session-hygiene-card .sh-flag.is-none     { color: var(--text-faint); }
 
 #session-hygiene-card .sh-factors {
@@ -95,7 +103,11 @@
   align-items: baseline;
   gap: var(--space-3);
 }
-#session-hygiene-card .sh-factor.is-inert { opacity: 0.6; }
+/* An inert factor (no data) reads quieter by colour, not opacity: row
+   opacity 0.6 sank its --text-faint note / count to 2.57:1 and its "-" in
+   --signal-dim to 3.27:1 (S144-U-239). The name steps down to --text-dim;
+   the note, count and value keep their tokens at full strength. */
+#session-hygiene-card .sh-factor.is-inert .sh-factor-name { color: var(--text-dim); }
 #session-hygiene-card .sh-factor-name {
   flex: 1 1 auto;
   min-width: 0;
@@ -115,7 +127,9 @@
   text-align: right;
 }
 #session-hygiene-card .sh-factor-val.sh-good { color: var(--signal-good); }
-#session-hygiene-card .sh-factor-val.sh-bad  { color: var(--signal-bad); }
+#session-hygiene-card .sh-factor-val.sh-bad  {
+  color: color-mix(in oklab, var(--signal-bad) 70%, var(--text));
+}
 #session-hygiene-card .sh-factor-val.sh-dim  { color: var(--signal-dim); }
 #session-hygiene-card .sh-factor-n {
   margin-left: var(--space-2);

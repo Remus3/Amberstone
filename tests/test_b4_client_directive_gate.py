@@ -257,7 +257,8 @@ class RendererGoesQuietTests(unittest.TestCase):
 class WithoutLiveDirectivesTests(unittest.TestCase):
     """RM-896 (next.js half): withoutLiveDirectives is the client mirror of
     the server's suppress_live_directives field sweep, for renderers that read
-    the coach payload directly (web/js/panels/next.js) rather than a feed the
+    the coach payload directly (web/js/panels/right_now.js; the NEXT panel
+    module that also did is retired, S144-U-265) rather than a feed the
     three renderers above blank to []."""
 
     def _strip(self, coach):

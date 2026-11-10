@@ -18,8 +18,9 @@ Contract pinned here:
     is narrower, so a column drops before a name is cut;
   - every chip stays inside the board (no spill, no page overflow);
   - every fixture name of six letters or fewer is whole at every size where
-    the board is at least one chip wide (a longer name may ellipsise; the
-    chip's title and aria-label carry it whole);
+    the board is at least one chip wide (a longer name wraps whole inside
+    its chip since S144-U-300, test_tft_board_unit_names_whole; the chip's
+    title and aria-label carry it whole too);
   - the board wrapper keeps its fixed height (no reflow when units land), and
     a board that no longer fits scrolls inside it, as a named region.
 
@@ -131,7 +132,7 @@ def test_short_names_are_whole(w, h, mock_server, pw_browser):
            for u in m["units"]
            if len(u["name"]) <= 6 and u["nameScroll"] > u["nameClient"]]
     assert not cut, f"{w}x{h}: short unit names cut: {cut}"
-    # A longer name may ellipsise; the chip still carries it whole.
+    # A longer name wraps whole (S144-U-300); the chip still carries it.
     for u in m["units"]:
         assert u["title"].startswith(u["name"] + ", "), u
         assert u["label"] == u["title"], u
@@ -141,8 +142,10 @@ def test_short_names_are_whole(w, h, mock_server, pw_browser):
 def test_wrapper_height_is_fixed_and_overflow_scrolls_inside(
         w, h, mock_server, pw_browser):
     # No reflow when the board lands: the wrapper is the fixed two-chip-row
-    # box (eyebrow + 2 rows, 132 px at the v2.1 tokens) at every width; a
+    # box (eyebrow + 2 rows of a name and four item lines, 252 px at the
+    # v2.1 tokens since S144-U-291; 212 px from S144-U-290, 132 px before)
+    # at every width; a
     # board needing more rows scrolls inside it, as the named region.
     m = _measure(pw_browser, mock_server, w, h)
-    assert m["wrapH"] == 132, m["wrapH"]
+    assert m["wrapH"] == 252, m["wrapH"]
     assert m["wrapRole"] == "region" and m["wrapLabel"] == "Your board"

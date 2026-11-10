@@ -20,8 +20,9 @@
 // only, sig-dedup so an unchanged tick does not thrash the DOM, self-gates on
 // body[data-shell="overlay"] - a cheap no-op on the 1920 dashboard.
 
-// Spawn-cycle seconds after a kill. Matches map_state.js _OBJ_CYCLE so the two
-// objective surfaces never disagree (dragon 5:00, baron 6:00, herald approx).
+// Spawn-cycle seconds after a kill (dragon 5:00, baron 6:00, herald approx).
+// The dashboard Map State rows that once mirrored this table are retired
+// (S144-U-262), so no other web/ table has to agree with it.
 const OBJ_CYCLE = { dragon: 300, baron: 360, herald: 360 };
 const OBJ_LABEL = { dragon: "DRAKE", baron: "BARON", herald: "HERALD" };
 // Render order: baron + dragon are the high-value glances, herald last.

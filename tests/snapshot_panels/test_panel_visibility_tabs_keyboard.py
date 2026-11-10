@@ -100,7 +100,7 @@ def _assert_one_selected(r, ctx):
     stops = [t["ctx"] for t in r["tabs"] if t["tabIndex"] == 0]
     assert stops == [ctx], f"roving tabindex: tab stops {stops}"
     assert r["rowContexts"] == [ctx], r["rowContexts"]
-    assert r["rowCount"] >= 10, r["rowCount"]
+    assert r["rowCount"] >= 8, r["rowCount"]
     assert r["stored"] == ctx, f"selection not persisted: {r['stored']}"
 
 

@@ -1,5 +1,5 @@
 // Right Now panel - immediate coaching actions, game-sense, stats, digest.
-import { el, safe, fmtList, classifyAction, isArenaPayload, logLine, _formatRelativeAge } from '../lib/helpers.js';
+import { el, safe, classifyAction, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_priority.js';
 import { isFightCue, makeCombatLatch } from '../lib/combat_mode.js';
@@ -51,35 +51,10 @@ if (RN.action && !RN.action.dataset.bound) {
   RN.action.dataset.bound = "1";
 }
 
-function renderWhatWent(p) {
-  if (!p) return;
-  const goodList = el("ww-good");
-  const badList  = el("ww-bad");
-  if (!goodList || !badList) return;
-  const good = Array.isArray(p.what_went_good)
-    ? p.what_went_good.filter(Boolean)
-    : (safe(p.what_went_good) ? [safe(p.what_went_good)] : []);
-  const bad = Array.isArray(p.what_went_bad)
-    ? p.what_went_bad.filter(Boolean)
-    : (safe(p.what_went_bad) ? [safe(p.what_went_bad)] : []);
-  const fill = (ul, items) => {
-    ul.innerHTML = "";
-    if (!items.length) {
-      const li = document.createElement("li");
-      li.className = "ww-empty";
-      li.textContent = "-";
-      ul.appendChild(li);
-      return;
-    }
-    for (const t of items) {
-      const li = document.createElement("li");
-      li.textContent = t;
-      ul.appendChild(li);
-    }
-  };
-  fill(goodList, good);
-  fill(badList, bad);
-}
+// S144-U-260: the aftergame bullets render that used to sit here is
+// retired. Its two lists lived in the #minimap panel, which renders in no
+// view, yet every state envelope emptied and rebuilt both through innerHTML.
+// Guard: tests/snapshot_panels/test_minimap_whatwent_view_retired.py.
 
 // -- Digest icon ----------------------------------------------------
 // Queue #5: cross-session digest state on the footer #digest-icon, which
@@ -384,7 +359,8 @@ function renderStats(p) {
 }
 
 function renderRightNow(payload) {
-  // B4 defence in depth (RM-896, the right_now.js half of the next.js fix):
+  // B4 defence in depth (RM-896; its NEXT panel half retired with that
+  // never-rendered panel, S144-U-265):
   // while a game is live, read the payload with the server's live-suppressed
   // imperatives blanked. MEASURED on the real session-134 TFT row (mode_key
   // client, lcu InProgress, no :2999 feed): the server did not see a live
@@ -574,4 +550,4 @@ function renderRightNow(payload) {
   state.lastTouch.right_now = Date.now() / 1000;
 }
 
-export { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats };
+export { RN, renderRightNow, renderDigest, renderGameSense, renderStats };

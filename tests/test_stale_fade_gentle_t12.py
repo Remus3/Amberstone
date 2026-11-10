@@ -20,8 +20,8 @@ stale cue, and no content opacity below 0.85 at the deepest stage:
      takes no stale dim and shows a STALE ::after tag instead (section 6b).
 
 Plus the minimap screenshot's own fetch-failure dim (grid.css), which nested
-inside the CADENCE-dimmed #minimap body: now a light desaturation + a
-" - STALE" caption suffix, no own opacity, so it cannot compound below 0.85.
+inside the CADENCE-dimmed #minimap body: was a light desaturation + a
+" - STALE" caption suffix; retired with the image by S144-U-257.
 
 Static pins (no browser); the computed-style proof is
 tests/snapshot_panels/test_stale_fade_view_t12.py.
@@ -87,9 +87,14 @@ def test_cadence_thresholds_unchanged():
         for m in re.finditer(
             r"^\s*(\w+):\s*\{\s*stale:\s*(\d+),\s*severe:\s*(\d+)\s*\}", js, re.M)
     }
+    # S144-U-264: the never-rendered Map State shell's minimap key is
+    # retired with the shell (tests/snapshot_panels/
+    # test_minimap_panel_shell_retired.py); S144-U-265 retired the NEXT
+    # panel's key with that never-rendered panel (tests/snapshot_panels/
+    # test_next_panel_retired.py). The kept two are unchanged.
     assert got == {
-        "right_now": (4, 12), "next": (16, 48),
-        "item_build": (90, 300), "minimap": (4, 12),
+        "right_now": (4, 12),
+        "item_build": (90, 300),
     }
 
 
@@ -159,13 +164,8 @@ def test_overlay_stale_tag():
 
 
 # ------------------------------------------------------------ minimap image
-def test_minimap_image_stale_is_light_and_labelled():
-    sel = ".minimap-img-wrap.stale #mm-img"
-    assert _decl(GRID_CSS, sel, "opacity") is None  # was 0.5 (compounded)
-    assert _decl(GRID_CSS, sel, "filter") == "grayscale(0.15)"  # was 0.5
-    cap = ".minimap-img-wrap.stale .minimap-img-caption::after"
-    assert _decl(GRID_CSS, cap, "content") == '" - STALE"'
-    assert _decl(GRID_CSS, cap, "color") == "var(--gold)"
+# S144-U-257: the minimap crop image and its own STALE dim are retired
+# (#minimap renders in no view); the floor sweep below still covers grid.css.
 
 
 # ------------------------------------------------------------ floor sweep

@@ -81,7 +81,7 @@ const FOUNTAIN_FALLBACK = Object.freeze({
 });
 
 // World size per map. Same values as the existing projection tables
-// (web/js/main.js VT_MAP_SIZE, web/js/panels/active_match.js _AM_MAP_WORLD:
+// (web/js/panels/active_match.js _AM_MAP_WORLD:
 // CLASSIC 14800, ARAM 13800) so the replay map projects like the live one.
 const MAP_WORLD = Object.freeze({ sr: 14800, aram: 13800 });
 

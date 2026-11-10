@@ -241,8 +241,82 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   padding: 14px;
 }
 
+/* S144-U-245: the ?debug=1 zone-pressure readout (map_state.js), moved here
+ * from grid.css with its node: the #minimap panel it sat in is inside the
+ * top-level <main>, hidden in every view. It was 11 px --text-faint on
+ * --surface-alt (3.64 - 3.94:1 in five of six themes); now --fs-xs and
+ * --text-dim, 5.54 - 7.46:1 in all six. Guard: tests/snapshot_panels/test_zoi_debug_readout.py. */
+#view-active-match .zoi-debug {
+  flex: none;
+  margin: 0 14px 14px;
+  padding: 4px 10px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.02em;
+}
+#view-active-match .zoi-debug.hidden { display: none; }
+
+/* S144-U-255: the R117 F1 team item-value bar (map_state.js
+ * renderItemValueDiff), moved here from grid.css with its node: the #minimap
+ * panel it sat in is inside the top-level <main>, hidden in every view, so the
+ * shipped lens never rendered. Track centred at 50%; the fill runs right when
+ * your team's on-board item value leads, left when it trails (clamped +/-10k).
+ * The label was a hard-coded 13 px --text-faint and the number 15 px; now
+ * --fs-xs --text-dim and --fs-sm. Guard:
+ * tests/snapshot_panels/test_item_value_bar_relocated.py. */
+#view-active-match .gold-diff {
+  flex: none;
+  margin: 0 14px 14px;
+}
+#view-active-match .gold-diff.hidden { display: none; }
+#view-active-match .gold-diff-track {
+  position: relative;
+  height: 8px;
+  background: var(--surface-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+#view-active-match .gold-diff-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  border-radius: inherit;
+  transition: left 400ms ease, right 400ms ease, background-color 200ms ease;
+}
+#view-active-match .gold-diff-fill.ahead  { background: linear-gradient(90deg, transparent 0%, var(--good) 100%); }
+#view-active-match .gold-diff-fill.behind { background: linear-gradient(90deg, var(--bad) 0%,  transparent 100%); }
+#view-active-match .gold-diff-center {
+  position: absolute;
+  left: 50%; top: -2px; bottom: -2px;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+#view-active-match .gold-diff-label {
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+#view-active-match .gold-diff-label #gold-diff-val.gd-ahead  { color: var(--good); font-weight: 900; font-size: var(--fs-sm); }
+/* Bare --bad on --surface-head read 3.89 - 4.45:1 in five of six themes; the
+ * RM-1550 red-text lift (as S144-U-234) keeps it red at AA. The fill keeps
+ * bare --bad, so the bar still reads red by hue. */
+#view-active-match .gold-diff-label #gold-diff-val.gd-behind {
+  color: color-mix(in oklab, var(--bad) 70%, var(--text));
+  font-weight: 900;
+  font-size: var(--fs-sm);
+}
+
+/* S144-U-272: --text-faint read 4.31 - 4.48:1 on the pane in four themes;
+ * --text-dim is the S144-U-243 empty-state tier (the TFT empty lines below
+ * already used it). */
 #view-active-match .am-empty {
-  color: var(--text-faint);
+  color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: 1.5;
   letter-spacing: 0.02em;
@@ -254,10 +328,23 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
  * fixed columns - STAGE / LEVEL / HP / GOLD - present with the "-" sentinel
  * before the feed lands, so data arriving changes text, never geometry. The
  * value is the focal point (--fs-lg, tabular), the label the faint eyebrow
- * (--fs-xs), matching the CALL pane _line hierarchy. */
+ * (--fs-xs), matching the CALL pane _line hierarchy.
+ * S144-U-294: four columns while the strip is at least 350px wide, else 2x2,
+ * never a 3 + 1 orphan. A cell needs ~79px for the widest real value (HP
+ * "100" at --fs-lg plus padding and border); the fixed repeat(4) cut "4-2"
+ * to "4-..." in a narrow strip (measured: a 320-400px window, and the CALL
+ * pane of a 721-800px window, just over the 720px breakpoint). The clamp() picks the track minimum from the
+ * strip's OWN width - (100% - 3 gaps) / 4 at or over 350px, (100% - 1 gap)
+ * / 2 under it (the 999 factor saturates to one bound or the other) - and
+ * auto-fit lays out exactly that many tracks; each bound is 1px under the
+ * exact share so rounding never drops a track. Width only, never data, so
+ * a value landing still changes text, not geometry. 1920x920 and the
+ * 920x1280 companion stay four; the overlay's w-call 2x2 rule outranks
+ * this. Guard: tests/snapshot_panels/test_tft_stat_strip_reflow.py. */
 #view-active-match .am-tft-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(clamp(
+    (100% - 31px) / 4, (350px - 100%) * 999, (100% - 11px) / 2), 1fr));
   gap: 10px;
   margin-top: 4px;
 }
@@ -295,6 +382,21 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
 #view-active-match .am-tft-stat.is-empty .am-tft-stat-value {
   color: var(--text-dim);
 }
+/* S144-U-296: the HP value paints its band, the CSS half of RM-949. The
+ * cell carries the overlay vitals band (tftHpBand, data-band low / crit)
+ * and nothing read it, so 36 HP and 13 HP read in the same --text as 70
+ * while the overlay painted them amber and red. --signal-warn / --signal-bad
+ * are the overlay's --ovx-warn / --ovx-red inside the overlay shell
+ * (overlay.css section 0a), so one band reads one hue on both screens. The
+ * value is 29 px / 700, WCAG large text (floor 3:1): amber 7.14 - 8.60, red
+ * 3.89 - 5.02 on the pane in the six themes. Guard:
+ * tests/snapshot_panels/test_tft_strip_hp_band_colour.py. */
+#view-active-match .am-tft-stat[data-band="low"] .am-tft-stat-value {
+  color: var(--signal-warn);
+}
+#view-active-match .am-tft-stat[data-band="crit"] .am-tft-stat-value {
+  color: var(--signal-bad);
+}
 
 /* S134: TFT board (BUILD pane, head renamed BOARD) + lobby (MAP pane), from
  * the standalone client's per-round stats file (coach.tft_board /
@@ -323,10 +425,15 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
  * the filled lists occupy the SAME box: the pane grid sizes its rows from
  * content, and a board landing at round 1 used to grow every pane ~31px
  * (measured, 1920x920 fixture). Board: eyebrow + two chip rows (a level-10
- * board); more units scroll inside. Lobby: eyebrow + eight rows. */
+ * board) of a name line and four item lines (S144-U-291: the item line
+ * wraps whole, below; four lines hold 8725 of the 9139 three-crafted-item
+ * sets at 1920x920); a longer chip or more units scroll inside. 252px at
+ * the v2.1 tokens, inside the 336px BUILD body at 1920x920, so the pane
+ * grid does not move. Lobby: eyebrow + eight rows. */
 #view-active-match .am-tft-board-wrap {
   height: calc(var(--fs-xs) * 1.2 + 6px
-               + 2 * (var(--fs-sm) * 1.25 + var(--fs-xs) * 1.25 + 8px) + 6px);
+               + 2 * (var(--fs-sm) * 1.25 + 4 * var(--fs-xs) * 1.25 + 8px)
+               + 6px);
   overflow-y: auto;
 }
 #view-active-match .am-tft-lobby-wrap {
@@ -415,10 +522,20 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   border: 1px solid var(--border);
   border-radius: 6px;
 }
+/* S144-U-300: the name line wraps, and the name is never cut. One nowrap
+ * ellipsised line cut recorded names at every size: a 3-star
+ * "CrimsonRaptor" by 11px at the 1920x920 baseline, every 11-letter name
+ * ("Brambleback") from 1600px down, 37 - 55px at the 923px companion
+ * width, with a hover on the title as the only read (the S144-U-291
+ * ruling for the items line). The star drops under a name that fills the
+ * line; a name wider than the chip breaks at its word joints (<wbr>,
+ * active_match.js _amTftUnitName), then anywhere. A taller chip grows
+ * inside the fixed board box, which scrolls with its "+N BELOW" cue. */
 #view-active-match .am-tft-unit-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px;
+  column-gap: 6px;
   min-width: 0;
 }
 #view-active-match .am-tft-unit-name {
@@ -427,9 +544,8 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   font-weight: 700;
   line-height: 1.25;
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 /* Star level: 1-star in the dim step; an upgraded unit in amber
  * (--signal-warn, global token) - audit S2: the theme --gold is the same hue as
@@ -445,13 +561,20 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
 #view-active-match .am-tft-unit-star[data-star="1"] {
   color: var(--text-dim);
 }
+/* S144-U-290: the items wrap. One nowrap line cut the recorded "Guinsoos
+ * Rageblade" - a chip's ONE item - at the 1920x920 baseline (146px of text
+ * in a 142px chip). S144-U-291: and they are never clamped. A three-line
+ * clamp cut 3608 of the 9139 three-crafted-item sets at the baseline
+ * ("Infinity Edge / Last Whisper / Guinsoo's Rageblade" is four lines) and
+ * most sets with a Radiant item, leaving a hover on the title as the only
+ * read. A longer chip grows its row inside the fixed board box above; the
+ * board scrolls and the RM-1771 "+N BELOW" cue counts what it pushed. */
 #view-active-match .am-tft-unit-items {
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 #view-active-match .am-tft-unit-items.is-empty {
   font-style: italic;
@@ -503,7 +626,14 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   display: block;
   height: 8px;
   border-radius: 4px;
-  background: var(--border-soft);
+  /* S144-U-295: the track is a sunken well in the page's own deepest
+   * ground. It was --border-soft, a light veil over the pane, and the
+   * crit-band red fill (.is-low) read only 2.80:1 against it in moonlit
+   * and arcane (3.29 to 3.60 elsewhere), under the WCAG 1.4.11 3:1
+   * floor. On --canvas the red reads 4.88:1 or more and the green 8.31:1
+   * or more in every theme (tests/snapshot_panels/
+   * test_tft_active_match_theme_contrast.py). */
+  background: var(--canvas);
   overflow: hidden;
 }
 #view-active-match .am-tft-lob-fill {
@@ -669,6 +799,16 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
 .threat-donut-empty,
 .threat-donut-loading {
   opacity: 0.85;
+}
+
+/* S144-U-299: the placeholder sigil ("?" no damage mix, "." fetching) is SVG
+ * text, so its ink is a fill. The literal #888 it carried read 3.73:1 on the
+ * THREATS row (hextech) and 2.90:1 in the overlay idle recede (arcane), under
+ * the 4.5:1 text floor; the secondary text token reads AA in every theme.
+ * The overlay re-points it onto --ovx-text (overlay.css section 0a). Guard:
+ * tests/snapshot_panels/test_overlay_league_text_contrast.py. */
+.threat-donut-sigil {
+  fill: var(--text-dim);
 }
 
 #view-active-match .threat-strip .threat-row {

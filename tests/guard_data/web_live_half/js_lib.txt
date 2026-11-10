@@ -5,7 +5,7 @@
 
 e6a16e80c004530783bda928658f23ce6467a95a8b5399c96f2bd097b93fe255  web/js/lib/combat_mode.js
 
-d2905e4a6204bc9caa4c345d2a5c3ac66a5cf46ae439012df0094969ea1d1791  web/js/lib/condense.js
+f4d14263a30bbd26ebf2ddfb88f4e46f02f5d81286238154dadb3d0f42a9bb78  web/js/lib/condense.js
 
 74d915f9f3e3911d54e893d538e55596fda7293f6feafb70a912422e9937599b  web/js/lib/cs_adaptation.js
 
@@ -35,7 +35,7 @@ e45c455a7f7db8c7f9aa5b76a32e995ed96bde1df0ea5c6d836fd5344a8c0663  web/js/lib/ove
 
 35b5e792d021c2287f1834bb3ca84722601e5c30bc4af69d9b6095204bbdd195  web/js/lib/overlay_item_radial.js
 
-d1e3eea8b2c0f23e063492725a46085d49aa3fd65298df5cad3c629aca29941e  web/js/lib/overlay_layout.js
+53a4b24509c81b015a5c47472c607945eb5126b538903c7b84073c06ad675e58  web/js/lib/overlay_layout.js
 
 086bb9496d63c89d75089706c9b4960dc1b53a14a7f2b1ffc9db10711fae07d2  web/js/lib/overlay_phase.js
 
@@ -43,13 +43,13 @@ d1e3eea8b2c0f23e063492725a46085d49aa3fd65298df5cad3c629aca29941e  web/js/lib/ove
 
 707cd8576ac3cc73bc094773e7912279828e35a041559e6e6e737f2ecc980c15  web/js/lib/overlay_settings.js
 
-a9776830e10250728b6b34fc79a82164d8a9d2455c6ef26e8b23de009235a25f  web/js/lib/overlay_tft.js
+caa1e170901f6a91ca0ae454b17e379a7a77c4e30b88e134ad0bf4c83b80170c  web/js/lib/overlay_tft.js
 
 4ebd55a58e8537dc9c9934abd75160d438825fca6385fc5fc1c087bf5f702659  web/js/lib/overlay_tooltip.js
 
 861f0c4213da0bd03046ad8fa6ad8b2cf4ca93d92e1d3d2da8267918101acafc  web/js/lib/scorer_units.js
 
-c6d23f59c404d63d5f784eed7e2bee3c8ce7b3fc61946c9f87139c7bf0b6e393  web/js/lib/state.js
+129ecd05ea8f9ab5326ed6150d7eb4c737e853049600d8140fc9f9c9bf1182b3  web/js/lib/state.js
 
 374fa046fc2abced5a4861713abfdd1ab53ab0591a38fdb743953505e8bf5b8f  web/js/lib/state_schema.js
 

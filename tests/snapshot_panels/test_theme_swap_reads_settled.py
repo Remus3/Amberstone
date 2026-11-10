@@ -157,7 +157,231 @@ makes), the s144 uiux module of S144-U-223:
     and the row under them on a live feed, then again after the page clock
     runs the feed past its stale cut and the rows re-class to "no feed".
     Nothing runs anywhere in the page at either read, so none is needed.
-This module pins all forty-six verdicts at runtime with each test's own opener,
+Audit (2026-11-08, s144 uiux cycle 235, S144-U-240, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-240:
+  - test_header_placeholder_pill_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the zone and CS placeholders, adds the
+    transitions-off sheet, then reads the Active Match header's text and
+    re-classes the hidden zone pill through its stale zone classes inside
+    the same evaluate. The sheet covers the zone pill's colour and the
+    hidden rule drops its pulse, so nothing runs at that read.
+Audit (2026-11-08, s144 uiux cycle 236, S144-U-241, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the seven s144 uiux modules of S144-U-233..239, landed on
+lane/uiux with no row here:
+  - test_champ_select_ban_phase_over_head_contrast,
+    test_champ_select_personal_build_contrast: flip dataset.theme in-page
+    on the booted champ-select page and read at once. In five of six
+    themes (all but arcane) the swap left transitions running at the read
+    (the view trigger's colours, the heartbeat and title caret colour, the
+    rune-save button, build-path rows and items, bench cells): 10 of 12
+    runs straddled. Settled now because both openers add the sheet before
+    the swap; every contrast verdict in both modules still holds.
+  - test_last_match_build_wpa_contrast,
+    test_lobby_mains_placeholder_contrast,
+    test_lobby_roster_row_dimming_contrast,
+    test_session_hygiene_inert_contrast: boot-stamped (?theme=), never
+    swap in-page; each opener adds the sheet before its read (the roster
+    module reads again after a real mouse hover, the Lobby mains one after
+    a tab click), and nothing runs at their reads with it.
+  - test_ui_mock_active_match_build_eyebrows: boot-stamped, never swaps
+    in-page, no sheet and no sleep; nothing runs anywhere in the page at
+    its read. Its reader is now _measure(mock_server, pw_browser, theme,
+    surface) so the pin drives it with its first surface.
+Audit (2026-11-09, s144 uiux cycle 237, S144-U-242, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-242:
+  - test_replay_match_row_text_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the four RECENT MATCHES rows, adds the
+    transitions-off sheet, then reads them at rest, under a real mouse
+    hover on each row and after a click picks each row. The rows DO
+    transition their background (120ms) on hover and pick, so the sheet is
+    what settles those reads.
+Audit (2026-11-09, s144 uiux cycle 238, S144-U-243, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-243:
+  - test_am_empty_line_contrast: boot-stamped (?theme=), never swaps
+    in-page; it waits for the mode's Active Match empty lines (the spike
+    curve's and, outside aram, the ward heat strip's), adds the
+    transitions-off sheet, then reads them in one evaluate. Nothing it
+    reads transitions, so the sheet is belt and braces, not a fix.
+Audit (2026-11-09, s144 uiux cycle 240, S144-U-245, the same
+document-wide detector at each getComputedStyle read its own _measure
+makes), the s144 uiux module of S144-U-245:
+  - test_zoi_debug_readout: boot-stamped (?theme=), never swaps in-page;
+    it adds the transitions-off sheet, drives map_state.js
+    renderZonePill() with a deep-enemy call (no style read), then
+    reads the ?debug=1 readout under the Active Match map in one
+    evaluate. Nothing it reads transitions, so the sheet is belt and
+    braces, not a fix.
+Audit (2026-11-09, s144 uiux cycle 245, S144-U-250, the same
+detector), the s144 uiux module of S144-U-250:
+  - test_lobby_queue_fill_text_contrast: flips data-theme in-page on the
+    polled Lobby page and reads the live Find Match / Cancel Queue labels
+    at rest and under a real mouse hover. The queue buttons DO transition
+    background and border colour on a swap and a hover, so its opener adds
+    the transitions-off sheet before the flip, and emulates reduced motion
+    so the searching Find Match pulse (an animation) is a static ring. It
+    joins the contrast pin below on its Searching state.
+Audit (2026-11-09, s144 uiux cycle 246, S144-U-251, the same
+detector), the s144 uiux module of S144-U-251:
+  - test_lobby_mode_menu_current_contrast: boots the ui_mock Lobby in the
+    theme (?theme=), opens the Change Lobby Mode menu and the lane popup
+    and reads their labels at rest and under a real mouse hover. The menu
+    items DO transition background and border colour on a hover, so its
+    opener adds the transitions-off sheet before the first click. It joins
+    the contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 248, S144-U-253, the same
+detector), the s144 uiux module of S144-U-253:
+  - test_home_find_match_picker_contrast: boots the ui_mock Home in the
+    theme (?theme=), opens the Find Match picker from the hero CTA and
+    reads its labels at rest, under a real mouse hover and on the item a
+    keyboard Tab focuses. The queue items DO transition background and
+    border colour on a hover, so its opener adds the transitions-off sheet
+    before the first click. It joins the contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 250, S144-U-255, the same
+detector), the s144 uiux module of S144-U-255:
+  - test_item_value_bar_relocated: boot-stamped (?theme=), never swaps
+    in-page; it adds the transitions-off sheet, then drives map_state.js
+    renderItemValueDiff() under the Active Match map and reads the label
+    and the signed number in the same evaluate. The bar's fill DOES
+    transition left / right / background-color on a render, but no read
+    is on the fill or an ancestor of it, and the sheet is on before the
+    first render. It joins the contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 263, S144-U-269, the same
+detector), the s144 uiux module of S144-U-269:
+  - test_coach_decisions_banner_contrast: boots the ui_mock Active Match
+    in the theme (?theme=) with a routed /api/decisions, emulates reduced
+    motion, adds the transitions-off sheet and waits out the row's
+    slide-in animation, then reads the coach decisions banner at rest,
+    under a real mouse hover and on each keyboard-focused button. The
+    buttons carry no transition; the sheet and the animation wait are on
+    before the first read. It joins the contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 266, S144-U-272, the same
+detector), the s144 uiux module of S144-U-272:
+  - test_overlay_empty_caption_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the overlay fight-model pane's caption and
+    empty line (?overlay=1&ui_mock=1) or for the Active Match .am-empty
+    placeholders (no mock, dashboard and ?overlay=1), adds the
+    transitions-off sheet, then reads them in one evaluate. Nothing it
+    reads transitions, so the sheet is belt and braces, not a fix. It joins
+    the contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 269, S144-U-275, the same
+detector), the s144 uiux module of S144-U-275:
+  - test_overlay_call_glyph_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the w-call ACTION row's band glyph
+    (?overlay=1&ui_mock=1), adds the transitions-off sheet, then reads the
+    glyph and bar per band and the widget's live and idle opacity in one
+    evaluate (the widget's own opacity transition is also switched off
+    inline for that read). It joins the contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 270, S144-U-277, the same
+detector), the s144 uiux module of S144-U-277:
+  - test_overlay_lead_bar_contrast: boot-stamped (?theme=), never swaps
+    in-page; it waits for the #rn-lead widget mount (?overlay=1&ui_mock=1),
+    adds the transitions-off sheet, then renders the pill per state through
+    callouts.js renderLead and reads the bar, the pill's backing and the
+    widget's live and idle opacity in one evaluate (the widget's own
+    opacity transition is also switched off inline for that read). It
+    joins the contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 271, S144-U-278, the same
+detector), the s144 uiux module of S144-U-278:
+  - test_overlay_hotkey_hint_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the launcher reminder (and, off TFT, the
+    fight-model pane's) on ?overlay=1&ui_mock=1, renders a synthetic A/B
+    pick through coach_choices.js, adds the transitions-off sheet, then
+    reads every reminder's ink, its backing chain and its widget's opacity
+    in one evaluate live and one idle (the sheet also stops the widget's
+    own opacity transition the idle flip starts). It joins the contrast
+    pin below.
+Audit (2026-11-09, s144 uiux cycle 272, S144-U-279, the same
+detector), the s144 uiux module of S144-U-279:
+  - test_overlay_build_knobs_empty_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the build widget's and the fight-model
+    pane's empty lines to be visible on ?overlay=1&ui_mock=1, adds the
+    transitions-off sheet, then reads each line's ink, its backing chain
+    and its widget's opacity in one evaluate live and one idle (the sheet
+    also stops the widget's own opacity transition the idle flip starts).
+    It joins the contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 273, S144-U-280, the same
+detector), the s144 uiux module of S144-U-280:
+  - test_overlay_build_rerank_clip: boot-stamped (?theme=), never swaps
+    in-page; it waits for the build widget's shaper note to attach and
+    the fight-model pane to be visible on ?overlay=1&ui_mock=1, adds the
+    transitions-off sheet, then reads the widget clip, the rerank row
+    boxes, the note's ink, its backing chain and its widget's opacity in
+    one evaluate live and one idle (the sheet also stops the widget's own
+    opacity transition the idle flip starts). It joins the contrast pin
+    below.
+Audit (2026-11-09, s144 uiux cycle 274, S144-U-281, the same
+detector), the s144 uiux module of S144-U-281:
+  - test_overlay_build_delta_contrast: boot-stamped (?theme=), never swaps
+    in-page; it waits for the build widget's power deltas to be visible on
+    ?overlay=1&ui_mock=1, adds the transitions-off sheet, then reads the
+    widget clip, each delta's ink, its backing chain and its widget's
+    opacity in one evaluate live and one idle (the sheet also stops the
+    widget's own opacity transition the idle flip starts). Its dashboard
+    case reads no theme swap either (?theme= at boot). It joins the
+    contrast pin below.
+Audit (2026-11-09, s144 uiux cycle 281, S144-U-288, the same
+detector), the s144 uiux module of S144-U-288:
+  - test_overlay_call_objective_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the call widget's OBJECTIVE footer and
+    ACTION verb to be visible on ?overlay=1&ui_mock=1, adds the
+    transitions-off sheet, then reads each line's ink, its backing chain
+    and its widget's opacity in one evaluate live and one idle (the sheet
+    also stops the widget's own opacity transition the idle flip starts).
+    It joins the contrast pin below.
+Audit (2026-11-10, s144 uiux cycle 289, S144-U-297, the same
+detector), the three s144 uiux modules of S144-U-293 / U-295 / U-296 (each
+landed on the lane without joining this audit, so the inventory test below
+was red) and the module of S144-U-297:
+  - test_tft_last_match_baseline_contrast (U-293),
+    test_tft_active_match_theme_contrast (U-295): boot-stamped (?theme=,
+    under ?ui_mock=1), never swap in-page; each waits for its card, adds
+    the transitions-off sheet, then reads in one evaluate. They join the
+    contrast pin below.
+  - test_tft_strip_hp_band_colour (U-296): boot-stamped (?theme=), never
+    swaps in-page; it adds the sheet after the live fallback paints, then
+    reads the strip's HP value at each live tick (36 / 13 / 70 HP), each
+    read after two animation frames. It joins the contrast pin below on
+    its first size.
+  - test_overlay_tft_hp_band_contrast: boot-stamped (?theme=), never
+    swaps in-page; it waits for the TFT vitals HP cell to carry its band
+    on the live ?overlay=1 route (no mock, a real crit / low HP), adds the
+    transitions-off sheet, then reads the HP value's ink, its backing
+    chain and its widget's opacity in one evaluate live and one idle (the
+    widget's own opacity transition is also switched off inline for that
+    read). It joins the contrast pin below.
+Audit (2026-11-10, s144 uiux cycle 290, S144-U-298, the same detector):
+  - test_overlay_tft_text_contrast: boot-stamped (?theme=), never swaps
+    in-page; it waits for the Lobby HP widget to show a crit chip on the
+    live ?overlay=1 route (no mock, the tft_overlay_feed payload), adds the
+    transitions-off sheet, then reads every text line of the three TFT
+    widgets, its backing chain and its widget's opacity in one evaluate
+    live and one idle (each widget's own opacity transition is switched
+    off inline for that read). It joins the contrast pin below.
+Audit (2026-11-10, s144 uiux cycle 291, S144-U-299, the same detector):
+  - test_overlay_league_text_contrast: boot-stamped (?theme=), never swaps
+    in-page; it waits for the call widget and for the w-build THREATS strip
+    to settle (no tile still loading) on ?overlay=1&ui_mock=1, adds the
+    transitions-off sheet, then reads every text line of every League
+    widget, its backing chain and its widget's opacity in one evaluate live
+    and one idle (the sheet also stops the widget's own opacity transition
+    the idle flip starts). Its dashboard case reads no theme swap either
+    (?theme= at boot) and adds the same sheet. It joins the contrast pin
+    below.
+    Its objective-chip case (cycle 293, S144-U-301) boots ?overlay=1
+    without ui_mock on a static live envelope, waits for the three chips'
+    text, and adds the same sheet before its two reads; it swaps no theme.
+Audit (2026-11-10, s144 uiux cycle 294, S144-U-302, the same detector):
+  - test_overlay_coach_widgets_contrast: boot-stamped (?theme=), never
+    swaps in-page; on ?overlay=1&ui_mock=1 it waits for the call widget,
+    renders w-lead, w-callouts and w-choices through their own modules
+    with a no-feed state, adds the transitions-off sheet, then reads every
+    text line of every widget (the shared S144-U-299 read) in one evaluate
+    live and one idle. It joins the contrast pin below.
+This module pins all seventy-seven verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -246,46 +470,76 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The forty-six modules audited above, keyed by file name.
+# The seventy-seven modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
+    "test_am_empty_line_contrast.py",
     "test_am_map_roster_state_contrast.py",
     "test_build_insights_chart_text_contrast.py",
     "test_build_insights_sort_header_hover.py",
     "test_champ_select_arena_augment_options.py",
     "test_champ_select_arena_pane_contrast.py",
+    "test_champ_select_ban_phase_over_head_contrast.py",
     "test_champ_select_enemy_wr_slot_contrast.py",
     "test_champ_select_enemy_wr_slot_stale_cue.py",
     "test_champ_select_lock_button_focus.py",
+    "test_champ_select_personal_build_contrast.py",
+    "test_coach_decisions_banner_contrast.py",
     "test_ds_cards_muted_text_contrast.py",
     "test_ds_combo_controls_hit_floor.py",
     "test_ds_knob_inputs_focus_ring.py",
     "test_ds_matchup_text_contrast.py",
     "test_footer_mode_pill_contrast.py",
+    "test_header_placeholder_pill_contrast.py",
     "test_historical_pgr_text_contrast.py",
     "test_history_result_marks_contrast.py",
     "test_history_row_hover_marks_contrast.py",
     "test_home_accent2_focus_ring.py",
+    "test_home_find_match_picker_contrast.py",
     "test_home_history_nav_focus_ring.py",
     "test_home_muted_text_contrast.py",
     "test_home_pick_name_contrast.py",
+    "test_item_value_bar_relocated.py",
+    "test_last_match_build_wpa_contrast.py",
     "test_last_match_review_nav_hover.py",
     "test_lm_hero_stats_disclosure.py",
     "test_lobby_lane_popup_keyboard.py",
+    "test_lobby_mains_placeholder_contrast.py",
     "test_lobby_mains_recent_cell.py",
     "test_lobby_mains_tabs.py",
+    "test_lobby_mode_menu_current_contrast.py",
     "test_lobby_queue_buttons_focus_ring.py",
+    "test_lobby_queue_fill_text_contrast.py",
+    "test_lobby_roster_row_dimming_contrast.py",
     "test_lobby_text_contrast.py",
     "test_match_row_focus_ring.py",
     "test_match_row_grade_chip_contrast.py",
     "test_ops_page_state_text_contrast.py",
+    "test_overlay_build_delta_contrast.py",
+    "test_overlay_build_knobs_empty_contrast.py",
+    "test_overlay_build_rerank_clip.py",
+    "test_overlay_call_glyph_contrast.py",
+    "test_overlay_call_objective_contrast.py",
+    "test_overlay_coach_widgets_contrast.py",
+    "test_overlay_empty_caption_contrast.py",
+    "test_overlay_hotkey_hint_contrast.py",
+    "test_overlay_lead_bar_contrast.py",
+    "test_overlay_league_text_contrast.py",
+    "test_overlay_tft_hp_band_contrast.py",
+    "test_overlay_tft_text_contrast.py",
     "test_panel_visibility_tab_selected_state.py",
     "test_pgr_text_contrast.py",
+    "test_replay_match_row_text_contrast.py",
+    "test_session_hygiene_inert_contrast.py",
     "test_session_text_contrast.py",
     "test_settings_checkbox_hit_targets.py",
     "test_tab_bars_selected_state.py",
+    "test_tft_active_match_theme_contrast.py",
+    "test_tft_last_match_baseline_contrast.py",
+    "test_tft_strip_hp_band_colour.py",
     "test_theme_signal_prim_hue.py",
     "test_theme_soft_token_hue.py",
+    "test_ui_mock_active_match_build_eyebrows.py",
     "test_ui_mock_active_match_complete.py",
     "test_user_builds_rune_cells_focus_ring.py",
     "test_user_builds_rune_tabs.py",
@@ -294,6 +548,7 @@ _COVERED = {
     "test_view_menu_items.py",
     "test_view_menu_keyboard.py",
     "test_zone_pill_contrast.py",
+    "test_zoi_debug_readout.py",
 }
 
 _SHEET = "*, *::before, *::after { transition: none !important; }"
@@ -409,7 +664,10 @@ def test_settings_reads_are_settled(mock_server, pw_browser):
         page.keyboard.press("Tab")  # keyboard modality, as both tests do
         _check(page, "#panel-visibility-card .pv-tab", True, "pv tabs")
         n = _check(page, "#view-settings input[type=checkbox]", True, "checkboxes")
-        assert n >= 20, f"only {n} settings checkboxes"
+        # Anchor against an empty read. S144-U-263 cut the PANEL VISIBILITY
+        # card to the eight panels a view can show, which left the view
+        # with 18 checkboxes; the old ">= 20" predated that cut.
+        assert n >= 18, f"only {n} settings checkboxes"
     finally:
         _close(ctx, page)
 
@@ -1084,29 +1342,102 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The nine S144-U-214 contrast modules and S144-U-215's: each one's _measure
-# extra arguments after (mock_server, pw_browser, theme), taken from its own
-# constants (its first viewport, its first mode, the TFT footer state).
+# The forty-two contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# U-242, U-243, U-245, U-250, U-251, U-253, U-255, U-269, U-272, U-275,
+# U-277, U-278, U-279, U-280, U-281, U-288, U-293, U-295, U-296, U-297,
+# U-298, U-299, U-302):
+# each one's _measure extra arguments after (mock_server, pw_browser, theme),
+# taken from its own constants (its first viewport, its first mode, the TFT
+# footer state, the mixed Session scenario, its first surface, its first size,
+# its first lead state).
 _CONTRAST = {
+    "test_am_empty_line_contrast": ("mode", "vp"),
     "test_am_map_roster_state_contrast": (),
     "test_build_insights_chart_text_contrast": ("vp",),
+    "test_champ_select_ban_phase_over_head_contrast": (),
+    "test_champ_select_personal_build_contrast": (),
+    "test_coach_decisions_banner_contrast": (),
     "test_footer_mode_pill_contrast": ("fixture",),
+    "test_header_placeholder_pill_contrast": ("vp",),
     "test_historical_pgr_text_contrast": ("mode", "vp"),
+    "test_home_find_match_picker_contrast": (),
     "test_home_muted_text_contrast": ("vp",),
     "test_home_pick_name_contrast": ("vp",),
+    "test_item_value_bar_relocated": ("vp",),
+    "test_last_match_build_wpa_contrast": (),
+    "test_lobby_mains_placeholder_contrast": (),
+    "test_lobby_mode_menu_current_contrast": (),
+    "test_lobby_queue_fill_text_contrast": (),
+    "test_lobby_roster_row_dimming_contrast": (),
     "test_lobby_text_contrast": ("vp",),
+    "test_overlay_build_delta_contrast": ("mode",),
+    "test_overlay_build_knobs_empty_contrast": ("mode",),
+    "test_overlay_build_rerank_clip": ("mode",),
+    "test_overlay_call_glyph_contrast": (),
+    "test_overlay_call_objective_contrast": ("mode",),
+    "test_overlay_coach_widgets_contrast": ("lead",),
+    "test_overlay_empty_caption_contrast": ("surface",),
+    "test_overlay_hotkey_hint_contrast": ("mode",),
+    "test_overlay_lead_bar_contrast": (),
+    "test_overlay_league_text_contrast": ("mode",),
+    "test_overlay_tft_hp_band_contrast": (),
+    "test_overlay_tft_text_contrast": (),
     "test_pgr_text_contrast": ("mode", "vp"),
+    "test_replay_match_row_text_contrast": (),
+    "test_session_hygiene_inert_contrast": ("vp", "scenario"),
     "test_session_text_contrast": ("vp",),
+    "test_tft_active_match_theme_contrast": ("mode",),
+    "test_tft_last_match_baseline_contrast": (),
+    "test_tft_strip_hp_band_colour": ("size",),
+    "test_ui_mock_active_match_build_eyebrows": ("surface",),
     "test_ui_mock_active_match_complete": (),
     "test_user_builds_text_contrast": ("vp",),
+    "test_zoi_debug_readout": ("vp",),
 }
-# The four whose opener adds the sheet before its first interaction.
+# The thirty-four whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
+    "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
+    "test_champ_select_ban_phase_over_head_contrast",
+    "test_champ_select_personal_build_contrast",
+    "test_coach_decisions_banner_contrast",
+    "test_header_placeholder_pill_contrast",
+    "test_home_find_match_picker_contrast",
     "test_home_pick_name_contrast",
+    "test_item_value_bar_relocated",
+    "test_last_match_build_wpa_contrast",
+    "test_lobby_mains_placeholder_contrast",
+    "test_lobby_mode_menu_current_contrast",
+    "test_lobby_queue_fill_text_contrast",
+    "test_lobby_roster_row_dimming_contrast",
+    "test_overlay_build_delta_contrast",
+    "test_overlay_build_knobs_empty_contrast",
+    "test_overlay_build_rerank_clip",
+    "test_overlay_call_glyph_contrast",
+    "test_overlay_call_objective_contrast",
+    "test_overlay_coach_widgets_contrast",
+    "test_overlay_empty_caption_contrast",
+    "test_overlay_hotkey_hint_contrast",
+    "test_overlay_lead_bar_contrast",
+    "test_overlay_league_text_contrast",
+    "test_overlay_tft_hp_band_contrast",
+    "test_overlay_tft_text_contrast",
     "test_pgr_text_contrast",
+    "test_replay_match_row_text_contrast",
+    "test_session_hygiene_inert_contrast",
+    "test_tft_active_match_theme_contrast",
+    "test_tft_last_match_baseline_contrast",
+    "test_tft_strip_hp_band_colour",
     "test_user_builds_text_contrast",
+    "test_zoi_debug_readout",
 )
+# Sheeted modules whose sheet is this module's sheet plus one declaration
+# (S144-U-298: U-295 and U-296 also stop animations; the exact-sheet check
+# was red on the lane from their registration in cycle 289 until this map).
+_SHEET_EXTRA = {
+    "test_tft_active_match_theme_contrast": "animation: none !important;",
+    "test_tft_strip_hp_band_colour": "animation: none !important;",
+}
 
 # Force style on every element, then list every transition / animation
 # running anywhere in the page: what the module's next colour read would see.
@@ -1233,7 +1564,9 @@ def _contrast_run(mock_server, pw_browser, name, theme, **opts):
 
     mod = importlib.import_module(f"tests.snapshot_panels.{name}")
     pick = {"vp": lambda: mod._VIEWPORTS[0], "mode": lambda: mod._MODES[0],
-            "fixture": lambda: "tft"}
+            "fixture": lambda: "tft", "scenario": lambda: "mixed",
+            "surface": lambda: sorted(mod._SURFACES)[0],
+            "size": lambda: mod._SIZES[0], "lead": lambda: mod._LEADS[0]}
     extra = [pick[axis]() for axis in _CONTRAST[name]]
     rec = {"reads": 0, "running": [], "reclass_running": [], "reclassed": 0,
            "dropped": 0,
@@ -1288,7 +1621,9 @@ def test_contrast_modules_hold_their_sheet_and_no_sleep():
     for name in (*_CONTRAST_SHEETED, "test_historical_pgr_text_contrast"):
         mod = importlib.import_module(f"tests.snapshot_panels.{name}")
         src = (_HERE / f"{name}.py").read_text(encoding="utf-8")
-        assert mod._SHEET == _SHEET, name
+        extra = _SHEET_EXTRA.get(name)
+        want = _SHEET if extra is None else _SHEET.replace(" }", f" {extra} }}")
+        assert mod._SHEET == want, name
         assert "add_style_tag(content=_SHEET)" in src, name
 
 

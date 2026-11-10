@@ -252,3 +252,53 @@ def test_launcher_menu_opens_and_rows_meet_hit_min(mock_server, pw_browser):
         assert not errors, f"overlay page errors: {errors}"
     finally:
         ctx.close()
+
+
+# S144-U-287: the launcher's mount parent. Read off the live page: the parent
+# element's tag / id, plus the launcher's computed position.
+_LAUNCHER_HOST = """
+() => {
+  const el = document.querySelector('#w-launcher');
+  if (!el) return null;
+  const p = el.parentElement;
+  return {
+    parent_tag: p ? p.tagName : '',
+    parent_id: p ? (p.id || '') : '',
+    is_body: p === document.body,
+    position: getComputedStyle(el).position,
+    count: document.querySelectorAll('#w-launcher').length,
+  };
+}
+"""
+
+
+def test_launcher_mounts_on_document_body(mock_server, pw_browser):
+    """S144-U-287 STRUCTURE: the launcher (the overlay's escape hatch) is a direct
+    document.body child, outside every view section and pane, so no view / phase
+    wrapper can hide it and its position:fixed is viewport-relative.
+
+    Mutation-resistant half: give the real .am-grid the id "am-grid", drop the
+    launcher, and let the debounced body observer re-create it. A host lookup by
+    "#am-grid" (the pre-S144-U-287 code) would now mount it inside the grid; the
+    contract is that it lands on body again."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        page.wait_for_function("!!document.querySelector('#w-launcher')", timeout=5_000)
+        first = page.evaluate(_LAUNCHER_HOST)
+        assert first["is_body"], f"launcher must mount on document.body: {first}"
+        assert first["position"] == "fixed", first
+        assert first["count"] == 1, first
+
+        tagged = page.evaluate(
+            "() => { const g = document.querySelector('#view-active-match .am-grid');"
+            " if (!g) return false; g.id = 'am-grid';"
+            " document.querySelector('#w-launcher').remove(); return true; }"
+        )
+        assert tagged, "the active-match .am-grid must exist (non-vacuous)"
+        page.wait_for_function("!!document.querySelector('#w-launcher')", timeout=5_000)
+        again = page.evaluate(_LAUNCHER_HOST)
+        assert again["is_body"], f"re-created launcher must mount on body, not #am-grid: {again}"
+        assert again["count"] == 1, again
+        assert not errors, f"overlay page errors: {errors}"
+    finally:
+        ctx.close()

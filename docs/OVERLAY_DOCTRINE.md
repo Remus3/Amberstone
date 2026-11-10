@@ -129,7 +129,7 @@ by the same work-area scale rc-shell sizes the window by (RC2 4.1 ovscale).
 | `w-callouts`     | objective + spike ETAs      | Ambient -> Urgent     | 1486, past minimap 780 | left edge of the minimap (eye rests) | yes      |
 | `w-lead`         | macro lead ahead/behind     | Ambient               | 786, 44       | top-center, under the score bar          | yes           |
 | `w-threat`       | enemy threat / CD ledger    | Urgent                | 1604, 560     | directly above the minimap               | no (reveal)   |
-| `w-build`        | next-item rerank            | Ambient               | 70, 470       | left edge, out of the play space         | no (reveal)   |
+| `w-build`        | next-item rerank            | Ambient               | 70, 600 (lower half: bottom-anchored, grows up to 12 px under w-call; trailing sections drop whole) | bottom-left corner, out of the play space | no (reveal)   |
 | `w-ovds`         | DS fight-model / rel-score  | Ambient               | 20, 780       | left-edge column, out of the play space  | no (reveal: build) |
 | `w-spike`        | spike-crossed cue           | Urgent (one-shot)     | 360, 840      | bottom-left, near champion stats         | yes (transient)|
 | `w-trinket`      | trinket / control-ward ready| Urgent make-aware     | 920, 540      | small glyph, offset from the avatar      | yes (glyph)   |
@@ -166,8 +166,9 @@ The palette is law. No color literal outside this table reaches a widget.
 | cyan accent         | #0AC8B9  | informational / objective chips, the PRIMARY action glow   |
 | good / ahead        | #37D08A  | lead-ahead bar, `good` band glyph                          |
 | caution / urgent    | #C8AA6E  | the single Urgent caution hue (reuse gold)                 |
+| warn / behind       | #E8A33D  | lead-behind bar, severe STALE tag, TFT crit opponent chip (`--ovx-warn`; ambient bad news, never red) |
 | lethal / emergency  | #E84057  | the ONE pop-out: Emergency glow + `urgent` band; max once  |
-| neutral text        | #FFFFFF  | widget body ink (`--ovx-text`): ACTION verb full, OBJECTIVE footer @0.55 |
+| neutral text        | #FFFFFF  | widget body ink (`--ovx-text`): ACTION verb full, OBJECTIVE footer @0.62 (AA in the idle recede, S144-U-288) |
 | dmg physical        | #EB8A3A  | threat donut slice (`--ovx-dmg-physical` -> `--data-dmg-physical`, Y-07) |
 | dmg magic           | #A37CF7  | threat donut slice (`--ovx-dmg-magic` -> `--data-dmg-magic`)  |
 | dmg true            | #ECE8DF  | threat donut slice (`--ovx-dmg-true` -> `--data-dmg-true`)    |
@@ -399,7 +400,12 @@ reminder fails it.
 - A registered TFT panel keeps the action it names (`registerTftOverlayPanel`
   passes `hotkey` through), and the reserved planner slot (`TFT_PLANNER_SLOT`, a
   picker) names `active`, so the planner shows its reminder the day it registers.
-- Rule tiers: neutral ink at the OBJECTIVE footer's alpha, the overlay's smallest type
-  token, no hue, no motion, no layout of its own. `pointer-events:none`, so it is never
+- Rule tiers: neutral ink at 0.70 on its own nested backing pill
+  (`rgba(--ovx-bg-nested, 0.9)`, the inset-row backing), the overlay's smallest type
+  token, no hue, no motion, no layout of its own. S144-U-278: the reminder used to
+  borrow the OBJECTIVE footer's 0.55 and whatever sat behind it, which read 1.00:1
+  under the launcher (only the game behind it), 2.36:1 on the see-through w-choices
+  wash and 4.18:1 in the idle recede; it now reaches AA live and idle over any game
+  pixel (`tests/snapshot_panels/test_overlay_hotkey_hint_contrast.py`). `pointer-events:none`, so it is never
   a hit target or a click-through zone. It sheds in combat (`body[data-fight="1"]`, rule
   3 and section 6); the per-chip pick keys stay, as section 6 says.

@@ -65,7 +65,8 @@ def _read(p: Path) -> str:
 
 class ItemBuildConsumesTokensTests(unittest.TestCase):
     """item_build.css: two #44ff88 success-green literals swapped to
-    var(--signal-good). Wave-state threshold colors preserved."""
+    var(--signal-good). The wave-state threshold colors left with the
+    retired NEXT panel (S144-U-265)."""
 
     def test_no_hardcoded_success_green_hex(self):
         """The two #44ff88 literals (ds-chip em + ib-builds-status.ok)
@@ -82,20 +83,18 @@ class ItemBuildConsumesTokensTests(unittest.TestCase):
                       "item_build.css must consume var(--signal-good)"
                       " for the success-green chips")
 
-    def test_wave_state_outliers_preserved(self):
-        """Wave-state thresholds are operator-tuned distinct cues
-        intentionally outside the semantic palette; do NOT auto-sweep."""
+    def test_wave_state_outliers_left_with_the_retired_panel(self):
+        """The wave-state threshold colours were operator-tuned cues outside
+        the semantic palette, consumed only by the NEXT panel's 3-lane wave
+        readout. S144-U-265 retired that never-rendered panel and its
+        #nx-wave block (tests/snapshot_panels/test_next_panel_retired.py),
+        so the colours left item_build.css with it rather than being swept
+        onto tokens."""
         css = _read(ITEM_BUILD_CSS)
-        # Your-lane fluorescent yellow pip
-        self.assertIn("#F5FF00", css,
-                      "your-lane wave-marker yellow pip preserved")
-        # Three wave-state threshold colors
-        self.assertIn("#5BC0F8", css,
-                      "wave-our (FREEZE, <=30%) icy-blue preserved")
-        self.assertIn("#4DD0A8", css,
-                      "wave-mid (TRADE, 30-65%) potion-green preserved")
-        self.assertIn("#FF4646", css,
-                      "wave-bad (DISENGAGE, >=80%) vibrant-red preserved")
+        for hex_ in ("#F5FF00", "#5BC0F8", "#4DD0A8", "#FF4646"):
+            self.assertNotIn(hex_, css, hex_)
+        # Anchor: the file read is the real item_build.css.
+        self.assertIn("var(--signal-good)", css)
 
 
 class AugmentRecoConsumesTokensTests(unittest.TestCase):

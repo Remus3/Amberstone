@@ -1035,8 +1035,15 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     const surface = (bt >= 5) || (at >= 7) || (pt >= 7);
     if (surface) {
       const defLabel = `DEFENSE - ${threat.summary || "threat detected"}`;
-      build.appendChild(_line(defLabel, ""));
+      // S144-U-283: each trailing data section (eyebrow + strip) carries one
+      // data-ovx-drop key, so the overlay fit (overlay_layout._fitDropGroups)
+      // drops it WHOLE, last section first, when the capped widget cannot hold
+      // it - instead of the widget clip slicing it. Inert on the dashboard.
+      const defLine = _line(defLabel, "");
+      defLine.dataset.ovxDrop = "defense";
+      build.appendChild(defLine);
       const defStrip = document.createElement("div");
+      defStrip.dataset.ovxDrop = "defense";
       defStrip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
       defensive.slice(0, 3).forEach((r) => {
         defStrip.appendChild(_defIcon(r, ownedSet));
@@ -1052,9 +1059,12 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // vs gap (buy toward it); high severity gets a stronger border.
   const _ch = (_BUILD_PLAN && Array.isArray(_BUILD_PLAN.counterHints)) ? _BUILD_PLAN.counterHints : null;
   if (_ch && _ch.length) {
-    build.appendChild(_line("COUNTER", ""));
+    const cLine = _line("COUNTER", "");
+    cLine.dataset.ovxDrop = "counter"; // S144-U-283, see DEFENSE above
+    build.appendChild(cLine);
     const cStrip = document.createElement("div");
     cStrip.className = "counter-strip";
+    cStrip.dataset.ovxDrop = "counter";
     _ch.forEach((h) => cStrip.appendChild(_counterChip(h)));
     build.appendChild(cStrip);
   }
@@ -1065,9 +1075,12 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
     const enemies = _amThreatEnemies(lc);
     if (enemies.length) {
-      build.appendChild(_line("THREATS", ""));
+      const tLine = _line("THREATS", "");
+      tLine.dataset.ovxDrop = "threats"; // S144-U-283, see DEFENSE above
+      build.appendChild(tLine);
       const strip = document.createElement("div");
       strip.className = "threat-strip";
+      strip.dataset.ovxDrop = "threats";
       strip.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;align-items:center;";
       enemies.forEach((pl) => strip.appendChild(_threatRow(pl, mode, level)));
       build.appendChild(strip);
@@ -1444,6 +1457,20 @@ function _amEmptyIn(wrap, text) {
 // Local board: one chip per unit - name + star level on the first line, its
 // items (or "no items") on the second. Pure DOM, textContent only. An empty
 // board renders its empty-state line inside the same fixed-height wrapper.
+// S144-U-300: the unit name wraps whole inside its chip (active_match.css
+// .am-tft-unit-name), so give it word joints to break at. The client's
+// names are joined ("CrimsonRaptor", "MasterYi_AD"): a <wbr> between a
+// lower-case letter and a capital, and after an underscore, makes
+// "Crimson" / "Raptor" the two lines instead of "CrimsonRapt" / "or". A
+// <wbr> carries no character, so textContent stays the name.
+function _amTftUnitName(el, name) {
+  const parts = String(name).split(/(?<=[a-z])(?=[A-Z])|(?<=_)(?=.)/);
+  parts.forEach((part, i) => {
+    if (i) el.appendChild(document.createElement("wbr"));
+    el.appendChild(document.createTextNode(part));
+  });
+}
+
 function _amTftBoardNode(board, emptyText, asOf) {
   const wrap = document.createElement("div");
   wrap.className = "am-tft-board-wrap";
@@ -1480,12 +1507,12 @@ function _amTftBoardNode(board, emptyText, asOf) {
     li.className = "am-tft-unit";
     const label = `${u.name}, ${u.star} star${u.items.length ? ", " + u.items.join(", ") : ", no items"}`;
     li.setAttribute("aria-label", label);
-    li.title = label;  // full item names when the chip line is ellipsised
+    li.title = label;  // the whole label on hover; the items line is never clamped
     const top = document.createElement("div");
     top.className = "am-tft-unit-top";
     const name = document.createElement("span");
     name.className = "am-tft-unit-name";
-    name.textContent = u.name;
+    _amTftUnitName(name, u.name);
     const star = document.createElement("span");
     star.className = "am-tft-unit-star";
     star.dataset.star = String(u.star);
@@ -1697,9 +1724,10 @@ export function renderActiveMatch(payload, ctx) {
     // [a]ally[/a], [e]enemy[/e]) - an internal authoring convention, not display
     // text (the BARON/DRAKE/HERALD chips carry the real timers). Without this the
     // raw [T]...[/T] markup leaked into the overlay coach card (operator-reported
-    // 2026-06-29). Matches right_now.js / next.js, which already route through it.
-    // B4 defence in depth (RM-1093, the same gate line as right_now.js and
-    // next.js): while a game is live, read the coach with the server's
+    // 2026-06-29). Matches right_now.js, which already routes through it.
+    // B4 defence in depth (RM-1093, the same gate line as right_now.js; the
+    // NEXT panel that carried it too is retired, S144-U-265): while a game
+    // is live, read the coach with the server's
     // live-suppressed imperatives blanked. MEASURED: in the no-draft champ
     // select -> game window the server serves a pre-flip (mode_key aram,
     // preflip_active) with the coach unblanked, while the :2999 relay may
@@ -2251,8 +2279,8 @@ function _amMapImg(mode) {
   const ver = (ITEMS && ITEMS.version) || DDRAGON_FALLBACK_VERSION;
   return "/data/ddragon/" + ver + "/img/map/" + _AM_MAP_FILE[mode];
 }
-// World-coordinate map sizes. Mirror of main.js's VT_MAP_SIZE so the
-// canvas projection matches the home-view overlay.
+// World-coordinate map sizes (Howling Abyss is smaller than SR). Same
+// values as web/js/panels/replay_minimap.js MAP_WORLD.
 const _AM_MAP_WORLD = {
   CLASSIC:    14800,
   ARAM:       13800,
@@ -2277,8 +2305,8 @@ const _AM_GHOST_MIN_ALPHA = 0.25;
 // old rgba(220, 38, 38, 0.85) fell to 4.05:1 over a near-white patch. This
 // red holds 5.13:1 over white and 8.14:1 over black (AA is 4.5:1).
 const _AM_MAP_ALERT_BG = "rgba(185, 28, 28, 0.85)";
-// Cadence: how often we re-poll /api/vision-state. 500ms matches the
-// home-view's VT_INTERVAL_MS so dot positions don't lag.
+// Cadence: how often we re-poll /api/vision-state. 500ms, so dot
+// positions don't lag.
 const _AM_TICK_MS = 500;
 // S144-U-224: a poll request still unanswered after this is aborted and
 // settles as a failure. Under the 10 s stale cut (_AM_MAP_STALE_S), so a
@@ -2718,16 +2746,26 @@ function _amMapBadgeFs(canvas) {
 // gank band prints. Only when the tag is wider than maxW (measure = the
 // canvas measureText width) is the name cut and ended with "...", keeping
 // at least one letter; the seconds are never cut.
+// S144-U-247: "..." is 3 chars, so a cut of a short name is WIDER than the
+// whole tag ("Vi 25s" -> "V... 25s"), and the one-letter last resort was
+// returned unmeasured. When no candidate fits, the narrowest one is drawn
+// (a tie keeps the longer name, the whole tag first), so the badge is
+// never wider than the uncut name.
 function _amMapBadgeTag(name, secs, maxW, measure) {
   const nm = String(name || "") || "?";
   const tail = ` ${Math.round(secs)}s`;
-  const whole = nm + tail;
-  if (measure(whole) <= maxW) return whole;
-  for (let n = nm.length - 1; n > 1; n--) {
-    const cut = nm.slice(0, n).trimEnd() + "..." + tail;
-    if (measure(cut) <= maxW) return cut;
+  let best = nm + tail;
+  let bestW = measure(best);
+  if (bestW <= maxW) return best;
+  for (let n = nm.length - 1; n >= 1; n--) {
+    const head = nm.slice(0, n).trimEnd();
+    if (!head) continue;
+    const cut = head + "..." + tail;
+    const cutW = measure(cut);
+    if (cutW <= maxW) return cut;
+    if (cutW < bestW) { best = cut; bestW = cutW; }
   }
-  return nm.slice(0, 1) + "..." + tail;
+  return best;
 }
 
 // S144-U-231: where the MIA badge goes - {bx: the text's left x, top: the
@@ -3432,8 +3470,9 @@ function _dsIcon(r, ownedSet, planState, opts) {
     dlt.textContent = `+${(delta || 0).toFixed(0)}`;
     // C2 UI-audit: the +Ndps gain is the key build signal under each icon;
     // bumped off the sub-floor 11px to the --fs-xs token (a 2-4 char number
-    // still fits the 48px icon cell).
-    dlt.style.cssText = "font-size:var(--fs-xs);font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
+    // still fits the 48px icon cell). S144-U-281: styled by the .bm-delta
+    // class (build_module.css) so the overlay can lift its ink (overlay.css).
+    dlt.className = "bm-delta";
     wrap.appendChild(dlt);
   }
   // WP-D1: hover tooltip (name + stats + passive from /api/dictionary/items).

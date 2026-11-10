@@ -7,9 +7,7 @@ export const state = {
   logCount: 0,
   lastTouch: {         // epoch seconds per panel (drives staleness indicators)
     right_now: 0,
-    next: 0,
     item_build: 0,
-    minimap: 0,
   },
   latest: {},          // mode -> latest coaching payload cache
   lastSseTs: 0,        // ms timestamp of last SSE event (dedup vs. HTTP fallback)
@@ -25,9 +23,9 @@ export const state = {
 // Staleness thresholds per panel (seconds from spec S5).
 export const CADENCE = {
   right_now:  { stale: 4,   severe: 12 },
-  next:       { stale: 16,  severe: 48 },
   item_build: { stale: 90,  severe: 300 },
-  minimap:    { stale: 4,   severe: 12 },
+  // S144-U-264 / S144-U-265: the retired Map State shell's minimap key
+  // and the retired NEXT panel's key are gone.
 };
 
 // All navigable view IDs (matches data-view attribute and URL hash).
