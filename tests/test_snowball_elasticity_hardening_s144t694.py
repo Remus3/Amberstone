@@ -28,6 +28,8 @@ Every test injects an in-memory db (or a tmp_path db) - no real data.
 import math
 import sqlite3
 
+import pytest
+
 from core import snowball_elasticity as se
 
 
@@ -290,14 +292,11 @@ def test_ro_open_is_read_only(tmp_path, monkeypatch):
     monkeypatch.setattr(se, "_REWIND_DB", db)
     conn = se._open_ro()
     try:
-        try:
+        with pytest.raises(sqlite3.OperationalError) as caught:
             conn.execute("DELETE FROM matches")
-        except sqlite3.OperationalError as exc:
-            assert "readonly" in str(exc).replace(" ", "").lower()
-        else:
-            raise AssertionError("read-only handle accepted a write")
     finally:
         conn.close()
+    assert "readonly" in str(caught.value).replace(" ", "").lower()
 
 
 def test_payload_is_strict_json_finite():
