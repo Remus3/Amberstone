@@ -792,6 +792,16 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
   opacity: 0.85;
 }
 
+/* S144-U-299: the placeholder sigil ("?" no damage mix, "." fetching) is SVG
+ * text, so its ink is a fill. The literal #888 it carried read 3.73:1 on the
+ * THREATS row (hextech) and 2.90:1 in the overlay idle recede (arcane), under
+ * the 4.5:1 text floor; the secondary text token reads AA in every theme.
+ * The overlay re-points it onto --ovx-text (overlay.css section 0a). Guard:
+ * tests/snapshot_panels/test_overlay_league_text_contrast.py. */
+.threat-donut-sigil {
+  fill: var(--text-dim);
+}
+
 #view-active-match .threat-strip .threat-row {
   /* Tighter row padding than the DS-icon strip; the donut is the
    * visual heavy here, not the portrait. */

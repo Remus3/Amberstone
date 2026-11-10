@@ -129,7 +129,7 @@ ea864e8773c4600f9fbdc9073f38277ea336c7cb46fb3da95eea6b8e38e22b7d  web/js/panels/
 
 44cd21164d6e45c3dc0f5a930fb2bdcc2ae489f06e69f020644a17c002013344  web/js/panels/team_context.js
 
-7ae03507b86fa79092b17675f4bc59c835676781b44ee2df56cb2e3605c4d6ff  web/js/panels/threat_donut.js
+7c04d56f4a758f18ff785b0c7a870e822f2b4ed0a897db44af96ef6bf5d2ea20  web/js/panels/threat_donut.js
 
 6202ef2f8af3121b15af5dbb334a22379d71f1186d8ff80da2f1534668d6bdb6  web/js/panels/ward_heat.js
 

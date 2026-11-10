@@ -97,6 +97,14 @@ body[data-shell="overlay"] {
   --ovx-panel-border: rgba(var(--ovx-gold), 0.70);
 }
 
+/* S144-U-299: the threat donut placeholder sigil (w-build THREATS strip) takes
+ * the 0.75 neutral body-ink tier, not the dashboard --text-dim: no colour
+ * outside the --ovx-* table reaches a widget. Its old literal #888 read 3.53:1
+ * live and 2.90:1 idle (arcane) over a white game pixel. */
+body[data-shell="overlay"] .threat-donut-sigil {
+  fill: rgba(var(--ovx-text), 0.75);
+}
+
 /* 1. Transparent canvas. The game shows through; only widgets paint. zoom (not
  * transform) so the design-px widget coords scale with the window at non-1080p
  * (RC2 4.1 ovscale); 1 is an exact no-op at the 1920/100% baseline. */

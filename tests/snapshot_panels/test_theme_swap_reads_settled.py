@@ -361,7 +361,17 @@ Audit (2026-11-10, s144 uiux cycle 290, S144-U-298, the same detector):
     widgets, its backing chain and its widget's opacity in one evaluate
     live and one idle (each widget's own opacity transition is switched
     off inline for that read). It joins the contrast pin below.
-This module pins all seventy-five verdicts at runtime with each test's own opener,
+Audit (2026-11-10, s144 uiux cycle 291, S144-U-299, the same detector):
+  - test_overlay_league_text_contrast: boot-stamped (?theme=), never swaps
+    in-page; it waits for the call widget and for the w-build THREATS strip
+    to settle (no tile still loading) on ?overlay=1&ui_mock=1, adds the
+    transitions-off sheet, then reads every text line of every League
+    widget, its backing chain and its widget's opacity in one evaluate live
+    and one idle (the sheet also stops the widget's own opacity transition
+    the idle flip starts). Its dashboard case reads no theme swap either
+    (?theme= at boot) and adds the same sheet. It joins the contrast pin
+    below.
+This module pins all seventy-six verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -450,7 +460,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The seventy-five modules audited above, keyed by file name.
+# The seventy-six modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_empty_line_contrast.py",
@@ -503,6 +513,7 @@ _COVERED = {
     "test_overlay_empty_caption_contrast.py",
     "test_overlay_hotkey_hint_contrast.py",
     "test_overlay_lead_bar_contrast.py",
+    "test_overlay_league_text_contrast.py",
     "test_overlay_tft_hp_band_contrast.py",
     "test_overlay_tft_text_contrast.py",
     "test_panel_visibility_tab_selected_state.py",
@@ -1320,10 +1331,10 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The forty contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# The forty-one contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
 # U-242, U-243, U-245, U-250, U-251, U-253, U-255, U-269, U-272, U-275,
 # U-277, U-278, U-279, U-280, U-281, U-288, U-293, U-295, U-296, U-297,
-# U-298):
+# U-298, U-299):
 # each one's _measure extra arguments after (mock_server, pw_browser, theme),
 # taken from its own constants (its first viewport, its first mode, the TFT
 # footer state, the mixed Session scenario, its first surface, its first size).
@@ -1355,6 +1366,7 @@ _CONTRAST = {
     "test_overlay_empty_caption_contrast": ("surface",),
     "test_overlay_hotkey_hint_contrast": ("mode",),
     "test_overlay_lead_bar_contrast": (),
+    "test_overlay_league_text_contrast": ("mode",),
     "test_overlay_tft_hp_band_contrast": (),
     "test_overlay_tft_text_contrast": (),
     "test_pgr_text_contrast": ("mode", "vp"),
@@ -1369,7 +1381,7 @@ _CONTRAST = {
     "test_user_builds_text_contrast": ("vp",),
     "test_zoi_debug_readout": ("vp",),
 }
-# The thirty-two whose opener adds the sheet before its first interaction.
+# The thirty-three whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
@@ -1393,6 +1405,7 @@ _CONTRAST_SHEETED = (
     "test_overlay_empty_caption_contrast",
     "test_overlay_hotkey_hint_contrast",
     "test_overlay_lead_bar_contrast",
+    "test_overlay_league_text_contrast",
     "test_overlay_tft_hp_band_contrast",
     "test_overlay_tft_text_contrast",
     "test_pgr_text_contrast",

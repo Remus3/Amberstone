@@ -2444,3 +2444,34 @@ DONE 2026-11-06 (s144 uiux cycle 167, S144-U-177, Tier-1 CSS + snapshot guard). 
 - Registered in the RM-1132 theme-swap audit: seventy-five modules, forty contrast, thirty-two sheeted.
 - Found while registering: `test_contrast_modules_hold_their_sheet_and_no_sleep` there was already red on the lane (red on HEAD 12b65e040 too). Cycle 289 registered S144-U-295 (`test_tft_active_match_theme_contrast`) and S144-U-296 (`test_tft_strip_hp_band_colour`) as sheeted, but both sheets also carry `animation: none !important;`, and the check demanded the exact shared sheet. Ruling: a named `_SHEET_EXTRA` map (module -> the one extra declaration), so each of the two is still checked byte-exact and any other drift still fails; the two pins keep their stronger sheet.
 - Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today).
+
+### S144-U-299 - the threat donut placeholder sigil reaches AA in the overlay build widget and on the dashboard THREATS row, instead of 2.90:1 idle; every League overlay text line is now swept (s144 uiux cycle 291)
+
+- Target: cycle 290's first NEXT CANDIDATE, the S144-U-298 whole-widget sweep for the League overlay widgets. Their contrast pins each read one element (call glyph, objective footer, empty caption, hotkey hint, lead bar, build delta).
+- Sweep, headless (snapshot harness, `?ui_mock=1&mode=<sr|aram|mayhem|arena>&overlay=1&theme=<t>`, 1920x1080, six themes, worst of five game pixels, live and idle). It reads every visible text line of w-call, w-build, w-ovds and w-launcher. Under AA it found one defect, the threat donut placeholder sigil. Every other line held 4.65:1 or more idle. The aria-hidden call band glyph keeps its S144-U-275 3:1 graphics floor (3.41 idle).
+- Defect: `web/js/panels/threat_donut.js` `_placeholder` draws the "?" (no damage mix) and "." (fetching) sigil as SVG text with the literal `fill="#888"`, 12 px / 700, inside the 0.85-opacity `.threat-donut-empty` wrap.
+  - In the w-build THREATS strip (five tiles in SR, ARAM and Mayhem, ten in Arena) it read 3.53 live / 2.90 idle (arcane) and 3.73 / 3.02 (hextech). The best theme, terminal, read 4.04 / 3.20.
+  - That is under the 4.5:1 text floor in every theme. When idle it is also under the 3:1 graphics floor in five of six themes.
+  - On the dashboard Active Match THREATS row it read 3.53 - 4.04:1 (arcane lowest).
+  - The literal was also a palette-law breach: a colour outside the `--ovx-*` table reached an overlay widget.
+  - A color-based read passed the sigil, because SVG text paints its fill, and its computed color was the inherited 0.94-lightness ink. So the sweep reads SVG text by its fill.
+- RULING: the sigil takes class `threat-donut-sigil` and `fill="currentColor"`. The fallback is the row's own ink, never a literal.
+  - Dashboard: `active_match.css` paints it `--text-dim`, the secondary text token. After: 5.00 (hextech) to 6.22 (terminal).
+  - Overlay: `overlay.css` re-points it to `rgba(--ovx-text, 0.75)`, the neutral body-ink tier. After: 7.04 live / 5.01 idle worst (arcane), the same in all four modes.
+  - Font size 12 px is unchanged. It is the documented geometry exception inside the 28x28 donut.
+  - Rejected: CSS only, keeping the `#888` attribute (the literal would stay in the source as a dead, misleading colour); the 0.62 footer tier and `--signal-dim` (0.55) (not measured: on the 0.85 wrap they sit further under the 0.75 tier's 5.01 idle margin); dropping the wrap's 0.85 opacity (it also dims the empty ring, and that is a separate graphics question).
+- 5-phase audit (headless, six themes):
+  - STRUCTURE: fill only. No box or layout change; the THREATS row and the `test_threat_strip_live_names.py` cases are green.
+  - TYPOGRAPHY: 12 px / 700 kept (operator-exception comment in `_placeholder`). No line in any League widget is 18.66 px or larger (pinned).
+  - HIT-TARGETS: the sigil is not interactive. The overlay build widget's hit-target pins are untouched.
+  - ASCII: 0 non-ASCII and 0 CR in every touched file. `tools/web_ascii_sweep.py --dry-run` finds 0 comment-span glyphs.
+  - HIERARCHY: the placeholder stays neutral and quiet: overlay ink white at 0.75 (pinned between 0.62 and 0.75), under the full-ink ACTION verb, and the dashboard secondary token, not `--text`. The damage-hue arcs of a real donut stay the loudest thing in the strip.
+- Pin: new `tests/snapshot_panels/test_overlay_league_text_contrast.py` (36):
+  - six themes x four modes, every League overlay line at AA live and idle;
+  - per mode, that the sweep reads the sigils as SVG text by fill (5, or 10 in Arena), with a real recede;
+  - the overlay sigil is neutral `--ovx-text` ink at 0.62 - 0.75 with `fill="currentColor"` (hextech, arcane);
+  - the dashboard sigil at AA in six themes.
+  - Red on the old code: 36 of 36. Green: 36 of 36.
+- Registered in the RM-1132 theme-swap audit: seventy-six modules, forty-one contrast (axis `mode`), thirty-three sheeted. Its reads are settled in all six themes.
+- `tests/guard_data/web_live_half/` re-captured: only the overlay.css, active_match.css and threat_donut.js rows moved.
+- Still FUTURE (carried): (l) a swapped mount placed mid-drag at the tracked top / left (no renderer swaps a mount today). New: (m) the empty-ring stroke `#444` and the donut back-ring `#222` in `threat_donut.js` are colour literals too. They are graphics (WCAG 1.4.11), not text; whether the placeholder ring must read 3:1 is a separate ruling.
