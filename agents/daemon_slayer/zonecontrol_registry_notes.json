@@ -235,7 +235,7 @@
    "persistence": "TIMED",
    "magnitude": 0.5,
    "conditional": false,
-   "source_quote": "Tormented Soil (QE) - leaves a lingering ground zone that damages and slows enemies who remain in the area"
+   "source_quote": "Molten Fissure (QE) - leaves lava fissures for 2.5 seconds that damage and slow enemies who remain in the area"
   },
   {
    "champion": "Illaoi",

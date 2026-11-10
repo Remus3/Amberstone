@@ -73,7 +73,7 @@
    "online_stage": "LATE",
    "magnitude": 0.8,
    "conditional": false,
-   "source_quote": "At full stardust and full AP build, Star Surge and Falling Star deal extreme damage with very high AP ratios; stardust amplifies base ratios multiplicatively at max stacks"
+   "source_quote": "At full stardust and full AP build, Breath of Light and Falling Star deal extreme damage with very high AP ratios; stardust amplifies base ratios multiplicatively at max stacks"
   },
   {
    "champion": "Aurora",
@@ -226,7 +226,7 @@
    "online_stage": "EARLY",
    "magnitude": 0.95,
    "conditional": false,
-   "source_quote": "Stardust (P) accrues permanently from roaming/kills/objectives and expands Star Surge range/power unboundedly"
+   "source_quote": "Cosmic Creator (P): damaging abilities against enemies generate permanent Stardust stacks that keep augmenting Breath of Light, Astral Flight and Singularity all game"
   },
   {
    "champion": "Aurora",
@@ -253,7 +253,7 @@
    "online_stage": "EARLY",
    "magnitude": 0.75,
    "conditional": false,
-   "source_quote": "Chime collection (P) permanently increases movement speed and Q meep damage throughout the entire game with no cap"
+   "source_quote": "Traveler's Call (P): every Chime collected permanently raises Meep damage (+10 per 5 Chimes) and the Meep count throughout the entire game"
   },
   {
    "champion": "Belveth",
@@ -262,7 +262,7 @@
    "online_stage": "EARLY",
    "magnitude": 0.85,
    "conditional": false,
-   "source_quote": "Endless Banquet P grants permanent bonus attack speed stacks from champion, large monster, and void coral kills"
+   "source_quote": "Death in Lavender P grants permanent bonus attack speed stacks (Lavender) from champion, monster, and large minion takedowns"
   },
   {
    "champion": "Blitzcrank",
@@ -1981,7 +1981,7 @@
    "online_stage": "MID",
    "magnitude": 0.7,
    "conditional": false,
-   "source_quote": "The Relentless Storm grants massive stat buff, disables nearby turrets, and empowers autos; discrete power jump at level 6 all-in threat"
+   "source_quote": "Stormbringer grants bonus health and attack range, disables nearby turrets, and empowers Frenzied Maul; discrete power jump at level 6 all-in threat"
   },
   {
    "champion": "Xayah",
