@@ -1,4 +1,6 @@
-"""tests/test_gated_live_probe_relay_auth.py
+"""The live-gated pre-flight probe authenticates to the vision relay instead of reporting a dead frame.
+
+tests/test_gated_live_probe_relay_auth.py
 
 `tools/gated_live_probe.py` is the sanctioned pre-flight for live-gated rows.
 It reported `vision frame_bytes=0 / frame_dead=True` unconditionally, and that

@@ -1,4 +1,6 @@
-"""tests/test_gated_tls_2999_probe.py
+"""The RM-752 follow-up probe that asks :2999 which TLS contexts it accepts.
+
+tests/test_gated_tls_2999_probe.py
 
 `tools/gated_tls_2999_probe.py` is the RM-752 follow-up probe: during a League
 game it asks Riot's :2999 Live Client which TLS contexts it accepts, so the

@@ -29,6 +29,12 @@ test_web_css_split_plan_rm726, test_web_js_split_plan_rm726, test_motion_reduce_
 test_dark_values_ratchet_oq6, test_oq3_objective_gauge_mocks) gained a one-line summary above their path line,
 10 sites, so the baseline is now 157 sites in 140 files.
 
+Fifth slice (S144-P-669): ten tests/ modules (test_gated_b29_window_parity, test_gated_frame_readback,
+test_gated_live_probe_relay_auth, test_gated_tls_2999_probe, test_gated_vision_pillow, test_history_session_wl_oq8,
+test_overlay_slider_hit_target, test_rc_skel_removed, test_live_item_tape_wiring, test_loop_controller_code_reload)
+gained a one-line summary above their path line (or a summary line ahead of the wrapped opening), 10 sites, so the
+baseline is now 147 sites in 130 files.
+
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
 """
@@ -133,19 +139,11 @@ _BASELINE = {
     "tests/test_data_viz_tier_y07.py": 1,
     "tests/test_decision_detector_lane8_cycle12.py": 1,
     "tests/test_ds_perm_swarm.py": 1,
-    "tests/test_gated_b29_window_parity.py": 1,
-    "tests/test_gated_frame_readback.py": 1,
-    "tests/test_gated_live_probe_relay_auth.py": 1,
-    "tests/test_gated_tls_2999_probe.py": 1,
-    "tests/test_gated_vision_pillow.py": 1,
     "tests/test_historical_pgr_dom.py": 1,
-    "tests/test_history_session_wl_oq8.py": 1,
     "tests/test_home_last20.py": 1,
     "tests/test_inbox_responder_runner.py": 2,
     "tests/test_last_match_tabs_reframe_dom.py": 2,
-    "tests/test_live_item_tape_wiring.py": 1,
     "tests/test_loop_control_contention.py": 1,
-    "tests/test_loop_controller_code_reload.py": 1,
     "tests/test_loop_director_context_caps.py": 1,
     "tests/test_md_guard_selector_bound_argv_s144q40b.py": 1,
     "tests/test_metrics_cache_coaching_ts_instant_rm298b.py": 1,
@@ -154,10 +152,8 @@ _BASELINE = {
     "tests/test_no_console_flash_scheduled_tools.py": 1,
     "tests/test_no_environ_in_assert_operands.py": 2,
     "tests/test_overlay_callouts_ui_audit.py": 1,
-    "tests/test_overlay_slider_hit_target.py": 1,
     "tests/test_panel_visibility_permode.py": 1,
     "tests/test_post_game_rubric.py": 1,
-    "tests/test_rc_skel_removed.py": 1,
     "tests/test_replay_analysis.py": 1,
     "tests/test_resource_manager_ceiling_rm146.py": 1,
     "tests/test_resource_manager_hardening_s144.py": 1,
