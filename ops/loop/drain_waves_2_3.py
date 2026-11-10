@@ -25,7 +25,7 @@ Files (all gitignored, written atomically):
   ops/loop/control/drain/*.json                     per-run result / input files
   ops/loop/control/drain/*.out.txt                  per-run final text + stderr
   ops/runtime/drain_waves_2_3_result.json           final result
-  logs/drain_waves_2_3.log                          launcher log
+  logs/drain_waves_2_3.log                          launcher log (5 MiB x 3, rotated)
 
 Kit choices (FLEET-COMMON item 10): writes_code=True everywhere, so the kit picks
 `opus`; effort is the kit's pick for the note (medium): fleet_route passes the
@@ -78,6 +78,11 @@ if str(ROOT) not in sys.path:
 from core.polled_json import atomic_write_text  # noqa: E402
 # The shared compare-and-remove lock break (S144-Q-139), bound as `_remove_if`.
 from core.polled_json import remove_if_holds as _remove_if  # noqa: E402
+# S144-Q-123 (RM-718 residue): logs/drain_waves_2_3.log is size-capped through
+# the shared rotation helper, reached on the same repo-root path entry as
+# core.polled_json above. The log has no in-repo reader, so a plain rotation
+# costs no consumer.
+from core import log_rotation  # noqa: E402
 TASK = "drain-waves-2-3"
 CALLER = "drain_waves_2_3"
 PROMPTS = ROOT / "ops" / "loop" / "prompts"
@@ -98,6 +103,8 @@ LOCK = ROOT / "ops" / "runtime" / "drain_waves_2_3.lock"
 # Older, its writer crashed in that gap and the lock is reclaimed.
 EMPTY_LOCK_GRACE_S = 10.0
 LOG = ROOT / "logs" / "drain_waves_2_3.log"
+LOG_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+LOG_BACKUPS = log_rotation.DEFAULT_BACKUP_COUNT
 WT_BASE = ROOT / ".claude" / "worktrees"
 
 BUILD_TIMEOUT_S = 7200
@@ -139,13 +146,43 @@ _sleep = time.sleep  # seam for tests
 
 # ---------------------------------------------------------------- io helpers
 
+def _rotate_log(path: Path) -> str:
+    """Rotate the launcher log BEFORE an append when it is at or over the cap
+    (S144-Q-123, RM-718 residue). Called under _log_lock, so no build / verify
+    thread appends into a file another is renaming.
+
+    Returns the one-line refusal note to write ahead of the line when the
+    rotation is refused (another process holds the file), else "". Recovers a
+    crashed rotation's scratch even under the cap. Never raises: a failing cap
+    must not cost the run its audit line, so any error falls back to a plain
+    append to the file as it is.
+    """
+    try:
+        log_rotation.recover_orphans(path, LOG_BACKUPS)
+        try:
+            oversize = path.stat().st_size >= LOG_MAX_BYTES
+        except OSError:
+            return ""
+        if not oversize:
+            return ""
+        err = log_rotation.try_rotate(path, LOG_BACKUPS)
+        if err is None or isinstance(err, FileNotFoundError):
+            # FileNotFoundError: the file went between the stat and the rotate,
+            # so nothing was refused and the append starts a fresh file.
+            return ""
+        return log_rotation.refusal_note(path, err)
+    except Exception:  # noqa: BLE001 - the cap is best effort; the line is not
+        return ""
+
+
 def _say(msg: str) -> None:
     line = f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {msg}"
     with _log_lock:
         try:
             LOG.parent.mkdir(parents=True, exist_ok=True)
+            note = _rotate_log(LOG)
             with LOG.open("a", encoding="ascii", errors="replace", newline="\n") as fh:
-                fh.write(line + "\n")
+                fh.write(note + line + "\n")
         except OSError:
             pass
         if sys.stdout is not None:  # pythonw: stdout is None
