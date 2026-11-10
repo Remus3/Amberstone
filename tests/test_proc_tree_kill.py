@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 
 from ops.loop import proc_tree as PT
+from tests._timing_budget import fleet_test_guard
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WIN = sys.platform == "win32"
@@ -257,7 +258,7 @@ def test_kill_tree_without_a_job_is_the_old_taskkill_path(tmp_path):
                             creationflags=NO_WINDOW, stdin=subprocess.DEVNULL)
     try:
         result = PT.kill_tree(proc.pid)
-        assert proc.wait(timeout=15) is not None
+        assert proc.wait(timeout=fleet_test_guard.budget(15)) is not None
         assert result == {"job": False, "taskkill_rc": 0, "survivors": None}
     finally:
         if proc.poll() is None:
