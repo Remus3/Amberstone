@@ -63,7 +63,7 @@ BASE = {
 
 
 def _bundle(**over):
-    """BASE with dotted-path overrides, e.g. _bundle(**{"dsso.box": NOBOX})."""
+    """Return BASE with dotted-path overrides applied, e.g. ``_bundle(**{"dsso.box": NOBOX})``."""
     ev = copy.deepcopy(BASE)
     for path, val in over.items():
         cur = ev

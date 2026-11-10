@@ -54,7 +54,7 @@ def test_a_swallowed_trip_still_fails_when_the_block_ends():
 def test_os_system_trips():
     with pytest.raises(ProcessStartTripped):
         with no_process_start() as hits:
-            os.system("exit 0")
+            os.system("exit 0")  # noqa: S605 - the tripwire under test must see this call; the command is a constant
     assert [h[0] for h in hits] == ["os.system"]
 
 
