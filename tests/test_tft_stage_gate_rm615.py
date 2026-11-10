@@ -672,6 +672,7 @@ def test_module_is_pure():
             imported |= {a.name.split(".")[0] for a in node.names}
         elif isinstance(node, ast.ImportFrom):
             imported.add((node.module or "").split(".")[0])
-    assert imported <= {"__future__", "collections", "math", "typing"}, imported
+    # types: MappingProxyType for the read-only queue tables (S144-T-734)
+    assert imported <= {"__future__", "collections", "math", "types", "typing"}, imported
     names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
     assert not names & {"open", "print", "time"}

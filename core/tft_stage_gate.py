@@ -112,7 +112,8 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from typing import NamedTuple, Optional, Tuple
+from types import MappingProxyType
+from typing import Mapping, NamedTuple, Optional, Tuple
 
 # -- round structure ---------------------------------------------------------
 # The reader's OCR sanity bounds (the "Sanity bounds" check in
@@ -123,6 +124,8 @@ STAGE_MIN = 1
 STAGE_MAX = 7
 STAGE1_ROUNDS = 4
 STAGE_ROUNDS = 7
+# The last ordinal of the structure (7-7).
+MAX_ORDINAL = STAGE1_ROUNDS + (STAGE_MAX - 1) * STAGE_ROUNDS
 
 # -- verdict kinds -----------------------------------------------------------
 ACCEPT = "accept"      # first read, a fast-path advance, or a majority move
@@ -163,16 +166,20 @@ class QueueTiming(NamedTuple):
 
 _MEASURED_SOURCE = ("measured: the reader's calibrated round table "
                     "(tft/tft_state_reader.py time_table()), via pace_floor_from_table")
-QUEUE_TIMINGS = {
+# Read-only (S144-T-734): a plain dict let any importer rebind a queue's
+# timing process-wide, e.g. hand Hyper Roll the measured rate the RM-855
+# doctrine says it never borrows.
+QUEUE_TIMINGS: Mapping[str, QueueTiming] = MappingProxyType({
     "standard": QueueTiming("standard", True, _MEASURED_SOURCE),
     "double_up": QueueTiming("double_up", True, _MEASURED_SOURCE),
     "hyper_roll": QueueTiming("hyper_roll", False, "unmeasured: no Hyper Roll pace recorded"),
-}
+})
 UNMEASURED = QueueTiming("unknown", False, "unmeasured: unknown queue")
 
 # LCU queue ids (names: lcu/snapshot_shape.py `_LOBBY_QUEUE_NAMES`) -> the state's "variant"
 # (tft/tft_state_reader.py detect_variant).
-QUEUE_VARIANT = {1090: "standard", 1100: "standard", 1130: "hyper_roll", 1160: "double_up"}
+QUEUE_VARIANT: Mapping[int, str] = MappingProxyType(
+    {1090: "standard", 1100: "standard", 1130: "hyper_roll", 1160: "double_up"})
 
 
 def timing_for(queue: object) -> QueueTiming:
@@ -216,7 +223,14 @@ def ordinal(stage: object, rnd: object) -> Optional[int]:
 
 
 def stage_round_of(o: int) -> Tuple[int, int]:
-    """Inverse of ordinal() for a legal ordinal."""
+    """Inverse of ordinal() for a legal ordinal (an int 1..MAX_ORDINAL).
+
+    Anything else - 0, a negative, past 7-7, a bool, a float, a string -
+    raises ValueError: it used to come back as a made-up round such as
+    (1, 0), (1, -3) or (1.0, 7.5) (S144-T-734).
+    """
+    if isinstance(o, bool) or not isinstance(o, int) or not 1 <= o <= MAX_ORDINAL:
+        raise ValueError(f"not a stage-round ordinal: {o!r}")
     if o <= STAGE1_ROUNDS:
         return 1, o
     q, r = divmod(o - STAGE1_ROUNDS - 1, STAGE_ROUNDS)
@@ -242,7 +256,11 @@ def pace_floor_from_table(table: object) -> Optional[float]:
     `_TIME_TO_ROUND`: an ordered sequence of (game seconds, stage, round).
 
     None when the table is unreadable or yields no forward step, so a
-    missing or reshaped table means "no rate", never a guessed one.
+    missing or reshaped table means "no rate", never a guessed one. A clock
+    column outside a TFT game clock (below 0 or past MAX_GAME_S) is
+    unreadable too: it used to yield a "measured" pace from negative times,
+    5e8 from a 1e9 s step, or inf from a step spanning the float range, and
+    the caller logs "no measured pace" only on None (S144-T-734).
     """
     if not isinstance(table, (list, tuple)):
         return None
@@ -258,7 +276,7 @@ def pace_floor_from_table(table: object) -> Optional[float]:
             t = float(t)
         except OverflowError:   # an int past the float range
             return None
-        if not math.isfinite(t):
+        if not math.isfinite(t) or not 0.0 <= t <= MAX_GAME_S:
             return None
         o = ordinal(s, r)
         if o is None:
