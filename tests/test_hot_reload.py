@@ -95,7 +95,7 @@ class TestSkipDirsAreSegmentAnchored:
     SEGMENT boundaries - never as a raw substring of the whole path.
 
     The shipped test above only ever exercised the TOP-LEVEL shape of each
-    skip dir ("data/something.py", "web/js/panel.js"), which is precisely why
+    skip dir (a "data/" or "web/" file directly under it), which is precisely why
     it could not see the defect: an unanchored `s in r` also drops any file
     whose path merely CONTAINS a token anywhere, including inside its own
     basename. Measured against this tree, that silently excluded 23 live

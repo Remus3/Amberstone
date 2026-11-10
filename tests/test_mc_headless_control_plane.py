@@ -17,7 +17,7 @@ Four things are asserted, each a named cost of the removal:
      analysis named it "the surface most likely to be mistaken for MC's", so
      it is pinned here rather than left to a reader's judgement.
 
-The arm-then-confirm gate that came out of `web/mc/arm_confirm.js` has its own
+The arm-then-confirm gate that came out of the deleted `web/mc/arm_confirm.js` has its own
 file - tests/test_arm_confirm_server_gate.py. It is not re-asserted here.
 """
 from __future__ import annotations

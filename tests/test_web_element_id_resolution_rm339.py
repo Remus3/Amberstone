@@ -32,7 +32,7 @@ them and the guard invents false positives, which is how a guard gets reverted:
 
 WHAT THE SCANNER DELIBERATELY DOES NOT MATCH. Three near-misses would each
 create a phantom definition and hide a real defect:
-  - ``const id = "lane:" + lane`` (web/mc/mc.js:248) is a JS local variable.
+  - ``const id = "lane:" + lane`` (web/mc/mc.js:248, since deleted) was a JS local variable.
   - ``data-ovx-id="w-mmrect"`` (web/index.html:2266 and web/css/overlay.css)
     is a widget key on a data- attribute, not an element id.
   - ``var``/``let`` forms of the first case.

@@ -151,7 +151,7 @@ def test_interrupt_requires_an_idempotency_key(ctldir, fake):
 
     REWRITTEN when the arm-then-confirm gate moved server-side. The original
     asserted that an omitted key is a 400 at the HTTP surface, which was the
-    right contract while every client was web/mc/mc.js and minted its own key
+    right contract while every client was web/mc/mc.js (since deleted) and minted its own key
     per send. With the gate in front, an omitted key on an ARMED request is
     filled from the arm record (dashboard/_arm_confirm.arm mints one key per
     intent), so the 400 would only ever fire for a caller that had already

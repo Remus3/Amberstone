@@ -161,5 +161,5 @@ def test_web_ui_cites_are_scanned_too():
         assert scan_source(f"see {cite} (deleted)\n", tracked) == [], cite
     for live in ("web/js/main.js", "web/css/panels/base.css", "web/index.html"):
         assert scan_source(f"see {live} for the wiring\n", tracked) == [], live
-    # A data file is not a script cite: web/data/items_index.json must not read as web/data/items_index.js.
+    # A data file is not a script cite: web/data/items_index.json must not read as a cite of items_index.js.
     assert scan_source("loads web/data/items_index.json first\n", tracked) == []

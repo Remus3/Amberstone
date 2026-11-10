@@ -5,8 +5,8 @@ PERMANENTLY removed.
 The item 186 batch was truly-dead endpoints from item 184 Phase 6's flagged
 candidate list: each had ZERO live callers across web/js/main.js, web/js/lib/,
 web/js/panels/, tests/, tools/, coaches/, core/, agents/, lcu/, tft/, ops/,
-vision_server/ (excluding the documented-dead web/js/dashboard.js + web/js/sim.js
-+ dated audit reports). Item 194 added /api/preview-build after a follow-up audit:
+vision_server/ (excluding the documented-dead web/js/dashboard.js + web/js/sim.js,
+both since removed, + dated audit reports). Item 194 added /api/preview-build after a follow-up audit:
 only caller was the dead web/legacy_index.html:1523, so it survived the item 186
 sweep purely because that file is excluded.
 

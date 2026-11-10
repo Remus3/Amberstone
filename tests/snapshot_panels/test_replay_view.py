@@ -149,7 +149,7 @@ def test_no_em_dashes_or_smart_quotes():
 # RM-1183: the module docstring cites the router, CSS and mock-loader
 # sites it describes by SYMBOL, never by file:line. Its line citations
 # (main.js:958-959, main.js:781, header.css:663) had all drifted - the
-# CSS one named a path that does not exist (web/css/header.css; the
+# CSS one named a path that never existed (web/css/header.css; the
 # file is web/css/panels/header.css) - and main.js line numbers move on
 # every edit above them. Each anchor below must appear verbatim in the
 # docstring AND in the source file it names, so a rename of the source

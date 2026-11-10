@@ -121,12 +121,8 @@ def test_the_table_comment_edits_changed_no_value():
         "logs": 500 * 1024 ** 2,
         "data/spend": 50 * 1024 ** 2,
     }
-    ingest = importlib.util.spec_from_file_location(
-        "_s144p538_ingest", REPO_ROOT / "agents" / "agent2_backend" / "game_ingest.py")
-    mod = importlib.util.module_from_spec(ingest)
-    try:
-        ingest.loader.exec_module(mod)
-    except ImportError:
-        pytest.skip("game_ingest needs its package context")
+    # Imported in its package context (a tracked module that fails to import is a
+    # defect, never a skip - tests/test_skip_condition_hygiene.py).
+    mod = importlib.import_module("agents.agent2_backend.game_ingest")
     assert mod.GAME_MODE_TO_DB["CLASSIC"] == "sr_ranked"
     assert mod.GAME_MODE_TO_DB["RANKED_SOLO"] == "sr_ranked"

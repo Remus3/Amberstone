@@ -25,8 +25,8 @@ COMMENT HANDLING IS LOAD-BEARING, IN BOTH DIRECTIONS. CSS block comments are
 stripped from .css files before scanning. A commented-out declaration must
 not register as a definition - that would mask a live dangling reference and
 make this guard miss the exact defect it exists to catch. Prose that merely
-quotes a var() must not register as a reference either - web/mc/mc.css
-deliberately quotes var(--font-mono) while explaining why it uses a literal
+quotes a var() must not register as a reference either - the since-removed
+web/mc/mc.css quoted var(--font-mono) while explaining why it used a literal
 font stack instead. The strip preserves line numbering (each comment becomes
 its own newlines) so the failure message points at the real line.
 
@@ -173,7 +173,7 @@ def test_commented_out_declaration_is_not_a_definition():
 
 
 def test_quoted_var_in_a_css_comment_is_not_a_reference():
-    """web/mc/mc.css argues in prose for a literal font stack and quotes
-    var(--font-mono) while doing so. Prose must not create a reference."""
+    """The since-removed web/mc/mc.css argued in prose for a literal font stack
+    and quoted var(--font-mono) while doing so. Prose must not create a reference."""
     src = "/* Literal stack, not var(--only-in-prose, monospace): see RM-209. */\n.x { color: red; }\n"
     assert _REF.findall(_strip_css_comments(src)) == []
