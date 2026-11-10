@@ -1,5 +1,6 @@
 # arch: derive_view's output domain must exist in the canonical JS view registry | section=tests | frozen=no
-"""
+"""RM-341 guard: every view id derive_view can return exists in the JS view registry.
+
 tests/test_view_router_registry_rm341.py
 
 RM-341 - every view id that ``dashboard/view_router_state.derive_view`` can

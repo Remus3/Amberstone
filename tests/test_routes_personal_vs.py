@@ -22,8 +22,9 @@ _OTHER_PUUID = "OTHER_PLAYER_PUUID"
 
 
 def _build_test_db(path: Path, rows: list[dict]) -> None:
-    """Create a minimal rewind_history.db that satisfies the route's
-    queries. ``rows`` is a list of match descriptors:
+    """Create a minimal rewind_history.db that satisfies the route's queries.
+
+    ``rows`` is a list of match descriptors:
 
       {
         "match_id":      "NA1_001",

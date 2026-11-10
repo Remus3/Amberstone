@@ -1,4 +1,6 @@
-"""tests/test_resource_manager_mem_remediation.py
+"""P2-B tests: ResourceManager high-memory samples drive the remediation entrypoint.
+
+tests/test_resource_manager_mem_remediation.py
 
 P2-B: ResourceManager high-memory -> remediation wiring.
 

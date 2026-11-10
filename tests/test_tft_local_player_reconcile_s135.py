@@ -1,4 +1,6 @@
-"""S135 N13 reconciled at the s135 landing: ONE local-player pick and ONE
+"""S135 N13 guard: one local-player pick and one alive rule at every TFT site.
+
+S135 N13 reconciled at the s135 landing: ONE local-player pick and ONE
 alive rule (tft/local_player.py) at every site, including the two that landed
 beside N13 rather than with it:
 

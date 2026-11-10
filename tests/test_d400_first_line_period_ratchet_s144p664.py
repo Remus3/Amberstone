@@ -50,6 +50,14 @@ ending in a period (a summary line above a path-led or wrapped opening, or a que
 10 sites, so the baseline is now 127 sites in 110 files. The three tests/snapshot_panels modules still in the
 baseline are the uiux lane's (changed on lane/uiux and not yet landed).
 
+Eighth slice (S144-P-672): ten more tests/ modules (test_resource_manager_ceiling_rm146,
+test_resource_manager_hardening_s144, test_resource_manager_mem_remediation, test_routes_personal_vs,
+test_skip_condition_hygiene, test_snowball_elasticity, test_state_builder_latency_rc2,
+test_tft_local_player_reconcile_s135, test_view_router_registry_rm341, test_vision_seed_reachability_rm26) gained a
+one-line summary ending in a period (a summary line above a path-led or wrapped opening, or a question reworded as a
+statement), 11 sites, so the baseline is now 116 sites in 100 files. test_tft_stage_gate_rm615 (lane/true-audit) and
+test_stale_fade_gentle_t12 / test_panel_visibility_permode (lane/uiux) stay in the baseline until those lanes land.
+
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
 """
@@ -150,20 +158,10 @@ _BASELINE = {
     "tests/test_metrics_cache_lane8_cycle40.py": 2,
     "tests/test_no_environ_in_assert_operands.py": 2,
     "tests/test_panel_visibility_permode.py": 1,
-    "tests/test_resource_manager_ceiling_rm146.py": 1,
-    "tests/test_resource_manager_hardening_s144.py": 1,
-    "tests/test_resource_manager_mem_remediation.py": 1,
     "tests/test_rm172_mode_modifier_seam_characterization.py": 2,
-    "tests/test_routes_personal_vs.py": 1,
     "tests/test_run_packaged_smoke_updater_pkg6b.py": 1,
-    "tests/test_skip_condition_hygiene.py": 2,
-    "tests/test_snowball_elasticity.py": 1,
     "tests/test_stale_fade_gentle_t12.py": 1,
-    "tests/test_state_builder_latency_rc2.py": 1,
-    "tests/test_tft_local_player_reconcile_s135.py": 1,
     "tests/test_tft_stage_gate_rm615.py": 1,
-    "tests/test_view_router_registry_rm341.py": 1,
-    "tests/test_vision_seed_reachability_rm26.py": 1,
     "tft/tft_coach_engine.py": 1,
     "tft/tft_ocr_reader.py": 1,
     "tft/tft_vision_reader.py": 1,
