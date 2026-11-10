@@ -9,15 +9,61 @@ EXACTLY on the Riot game id (``game_id``, else a ``live_<gameId>``
 win/loss outcome; it takes the earliest tick that recommended each unowned
 item, per (game, item, scorer). Non-fatal: any write failure is silently
 swallowed so calibration logging never breaks coach operation.
+
+Size cap (S144-Q-123, RM-718 residue): the file grew without bound (measured
+2026-11-10: 7.2 MB, 10,469 rows over three months of play). Before an append
+the writer rotates it through core.log_rotation once it is at or over
+_MAX_BYTES, keeping _BACKUP_COUNT generations (5 MiB x 3, the RM-718 bound).
+The file has readers, so a rotated row is still a row: ``log_generations``
+names the chain oldest first, and the agreement reader and the synthetic-row
+prune both walk it.
 """
 from __future__ import annotations
 
 import json
+import threading
 import time
 from pathlib import Path
 from typing import Optional
 
+from core import log_rotation
+
 _LOG_PATH = Path(__file__).parent.parent / "data" / "ds_calibration.jsonl"
+_MAX_BYTES = log_rotation.DEFAULT_MAX_BYTES
+_BACKUP_COUNT = log_rotation.DEFAULT_BACKUP_COUNT
+# One coach tick at a time renames or appends, so no tick appends into a file
+# another tick is rotating (four coaches call log_ds_run).
+_LOG_LOCK = threading.Lock()
+
+
+def log_generations(path=None) -> list:
+    """The calibration log's rotation chain that exists, OLDEST first:
+    ``<name>.<_BACKUP_COUNT>`` .. ``<name>.1``, then the base file.
+
+    Only the numbered backups the writer keeps count: a rotation's scratch
+    (``.rotating.*`` / ``.dropping.*``) and a recovered orphan
+    (``.recovered-*``) are not rows a reader should see twice. ``path``
+    defaults to the live log path, read at call time.
+    """
+    base = Path(_LOG_PATH if path is None else path)
+    chain = [base.with_name(f"{base.name}.{i}")
+             for i in range(_BACKUP_COUNT, 0, -1)]
+    chain.append(base)
+    return [p for p in chain if p.is_file()]
+
+
+def _rotate_if_oversize(path: Path) -> None:
+    """Recover a crashed rotation's scratch, then rotate at or over the cap.
+
+    Called under _LOG_LOCK. Never raises: a failing cap must not cost the
+    tick its row, so any error leaves the file as it is and the caller
+    appends to it.
+    """
+    try:
+        log_rotation.recover_orphans(path, _BACKUP_COUNT)
+        log_rotation.rotate_if_oversize(path, _MAX_BYTES, _BACKUP_COUNT)
+    except Exception:  # noqa: BLE001 - the row matters more than the cap
+        pass
 
 # EnemyStats field -> the fallback dispatch_for_coach uses when it builds the
 # DS request (coach_integration/archetype_dispatch.py: target_* default 0.0,
@@ -121,10 +167,13 @@ def log_ds_run(
         entry["engine_version"] = str(engine_version)
     if apply_mode_modifiers is not None:
         entry["apply_mode_modifiers"] = bool(apply_mode_modifiers)
-    try:
-        # newline="\n": LF on Windows too, matching the prune's LF rewrite of
-        # this same file (RM-481 residual, RM-1697).
-        with open(_LOG_PATH, "a", encoding="utf-8", newline="\n") as f:
-            f.write(json.dumps(entry) + "\n")
-    except OSError:
-        pass
+    path = Path(_LOG_PATH)
+    with _LOG_LOCK:
+        _rotate_if_oversize(path)
+        try:
+            # newline="\n": LF on Windows too, matching the prune's LF rewrite
+            # of this same file (RM-481 residual, RM-1697).
+            with open(path, "a", encoding="utf-8", newline="\n") as f:
+                f.write(json.dumps(entry) + "\n")
+        except OSError:
+            pass

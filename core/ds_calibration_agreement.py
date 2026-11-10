@@ -65,6 +65,7 @@ import time
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
+from core.ds_calibration import log_generations
 from core.smoothed_rates import DEFAULT_ALPHA, DEFAULT_K, laplace_rate, shrink
 
 log = logging.getLogger("rc.ds_calibration_agreement")
@@ -97,13 +98,26 @@ def load_records(path: Path | str | None = None) -> list[dict]:
 
     Fail-soft on every axis: a missing file yields ``[]``, a malformed line is
     counted in the log and skipped, a non-dict line is skipped.
+
+    The writer rotates the file at its size cap (S144-Q-123), so every
+    generation of ``path``'s rotation chain is read, OLDEST first
+    (``.2``, ``.1``, then the base): a rotated row still joins.
     """
     src = Path(path) if path is not None else DEFAULT_LOG
     out: list[dict] = []
     bad = 0
     try:
-        with open(src, encoding="utf-8") as fh:
-            for raw_line in fh:
+        for part in log_generations(src):
+            try:
+                with open(part, encoding="utf-8") as fh:
+                    raw_lines = fh.readlines()
+            except FileNotFoundError:
+                # A rotation renamed this generation after the listing: its
+                # rows moved to the next name, which this read may miss once,
+                # but the other generations still load. Any other OSError
+                # still fails the whole load soft, below.
+                continue
+            for raw_line in raw_lines:
                 line = raw_line.strip()
                 if not line:
                     continue
