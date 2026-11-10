@@ -82,8 +82,9 @@ class DefaultWeightsTests(unittest.TestCase):
 
 
 class CalibrationInvariantTests(unittest.TestCase):
-    """Durable calibration contract (item 335), independent of the live
-    rewind_history.db. Two invariants the recalibration locks in:
+    """Durable calibration contract (item 335), independent of the live rewind_history.db.
+
+    Two invariants the recalibration locks in:
 
       1. Every role's weight vector sums to 5.0, so a median-of-the-role
          performance (each axis at baseline -> normalized 1.0) maps to

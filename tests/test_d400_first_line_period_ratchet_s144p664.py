@@ -35,6 +35,13 @@ test_overlay_slider_hit_target, test_rc_skel_removed, test_live_item_tape_wiring
 gained a one-line summary above their path line (or a summary line ahead of the wrapped opening), 10 sites, so the
 baseline is now 147 sites in 130 files.
 
+Sixth slice (S144-P-670): ten more tests/ modules (test_historical_pgr_dom, test_home_last20,
+test_loop_control_contention, test_loop_director_context_caps, test_md_guard_selector_bound_argv_s144q40b,
+test_metrics_cache_coaching_ts_instant_rm298b, test_no_console_flash_scheduled_tools,
+test_overlay_callouts_ui_audit, test_post_game_rubric, test_replay_analysis) gained a one-line summary ending in a
+period (a summary line above a wrapped or path-led opening, or a question reworded as a statement), 10 sites, so
+the baseline is now 137 sites in 120 files.
+
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
 """
@@ -139,22 +146,12 @@ _BASELINE = {
     "tests/test_data_viz_tier_y07.py": 1,
     "tests/test_decision_detector_lane8_cycle12.py": 1,
     "tests/test_ds_perm_swarm.py": 1,
-    "tests/test_historical_pgr_dom.py": 1,
-    "tests/test_home_last20.py": 1,
     "tests/test_inbox_responder_runner.py": 2,
     "tests/test_last_match_tabs_reframe_dom.py": 2,
-    "tests/test_loop_control_contention.py": 1,
-    "tests/test_loop_director_context_caps.py": 1,
-    "tests/test_md_guard_selector_bound_argv_s144q40b.py": 1,
-    "tests/test_metrics_cache_coaching_ts_instant_rm298b.py": 1,
     "tests/test_metrics_cache_lane8_cycle40.py": 2,
     "tests/test_mission_control_server.py": 1,
-    "tests/test_no_console_flash_scheduled_tools.py": 1,
     "tests/test_no_environ_in_assert_operands.py": 2,
-    "tests/test_overlay_callouts_ui_audit.py": 1,
     "tests/test_panel_visibility_permode.py": 1,
-    "tests/test_post_game_rubric.py": 1,
-    "tests/test_replay_analysis.py": 1,
     "tests/test_resource_manager_ceiling_rm146.py": 1,
     "tests/test_resource_manager_hardening_s144.py": 1,
     "tests/test_resource_manager_mem_remediation.py": 1,

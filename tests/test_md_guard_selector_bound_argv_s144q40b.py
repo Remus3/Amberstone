@@ -1,4 +1,6 @@
-"""RM-1146 (2): the docs-guards selector (`tools/md_guard_selector.py`
+"""RM-1146 (2): the docs-guards selector ties a bound argv name to its cwd= call.
+
+The docs-guards selector (`tools/md_guard_selector.py`
 `index_walk_reasons`) did not tie an argv bound to a NAME to the call that
 runs it with `cwd=`:
 

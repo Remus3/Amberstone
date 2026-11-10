@@ -1,4 +1,4 @@
-"""Thin end-to-end slice: does the pipeline answer one real coaching question?
+"""Thin end-to-end slice: the pipeline answers one real coaching question.
 
 Question under test: before a drake, did the tracked jungler path to the wrong
 side of the map, and how late were they?

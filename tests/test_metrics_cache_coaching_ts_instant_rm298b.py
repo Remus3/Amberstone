@@ -1,4 +1,5 @@
-"""
+"""RM-298b: the newest coaching timestamp is compared as an instant, not as a string.
+
 tests/test_metrics_cache_coaching_ts_instant_rm298b.py
 
 RM-298b - MetricsCache._read_last_coaching_ts picked the newest coaching

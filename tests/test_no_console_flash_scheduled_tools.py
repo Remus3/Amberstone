@@ -260,7 +260,7 @@ def _assignments(tree: ast.AST) -> dict[str, list[ast.expr]]:
 
 def _is_no_window(expr: ast.expr, names: dict[str, list[ast.expr]],
                   seen: frozenset[str] = frozenset()) -> bool:
-    """Does this expression evaluate to CREATE_NO_WINDOW on Windows?
+    """Report whether this expression evaluates to CREATE_NO_WINDOW on Windows.
 
     Accepts the three forms in the tree: the literal 0x08000000 (usually behind
     an `if os.name == "nt"` guard), `subprocess.CREATE_NO_WINDOW`, and

@@ -263,7 +263,7 @@ def test_an_exhausted_retry_strands_no_tmp(ctldir):
     reason="POSIX rename ignores an open read handle; there is no OS fault to "
            "observe, which is why the tests above inject their own")
 def test_the_real_os_still_share_locks_a_held_control_file(ctldir):
-    """The one question replace_fails() cannot answer: is the condition real?
+    """The one question replace_fails() cannot answer is whether the condition is real.
 
     Every contention test above simulates the share lock. This asserts the OS
     property itself - no route, no writer, no retry loop - so it stays true
