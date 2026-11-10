@@ -3666,6 +3666,34 @@ survivability flips below cannot roll otherwise.
   kill / objective / multikill events, no per-hit or mark event), so "how often do allies consume
   Sunlight" has no known probe. Telemetry, not a game, is the missing piece - check the live
   `eventdata` list once in any game before trusting this.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 143, S144-G-130, source read at `a87161a42`; NOT a
+  tick).** The verdict holds; one more source checked. (1) STILL UNREACHABLE: in tracked non-test code
+  `assume_ally_detonation` appears only in `agents/daemon_slayer/burst.py` (`:534` kwarg, `:1261`
+  gate), `dps.py` (`:791` kwarg, `:1933` gate) and `_ally_detonation_overrides.py`; zero hits for
+  `detonation` in `agents/daemon_slayer/server.py` or `core/daemon_slayer_client.py`. The gap is now
+  MACHINE-GUARDED: `tests/test_ds_parity_map.py` `_UNREACHABLE_OK` lists `assume_ally_detonation` under
+  both `/burst` (`:88`) and `/dps` (`:89`) as a kwarg the route does NOT parse. A live game still
+  exercises nothing. (2) MATH REPRODUCES BYTE-EXACT at DS snapshot `16.22.1`, ENGINE `1.291.0`
+  (`/health` agreed), compute half only, call shape `compute_burst_damage(snap, "Leona", L,
+  item_ids=[3068, 3075], mode="ARAM")` vs the same plus `assume_ally_detonation=True` (default target
+  resists): L1 123.500 -> 138.700 (+15.200), L6 435.765 -> 467.590 (+31.825), L13 708.415 ->
+  763.515 (+55.100, +7.8%), L18 966.150 -> 1037.875 (+71.725) - every filed 2-dp number (the filed
+  +31.82 / +71.73 are float renderings of the 3-dp deltas). Scope still ONE champion:
+  `_CHAMPION_DETONATION_OVERRIDES` = `['Leona']`, `_ITEM_DETONATION_OVERRIDES` and
+  `_NONFIT_DETONATION_CANDIDATES` empty; Braum / Nautilus / Thresh / Sett delta 0.0 at L13 under the
+  flag. (3) CORRECTION (b) STILL OPEN AND NOT CLOSABLE FROM LOCAL DATA: the entry note
+  (`_ally_detonation_overrides.py:122-123`) still cites `champion_abilities.json 16.13.1`; the 16.22.1
+  file's `Leona.P` text is unchanged ("2.5 seconds ... 32 : 151 (based on level)") but that file's own
+  header reads `meraki_content_patch` `25.15`, so it is the frozen Meraki copy, not a fresh read. The
+  two per-patch tie-breakers (CLAUDE.md Settled, RM-808) are silent on it: `cdragon_spell_stats.json`
+  (`champions.Leona.spells`) and `cdragon_ability_ratios.json` (`champions.Leona`) hold only `E` /
+  `Q` / `R` / `W`, no `P` key, and `wiki_ability_stats.json`
+  `Leona/Sunlight` carries only `apiname` / `slot` / `spellshield`, no damage line. So no local source
+  confirms 32 : 151 at the live patch; re-anchoring the note to 16.22.1 would launder the Meraki copy
+  into a fresh claim. The re-anchor is an engine-data edit (`agents/daemon_slayer/`, DS lane), not this
+  doc's. (4) The live residual (how often allies consume the mark) still has no probe; the `eventdata`
+  check above is unchanged. Idle: `/api/state` `mode_key` `client`, `liveclient` empty, LCU phase
+  None at 2026-11-10 00:19 local; no game.
 - **G3-11** (was C11) cc_blended_ehp + cc_conditional ecosystem: the DATA-PATH half is validated live
   (DS /ehp cc_blended 5776 -> 2888 vs a real CC comp, 9 consumer surfaces grep-confirmed) but it is
   served only on the tank/bruiser scorer - a full close needs a **TANK/BRUISER PICK against a real CC
