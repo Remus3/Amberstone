@@ -1788,6 +1788,7 @@ def _git(
             ["git", "-C", str(root), "-c", "core.quotepath=false", *args],
             input=stdin_text.encode("utf-8") if stdin_text else None,
             capture_output=True,
+            check=False,
             creationflags=_NO_WINDOW,
             env=dict(os.environ, **env) if env else None,
             timeout=timeout,
@@ -1815,6 +1816,7 @@ def _has_object(root: Path, sha: str) -> bool:
         proc = subprocess.run(
             ["git", "-C", str(root), "cat-file", "-e", sha + "^{commit}"],
             capture_output=True,
+            check=False,
             creationflags=_NO_WINDOW,
             timeout=_SHORT_GIT_TIMEOUT_S,
         )
@@ -1833,6 +1835,7 @@ def _is_ancestor(root: Path, old: str, new: str) -> Optional[bool]:
         proc = subprocess.run(
             ["git", "-C", str(root), "merge-base", "--is-ancestor", old, new],
             capture_output=True,
+            check=False,
             creationflags=_NO_WINDOW,
             timeout=_SHORT_GIT_TIMEOUT_S,
         )

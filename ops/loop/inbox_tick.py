@@ -344,7 +344,7 @@ def _remove_if(lock: Path, expected: bytes) -> bool:
     side = lock.with_name(
         f"{lock.stem}.break-{os.getpid()}-{os.urandom(4).hex()}{lock.suffix}")
     try:
-        os.rename(lock, side)
+        lock.rename(side)
     except FileNotFoundError:
         return True
     except OSError:
@@ -365,7 +365,7 @@ def _remove_if(lock: Path, expected: bytes) -> bool:
         # No hard links here: a plain rename back (the side file is never
         # deleted on this path, so the moved lock is not lost).
         with contextlib.suppress(OSError):
-            os.rename(side, lock)
+            side.rename(lock)
         return False
     with contextlib.suppress(OSError):
         side.unlink()

@@ -103,7 +103,7 @@ _QUEUE_RE = re.compile(r"[A-Z0-9_]{1,40}")
 _MAX_COUNT = 1_000_000
 
 
-class _BadEntry(ValueError):
+class _BadEntryError(ValueError):
     """A League-V4 field with the wrong type or range (message = its name)."""
 
 
@@ -186,14 +186,14 @@ def _shape_rank(puuid: str, entries: Any) -> dict:
     entry) via core.riot_api.pick_solo_rank. An empty / None list, or an
     entry with no tier, yields the graceful unranked dict.
 
-    Raises _BadEntry when entries is not a list or a rank field has the
+    Raises _BadEntryError when entries is not a list or a rank field has the
     wrong type or range; _scout_one turns that into unranked-with-error
     and does not cache it. Absent fields keep their old meaning.
     """
     if entries is None:
         return _unranked(puuid)
     if not isinstance(entries, list):
-        raise _BadEntry("entries")
+        raise _BadEntryError("entries")
     if not entries:
         return _unranked(puuid)
     entry = riot_api.pick_solo_rank(entries)
@@ -234,33 +234,33 @@ def _shape_rank(puuid: str, entries: Any) -> dict:
 
 def _token(entry: dict, key: str, pattern: "re.Pattern[str]") -> str:
     """A League-V4 text field stripped and upper-cased; "" when absent or
-    blank. Any other type, or text the pattern refuses, raises _BadEntry."""
+    blank. Any other type, or text the pattern refuses, raises _BadEntryError."""
     value = entry.get(key)
     if value is None:
         return ""
     if not isinstance(value, str):
-        raise _BadEntry(key)
+        raise _BadEntryError(key)
     value = value.strip().upper()
     if value and not pattern.fullmatch(value):
-        raise _BadEntry(key)
+        raise _BadEntryError(key)
     return value
 
 
 def _count(entry: dict, key: str) -> int:
     """A League-V4 non-negative integer (wins / losses / leaguePoints); 0
     when absent. A bool, string, fractional, non-finite, negative or
-    implausibly large value raises _BadEntry."""
+    implausibly large value raises _BadEntryError."""
     value = entry.get(key)
     if value is None:
         return 0
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise _BadEntry(key)
+        raise _BadEntryError(key)
     if isinstance(value, float):
         if not math.isfinite(value) or not value.is_integer():
-            raise _BadEntry(key)
+            raise _BadEntryError(key)
         value = int(value)
     if not 0 <= value <= _MAX_COUNT:
-        raise _BadEntry(key)
+        raise _BadEntryError(key)
     return int(value)
 
 
@@ -269,7 +269,7 @@ def _scout_one(puuid: str, now: float) -> dict:
 
     A raised exception from the Riot layer fails THIS player to
     unranked-with-error so the batch always completes. The guard covers
-    the SHAPE as well as the fetch: _shape_rank raises _BadEntry on a
+    the SHAPE as well as the fetch: _shape_rank raises _BadEntryError on a
     malformed League-V4 field (S144-T-592) and calls back into riot_api
     for pick_solo_rank / format_rank_entry, either of which can raise on
     a malformed entry; such a row is never cached. Callers

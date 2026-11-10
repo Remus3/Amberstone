@@ -137,7 +137,7 @@ def _score(value) -> int:
         return 0
     if not 0 <= value <= _MAX_SCORE:
         return 0
-    return int(round(value))
+    return round(value)
 
 
 def _bucket(value) -> dict | None:
