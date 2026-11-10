@@ -45,17 +45,48 @@ raw day count so cache entries never collide across windows.
 
 Reuses the s170 ``_resolve_operator_puuid`` pattern (most-frequent
 puuid in participants - mirrors routes_pickban/routes_lobby_aux).
+
+Query parameters come from the request line and are untrusted
+(true-audit s144 S144-T-771..776,
+tests/test_routes_personal_vs_true_audit_s144.py):
+
+  champ_id  1-10 ASCII digits (surrounding whitespace stripped), value
+            1 .. 2**31 - 1 (the JS caller sends ``champId | 0``);
+            anything else is the 400. ``champId`` is an alias.
+  days      ASCII digits with an optional sign, at most 9 digits, clamped
+            to [0, 3650]; anything else is the default 30.
+  queue     comma list of queue ids, each 1-9 ASCII digits, duplicates
+            dropped in order, at most ``_MAX_QUEUE_IDS``; anything else
+            (or nothing) is the default SR set. Bare ``int()`` would take
+            Arabic-Indic / fullwidth digits, ``_`` and a sign, and an id
+            past the SQLite INTEGER range or too many ids raised inside
+            the query (a 500).
+
+A ``game_creation_ts`` that is not a finite number in [0, 2100-01-01]
+reads as ``ts`` 0 in ``recent`` instead of failing the whole reply.
+
+The cache is shared by the ThreadingHTTPServer's request threads and is
+only touched under ``_CACHE_LOCK``. The reply is written OUTSIDE the
+catch-all: a failure while writing it (the client went away) propagates
+to the dispatcher, which closes the connection, instead of a second
+status line being written onto the same response. Any other failure is
+``dashboard._errors.send_error``'s fixed 500 line; the cause is logged
+scrubbed, with its type name.
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
+import re
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from core.resolved_wr import classify, resolution_select, resolved_wr, wr_pct
+from dashboard._errors import GENERIC_ERROR, send_error
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -67,11 +98,34 @@ _REWIND_DB = Path(__file__).resolve().parent.parent / "data" / "rewind_history.d
 # modules treat shared constants).
 _DEFAULT_SR_QUEUES: tuple[int, ...] = (400, 420, 430, 440, 490)
 
+# Request-line validation (S144-T-771..773). ASCII classes only: a bare
+# \d (and int()) also takes Arabic-Indic / fullwidth digits.
+_CHAMP_ID_RE = re.compile(r"[0-9]{1,10}")
+_CHAMP_ID_MAX = 2**31 - 1
+_DAYS_RE = re.compile(r"[+-]?[0-9]{1,9}")
+_DAYS_DEFAULT = 30
+_DAYS_MAX = 3650
+_QUEUE_ID_RE = re.compile(r"[0-9]{1,9}")
+# Riot has a few dozen live queues; a longer list is not a real filter, and
+# each id is one SQL variable (SQLite refuses past 32766).
+_MAX_QUEUE_IDS = 32
+
+# game_creation_ts is Unix ms; a stored value outside [0, 2100-01-01] is
+# not a game time and reads as ts 0 (S144-T-776).
+_TS_MAX_S = 4_102_444_800
+
+_BAD_CHAMP_ID = "champ_id required (positive int)"
+
 # Cache: {(puuid, champ_id, days, queue_sig): (timestamp, payload_dict)}
 # Entries are (time.monotonic() stamp, payload): the stamp never leaves the process, and a wall-clock step
 # must not expire or revive an entry (S144-P-368).
+# Every read, write and eviction holds _CACHE_LOCK: the dashboard is a
+# ThreadingHTTPServer and the eviction iterates the dict (S144-T-774).
 _CACHE: dict[tuple, tuple[float, dict]] = {}
+_CACHE_LOCK = threading.Lock()
 _CACHE_TTL_S = 60.0
+_CACHE_MAX = 1024
+_CACHE_EVICT = 256
 
 # Band thresholds. Documented in module docstring; values are also pinned
 # in tests/test_routes_personal_vs.py so a future tuning needs a test bump.
@@ -110,16 +164,52 @@ def _classify_band(sample_n: int, wr_pct: int) -> str:
     return "green"
 
 
+def _parse_champ_id(raw: str) -> int | None:
+    """The canonical champion id, or None (the caller answers 400)."""
+    text = raw.strip()
+    if not _CHAMP_ID_RE.fullmatch(text):
+        return None
+    value = int(text)
+    return value if 1 <= value <= _CHAMP_ID_MAX else None
+
+
+def _parse_days(raw: str) -> int:
+    """Rolling-day window clamped to [0, _DAYS_MAX]; junk is the default."""
+    text = raw.strip()
+    if not _DAYS_RE.fullmatch(text):
+        return _DAYS_DEFAULT
+    return min(max(int(text), 0), _DAYS_MAX)
+
+
 def _parse_queue_filter(raw: str) -> tuple[int, ...]:
     """Parse ?queue=420 -> (420,); ?queue=400,420 -> (400,420). Falls
-    back to the default SR set on parse errors or empty input."""
+    back to the default SR set on parse errors, empty input or more
+    than ``_MAX_QUEUE_IDS`` distinct ids; duplicates are dropped in
+    order so equivalent filters share one cache entry."""
     if not raw:
         return _DEFAULT_SR_QUEUES
-    try:
-        out = tuple(int(x) for x in raw.split(",") if x.strip())
-    except ValueError:
-        return _DEFAULT_SR_QUEUES
-    return out or _DEFAULT_SR_QUEUES
+    out: dict[int, None] = {}
+    for token in raw.split(","):
+        text = token.strip()
+        if not text:
+            continue
+        if not _QUEUE_ID_RE.fullmatch(text):
+            return _DEFAULT_SR_QUEUES
+        out[int(text)] = None
+        if len(out) > _MAX_QUEUE_IDS:
+            return _DEFAULT_SR_QUEUES
+    return tuple(out) or _DEFAULT_SR_QUEUES
+
+
+def _ts_seconds(value: object) -> int:
+    """Unix seconds from a stored game_creation_ts (ms); anything that is
+    not a finite number in [0, _TS_MAX_S] seconds reads as 0."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0
+    if isinstance(value, float) and not math.isfinite(value):
+        return 0
+    secs = int(value // 1000)
+    return secs if 0 <= secs <= _TS_MAX_S else 0
 
 
 def _query_personal_vs(conn: sqlite3.Connection, puuid: str, champ_id: int,
@@ -192,7 +282,7 @@ def _query_personal_vs(conn: sqlite3.Connection, puuid: str, champ_id: int,
         # of being read as a loss.
         recent.append({
             "match_id": str(row["match_id"] or ""),
-            "ts": int((row["game_creation_ts"] or 0) // 1000),  # s (ms in DB)
+            "ts": _ts_seconds(row["game_creation_ts"]),  # s (ms in DB)
             "result": {"win": "WIN", "loss": "LOSS", "remake": "REMAKE"}.get(
                 classify(row), "UNKNOWN"),
         })
@@ -212,27 +302,89 @@ def _query_personal_vs(conn: sqlite3.Connection, puuid: str, champ_id: int,
 
 
 def _cache_get(key: tuple) -> dict | None:
-    entry = _CACHE.get(key)
-    if not entry:
-        return None
-    ts, payload = entry
-    if (time.monotonic() - ts) > _CACHE_TTL_S:
-        # Stale - drop and miss.
-        _CACHE.pop(key, None)
-        return None
-    return payload
+    with _CACHE_LOCK:
+        entry = _CACHE.get(key)
+        if not entry:
+            return None
+        ts, payload = entry
+        if (time.monotonic() - ts) > _CACHE_TTL_S:
+            # Stale - drop and miss.
+            _CACHE.pop(key, None)
+            return None
+        return payload
 
 
 def _cache_put(key: tuple, payload: dict) -> None:
-    _CACHE[key] = (time.monotonic(), payload)
-    # Hard cap to keep the dict bounded across long sessions; LRU is
-    # overkill here - the natural champion pool is ~172 and the TTL is
-    # 60s, so capacity is the safety net not the policy.
-    if len(_CACHE) > 1024:
-        # Drop the oldest 256 entries by timestamp.
-        victims = sorted(_CACHE.items(), key=lambda kv: kv[1][0])[:256]
-        for k, _ in victims:
-            _CACHE.pop(k, None)
+    with _CACHE_LOCK:
+        _CACHE[key] = (time.monotonic(), payload)
+        # Hard cap to keep the dict bounded across long sessions; LRU is
+        # overkill here - the natural champion pool is ~172 and the TTL is
+        # 60s, so capacity is the safety net not the policy.
+        if len(_CACHE) > _CACHE_MAX:
+            # Drop the oldest entries by timestamp.
+            victims = sorted(_CACHE.items(), key=lambda kv: kv[1][0])[:_CACHE_EVICT]
+            for k, _ in victims:
+                _CACHE.pop(k, None)
+
+
+def _open_ro() -> sqlite3.Connection:
+    """Read-only connection to the rewind DB. ``as_uri()`` percent-encodes
+    the path, so a checkout path holding ``#``, ``%`` or a space opens
+    the right file (a raw ``file:{path}`` URI does not); read-only so
+    concurrent writes from rewind_catchup don't block (the DB has WAL
+    anyway, defensive)."""
+    return sqlite3.connect(_REWIND_DB.resolve().as_uri() + "?mode=ro",
+                           uri=True, timeout=2.0)
+
+
+def _json(status: int, payload: dict) -> tuple[int, bytes]:
+    return status, json.dumps(payload).encode("utf-8")
+
+
+def _build_reply(h) -> tuple[int, bytes]:
+    """(status, JSON body) for one request. Writes nothing."""
+    qs = parse_qs(urlparse(h.path).query)
+
+    # champ_id required - bare/zero/junk rejects with 400.
+    champ_id = _parse_champ_id(
+        (qs.get("champ_id") or qs.get("champId") or [""])[0])
+    if champ_id is None:
+        return _json(400, {"ok": False, "error": _BAD_CHAMP_ID})
+
+    # days optional - default 30, clamp to [0, 3650].
+    days = _parse_days((qs.get("days") or [str(_DAYS_DEFAULT)])[0])
+
+    queue_ids = _parse_queue_filter((qs.get("queue") or [""])[0])
+
+    if not _REWIND_DB.exists():
+        return _json(503, {"ok": False, "error": "rewind_history.db missing"})
+
+    # Duration only: monotonic, so a wall-clock step cannot make it
+    # negative.
+    t0 = time.monotonic()
+    conn = _open_ro()
+    try:
+        puuid = _resolve_operator_puuid(conn)
+        if not puuid:
+            return _json(503, {
+                "ok": False, "error": "no operator puuid in rewind_history.db",
+            })
+
+        cache_key = (puuid, champ_id, days, queue_ids)
+        cached = _cache_get(cache_key)
+        if cached is None:
+            body = _query_personal_vs(conn, puuid, champ_id, days, queue_ids)
+            _cache_put(cache_key, dict(body))
+    finally:
+        conn.close()
+
+    payload = dict(body if cached is None else cached)
+    payload["ok"] = True
+    payload["days"] = days
+    payload["queue_ids"] = list(queue_ids)
+    payload["elapsed_ms"] = int((time.monotonic() - t0) * 1000)
+    payload["cached"] = cached is not None
+    return _json(200, payload)
 
 
 def _serve_personal_vs(h) -> None:
@@ -241,85 +393,17 @@ def _serve_personal_vs(h) -> None:
     Per-champion personal record probe for the champ-select threat tags.
     """
     try:
-        qs = parse_qs(urlparse(h.path).query)
-
-        # champ_id required - bare/zero rejects with 400.
-        raw_cid = (qs.get("champ_id") or qs.get("champId") or [""])[0].strip()
-        try:
-            champ_id = int(raw_cid)
-        except ValueError:
-            champ_id = 0
-        if champ_id <= 0:
-            h._send(400, json.dumps({
-                "ok": False, "error": "champ_id required (positive int)",
-            }).encode(), "application/json")
-            return
-
-        # days optional - default 30, clamp to [0, 3650].
-        raw_days = (qs.get("days") or ["30"])[0].strip()
-        try:
-            days = int(raw_days)
-        except ValueError:
-            days = 30
-        days = max(days, 0)
-        days = min(days, 3650)
-
-        queue_ids = _parse_queue_filter((qs.get("queue") or [""])[0])
-
-        if not _REWIND_DB.exists():
-            h._send(503, json.dumps({
-                "ok": False, "error": "rewind_history.db missing",
-            }).encode(), "application/json")
-            return
-
-        t0 = time.time()
-        # Open ro-mode + uri so concurrent writes from rewind_catchup
-        # don't block (DB has WAL anyway, defensive).
-        conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0)
-        try:
-            puuid = _resolve_operator_puuid(conn)
-            if not puuid:
-                h._send(503, json.dumps({
-                    "ok": False, "error": "no operator puuid in rewind_history.db",
-                }).encode(), "application/json")
-                return
-
-            cache_key = (puuid, champ_id, days, queue_ids)
-            cached = _cache_get(cache_key)
-            if cached is not None:
-                # Reuse but freshen elapsed_ms / days fields if they
-                # weren't in the cached blob (forward-compat).
-                payload = dict(cached)
-                payload["elapsed_ms"] = int((time.time() - t0) * 1000)
-                payload["cached"] = True
-                payload["ok"] = True
-                payload["days"] = days
-                payload["queue_ids"] = list(queue_ids)
-                h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-                return
-
-            body = _query_personal_vs(conn, puuid, champ_id, days, queue_ids)
-        finally:
-            conn.close()
-
-        payload = dict(body)
-        payload["ok"] = True
-        payload["days"] = days
-        payload["queue_ids"] = list(queue_ids)
-        payload["elapsed_ms"] = int((time.time() - t0) * 1000)
-        payload["cached"] = False
-        _cache_put(cache_key, dict(body))
-
-        h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
+        status, body = _build_reply(h)
     except Exception as exc:  # noqa: BLE001 - generic 500 wrapper
-        log.warning("api/personal-vs: %s", exc)
-        try:
-            # Raw exception text stays in the log only.
-            h._send(500, json.dumps(
-                {"ok": False, "error": "internal error - see logs"}).encode(),
-                "application/json")
-        except Exception:  # noqa: BLE001
-            pass
+        # The raw exception text stays in the log only, scrubbed, with its
+        # type name. A failure to write this reply propagates to the
+        # dispatcher.
+        send_error(h, exc, public_msg=GENERIC_ERROR, fields={"ok": False},
+                   log_traceback=True)
+        return
+    # Outside the catch-all: a failed write reaches the dispatcher, which
+    # closes the connection, instead of a second status line.
+    h._send(status, body, "application/json")
 
 
 def _equals(p: str):
