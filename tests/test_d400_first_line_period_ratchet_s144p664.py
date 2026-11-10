@@ -7,10 +7,16 @@ production modules (22 sites: agents/_supervisor_http.py, dashboard/routes_ops_p
 routes_post_game_wpa, routes_post_game_rubric, routes_personal_context, routes_replay_events) got the closing period
 ruff asks for - text inside a docstring only, no token outside a string changes, so behaviour is unchanged.
 
-Not touched, and named in ``_BASELINE`` with their counts (188 sites in 170 files), so it drains in later slices:
+Not touched, and named in ``_BASELINE`` with their counts (178 sites in 160 files), so it drains in later slices:
 a docstring whose summary opens on its own line or wraps over several lines needs the sentence rewritten, not a
 period appended; ``agents/daemon_slayer/`` belongs to the ds lane and ``ops/launcher/`` is PKG-owned; files other
 lane branches changed and have not landed stay in the baseline until they land.
+
+Second slice (S144-P-665): ten tests/snapshot_panels modules (build_insights_view, focus_ring_token_sites,
+history_view, home_review_r30, home_view, item_value_diff, lobby_view, overlay_fix_coach_radial,
+overlay_phase_surfaces, overlay_stats_role) gained a one-line summary ending in a period (four ``Hard rule:
+ASCII-only`` test docstrings and six module docstrings that opened on a path line), 10 sites, so the baseline is
+now 178 sites in 160 files.
 
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
@@ -104,18 +110,8 @@ _BASELINE = {
     "scripts/rewind_timeline_backfill.py": 1,
     "scripts/team_planner_sync.py": 1,
     "scripts/wakeup_prune.py": 1,
-    "tests/snapshot_panels/test_build_insights_view.py": 1,
-    "tests/snapshot_panels/test_focus_ring_token_sites.py": 1,
-    "tests/snapshot_panels/test_history_view.py": 1,
-    "tests/snapshot_panels/test_home_review_r30.py": 1,
-    "tests/snapshot_panels/test_home_view.py": 1,
-    "tests/snapshot_panels/test_item_value_diff.py": 1,
-    "tests/snapshot_panels/test_lobby_view.py": 1,
-    "tests/snapshot_panels/test_overlay_fix_coach_radial.py": 1,
     "tests/snapshot_panels/test_overlay_hotkey_hints.py": 1,
     "tests/snapshot_panels/test_overlay_launcher_menu.py": 1,
-    "tests/snapshot_panels/test_overlay_phase_surfaces.py": 1,
-    "tests/snapshot_panels/test_overlay_stats_role.py": 1,
     "tests/snapshot_panels/test_render_dedup_reshow.py": 1,
     "tests/snapshot_panels/test_replay_view.py": 1,
     "tests/snapshot_panels/test_session_view.py": 1,

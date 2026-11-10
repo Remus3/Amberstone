@@ -275,7 +275,9 @@ def test_home_action_tiles_restored(mock_server, pw_browser):
 
 
 def test_no_em_dashes_or_smart_quotes():
-    """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the new
+    """Hard rule: ASCII-only authored text in the new test and its fixture.
+
+    0 bytes above 0x7F in the new
     test + the home fixture it drives. (home.css carries pre-existing
     U+2500 box-drawing comment dividers + U+2192 arrows that predate this
     slice; mirroring the sibling view tests, the CSS is not ASCII-checked

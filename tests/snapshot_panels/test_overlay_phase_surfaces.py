@@ -1,4 +1,5 @@
-"""
+"""RC-PHASE-SURFACES: one real-browser test per game phase for the overlay phase -> widget table.
+
 tests/snapshot_panels/test_overlay_phase_surfaces.py
 
 RC-PHASE-SURFACES (MAIN ORDER 2215 item 9, RM-1272): one real-browser test per
