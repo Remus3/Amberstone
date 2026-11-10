@@ -42,6 +42,14 @@ test_overlay_callouts_ui_audit, test_post_game_rubric, test_replay_analysis) gai
 period (a summary line above a wrapped or path-led opening, or a question reworded as a statement), 10 sites, so
 the baseline is now 137 sites in 120 files.
 
+Seventh slice (S144-P-671): ten more tests/ modules (test_aram_coach_shadow_choices_native_emit,
+test_base_coach_structured_field_limit, test_coach_choices_alt_hotkey, test_coach_output_p2_2,
+test_css_var_definitions_rm209, test_dashboard_post_trust_boundary, test_data_viz_tier_y07,
+test_decision_detector_lane8_cycle12, test_ds_perm_swarm, test_mission_control_server) gained a one-line summary
+ending in a period (a summary line above a path-led or wrapped opening, or a question reworded as a statement),
+10 sites, so the baseline is now 127 sites in 110 files. The three tests/snapshot_panels modules still in the
+baseline are the uiux lane's (changed on lane/uiux and not yet landed).
+
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
 """
@@ -137,19 +145,9 @@ _BASELINE = {
     "tests/snapshot_panels/test_overlay_hotkey_hints.py": 1,
     "tests/snapshot_panels/test_overlay_launcher_menu.py": 1,
     "tests/snapshot_panels/test_stale_fade_view_t12.py": 1,
-    "tests/test_aram_coach_shadow_choices_native_emit.py": 1,
-    "tests/test_base_coach_structured_field_limit.py": 1,
-    "tests/test_coach_choices_alt_hotkey.py": 1,
-    "tests/test_coach_output_p2_2.py": 1,
-    "tests/test_css_var_definitions_rm209.py": 1,
-    "tests/test_dashboard_post_trust_boundary.py": 1,
-    "tests/test_data_viz_tier_y07.py": 1,
-    "tests/test_decision_detector_lane8_cycle12.py": 1,
-    "tests/test_ds_perm_swarm.py": 1,
     "tests/test_inbox_responder_runner.py": 2,
     "tests/test_last_match_tabs_reframe_dom.py": 2,
     "tests/test_metrics_cache_lane8_cycle40.py": 2,
-    "tests/test_mission_control_server.py": 1,
     "tests/test_no_environ_in_assert_operands.py": 2,
     "tests/test_panel_visibility_permode.py": 1,
     "tests/test_resource_manager_ceiling_rm146.py": 1,

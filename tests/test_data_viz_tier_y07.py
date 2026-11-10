@@ -1,4 +1,5 @@
-"""
+"""Y-07 guard for the League-domain DATA-VIZ token tier in web/css/tokens.css.
+
 tests/test_data_viz_tier_y07.py
 
 Y-07 (external reference P; RM-531) - the League-domain DATA-VIZ token tier.

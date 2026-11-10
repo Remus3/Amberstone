@@ -1,4 +1,6 @@
-"""tests/test_base_coach_structured_field_limit.py
+"""Root-cause pin for the always-empty live `choices` column across every coach.
+
+tests/test_base_coach_structured_field_limit.py
 
 Root-cause pin for the always-empty live `choices` column across every coach.
 

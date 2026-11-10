@@ -16,7 +16,9 @@ from pydantic import BaseModel
 
 
 def _old_inline_decode(raw_value) -> list:
-    """Verbatim reproduction of the pre-P2.2 inline block in every coach:
+    """Reproduce the pre-P2.2 inline choices decode block of every coach verbatim.
+
+    The block reads:
 
     _choices_list = []
     _choices_raw = fields.get("choices", "").strip()

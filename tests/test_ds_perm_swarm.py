@@ -30,7 +30,7 @@ from ops.audit.ds_perm_swarm import (
 # fixtures
 # --------------------------------------------------------------------------- #
 def _make_db():
-    """In-memory rewind-shaped sqlite. Two champs in ARAM:
+    """Build an in-memory rewind-shaped sqlite with two champs in ARAM.
 
     Goodpick: DS rank-1 item 1001 wins 4/4 (100%); filler 9999 loses 0/4 -> baseline 50%.
     Badpick:  DS rank-1 item 3003 loses 0/4 (0%);  filler 9999 wins 4/4   -> baseline 50%.

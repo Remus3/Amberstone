@@ -1,4 +1,5 @@
-"""
+"""RM-209 guard: no CSS custom property under web/ is referenced without a definition.
+
 tests/test_css_var_definitions_rm209.py
 
 RM-209 - no file under web/ may reference a CSS custom property that nothing

@@ -240,7 +240,7 @@ class TestWritePendingUnderConcurrentReader:
         reason="POSIX rename ignores an open read handle; there is no OS "
                "fault to observe, which is why the tests above inject theirs")
     def test_the_real_os_still_share_locks_a_held_pending_file(self, tmp_path):
-        """The one question replace_fails() cannot answer: is it real?
+        """Check the one thing replace_fails() cannot answer: the premise is real.
 
         The tests above simulate the share lock, so this asserts the OS
         property alone - no store, no retry loop - and stays true whatever
