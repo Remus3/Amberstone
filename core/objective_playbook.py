@@ -24,10 +24,29 @@ PURE
     ``vision_state.json`` read lives in the dashboard resolver, which passes the
     summary counts in. Fail-soft: any bad / missing input -> ``None`` (no row),
     never raises (the coach hot path contract).
+
+INPUT TRUST (s144 true-audit)
+    ``vision_summary`` comes from vision_state.json via ``json.loads``, which
+    accepts ``NaN`` / ``Infinity``: a non-finite count reads as 0 (it used to
+    raise inside ``int()`` and lose the whole row). A schedule row whose
+    ``eta_s`` is not a finite real number (bool excluded) is skipped, never
+    turned into a directive. The emitted tag is the canonical objective
+    constant, and the two public tables are read-only views. An unexpected
+    failure still returns ``None`` but is logged once per exception TYPE
+    (type name only, never the message).
 """
 from __future__ import annotations
 
-from typing import Optional
+import logging
+import math
+from types import MappingProxyType
+from typing import Mapping, Optional
+
+_log = logging.getLogger("rc.objective_playbook")
+
+# Exception type names already logged by playbook_callout's hot-path catch, so
+# a failure that repeats every tick is logged once, not once per tick.
+_LOGGED_FAILURES: set[str] = set()
 
 # The neutral objectives this playbook coaches. ``grubs`` (no fight/concede
 # call yet - a spawn-once camp) and every spike/recall/inhib row are
@@ -67,7 +86,9 @@ _CONTEST_MISSING_N: int = 3
 # break). Elder uses the "*" wildcard (its call does not vary by lead - it is the
 # game either way). Derived from spec 3.3's (setup, fight rule) pairs, phrased as
 # one clean line so the dashboard callout row stays a single glanceable string.
-OBJECTIVE_PLAYBOOK: dict[tuple[str, str], str] = {
+# Read-only (MappingProxyType): the tables are exported, and a caller writing
+# into a plain dict would change every later coach tick process-wide.
+OBJECTIVE_PLAYBOOK: Mapping[tuple[str, str], str] = MappingProxyType({
     ("dragon", "ahead"):  "Drake: set deep vision, force them off - you have tempo",
     ("dragon", "even"):   "Drake: match prio, ward both pits - fight only with numbers",
     ("dragon", "behind"): "Drake: trade it for a lane - do not contest down",
@@ -78,7 +99,7 @@ OBJECTIVE_PLAYBOOK: dict[tuple[str, str], str] = {
     ("herald", "even"):   "Herald: contest only with prio - else trade for scuttle",
     ("herald", "behind"): "Herald: give it, catch side waves - avoid the 50/50",
     ("elder", "*"):       "Elder: group as five, full vision - no greed",
-}
+})
 
 # RC2 P5.6 (WS3 late-game): in the LATE phase the objective calculus shifts to
 # CLOSING - baron is a game-ending tool (not just a buff) and a late drake is
@@ -88,14 +109,14 @@ OBJECTIVE_PLAYBOOK: dict[tuple[str, str], str] = {
 # herald is gone by late (one-shot 15:00, no respawn), so neither earns a late entry - a late
 # herald lookup correctly falls back to its base line. Same conventions: <= 12
 # words, ASCII, " - " clause break.
-LATE_OBJECTIVE_PLAYBOOK: dict[tuple[str, str], str] = {
+LATE_OBJECTIVE_PLAYBOOK: Mapping[tuple[str, str], str] = MappingProxyType({
     ("baron", "ahead"):   "Baron: take it and close - end on the buff",
     ("baron", "even"):    "Baron: land a pick first - then take to end",
     ("baron", "behind"):  "Baron: do not contest - defend and clear waves",
     ("dragon", "ahead"):  "Late drake: group five, take it - then push",
     ("dragon", "even"):   "Late drake: full vision - fight only even or ahead",
     ("dragon", "behind"): "Late drake: do not throw - defend, deny the catch",
-}
+})
 
 
 def _lead_state(lead: object) -> str:
@@ -119,38 +140,67 @@ def _phase_ok(tag: str, phase: object) -> bool:
     return isinstance(phase, str) and phase in allowed
 
 
-def _select_objective(callouts: object, phase: object) -> Optional[dict]:
+def _finite_real(value: object) -> bool:
+    """True for a finite int / float that is not a bool (NaN / inf excluded)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    return math.isfinite(value)
+
+
+def _canonical_tag(tag: object) -> Optional[str]:
+    """The ``_PLAYBOOK_OBJECTIVES`` constant equal to ``tag``, or ``None``.
+
+    Returns the module's own str, so a str subclass equal to "dragon" can
+    never put its own ``__str__`` text into the emitted tag."""
+    if not isinstance(tag, str):
+        return None
+    for canon in _PLAYBOOK_OBJECTIVES:
+        if tag == canon:
+            return canon
+    return None
+
+
+def _select_objective(
+    callouts: object, phase: object,
+) -> Optional[tuple[str, dict]]:
     """The soonest covered + phase-allowed objective row from a callouts list.
 
     ``callouts`` is already eta-sorted (active-first) by the caller
     (next_callouts), so the first matching row is the most imminent. Garbage
-    entries are skipped. Returns the callout dict or ``None``."""
+    entries, and rows whose ``eta_s`` is not a finite real number, are
+    skipped. Returns ``(canonical tag, row)`` or ``None``."""
     if not isinstance(callouts, list):
         return None
     for row in callouts:
         if not isinstance(row, dict):
             continue
-        tag = row.get("tag")
-        if tag in _PLAYBOOK_OBJECTIVES and _phase_ok(tag, phase):
-            return row
+        tag = _canonical_tag(row.get("tag"))
+        if tag is None or not _phase_ok(tag, phase):
+            continue
+        if not _finite_real(row.get("eta_s")):
+            continue
+        return tag, row
     return None
 
 
 def _is_near(eta_s: object) -> bool:
-    """True when an objective ETA is active (<= 0) or within _NEAR_S seconds."""
-    if eta_s is None or isinstance(eta_s, bool):
-        return False
-    if not isinstance(eta_s, (int, float)):
+    """True when an objective ETA is active (<= 0) or within _NEAR_S seconds.
+
+    Only a finite real ETA qualifies: -inf is not "active", NaN is not near."""
+    if not _finite_real(eta_s):
         return False
     return eta_s <= _NEAR_S
 
 
 def _count(summary: object, key: str) -> int:
-    """Fail-soft non-negative int read of a vision-summary count (0 on garbage)."""
+    """Fail-soft non-negative int read of a vision-summary count (0 on garbage).
+
+    A bool, a non-number and a non-finite float (NaN / inf, which
+    ``json.loads`` accepts) all read as 0."""
     if not isinstance(summary, dict):
         return 0
     val = summary.get(key)
-    if isinstance(val, bool) or not isinstance(val, (int, float)):
+    if not _finite_real(val):
         return 0
     n = int(val)
     return max(0, n)
@@ -182,13 +232,14 @@ def playbook_callout(
         ``{tag, line, eta_s, kind}`` with kind == "playbook", tag ==
         "playbook_<objective>", eta_s == the objective's eta (so it sorts
         adjacent to its schedule row), or ``None`` when no contestable objective
-        is in range. Fail-soft: any error -> None.
+        is in range. Fail-soft: any error -> None (logged once per exception
+        type, type name only).
     """
     try:
-        obj = _select_objective(callouts, phase)
-        if obj is None:
+        picked = _select_objective(callouts, phase)
+        if picked is None:
             return None
-        tag = str(obj.get("tag"))
+        tag, obj = picked
         eta_s = obj.get("eta_s")
         state = _lead_state(lead)
 
@@ -221,7 +272,11 @@ def playbook_callout(
             "eta_s": eta_s,
             "kind": "playbook",
         }
-    except Exception:  # noqa: BLE001 - the coach hot path must never raise
+    except Exception as exc:  # noqa: BLE001 - the coach hot path must never raise
+        name = type(exc).__name__
+        if name not in _LOGGED_FAILURES:
+            _LOGGED_FAILURES.add(name)
+            _log.warning("objective playbook row dropped: %s", name)
         return None
 
 
