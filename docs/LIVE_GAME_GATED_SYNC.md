@@ -3618,6 +3618,26 @@ survivability flips below cannot roll otherwise.
   `server.py`, not in `core/daemon_slayer_client.py`, not in any coach, and NOT exposed over HTTP. A
   live ARAM exercises zero extra code. **NO LIVE RESIDUAL until the flag is plumbed.**
   SOURCE: BACKLOG.md:32.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 142, S144-G-129; NOT a tick).** The verdict holds;
+  the cites drifted. (1) STILL UNREACHABLE: in tracked code `enemy_lethality` appears only in
+  `agents/daemon_slayer/ehp.py` (now `:1407`, `:1667`, `:2311`, `:2725`, `:2729`, `:2835`, `:2898`,
+  `:2910`), its DS tests, and `tests/test_ds_parity_map.py:90`, which now MACHINE-GUARDS the gap: the
+  `/ehp` entry of `_UNREACHABLE_OK` lists `enemy_lethality`, `enemy_armor_pen_pct`,
+  `enemy_magic_pen_flat`, `enemy_magic_pen_pct` and `enemy_shred_pct` as kwargs the route does NOT
+  parse. Zero hits in `agents/daemon_slayer/server.py` or `core/daemon_slayer_client.py`. (2) LEXICAL
+  NEAR-MISS, not a plumbing: `core/build_planner/situational.py` `enemy_pen` (`:139`, set `:535-543`
+  from an enemy pen-item count) feeds the build-plan counter chips (C4, row G4-16) and never calls
+  `compute_ehp` (`:477`); it does not reach this seam. (3) SHAPE RE-MEASURED in-process (compute half
+  only), DS snapshot `16.22.1`, ENGINE `1.291.0`, call shape `compute_ehp(snap, "Aatrox", level=L)`
+  vs the same plus `enemy_lethality=20.0, enemy_armor_pen_pct=0.35` (no items, default mode, default
+  shares): L11 physical 2972.6 -> 2179.7 (-26.7%), magical 2475.3 -> 2475.3 (+0.0%), blended
+  2724.0 -> 2327.5 (-14.6%); L18 physical 5683.2 -> 4082.3 (-28.2%), magical +0.0%. Physical falls,
+  magical is unmoved - the filed shape. The magnitudes differ from the filed -42% because the filed
+  call shape was never stated; do not compare the two. (4) SOURCE CITE DRIFT: `BACKLOG.md:32` is now
+  an unrelated RM-2071..RM-2075 block and BACKLOG.md no longer mentions T1-F3 (`git log -S"T1-F3"
+  -- BACKLOG.md`: last change `03ac01b4a`, "mdclean C3"); the shipped seam is LEDGER item 371.
+  Still NO LIVE RESIDUAL until `/ehp` (or an RC caller) passes the pen kwargs. Idle: `/api/state`
+  `mode_key` `client`, `liveclient` empty, LCU phase None at 2026-11-09 23:20 local; no game.
 - **G3-10** (was C10) R41 `assume_ally_detonation` (Leona P Sunlight) - **PARTIAL 2026-07-18.**
   SETTLED HEADLESS: the math is byte-exact and the scope is tiny. The override entry reproduces
   byte-for-byte - `AllyDetonationEntry(source_key='P', kind='FLAT_MAGIC', flat_lo=32.0, flat_hi=151.0,
