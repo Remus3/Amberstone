@@ -359,9 +359,9 @@ const _tallWatch = new Map();
 // refit - asks _midDrag before calling _applyPos. _applyPos bottom-anchors a
 // tall widget whose stored y is in the lower half, while the drag tracks the
 // cursor by top, so an unguarded re-place snapped a held widget away from the
-// cursor on every panel repaint. Keyed by id as well as by the class, because
-// the drag follows a mount its renderer swapped (_liveEl), and a fresh node
-// carries no ovx-dragging class.
+// cursor on every panel repaint. Keyed by id as well as by the class, so a
+// mount swapped mid-drag (none is today; _liveEl guards it) stays held: a
+// fresh node carries no ovx-dragging class.
 const _dragIds = new Set();
 
 function _midDrag(el, id) {
@@ -719,11 +719,11 @@ function _winOff(type, fn) {
 // should grab the drag: the small handle (always - the passive quick-drag via
 // data-rc-zone) AND, in ACTIVE mode, the whole widget body (operator 2026-06-27:
 // "in ACTIVE I expect to drag the panel, not hunt a 3px grip"). Capture is set
-// on `el`, and move/up listeners live on `el` AND (mid-drag only) on `window`:
-// panel renderers rebuild these mounts (replaceWith / innerHTML), and a mount
-// swap mid-drag used to orphan the el-only listeners and silently kill the drag
-// - the same death the operator hit whenever capture failed and the cursor left
-// the 3px handle (RM-05 round-2 symptom b).
+// on `el`, and move/up listeners live on `el` AND (mid-drag only) on `window`,
+// so the drag survives when capture fails and the cursor leaves the 3px handle
+// (RM-05 round-2 symptom b). A renderer that rebuilds the mount's OWN contents
+// (e.g. the rn-* mounts; others write a body child) drops the handle CHILD, but
+// keeps `el`, its listeners and classes (no renderer swaps a mount node).
 function _installDrag(el, w) {
   // One drag closure per mount, forever (RM-126). _placeAll re-runs _makeHandle
   // on the SAME persistent el after every renderer rebuild, so an unguarded
@@ -740,8 +740,8 @@ function _installDrag(el, w) {
   let scale = 1;  // panel zoom, captured at drag start (item 9 - see _scalePos)
   let hadZone = false; // el's own [data-rc-zone] state, restored on drop
 
-  // The mount can be swapped by its renderer mid-drag; style writes must land
-  // on the node that is actually painting, not the orphaned one we wired.
+  // Defensive: no renderer swaps a mount today, but if one ever did mid-drag,
+  // style writes must land on the node actually painting, not the orphan.
   const _liveEl = () => {
     try {
       if (el.isConnected === false && typeof document !== "undefined" && document.querySelector) {
@@ -930,9 +930,9 @@ function _makeHotkeyHint(el, w) {
 }
 
 // Attach the right-click hide listener once per mount. Idempotent: a dataset
-// flag survives re-renders that keep the same node, and _placeAll re-runs the
-// whole pass after a renderer rebuilds a mount (a fresh node has no flag, so the
-// listener re-attaches). Mirrors _makeHandle's double-attach guard.
+// flag survives re-renders (they keep the same node), and if a mount node were
+// ever swapped, _placeAll's next pass wires the fresh node (it has no flag, so
+// the listener re-attaches). Mirrors _makeHandle's double-attach guard.
 function _makeHideMenu(el, w) {
   if (el.dataset.ovxHideMenu === "1") return;
   el.dataset.ovxHideMenu = "1";
@@ -1490,10 +1490,10 @@ export function initOverlayLayout() {
     // still re-places on every flip it makes.
   }
 
-  // Survive re-renders. The lead / choices / callouts mounts are rebuilt by
-  // their panel renderers (replaceWith / innerHTML), which drops the .ovx-widget
-  // class AND the drag handle. A debounced observer re-runs the idempotent
-  // _placeAll so positioning + handles re-attach after every re-render. The
+  // Survive re-renders. Some renderers rebuild a mount's OWN contents (e.g.
+  // #rn-lead / #rn-choices / #rn-callouts `innerHTML`), dropping our handle (and
+  // any hotkey hint) CHILD; the node and its .ovx-widget class stay. A debounced
+  // observer re-runs the idempotent _placeAll to re-attach them. The
   // observer disconnects around its own DOM writes so handle-appends do not
   // re-trigger it (no feedback loop).
   let reTimer = 0;
