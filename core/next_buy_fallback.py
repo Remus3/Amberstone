@@ -63,7 +63,9 @@ into the liveclient path.
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
 import threading
 from pathlib import Path
 
@@ -91,6 +93,15 @@ _PREFERRED_BUCKET = "balanced"
 # comp IS the balanced case.
 _LEAN_BUCKETS = frozenset({"ad_heavy", "ap_heavy"})
 
+# An item id is 1-9 ASCII digits (SR 4-digit, Arena 22xxxx / 44xxxx). The
+# length cap keeps a hostile cell away from int()'s 4300-digit ValueError,
+# and ASCII-only refuses Unicode digits that str.isdigit / int() accept.
+_ITEM_ID_RE = re.compile(r"[0-9]{1,9}")
+
+# Roster shapes compute_factors itself accepts; anything else (a dict, a bare
+# string) would otherwise be iterated into keys or characters.
+_ROSTER_TYPES = (list, tuple, set, frozenset)
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _ITEMS_INDEX_PATH = _PROJECT_ROOT / "web" / "data" / "items_index.json"
 
@@ -109,7 +120,9 @@ def reset_cache() -> None:
 
 
 def fallback_enabled() -> bool:
-    """True unless ``RC_NEXTBUY_DS_FALLBACK`` is explicitly "0" / "false" / "off".
+    """True unless ``RC_NEXTBUY_DS_FALLBACK`` is set to "0" / "false" / "no" /
+    "off" (any case, surrounding spaces ignored) or to an empty value. Unset
+    means ON.
 
     Read at CALL time, not import time, so the switch can be flipped without a
     restart and so tests can patch os.environ.
@@ -166,18 +179,58 @@ def _canon_table(stem: str) -> dict:
     return out
 
 
+def _item_id(value) -> str | None:
+    """``value`` as a canonical item-id string ("3143"), or None.
+
+    Accepts a positive int, an integral finite float and a string of 1-9
+    ASCII digits (surrounding whitespace ignored). Refuses bool (``False``
+    equals 0 and ``True`` 1), zero, negatives, fractional or non-finite
+    floats and everything else, so a junk table cell is dropped instead of
+    being stringified into a fake id ("True", "{'id': 1}").
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float):
+        if not (math.isfinite(value) and value.is_integer()):
+            return None
+        value = int(value)
+    if isinstance(value, int):
+        return str(value) if 0 < value < 10 ** 9 else None
+    if isinstance(value, str):
+        text = value.strip()
+        if _ITEM_ID_RE.fullmatch(text) and int(text) > 0:
+            return str(int(text))
+    return None
+
+
+def _clean_order(order) -> list:
+    """The canonical item ids of one bucket, in order; [] for a non-list."""
+    if not isinstance(order, list):
+        return []
+    return [i for i in (_item_id(v) for v in order) if i]
+
+
 def _id_to_name() -> dict:
-    """items_index byId (item id string -> display name). Memoised; {} on error."""
+    """items_index byId (item id string -> display name). Memoised; {} on error.
+
+    Only a non-blank STRING value is a name (stripped); a dict, list or
+    number value is skipped rather than rendered as its repr. A file with no
+    usable name is not memoised, so a repaired file is picked up (RM-443).
+    """
     if _ID_TO_NAME_CACHE:
         return _ID_TO_NAME_CACHE
     try:
         doc = json.loads(_ITEMS_INDEX_PATH.read_text(encoding="utf-8"))
         by_id = doc.get("byId")
-        if isinstance(by_id, dict):
-            with _lock:
-                _ID_TO_NAME_CACHE.update(
-                    {str(k): str(v) for k, v in by_id.items() if v}
-                )
+        if not isinstance(by_id, dict):
+            return {}
+        names: dict = {}
+        for key, value in by_id.items():
+            item_id = _item_id(key)
+            if item_id and isinstance(value, str) and value.strip():
+                names[item_id] = value.strip()
+        with _lock:
+            _ID_TO_NAME_CACHE.update(names)
     except Exception:  # noqa: BLE001 - fail-soft contract, never raise
         return {}
     return _ID_TO_NAME_CACHE
@@ -190,10 +243,14 @@ def preferred_bucket(enemy_team=None) -> str:
     damage axis, else "balanced". Absent, empty, unresolvable or malformed
     input all degrade to "balanced" rather than manufacturing a lean, because
     a wrong lean serves the wrong resistance item - strictly worse than the
-    neutral order. Never raises.
+    neutral order. Only a list / tuple / set roster is read (the shapes
+    ``compute_factors`` accepts): a dict or a bare string is malformed, not
+    a roster of its keys or characters. Never raises.
     """
     try:
-        names = [c.strip() for c in (enemy_team or [])
+        if not isinstance(enemy_team, _ROSTER_TYPES):
+            return _PREFERRED_BUCKET
+        names = [c.strip() for c in enemy_team
                  if isinstance(c, str) and c.strip()]
         if not names:
             return _PREFERRED_BUCKET
@@ -242,16 +299,17 @@ def fallback_build_ids(champion, game_mode, enemy_team=None) -> list:
             bucket = preferred_bucket(enemy_team)
         except Exception:  # noqa: BLE001 - a lean fault must not cost the row
             bucket = _PREFERRED_BUCKET
-        order = buckets.get(bucket)
-        if not isinstance(order, list) or not order:
-            order = buckets.get(_PREFERRED_BUCKET)
-        if not isinstance(order, list) or not order:
+        # Each step is judged on the ids that SURVIVE validation, so a lean
+        # bucket of pure junk falls through to balanced instead of serving
+        # an empty or fake row.
+        order = _clean_order(buckets.get(bucket))
+        if not order:
+            order = _clean_order(buckets.get(_PREFERRED_BUCKET))
+        if not order:
             order = next(
-                (v for v in buckets.values() if isinstance(v, list) and v), None
+                (ids for ids in map(_clean_order, buckets.values()) if ids), []
             )
-        if not isinstance(order, list):
-            return []
-        return [str(i) for i in order if i or i == 0]
+        return order
     except Exception:  # noqa: BLE001 - fail-soft contract, never raise
         return []
 
