@@ -227,7 +227,7 @@ def _build_consistent() -> tuple[dict, tuple | None, bool]:
 
 
 def _serve_personal_context(h) -> None:
-    """GET /api/personal-context"""
+    """GET /api/personal-context."""
     try:
         now = time.monotonic()
         cached = _cache_hit(now, _signature())

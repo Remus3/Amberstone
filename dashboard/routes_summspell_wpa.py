@@ -267,7 +267,7 @@ def _open_rewind_db_ro() -> sqlite3.Connection:
 
 
 def _serve_summspell_wpa(h) -> None:
-    """GET /api/summspell-wpa?min_n=20&queue_id=&patch="""
+    """GET /api/summspell-wpa?min_n=20&queue_id=&patch= (query params)."""
     try:
         query, err = _parse_query(h.path)
         if err is not None:

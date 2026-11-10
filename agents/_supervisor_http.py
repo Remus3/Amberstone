@@ -673,7 +673,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
     ADVISORY_OPS = frozenset({"cold-streak-advisory", "coaching-insight-advisory"})
 
     def _handle_advisories(self) -> None:
-        """GET /api/advisories[?mode=aram&limit=10&include_completed=0]
+        """GET /api/advisories[?mode=aram&limit=10&include_completed=0].
 
         Returns the list of advisory tasks (currently cold-streak
         notifications) the user should see on the dashboard. Default
@@ -790,7 +790,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         })
 
     def _handle_insight_card(self) -> None:
-        """GET /api/insight-card?champion=X&mode=Y[&enemies=A,B]
+        """GET /api/insight-card?champion=X&mode=Y[&enemies=A,B].
 
         Returns ``{"card": "<text>"}`` with a compact summary line for
         copying to Discord / clipboard / voice-to-text. Empty string if
@@ -822,7 +822,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         })
 
     def _handle_adaptation(self) -> None:
-        """GET /api/adaptation?champion=X&mode=Y[&enemies=A,B,C]
+        """GET /api/adaptation?champion=X&mode=Y[&enemies=A,B,C].
 
         Returns Agent 4's aggregates for the requested champion in the
         requested mode, plus the top activated matchups. Without
@@ -855,7 +855,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         })
 
     def _handle_trending(self) -> None:
-        """GET /api/trending?mode=aram[&n=3]
+        """GET /api/trending?mode=aram[&n=3].
 
         Returns the hot/cold KDA streaks for ``mode`` via
         ``coaches.adaptation_hint.kda_trends``. Without ``mode``, returns
@@ -883,7 +883,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         })
 
     def _handle_session(self) -> None:
-        """GET /api/session[?since=today|24h|7d|<ISO>]
+        """GET /api/session[?since=today|24h|7d|<ISO>].
 
         Returns ``session_summary`` across all mode DBs. Default
         ``since`` is local midnight (today's games).
@@ -900,7 +900,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         self._send_json(200, session_summary(_parse_since(since_spec)))
 
     def _handle_session_games(self) -> None:
-        """GET /api/session-games[?since=today|24h|7d|<ISO>&limit=N]
+        """GET /api/session-games[?since=today|24h|7d|<ISO>&limit=N].
 
         Chronological per-match timeline since ``since``. Supports
         an optional ``limit`` (tail clamp, most-recent N).
@@ -925,7 +925,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         self._send_json(200, {"since": since_spec, "games": games})
 
     def _handle_time_of_day(self) -> None:
-        """GET /api/time-of-day[?mode=aram&since=today|24h|7d|<ISO>&min=3]
+        """GET /api/time-of-day[?mode=aram&since=today|24h|7d|<ISO>&min=3].
 
         Returns per-hour win-rate + KDA buckets for the requested mode
         (or all modes). Used by the dashboard's "when am I best?" view.
@@ -950,7 +950,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         ))
 
     def _handle_day_of_week(self) -> None:
-        """GET /api/day-of-week[?mode=aram&since=today|30d|<ISO>&min=3]"""
+        """GET /api/day-of-week[?mode=aram&since=today|30d|<ISO>&min=3]."""
         from urllib.parse import urlparse, parse_qs
         qs = parse_qs(urlparse(self.path).query)
         mode = (qs.get("mode") or [""])[0].strip() or None
@@ -971,7 +971,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         ))
 
     def _handle_duration(self) -> None:
-        """GET /api/duration[?mode=X&champion=Y&since=Z&min=N]
+        """GET /api/duration[?mode=X&champion=Y&since=Z&min=N].
 
         Buckets matches by game length into stomp / quick / standard /
         long tiers. Per-tier win-rate + KDA. Filterable by champion for
@@ -999,7 +999,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         ))
 
     def _handle_digest(self) -> None:
-        """GET /api/digest[?mode=X&since=Y&top=N]
+        """GET /api/digest[?mode=X&since=Y&top=N].
 
         Bundles the top actionable insights (cold streaks, time-of-day
         outliers, weak days, problem durations) into a single ranked
@@ -1025,7 +1025,7 @@ class _QuietHandler(HostAllowlistMixin, HeadDeadlineMixin,
         ))
 
     def _handle_locked_champion(self) -> None:
-        """GET /api/locked-champion[?fresh=1]
+        """GET /api/locked-champion[?fresh=1].
 
         Best-effort champion identification when the live-client
         pipeline isn't producing data. Tries LCU -> match_db -> recent

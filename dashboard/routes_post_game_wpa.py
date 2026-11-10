@@ -304,7 +304,7 @@ def _parse_match_id(path: str) -> tuple[str | None, str | None]:
 
 
 def _serve_post_game_wpa(h) -> None:
-    """GET /api/post-game-wpa?match_id=<id>"""
+    """GET /api/post-game-wpa?match_id=<id>."""
     try:
         match_id, err = _parse_match_id(h.path)
         if err is not None:
