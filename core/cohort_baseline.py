@@ -31,6 +31,7 @@ timeline.
 from __future__ import annotations
 
 import json
+import math
 import statistics
 from pathlib import Path
 
@@ -61,24 +62,48 @@ MIN_TIME_PLAYED_S = 600
 
 
 def _num(value) -> float:
-    """Sidecar values are STRINGS. A bad one is 0.0, never a crash."""
-    try:
-        return float(value)
-    except (TypeError, ValueError):
+    """Sidecar values are STRINGS. A bad one is 0.0, never a crash.
+
+    "Bad" includes what float() happily accepts: "nan" / "inf" / "1e999"
+    (a NaN rate sorts nowhere and poisons every percentile; json.dumps then
+    writes a bare NaN no JSON reader accepts), a negative (every metric here
+    is a count or a total, so a negative is corruption, not a value), a bool
+    (JSON true is not a stat) and an int too large for a float (OverflowError,
+    which the old except did not catch).
+    """
+    if isinstance(value, bool):
         return 0.0
+    try:
+        out = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+    if not math.isfinite(out) or out < 0:
+        return 0.0
+    return out
 
 
-def row_metrics(player: dict) -> dict:
-    """One sidecar player row -> the metric dict, or {} if unusable."""
-    time_played = _num(player.get("TIME_PLAYED"))
+def _rates(row, time_field: str, table: dict) -> dict:
+    """Shared body of row_metrics / participant_metrics.
+
+    A row that is not a dict is unusable ({}), like a short one, rather than
+    an AttributeError that ends a whole corpus build on one junk sidecar.
+    """
+    if not isinstance(row, dict):
+        return {}
+    time_played = _num(row.get(time_field))
     if time_played < MIN_TIME_PLAYED_S:
         return {}
     minutes = time_played / 60.0
     out = {}
-    for name, (fields, per_minute) in METRICS.items():
-        total = sum(_num(player.get(f)) for f in fields)
+    for name, (fields, per_minute) in table.items():
+        total = sum(_num(row.get(f)) for f in fields)
         out[name] = (total / minutes) if per_minute else total
     return out
+
+
+def row_metrics(player: dict) -> dict:
+    """One sidecar player row -> the metric dict, or {} if unusable."""
+    return _rates(player, "TIME_PLAYED", METRICS)
 
 
 # Match-V5 participant field names for the SAME metrics. Kept separate from
@@ -110,15 +135,13 @@ def participant_metrics(participant: dict) -> dict:
     no timeline and no .rofl - which is what makes an all-ranks sweep
     affordable.
     """
-    time_played = _num(participant.get("timePlayed"))
-    if time_played < MIN_TIME_PLAYED_S:
-        return {}
-    minutes = time_played / 60.0
-    out = {}
-    for name, (fields, per_minute) in MV5_METRICS.items():
-        total = sum(_num(participant.get(f)) for f in fields)
-        out[name] = (total / minutes) if per_minute else total
-    return out
+    return _rates(participant, "timePlayed", MV5_METRICS)
+
+
+def _finite(value) -> bool:
+    """A real, finite number - never a bool, a string or NaN / inf."""
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and math.isfinite(value))
 
 
 def build(rows) -> dict:
@@ -126,14 +149,26 @@ def build(rows) -> dict:
 
     A metric needs at least 20 samples in a role before it is reported;
     percentiles over a handful of rows are noise with decimal places.
+
+    A malformed entry (not a pair, a role that is not a non-empty string, a
+    metric dict that is not a dict) is skipped, and so is a value that is not
+    a finite real number: one NaN would otherwise leave sorted() in an
+    arbitrary order and every percentile of that metric wrong, and a mixed
+    str / int role set would fail the final sort for every role.
     """
     by_role: dict = {}
-    for role, metrics in rows:
-        if not role or not metrics:
+    for entry in rows:
+        if not isinstance(entry, (tuple, list)) or len(entry) != 2:
             continue
-        by_role.setdefault(role, {})
+        role, metrics = entry
+        if not isinstance(role, str) or not role:
+            continue
+        if not isinstance(metrics, dict) or not metrics:
+            continue
         for name, value in metrics.items():
-            by_role[role].setdefault(name, []).append(value)
+            if not isinstance(name, str) or not _finite(value):
+                continue
+            by_role.setdefault(role, {}).setdefault(name, []).append(value)
 
     out = {}
     for role, metrics in sorted(by_role.items()):
@@ -168,12 +203,23 @@ def rank_of(baselines: dict, role: str, metric: str, value: float):
     """Where a value falls in its cohort, as a percentile band.
 
     Returns None when the cohort has no table for that metric - an unknown
-    cohort must not be reported as an average one.
+    cohort must not be reported as an average one. A table that is not one
+    build() could have written (a percentile missing or not a finite number,
+    `n` not a positive int) is treated the same way, as is a value that is
+    not a finite real number: a NaN fails every comparison and would read as
+    the bottom band.
     """
-    table = (baselines.get(role) or {}).get(metric)
-    if not table:
+    if not _finite(value) or not isinstance(role, str):
         return None
-    bands = [(table[f"p{p}"], p) for p in PERCENTILES if f"p{p}" in table]
+    if not isinstance(baselines, dict):
+        return None
+    by_metric = baselines.get(role)
+    if not isinstance(by_metric, dict):
+        return None
+    table = by_metric.get(metric)
+    if not _valid_table(table):
+        return None
+    bands = [(table[f"p{p}"], p) for p in PERCENTILES]
     band, matched = 0, None
     for threshold, pct in bands:
         if value >= threshold:
@@ -195,6 +241,16 @@ def rank_of(baselines: dict, role: str, metric: str, value: float):
             "tied": tied}
 
 
+def _valid_table(table) -> bool:
+    """True for a percentile table of the shape build() writes."""
+    if not isinstance(table, dict):
+        return False
+    n = table.get("n")
+    if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+        return False
+    return all(_finite(table.get(f"p{p}")) for p in PERCENTILES)
+
+
 def load(path, cohort: str | None = None) -> dict:
     """Per-role tables from either baseline file shape.
 
@@ -205,16 +261,41 @@ def load(path, cohort: str | None = None) -> dict:
     A tiers-shaped file with no cohort named RAISES rather than reading empty.
     Returning {} there is indistinguishable from "this cohort has no table",
     so every band is silently omitted and the report looks merely sparse.
+
+    Every refusal is a ValueError - the one exception the caller
+    (tools/pgr_event_report.py) catches and reports. That covers bad JSON
+    (JSONDecodeError is a ValueError) and a file of the wrong SHAPE: a top
+    level, `tiers`, a cohort entry or `roles` that is not an object. A UTF-8
+    BOM (a hand edit in a Windows editor) is accepted.
     """
-    blob = json.loads(Path(path).read_text(encoding="utf-8"))
+    blob = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    if not isinstance(blob, dict):
+        raise ValueError(f"{path} is not a JSON object")
     tiers = blob.get("tiers")
     if not tiers:
-        return blob.get("roles", {})
-    available = ", ".join(sorted(tiers))
+        return _roles_of(blob, path)
+    if not isinstance(tiers, dict):
+        raise ValueError(f"{path} 'tiers' is not an object")
+    available = ", ".join(sorted(str(k) for k in tiers))
     if not cohort:
         raise ValueError(
             f"{path} holds {len(tiers)} cohorts and none was named - "
             f"pass one of: {available}")
     if cohort not in tiers:
         raise ValueError(f"no cohort {cohort} in {path} - have: {available}")
-    return (tiers[cohort] or {}).get("roles", {})
+    entry = tiers[cohort]
+    if entry is None:
+        return {}
+    if not isinstance(entry, dict):
+        raise ValueError(f"{path} cohort {cohort} is not an object")
+    return _roles_of(entry, f"{path} cohort {cohort}")
+
+
+def _roles_of(holder: dict, where) -> dict:
+    """The `roles` object of a cohort holder; absent or null reads as {}."""
+    roles = holder.get("roles")
+    if roles is None:
+        return {}
+    if not isinstance(roles, dict):
+        raise ValueError(f"{where} 'roles' is not an object")
+    return roles
