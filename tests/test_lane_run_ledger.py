@@ -3,6 +3,8 @@ and FLEET-1b (the per-lane model trial). The s144 driver is gitignored, so only 
 tracked module and the tracked runner are pinned here."""
 from __future__ import annotations
 
+import datetime
+import inspect
 import json
 import os
 import re
@@ -302,3 +304,219 @@ def test_runner_override_shape_matches_only_exact_ids():
     pat = re.compile(m.group(1))
     assert pat.match("claude-sonnet-5-5")
     assert not pat.match("sonnet") and not pat.match("") and not pat.match("--evil")
+
+
+# ------------------------------------------------------------------ s158 C9 hourly start pace
+# Measured 2026-11-09: 400 lane runs of a rolling 24 h landed in about 12.5 h (about 31 an
+# hour), then every lane starved for about 11 h in "budget wait". The pace spreads the
+# reserve-free runs over the day: at most (cap - reserve) // 24 starts in any rolling hour.
+
+class _Budget:
+    """The one member of the kit's RunBudget (fleet_headless.tree_budget) the pace reads."""
+
+    def __init__(self, cap):
+        self.cap = cap
+
+
+def _epoch(iso):
+    return datetime.datetime.fromisoformat(iso).timestamp()
+
+
+def test_pace_limit_is_the_reserve_free_cap_spread_over_24_hours():
+    assert RL.pace_limit(500) == (500 - RL.runs_reserve(500)) // 24 == 16
+    assert RL.pace_limit(120) == (120 - RL.runs_reserve(120)) // 24 == 4
+    assert RL.pace_limit(10) == 1  # never zero: a lane can always start again
+
+
+def test_pace_limit_is_read_from_the_cap_never_a_hard_coded_500():
+    limits = [RL.pace_limit(cap) for cap in (120, 250, 500, 1000)]
+    assert limits == sorted(limits) and len(set(limits)) == 4
+    src = inspect.getsource(RL.pace_limit) + inspect.getsource(RL.pace_check)
+    assert "500" not in src and "16" not in src
+
+
+def test_pace_check_counts_a_rolling_hour_and_waits_for_the_oldest_to_age_out():
+    cap, now = 120, 10_000.0  # limit 4
+    assert RL.pace_check([], now, cap) == (0, 4, 0.0)
+    three = [now - 3000, now - 2000, now - 10]
+    assert RL.pace_check(three, now, cap) == (3, 4, 0.0)
+    four = [now - 3599, *three]
+    n, m, wait = RL.pace_check(four, now, cap)
+    assert (n, m) == (4, 4) and wait == pytest.approx(1.0)  # 3599 s old: 1 s to go
+    # a start exactly an hour old is out of the window
+    assert RL.pace_check([now - 3600, *three], now, cap) == (3, 4, 0.0)
+    # more starts than the limit (the cap fell): wait until enough have aged out
+    six = sorted([now - 3500, now - 3400, *four])
+    n, m, wait = RL.pace_check(six, now, cap)
+    assert (n, m) == (6, 4) and wait == pytest.approx(six[2] + 3600 - now)
+
+
+def test_recent_starts_reads_the_rotator_start_events(tmp_path):
+    path = tmp_path / RL.EVENTS_REL
+    path.parent.mkdir(parents=True)
+    now = _epoch("2026-11-09T12:00:00-06:00")
+    rows = [{"kind": "start", "lane": "repo", "at": "2026-11-09T11:30:00-06:00"},
+            {"kind": "end", "lane": "repo", "at": "2026-11-09T11:40:00-06:00"},
+            {"kind": "start", "lane": "ds", "at": "2026-11-09T10:59:00-06:00"},  # too old
+            {"kind": "start", "lane": "uiux", "at": "not a time"},
+            {"kind": "start", "lane": "queue", "at": "2026-11-09T11:59:59-06:00"}]
+    path.write_bytes(("".join(json.dumps(r) + "\n" for r in rows) + "{torn").encode("ascii"))
+    assert RL.recent_starts(tmp_path, now) == [now - 1800, now - 1]
+    assert RL.recent_starts(tmp_path / "missing", now) == []
+
+
+# Seven lanes, one of them short-cycle (the measured repo lane took 36 percent of starts).
+_DURATIONS = {"gated": 2400.0, "queue": 5400.0, "uiux": 3600.0, "research": 1800.0,
+              "ds": 4200.0, "repo": 420.0, "true-audit": 3000.0}
+
+
+def _simulate_day(budget, durations=None, horizon=86400.0):
+    """A fake-clock model of the s144 rotator's launch loop: a lane may start when it is
+    not running, the pick is least-recently-started (rotate_main's key), and the pace
+    gate is RL.pace_check over every start so far against the budget's cap. No launch gap
+    and no poll delay (the worst case for the pace). Time jumps to the next event: a lane
+    end or the end of a pace wait. Returns (starts [(t, lane)], waits [(t, wait_s)])."""
+    durations = durations or _DURATIONS
+    order = list(durations)
+    now, running, last, starts, waits = 0.0, {}, {}, [], []
+    while now < horizon:
+        for lane, end in list(running.items()):
+            if end <= now:
+                del running[lane]
+        free = [lane for lane in order if lane not in running]
+        _n, _m, wait = RL.pace_check([t for t, _l in starts], now, budget.cap)
+        if free and wait == 0:
+            pick = min(free, key=lambda x: (last.get(x, -1.0), order.index(x)))
+            starts.append((now, pick))
+            last[pick] = now
+            running[pick] = now + durations[pick]
+            continue
+        nxt = list(running.values())
+        if free:
+            waits.append((now, wait))
+            nxt.append(now + wait)
+        now = min(nxt) if nxt else horizon
+    return starts, waits
+
+
+def _max_in_any_hour(times):
+    best = lo = 0
+    for hi, t in enumerate(times):
+        while t - times[lo] >= 3600:
+            lo += 1
+        best = max(best, hi - lo + 1)
+    return best
+
+
+@pytest.mark.parametrize("cap", [500, 250, 120])
+def test_simulated_day_never_exceeds_the_pace_and_waits_no_longer_than_needed(cap):
+    budget = _Budget(cap)
+    starts, waits = _simulate_day(budget)
+    times = [t for t, _l in starts]
+    limit = RL.pace_limit(budget.cap)
+    assert _max_in_any_hour(times) == limit  # reached, never exceeded
+    assert len(starts) <= budget.cap - RL.runs_reserve(budget.cap)
+    per_hour = [0] * 24
+    for t in times:
+        per_hour[int(t // 3600)] += 1
+    assert min(per_hour) >= limit // 2, per_hour  # spread over the day: no hour starves
+    held = [(t, wait) for t, wait in waits if t + wait < 86400.0]
+    assert held, "the pace never held a launch: the simulation proves nothing"
+    for t, wait in held:
+        assert wait > 0
+        ready = t + wait
+        # the next start is exactly when the oldest start in the window ages out
+        assert any(abs(s - ready) < 1e-6 for s in times), (t, wait)
+        assert not any(t < s < ready - 1e-6 for s in times), (t, wait)
+
+
+def test_mutating_the_budget_cap_moves_the_simulated_hourly_peak():
+    peaks = {}
+    for cap in (500, 250):
+        starts, _w = _simulate_day(_Budget(cap))
+        peaks[cap] = _max_in_any_hour([t for t, _l in starts])
+    assert peaks == {500: RL.pace_limit(500), 250: RL.pace_limit(250)}
+    assert peaks[500] != peaks[250]
+
+
+# ------------------------------------------------------------------ s158 C9 verifier round cap
+# Measured 2026-11-09: queue cycle s144q227 was timeout_killed at 9000 s on "W6 verifier
+# round 7" (the gate rejected its fix 7 rounds running). The directive caps it at 3.
+
+_FILLS = {"@@LANE@@": "queue", "@@RUN_ID@@": "s144q999-abc123", "@@CODE@@": "Q",
+          "@@MAIN@@": "<main>"}  # the build_prompt substitutions the cap text may use
+_GATE = ("- VERIFIER GATE, mandatory before the commit: one foreground independent read-only "
+         "sub-agent re-runs ONLY your cited test files and reviews your diff, defaulting to "
+         "REFUTED. Agreement is not evidence.")
+
+
+def _render(template):
+    text = RL.fill_verifier_cap(template)
+    for key, val in _FILLS.items():
+        text = text.replace(key, val)
+    return text
+
+
+def _assert_cap_wording(out, cap=3):
+    assert "@@" not in out
+    assert f"at most {cap} verifier rounds" in out
+    assert f"{RL.ordinal(cap)} rejection" in out
+    assert "git stash push -u -m s144-nonconverge-s144q999-abc123" in out
+    assert 's144_lane_progress.py" queue <pct> failed "verifier non-convergence"' in out
+    assert "FILINGS" in out and "S144-Q-<nn>" in out
+    assert "then EXIT" in out
+
+
+def test_rendered_directive_carries_the_verifier_round_cap_at_its_slot():
+    out = _render(f"TESTS\n{_GATE}\n{RL.VERIFIER_CAP_SLOT}\n\nRACE GUARDS\n")
+    _assert_cap_wording(out)
+    assert out.index("VERIFIER GATE") < out.index("VERIFIER ROUND CAP") < out.index("RACE")
+    assert out.count("VERIFIER ROUND CAP") == 1
+
+
+def test_an_older_template_without_the_slot_gets_the_cap_after_its_gate_line():
+    out = _render(f"TESTS\n{_GATE}\n\nRACE GUARDS\n")
+    _assert_cap_wording(out)
+    assert out.index("Agreement is not evidence.") < out.index("VERIFIER ROUND CAP")
+    assert out.count("VERIFIER ROUND CAP") == 1
+    assert RL.fill_verifier_cap("no gate here\n") == "no gate here\n"
+
+
+def test_cap_text_uses_only_placeholders_build_prompt_fills_and_is_ascii():
+    text = RL.verifier_cap_text()
+    assert set(re.findall(r"@@[A-Z_]+@@", text)) <= set(_FILLS)
+    text.encode("ascii")
+    assert RL.VERIFIER_ROUND_CAP == 3
+    assert RL.VERIFIER_NONCONVERGENCE_STEP == "verifier non-convergence"
+
+
+def test_cap_wording_follows_the_cap():
+    out = RL.verifier_cap_text(cap=5)
+    assert "at most 5 verifier rounds" in out and "5th rejection" in out
+    assert "at most 3" not in out
+    assert [RL.ordinal(n) for n in (1, 2, 3, 4, 11, 12, 13, 21, 22, 23)] == [
+        "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd"]
+
+
+def test_the_stash_follows_the_reference_r1_leftover_path_it_cites():
+    ref = (REPO_ROOT / "docs" / "LANE_PROMPT_REFERENCE.md").read_text(encoding="utf-8")
+    r1 = re.search(r"`git stash push (-m s144-)leftover-<run id>`", ref)
+    assert r1, "reference R1 no longer names its leftover stash"
+    text = RL.verifier_cap_text()
+    assert "reference R1" in text
+    # the same command and message shape as R1, plus -u for new untracked files
+    cap = re.search(r"`git stash push -u (-m s144-)nonconverge-@@RUN_ID@@`", text)
+    assert cap and cap.group(1) == r1.group(1)
+
+
+def test_the_live_template_renders_the_cap_when_present():
+    """The s144 template is gitignored (absent in CI and a fresh clone): render it with
+    the real fill when this checkout has it, slot or no slot."""
+    path = REPO_ROOT / "ops" / "loop" / "control" / "lane_prompts" / "s144-common.tmpl"
+    if not path.is_file():
+        pytest.skip("gitignored s144-common.tmpl absent in this checkout")
+    out = _render(path.read_text(encoding="utf-8"))
+    assert "VERIFIER GATE, mandatory before the commit" in out
+    assert out.count("VERIFIER ROUND CAP") == 1
+    assert out.index("VERIFIER GATE, mandatory") < out.index("VERIFIER ROUND CAP")
+    assert "at most 3 verifier rounds" in out and "verifier non-convergence" in out

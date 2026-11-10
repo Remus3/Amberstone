@@ -50,6 +50,8 @@ _SITES = {
     "ops/launcher/first_run.py": 3,
     "ops/launcher/service_host.py": 5,
     "ops/launcher/updater.py": 1,
+    # s158 C9: KillJob.create closes its job handle in an except arm when the limits fail.
+    "ops/loop/proc_tree.py": 1,
     "ops/loop/slots.py": 1,
     "ops/loop/winmutex.py": 1,
     "ops/rc_supervisor.py": 2,

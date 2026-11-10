@@ -27,6 +27,21 @@ MODEL_TRIAL lanes run sonnet; afterwards lane_model returns None and the config 
 is back with no edit. MODEL_TRIAL_MEASURE names what the trial is judged on. The "before"
 baseline is the 7 days ending the day before MODEL_TRIAL_START.
 
+s158 C9, the hourly start pace. Measured 2026-11-09: the 400 lane runs of a rolling 24 h
+(cap 500 less the 100 reserve) all started in about 12.5 h, about 31 an hour, and then
+every lane sat in "budget wait" for about 11 h. pace_limit spreads the same runs over the
+day: at most (cap - runs_reserve(cap)) // 24 lane starts in any rolling 60 minutes, the
+cap read live from the kit's tree_budget by the caller, never a constant here.
+pace_check returns the count, the limit and the exact wait until the oldest start in the
+window ages out; recent_starts seeds a restarted rotator from its own "start" events.
+
+s158 C9, the verifier round cap. Measured 2026-11-09: queue cycle s144q227 was killed at
+its 9000 s timeout on "W6 verifier round 7"; earlier 6-round cycles ran 66 and 85 min.
+verifier_cap_text is the directive line that stops a worker after the 3rd rejection
+(stash on the reference R1 leftover path, progress failed "verifier non-convergence",
+a split row under FILINGS, exit); fill_verifier_cap puts it into the gitignored s144
+template at its slot, or after the VERIFIER GATE line of an older template.
+
 Stdlib plus core/polled_json.py (the repo's atomic-write contract), ASCII only;
 importable by file path or as ops.loop.lane_run_ledger.
 """
@@ -38,6 +53,7 @@ import importlib.util
 import json
 import statistics
 import sys
+import time
 from pathlib import Path
 
 # Plain import first, absolute-path bind as the fallback for a load by file path, where
@@ -59,8 +75,18 @@ except ModuleNotFoundError:
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
 CYCLES_REL = Path("ops/loop/control/lane_prompts")
 STATUS_REL = Path("ops/loop/control/progress/s144-lanes.json")
+EVENTS_REL = CYCLES_REL / "s144_rotator_events.jsonl"
 LANE_NOTE_PREFIX = "lane-s144-"
 USAGE_TAIL_BYTES = 16 << 20
+EVENTS_TAIL_BYTES = 1 << 20  # an hour of rotator events is tens of KB
+
+PACE_WINDOW_S = 3600.0
+PACE_HOURS = 24
+
+VERIFIER_ROUND_CAP = 3
+VERIFIER_NONCONVERGENCE_STEP = "verifier non-convergence"
+VERIFIER_CAP_SLOT = "@@VERIFIER_CAP@@"
+VERIFIER_GATE_ANCHOR = "- VERIFIER GATE, mandatory before the commit"
 
 SONNET_ID = "claude-sonnet-5-5"
 # RM-1267 (s155): repo's USD per lane commit fell 2.86 -> 0.95 on sonnet, so repo keeps
@@ -317,6 +343,90 @@ def runs_reserve(cap: int) -> int:
     the live cap. 500 -> 100, above the measured 99 non-lane runs in a rolling 24 h
     (peak_rolling_runs, 2026-11-01); a config fault's 120 -> 24, the old fixed value."""
     return int(cap) // 5
+
+
+# ------------------------------------------------------------------ s158 C9 hourly start pace
+
+def pace_limit(cap: int) -> int:
+    """Lane starts allowed in any rolling hour: the runs a rotator may use (the live cap
+    less runs_reserve) spread evenly over PACE_HOURS, and never below 1."""
+    return max(1, (int(cap) - runs_reserve(cap)) // PACE_HOURS)
+
+
+def pace_check(starts, now: float, cap: int, window: float = PACE_WINDOW_S) -> tuple:
+    """(n, m, wait_s) for one more lane start at `now`. n = the starts in the rolling
+    window (a start counts while now - start < window; a future-dated one counts too),
+    m = pace_limit(cap), wait_s = 0.0 when n < m, else the seconds until enough of the
+    oldest starts have aged out to leave n = m - 1 (exact, so a caller that sleeps it
+    never waits longer than needed)."""
+    recent = sorted(float(s) for s in starts if float(s) > now - window)
+    limit = pace_limit(cap)
+    count = len(recent)
+    if count < limit:
+        return count, limit, 0.0
+    return count, limit, max(0.0, recent[count - limit] + window - now)
+
+
+def recent_starts(root, now=None, window: float = PACE_WINDOW_S) -> list:
+    """Epoch seconds of the rotator's lane starts in the last `window` seconds, oldest
+    first, read from its "start" events (s144_rotator_events.jsonl, one row per launched
+    child), so a restarted rotator keeps the hour's count. A torn or foreign row is
+    skipped; a missing file is []."""
+    now = time.time() if now is None else float(now)
+    out = []
+    for row in read_jsonl(Path(root) / EVENTS_REL, tail_bytes=EVENTS_TAIL_BYTES):
+        if row.get("kind") != "start":
+            continue
+        try:
+            stamp = datetime.datetime.fromisoformat(str(row.get("at"))).timestamp()
+        except ValueError:
+            continue
+        if stamp > now - window:
+            out.append(stamp)
+    return sorted(out)
+
+
+# ------------------------------------------------------------------ s158 C9 verifier round cap
+
+def ordinal(n: int) -> str:
+    n = int(n)
+    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def verifier_cap_text(cap: int = VERIFIER_ROUND_CAP) -> str:
+    """The directive line that ends a cycle whose fix the verifier keeps rejecting. Its
+    @@...@@ placeholders are build_prompt substitutions, so fill_verifier_cap runs
+    before the driver's substitution pass. Failure path: the template's own (reference
+    R1's leftover stash, the "on any stop" progress line, a FILINGS row, the banner)."""
+    return (
+        f"- VERIFIER ROUND CAP: at most {cap} verifier rounds per cycle. A round is one "
+        f"verdict on your fix; every REFUTED or rejected verdict counts, rework in between "
+        f"or not. After the {ordinal(cap)} rejection do NOT rework or start round {cap + 1}: "
+        f"(1) set the unverified work aside on the leftover path of reference R1: "
+        f"`git stash push -u -m s144-nonconverge-@@RUN_ID@@` (commit none of it; never pop "
+        f"or drop that stash; commits the gate already passed this cycle stay); (2) "
+        f'progress: `python "@@MAIN@@/ops/loop/control/lane_prompts/s144_lane_progress.py" '
+        f'@@LANE@@ <pct> failed "{VERIFIER_NONCONVERGENCE_STEP}" "<ids left>"`; (3) under '
+        f"FILINGS file a SPLIT ROW with the next provisional S144-@@CODE@@-<nn> id: the row "
+        f"cut into smaller slices, each with its own acceptance, quoting the verifier's "
+        f"last rejection reasons and naming the stash message; (4) write the report "
+        f"(VERIFIER: every verdict), print the banner, then EXIT. Rework rounds never run "
+        f"into the cycle timeout.")
+
+
+def fill_verifier_cap(text: str, cap: int = VERIFIER_ROUND_CAP) -> str:
+    """The directive with the verifier round cap in it: at VERIFIER_CAP_SLOT when the
+    template has one, else on its own line right after the VERIFIER GATE line (an older
+    template), else unchanged."""
+    line = verifier_cap_text(cap)
+    if VERIFIER_CAP_SLOT in text:
+        return text.replace(VERIFIER_CAP_SLOT, line)
+    rows = text.split("\n")
+    for i, row in enumerate(rows):
+        if row.startswith(VERIFIER_GATE_ANCHOR):
+            return "\n".join(rows[:i + 1] + [line] + rows[i + 1:])
+    return text
 
 
 def trial_measure(usage, cycles, *, start=MODEL_TRIAL_START, end=MODEL_TRIAL_END,
