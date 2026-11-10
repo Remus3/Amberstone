@@ -6523,6 +6523,28 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
 - **G7-06** (was G6) DS calibration pipeline: needs **~20+ RANKED SR (queue 420)** games. Customs and
   Mayhem cannot feed it. SOURCE: RM-32.
 - **G7-07** (was G7) `post_game_score` LR retrain at N>=20 real timelines (`core/post_game_score.py:220`).
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 147, S144-G-136, source read at `cf4681e61`; no game
+  up; NOT a tick).** The accrual threshold was met before the row was filed, so this is not a rail
+  waiting on games. (1) N IS MET MANY TIMES OVER: read-only (`mode=ro&immutable=1`) over the main
+  checkout's `data/rewind_history.db`, with the exact predicate `build_training_samples` uses
+  (`has_timeline=1 AND map_id IN (11, 12)`, a team 100 or team 0 label row), gives **2797** labelled
+  timelines: **716** on map 11 (SR; queue 420 alone holds 516) and **2081** on map 12 (Howling Abyss:
+  2073 queue 450, 7 queue 720, 1 queue 0). Newest `fetched_at` is 2026-07-21; 2712 of them were
+  fetched before 2026-05-20. (2) A TRAINED MODEL ALREADY SHIPS: `data/post_game_wpa_model.json`
+  (tracked, added in `515248bad` 2026-05-20,
+  byte-identical in the main checkout) holds `n_samples` 800 and 13 weights; that commit says "trained
+  on 200 SR matches (800 samples)", i.e. 4 frames per match. `dashboard/routes_post_game_wpa.py`
+  loads it and labels its answer `"model": "trained"`; the hand-coded `_fallback_prob` that carries
+  the TODO runs only when the file is missing or malformed. (3) CITE HOLDS LOOSELY: `:220` is the
+  "Fallback estimator" section banner; the TODO itself sits in the `_fallback_prob` docstring at
+  `core/post_game_score.py:232`. (4) A NAIVE RETRAIN IS NOT THE SHIPPED ONE: `train_from_db()` calls
+  `build_training_samples` without `match_ids`, so it takes every labelled timeline the query returns
+  (no LIMIT) and would fit about 2797 matches of which 74 percent are map 12 (map 12 has no dragon,
+  baron, herald or grub features), while the shipped model was fit on an SR-only subset of 200. The
+  map scope of a retrain is a design decision, not
+  something a game answers. VERDICT: NOT ACTUALLY LIVE-GATED - a `Not actually live-gated` candidate
+  for a HUMAN to move. The retrain is headless (`train_from_db` reads the DB and writes the model
+  file) and is filed as S144-G-137 with its map-scope decision; no game state moves this row.
 - **G7-08** (was G8) hz_mismatch ground-truth cross-ref - **DENSITY MEASURED 2026-07-18; this is NOT a
   drain-session row.** SETTLED HEADLESS over `rewind_history.db`: **2,139 distinct
   (lane, champ, champ) matchups, of which only 62 (2.9%) reach n>=5 and just 4 reach n>=10. Median
