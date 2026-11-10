@@ -354,8 +354,11 @@ body[data-shell="overlay"] #rn-lead {
 body[data-shell="overlay"] #rn-lead .rc-lead-line {
   font-size: var(--fs-sm);
 }
+/* S144-U-302: the tag ink rises from 0.55 to 0.70 (the S144-U-278 reminder
+ * tier, still under the 0.75 / 0.92 body-ink tiers): 0.55 read 4.14:1 in the
+ * idle recede over a white game pixel. */
 body[data-shell="overlay"] #rn-lead .rc-lead-tag {
-  color: rgba(var(--ovx-text), 0.55);
+  color: rgba(var(--ovx-text), 0.70);
 }
 /* Density clamp: S1 callouts show the 2 nearest-ETA rows (doctrine rule 1). */
 body[data-shell="overlay"] #rn-callouts .rc-co-row:nth-child(n+3) {
@@ -365,12 +368,18 @@ body[data-shell="overlay"] #rn-callouts .rc-co-row:nth-child(n+3) {
  * cyan). The NOW chip lights cyan; the upcoming chip is a faint gold info read
  * instead of the fintech grey --signal-dim. callouts.css owns the base rules
  * (.rc-co-eta + .rc-co-eta.rc-co-now); these overlay-scoped overrides win on
- * specificity. */
+ * specificity.
+ * S144-U-302: both chips sit on the inset-row backing (rgba(--ovx-bg-nested,
+ * 0.9), the S144-U-301 objective chip precedent), not the base 0.06 white wash
+ * or a 0.18 cyan tint, which LIGHTENED the row under the ink: idle over a white
+ * game pixel the upcoming chip read 3.94:1 and the NOW chip 4.15:1. The hue
+ * stays on the ink and (NOW) the border. */
 body[data-shell="overlay"] .rc-co-eta {
+  background: rgba(var(--ovx-bg-nested), 0.9);
   color: rgba(var(--ovx-gold), 0.85);
 }
 body[data-shell="overlay"] .rc-co-eta.rc-co-now {
-  background: rgba(var(--ovx-cyan), 0.18);
+  background: rgba(var(--ovx-bg-nested), 0.9);
   border-color: rgb(var(--ovx-cyan));
   color: rgb(var(--ovx-cyan));
 }
@@ -384,6 +393,13 @@ body[data-shell="overlay"] #rn-choices .rc-chip {
 body[data-shell="overlay"] #rn-choices .rc-trigger,
 body[data-shell="overlay"] #rn-choices .rc-rebranch {
   display: none;
+}
+/* S144-U-302: the per-chip Alt+N pick key takes the S144-U-278 reminder
+ * treatment (0.70 neutral ink on the nested backing): the base 0.06 white wash
+ * and --signal-dim 0.55 ink read 4.11:1 in the idle recede over a white pixel. */
+body[data-shell="overlay"] #rn-choices .rc-hotkey {
+  background: rgba(var(--ovx-bg-nested), 0.9);
+  color: rgba(var(--ovx-text), 0.70);
 }
 
 /* 4b. THE PRIMARY widget (w-call): the ONE action right now. Full gold frame +

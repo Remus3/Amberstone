@@ -2521,3 +2521,26 @@ DONE 2026-11-06 (s144 uiux cycle 167, S144-U-177, Tier-1 CSS + snapshot guard). 
 - `tests/guard_data/web_live_half/` re-captured: only the objective_chips.css row moved (the background lines are live CSS).
 - FUTURE (o), no lane fix: on the same envelope, every line of w-stats, w-nextbuy and w-objgauges sits on the bare 0.58 `--ovx-bg` frame with no nested backing. Over a white game pixel: w-objgauges labels 1.03 (ELDER, `--ovx-red`) to 1.90 (DRAKE) live, its "-" ETA 2.06; w-nextbuy keys 2.36 and gold values 1.84 live; w-stats 1.76 - 3.92 live (S144-U-274 measured and ruled the w-stats half the same way). All three are the frame's see-through model, DS3 (`docs/qa/OVERLAY_LEGIBILITY_VARIANTS_2026-09-01.md`, PREPARED, operator pick over real gameplay), so no ink was changed. A DS3 decision should name these three widgets.
 - FUTURE (p): on the same live envelope, `coach.choices`, `callouts` and `lead_projection` did not paint w-choices / w-lead / w-callouts within 10 s (unmeasured why; `test_overlay_hotkey_hint_contrast.py` renders its A/B pick by importing `coach_choices.js` directly). The next sweep extension should drive them through their render modules.
+
+### S144-U-302 - the w-lead tag, the w-callouts ETA chips and the w-choices pick keys reach AA in the idle recede, instead of 3.94 - 4.15:1; the chips sit on the inset-row backing (s144 uiux cycle 294)
+
+- Target: cycle 293's FUTURE (p), the three coach widgets no sweep had read (w-lead, w-callouts, w-choices).
+- Why they stayed dark (measured, closes the "unmeasured why" of FUTURE (p)): `web/js/lib/live_directive_gate.js` `directivesAllowed` is `!isLiveGame(state)`, so on any live envelope (mode_key plus a non-empty liveclient) `renderLead`, `renderCallouts` and `renderCoachChoices` blank their mounts by design (B4, RM-189). The ui_mock fixtures carry no `lead_projection`, `callouts` or `choices` either. They paint only in a no-feed window (champ select, loading, a relay gap).
+- Probe, headless: `?ui_mock=1&mode=sr&overlay=1`, then the three render modules driven directly with a no-feed state (the `test_overlay_hotkey_hint_contrast.py` A/B method). Values are the real generator strings: `core/lead_projection.py` ahead / behind / even lines, `core/event_callouts.py` objective lines (a NOW row, a 1:35 row, a no-ETA third row the density clamp hides), an A/B/C pick. Six themes, three lead states, live and idle; the shared S144-U-299 read and contrast pair.
+- Defects: live, every line held AA. Idle (widget opacity 0.85) over a white game pixel, four lines fell under 4.5:1 in all six themes (the `--ovx-*` palette is theme-independent, so every theme measured the same):
+  - upcoming callout ETA chip (`.rc-co-eta`), gold 0.85 ink on the base 0.06 white wash: 3.94:1;
+  - NOW callout chip (`.rc-co-eta.rc-co-now`), cyan ink on a 0.18 cyan tint: 4.15:1;
+  - lead pill tag (`#rn-lead .rc-lead-tag`), `rgba(--ovx-text, 0.55)`: 4.14:1;
+  - per-chip pick key (`#rn-choices .rc-hotkey`, "Alt+1"), 0.55 ink on the 0.06 wash: 4.11:1.
+- RULING (web/css/overlay.css, overlay-scoped; the dashboard rules in callouts.css / coach_choices.css are untouched): both ETA chips and the pick key sit on `rgba(--ovx-bg-nested, 0.9)`, the inset-row backing (S144-U-301 chip and S144-U-278 reminder precedents); the hue stays on the ink and the NOW border. The lead tag and the pick key take the 0.70 reminder ink tier.
+  - After, worst idle over six themes and three lead states: upcoming ETA 4.91, lead tag 5.64, NOW 6.62, pick key 7.10. Live worst 6.48 (upcoming ETA).
+  - Rejected: the upcoming ETA ink at 1.0. The backing alone clears the floor, and the upcoming chip stays the quieter "faint gold" read under the NOW cyan (test_overlay_css_palette_repoint pins the gold reference).
+- 5-phase audit (headless, six themes, both states):
+  - STRUCTURE: background and ink only; padding, border, radius and gap unchanged, so no box moves. The third callout row stays clamped (doctrine rule 1).
+  - TYPOGRAPHY: unchanged. The A/B/C key is the one large line (29 px; held at 3:1, reads 5.83 idle).
+  - HIT-TARGETS: the A/B chips keep `min-height: 44px`; the pick key is a label inside the chip, not a target.
+  - ASCII: 0 non-ASCII and 0 CR bytes in every touched file; `tools/web_ascii_sweep.py --dry-run` finds 0 comment-span glyphs.
+  - HIERARCHY: NOW (6.62) still outranks the upcoming chip (4.91) by hue and weight of ink; the lead tag (5.64) stays under its line (8.10); the pick key (7.10) under the chip label (9.58), at the same 0.70 tier as the w-choices reminder line.
+- Pin: new `tests/snapshot_panels/test_overlay_coach_widgets_contrast.py`, 20 cases: every line of the three widgets at AA (3:1 for large text) live and idle per theme and lead state (18; red 18/18 on the old CSS), and the nested backing plus ink of each chip and the tag (2). Registered in `test_theme_swap_reads_settled.py` (77 audited modules, 42 contrast modules, 34 sheeted; new `lead` axis).
+- `tests/guard_data/web_live_half/` re-captured: only the overlay.css row moved.
+- Not covered: the stale-fade dim (s136-T12) inside these widgets is not composed into this sweep; w-arambalance (FUTURE (p)'s fourth widget) is not swept yet.

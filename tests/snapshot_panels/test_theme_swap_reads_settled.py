@@ -374,7 +374,14 @@ Audit (2026-11-10, s144 uiux cycle 291, S144-U-299, the same detector):
     Its objective-chip case (cycle 293, S144-U-301) boots ?overlay=1
     without ui_mock on a static live envelope, waits for the three chips'
     text, and adds the same sheet before its two reads; it swaps no theme.
-This module pins all seventy-six verdicts at runtime with each test's own opener,
+Audit (2026-11-10, s144 uiux cycle 294, S144-U-302, the same detector):
+  - test_overlay_coach_widgets_contrast: boot-stamped (?theme=), never
+    swaps in-page; on ?overlay=1&ui_mock=1 it waits for the call widget,
+    renders w-lead, w-callouts and w-choices through their own modules
+    with a no-feed state, adds the transitions-off sheet, then reads every
+    text line of every widget (the shared S144-U-299 read) in one evaluate
+    live and one idle. It joins the contrast pin below.
+This module pins all seventy-seven verdicts at runtime with each test's own opener,
 so a new transition on a no-sheet surface, or the sheet dropped from a
 shared opener, fails HERE with the element and property named. The fix is
 the sheet in that test's opener, not a sleep. The inventory test keeps the
@@ -463,7 +470,7 @@ from tests.snapshot_panels.test_user_builds_rune_tabs import _open as _ub_open
 
 _HERE = Path(__file__).resolve().parent
 
-# The seventy-six modules audited above, keyed by file name.
+# The seventy-seven modules audited above, keyed by file name.
 _COVERED = {
     "test_am_call_eyebrow_contrast.py",
     "test_am_empty_line_contrast.py",
@@ -513,6 +520,7 @@ _COVERED = {
     "test_overlay_build_rerank_clip.py",
     "test_overlay_call_glyph_contrast.py",
     "test_overlay_call_objective_contrast.py",
+    "test_overlay_coach_widgets_contrast.py",
     "test_overlay_empty_caption_contrast.py",
     "test_overlay_hotkey_hint_contrast.py",
     "test_overlay_lead_bar_contrast.py",
@@ -1334,13 +1342,14 @@ def test_lobby_mains_recent_cell_reads_are_settled(
     assert running == [], f"{theme} {tab}: {running}"
 
 
-# The forty-one contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
+# The forty-two contrast modules (S144-U-214, U-215, U-223, U-240, U-241,
 # U-242, U-243, U-245, U-250, U-251, U-253, U-255, U-269, U-272, U-275,
 # U-277, U-278, U-279, U-280, U-281, U-288, U-293, U-295, U-296, U-297,
-# U-298, U-299):
+# U-298, U-299, U-302):
 # each one's _measure extra arguments after (mock_server, pw_browser, theme),
 # taken from its own constants (its first viewport, its first mode, the TFT
-# footer state, the mixed Session scenario, its first surface, its first size).
+# footer state, the mixed Session scenario, its first surface, its first size,
+# its first lead state).
 _CONTRAST = {
     "test_am_empty_line_contrast": ("mode", "vp"),
     "test_am_map_roster_state_contrast": (),
@@ -1366,6 +1375,7 @@ _CONTRAST = {
     "test_overlay_build_rerank_clip": ("mode",),
     "test_overlay_call_glyph_contrast": (),
     "test_overlay_call_objective_contrast": ("mode",),
+    "test_overlay_coach_widgets_contrast": ("lead",),
     "test_overlay_empty_caption_contrast": ("surface",),
     "test_overlay_hotkey_hint_contrast": ("mode",),
     "test_overlay_lead_bar_contrast": (),
@@ -1384,7 +1394,7 @@ _CONTRAST = {
     "test_user_builds_text_contrast": ("vp",),
     "test_zoi_debug_readout": ("vp",),
 }
-# The thirty-three whose opener adds the sheet before its first interaction.
+# The thirty-four whose opener adds the sheet before its first interaction.
 _CONTRAST_SHEETED = (
     "test_am_empty_line_contrast",
     "test_build_insights_chart_text_contrast",
@@ -1405,6 +1415,7 @@ _CONTRAST_SHEETED = (
     "test_overlay_build_rerank_clip",
     "test_overlay_call_glyph_contrast",
     "test_overlay_call_objective_contrast",
+    "test_overlay_coach_widgets_contrast",
     "test_overlay_empty_caption_contrast",
     "test_overlay_hotkey_hint_contrast",
     "test_overlay_lead_bar_contrast",
@@ -1555,7 +1566,7 @@ def _contrast_run(mock_server, pw_browser, name, theme, **opts):
     pick = {"vp": lambda: mod._VIEWPORTS[0], "mode": lambda: mod._MODES[0],
             "fixture": lambda: "tft", "scenario": lambda: "mixed",
             "surface": lambda: sorted(mod._SURFACES)[0],
-            "size": lambda: mod._SIZES[0]}
+            "size": lambda: mod._SIZES[0], "lead": lambda: mod._LEADS[0]}
     extra = [pick[axis]() for axis in _CONTRAST[name]]
     rec = {"reads": 0, "running": [], "reclass_running": [], "reclassed": 0,
            "dropped": 0,
