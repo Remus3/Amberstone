@@ -145,6 +145,7 @@ class Coach:
     app.py creates TftWorker and passes it to this facade via
     set_worker() after construction.
     """
+
     GAME_MODES = ("TFT",)
 
     def __init__(self, data_file, debug: bool = False):

@@ -5,13 +5,18 @@ over the tracked Python: 77 findings in 43 files, every one a class whose docstr
 statement. Ten production modules (23 findings) got the one blank line ruff asks for - whitespace only, no token
 changes, so behaviour and every line cite by symbol are unchanged.
 
-Not touched, and named in ``_BASELINE`` with their counts (51 sites in 32 files), because someone else owns them:
+A second slice (S144-P-659, 2026-11-10) did the same for eight more small production modules (agent7_context x2,
+coach_integration/enemy_stats, coaches/tft_coach, core/archetype_mismatch, config_validator, decision_detector,
+liveclient_cache; 8 findings, whitespace only).
+
+Not touched, and named in ``_BASELINE`` with their counts (43 sites in 24 files), because someone else owns them:
 
 - ``core/game_snapshot.py`` is a frozen file (CLAUDE.md).
 - ``ops/launcher/updater.py`` is PKG-owned (the lane exclusion list).
 - ``agents/daemon_slayer/`` is the ds lane's engine tree.
 - ``core/coaching_payload.py`` and ``dashboard/view_router_state.py`` carry another lane's unlanded edits.
-- the rest are test modules, small production modules and agents left for a later slice.
+- ``agents/agent0_gatekeeper/evaluator.py`` and ``core/damage_mix.py`` carry the true-audit lane's unlanded edits.
+- the rest are test modules left for a later slice.
 
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned (three findings there, in one file).
 The run uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
@@ -40,8 +45,6 @@ _VENDORED = "ops/fleet_kit/"
 # offends less) fails test_baseline_is_exact.
 _BASELINE = {
     "agents/agent0_gatekeeper/evaluator.py": 1,
-    "agents/agent7_context/input_parser.py": 1,
-    "agents/agent7_context/ui_feedback.py": 1,
     "agents/daemon_slayer/_effects_types.py": 4,
     "agents/daemon_slayer/_rank_mage.py": 2,
     "agents/daemon_slayer/ability_dps.py": 3,
@@ -49,15 +52,9 @@ _BASELINE = {
     "agents/daemon_slayer/dps.py": 1,
     "agents/daemon_slayer/onhit_dps.py": 1,
     "agents/daemon_slayer/tests/test_rank.py": 2,
-    "coach_integration/enemy_stats.py": 1,
-    "coaches/tft_coach.py": 1,
-    "core/archetype_mismatch.py": 1,
     "core/coaching_payload.py": 3,
-    "core/config_validator.py": 1,
     "core/damage_mix.py": 1,
-    "core/decision_detector.py": 1,
     "core/game_snapshot.py": 5,
-    "core/liveclient_cache.py": 1,
     "dashboard/view_router_state.py": 1,
     "ops/launcher/updater.py": 1,
     "tests/fu02_team_context/test_team_context.py": 1,

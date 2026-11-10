@@ -40,6 +40,7 @@ class EnemyStats:
     Field names mirror the DS server's `target_*` kwargs so coaches can
     `**stats.as_kwargs()`-style spread when the call ergonomics improve.
     """
+
     armor:    float
     mr:       float
     max_hp:   float

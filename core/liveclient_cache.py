@@ -68,6 +68,7 @@ class Snapshot:
                  transient network error so callers can skip wasteful
                  fallbacks (mirrors game_reader._relay_says_no_game).
     """
+
     data: Optional[dict] = None
     ts: float = 0.0
     fetched_at: float = 0.0

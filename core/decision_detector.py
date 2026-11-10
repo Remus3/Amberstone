@@ -125,6 +125,7 @@ class Decision:
     key is enough to identify the same situation across polls (e.g.
     objective name + integer spawn time).
     """
+
     id: str
     type: str
     title: str

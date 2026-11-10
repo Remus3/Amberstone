@@ -336,6 +336,7 @@ class _ConfigSpec(NamedTuple):
     unknown type name by a test, instead of the typo lying dormant until the
     field it guards is the one that breaks.
     """
+
     rel_path:         str
     required_keys:    List[str]
     optional_keys:    List[str]

@@ -66,6 +66,7 @@ class ParseResult:
       "chitchat" / "fallback_llm".
     - ``used_llm``: True if we fell back to the ephemeral spawn.
     """
+
     filed: list[str] = field(default_factory=list)
     reply: str = ""
     intent: str = ""
