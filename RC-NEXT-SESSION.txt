@@ -2,11 +2,12 @@ NEXT SESSION
 ------------
 SESSION: 158
 OPEN ITEMS ONLY. The s157 hand-off (written at the s156 /done) is VERBATIM at
-`git show d2d4840f1:RC-NEXT-SESSION.txt` (LOCAL until the next push; the s156 one is at ef2c3621e, pushed); older
+`git show d2d4840f1:RC-NEXT-SESSION.txt` (pushed s157; the s156 one is at ef2c3621e); older
 hand-offs: ARCHIVES below; closed history and the s133-s150 DO NOT RE-LITIGATE entries are VERBATIM in A1106 block 3.
 Every item still open is carried below as a tight line; read the source first.
 OPERATOR SCOPE (chat s150, VERBATIM; stands until the operator changes it): "continue headlessly - all driver lanes -
-operator away ; full access approved". Operator s150: "No, keep lanes running" - NEVER pause the lanes for a suite.
+operator away ; full access approved". Operator s150: "No, keep lanes running" - superseded for the next gated
+suite by the s157 ASK (a) ruling (full box; SUITE LAUNCH LINE).
 (Rotator = the pythonw lane_driver started 2026-11-08 22:02, pid 23324, alive at the s157 /done read.)
 
 STANDING RULES
@@ -17,10 +18,11 @@ STANDING RULES
   stash pseudo-refs, left in place. STASH-GC DECIDED s154 (LEDGER 2075): local git config
   gc.refs/stash.reflogExpire never + gc.refs/stash.reflogExpireUnreachable never; read back at the s157 /done:
   both `never`, `git stash list` 12. A second force push of any kind goes back to the operator.
-- PUSH: main only, normal route (tier: /done + 1 per hour), only a sha with a gated whole-suite exit 0 on that exact
-  sha (LEDGER 2047: a later LEDGER or marker commit stays local until the next gated run; no docs-only exception), and
-  only on the operator's yes in chat (RC halt boundary; s156's chat orders covered push 1 d86c2e2f5..a2abb3bb7, the
-  cifix push ..a585214c6 and push 2 a585214c6..843a79730; s157 had no yes, nothing pushed).
+- PUSH: main only, normal route (tier: /done + 1 per hour), only on the operator's yes in chat (RC halt boundary;
+  s156's orders covered pushes 1-2 ..843a79730; s157's "push at done" covered 843a79730..the hand-off commit). A
+  landing / Tier-2 push needs a gated whole-suite exit 0 on that exact sha (LEDGER 2047: a later LEDGER or marker
+  commit stays local until the next gated run). A Tier-0/1-only range over a gated-green origin pushes on the TIER
+  TABLE (s157 /done decision, DO NOT RE-LITIGATE s157).
   NEVER delete riot.txt from origin. SWEEP BYPASS: granted
   ONCE, for 64951a903 only (used); never set it again. A pre-push sweep or identity refusal halts; record it and ask.
 - NEVER PUSH (real game ids, the bare fixture line or the pre-fold fixture drive roots inside): lane/* (lane/gated
@@ -47,8 +49,10 @@ STANDING RULES
   in docs/OPERATIONS.md). s154 RULING (a) (adjudicator, LEDGER 2076): keep the line at 25135 MB; never close processes
   to reach it; read RAM at session start; if short, ONE batched operator ask. -n 8 binds (CLAUDE.md suite speed).
   s155 (LEDGER 2077, -n 6 / -n 4 ordered FOR S155 ONLY): -n 6 with 5 lanes live was REAPED at 79 percent by Claude
-  Code's low-memory shell reaper (about 4.3 GB free; VOID); -n 4 passed in 22 min (min free 4376 MB). A standing
-  size while lanes run is ASK (a). Reverses if: the operator or MAIN orders a standing size or line. Memory
+  Code's low-memory shell reaper (about 4.3 GB free; VOID); -n 4 passed in 22 min (min free 4376 MB). s157 OPERATOR
+  RULING (ASK (a), VERBATIM "a - full box next time"): the next gated suite runs on the FULL BOX (--exclusive, lanes
+  idle or paused for the run as the gate requires), not a reduced standing size. Reverses if: the operator or MAIN
+  orders a standing size or line. Memory
   reference_suite_gate_ram_line_out_of_reach_at_idle.
 - ARCHIVES (docs/handoff-archive/): A25 RC-2026-10-25, A26 RC-2026-10-26, A27 RC-2026-10-27, A31 RC-2026-10-31,
   A1101 RC-2026-11-01 (block 9 ASKS 53, block 10 rotator ops, block 12 old do-not-redo, block 13 hashes / closed
@@ -57,12 +61,10 @@ STANDING RULES
   s154 hand-off = `git show 47075c685:RC-NEXT-SESSION.txt`.
 
 NEXT ACTION (s157 /done)
-1. PUSH SO ORIGIN CI GOES GREEN. origin 843a79730 is RED: ci 42580217721 (mode=full), scheduled ci 42673808730 and
-   docs-guards 42580217676 fail ONLY the 4 tests/test_task_xml_templates_rm723.py ids. The fix f5e48a27d is LOCAL
-   (verifier: Linux 0/4 -> 5/0). Local main = origin + 5 (d2d4840f1, f5e48a27d, f2f40f47f, edb8ff62c, s157 /done).
-   On the operator's yes (ASK (c)) with the SUITE LAUNCH LINE met: gated suite on HEAD, pre-push dry runs, push,
-   bot_merge_check + contributors, read ci. codeql push 42580217726 (HTTP 504, infra): scheduled codeql 42630670612
-   on 843a79730 is SUCCESS, so ASK (d) is likely moot. (Absorbs s156 item 4, the push of d2d4840f1.)
+1. READ THE s157 PUSH FIRST (operator "push at done"): 843a79730..the hand-off commit (`git log -1 --format=%H --
+   RC-NEXT-SESSION.txt`); `git rev-list origin/main..main` non-empty at s158 start = the push failed, redo it. Then
+   `gh run list --commit <sha>` (expect the 4 RM-723 Linux reds gone, fix f5e48a27d) and the one 2c ci.yml dispatch
+   (headSha = <sha>). codeql 42580217726 (HTTP 504): re-run requested at the s157 /done; read `gh run view` on it.
 2. LANE/REPO RECONCILE (s156, not finished): lane/repo is 33 commits past main on base a585214c6 (behind 95, at the
    s156 read). Drop the rival RM-723 pair 3dd82d324 + 6d9db5a61 and its follow-up 3fc1e1a6f (superseded by queue's
    b49e8ded4); cherry-pick S144-P-468..484 (be06f09ac..750ab6e56). ONLY with the lane lock held or the rotator
@@ -74,9 +76,9 @@ NEXT ACTION (s157 /done)
 4. LANE-0 QUEUE FAILED at 13:05:18 on 11-09: "timeout_killed rc=1: queue: W6 verifier round 7" (progress/lane-0.json):
    read its log and find what hung. Lanes 1-5 worker exit 0 between 10:48 and 11:05; lane-6 research empty refill
    01:56.
-5. OPERATOR ASK (ASK (b)): the kit-defect note to MAIN is a NEW outbound note, outside the reply carve-out: RM-2053
-   / RM-2074 (fleet_test_guard IGNORE lacks inbox_pending_orders.json) plus the kit gap that writes to
-   ~/.fleet/headless_route.json are not logged (unattributed writes 20:06:51 and 20:13:02 on 11-08).
+5. KIT NOTE SENT s157 /done (operator "b send to main"): 2026-11-09-1912-from-RC-FIX-to-MAIN-kit-defects-test-guard-
+   ignore-and-unlogged-route-writes.md, sha256 a26a94cf7b42b9f1, reached 1/1 (re-hashed), cap row FIX (exempt),
+   copy in docs/_archive/2026-11/. RM-2053 / RM-2074 stay OPEN until a kit version carries the fixes; read MAIN's answer.
 6. Atlas DS test count 12576 (a collect-only count, LEDGER 2090): reset it to a measured DS-only PASSED count.
 7. DS :8860 at the next RC app launch: ENGINE reads 1.291.0 (/health); the app is down, no autostart since
    2026-10-31. Pair it with the L9 read-backs (CARRIED below).
@@ -253,11 +255,9 @@ s143 dead-parent procs 13596 / 12984, reuse not ruled out).
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line; full text VERBATIM in A31 block 4, older in block 2)
 ====================
 Closed asks with reasons: s144-s147 VERBATIM in A1101 block 13, earlier in A26, s152-s156 VERBATIM in
-`git show d2d4840f1:RC-NEXT-SESSION.txt`. s157: none closed (the operator typed only "Continue").
-s157 batch line (asked s157, unanswered; ask FIRST, one line): (a) a STANDING suite size while lanes run
-(recommended: the suite waits for lane idle); (b) send the kit-defect note to MAIN (NEXT ACTION 5; rec. yes); (c)
-push at /done after a gated suite on that sha (rec. yes); (d) re-run codeql 42580217726, infra 504 (rec. yes;
-likely moot, scheduled 42630670612 green on the same sha).
+`git show d2d4840f1:RC-NEXT-SESSION.txt`. s157 batch ALL CLOSED at the s157 /done, operator VERBATIM "push at done"
+(c: pushed, NEXT ACTION 1) and "a - full box next time; b send to main; d rerun" (a: SUITE LAUNCH LINE ruling; b:
+sent, NEXT ACTION 5; d: re-run requested, NEXT ACTION 1).
 s150 batch line: RM-1658 (keep the advisory badge hidden or restore a surface).
 s147 batch line: (1) autostart the shell at logon - yes or no?; (2) ASKS 53 approve the frozen
 ops/rc_supervisor.py:393 edit; (3) live-game read-backs S6, G7-17, RM-860, RM-869; (4) optional:
@@ -294,6 +294,11 @@ DO NOT RE-LITIGATE (each with Reverses if:)
   ops/*.xml and tools/install_render_task_xml.ps1 untouched; Linux 0/4 -> 5/0), the RM-2075 KIT v20 line f2f40f47f,
   the BACKLOG mark edb8ff62c, the merged-tree Tier-1 (2111 passed). Reverses if: a gated suite or a hosted ci run that
   reaches its summary reds them, a verifier refutes them, or the operator or MAIN rules otherwise.
+- s157 /done PUSH DECISION: pushed with no local gated suite. Why: LEDGER 2047 is the s150 landing ruling (at most 3
+  margin-2048 runs) and its push clause holds landing pushes; this range is Tier-0/1 only over 843a79730 (gated run
+  D green); the TIER TABLE forbids a local whole suite for Tier-0/1; the operator said "push at done"; origin stays
+  red without it. Rejected: hold (origin red until League closes), close League (s154 ruling (a)), run under the
+  line. Reverses if: the operator or MAIN rules the 2047 clause binds every push, or ci on the pushed sha reds it.
 - s156 (LEDGER 2078-2094): the C12 lane landing (suite 1 green), the C9 slice merges and follow-ups, the cifix
   c922b2491, gated suite-2 run D GREEN on 843a79730 (76028 passed, exit 0), push 1, the cifix push and push 2
   (a585214c6..843a79730, every pre-push gate clean), the budget reset, the route repoint (on the operator's order),
@@ -315,12 +320,12 @@ feedback_new_test_files_meet_repo_hygiene_guards.md).
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s157 /done, LEDGER 2097): origin/main = 843a79730 (ls-remote read back); NOTHING PUSHED (no operator yes;
-LEDGER 2047 precondition unmet: League / Riot / vgc up, free RAM 21903 MB under the line). Local main = origin + 5.
-CI on 843a79730: RED, only the 4 RM-723 ids. full suite (2c): no dispatch (no push); origin covered by red full runs
-42580217721 + 42673808730; local HEAD has no gated whole-suite run (merged-tree Tier-1 2111 passed, exit 0). Gate on
+Status (s157 /done, LEDGER 2097; push tail): committed BEFORE the push, so the push, bot_merge_check, contributors,
+the 2c dispatch and the codeql re-run are read in NEXT ACTION 1. No local gated suite: League / Riot / vgc up, free
+RAM 21694 / 21706 MB at 19:09. CI on 843a79730: RED, only the 4 RM-723 ids. 2c: selector mode=slice (3 paths), not
+covered (2 test files differ from 843a79730): ONE dispatch after the push. Merged-tree Tier-1 2111 passed. Gate on
 edb8ff62c: ruff All checks passed; py_compile OK; hygiene trio 14 passed; the 2 touched test files 34 passed;
-drift_guard 1 breach = RM-1273 (pre-existing). bot_merge_check not run (no push). WAKEUP_NOTES pruned to 3 (s154 to
+drift_guard 1 breach = RM-1273 (pre-existing). WAKEUP_NOTES pruned to 3 (s154 to
 docs/history_notes.md; archive 1112). Memory: 0 new. No steer, no intent. :8888 refused (app down); health.json
 stale (pid 18724). Session file 1 MB (+7 MB sub-agents). README, ROADMAP untouched.
 
@@ -329,9 +334,9 @@ tools/sibling_name_sweep.py; .github/workflows/ci.yml; BACKLOG "S153" .. "S156 f
 ops/loop/control/lane_prompts/ (gitignored s144 driver + log); docs/LIVE_GAME_GATED_SYNC.md. Inbox: moon_sync_inbox/,
 ops/loop/inbox_tick.py --pending.
 
-Acceptance: gated suite on HEAD + push on the operator's yes, ci for the pushed sha GREEN; lane/repo reconciled
-under the lane lock; the next landing; the lane-0 timeout explained; the kit note on the operator's yes; #32
-decided; atlas DS count measured; DS ENGINE 1.291.0 read live; RM-1271 after 2026-11-11; INBOX-AGREE before
-2026-12-01; RM-1267 re-read 2026-12-08; the operator batch re-asked in one line.
+Acceptance: the s157 push read back and ci for the pushed sha GREEN; the next gated suite on the full box;
+lane/repo reconciled under the lane lock; the next landing; the lane-0 timeout explained; MAIN's answer to the kit
+note read; #32 decided; atlas DS count measured; DS ENGINE 1.291.0 read live; RM-1271 after 2026-11-11; INBOX-AGREE
+before 2026-12-01; RM-1267 re-read 2026-12-08.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
