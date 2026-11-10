@@ -696,6 +696,27 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   `state.lcu.config`, so the `main.js:5663` auto-accept pill loses its source when the flag is ON - decide
   at G1-00 whether the dashboard reader should synthesize `config` (main-process `_lcu` auto-accept is
   always ON) or whether the pill moves to a different signal. Flag stays OFF until this check passes.
+  **AGE RE-CHECK (s144 lane gated cycle 135, 2026-11-09, S144-G-122; PREP only, nothing ticked, nothing
+  struck; no game: :8888 curl empty at 2026-11-09T08:12-06:00, RC halted since 2026-10-31).** THIS ROW
+  IS ALREADY CLOSED - DO NOT RE-DRAIN IT. Both CHECKs passed live on 2026-07-20 and are recorded in the
+  DRAIN SESSION 2026-07-20 block at the top of this file (CHECK 1 across all four champ-select shapes,
+  q3140 / q2400 / q1750 / q400; CHECK 2 `champ_select` BYTE-IDENTICAL: True flag-ON vs flag-OFF). The
+  per-gate "G1 6" in the OPEN paragraph never counted it: that line was written 2026-07-18
+  (`2a7010203`), when only G1-01 to G1-06 existed; G1-00 was filed 2026-07-20 (`03409f03b`) and G1-07
+  on 2026-10-27 (`7a16a47a6`). Only this in-place row was never marked; the other closed-that-night
+  rows G2-34 / G2-35 are struck in place. TALLY NOTE (not edited here): G1-00 was filed without raising
+  the 118, and the same night's drain subtracted all six closures including G1-00 (118 -> 112), so
+  that step likely removed one row 118 never held; the per-gate line also sums to 118, not 111.
+  The ADJUDICATED divergence is answered and shipped: the reader CARRIES `config` and `lcu_port`
+  through (`dashboard/_lcu_inprocess.py`, block "config + lcu_port (G1-00 CHECK 2 follow-up,
+  2026-07-20)", landed in `51dfc0cef`; pinned by `tests/rc2_l3/test_lcu_inprocess_config_port_l3.py`).
+  The SEPARATE auto-accept bug (pref file `enabled:true` vs agent `config.auto_accept` false) was fixed
+  by RM-1222 (`5e40fcccc`, 2026-10-31; `tests/test_lcu_agent_auto_accept_pref_sync_rm1222.py`). Both
+  files: 25 passed at HEAD this cycle. NOT done and NOT this row: the flag flip. `RC_LCU_INPROCESS`
+  is still DEFAULT-OFF (`dashboard/_state_builder.py` `_read_lcu_snapshot` reads `== "1"`) and since the
+  2026-10-31 cutover it reaches RC by env inheritance only (see the EXTERNAL-LIFT row that cites
+  `child_environment`); no ROADMAP / BACKLOG row owns a default flip. A drainer in a champ-select
+  spends nothing here.
 - **G1-01** `[CS-CAPTURE]` (was A8) Locked-own-champ champ-select panel captures - **SHRUNK 6 -> 3
   artifacts 2026-07-18; still OPEN at GATE 1.**
   **RE-FILED, GATE 1 -> GATE 2:** ds-sweep / ds-relscore / ds-statcheck are ACTIVE-MATCH panels, not
@@ -800,6 +821,86 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   PARTY / MY TOP-8; if empty, capture the agent's live `/lol-lobby/v2/lobby` read + `_slim_lobby_member`
   output) + eyeball the overlay surface gate `bc4625d8` (companion in lobby/CS, lean HUD once
   liveclient populates). SOURCE: ledger 2026-06-20.
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 122, 2026-11-09, S144-G-109; NOT a tick, NOT a
+  re-open).** Status: the DRAIN SESSION 2026-07-20 record at the top of this file ("ADVANCED WITH
+  RECORDED EVIDENCE") evidenced the lobby payload and the three list renders (queue 1750). Two halves
+  are still owed: (i) the overlay surface-gate eyeball, which no record in this file shows as seen; (ii)
+  a render re-confirm, because RM-326 (LEDGER 1324, 2026-09-04) put a signature gate on the party-list
+  render AFTER that evidence. (1) CITE DRIFT: `bc4625d8` above (and `b9cb0092` on G1-04) do not resolve
+  at HEAD (`git cat-file -t` fails; neither string is in `<git common dir>/filter-repo/commit-map`;
+  cause not measured). Matched by date + subject + files, an inference and not a map: `3439a028c`
+  (2026-06-20, "fix(rc-shell): overlay HUD only on a live game, not a pre-flipped lobby mode_key";
+  touches `rc-shell/src/main.js`, `overlay_state.js`, `test/overlay_state.test.js`; an ancestor of
+  HEAD). For G1-04 the LOBBY1 fix is `a890a5524` (2026-06-08, same method). Current homes: the gate
+  `liveGameFromState` at `rc-shell/src/overlay_state.js:137` (true when `liveclient` is a non-empty,
+  non-array object, OR, since S134 T1 at `:150-157`, when `mode_key` is "tft" and `lcu.phase` is
+  "InProgress": a TFT match leaves `liveclient` empty), `surfaceForMode` `:113`, `resolveSurface`
+  `:119`, `GAME_MODES` `:35-37` (sr, aram, arena, tft, brawl, game); `rc-shell/src/main.js` `pollState`
+  polls `/api/state` (4000 ms socket idle timeout, `:1659`), sets `lastInGame` at `:1667` and calls
+  `refreshSurface` (`:1629-1631`), which reaches `applySurface` (`:1574`). Payload:
+  `lcu/snapshot_shape.py:500-537` builds `state["lobby"]` from `_slim_lobby_member` (`:195`, wire dict
+  at `:248`); `/api/state` carries that snapshot as `lcu` (`dashboard/_state_builder.py:1086`), so the
+  field path is `lcu.lobby.members[]`. Render mounts: `web/index.html:945` `#lv-members-list`, `:987`
+  `#lv-mainchamps-list`, `:1000` `#lv-top8-list`; `_renderPartyMembers` `web/js/main.js:5169` (empty
+  text "no members visible - LCU agent needs to forward lcu.lobby.members[]" at `:5180`, signature
+  `ul.dataset.lvPartySig`), `_renderMainChamps` `:4897`, `_renderTop8` `:6345`. (2) PREDICATE DEFECT,
+  the June "flips to the lean HUD" is no longer the whole rule: `applySurface` layers two persisted
+  settings over the surface. `keepCompanion` (`overlay_state.js:322`, default false `:529`) keeps the
+  companion SHOWN in game, and the overlay content toggle (`overlay.toggle.visible`,
+  `rc-shell/src/overlay_toggle.js:129-137`, applied at `:324-331`) keeps the HUD HIDDEN when OFF. Both
+  live in `<appData>/Amberstone Shell/rc-shell-state.json` (one path, no space before the file name) as
+  `overlay.settings.keepCompanion` and `overlay.toggle.visible`. Baseline read this cycle (idle,
+  read-only): keepCompanion false, toggle.visible true (file mtime 2026-10-31T21:17 local). A re-confirm
+  that does not read them first false-FAILS the moment the operator moves either. (3) OVERLAP: RM-1384
+  (GATE 2, an operator DECISION owed: the overlay window in champ select and loading) may change the
+  champ-select half; if RM-1384 lands a code change, re-read `liveGameFromState` before using the CS
+  half below. PROBE (stated before any game; all reads): before the lobby, read keepCompanion = K and
+  toggle.visible = V from the state file above (absent -> false / true). In a real LCU lobby (phase
+  Lobby), `curl -sk https://127.0.0.1:8888/api/state` -> `lcu.phase`, `lcu.lobby.queue_id`,
+  `len(lcu.lobby.members)`, `lcu.lobby.party_size`, and the KEY NAMES of `lcu.lobby.members[0]`; in the
+  same minute, a DOM read of the lobby view (the rc-shell companion, or headless Chromium on the same
+  origin) -> count of `#lv-members-list li.lobby-member-row:not(.is-placeholder)` (with members
+  non-empty the render always draws `PARTY_MAX_SLOTS` = 5 rows, `web/js/main.js:5033`, and an empty slot
+  is `lobby-member-row is-placeholder`, `:5246-5250`) and whether `#lv-mainchamps-list` /
+  `#lv-top8-list` hold rows. Then the rc-shell window state in lobby, in champ select, and once
+  `liveGameFromState` turns true; from game start until the surface flips, sample the `/api/state`
+  response time every 2 s (`curl -sk -o /dev/null -w "%{time_total}"`). PREDICATE: PASS iff (a) members
+  is non-empty (`party_size` is `len(members)` at `lcu/snapshot_shape.py:535`, so it is no separate
+  check); (b) the non-placeholder row count equals len(members), and the "no members visible" text is
+  ABSENT while members is non-empty; (c) in lobby and champ select (`liveclient` empty and `lcu.phase`
+  not InProgress in the same poll) the companion is shown and the overlay HUD is not; (d) once
+  `liveGameFromState` turns true (`liveclient` non-empty; in TFT, `lcu.phase` InProgress instead), the
+  HUD shows iff V is true, the companion stays shown iff K is true, AND the overlay ON/OFF icon window
+  shows (it shows on the OVERLAY surface whatever V is, `overlay_toggle.js:330`; without it, K true + V
+  false would look exactly like the lobby state and a shell that never flips would pass), within the
+  bound below. BOUND for (d), measured from the code, not a guess: about 10 s when the poll that
+  straddles game start succeeds (up to 4000 ms in flight - a socket idle timeout, `main.js:1659`, not a
+  hard cap - then the base `pollMs` 2000 ms wait, `overlay_state.js:48`, then up to 4000 ms more); about
+  12 s after one failed poll (`nextPollDelay(1, 2000)` = 4000 ms, `overlay_state.js:270-281`); about 24
+  s after two (the wait doubles); and NO fixed ceiling while polls keep failing (each further failure
+  adds up to 4 s in flight plus a wait capped at `pollMaxMs` 15000, `:49`). A just-created overlay
+  window also waits for its ready-to-show before the first show, and that window is created lazily at
+  the flip (`createOverlayWindow`'s one call site, `main.js:1597`), so the first game after a shell
+  launch pays its first paint too. RULE: the row asks whether the surface flips, not how fast, so (d)
+  PASSES on the expected state and records the delay. A timing FAIL needs the surface still wrong 30 s
+  after `liveGameFromState` turns true with every sampled `/api/state` time 4 s or less (30 s covers two
+  failed polls, about 24 s, plus that first paint). If any sample is over 4 s there is no fixed bound: a
+  late flip is the 2026-07-11 slow-poll class, recorded with its delay, NOT a FAIL of this gate; a
+  surface that NEVER flips before the game ends is a miss either way. Halves (c) and (d) both assume no
+  panic hide is active (`resolveSurface` `:119-123` hides both windows), and (d) assumes `mode_key` is
+  in `GAME_MODES`; record both. A lobby of more than 5 members (TFT or custom) is out of scope for half
+  (b): the render draws at most `PARTY_MAX_SLOTS` rows. FAIL on any miss, and on (c) with the HUD up
+  while `mode_key` is pre-flipped and `liveGameFromState` is false (the exact bug `3439a028c` fixed).
+  EVIDENCE CONTRACT: per read, the value (counts, key names, queue_id, surface), the source
+  (`/api/state`, DOM read, window state), an ISO timestamp, and the context (LCU phase, K, V). Record
+  KEY NAMES and COUNTS only, never a `puuid`, `riot_id` or summoner name value (RM-906). SUBSTITUTION
+  CHECK: NOT evidence - the `ui_mock` lobby snapshot (`tests/snapshot_panels/test_lobby_view.py`), the
+  shell unit tests (`rc-shell/test/overlay_state.test.js`,
+  `rc-shell/test/overlay_phase_contract.test.js`), a payload read with no render read, a render read
+  from a different minute than the payload, a `mode_key` value alone (it pre-flips in the lobby), or a
+  browser tab standing in for the rc-shell window on half (c)/(d). Half (c)/(d) is a window-state
+  question, so the glance or a window enumeration IS the test; the compute half answers the wrong
+  question.
 - **G1-03** `[RE-FILED 2026-10-24: CS-SCENARIO -> CS-CAPTURE, draft lobby only]` (was A3) CC-conditional
   pairing UI renders on champ-select (`a685a530`) - ~~needs a CC-pairing lobby to roll; never rolled
   2026-07-04. Rides every champ-select at any gate.~~ **MIS-FILED TAG (lane 9 PREP s133, source read at
@@ -878,10 +979,94 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   from the real renderer's markup drawn under node with a stub element - neither saw the dashboard. A
   route GET (or the route body inside the bundle) is compute only; the tie just proves the rendered
   numbers are THIS roster's. Only a bundle from the real tab, origin and page age checked, ticks this.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 137, 2026-11-09, S144-G-124; source read at `918a0c916`; NOT a
+  tick, NOT a re-open; still READY for a draft lobby).** The READY predicate, the five traps and the probe
+  hold; only line cites moved. (1) THE PREDICATE HOLDS: the gate `_csvRenderCcConditionalPressure`
+  (`web/js/panels/champ_select.js:1925-1957`, was 1788-1819) still hides the chip when either side has no
+  `championId > 0` (`:1934-1937`, was 1796-1799) and maps the queue to the same SR / ARENA / KIWI / ARAM
+  modes (`:1947-1952`); it is reached from `_csvRenderTeamAnalysis` (`:2077`, call at `:2084`; that
+  function is called at `:877` and `:1123`, not the old `:1947`). The drawer default is unchanged
+  (`_csvTaOpen` `:1999`, sessionStorage key `csv-ta-open` `:1998`, `if (body) body.hidden = !open;`
+  `:2097`), and the whole `#csv-team-analysis` block is hidden when no chip in it is visible (`:2090-2091`),
+  which the snippet already captures. (2) TRAPS 1 AND 3 HOLD: `web/index.html:1142-1144` (was 1133-1135)
+  still ships `data-cc-cond-tier="warn" hidden`; `renderCcConditionalPressure`
+  (`web/js/panels/cc_conditional_pressure.js:147`, unchanged) still returns early on an equal
+  `_CCP_SIG` (`:151`) and the gate still sets `block.hidden = true` without clearing it, so the
+  reload-in-this-lobby rule stays. (3) THE PROBE STILL MATCHES THE DOM: every class the snippet reads
+  (`cc-conditional-pressure-row`, `-row-label`, `-row-value`, `-tier`, `-verdict`) is in the renderer
+  markup (`cc_conditional_pressure.js:183-196`), the route prefix `/api/cc-conditional-pressure?` is the
+  page's own fetch (`:82`), and `web/data/champions_index.json` exists; `tests/test_gated_g103_cc_pressure.py`
+  ran 97 passed at `918a0c916` (compute half only, see SUBSTITUTION CHECK). (4) CITE DRIFT, no
+  behaviour change: route `_side_conditional` is `dashboard/routes_cc_conditional_pressure.py:206-243`
+  (was 205-224; a failed per-champion compute is skipped, so "scored" still means "did not raise"),
+  zero conditional CC on both sides still answers ok in `warn` at `:268-270` (was 247-249), and both
+  sides unscored is `ok` false `no_champions` (`:257-262`), which hides the chip by design;
+  `lcu/champ_select_shape.py:438` (was 436) passes `theirTeam` through `_team_picks` (`:261`), which still
+  surfaces `championPickIntent` hovers (`:289`, trap 5). The B12 removal notes are `champ_select.js:49-53`
+  (unchanged) and `:2279-2280` (was 2113) and `web/index.html:1160-1162` (was 1151-1153); the absence
+  pins `tests/snapshot_panels/test_champ_select_view.py:56` and `tests/test_cs3_panel_relocation_dom.py:60`
+  hold. `a685a530` still does not resolve and is not in the commit map. (5) PREREQUISITE: the probe needs
+  the live dashboard on `https://127.0.0.1:8888`, which no task starts since the 2026-10-31 launcher
+  cutover (rc-shell `--profile dev` only); at 2026-11-09T09:13-06:00 the :8888 curl was empty and
+  `:2999` answered nothing, so no game and no lobby this window.
 - **G1-04** (was A4 + QA24) LOBBY1 top-8 friend-invite live verify (`b9cb0092`) + the QA24 non-friend
   invite path end-to-end + the operator-reported defect that inviting others does not send unless the
   confirm dialog is accepted. BLOCKED ON: a real invite target / second account. SOURCE:
   docs/ORCHESTRATION_PLAN.md:63.
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 133, 2026-11-09, S144-G-120; NOT a tick, NOT a
+  re-open; still BLOCKED on a second player).** The row bundles THREE halves and they no longer share a
+  status. (1) CITE DRIFT: `b9cb0092` does not resolve at HEAD, and neither does the 2026-07-01 resync's
+  `1f4f4118` (`git cat-file -t` fails on both); the LOBBY1 fix is `a890a5524` (2026-06-08, "fix(lobby):
+  LOBBY1 - resolve Top 8 / friends invites past dead by-name endpoint", same date + subject match as
+  G1-02's note). `docs/ORCHESTRATION_PLAN.md:63` no longer holds LOBBY1: the row now lives at
+  `docs/ORCHESTRATION_FINDINGS_ARCHIVE.md:66`. `tools/gamepc_lcu_agent.py` is gone; the code is
+  `tools/lcu_agent.py`. Current homes: resolver `_resolve_invitee_summoner_id` `tools/lcu_agent.py:454`
+  (order: summoner_id, puuid via `summoners-by-puuid-cached`, a `/lol-chat/v1/friends` scan, then the
+  legacy by-name GET at `:512-520`), handler `lobby.invite_player` `:1152-1171` (POST
+  `/lol-lobby/v2/lobby/invitations` body `[{"toSummonerId": <id>}]`, envelope `ok` / `err` / `riot_id`
+  / `summoner_id` / `resolved_via`), allowlist `dashboard/routes_loadout.py:107` and `:164`; UI click
+  `web/js/main.js:6491-6506` in the `_renderTop8` (`:6345`) wiring, result poll `lcuPollResult` `:191`
+  -> `/api/lcu-cmd-result?id=` (`dashboard/routes_loadout.py:776`, relayed from :8889); offline pins
+  `tests/test_lobby_invite_resolution.py` (stubbed `lcu_request`, live arm behind `RC_LIVE_LOBBY=1`).
+  (2) LOBBY1 FRIEND HALF - still owed live, predicate below. (3) QA24 NON-FRIEND HALF - PREDICTED TO
+  FAIL by code reading, so this is a code defect first and a live check second. The Top 8 add-flow
+  stores `riot_id` only (`web/js/main.js:6543-6545`, no summoner id, no puuid), and the click sends
+  `summoner_id: target.summoner_id || target.summonerId || 0` (`:6501`), so a non-friend entry reaches
+  only the legacy by-name GET, which the resolver's own docstring (`tools/lcu_agent.py:457-458`) says
+  404s on current clients: the result is `ok: false`, "could not resolve summoner". The offline test
+  `test_falls_back_to_by_name_when_not_a_friend` (`tests/test_lobby_invite_resolution.py:163`) stubs
+  that dead route as answering, so it is green while proving nothing about a current client. A
+  measured Riot ID route already exists in the repo: `/lol-summoner/v1/alias/lookup?gameName=&tagLine=`
+  (`tft/tft_scouting.py:39-40`, "verified on the local account 2026-10-25"; call at `:942`). Filed as a
+  MERGER FOLLOW-UP for a code lane, not built here (outside the gated write set). (4) CONFIRM-DIALOG
+  CLAUSE - CLASS-2 CANDIDATE (intended behaviour filed as a defect). `if (!window.confirm(...)) return;`
+  at `web/js/main.js:6495` is the designed gate before an outbound social action, present since the
+  invite was first wired (`eaafc97c7`, 2026-05-12, s171). The clause entered this row in the
+  2026-07-18 reorganisation (`7fc017450`) with no source; it is not in the A4 text of 2026-07-01 nor in
+  the archived LOBBY1 row. Only a dialog that never SHOWS would be a defect, and that is what the live
+  half checks; "does not send unless accepted" is the spec. PROPOSAL only: drop the clause or reword it
+  to "the confirm dialog shows and gates the POST"; a human edits the row.
+  PROBE (attended lobby with a second player who is a friend, plus one non-friend Riot ID in Top 8):
+  before clicking, read `curl -sk https://127.0.0.1:8888/api/state` -> `lcu.phase` (Lobby) and
+  `lcu.lobby.members[]` count; click Invite on the friend row; note whether the dialog shows; press OK;
+  read the envelope from `/api/lcu-cmd-result?id=<id>` (the id is the `/api/lcu-cmd` POST reply; a 404
+  `pending` is normal for the first poll); then a read-only LCU `GET /lol-lobby/v2/lobby/invitations`
+  (no RC route serving it was found this cycle; the attended session runs it), or the second player's
+  word that the invite arrived; repeat once with
+  Cancel and once on the non-friend row. FIELD PATHS: `result.ok`, `result.resolved_via`,
+  `result.summoner_id`; invitations list `toSummonerId` + `state`. PREDICATE, stated before any game:
+  friend PASS iff the dialog shows, OK yields `result.ok == true` with `resolved_via == "friends"`, and
+  the invitations list (or the invitee) shows that summoner id within 10 s; Cancel PASS iff no new
+  invitation row appears. Non-friend: the PREDICTED value is `ok == false`, "could not resolve
+  summoner"; recording that value CONFIRMS the defect in (3), it does not drain QA24. QA24 drains only
+  after the resolver gains a working non-friend route, with the same predicate and
+  `resolved_via` naming that route. EVIDENCE CONTRACT: the envelope JSON, the invitations read, an ISO
+  timestamp, queue id and lobby phase; no Riot ID, summoner id or puuid of a real player copied into
+  this file (RM-906): write "friend", "non-friend" and the `resolved_via` value only.
+  SUBSTITUTION CHECK: `tests/test_lobby_invite_resolution.py` reaches every envelope shape from stubs,
+  and `ok: true` from the agent only means the POST returned no error - it is compute plus transport,
+  not delivery. Only the invitee's client (the second player seeing the invite, or the invitations list
+  showing the row) answers SENT; an `ok: true` alone does not tick the friend half.
 - **G1-05** `[BLOCKED - RE-TAGGED 2026-07-18]` (was A11) OVL2 Pengu Surface C live validation
   (`7ddada96`). **RE-TAG source: this GATE 1 row; destination: BLOCKED - it is neither drainable by a
   game nor stale-and-closable.** SETTLED HEADLESS: repo-root `pengu/` is ABSENT and all 6 tests in
@@ -897,9 +1082,91 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   session. Cited `7ddada96` does not resolve in this repo (4 of GATE 1's 5 cited hashes do not - they
   are pre-cherry-pick worktree SHAs per the `docs/history_notes.md:4468` merge workflow: a systemic
   citation defect, not fabrication). SOURCE: docs/ORCHESTRATION_PLAN.md:82.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 136, 2026-11-09, S144-G-123; NOT a tick, NOT a re-open; still
+  BLOCKED on the same operator decision, so do not count it in a gate session).** Three facts in the
+  2026-07-18 re-tag no longer hold, and one rationale it inherited was never true. (1) THE 6 TESTS ARE
+  GONE, not skipping: `tests/test_pengu_plugin_skeleton.py` was deleted at `9a6160f06` (2026-08-06,
+  RM-119 B4 skip audit, finding 4 "PENGU REMEDY WITHDRAWN; MODULE RETIRED INSTEAD": pointing a live
+  guard at `docs/_archive/**` would un-retire quarantined content, and reviving `pengu/` is a product
+  decision that slice did not own). Per that commit's non-vacuity record, a re-injected `pengu/` skipif
+  fails `tests/test_skip_condition_hygiene.py` as `ROTTED: was-tracked-now-gone=pengu`, so whoever un-archives
+  must restore the module from git with the stub, not re-add the skip. (2) THE STUB IS UNCHANGED: the
+  archived blobs are 1728 / 4463 / 2137 B (README.md / index.js / panel.css), identical at HEAD and at
+  the rename `d0689e736` (2026-07-07, `pengu/ -> docs/_archive/2026-07-07-pengu-stub/`, 100 percent
+  rename), and the same at the build `43107004f`, so the stub has never changed. The 1775 / 4575 / 2204
+  recorded above are not a content change: they read as CRLF working-copy sizes (blob + one byte per
+  line, 45 / 110 / 67 lines, gives 1773 / 4573 / 2204 - exact for panel.css, 2 B short for the other
+  two, a gap not explained here). (3) CITE DRIFT: `7ddada96` does not resolve; the OVL2
+  build is `43107004f` (2026-06-15, "feat(pengu): OVL2 Pengu Surface-C plugin stub + client-origin-gated
+  CORS"; the archive table's `aab53e37` does not resolve either). `docs/ORCHESTRATION_PLAN.md:82` no
+  longer holds OVL2: it is `docs/ORCHESTRATION_FINDINGS_ARCHIVE.md:85` (DONE, "live validation OWED").
+  `ROADMAP.md:58` is now `ROADMAP.md:155`, RM-15 OPEN (c) "Phase 6 Pengu in-client panels, OPTIONAL" -
+  still open. (4) MIS-CITED RATIONALE: the rename commit `d0689e736` gives "settled dead-end per
+  CLAUDE.md", but the only Pengu line in CLAUDE.md, then (`d0689e736:CLAUDE.md` line 213) and now
+  (Settled, research-list CLOSED negatives), is "Pengu `league-client-mcp` = NO" - a different repo (an
+  MCP server judged thinner than RC's LCU client), not the Pengu Loader panel. No Settled line closes
+  this row; the operator decision stands as the only blocker. (5) THE SERVER HALF IS STILL SHIPPED and
+  is now an orphan consumer: `dashboard/_handler.py:175-176` (comment names `pengu/`, absent) and the
+  `_cors_allowed_origin` echo at `:589-596`, pinned by `tests/test_handler_cors.py`. Retiring the row
+  would leave that gate with no in-repo client; un-archiving would reuse it. Both are the decision.
+  **READY-WHEN-UNARCHIVED (stated before any client session; GATE 1, League client at home, no game).**
+  PRECONDITIONS: stub back at `pengu/` and installed into Pengu Loader by the operator; RC up (the
+  `/api/state` probe answers). PROBE: in the League client UX devtools console run
+  `(() => { const p = document.getElementById("rc-pengu-panel"); return p && [...p.querySelectorAll("[data-field]")].map(e => e.dataset.field + "=" + e.textContent); })()`
+  and, at the same minute, `curl -sk https://127.0.0.1:8888/api/state` -> `mode_key`.
+  PREDICATE: PASS iff the panel exists, `status=live`, and `mode=` equals the curl `mode_key`
+  (`client` at home); then a second read at least 4 s later (2 x `POLL_MS` 2000) still reads `live`.
+  FAIL iff the panel is absent, or `status=RC offline - retrying` while the curl answers (a CORS or
+  certificate refusal in the client's browser; record the console error - the mkcert root being trusted
+  by the client's embedded browser is UNMEASURED). EVIDENCE: the field list, the curl `mode_key`, ISO
+  time, `lcu.phase`. SUBSTITUTION CHECK: `tests/test_handler_cors.py` proves the server echoes a
+  loopback origin, and a desktop Chrome tab loading `index.js` proves the script runs in Chrome; neither
+  is the client UX. Only the panel read inside the League client ticks this.
 - **G1-06** `[NOT BUILT]` (was A12) Mode-specific overlay layout AUTO-SELECT-ARAM acceptance - queued
   for planning, not yet built. Once built the auto-select needs a live ARAM queue/lobby state and a
   per-map placement eyeball. SOURCE: BACKLOG.md:48.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 127, 2026-11-09, S144-G-114; NOT a tick, NOT a re-open; still
+  NOT BUILT, so nothing here is drainable yet).** The filing bundles THREE halves and they no longer
+  share a status. (1) CITE DRIFT: `BACKLOG.md:48` is now `BACKLOG.md:1907` (the row "Mode-specific
+  overlay settings (SR vs ARAM) + mode-specific out-of-game stats overlay", queued `cf8353d7b`,
+  2026-06-30). (2) PER-MODE OVERLAY LAYOUT - NOT BUILT. `web/js/lib/overlay_layout.js:36` `LS_KEY`
+  "rc-overlay-layout" holds ONE `_layout` object keyed by widget id (`:293`, read `:296`, write
+  `:305`); the only per-game split is TFT vs League (`_isTftNow` `:187` off `body[data-ovx-game]`,
+  `_inGame` `:199`), which chooses WHICH widget set is on the field, never WHERE, so SR, ARAM and Arena
+  share one arrangement. Do not mistake `web/js/panels/panel_visibility.js` (per-mode dashboard panel
+  VISIBILITY, contexts in-game-sr / -aram / -arena / -tft / out-game) for it: shipped, a show / hide
+  gate, not a layout store, not this row. (3) OUT-OF-GAME STATS MODE SELECTOR - BUILT, manual:
+  `38dc1bf9d` (2026-07-04, "feat(home): SR/ARAM/ARENA mode tabs - FE half"), `web/index.html:217`
+  `#home-mode-tabs` (ALL / SR / ARAM / ARENA), `web/js/main.js:3402` `_homeModeTabLoad` (localStorage
+  `rc-home-mode-tab`, whitelist, default ALL), `:3990` `_homeApplyModeTab`, fetch
+  `/api/home/summary?mode=<tab>` at `:3942-3943` (ALL sends no `mode`); pinned by
+  `tests/snapshot_panels/test_home_mode_tabs.py`. (4) AUTO-SELECT ARAM - NOT BUILT: `_homeApplyModeTab`
+  has exactly two callers, the tab click `:4387` and the startup restore `:4389`; nothing feeds it
+  `lcu.lobby.queue_id` or `mode_key`.
+  **DESIGN TRAP for whoever builds (4), recorded so it does not ship invisible:** the view router sends
+  Lobby / Matchmaking / ReadyCheck to the `lobby` view (`web/js/main.js:796`) and ChampSelect to
+  `champ-select` (`:788`), and the home overlay paints only on the home view (`:4194-4203`, plus
+  `_homeShouldShow` `:3411`). So "auto-select ARAM when queued" cannot be SEEN while queued: it is first
+  observable on the return to home (lobby left, dodge, or post-game). The build has to name its driver
+  (the lobby `queue_id` at queue time, persisted, vs the last game's mode on return) and its precedence
+  over a manual pick (the filing says "stays manually switchable").
+  **READY-WHEN-BUILT (stated before any lobby; GATE 1 for (4), GATES 2 + 3 for (2)).** (4) PRECONDITIONS:
+  ui_mock OFF (the mock path ignores the filter, `:3936-3941`); before queueing, click SR on the home
+  tabs and record `#home-overlay[data-mode-tab]` = "SR". Then enter an ARAM lobby (`lcu.lobby.queue_id`
+  450 or 2400), leave it, and on the home view read `#home-overlay[data-mode-tab]`,
+  `.home-mode-tab[data-hmode="ARAM"]` `aria-selected`, and the next `/api/home/summary` request line
+  in `<main>/logs/<day>.log`. PASS iff the attribute reads "ARAM", that button is aria-selected "true",
+  and the request carries `?mode=ARAM`, all after a recorded "SR" pre-state. FAIL iff it still reads
+  "SR". The steps assume the build drives off the lobby `queue_id`; if it drives off the last game's
+  mode instead, replace "enter an ARAM lobby, leave it" with "finish an ARAM game, return home" before
+  running, else a correct build reads FAIL. (2) per-map placement: drag one widget in an ARAM game, then
+  in an SR game; PASS iff each mode
+  restores its own position and the ARAM drag did not move the SR one. EVIDENCE: the three values,
+  their selectors, the ISO time and the lobby `queue_id`. SUBSTITUTION CHECK: the tab state lives in
+  per-browser localStorage, so an "ARAM" left by an earlier manual click passes the DOM read with the
+  auto-select never running - that is why the recorded SR pre-state is part of the predicate; a
+  `tests/snapshot_panels` run or a mock lobby proves the handler COMPUTES, not that a real ARAM queue
+  DROVE it.
 - **G1-07** `[LOBBY-PARTY, READY 2026-10-27 - s144 lane gated cycle 16; PREP only, nothing ticked]`
   RM-881 (b) (QA23) live read-back: the lobby view re-fires `/api/duo-synergy` when the party reaches 2.
   SHIPPED headless `a503ce413` (s144 queue lane, LEDGER 1951): `web/js/panels/lobby_duo_synergy.js`
@@ -978,6 +1245,29 @@ Cheapest gate in the file. Enter a lobby, capture, leave. Nothing here needs a m
   Tool: `tools/gated_rm881_duo_lobby.py` (tests `tests/test_gated_rm881_duo_lobby.py`; trace lines built
   by the real `Handler.log_message` through the day log's own format, the SR set parsed from the real
   `main.js`).
+  **AGE RE-CHECK (s144 lane gated cycle 134, S144-G-121; PREP only, nothing ticked; no game:
+  :8888 and :2999 curl 000 at 2026-11-09T07:42-06:00).** NOT stale; the probe and both predicates
+  stand. Cite drift: `a503ce413` is not on main; the landed commit is `6c7dd2030` (same subject).
+  RM-1089 HAS LANDED on main as `730c76523`, and the `rc:champs-ready` listener in `main.js` calls
+  `_lvDuoRender(_LV.duo.state())`. That makes the PORTRAITS paragraph's "NOT landed" clause stale: a
+  page served from main runs the fix, so tiles still blank 10 s after the block first rendered are
+  the separate finding, never a FAIL. The AUTO-RELOAD caveat about unlanded web commits now means
+  whatever is unlanded at drain time; read the two before / after pairs exactly as written.
+  NEW PRECONDITION: RC must be RUNNING. `ops/runtime/launcher_status.json` read `state` `halted`,
+  `reason` `stdin_stop` (last written 2026-10-31 21:17 local), while the stale
+  `ops/runtime/health.json` still read `alive: true`, so health.json alone does not show RC is up.
+  Check that :8888 answers and that the drain day's `logs/<day>.log` exists before `<since>`. There
+  is no day log after 2026-10-31 because RC has not run since then; the log path did not move. The
+  2026-10-31 log holds request-trace lines written at 21:16-21:17 local, after the service host's
+  recorded start (`launcher_status.json` `services[].started` 2026-11-01T00:13Z). Their format is
+  `<peer> HTTP "GET <path> HTTP/1.1" <status> -`, with the peer prefix written by `Handler._peer`.
+  PARSE CHECK, NOT EVIDENCE: the grader was given a hand-built duo-lobby state (no lobby existed)
+  and the window 21:16:00-21:17:20 of that log. It counted 31 trace lines, the same as a grep
+  count, and printed `sent FAIL` / `no GET /api/duo-synergy`, so it reads the post-cutover format.
+  Still true at HEAD: `/api/ui-version` and `/api/asset-stamp` are in `_SUPPRESS_LOG_PATHS`, and
+  `/api/duo-synergy` is not. `TOP_N` is 4, `UTILITY` maps to `sup`, and the `DUO PICKS`,
+  `loading duo picks...` and `duo picks unavailable right now` strings are unchanged.
+  `tests/test_gated_rm881_duo_lobby.py`: 14 passed at HEAD.
 
 ---
 
@@ -1433,11 +1723,96 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   `assumed_stacks`. **NOT a clean transport flip:** `apply_passive_damage` is deliberately /dps-scoped
   (R7/R12 precedent, `rank_items` does not forward it), the on_hit remainder needs net-new cadence
   math, and `assumed_stacks` needs a live stack feed. Own-build re-ranks are unverifiable headless.
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 124, 2026-11-09, S144-G-111; NOT a tick, NOT a
+  re-open; no game, RC :8888 not answering, read at `d2d4840f1` + this lane, DS ENGINE 1.291.0,
+  patch 16.22.1).** (1) CITE DRIFT, the first clause is STALE: `apply_passive_damage` is no longer
+  /dps-scoped. RM-42 wired it into `rank_items` (`agents/daemon_slayer/rank.py:1001`, forwarded to
+  BOTH `compute_dps` calls at `:1252` and `:1378`, rationale comment `:1184-1193`), and the server
+  parses it on exactly three routes: `/dps` (`_route_dps`, `agents/daemon_slayer/server.py:706`,
+  default False), `/rank` (`_route_rank`, `:868`, default False) and `/rank-onhit`
+  (`_route_rank_onhit`, `:2223`, default TRUE). No other route parses it, so the bruiser and mage
+  scorers never see it. On the RC side `rank_for` (`core/daemon_slayer_client.py:728`, body key only
+  when True at `:834-835`) and `rank_for_primary_archetype` (`:3058`) default False. Outside
+  `core/daemon_slayer_client.py`, `agents/daemon_slayer/` and `tests/` the flag is named only by the
+  hand-run `tools/gated_ds_flag_eyeball.py` (`:10`, `:97`, the G2-47 eyeball), so the ONE live-app
+  sender is the onhit branch, which hard-codes `apply_passive_damage=True` into `rank_onhit_for`
+  (`:3406`). The carry half of this clause is now G2-47's row (GATE 2 below: RM-42 on the CARRY ranker,
+  flipped TOGETHER with `apply_extra_shot_procs`, never singly). (2) THE ROW HOLDS on the
+  other two clauses, and its scope is LARGER than filed. The every-AA allowlist
+  `_AA_ROUTED_ON_HIT_KEYS` (`agents/daemon_slayer/_passive_damage_overrides.py:1205`) now holds 6
+  keys (Warwick P, Orianna P, Gwen P, Kayle E, KogMaw W, Akshan P); the registry
+  `_PASSIVE_DAMAGE_OVERRIDES` holds 34 entries, 26 with cadence `on_hit`, so 20 on_hit entries stay
+  unrouted, not 4. The 4 the row names (Lux, Ziggs, Akali, Kha'Zix) are all still unrouted (measured
+  in-process this cycle); `compute_dps` reads only the allowlist (`dps.py:1632-1660`,
+  `aa_routed_on_hit_entry`). `assumed_stacks` is a build-time constant on 4 per-stack entries
+  (Orianna 1.0 and Kai'Sa 2.0 on_hit, Darius 3.0 and Twitch 3.0 dot; fold at
+  `_passive_damage_overrides.py:1123`) and no RC module reads or feeds a stack count. Both are
+  ENGINE (Tier-2) code first; no game can drain them today. (3) WHAT A GAME CAN SEE TODAY:
+  `core.archetype_picks.get_archetype_for` resolves Gwen / Kayle / KogMaw to primary `onhit`
+  (default source, measured this cycle), so a live game on one of those three already sends the flag
+  True through `/rank-onhit`; that render is G4-17's row (`tools/gated_g417_onhit_render.py`), not
+  this one. Akshan and Kai'Sa resolve to `carry` (flag False on the wire), Warwick to `bruiser` and
+  Orianna to `mage` (routes that do not parse it), so the allowlist credit for Akshan / Warwick /
+  Orianna reaches no live surface at all. NO SECOND PREDICATE HERE: the Akshan carry flip is graded
+  under G2-47 and its READY block (`tools/gated_ds_flag_eyeball.py --row G2-47`), never twice. The
+  one thing this row adds to that grade is a WIRE check, stated now and graded only after a producer
+  flips the carry flag (a merger follow-up, not this lane's): in a live SR or ARAM game on Akshan,
+  PASS iff a timestamped record of the `/rank` request body carries BOTH `apply_passive_damage: true`
+  and `apply_extra_shot_procs: true`, `champion` equal to the canonical id of my roster row's
+  `championName` (`/api/state` -> `liveclient.allPlayers[]`, matched to `liveclient.activePlayer` as
+  `tools/gated_g417_onhit_render.py` `_me_row` does) and `item_ids` equal to
+  `liveclient.owned_item_ids` from an `/api/state` read within 10 s of game time of the body. FAIL if
+  either key is absent (the default-OFF path ran, or one half of the event flipped singly).
+  EVIDENCE: the body, the `/api/state` read, both timestamps, `game_time_s`, mode and queue.
+  SUBSTITUTION: a hand-run eyeball body (that tool sends the flags itself) or a `/rank` reply
+  computed with the flags on answers only whether the seam COMPUTES; it proves nothing about whether
+  RC SENT it, and an onhit render on Gwen / Kayle / KogMaw is G4-17's evidence, never this row's.
+  PROPOSAL, NOT A MOVE: the cadence-math and stack-feed
+  clauses are engine work with no live half until a stack source exists (no RC reader of one exists;
+  whether `:2999` exposes one was NOT probed this cycle, no game was up); a human may move them under
+  "Not actually live-gated" or to the DS roadmap.
 - **G2-22** (was B4) Anti-tank P3.2 - call `antitank.compute_antitank_live` with the live build +
   eyeball scaled %max-HP magnitudes. R93 added Darius E (Apprehend) as a PERCENT_PEN/SUSTAINED row
   (compute_antitank 0.0 -> 0.455, shreds_resist True), so this same eyeball surfaces Darius' shred.
   HTTP transport WIRED (OQ18) BUT no dashboard/modes caller POSTs a live build - this is a
   **code+eyeball slice, not a pure flip**. No DS restart on the flip itself.
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 123, 2026-11-09, S144-G-110; NOT a tick, NOT a
+  re-open; no game, read at `279bf6f16`, DS ENGINE 1.291.0, patch 16.22.1).** (1) THE ROW HOLDS: the
+  producer is wired and the consumer is not. `compute_antitank_live`
+  (`agents/daemon_slayer/antitank.py:823`) is reached only through `_route_antitank`
+  (`agents/daemon_slayer/server.py:2696`; the live branch at `:2731-2738` runs when `item_ids` is
+  non-empty; route table `:3258`). No RC module POSTs `/anti-tank` (`git grep` of the literal
+  `/anti-tank`, and of `compute_antitank_live`, in `*.py` / `*.js` / `*.mjs` outside
+  `agents/daemon_slayer/` and `tests/`: 0 hits each), and every RC consumer of the axis calls the
+  STATIC `compute_antitank` (`antitank.py:730`) in-process with no stats: `core/ds_antitank_hint.py:97`
+  (`build_antitank_hint`), reached from `dashboard/_deterministic_coaching.py:1373` (ARAM),
+  `core/ds_coach_shadow.py:45` (the A3 shadow log behind `coaches/_base_coach.py`
+  `_shadow_log_hints`), `core/ds_capability_gap.py:106` and `core/build_order_variants.py:253`; plus
+  `core/comp_coverage.py:219` directly. Nothing in a live game carries a build into this axis, so no
+  game can drain the row today: it is a CODE slice first. (2) SCOPE NARROWED (measured this cycle,
+  in-process, `DataSnapshot.load()`): the Darius clause needs no live build at all.
+  `compute_antitank("Darius")` = 0.455, top_kind PERCENT_PEN, shreds_resist True (R93 reproduces), and
+  `compute_antitank_live(snap, "Darius", 11, ["3071"])` is also 0.455: Darius E carries no caster-stat
+  ratio, so a build cannot move it and the static path already surfaces the shred. Only the
+  seeded-ratio rows move with a build: Gwen 0.85 -> 0.915 (L11, ["3089"]; same in ARAM), Kog'Maw 0.926
+  -> 0.952 (L11, ["3089"]), Vi 1.11 -> 1.1629 and Camille 0.745 -> 0.7918 (L11, ["3071"]); Vayne 0.95 is
+  unchanged (control). (3) PROPOSAL, NOT A MOVE: the "eyeball scaled %max-HP magnitudes" half is a
+  compute over an item list, so any synthetic build answers it headless (the numbers above are that
+  eyeball); it is a candidate for "Not actually live-gated" below, for a human to move. What stays
+  live is TRANSPORT only, and only after a producer lands. PREDICATE (stated now, graded only after a
+  producer lands; the code half is a merger follow-up, not this lane's): in a live SR or ARAM game on
+  a seeded-ratio champion (Gwen / Kog'Maw / Vi / Camille) holding at least one AP or AD item, PASS iff
+  a timestamped record of the request body the producer sent to `/anti-tank` carries `champion` equal
+  to the canonical id of my roster row's `championName` (`/api/state` -> `liveclient.allPlayers[]`,
+  matched to `liveclient.activePlayer` as `tools/gated_g417_onhit_render.py` `_me_row` does), an
+  `item_ids` set equal to `liveclient.owned_item_ids` (fallback: that row's `items[].itemID`) from a
+  `/api/state` read within 10 s of game time of the body, and a `level` equal to
+  `liveclient.activePlayer.level` from that read; and the surface the producer feeds shows the reply's
+  `antitank_score` / `top_kind`. FAIL if `item_ids` is absent or empty while the build is not (the
+  static path ran), or if the set differs. EVIDENCE: the body, the `/api/state` read, both timestamps,
+  `game_time_s`, mode and queue. SUBSTITUTION: a DS reply computed by hand from the live item list
+  answers only whether the axis COMPUTES; it proves nothing about whether RC SENT the build, and a
+  rendered score that equals the static `compute_antitank` value is the static path, not this row.
 - **G2-23** `[NEW ROW 2026-07-18 - 12 seam obligations that had NO checklist row]` Item-side
   survivability/burst seam BATTERY. All twelve shipped default-OFF between 2026-07-10 and 2026-07-14
   with an OWED operator flip-eyeball recorded ONLY in the live-flip ledger below. They share one
@@ -1463,6 +1838,57 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   resist/damage swap, and a one-instance credit is not over-credited on a sustained-fight clock. The
   EXACT ones (`apply_item_mana_health`, `apply_item_bonus_hp_amp`) carry no midpoint and are the
   safest to flip first. Full per-seam magnitudes + caveats: the live-flip ledger below.
+
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 125, 2026-11-09, S144-G-112; NOT a tick, NOT a
+  re-open; no game, RC :8888 not answering, read at `d2d4840f1` + this lane, DS ENGINE 1.291.0,
+  patch 16.22.1).** (1) DEFAULTS HOLD: all twelve are still default False. The eleven EHP flags are
+  `compute_ehp` keyword defaults (`agents/daemon_slayer/ehp.py:1418` kaenic, `:1423` eclipse, `:1435`
+  seraphs, `:1441` fimbulwinter, `:1464` omnivamp, `:1473` revive, `:1485` stasis, `:1496`
+  spell_shield, `:1507` mana_health, `:1516` resist_grants, `:1526` bonus_hp_amp), and the burst one
+  is `agents/daemon_slayer/burst.py:542`. CITE DRIFT: the Line column above is stale by about +264
+  (it predates the RM-118 / R194 growth of `compute_ehp`); use these. (2) THE ROW'S ACTION IS STALE:
+  "arm, restart `:8860` once" arms nothing. Every one of these is a per-request body key read by
+  `_opt_bool(body, key, False)` (`agents/daemon_slayer/server.py:542`) with no env or config
+  default, so a DS restart changes no reply; a flip is a CODE change (an engine default or an RC
+  sender), never a restart. (3) TRANSPORT, the row is LARGER than filed: the twelve split three ways.
+  (a) `/ehp` ONLY (6): kaenic, eclipse, seraphs, fimbulwinter, revive, stasis are parsed only by
+  `_route_ehp` (`server.py:1119-1123`, `:1053-1054`); `/rank-tank` does not parse them and the ranker
+  `rank_items_by_ehp` (`ehp.py:3194`) has no such kwarg, so they can never move a RANKED list. (b)
+  RANKER-REACHABLE (5): spell_shield, mana_health, resist_grants, bonus_hp_amp are parsed by `/ehp`,
+  `/rank-tank` (`server.py:1272-1283`), `/hybrid` (`_route_hybrid`, `:1563-1574`) and
+  `/rank-bruiser` (`_route_rank_bruiser`, `:1716-1727`); omnivamp only by `/ehp` and `/rank-tank`
+  (`:1011`, `:1294`) and is SUSTAIN-only, invisible unless `score_by="sustain"` (comment
+  `server.py:1005-1010`; `/rank-bruiser` accepts only blended / cc_blended, `:1698-1700`).
+  spell_shield moves only `cc_blended_ehp` (`ehp.py:1490-1496`), so it is invisible under the
+  default `score_by="blended"` on either ranker's sort order (the bruiser row's `hybrid_score` field
+  does read `cc_blended_ehp` when enemies are sent, `agents/daemon_slayer/hybrid.py:1384-1388`).
+  (c) NO ROUTE (1): `assume_item_lowhp_magic_crit` is named by no route in `server.py` (not
+  `_route_burst` either) and by nothing under `core/` (git grep this cycle); its only consumer is
+  `compute_burst_damage` (`burst.py:542`, `:847`) and `ability_dps.py:1508-1518` keeps it
+  documented-inert, so no served list can ever show it. (4) NO LIVE SENDER for any of the twelve:
+  `ehp_for` (`core/daemon_slayer_client.py:1131`) and `hybrid_for` have no non-test caller, and the
+  three ranker senders forward none of them: the tank branch of `rank_for_primary_archetype`
+  (`/rank-tank`, `:3168-3180`), its bruiser branch (`rank_bruiser_for` -> `/rank-bruiser`,
+  `:3212-3229`) and `recommend_defensive_items_via_ehp` (`/rank-tank`, `core/defensive_picks.py:351`,
+  call `:402`), which itself has no production caller. So a game today shows NONE of the twelve on
+  any surface, ON or OFF, and nothing here is drainable until a producer flips one. READY (graded
+  only after a flip; a merger follow-up, not this lane's): for a flag in group (b), in a live SR game
+  on a champion whose primary archetype is `tank` or `bruiser`
+  (`core.archetype_picks.get_archetype_for`), PASS iff a timestamped record of the matching
+  `/rank-tank` or `/rank-bruiser` request body carries the flipped key `true`, `champion` equal to
+  the canonical id of my roster row's `championName` (`/api/state` -> `liveclient.allPlayers[]`,
+  matched to `liveclient.activePlayer`) and `item_ids` equal to `liveclient.owned_item_ids` from an
+  `/api/state` read within 10 s of game time of the body, AND (omnivamp only, `/rank-tank` only)
+  `score_by` is `"sustain"`, (spell_shield only) `score_by` is `"cc_blended"`. FAIL if the key is
+  absent (the default path ran) or the score_by gate does not match (armed but invisible). The
+  EYEBALL itself is then the human read of the served list, never this predicate. EVIDENCE: the
+  body, the `/api/state` read, both timestamps, `game_time_s`, mode and queue. SUBSTITUTION: a
+  hand-built `/ehp`, `/rank-tank` or `/rank-bruiser` POST with the flag on answers only whether the
+  seam COMPUTES; it proves nothing about whether RC SENT it, and a reply under
+  `score_by="blended"` is not evidence for spell_shield or omnivamp. Groups (a) and (c) have NO
+  predicate: they need a ranker kwarg (a) or a route (c) first, which is DS engine work (Tier-2),
+  not a game. PROPOSAL, NOT A MOVE: a human may file (a) and (c)
+  as DS seam rows and narrow this battery to group (b).
 - **G2-24** (was B47b) R108 `assume_item_general_dr` - item UNTARGETED GENERAL %DR (Celestial
   Opposition 3869 "Blessing" 35% melee / 25% ranged + Crown of the Shattered Queen 664644 "Safeguard"
   40%), the ONLY item DR lane that touches the TRUE denominator. **PARTIAL 2026-07-18.**
@@ -1478,6 +1904,43 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   too low, right, or too high. Observed uptime is the ONLY thing that moves this row.
   The Arena mirror 444644 magnitude confirm is GATE 5 (G5-08). The "Draw Your Sword" Runaan's blind
   spot flagged at R108 is FIXED (LEDGER 856). SOURCE: LEDGER 855.
+  **AGE CHECK (lane 9 PREP s144 cycle 129, S144-G-116; source read at local main `d2d4840f1`, DS
+  16.22.1 / ENGINE 1.291.0, no game up (RC :8888 refused at 2026-11-09T05:07); NOT a tick). The
+  mechanism half holds, the seam has NO live producer, and the live residual does NOT wait on one.**
+  Holds: `_item_general_dr._GENERAL_DR_UPTIME` is still `0.4`; `_ITEM_GENERAL_DR` still maps `3869`
+  to `(0.35, 0.25)` and `664644` to `(0.40, 0.40)`, with `444644` as the Arena mirror. At 16.22.1
+  `items.json` still lists 3869 Celestial Opposition (maps 11 and 453), 664644 Crown of the
+  Shattered Queen (map 11) and 444644 (map 30 only). DDragon's 3869 prose carries no magnitude
+  ("Reduce incoming champion damage for 2 seconds after taking damage from a champion"); the 35%/25%
+  is Meraki's `{{rd|35%|25%}}` in the 16.22.1 `items_meraki.json`. 664644's DDragon prose still says
+  40%. Producer-orphan, measured with `inspect.signature`: the DS functions that take the flag are
+  `ehp.compute_ehp`, `ehp.rank_items_by_ehp`, `hybrid.compute_hybrid` and
+  `hybrid.rank_items_by_hybrid`, and `server.py` parses it in `_route_ehp`, `_route_rank_tank`,
+  `_route_hybrid` and `_route_rank_bruiser`. The client functions `rank_tank_for`, `ehp_for`,
+  `rank_bruiser_for` and `hybrid_for` take it, but `rank_for_primary_archetype` and
+  `dispatch_for_coach` do not. The tank and bruiser branches of `rank_for_primary_archetype` call
+  `rank_tank_for` / `rank_bruiser_for` without it, and `core/defensive_picks.py` calls
+  `rank_tank_for` without it. `_DS_PREVIEW_SEAM_BOOLS` does not list it, and no `web/` file and no
+  code file outside DS, the client and `tests/` names it. So no live recommendation reads the 0.4
+  today. That bounds what the row is WORTH (a different uptime would move no live surface until a
+  producer lands), but not whether it can DRAIN: the residual is an observation of the GAME's own
+  buff uptime, not of anything RC sends. READY, so the drain is copy-paste. Practice-tool SR
+  (GATE 2), the operator holding 3869 or 664644 and taking hits from bots in a fight. The Live Client
+  API carries no buffs (`dashboard/_liveclient.py:334`), so the source is pixel: GET
+  `http://127.0.0.1:8889/latest-frame` with `X-RC-Token`, plus `/latest-frame/meta` `ts` for each
+  sample, at about 1 s. FIGHT WINDOW, fixed before the game: from the first `:2999`
+  `activePlayer.championStats.currentHealth` drop while an enemy champion is in the frame to the last
+  such drop, closed by a 3 s gap with no drop. u = (samples in the window whose buff bar shows the
+  Blessed / Safeguarded icon) / (samples in the window). PREDICATE, stated NOW: at least 10 samples
+  in one window; u in [0.30, 0.50] means 0.4 is RIGHT, u > 0.50 means TOO LOW and u < 0.30 means TOO
+  HIGH. Report one u per item; 3869 and 664644 are graded separately and are not averaged. EVIDENCE:
+  u, n, the item id, the window's start and end `gameData.gameTime`, and each sample's frame `ts`
+  checked against `gameTime` (a frame older than 2 s is dropped, not counted). Frames are 1280x720
+  (G2-41), so a sample whose buff bar cannot be read is dropped and counted in the report, never
+  scored as absent. SUBSTITUTION CHECK: a DS `/ehp` or `/rank-tank` delta with the flag on restates
+  `1/(1 - dr * 0.4)` and so answers COMPUTES, not UPTIME. A dashboard render answers neither. One
+  screenshot of the icon proves it can be up, not how long it stays up. The Arena 444644 magnitude
+  stays GATE 5 (G5-08, re-checked s144 S144-G-105).
 
 ### `[BATCH OVERLAY-PIXEL]` - overlay up, one screenshot pass
 
@@ -1489,6 +1952,71 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   lands fixed to the minimap) + the BATCH C gauge-row / enemy-chip-wrap render. STATUS: NOT drained
   2026-07-04 (frame endpoint probed http + X-RC-Token, game ended before a clean grab). SOURCE:
   LEDGER 662 + 735 + 799.
+
+  **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 126, 2026-11-09, S144-G-113; NOT a tick, NOT a
+  re-open, nothing struck; no game, RC :8888 and :2999 not answering, read at `d2d4840f1` + this
+  lane).** The family is SMALLER than filed: of its 14 subjects, 6 can no longer be captured on the
+  overlay at all, and 8 are live. CITE DRIFT: `f621168d` is a pre-rewrite hash absent from
+  `.git/filter-repo/commit-map`; OVL1 is `7db1ebbe4` (git log --grep OVL1). (1) NO OVERLAY HALF
+  LEFT (a human moves these; this lane does not strike):
+  (a) **ward_cue**: no renderer. There is no `web/js/panels/ward_cue.js`; the widget was dropped
+  2026-07-05 because Live Client exposes no ward cooldown (`web/js/lib/overlay_layout.js:74-75`,
+  "w-trinket / Ward Cue removed"); `#am-ward-cue` in `web/index.html` is an orphan mount nothing fills.
+  (b) **spike_cue**: deleted for Riot compliance (`docs/OVERLAY_COMPLIANCE_PLAN.md` row B3;
+  `web/js/main.js` comment above `renderStatsPanel` in the live dispatch, "Do not reinstate").
+  (c) **W3E callouts + lead_projection**: CLASS 2. B4-b blanks both TOP-LEVEL keys while a game is
+  live (`dashboard/_state_builder.py:455-457` `LIVE_SUPPRESSED_ENVELOPE_FIELDS`, applied at `:1053`),
+  because both feeds are imperatives (spike lines, "Drake spawns 5:00 - set up vision", "Big lead:
+  dive or roam"). A POPULATED in-game capture would be the compliance regression; the in-game
+  check INVERTS (predicate (P1) below).
+  (d) **spike-markers live-clock cursor**: NOT BUILT (`web/js/panels/spike_markers.js:10-14` and
+  `:200-201`, "v1 omits it"), and `#am-spike-markers` is `display:none` on the overlay
+  (`web/css/overlay.css:197`).
+  (e) **ward_heat strip**: `display:none` on the overlay (`web/css/overlay.css:198`, the GPU-light
+  block); it paints only on the 1920 dashboard, so it is not an overlay subject.
+  (f) **BATCH C enemy-chip-wrap**: its subject is the enemy summoner-spell chip (LEDGER 799 BATCH C
+  item 3), deleted for Riot compliance (row B1); nothing named enemy-chip remains in `web/`.
+  (2) LIVE, with the render path at HEAD (all `body[data-shell="overlay"]`, rc-shell overlay ON):
+  (g) OVL1 settings strip `#ovset` in w-ovds (`web/js/panels/overlay_ds_controls.js:255-300`):
+  `#ovset-pulse` "Change pulse" and `#ovset-revert` "Auto-passive (s)" [3..120] are still there,
+  plus later rows (rank tier, role, keep, pin, separate, zones, opacity). The revert value is also
+  G6-02's knob; a G6-02 pass does not capture this strip, and this capture does not tick G6-02.
+  (h) objective_chips `#am-obj-chips` inside w-call, live dispatch `web/js/main.js:1688`, shows
+  only while a respawn is pending (`liveclient.objective_events`, `objective_chips.js:112-122`).
+  (i) minimap_rect `#am-mmrect` (w-mmrect, `main.js:1681`) with the BATCH B gold hairline
+  `web/css/overlay.css:804-816` (2px gold 0.85; its `::before` is off, `:817`), and (j) minimap_zoi
+  `#am-zoi-canvas` (`main.js:1685`). Both need top-level `minimap_rect`, built only for `mode_key`
+  sr / aram / brawl (`dashboard/_state_builder.py:845-851`), so never in Arena or TFT.
+  (k) objective gauges `#am-obj-gauges` (w-objgauges, `main.js:1692`): BATCH C's one-row 3-dial
+  layout; SR only (`objective_gauges.js:253-256`, null unless `mode == "sr"` and a game clock).
+  (l) draft_elo chip `#am-draft-elo` in w-build (`overlay.css:572-600`, fetch `/api/draft-elo`,
+  `draft_elo.js:54`). (m) SHAPER row `bm-shaper` in w-build (`web/js/panels/active_match.js:1019-1021`,
+  `renderShaperStrip`, fetch `/api/ds-shape`). (n) item-662 first-match no-flash: rc-shell
+  `shouldShowOverlayNow` (LEDGER 662); observed once at the FIRST match launch after an rc-shell
+  relaunch, by eye, not from a frame.
+  **CAPTURE-SOURCE TRAPS (state them before any game):** `:8889/latest-frame` is a GDI BitBlt of the
+  desktop, so it DOES include the overlay layer, but only while `obs.frame_source` is OFF: when that
+  flag is on, the OBS frame REPLACES it and never shows the overlay (`vision_server/_frame.py:183-191`).
+  The frame is also downscaled to 1280 wide (`_frame.py:93`), so the 2px minimap hairline is about
+  1.3px there; grade (i) on a full-resolution operator capture, not on the relay frame.
+  **PROBE (copy-paste, from a worktree, read-only; a practice SR game, overlay ON, after a dragon is
+  taken):** `curl -sk https://127.0.0.1:8888/api/state > _scratch/g225_state.json`, then
+  `curl -s -H "X-RC-Token: $TOK" http://127.0.0.1:8889/latest-frame/meta` (frame `ts`) and the
+  frame itself into `_scratch/` (never committed). Field paths: `mode_key`, `liveclient.game_time_s`,
+  `liveclient.objective_events`, `minimap_rect`, `zoi`, `callouts`, `lead_projection`.
+  **PREDICATES (stated before any game):** (P1) CLASS-2 inverse, a SENT check graded on
+  `/api/state` alone: PASS iff, with `liveclient` non-empty, `callouts == []` and
+  `lead_projection == {}`; FAIL on any non-empty value (the B4-b blanking leaked). (P2) per live
+  subject (g)-(m): PASS iff its precondition holds in the SAME state read (mode sr; for (h) a pending
+  respawn in `objective_events`; for (i)/(j) a non-null `minimap_rect`, and for (j) a non-null
+  `zoi`) AND the frame, whose `ts` is within 10 s of the state read, shows the widget's own text or
+  hairline at its registry anchor (`overlay_layout.js` WIDGETS `x`/`y`, or a dragged position)
+  with no clip at the viewport edge. A precondition that does not hold is NO-RESULT, never PASS.
+  (P3) for (n): PASS iff no full-screen flash before the widgets settle at the first match launch.
+  **SUBSTITUTION CHECK:** the `/api/state` read answers only whether the data was SENT; it is never
+  evidence that a widget RENDERED (except P1, whose subject IS the sent envelope). A ui_mock render,
+  a headless Chromium overlay render, a node test or a dashboard (non-overlay) screenshot is the
+  compute half and drains nothing.
 - **G2-26** (was the pixel half of C13) ~~R38 enemy_spells `stats_panel` RENDERED PIXEL capture. The
   DATA path is live-proven TWICE (LEDGER 769 + LEDGER 820 2026-07-08, 5 enemies x 2 spells); LEDGER
   820 explicitly records "CSS visual verify PENDING (overlay hidden)". Best read vs real enemies
@@ -1628,6 +2156,81 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   DISPOSITION NOTES from RM-05: build META row should stay STATIC; DMG/SURV/UTIL knob steppers dead;
   item right-click 5-choice radial dead; ward_cue teardown is a deliberate live-session job (live
   serializer + test + overlay DOM contract), never a blind headless delete.
+  **AGE CHECK (lane 9 PREP s144 c130, S144-G-117, source read at `8d7fe9b27`, 2026-11-09; NOT a
+  tick, no game involved).** The punch-list's primary source is the 2026-07-05 LIVE-RECON PUNCH-LIST
+  in `docs/ROADMAP_HISTORY.md` (operator eyeball of the real overlay in a practice SR game); the
+  RM-05 entry there (2026-07-17) is a later status write-up that restates it and names the tooltip
+  sub-item more narrowly than this row: "context-menu/radial tooltip cropped icon + far positioning
+  (plain hover tooltip is fine)". **"dead" in the disposition notes means "does not work", not
+  "remove":** the 07-05 recon files all three under BUGS - "build META row should stay STATIC (the
+  meta build does not shift per state tick); the DMG/SURV/UTIL knob +/- steppers do not work; the
+  item right-click 5-choice radial ... does not work". Eight subjects, re-measured one by one:
+  (1) build-META row STATIC - OWED A LIVE CHECK (CHECK M). Code read only: in
+  `web/js/panels/active_match.js` the Meta / Ultimate rows get `noDelta: true` and no `onOverride`
+  (no radial, no delta badge) and the `_cycleMeta` handler is gone from that file (stale comments in
+  `web/js/lib/overlay_item_radial.js` still name it). But the Meta row's CONTENT is
+  `_maybeRefreshBuildOrder` (POST `/api/build-order`), re-fetched whenever level or owned items change
+  and at least every `_BUILD_ORDER_COOLDOWN_MS` (8 s), and both static rows go through
+  `_bmPartitionOwned` (owned first). Whether it "does not shift per state tick" is not settled by
+  reading the code.
+  (2) DMG/SURV/UTIL knob steppers "do not work" - STILL SHIP, OWED A LIVE CHECK (CHECK S), and the
+  last live report after a fix is a FAILURE: `74416df5a` (2026-07-06, "dead DMG/SURV/UTIL counters:
+  the shaper strip now carries data-rc-zone") came the day after the recon, but LEDGER 859
+  (2026-07-11) re-reports "DMG/SURV/UTIL +/- + shaper knobs have no visible effect (root-cause)", and
+  LEDGER 860's panel-interactable map does not list them. `active_match.js` still appends the
+  `bm-shaper` row via `renderShaperStrip` (`web/js/panels/ds_shaper.js` sets `data-rc-zone`), and no
+  `body[data-shell="overlay"]` rule hides `.bm-shaper` (`web/css/overlay.css` hides only the FIGHT
+  MODEL `.bm-row.bm-knobs`). No later commit is named here as the fix for "no visible effect".
+  (3) item right-click radial "does not work" - STILL SHIPS, owed a live check under G2-31 (D2 / D3).
+  No click-zone fix was needed: that wiring PREDATES the recon (the LIVE strip and the ring were both
+  made `data-rc-zone` in `0a7ea058f`, 2026-06-29; `74416df5a` only carried the attribute into the
+  3-row redesign). Two radial fixes shipped after the recon: `320126f2d` (2026-07-11, LEDGER 860,
+  MUTE drops the item from LIVE rows + condensed ring) and `eccb6be29` (2026-07-12, LEDGER 870, the
+  center-wedge overlap, after the operator live-QA'd the overlay from screenshots). LEDGER 870
+  implies the ring OPENED live by then (an inference from the record, not new evidence); whether a
+  wedge click lands is G2-31 D2, and the likely remaining live defect is the position, sub-item (5). This REFUTES the premise of G2-31's "OPERATOR CALL FIRST" (it read
+  "dead" as a remove ruling); see the note added there.
+  (4) drag/move system - owned by G2-32 (AGE CHECK + READY, with `tools/gated_g232_layout_diff.py`).
+  (5) context-menu/radial "cropped icon + far positioning" - ROOT CAUSE ON DISK (Class 1), a code fix
+  owed before any live check is worth running: `overlay_item_radial.js` `_open` copies the body zoom
+  onto the ring (`r.style.zoom = String(_bodyZoom())`, ring mounted on `<html>`, `position:fixed`),
+  measures it post-zoom, clamps in SCREEN px, then writes `style.left/top` WITHOUT dividing by the
+  zoom. `web/js/lib/overlay_tooltip.js` `_place` has the identical mount and zoom, and divides by z
+  for exactly this symptom ("tooltip appeared far right/below the anchor at any overlay ovscale !=
+  1", fix `9f96ff3de`, 2026-06-29) - which is why "plain hover tooltip is fine" and the radial is not.
+  At body zoom z the ring renders z-times right/down of the cursor (far positioning) and past the
+  clamp near the right/bottom edge (cropped). At z = 1 (`--rc-overlay-scale` at the 1920 baseline,
+  `overlay.css` `body[data-shell="overlay"]` `zoom`) the defect is invisible.
+  (6) PR enemy-spell chip cooldown timer - DEAD (above, RM-1511).
+  (7) objective gauges 1-line layout - CLOSED, RULED HORIZONTAL 2026-07-20 (G2-34, struck).
+  (8) ward_cue teardown - the widget went 2026-07-05 (`d0ca9945`, recon-confirmed gone) and the
+  orphan `web/js/panels/ward_cue.js` headless in `8c9560951` (2026-07-09); the "live-session job"
+  wording is the 2026-07-12 correction in the same ROADMAP_HISTORY block. What remains reads by no client:
+  `dashboard/_liveclient.py` still sets `out["ward_cue"] = compute_ward_cue(...)` and
+  `web/index.html` keeps a `hidden` `#am-ward-cue` div that no script fills (git grep over `*.py`,
+  `*.js`, `*.mjs` outside `core/ward_cue.py`, `tests/` and `docs/` finds no reader). A
+  `Not actually live-gated` CANDIDATE for a HUMAN to move (a field nothing reads needs no game to
+  delete); a lane does not move it.
+  READY, the live-checkable rest (one overlay-up pass, operator present; a lane never clicks or
+  captures). Precondition: a live SR or ARAM game, rc-shell overlay up, `w-build` visible.
+  P1 `curl -sk https://127.0.0.1:8888/api/state` -> `mode_key`, `liveclient.gameData.gameTime`,
+  fetch time. P2 in the overlay page console: `getComputedStyle(document.body).zoom` (record z).
+  CHECK R (sub-item 5, only after the zoom fix lands): with z != 1,
+  right-click a LIVE-row icon near the widget's right edge; PASS iff `#rc-item-radial`'s
+  `getBoundingClientRect()` centre is within 12 px of the click point (or clamped 6 px inside the
+  viewport) and the whole ring is inside `innerWidth` x `innerHeight`; FAIL = ring offset by about
+  (z - 1) x the click coordinates, or clipped. With z = 1 record "not reproducible at z = 1"; that is
+  neither a pass nor a fail. CHECK M (sub-item 1): watch the Meta Build row for at least 30 s (three
+  refetch windows) with no level-up and no purchase; PASS iff its item order is identical at every
+  sighting; FAIL = the order changes while neither level nor owned items changed. After a purchase the
+  only allowed change is the bought item moving to the owned-first block. CHECK S (sub-item 2): click `+` on DMG; PASS iff the
+  `.bm-shaper-val` for DMG steps by 1 within about 1 s and the game did not take the click (no
+  move order); FAIL = no step, or the click went through to the game. EVIDENCE CONTRACT: P1 body with
+  fetch time, mode, game_time, z, and per check the click point, the ring rect or the value before /
+  after, and the sighting time. SUBSTITUTION: `tests/test_overlay_d2_item_radial.py` is grep-style
+  (it asserts the word `zoom` appears, not the arithmetic), and `ds_shaper.test.mjs` drives a DOM
+  shim; neither saw the click-through overlay, so neither answers whether the ring LANDED under the
+  cursor or the step LANDED in game. Nothing ticked; no count moved.
 
 ### `[BATCH OVERLAY-INTERACT]` - overlay up, one pass of click / drag / hover
 
@@ -1656,6 +2259,13 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   stands or falls with it. Live-verifying D2 / D3 would grade a surface the operator ruled dead. The
   operator picks: remove the radial (then D2 + D3 strike as a human edit) or keep it (then the checks
   below stand).
+  **CORRECTION (lane 9 PREP s144 c130, S144-G-117, 2026-11-09): the premise above is refuted.** The
+  primary source, the 2026-07-05 LIVE-RECON PUNCH-LIST in `docs/ROADMAP_HISTORY.md`, files the radial
+  under BUGS ("the item right-click 5-choice radial ... does not work"); RM-05's "dead" restates that
+  bug, it is not a remove ruling; no operator ruling to remove the radial was found, and LEDGER 870
+  (2026-07-12) shows the radial kept and fixed after an operator live QA (center-wedge overlap).
+  D2 / D3 are owed a live check, not an operator call; run CHECK D2/D3 below, after the radial zoom
+  fix named in G2-30 sub-item (5).
   (D3 Defer-Once re-entry) CANNOT PASS TODAY, by construction (Class 1, the answer is on disk): the
   client `deferItem` only sets `deferred` and `applyItemOverrides` sinks it with a fixed bias, with no
   owned-count baseline (`item_overrides.js`); the server route builds a fresh `ReplanLoop()` per
@@ -2845,6 +3455,36 @@ survivability flips below cannot roll otherwise.
   resolver default would apply the ARAM-win-anchored archetype in SR and Arena too (blast radius
   bounded to the 6 tabled champs, but NOT ARAM-scoped). This needs a call-site choice plus a mode gate,
   not the 1-line flip the row implied. **NO LIVE RESIDUAL until that code lands.**
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 144, S144-G-131, source read at `b09a7b6fa`; NOT a
+  tick).** The MIS-FILED verdict holds; three corrections. (1) STILL DEFAULT-OFF AND UNCONSUMED:
+  `inspect.signature(core.archetype_picks.get_archetype_for)` reads `(champion: str,
+  prefer_aram_win_axis: bool = False)` (def `core/archetype_picks.py:798`, override branch `:833`),
+  and in tracked non-test code no call passes the flag - in tracked `.py` files outside `tests/` the
+  name appears only in the resolver itself (def, docstring, branch), two comments
+  (`core/archetype_picks.py:113,226`) and the build script's strings (item 3); beyond Python it is
+  named only in prose (the table's own `_comment`, `ops/audit/ds_cross_eval/TIER2_REPORT.md`, docs),
+  never in a call. The resolver
+  takes no mode argument, so the mode-gate hazard holds by signature. (2) COUNT AND CITES DRIFTED: the
+  row says "13" but its own list names 14 sites, and all 14 still exist, 13 of them moved:
+  `coach_integration/archetype_dispatch.py:380`, `coach_integration/enemy_stats.py:218`,
+  `core/build_order_precompute.py:513`, `core/build_planner/kit_synergy.py:590,641`,
+  `core/ds_antitank_hint.py:114`, `core/zoi_capability.py:140`, `dashboard/routes_archetype.py:190,242`,
+  `dashboard/routes_ds_sweep.py:214`, `dashboard/routes_spike_curve.py:196` (the only cite that held),
+  `dashboard/routes_state.py:1155,1581`, `dashboard/_state_builder.py:793`. Five more default-flag
+  callers live in `tools/` (`ds_matchdb_mcp_server.py:311,391` via alias `_get_archetype_for`,
+  `daemon_slayer_build_orders_generate.py:205`, `ds_cross_eval/probe_champion.py:207`,
+  `gated_g238_top_pick_flip.py:340`); a resolver-default flip would reach them too. (3) "ONE BUILD
+  SCRIPT" PASSES `True` IS REFUTED: `ops/audit/ds_perm_swarm/build_aram_archetype_override.py` never
+  imports the resolver - it names the seam only in its docstring (`:37`) and in the JSON `_comment`
+  string it writes (`:211-212`). `True` is passed only in `tests/test_aram_archetype_override.py`
+  (`:189,199,212,227`). (4) TABLE REPRODUCES, BUT STALE: `core/aram_archetype_override.json`
+  `champions` holds 6 entries, and resolving kit default vs override reads Kayle onhit -> carry,
+  KogMaw onhit -> carry, Shaco assassin -> mage, Shyvana bruiser -> mage, Zilean enchanter -> mage
+  (DIFFER) and Taric tank -> tank (same): **5 of 6**, as filed. The table's own `patch` field is
+  `16.12.1` (file last changed 2026-06-17) while DS serves `16.22.1`, so the rewind-WIN anchors are
+  ten patches old; any future flip should rebuild the table first. Still headless code work, not a
+  game. Idle: `/api/state` `mode_key` `client`, `liveclient` empty, LCU phase None at 2026-11-10
+  00:49 local; no game.
 - **G3-05** (was C5) RF1 bruiser survivability flip - **EYEBALL CLOSED 2026-07-18** (on top of the
   LIVE-VALIDATED 2026-06-18 Yasuo read; the row's own "further tabled rolls (Darius/Udyr) optional"
   residual is now discharged headless). MEASURED at `[3078,3053,3742]`, L13, mode=ARAM, top_n=200,
@@ -2858,6 +3498,33 @@ survivability flips below cannot roll otherwise.
   `core/daemon_slayer_client.py:403,442` -> `agents/daemon_slayer/server.py:850` ->
   `hybrid.rank_items_by_hybrid`.
   REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 138, read at `65c451b5a`; NOT a tick).** The
+  measurement and the REMAINS line hold; every chain cite moved. (1) RE-MEASURED in-process (compute
+  half only, the same headless class as the 2026-07-18 close, not live evidence): DS snapshot
+  `16.22.1`, ENGINE `1.291.0`, `hybrid.rank_items_by_hybrid` at the row's own inputs (items
+  `[3078,3053,3742]`, L13, mode ARAM, top_n 200) returns **pool=111 exact** ON and OFF; Yasuo DIFFERS
+  (ON floats `6665` + `3091`), Darius DIFFERS (`6631`, `6333`, `4401`), Udyr DIFFERS (`6665`, `3065`,
+  `3075`); Garen / Sett / Illaoi / Aatrox / Olaf / Trundle byte-identical - the filed partition and
+  floated ids, unchanged. (2) STILL DEFAULT-OFF at every layer (`inspect.signature`):
+  `dispatch_for_coach` (23 params), `rank_for_primary_archetype` (47), `rank_bruiser_for` (52) and
+  `hybrid.rank_items_by_hybrid` all default `prefer_survivability_by_win=False`, and `git grep`
+  finds the key under no file in `coaches/`, so the flip has NOT landed. (3) CHAIN, by symbol (the
+  filed `aram_coach.py:784` now lands in `_update_vision_cadence`): `coaches/aram_coach.py:1112` (the
+  `_ds_dispatch_for_coach(...)` call, key absent) -> `coach_integration/archetype_dispatch.py:289`
+  `dispatch_for_coach` (param `:313`, `seams` entry `:441-442`) -> `core/daemon_slayer_client.py:2995`
+  `rank_for_primary_archetype` (param `:3037`; bruiser branch `:3212`) -> `rank_bruiser_for` `:1514`
+  (param `:1535`, body key `:1638-1639`) -> `/rank-bruiser` (`agents/daemon_slayer/server.py:3239`)
+  -> `_route_rank_bruiser` `:1651` (parsed per request `:1738`, call `:1788`, kwarg `:1825`) ->
+  `hybrid.rank_items_by_hybrid` `:938` (param `:977`, resolve `:1274`). The same key also feeds RF3
+  (`_route_rank_tank` `:1299`) and RF2 (`_route_rank_enchanter` `:3097`), so a dispatcher-level
+  default flip flips all three rows (G3-05 / G3-06 / G3-07) at once. (4) ONE NEW REACH PATH since the
+  close: `dashboard/routes_state.py:969` `_DS_PREVIEW_SEAM_BOOLS` lets an `/api/ds-preview` body opt in
+  (forwarded at `:1053`), but no file under `web/` sends the key, so no on-screen surface reaches it
+  either. (5) RESTART NOTE, not a correction: `/rank-bruiser` already parses the key per request, so
+  a flip made at the RC caller (the row's "1-line caller default") needs an RC reload, which since the
+  2026-10-31 launcher cutover means an rc-shell relaunch (no task starts RC); the DS `:8860` restart
+  is owed only if the flip is made in the engine defaults instead. Idle this cycle: `:8888` curl
+  empty at 2026-11-09 09:43 local; no game.
 - **G3-06** (was C6) RF2 enchanter survivability flip - **EYEBALL CLOSED 2026-07-18.** MEASURED at
   `[3853,3504,6617]`, L13, **pool=8 exact**, and all three of the row's own predictions reproduce
   INCLUDING the negative: **Rakan DIFFERS** - ON floats `2051` Guardian's Horn + `3083` Warmog's Armor
@@ -2867,6 +3534,31 @@ survivability flips below cannot roll otherwise.
   `3121` Fimbulwinter is NOT surfaced on the hps lane, and the row itself scopes that `inject_ids`
   work as a headless slice, not a gate.
   REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 139, read at `bcdee4eec`; NOT a tick).** The
+  measurement and the REMAINS line hold. (1) RE-MEASURED in-process (compute half only, the same
+  headless class as the 2026-07-18 close, not live evidence): DS snapshot `16.22.1`, ENGINE
+  `1.291.0`, `hps.rank_items_by_hps` at the row's own inputs (items `[3853,3504,6617]`, L13, mode
+  ARAM, top_n 200) evaluates **pool=8 exact** OFF; Rakan DIFFERS (ON floats `2051` + `3083` + `3084`
+  to ranks 1-3); Soraka / Janna / Lulu / Nami / Karma byte-identical. Depth `[]` evaluates pool=10
+  with the identical partition and floated ids; Rakan's three floats also hold at L6 and L18; `3121`
+  Fimbulwinter is surfaced neither OFF nor ON. READING NOTE, not a correction: "pool" is the OFF
+  `candidates_evaluated`; ON evaluates 11 (depth `[]`: 13) for Rakan only, because RF2 INJECTS the
+  three HP items into the pool before floating them (`hps.py:1008-1018`, unlike the RF1 hybrid lane,
+  which only re-orders), so the ON count is pool + injected, not a different pool. (2) STILL
+  DEFAULT-OFF at every layer (`inspect.signature`): `dispatch_for_coach` (23 params),
+  `rank_for_primary_archetype` (47), `rank_enchanter_for` (16) and `hps.rank_items_by_hps` all
+  default `prefer_survivability_by_win=False`, and `git grep` finds the key under no file in
+  `coaches/` or `web/`, so the flip has NOT landed. (3) CHAIN, by symbol (the row filed none):
+  `coaches/aram_coach.py:1112` (the `_ds_dispatch_for_coach(...)` call, key absent) ->
+  `coach_integration/archetype_dispatch.py:289` `dispatch_for_coach` (param `:313`, `seams` entry
+  `:441-442`) -> `core/daemon_slayer_client.py:2995` `rank_for_primary_archetype` (param `:3037`;
+  enchanter branch `:3354`) -> `rank_enchanter_for` `:2353` (param `:2368`, body key `:2401-2402`)
+  -> `/rank-enchanter` (`agents/daemon_slayer/server.py:3246`) -> `_route_rank_enchanter` `:3063`
+  (parsed per request `:3097`, kwarg `:3115`) -> `hps.rank_items_by_hps` `:904` (param `:921`,
+  resolve `:1012-1015`). G3-05's dispatcher-level note applies here unchanged: one default flip at
+  `dispatch_for_coach` flips G3-05 / G3-06 / G3-07 together, and the `/api/ds-preview` opt-in
+  (`dashboard/routes_state.py:969` `_DS_PREVIEW_SEAM_BOOLS`, forwarded at `:1053`) has no `web/`
+  sender. Idle this cycle: `:8888` and `:2999` curl status `000` at 2026-11-09 10:14 local; no game.
 - **G3-07** (was C7) RF3+RF6 tank survivability flip - **EYEBALL CLOSED 2026-07-18, on the EMPTY-DEPTH
   run and ONLY on that run.** THE RUN THAT CLOSES THIS ROW: depth `[]`, **pool=121**, KSante ON top-6 =
   `['6662','3075','3143','3083','6665','2504']` - Iceborn Gauntlet 6662 **and** Thornmail 3075 - so the
@@ -2876,6 +3568,33 @@ survivability flips below cannot roll otherwise.
   3075 structurally unrankable and left half the row's own prediction unobservable. **That first
   evidence was INSUFFICIENT as filed and must not be cited alone.** RF6 rides the SAME flip as RF3.
   REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 140, read at `0a7552d7d`; NOT a tick).** The closing
+  run and the REMAINS line hold. (1) RE-MEASURED in-process (compute half only, the same headless
+  class as the 2026-07-18 close, not live evidence): DS snapshot `16.22.1`, ENGINE `1.291.0`,
+  `ehp.rank_items_by_ehp` at depth `[]`, L13, mode ARAM, top_n 200 evaluates **pool=121** OFF and ON
+  for KSante, whose ON top-6 is `['6662','3075','3143','3083','6665','2504']` - byte-identical to the
+  filed closing run, Iceborn Gauntlet 6662 AND Thornmail 3075; Rell floats `3121` Fimbulwinter to
+  rank 1; Malphite / Ornn / Sion / Zac byte-identical. The partition holds at L6 and L18 (KSante
+  floats 6662 + 3075 into the top 2 at both; Rell floats 3121 to rank 1 at both). RF6 visible in the
+  counts: Rell alone evaluates pool + 1 ON (122), because RF6 INJECTS the non-purchasable 3121 past
+  the purchasable gate (`ehp.py:3725` `inject_ids=`), while KSante's ids are already pooled and only
+  float (RF3). DRIFT, not a correction of the close: the INSUFFICIENT first-filed depth
+  `[3068,3075,3143]` now evaluates pool=118 (filed 117), same partition, KSante 6662 and Rell 3121 to
+  rank 1. (2) STILL DEFAULT-OFF at every layer (`inspect.signature`): `dispatch_for_coach` (23
+  params), `rank_for_primary_archetype` (47), `rank_tank_for` (52) and `ehp.rank_items_by_ehp` (57)
+  all default `prefer_survivability_by_win=False`, and `git grep` finds the key under no file in
+  `coaches/` or `web/`, so the flip has NOT landed. (3) CHAIN, by symbol (the row filed none):
+  `coaches/aram_coach.py:1112` (the `_ds_dispatch_for_coach(...)` call, key absent) ->
+  `coach_integration/archetype_dispatch.py:289` `dispatch_for_coach` (param `:313`, `seams` entry
+  `:441-442`) -> `core/daemon_slayer_client.py:2995` `rank_for_primary_archetype` (param `:3037`;
+  tank branch `:3167`) -> `rank_tank_for` `:907` (param `:922`, body key `:1056-1057`) ->
+  `/rank-tank` (`agents/daemon_slayer/server.py:3237`) -> `_route_rank_tank` `:1202` (parsed per
+  request `:1299`, kwarg `:1483`) -> `ehp.rank_items_by_ehp` `:3194` (param `:3227`, resolve
+  `:3474-3478` via `survivability_item_ids_tank`, inject `:3725`). G3-05's dispatcher-level note
+  applies unchanged: one default flip at `dispatch_for_coach` flips G3-05 / G3-06 / G3-07 together,
+  and the `/api/ds-preview` opt-in (`dashboard/routes_state.py:969` `_DS_PREVIEW_SEAM_BOOLS`,
+  forwarded at `:1053`) has no `web/` sender. Idle this cycle: `:8888` and `:2999` curl status `000`
+  at 2026-11-09 10:44 local; no game.
 - **G3-08** (was C8) F2 `cost_ceiling` flip - **PREMISE DEAD 2026-07-18: re-file as
   CLOSED-STALE-PREMISE, explicitly NOT as a validated flip.** SETTLED HEADLESS, and stronger than the
   row assumed: 223069 Void Immolation is 6000g with `maps {'11':False,'12':True,'21':False,'22':False,
@@ -2889,6 +3608,30 @@ survivability flips below cannot roll otherwise.
   Infinity Edge 3031) and the ceiling sweep is 1000 -> 15, 2500 -> 33, 3500 -> 121, 99999 -> 121.
   **There is no ARAM mega-item**, so there is no ARAM mega-item context for the eyeball to want.
   NO LIVE RESIDUAL. Do NOT ship F2 expecting an effect, and do not record this row as a validated flip.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 141, S144-G-128; NOT a tick).** The verdict holds, but
+  the row's DECISIVE CONTROL IS GONE and two cites drifted. (1) RE-MEASURED in-process (compute half
+  only): DS snapshot `16.22.1`, ENGINE `1.291.0`, call shape `rank_items_by_hybrid` /
+  `rank_items_by_ehp`, `"Malphite"`, L13, `current_item_ids=[]`, `only_item_ids=[<id>]`, top_n 200.
+  223069 is still 6000g, `purchasable: True`, `maps {'11':False,'12':True,'22':False,'30':True,
+  '453':False}` (key `21` gone, `453` new) and still returns **0 rows in ARAM on both scorers**.
+  (2) CONTROL DRIFT: the filed `mode="ARENA"` control now ALSO returns **0 rows** on both scorers,
+  because RM-513 (2026-10-03) added `rank._ARENA_EXCLUDED_ITEM_IDS` (`agents/daemon_slayer/rank.py:278`,
+  gate `:814`) - Void Immolation is an augment REWARD in Arena too. The ARAM-vs-ARENA comparison no
+  longer separates a deny from a probe artifact. REPLACEMENT CONTROL (counterfactual, same call
+  shape): with `rank._ARAM_EXCLUDED_ITEM_IDS` and `rank._ARENA_EXCLUDED_ITEM_IDS` both emptied
+  in-process, 223069 returns **1 row** in ARAM and in ARENA on both scorers, and still 0 in SR
+  (maps `11` False). So the ARAM 0 is the deny, not the probe. (3) CITE DRIFT: the deny is no longer
+  at `rank.py:196` / `:190`; it is `_ARAM_EXCLUDED_ITEM_IDS` at `rank.py:267` (entry `:268`), applied in
+  `_filter_candidates` at `:811` before the inject force-admit. The set now holds a SECOND id, 226668
+  Ultra Hydra (6000g, maps `12` only, a Mayhem augment reward, NEW 16.17.1): 0 rows ARAM as shipped,
+  1 row with the set emptied. Guards are under `agents/daemon_slayer/tests/`
+  (`test_aram_mega_item_exclusion_1618.py`, `test_arena_augment_reward_exclusion_rm513.py`), not
+  `tests/`. (4) CEILING SWEEP, `rank_items_by_hybrid` ARAM Malphite L13 depth `[]` `cost_ceiling=`:
+  1000 -> 15, 2500 -> **34** (filed 33), 3500 -> 121, 99999 -> 121, None -> 121; the pool still tops
+  out at 3500g (Infinity Edge 3031 / Rabadon's 3089). The pool is champion-dependent (Lux reads 122 at
+  3500 / 99999), so quote the champion with the count. "No ARAM mega-item" still holds for the SHOP
+  pool. The row stays CLOSED-STALE-PREMISE with NO LIVE RESIDUAL. Idle: `/api/state` `mode_key`
+  `client`, `liveclient` `{}`, `:2999` curl status `000` at 2026-11-09 22:21 local; no game.
 - **G3-09** (was C9) T1-F3 enemy-pen-aware effective-resist EHP flip (opt-in
   `enemy_lethality`/`enemy_*_pen` on compute_ehp) - **RE-FILE source: GATE 3; destination: headless
   CODE task.** SETTLED HEADLESS: (1) the row's blocker was binary - "bots do not build pen items" - and
@@ -2905,6 +3648,26 @@ survivability flips below cannot roll otherwise.
   `server.py`, not in `core/daemon_slayer_client.py`, not in any coach, and NOT exposed over HTTP. A
   live ARAM exercises zero extra code. **NO LIVE RESIDUAL until the flag is plumbed.**
   SOURCE: BACKLOG.md:32.
+  **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 142, S144-G-129; NOT a tick).** The verdict holds;
+  the cites drifted. (1) STILL UNREACHABLE: in tracked code `enemy_lethality` appears only in
+  `agents/daemon_slayer/ehp.py` (now `:1407`, `:1667`, `:2311`, `:2725`, `:2729`, `:2835`, `:2898`,
+  `:2910`), its DS tests, and `tests/test_ds_parity_map.py:90`, which now MACHINE-GUARDS the gap: the
+  `/ehp` entry of `_UNREACHABLE_OK` lists `enemy_lethality`, `enemy_armor_pen_pct`,
+  `enemy_magic_pen_flat`, `enemy_magic_pen_pct` and `enemy_shred_pct` as kwargs the route does NOT
+  parse. Zero hits in `agents/daemon_slayer/server.py` or `core/daemon_slayer_client.py`. (2) LEXICAL
+  NEAR-MISS, not a plumbing: `core/build_planner/situational.py` `enemy_pen` (`:139`, set `:535-543`
+  from an enemy pen-item count) feeds the build-plan counter chips (C4, row G4-16) and never calls
+  `compute_ehp` (`:477`); it does not reach this seam. (3) SHAPE RE-MEASURED in-process (compute half
+  only), DS snapshot `16.22.1`, ENGINE `1.291.0`, call shape `compute_ehp(snap, "Aatrox", level=L)`
+  vs the same plus `enemy_lethality=20.0, enemy_armor_pen_pct=0.35` (no items, default mode, default
+  shares): L11 physical 2972.6 -> 2179.7 (-26.7%), magical 2475.3 -> 2475.3 (+0.0%), blended
+  2724.0 -> 2327.5 (-14.6%); L18 physical 5683.2 -> 4082.3 (-28.2%), magical +0.0%. Physical falls,
+  magical is unmoved - the filed shape. The magnitudes differ from the filed -42% because the filed
+  call shape was never stated; do not compare the two. (4) SOURCE CITE DRIFT: `BACKLOG.md:32` is now
+  an unrelated RM-2071..RM-2075 block and BACKLOG.md no longer mentions T1-F3 (`git log -S"T1-F3"
+  -- BACKLOG.md`: last change `03ac01b4a`, "mdclean C3"); the shipped seam is LEDGER item 371.
+  Still NO LIVE RESIDUAL until `/ehp` (or an RC caller) passes the pen kwargs. Idle: `/api/state`
+  `mode_key` `client`, `liveclient` empty, LCU phase None at 2026-11-09 23:20 local; no game.
 - **G3-10** (was C10) R41 `assume_ally_detonation` (Leona P Sunlight) - **PARTIAL 2026-07-18.**
   SETTLED HEADLESS: the math is byte-exact and the scope is tiny. The override entry reproduces
   byte-for-byte - `AllyDetonationEntry(source_key='P', kind='FLAT_MAGIC', flat_lo=32.0, flat_hi=151.0,
@@ -2933,6 +3696,34 @@ survivability flips below cannot roll otherwise.
   kill / objective / multikill events, no per-hit or mark event), so "how often do allies consume
   Sunlight" has no known probe. Telemetry, not a game, is the missing piece - check the live
   `eventdata` list once in any game before trusting this.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 143, S144-G-130, source read at `a87161a42`; NOT a
+  tick).** The verdict holds; one more source checked. (1) STILL UNREACHABLE: in tracked non-test code
+  `assume_ally_detonation` appears only in `agents/daemon_slayer/burst.py` (`:534` kwarg, `:1261`
+  gate), `dps.py` (`:791` kwarg, `:1933` gate) and `_ally_detonation_overrides.py`; zero hits for
+  `detonation` in `agents/daemon_slayer/server.py` or `core/daemon_slayer_client.py`. The gap is now
+  MACHINE-GUARDED: `tests/test_ds_parity_map.py` `_UNREACHABLE_OK` lists `assume_ally_detonation` under
+  both `/burst` (`:88`) and `/dps` (`:89`) as a kwarg the route does NOT parse. A live game still
+  exercises nothing. (2) MATH REPRODUCES BYTE-EXACT at DS snapshot `16.22.1`, ENGINE `1.291.0`
+  (`/health` agreed), compute half only, call shape `compute_burst_damage(snap, "Leona", L,
+  item_ids=[3068, 3075], mode="ARAM")` vs the same plus `assume_ally_detonation=True` (default target
+  resists): L1 123.500 -> 138.700 (+15.200), L6 435.765 -> 467.590 (+31.825), L13 708.415 ->
+  763.515 (+55.100, +7.8%), L18 966.150 -> 1037.875 (+71.725) - every filed 2-dp number (the filed
+  +31.82 / +71.73 are float renderings of the 3-dp deltas). Scope still ONE champion:
+  `_CHAMPION_DETONATION_OVERRIDES` = `['Leona']`, `_ITEM_DETONATION_OVERRIDES` and
+  `_NONFIT_DETONATION_CANDIDATES` empty; Braum / Nautilus / Thresh / Sett delta 0.0 at L13 under the
+  flag. (3) CORRECTION (b) STILL OPEN AND NOT CLOSABLE FROM LOCAL DATA: the entry note
+  (`_ally_detonation_overrides.py:122-123`) still cites `champion_abilities.json 16.13.1`; the 16.22.1
+  file's `Leona.P` text is unchanged ("2.5 seconds ... 32 : 151 (based on level)") but that file's own
+  header reads `meraki_content_patch` `25.15`, so it is the frozen Meraki copy, not a fresh read. The
+  two per-patch tie-breakers (CLAUDE.md Settled, RM-808) are silent on it: `cdragon_spell_stats.json`
+  (`champions.Leona.spells`) and `cdragon_ability_ratios.json` (`champions.Leona`) hold only `E` /
+  `Q` / `R` / `W`, no `P` key, and `wiki_ability_stats.json`
+  `Leona/Sunlight` carries only `apiname` / `slot` / `spellshield`, no damage line. So no local source
+  confirms 32 : 151 at the live patch; re-anchoring the note to 16.22.1 would launder the Meraki copy
+  into a fresh claim. The re-anchor is an engine-data edit (`agents/daemon_slayer/`, DS lane), not this
+  doc's. (4) The live residual (how often allies consume the mark) still has no probe; the `eventdata`
+  check above is unchanged. Idle: `/api/state` `mode_key` `client`, `liveclient` empty, LCU phase
+  None at 2026-11-10 00:19 local; no game.
 - **G3-11** (was C11) cc_blended_ehp + cc_conditional ecosystem: the DATA-PATH half is validated live
   (DS /ehp cc_blended 5776 -> 2888 vs a real CC comp, 9 consumer surfaces grep-confirmed) but it is
   served only on the tank/bruiser scorer - a full close needs a **TANK/BRUISER PICK against a real CC
@@ -2945,6 +3736,45 @@ survivability flips below cannot roll otherwise.
   trap. This row can therefore be closed ONLY by wiring the cc panel into `/api/state` (headless code),
   NOT by playing the right game. Re-file consequence: the "TANK/BRUISER PICK" closing path is dead on its
   own; keep only the "wire the cc panel" path.
+  **READY (lane 9 PREP s144 cycle 115, source read at `a2abb3bb7`; NOT a tick).** AGE re-check, and the
+  2026-08-02 PREP is NARROWER than the truth in one place. HOLDS: `/api/state` still carries no cc field
+  (`cc_blended` appears in neither `dashboard/_state_builder.py` nor `dashboard/routes_state.py`; pinned by
+  `tests/test_gated_g311_cc_blended_chip.py` `test_state_payload_still_carries_no_cc_blended_field`), and
+  the coach consumer `core/cc_blended_ehp_context.py` `cc_blended_ehp_impact_line` (called from
+  `coaches/aram_coach.py`) is a Haiku PROMPT line, never drawn as such - so the in-game ARAM half still
+  needs the wiring above. MISSED: a RENDERED cc_blended_ehp surface has existed since 2026-05-22
+  (`ae6deb5e0`, item 139 carry (a)): the champ-select threat chip `#csv-sugg-cc-blended-ehp-threat`
+  (renderer `web/js/panels/cc_blended_ehp_threat.js` `renderCcBlendedEhpThreat`, gate
+  `web/js/panels/champ_select.js` `_csvRenderCcBlendedEhpThreat`, compute `GET /api/cc-blended-ehp-threat`),
+  inside the TEAM ANALYSIS drawer beside the G1-03 conditional chip. It is mode-agnostic in its route
+  (SR / ARAM / KIWI / ARENA) but its gate hides it while `their_team` is empty, so it is HIDDEN in blind
+  ARAM / Mayhem select (LCU behaviour, not proven in source) and this gate cannot drain it: it drains in
+  a DRAFT lobby (q400 / q420, GATE 1), in the same capture as G1-03, and it has no other row in this doc.
+  It carries all four G1-03 traps: static `data-cc-tier="warn"` in `web/index.html`, the collapsed
+  `#csv-ta-body` drawer, `[hidden]` not being the visibility truth, and the unchanged-signature early
+  return in `renderCcBlendedEhpThreat` after the gate's direct hide (reproduced under node by the test
+  `test_stale_signature_trap_still_exists`).
+  **CHECK (any DRAFT champ select once one enemy pick is visible), predicate stated first:** PASS iff
+  `lcu.champ_select.their_team[]` and `my_team[]` each hold a `championId > 0` on `/api/state`, the chip has
+  a rendered on-screen box (drawer open), its tier is good / warn / bad with the matching label
+  (FAVORABLE / EVEN / AT RISK), both rows read `<n>.<n>s` with an integer EHP caption ("(your EHP n)" on
+  "Enemy can chain on you", "(enemy EHP n)" on "You can chain on them"), a verdict line is present, AND
+  the page's own last `/api/cc-blended-ehp-threat` URL is for THIS roster by names and mode with the
+  rendered tier, seconds (0.05 tolerance) and EHP integers (JS half-up rounding) equal to that URL's body.
+  FAIL = chip missing from the DOM, populated but malformed, populated with an open drawer and no box, or
+  hidden on a page reloaded 10 to 90 s earlier in this lobby with a visible tab and an ok body for this
+  roster. Anything else (blind select, collapsed drawer, render lag, no route fetch seen) = INCONCLUSIVE.
+  **PROBE (read-only):** `python tools/gated_g311_cc_blended_chip.py snippet` prints an async expression;
+  run it in the real dashboard tab (operator Chrome DevTools console, or headless Chromium against the
+  live :8888 - record which), save the JSON, then `python tools/gated_g311_cc_blended_chip.py grade
+  --evidence <file>` (exit 0 PASS / 1 FAIL / 3 INCONCLUSIVE / 2 unreadable). The bundle keeps only phase,
+  queue id and champion ids - no puuid, no player name (RM-906).
+  **EVIDENCE CONTRACT:** value = tier, both chain seconds, both EHP captions; source = the chip DOM plus
+  the page's own route URL and its re-fetched body; timestamp = `captured_at` plus phase and queue id;
+  predicate = the CHECK above. **SUBSTITUTION:** a GET of `/api/cc-blended-ehp-threat`, the coach prompt
+  line, a `?ui_mock=1` fixture page, or this file's tests (which reach PASS from hand-built bundles) are
+  the COMPUTE half only - never tick from them. A live PASS would discharge only the champ-select RENDER half; the
+  in-game ARAM residual stays "wire a cc panel into `/api/state`" (headless code, not a game).
 - **G3-12** (was C14) `RC_ARAM_STATE_DEBOUNCE` DEFAULT-ON flip validation. **DO NOT close on the OFF
   observation.** The coach refreshed coherently with the flag OFF twice (2026-07-04 6+ min; LEDGER 820
   2026-07-08 "debounce OFF, coach refreshes coherently") - the LEDGER 820 headline reads "C14
@@ -3063,6 +3893,36 @@ survivability flips below cannot roll otherwise.
   an Arena game's samples, proof lines or trace rows are not counted. Idle smoke 2026-11-04 20:19
   local: the dashboard was down, so `sample` read a `URLError` poll (the coach file still held an
   older game's `game_time_s`), and `grade` returned NO_RESULT, exit 1.
+  **AGE RE-CHECK 2026-11-08 (lane 9 s144 cycle 116, read at `edeed0091`; NOT a tick).** The CHECK,
+  the 90 s bound and the tool stand; two corrections. (1) BEHAVIOUR UNCHANGED since cycle 54:
+  `coaches/aram_coach.py` took about 780 churned lines after `d3bc4ce4c`, but on the debounce path
+  the only change is RM-1541 (`a2503f89e`), which removed a `try:` / `except Exception:` / `raise`
+  wrapper around `_run_coach`'s body and re-indented it (the two diff sides of that file, stripped of
+  indentation, differ by exactly those three lines; the decorator already catches). The tool's
+  source pins (`tests/test_gated_g312_aram_debounce_lag.py`, 20 passed this cycle) hold.
+  `coaches/_base_coach.py` changed only an append `newline=` and three dead `pass` lines; every
+  `_base_coach.py` line cite in this row still holds. LINE DRIFT in `coaches/aram_coach.py`, by
+  symbol: the flag read `_STATE_DEBOUNCE` is `:62` (was `:61`), the band `time_band` `:117` (was
+  `:116`), the `@safe_coach_output("ARAM")` decorator on `_run_coach` `:1005` (was `:1004`), the
+  silent missing-client return `if not self._client` `:1014` (was `:1013`), the feature-policy gate
+  `if not _fp_ok("aram", "live_coaching")` `:1009` (was `:1008`; the `:1008` cites in the TOOL
+  block and in (3) above now land on its import line); the debounce log `:1219-1223`, `timeout = 20`
+  `:1246`, `:1257`, `:1268`, `:1344`, `:1383` and `:1390-1393` hold. (2) PRECONDITION ROUTE CHANGED
+  by the 2026-10-31 launcher cutover (CLAUDE.md Topology): no scheduled task starts RC now, so "RC
+  started with `RC_ARAM_STATE_DEBOUNCE=1`" means the variable must be in rc-shell's environment when
+  it spawns `ops/launcher/service_host.py`. The services inherit it: `child_environment` in
+  `ops/launcher/service_host.py` starts from `os.environ` and applies only the overrides it is given
+  (the `services.json` ones - top-level `env` is `{}`, the `dev` profile overrides only
+  `RC_DASH_BIND` - plus first-run provisioning secrets such as `RC_DASH_TOKEN`; none touches this
+  flag), and the supervisor's RC `subprocess.Popen` in
+  `ops/rc_supervisor.py` passes no `env=`, so RC inherits too. Two routes, both operator / merger
+  acts, never the watcher's: set the variable at User scope and relaunch rc-shell from a process
+  started after the change, or add `"RC_ARAM_STATE_DEBOUNCE": "1"` to `profiles.dev.env` in
+  `ops/launcher/services.json` (a main-session path) and relaunch. Still unset at User and Machine
+  scope (read 2026-11-08 about 22:40 local), so the row stays undrainable until one of those lands. The
+  flag is read ONCE at import, so a running RC never picks it up; the zero-proof-line rule already
+  turns a flag-OFF game into INCONCLUSIVE. Idle this cycle: `:8888` and `:2999` both curl 000
+  (RC down, no game).
 - **G3-13** `[UNBLOCKED 2026-10-27 by RM-860 + RM-877; was BLOCKED ON WIRING 2026-10-24]` (was
   C15+C16) Augment OCR rank-vs-pick + live on-screen render validation.
   **READY (lane 9 PREP s144 cycle 8, source read at `f073b1ca1`; NOT a tick). The blocker below is
@@ -3571,6 +4431,27 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   200.00, 425.00 at 150 bonus AD) is DOCUMENTED INTENT per `_lifeline_target_shield.py` - Shieldbow is
   the conservative representative magnitude, as the row already says. Modelling limit, not a defect.
   REMAINS (not a gate): the operator-gated default-ON flip. SOURCE: LEDGER 743.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 145, S144-G-132, source read at `134f4c72e`, DS patch
+  16.22.1, ENGINE_VERSION 1.291.0; no game up; NOT a tick).** The CLOSED verdict holds and the
+  measurement reproduces to the cent; items (2) and (3) are corrections. (1) REPRODUCES: same Yone target build and
+  Fizz burst build as above, `compute_ehp` lvl18 -> hp 2405.00 / armor 141.20 / mr 66.85, and
+  `compute_burst_damage` lvl18 with that target reads 3330.26 -> 2630.26, delta -700.00; with no
+  target modelled it reads 4488.00 -> 3788.00. `target_lifeline_shield` reads 700.00 at lvl18 and
+  400.00 at lvl9; Sterak 3053 0.00 at `target_bonus_hp=0` and 1200.00 at 2000; Maw 3156 200.00 and
+  425.00 at 150 bonus AD. (2) CITES DRIFTED, CONSUMER SET HOLDS: still exactly two engine consumers,
+  both default `False` by `inspect.signature` - `compute_burst_damage` (parameter `burst.py:536`,
+  branch `:1385`) and `compute_dps` (parameter `dps.py:793`, branch `:1965`). `rank_items_by_burst`
+  (`burst.py:1945`), `rank_at_level` (`ability_dps.py:333`) and `compute_rune_proc_damage`
+  (`rune_procs.py:859`) still lack the parameter, and no tracked non-test `.py` file outside
+  `burst.py`, `dps.py` and `_lifeline_target_shield.py` names it (prose docs and the DS CHANGELOG do). (3) THE "REMAINS" FLIP IS NOT PENDING: no HTTP
+  route parses the flag (`tests/test_ds_parity_map.py` `_UNREACHABLE_OK` lists it under both `/burst`
+  and `/dps`, an equality ratchet), and `agents/daemon_slayer/tests/test_stranded_hsp_seam_r197.py`
+  `STRANDED_TODAY` records it as operator-CLOSED s232, the conditional-target-state arc (CLAUDE.md
+  Settled). No flip is queued and no live residual exists; re-opening needs the operator (or MAIN)
+  to re-open s232 in writing. That ledger's reason text says "caster-state lifeline", but the seam
+  models the TARGET's shield (`_lifeline_target_shield.py` docstring); a label slip only, outside
+  this lane's write set (S144-G-133). The row's first paragraph carries a real match id; this
+  re-check does not repeat it, and scrubbing it belongs to RM-906.
 - **G4-09** (was B43) R60 `assume_hsp_amp` (wielder Heal/Shield Power) - **PARTIAL 2026-07-18, and
   CORPUS-CLOSABLE more strongly than first filed.** SETTLED HEADLESS on REAL builds, both halves the
   row names:
@@ -3592,6 +4473,31 @@ of these clears every GATE 2 row plus this section. Make it ranked q420 so it al
   separately gated (G2-23); and these builds span patches 14.15-15.24 scored against a 16.14.1 engine.
   **NO LIVE RESIDUAL - the row never needed a client.** What remains is the operator-gated flip.
   SOURCE: LEDGER 745 + 831.
+  **AGE CHECK (lane 9 PREP s144 cycle 132, S144-G-119; source read at lane HEAD `98c59a301` over
+  local main `d2d4840f1`, no game up: :8888 and :2999 both curl 000 at 2026-11-09T06:41-06:00;
+  NOT a tick). The flip has NOT landed and no RC producer sends the flag.**
+  (1) Still DEFAULT-OFF everywhere: `assume_hsp_amp: bool = False` at `ehp.py:1414` and `:3324`,
+  `hybrid.py:453` and `:1019`, `sustain.py:347` (`compute_sustain`); `server.py` parses it with
+  `_opt_bool(body, "assume_hsp_amp", False)` on four routes only - `_route_ehp` (:1022),
+  `_route_rank_tank`, `_route_rank_bruiser`, `_route_sustain`.
+  (2) Cite drift: the `ehp.py:1472-1479` cite above is stale; the `hsp_pct` block now sits at
+  `ehp.py:1990-2000`, with `shield_amp_mult = heal_amp_mult * (1.0 + hsp_pct)` at `:2000`.
+  (3) Census drift: `ITEM_EFFECTS` now holds 549 entries, **20** with a `shield` (the row filed 16).
+  The "14 carry BOTH" figure was measured on the 16-item set and was NOT re-run here (a corpus
+  re-score is a DS measurement, not a gated one); treat 14 as a lower bound, not a current count.
+  (4) Producer: the RC senders are `core/daemon_slayer_client.py` `ehp_for` (:1131), `rank_tank_for`
+  (:907) and `rank_bruiser_for` (:1514, forwards at :1676). The only caller in `core/` `coaches/`
+  `dashboard/` `modes/` `app/` is `core/defensive_picks.py:402` `rank_tank_for(...)`, which passes
+  no `assume_hsp_amp`, so it sends False. The flag is not in `_DS_PREVIEW_SEAM_BOOLS`
+  (`dashboard/routes_state.py:969`) and no `web/` file names it.
+  PROPOSAL (not a move; a human moves rows): this is a `Not actually live-gated` CANDIDATE. Both
+  halves were settled headless on real builds, `:2999` carries no heal or shield throughput field
+  (Riot Live Client schema, not re-measured this cycle), so no game can grade the magnitude, and the
+  flip itself is an operator decision, not an observation. SUBSTITUTION CHECK: if the flip lands
+  and a later row asks whether RC SENT the flag live, that is a producer question in the G4-10
+  shape (a recorded outbound body with `ts` joined to a `:2999` items read within 10 s of
+  `gameData.gameTime`); a hand-POSTed body or the LEDGER 745 ratios answer only that the engine
+  COMPUTES the amp.
 - **G4-10** `[BLOCKED ON WIRING 2026-11-06]` (was B47c) R109 `apply_ability_hsp_amp` - item HSP amp of the CHAMPION-ABILITY heal/shield
   throughput in `compute_hps` (an enchanter's Ardent/Staff/Redemption/Moonstone/Mikael amped her ITEM
   heals but NOT her ABILITY heals - Soraka Q/W, Janna E, Lulu E; live-proven delta==0 on 8 enchanters,
@@ -4482,6 +5388,33 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
   NO LIVE RESIDUAL. What remains is the operator's per-row call: run `--trust-lcu CHAMP + --match-id`
   for 1633 and 1506, clear the 5 ARAM rows as junk, then VERIFY the historical rows actually changed
   (Data Fixes rule - a fix is not done until the bad rows are backfilled). SOURCE: ROADMAP.md:81.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 128, 2026-11-09, S144-G-115, read at `c33b5ae45`; NOT a
+  tick, NOT a re-open; no game up).** Read-only (`mode=ro`) reads of the main checkout's
+  `data/match_history.db` (mtime 2026-10-28) and `data/rewind_history.db`. No Match-V5 id is
+  restated here (RM-906). (1) HOLDS: the 7 rows exist unchanged - `game_id = 0`, and champion, mode
+  and `game_time_s` (1633 = 923.35, 1506 = 2248.72) as filed. (2) PREDICATE DEFECT: `game_id = 0`
+  does NOT confirm orphan status. It is the normal state (item 211 carry (c),
+  `docs/ROADMAP_HISTORY.md`: Live Client rarely exposes gameId): 153 of 404 rows carry it, and 103
+  non-TFT rows carry it with no `lcu_match_detail` at all. The sharp signature, measured over the
+  whole table: these 7 are the ONLY rows with `game_id = 0` AND a `raw_data.lcu_match_detail`, and in
+  every one the detail's participants exclude `db.champion`, so they are MISATTRIBUTED (each holds
+  another game's blob: 1633 holds a q2400 952 s game), not detail-less. (3) THE 1633 PRESCRIPTION IS
+  WRONG AS FILED, so scope is LARGER than filed. The Jinx q420 929 s game named for 1633 is already
+  stamped as `game_id` on row **1620** (Jinx SR, saved 2026-05-24 20:53:41 local, `game_time_s`
+  1810; its detail lists championId 222 = Jinx, `gameDuration` 929). That game was created at
+  20:58:11 local and ended about 21:13:40, AFTER row 1620 was saved and 60 s before row 1633 (21:14:40),
+  so 1633 is its true row and 1620 is an 8th misattributed row outside the 7. `--match-id` posts to
+  `/api/last-match/ingest`, which matches gameId FIRST (`dashboard/routes_last_match.py`
+  `_row_match_by_game_id`, called before the ts-window fallback in `_try_ingest_once`), so it would
+  re-stamp row 1620 and leave 1633 unchanged. Recovering 1633 needs row 1620's `game_id` cleared
+  first, a DB write that no shipped tool offers; 1620's own game (about 1810 s, ended about 20:53)
+  then has no blob. (4) 1506 HOLDS: its Kai'Sa q420 2262 s game is stamped on no row, and the
+  fallback can reach 1506 (rank 26 of the newest 50 non-TFT `game_id = 0` rows its query reads; game
+  end about 13:30:33 local vs row 13:31:21 = 48 s, inside `INGEST_TS_WINDOW_S = 180`). It still needs
+  RC `:8888` up (down at this read) and a Riot key. (5) Cite drift: SOURCE `ROADMAP.md:81` is now
+  `ROADMAP.md:156` (the RM-16 carry-forwards line). Verdict unchanged: NOT live-gated, no live
+  residual; the operator decision now covers 8 rows (1620 added), and moving the row to "Not
+  actually live-gated" stays a human doc edit.
 - **G4-30** `[NEW 2026-10-04]` RM-526 / Y-01 Step 0 - the live half of the target-pinned live
   writer (code SHIPPED headless, LEDGER entry for RM-526). Over the next 5 real game ends (include
   at least one Mayhem q2400 and one Match-V5-eligible game), read the writer's INFO lines
@@ -4563,6 +5496,37 @@ Practice customs and Mayhem q2400 NEVER reach Match-V5. This batch is unreachabl
       League game has ended since Y-01 / Y-08 shipped, so the writer has never run live.
   - Reverses if: the parsed log lines or logger names change. `tests/test_gated_y01_chain_report.py`
     pins each source literal, and the `matches` schema or the receipt row shape (`v` 1) also counts.
+  **AGE CHECK (lane 9 PREP s144 cycle 131, S144-G-118; source read at local main `d2d4840f1`, no game
+  up (RC :8888 refused at 2026-11-09T06:10); NOT a tick). The READY card above holds unchanged; the
+  writer has STILL never run live.**
+  - Cites, re-read at HEAD: "Game ended", "TFT game end: League rewind live-writer skipped" and
+    "rewind live-writer trigger error" in `app/_game_lifecycle.py` under logger `rc.app.lifecycle`;
+    "rewind_live_writer schedule error" twice in `lib/rewind_live_writer.py` (logger
+    `rc.lib.rewind_live_writer`); "rewind_live_writer: chain %s attempt %d ended %s (%s)" there;
+    "postgame: saved match %s" and "postgame: match %s already stored - skip" in
+    `lcu/lcu_postgame_collector.py` (logger `rc.postgame`). `DEFAULT_DELAY_S` is still 90.0 and
+    `STAGED_DELAYS_S` still (60, 120, 300, 600), so the tool's `CHAIN_WINDOW_S` is still 1290 s
+    (1170 + 120) and "about 19.5 min" still holds. `PIN_PATH`, `RECEIPT_PATH` (`lib/ingest_receipt.py`)
+    and `DB_PATH` are unchanged.
+  - Eight commits touched the five cited source files since READY (`1debadfb0`), none moving a parsed
+    literal. `aa8082af8` (2026-10-30) routes `write_game_end_pin` through `core.polled_json`, same
+    bytes; `9f3845e32` (2026-11-06) makes the tool's `_platform` call
+    `operator_identity.normalize_platform` and read UTF-8 with or without a BOM. The other six
+    (`6d2d1a0d4`, `40dcca458`, `daca8a6b0`, `535679309`, `2708e8aec`, `badd1407d`) touch only
+    `lcu/lcu_postgame_collector.py` and `lib/ingest_receipt.py`: renames, a merged `with`, comment
+    wording and `time.time` to `time.monotonic`. `tests/test_gated_y01_chain_report.py`: 59 passed
+    this cycle.
+  - Post-cutover log route holds: the 2026-10-31 daily log carries `rc.app.*` lines from the rc-shell
+    service host window (19:13 .. 21:17 local), so the `logs/YYYY-MM-DD.log*` source survives the
+    launcher cutover. RC has not run since: no daily log after `2026-10-31.log`, and
+    `ops/runtime/launcher_status.json` reads `state` halted, `reason` stdin_stop.
+  - Idle baseline, 2026-11-09T06:11 local, no `--since`, `--root` the main checkout: INCOMPLETE, exit
+    1, the same five TFT ends of 2026-10-25 and 0 League ends; 0 receipts, pin absent. Zero
+    chain-end lines in any retained log; retention now starts 2026-10-17, not 2026-10-13.
+  - Drain blocker, not a defect: the row needs RC RUNNING (rc-shell `--profile dev`) through five
+    League game ends; the tool reads only what the live process wrote.
+  - Reverses if: a League "Game ended" line appears after 2026-10-31 (re-run the card), or a parsed
+    literal, a delay constant or a source path above changes.
 
 ---
 
@@ -4985,6 +5949,30 @@ waits on the RM-875 wiring.)
   `data/arena_coach_shadow.jsonl` still has 617 rows. (4) THE TOOL IS STILL GREEN.
   `tests/test_gated_g506_debounce_lag.py` gave 29 passed at `5f3af5aad`, so its string pins still
   match the source. The CHECK, the tool steps and the evidence contract do not change.
+  **RE-CHECK 2026-11-08 (lane 9 s144 cycle 117, S144-G-104, source read at `25b5f31fb`; NOT a tick;
+  no game up: :8888 `/api/state` and :2999 both gave curl 000).** (1) CITE DRIFT, top of the file
+  only, behaviour unchanged. The one commit since `5f3af5aad` that touches `coaches/arena_coach.py`,
+  `coaches/_base_coach.py` or `core/safe_coach_output.py` is `81c26322c` (s156 S5 C7). It rewrote
+  the module docstring (one line became two) and the Arena system prompt text (2v2v2v2 / pair
+  wording and the SR-rune augment list, one line net shorter), and touched no code path. So lines
+  `:3` to about `:175` are one lower and everything below is where it was. The flag read is `:70`
+  (was `:69`), the 45 s ceiling `_STATE_DEBOUNCE_MAX_STALE_S` `:76` (was `:75`) and
+  `_coach_state_signature` `:89` (was `:88`). These hold: `_STABLE_DEBOUNCE_S = 22.0` `:443`,
+  `_run_vision` `:610` (gate `:615`), `_run_coach` `:639` under the decorator at `:638` (gate
+  `:642`), the debounce log `:815-819`, the Haiku `timeout=20` `:831`, `Arena: no fields parsed`
+  `:842`, the `game_time_s` write `:875`, the `safe_write` `:914` and the ceiling stamp `:923`.
+  (2) THE PRECONDITION IS UNCHANGED, AND ITS ROUTE IS NAMED. The default is still `"0"`, the
+  variable is absent from both the user and the machine environment keys (`reg query`, both
+  "unable to find"), and no tracked launcher or config names it. Since the 2026-10-31 launcher
+  cutover RC inherits rc-shell's environment: `ops/launcher/service_host.py` `child_environment`
+  starts from `os.environ`, and `ops/launcher/services.json` sets only `RC_DASH_BIND` (top-level
+  `env` is `{}`). So the flag reaches RC by a User-scope variable plus an rc-shell relaunch, or by
+  an `env` entry in `ops/launcher/services.json` (a main-session path); either is a merger /
+  operator act, as in G3-12. (3) THE REPLAY INPUT IS STILL ABSENT. The 15 retained day logs
+  (`2026-10-17` to `2026-10-31`) hold no `arena_coach`, `Arena coaching` or `Arena state-debounce`
+  line, and `data/arena_coach_shadow.jsonl` still has 617 rows. (4) THE TOOL IS STILL GREEN.
+  `tests/test_gated_g506_debounce_lag.py` gave 29 passed at this cycle's lane HEAD (its string pins
+  still match the source). The CHECK, the tool steps and the evidence contract do not change.
 - **G5-07** Arena deterministic A/B choices lever (`dc6b3d80`) - shipped SHADOW-only; served coach
   output unchanged. The live serve flip is gated on shadow accrual (G7-17).
   **AGE CHECK: THE IN-GAME SERVE FLIP IS MOOT WHILE B4 STANDS (lane 9 PREP s144 cycle 92, S144-G-83,
@@ -5099,6 +6087,25 @@ waits on the RM-875 wiring.)
   `:141`. `agents/daemon_slayer/tests/test_r144_mirror_slice_b.py:255`
   (`test_ddragon_and_meraki_still_disagree_on_444644`) and
   `agents/daemon_slayer/_effects_data.py:3292-3297` hold.
+  **RE-CHECK 2026-11-08 (lane 9 s144 cycle 118, S144-G-105, read at `a9da7c32f`; NOT a tick).** DS
+  moved to **16.22.1** (`a14fc853e`, RM-1338; `data/daemon_slayer/current.txt`). The 444644 record is
+  byte-for-byte the same at 16.22.1 as at 16.21.1 in BOTH feeds (parsed-dict equality, read-only):
+  DDragon `data/daemon_slayer/16.22.1/items.json` still reads maps.30 only, 2750 g, "reducing incoming
+  champion damage by 90%", "persists for 1.25 seconds after taking champion damage. (0s)" (the
+  malformed cooldown stands), and `items_meraki.json` still reads 50% / "lingering for 3 seconds",
+  with the manifest's `meraki_items.content_patch` still 25.15. The SR row 664644 still reads 40% /
+  3 s, and 3869 Celestial Opposition is still maps 11 / 453 with no Arena mirror. So the 90 / 50
+  conflict, the name correction (1) and the CANDIDATE stand; the CANDIDATE's "CommunityDragon 16.21"
+  now means the current DS patch (16.22). RM-871 is still open (`[ ]` in ROADMAP NOW). Cites:
+  `_item_general_dr.py:140` / `:141` and `test_r144_mirror_slice_b.py:255` hold (that test reads the
+  CURRENT patch and passed this cycle, so the disagreement is re-derived at 16.22.1);
+  `_effects_data.py:3292-3297` is now `:3295-3304` (line number only). Observation, not a defect
+  filed: that entry's `note` paraphrases Safeguard as "90% until first champion damage taken",
+  which omits DDragon's 1.25 s persistence; it is `defensive_only`, so no DS number reads it. The
+  tooltip CHECK and its predicate are unchanged. G5-09's re-check cites (`:474`, `:715`, `:936`,
+  `:988`, `:1037`, `:1058`; `rank.py:364` / `:367` / `:408`) also hold at `a9da7c32f`: the only
+  later commit to `coaches/arena_coach.py`, `81c26322c`, did not move them. Nothing ticked; no count
+  moved.
 - **G5-09** DS ranged-only Runaan's melee-gate made augment-aware for "Draw Your Sword" (augment id
   134, ranged->melee; `38b5e1eb`, LEDGER 856) - **PARTIAL 2026-07-18.** SETTLED HEADLESS: the gate is
   exact and does not over-filter. On **all 8** corpus champions that actually took augment 134
@@ -5144,6 +6151,41 @@ waits on the RM-875 wiring.)
   the live glance stays the only check. Predicates unchanged; nothing ticked; no count moved.
 - **G5-10** `[HOLD 2026-06-20]` (was D8) Arena S2 augment level-up + crafting - trigger on the 26.09
   PBE (separate PBE install). ADR-010. NOT part of the current Arena sitting.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 146, S144-G-134, source read at `998ae3e1f`, DS patch
+  16.22.1, ENGINE_VERSION 1.291.0; no game up; NOT a tick; the HOLD tag is left for a human).** (1) THE
+  HOLD TRIGGER FIRED BEFORE THE ADR WAS WRITTEN: the cdragon Arena snapshot DS committed for 16.9.1
+  (added `c306f56d4` 2026-05-03, pruned `c95396fd4`; read it with
+  `git show c306f56d4:data/daemon_slayer/16.9.1/arena_augments.json`) already carries the level-up and
+  crafting data: 202 of 219 records have a `MaxLevel` dataValue (1.0 x55, 2.0 x100, 3.0 x47) and three
+  Crafting records exist - `CraftingAugmentSlot` ("Unlock your ...th Augment Slot"), `CraftingSellAugment`
+  ("Remove an Augment. Gain @AugmentLevelsToGrant@ random Augment Levels") and `CraftingPrisStatAnvil`.
+  The tracked 16.22.1 snapshot has 208 of 225 with `MaxLevel` (1.0 x62, 2.0 x103, 3.0 x43) and the same
+  three. ADR-010 (dated 2026-05-21) waited on a 26.09 PBE that live data had already passed; no PBE
+  install is needed. (2) ADR-010'S PREDICTED SCHEMA IS REFUTED: no record has `levels[]`,
+  `dataValuesByLevel` or any record-level key containing "level" (the level data lives INSIDE
+  dataValues: `MaxLevel`, `AugmentLevelsToGrant`); both snapshots carry the same ten record keys
+  (id, apiName, name, rarity, desc, tooltip, dataValues, calculations, iconLarge, iconSmall). Of the
+  dataValues entries, 1003 of 1016 (16.9.1) and 1024 of 1037 (16.22.1) are 7-element lists, the other
+  13 scalar 0; 149 / 147 augments have list entries that differ along the list. Which index is which in-game level is NOT on disk (no snapshot older
+  than 16.9.1 exists to diff; the `augments.py:92-93` comment calls the axis "stack/level"). (3) THE
+  ADR SEAM WAS NEVER ADDED AND ITS CITED SIGNATURE DRIFTED: `compute_augment_stats` (`augments.py:332`)
+  takes `(augments, snapshot)`, with no `level` kwarg (ADR-010 cites `(augment_or_id, *, mode=...)`);
+  `_v` (`augments.py:94`) reads index 0; `tests/test_arena_s2_augment_leveling.py` does not exist.
+  `StatContext.level_index` (`augment_formula_eval.py:148`, read at `:243`) exists, but `git grep`
+  finds no tracked non-test `.py` that builds a `StatContext` outside that module, and no tracked
+  non-test `.py` / `.js` / `.mjs` names `MaxLevel` or `AugmentLevel`. So every Arena game since
+  26.09 has run the level-0 path that ADR-010's Trade-off section describes (fail-soft under-credit of
+  a leveled augment). (4) STILL LIVE-GATED: only the index-to-level mapping and the on-screen level
+  read. LCU and `:2999` carry no augment data (CLAUDE.md Settled; augment-OCR is the path), and no RC
+  producer emits a live augment level, so the live half is blocked on wiring, not on a PBE. READY
+  predicate for a later sitting, stated before any game: in an Arena game, read one leveled augment's
+  tooltip number off the screen at level 1 and at level 2; PASS iff each value equals exactly one
+  entry of that key's 7-element list in the patch's `arena_augments.json`, and two augments give the
+  same index for the same level. Evidence: value, augment apiName, level, frame ts and game round.
+  PROPOSAL (a human edits; the lane does not): re-tag `[HOLD 2026-06-20]` as BLOCKED ON WIRING with
+  this note as the reason. The data-lift half (read `MaxLevel`, thread a level through
+  `compute_augment_stats` / `StatContext.level_index`) is a "Not actually live-gated" candidate for the
+  DS roadmap (S144-G-135), Tier-2. Nothing ticked; no count moved.
 - **G5-11** Focus-board Arena team layout - the GATE 5 verification RM-844 / RM-854 left owed ("shadow-only
   ... until a gated row verifies it in GATE 5", `BACKLOG.md` RM-844). Filed and READIED 2026-10-27 by lane 9 PREP (s144 cycle 11,
   source read at `d257c4f43`; NOT a tick). The shadow column (`core/arena_coach_shadow.py:139`
@@ -5229,6 +6271,32 @@ waits on the RM-875 wiring.)
   printed INCOMPLETE (subteams, roster and shadow each NO_RESULT) and exited 1, the idle shape the
   drain expects. Predicate,
   drain steps and substitution check unchanged; nothing ticked; no count moved.
+  **RE-CHECK (lane 9 PREP s144 cycle 119, 2026-11-09, source read at `b44d494b5`; NOT a tick).**
+  `6b092a493` is NOT an ancestor of HEAD (the pre-rebase copy of S144-G-88, now `2b5a0b771`); the
+  drift was read per file with `git log 6b092a493..HEAD`, and the 11 off-line commits
+  (S144-G-78..88) touch none of the files below.
+  No commit touched `dashboard/_liveclient.py`, `lcu/champ_select_shape.py` or
+  `tools/gated_g5_focus_layout.py`. `core/arena_coach_shadow.py` (`36ba25a07`) and
+  `core/focus_board_live.py` (`36ba25a07`, `434ee0359`) changed only by dropped `# noqa: BLE001`
+  markers and `notes + [...]` respelled as `[*notes, ...]` (ruff ratchets; no behaviour change), so
+  every cycle-98 cite in them HOLDS: `_focus_board_column` `:140`, `_safe_focus_board_column` `:193`
+  (called `:289`, `:297`), `enemy_team` read `:266-269`; `roster_from_lc` `:283` (`my_team` `:298`,
+  split `:320`), `KILL_SWITCH_ENV` `:108`, `enabled()` defined `:150` (its return, the only-`0` test,
+  is `:152`). The TEAMS section heading is still `:32` and its text (`:33-37`) still says "my partner
+  the one ally" and "the 2v2 team TTK", so the docstring fix is STILL OWED. `dashboard/_liveclient.py`
+  `:388-390` and `lcu/champ_select_shape.py:181` / `:193` / `:62` hold. `coaches/arena_coach.py`
+  `is_partner` still `:1305` (`81c26322c` changed prompt text only). MOVED: `core/queue_modes.py:82`
+  is now `:107` (`7d627b453` grew the module docstring and hardened the id coercion); the 1750 entry
+  still maps to `arena` and still reads "Arena 3x6". BASELINE (idle, read-only): :8888 and :2999 did
+  not answer (no game; RC down, `health.json` last written 2026-10-31 local, its `started_at`
+  2026-11-01T01:33Z unchanged, so no restart since RM-854 is owed);
+  `data/arena_coach_shadow.jsonl` in the main checkout still 617 rows, 2026-07-05..07-21, 0 with a
+  `focus_board` column (file last written 2026-07-20 local), so still no Arena game since RM-844;
+  `RC_FOCUS_BOARD_SHADOW` is unset at User and Machine scope, so after the launcher cutover the
+  shadow column stays ON by default with no env route needed. The tool with no capture again printed
+  INCOMPLETE (subteams, roster and shadow each NO_RESULT) and exited 1;
+  `tests/test_gated_g5_focus_layout.py` 23 passed. Predicate, drain steps and substitution check
+  unchanged; nothing ticked; no count moved.
 
 ---
 
@@ -5240,6 +6308,38 @@ Rides on top of whatever gate is already running. No separate game needed.
   (disappear-fix / pinned behavior + the P4.x window logic; the renderer half auto-reloads via ADR-008
   but MAIN does not). Plus the post-W5 interaction-layer live verify pass (the 2026-06-29 F1-01 confirm
   covered render surfaces only). SOURCE: ROADMAP.md:23; OVERLAY_BUILD_MASTER_PLAN.md:666/828.
+  **AGE RE-CHECK + PROBE (lane 9 PREP s144 cycle 120, 2026-11-09, S144-G-107; NOT a tick).**
+  (1) Both SOURCE cites are dead. `docs/OVERLAY_BUILD_MASTER_PLAN.md` is now 351 lines; its live-game
+  verify set reads at `:349` ("GATED-on-live-game (verify-pass after W1 + W5, not a cycle): F1-04,
+  F1-05, F1-06", F1-01 LIVE-CONFIRMED 2026-06-29). `ROADMAP.md:23` no longer carries it (line 23 is
+  blank, `:20-22` are the subplan list); the "rc-shell Electron relaunch owed (live
+  disappear-fix/pinned)" clause lives in RM-03 (search that phrase). (2) The interaction-layer half is no longer G6-01's: F1-05 (ACTIVE-knob physical press) is
+  G6-02, which PASSED in the DRAIN SESSION 2026-07-20 at the top of this file (the G6-02 row text
+  below still reads PARTIAL; the drain-session record is the later one); F1-04 (capability gap,
+  `RC_CAPGAP_SURFACE`) is G4-12; F1-06 (packaging) is release-gated, already proposed out of the set
+  in "Doc hygiene follow-ups" (a). What remains is the PRECONDITION alone. (3) It was met once on
+  record (G6-04, 2026-08-02: rc-shell pid 4140 relaunched 11:26 on the fixed code) and is met again
+  by every app start since the 2026-10-31 launcher cutover, so it RECURS and is never ticked closed.
+  (4) Three traps: `rc-shell\launch_overlay.bat` names no profile and starts no service
+  (`docs/OPERATIONS.md`, launcher section); a packaged `Amberstone Shell.exe` loads the app it was
+  built from, not `rc-shell/src`, so its start time proves nothing; and a lane commit's committer time
+  can predate the merge that wrote its bytes into the checkout, so the bound also takes file mtime.
+  PROBE (one command, read-only, run against the checkout the shell was launched from):
+  `python tools/gated_g601_shell_fresh.py --repo <repo>` (from a lane worktree it reads
+  WRONG_CHECKOUT). PREDICATE (stated before any game): PASS iff exactly one Electron MAIN process
+  (a shell image with no `--type=` switch), its executable is
+  `<repo>/rc-shell/node_modules/electron/dist/electron.exe`, its argv names `--profile dev`, and its
+  creation time is AFTER max(committer time of the newest commit touching `rc-shell/src`, newest
+  mtime of a file under `rc-shell/src`). Exit 0 PASS; 1 INCOMPLETE (NO_SHELL, PROFILE_UNNAMED -
+  `RC_LAUNCHER_PROFILE` can name it, read `ops/runtime/launcher_status.json` - or UNKNOWN); 2 FAIL
+  (MULTIPLE_MAIN, PACKAGED, WRONG_CHECKOUT, STALE). EVIDENCE: the verdict line, MAIN pid, creation
+  time and source bound, with the timestamp, recorded beside the overlay row it gates.
+  SUBSTITUTION CHECK: PASS proves only that MAIN runs the current code; it is not evidence that any
+  overlay surface rendered, and it never ticks G6-02, G6-04 or an `[OVERLAY-*]` row. BASELINE (idle,
+  this cycle): :8888 and :2999 did not answer, no `electron.exe` process, `health.json` `started_at`
+  2026-11-01T01:33Z (stale); the tool printed NO_SHELL, exit 1, source bound 2026-11-05T06:13:30Z
+  (newest commit `bdb583474`, 2026-11-05T06:12:31Z; newest mtime `rc-shell/src/overlay_toggle_page.js`),
+  so the next app start meets the time half.
 - **G6-02** `[UPGRADED LIVE-ONLY -> PARTIAL 2026-07-18]` (was E5) item-598 R25 ACTIVE-knob interaction
   round-trip. **ROW DEFECT FIXED - as previously written this row would have produced a FALSE
   NEGATIVE.** The key is **Ctrl+Shift+A** (Win32 `tools/hotkey_listener.py` slot 3, the ONLY path that
@@ -5267,6 +6367,41 @@ Rides on top of whatever gate is already running. No separate game needed.
   presses came in bursts 0.5-2s apart, which reads equally as deliberate toggling or as mashing because
   nothing visibly happened - so ONE deliberate press with eyes on the overlay IS the test. Requires
   G6-01 (rc-shell MAIN up) FIRST. SOURCE: LEDGER 598; memory `reference_overlay_ingame_hotkey_win32`.
+  **AGE RE-CHECK (lane 9 PREP s144 cycle 121, 2026-11-09, S144-G-108; NOT a tick, NOT a re-open).**
+  Status: the DRAIN SESSION 2026-07-20 record at the top of this file PASSED this row; the PARTIAL tag
+  above is the older 2026-07-18 state. This block only refreshes the cites and the residual predicate
+  for any future re-confirmation. (1) Every `rc-shell/src/main.js` cite above has drifted (file now
+  2809 lines; RM-1272 commits `9198ca1d8` / `bdb583474` touched it 2026-11-04/05). Current homes:
+  `doToggleActive` at `:1871-1875` (flips `overlayClickThrough`, calls `applyClickThrough()`, then
+  `scheduleActiveRevert()`); the "Ctrl+Shift+A NOT registered in Electron" comment at `:1961-1965`
+  inside `registerHotkeys`; the Alt+Shift+A fallback registration at `:1991-1995`
+  (`ov.OVERLAY_DEFAULTS.hotkeyActiveAlt`, `rc-shell/src/overlay_state.js:45`); the Win32 signal
+  watcher `startActiveToggleWatch` at `:1924-1926` (`watchSignal("activeToggle", doToggleActive)` at
+  `:1925`). `ovscale` is no longer computed at `main.js:569-573`: `ov.resolveOverlayMetrics`
+  (`overlay_state.js:425`, called at `main.js:767` / `:897`) yields the scale and `ov.overlayUrl`
+  (`overlay_state.js:203-216`) bakes it in at `main.js:835`. Listener side: the "overlay ACTIVE toggle
+  signaled" log line is `tools/hotkey_listener.py:216`, `_SLOT_OVERLAY_TOGGLE = 3` at `:339`, and the
+  sole non-test caller of `signal_overlay_active_toggle` is `_dispatch_one` at `:482` (was `:359`;
+  `git grep` outside `tests/` finds no other). Still no re-rank: nothing in `doToggleActive` reaches
+  ranking code. (2) PREDICATE DEFECT, the 20s is a SETTING now: `scheduleActiveRevert`
+  (`main.js:1228-1245`) times out after `overlaySettings.activeRevertSec * 1000`, read by
+  `overlaySettingsFrom` (`overlay_state.js:692-700`) from `overlay.settings.activeRevertSec` in
+  `<appData>/Amberstone Shell/rc-shell-state.json`, clamped to [3, 120] (`:548-556`), default 20
+  (`:51`, `:521`) when absent or not a finite number. A future re-confirm that waits a fixed 20s
+  false-FAILS the moment the operator moves that setting. Baseline read this cycle (idle, read-only):
+  the field is present and reads 20 (file mtime 2026-10-31T21:17 local). (3) Behavior added since
+  the PASS: `applyClickThrough` (`main.js:1200-1220`) now also calls
+  `overlayWindow.setFocusable(ov.effectiveFocusable(overlayClickThrough))` (S134 N9), so ACTIVE makes
+  the overlay window focusable, and the glow is `ind.activeIndicatorSetJS(!overlayClickThrough)`.
+  RE-CONFIRM PROBE (stated before any game): before the press, read `activeRevertSec` = N from the
+  state file above (absent -> 20). With League FOREGROUND, ONE Ctrl+Shift+A. PREDICATE: PASS iff
+  (a) a new "overlay ACTIVE toggle signaled" line lands in `logs/hotkey_listener.log*` (rotating;
+  path at `tools/hotkey_listener.py:118`) within 1s of the press, (b) the edge glow appears and a widget body drags, and (c) the glow clears N s (+/- 2 s)
+  later with no further press; and League still takes keys after the revert. FAIL on any miss.
+  EVIDENCE: the log line and its timestamp, N with its source, the observed revert interval, game
+  mode and game_time. SUBSTITUTION CHECK: the log line alone proves DELIVERY to the listener only
+  (already settled above); it is not evidence the overlay flipped. The glow plus a drag, seen on
+  screen, is the only flip evidence; a G6-01 PASS is a precondition, never a stand-in.
 - **G6-03** (was E4) **CLOSED 2026-08-02 - PASS, but read the scope fence before citing it.** Live ARAM on
   Legion, real match end, OBS 32.1.2 / obs-websocket 5.7.3 driven entirely over `127.0.0.1:4455` (the
   scene JSON was never edited - it is stale since 2026-05-29 and OBS rewrites it on exit). **RECEIPT:**
@@ -5385,9 +6520,78 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   The `RC_LANING_CV_SERVED` gate is a DIFFERENT predictor (live `compute_matchup` plus a CV
   override) and may still be worth flipping on its own terms - but it needs a new acceptance
   number, not this one.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 151, S144-G-142, source read at `db40bed65`; no game
+  up; NOT a tick).** CV rows accrued, the re-run step has no tool, and one game moves
+  neither. (1) ACCRUED, THEN STOPPED (the row sets no row-count target): a read-only parse of the main checkout's
+  `data/hz_choice_shadow.jsonl` gives 58,806 rows (2 unparseable), 12,417 with a dict
+  `cv_override` (`enemy_dead` 11,419, `low_hp` 998; by `mode`: sr 7,963, aram 4,028, arena 306,
+  client 120), first CV row 2026-06-21, LAST ROW OF ANY KIND 2026-08-02T22:34:15Z. The sibling
+  in-game shadows `data/det_coach_shadow.jsonl` and `data/hz_build_shadow.jsonl` end at the same
+  second (22:34:15.3988 / .4038), which points (inferred, not observed) to a common upstream stop
+  (no in-game tick reaching `dashboard/_state_builder.py:1004`) rather than a defect in the
+  `core/hz_choice_shadow.py` writer; it
+  matches the G7-06 rail stall since 08-02. (2) THE NAMED RE-RUN DOES NOT EXIST: `tools/hz_shadow_report.py`
+  contains the string `cv` zero times (case-insensitive), and no file under `tools/` reads
+  `cv_override`; its only reader is the post-game renderer `core/branch_review.py:238`. "Re-run
+  hz_shadow_report WITH the CV layer" therefore needs a CV-aware read-only reader built first, over
+  rows already on disk. (3) The flip flag is unchanged: `RC_LANING_CV_SERVED` defaults OFF at
+  `dashboard/_deterministic_coaching.py:445`. RESIDUAL: a new acceptance number from the operator or
+  MAIN (ADR-013 retired the 70% one), then the CV-aware reader, both offline. Filed as a
+  "Not actually live-gated" CANDIDATE only; moving the row is a human doc edit.
 - **G7-06** (was G6) DS calibration pipeline: needs **~20+ RANKED SR (queue 420)** games. Customs and
   Mayhem cannot feed it. SOURCE: RM-32.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 148, S144-G-138, source read at `4704d777b`; no game
+  up; NOT a tick).** The game-count threshold is already met; what the rail lacks is statistical
+  power and two stalled feeds, none of which one game moves. (1) THRESHOLD MET: the pipeline is BUILT
+  (RM-32, `core/ds_calibration_agreement.py` + `tools/ds_calibration_report.py`, `MIN_BUCKET_N = 20`
+  at `core/ds_calibration_agreement.py:78`). Calling `compute_ds_calibration_agreement_from_db`
+  in memory (no `--out` write) over the main checkout's `data/ds_calibration.jsonl` and
+  `data/rewind_history.db` (opened `mode=ro`) gives `ticks` 10469, `games_in_log` 110 (SR 104, ARENA
+  6), `games_joined` 50, of which **25 are queue 420** (14 of them wins), 17 queue 400, 2 SR with a
+  null queue, 6 Arena. So "~20+ ranked SR" is satisfied. (2) NOT A VERDICT: cells `SR/dps` n=299
+  follow 0.2341 `winrate_delta_shrunk` +0.0677, `SR/unknown` n=96 -0.0926, `ARENA/dps` n=26 -0.0185;
+  3 cells dropped below min_n. These are the same SR/dps numbers RM-32 recorded on 2026-07-25 as
+  inseparable from noise on one account, so the binding constraint is effect size versus corpus,
+  not a game count. (3) PRODUCER SILENT SINCE 2026-08-02: the log's newest `ts` is 2026-08-02
+  17:32 local (file mtime the same day); the producer is `core/ds_calibration.py:63 log_ds_run`,
+  called from the SR / ARAM / Arena / Brawl coach ticks, so it only grows while a coach tick runs
+  in a game. (4) OUTCOME FEED STALLED: the newest `matches.game_creation_ts` in
+  `rewind_history.db` is 2026-07-20 and the newest queue 420 game is 2026-06-30; 60 SR games in
+  the log (38 June, 21 July, 1 August) do not join. Cause of each miss NOT measured (a practice or
+  custom game never reaches Match-V5; an un-run ingest also misses). The automatic per-game writer
+  is `lib/rewind_live_writer.py` (`schedule_live_insert`, called at a non-TFT game end from frozen
+  `app/_game_lifecycle.py:222-223`, writing through `scripts/rewind_catchup.write_match`); the
+  batch writers are `scripts/rewind_catchup.py` and `scripts/rewind_scraper.py` (`INSERT OR IGNORE
+  INTO matches`). `agents/agent2_backend/game_ingest.py` writes `data/db/`, not this db. Why the
+  live writer added no match after 2026-07-20 (including the 2026-08-02 SR game) was NOT measured;
+  a new ranked game joins only once one of these writers lands it. VERDICT:
+  the row's stated gate is MET and stale. A residual exists but it is an accrual-plus-ingest rail,
+  not a drain row: re-run the report after the ingest has caught up, and decide on the delta's
+  confidence, never on a game count. Filed as S144-G-139 (re-word this row's gate to the delta
+  bound; measure why `rewind_live_writer` landed no match after 2026-07-20).
 - **G7-07** (was G7) `post_game_score` LR retrain at N>=20 real timelines (`core/post_game_score.py:220`).
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 147, S144-G-136, source read at `cf4681e61`; no game
+  up; NOT a tick).** The accrual threshold was met before the row was filed, so this is not a rail
+  waiting on games. (1) N IS MET MANY TIMES OVER: read-only (`mode=ro&immutable=1`) over the main
+  checkout's `data/rewind_history.db`, with the exact predicate `build_training_samples` uses
+  (`has_timeline=1 AND map_id IN (11, 12)`, a team 100 or team 0 label row), gives **2797** labelled
+  timelines: **716** on map 11 (SR; queue 420 alone holds 516) and **2081** on map 12 (Howling Abyss:
+  2073 queue 450, 7 queue 720, 1 queue 0). Newest `fetched_at` is 2026-07-21; 2712 of them were
+  fetched before 2026-05-20. (2) A TRAINED MODEL ALREADY SHIPS: `data/post_game_wpa_model.json`
+  (tracked, added in `515248bad` 2026-05-20,
+  byte-identical in the main checkout) holds `n_samples` 800 and 13 weights; that commit says "trained
+  on 200 SR matches (800 samples)", i.e. 4 frames per match. `dashboard/routes_post_game_wpa.py`
+  loads it and labels its answer `"model": "trained"`; the hand-coded `_fallback_prob` that carries
+  the TODO runs only when the file is missing or malformed. (3) CITE HOLDS LOOSELY: `:220` is the
+  "Fallback estimator" section banner; the TODO itself sits in the `_fallback_prob` docstring at
+  `core/post_game_score.py:232`. (4) A NAIVE RETRAIN IS NOT THE SHIPPED ONE: `train_from_db()` calls
+  `build_training_samples` without `match_ids`, so it takes every labelled timeline the query returns
+  (no LIMIT) and would fit about 2797 matches of which 74 percent are map 12 (map 12 has no dragon,
+  baron, herald or grub features), while the shipped model was fit on an SR-only subset of 200. The
+  map scope of a retrain is a design decision, not
+  something a game answers. VERDICT: NOT ACTUALLY LIVE-GATED - a `Not actually live-gated` candidate
+  for a HUMAN to move. The retrain is headless (`train_from_db` reads the DB and writes the model
+  file) and is filed as S144-G-137 with its map-scope decision; no game state moves this row.
 - **G7-08** (was G8) hz_mismatch ground-truth cross-ref - **DENSITY MEASURED 2026-07-18; this is NOT a
   drain-session row.** SETTLED HEADLESS over `rewind_history.db`: **2,139 distinct
   (lane, champ, champ) matchups, of which only 62 (2.9%) reach n>=5 and just 4 reach n>=10. Median
@@ -5395,6 +6599,32 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   of played games fixes it - the fix is ARCHETYPE POOLING, i.e. headless code, not accrual.
   RESIDUAL (accrual, background only): density rises slowly with every ranked q420 game. Re-read the
   three counts above before anyone proposes a per-matchup calibration again.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 149, S144-G-140, source read at `6051a971a`; no game
+  up; NOT a tick).** The three counts reproduce; the corpus has barely moved and the cross-ref is
+  still almost all insufficient_data. (1) DENSITY RE-DERIVED over the main checkout's
+  `data/rewind_history.db` opened `mode=ro`: the DB holds 2966 matches (2961 on 2026-07-18), 667 of
+  them `game_mode` CLASSIC, all with `has_timeline` 1 (516 queue 420, 141 queue 400). Keying each
+  lane that has exactly one champion per side as (lane, sorted champion pair), the same selector
+  `tools/replay_matchup_validate.py:177` `select_sr_match_ids` uses: **2,144 distinct matchups,
+  63 (2.9%) at n>=5, 4 at n>=10, median n=1, max n=12** (filed: 2,139 / 62 / 4 / 1). Ranked q420
+  alone: 1,702 distinct, 46 at n>=5, 1 at n>=10. Counting each pairing in both directions doubles
+  every figure and leaves the 2.9% unchanged, so the key orientation does not move the finding. The
+  newest CLASSIC `game_creation_ts` is 2026-07-21 03:27 UTC (2026-07-20 local), the same ingest
+  stall G7-06 records: no game since has reached this DB, so "density rises with every ranked
+  game" has not been true for nearly four months. (2) CROSS-REF RE-RUN in memory, no md write:
+  `tools/hz_mismatch_diagnose.py:442` `rewind_cross_ref` over `data/hz_choice_shadow.jsonl`
+  (58,806 records, newest `ts` 2026-08-02 22:34 UTC) with a `mode=ro` connection passed through its
+  `conn=` test seam (the tool's own path at `:478` opens the DB without `mode=ro`). It scans the 667
+  SR matches with `_REWIND_MIN_SAMPLES = 3` (`:99`) and excludes 4,057 ARAM and 3 client mismatch
+  records. Of 13 mismatch classes, **11 read insufficient_data** and 2 read disagree on thin
+  support: `hold->trade` covers 1 of 6 class matchups over 4 lane games, `trade->hold` 2 of 10 over
+  5. The SR mismatch side holds only 24 (class, my, enemy) matchup entries summed over classes;
+  coverage is the binding constraint on the mismatch side too, not just the rewind side. (3)
+  POOLING STILL NOT BUILT: neither `tools/hz_mismatch_diagnose.py` nor
+  `tools/replay_matchup_validate.py` contains any pooling step (grep `pool`: no hit), so the fix the
+  row names is still open headless code. VERDICT: row stands as written (settled headless,
+  background accrual only); the residual's accrual premise is stalled with the rewind ingest
+  (S144-G-139 (b) owns that cause). No game state moves this row.
 - **G7-09** (was G9) Draft-Elo pairwise WR corpus densification - **DENSITY MEASURED 2026-07-18; this
   is NOT a drain-session row.** SETTLED HEADLESS: **8,188 distinct cross-team champion pairs observed,
   covering 55.0% of the C(173,2) = 14,878 possible pairs, but EXACTLY ONE pair reaches n>=20.** Median
@@ -5402,9 +6632,64 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   finding as G7-08), and it is the same reason G7-19 stays PARKED.
   RESIDUAL (accrual, background only): the corpus tightens as matchmade games accumulate. Re-read the
   n>=20 count before proposing any pairwise-WR consumer.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 150, S144-G-141, source read at `639800106`; no game
+  up; NOT a tick).** The finding reproduces almost to the pair. (1) DENSITY RE-DERIVED over the main
+  checkout's `data/rewind_history.db` opened `mode=ro`, counting each unordered cross-team champion
+  pair once per match, the same join `core/draft_elo_db.py:237` `pair_winrate` runs with
+  `side="enemy"`: over the 667 `game_mode` CLASSIC matches, **8,201 distinct pairs, 55.1% of
+  C(173,2) = 14,878, 41 at n>=10, EXACTLY ONE at n>=20 (max n=24), median n=1** (filed: 8,188 /
+  55.0% / one / median 1). Over the route's own `DEFAULT_SR_QUEUES` (400 / 420 / 430 / 440 / 490,
+  662 matches): 8,167 (54.9%), one at n>=20. Ranked q420 alone (516): 6,974 (46.9%), one at n>=20.
+  The champion universe is unchanged: DDragon 16.22.1 `champion.json` carries 173, and all 173 occur
+  in the corpus. SAME-TEAM (ally) pairs, the side `core/draft_score.py:197` reads, are thinner:
+  7,043 distinct over CLASSIC, one at n>=20 (max 22); q420 alone has ZERO at n>=20. The newest SR
+  `game_creation_ts` is 2026-07-21 UTC, the same ingest stall G7-06 / G7-08 record, so the
+  RESIDUAL's "the corpus tightens as matchmade games accumulate" has not been true since then.
+  (2) THE CONSUMER CAVEAT IS ALREADY OVERTAKEN: three dashboard routes read these per-pair rates today -
+  `dashboard/routes_draft_elo.py` and `dashboard/routes_ban_suggest.py` (both added 2026-05-20, before
+  this row) and `dashboard/routes_draft_score.py` (added 2026-07-23, five days after it). Per pair
+  the DB side is Laplace alpha=1 only (`core/draft_elo_db.py:203` `_rate`, `:208`; no per-pair
+  minimum n in any of the three), so a 1-game pair reads 0.667 or 0.333 (draft_score may blend a
+  101qq duo rate at `_DUO_BLEND = 0.30`, `:78`, where that source covers the pair); `core/draft_score.py` sums `g` over the 10 ally pairs (`:204`) and lets the
+  synergy layer contribute once that SUM reaches `MIN_GAMES = 5` (`:66`, `:115`), so five 1-game
+  pairs clear the gate. Whether that is acceptable is a headless design question for the draft
+  owners, NOT a gated one; recorded here so the next reader does not re-read "before proposing any
+  consumer" as "no consumer exists". VERDICT: row stands (settled headless, background accrual only);
+  no game state moves it.
 - **G7-10** (was G10) B1 `det_coach_shadow` / WS3 `objective_playbook_shadow` / WS4
   `macro_response_shadow` flip gates (rows accruing ~37.6K / 33.6K / 32.7K on 2026-07-01; the flip
   DECISIONS are pending). SOURCE: commits `ee70536a` / `2cdf64cb` / `aec17657`.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 152, S144-G-143, source read at `ecef3bcbc`; no game
+  up; NOT a tick).** The filed counts are stale, accrual stopped on 08-02, and all three gates
+  still fail to support a flip - the macro one on a headline a constant beats. (1) COUNTS: the
+  three report tools re-run read-only over the main checkout's `data/` (`--path`; sha256 of all
+  three files identical before and after): `det_coach_shadow` total 60,721 rows (18,689
+  both-present), `objective_playbook_shadow` 46,474 (27,345 both-present; 2,482 test-leak rows
+  excluded, RM-872), `macro_response_shadow` 45,578 (15,171 both-present; 2,480 excluded), against
+  the filed ~37.6K / 33.6K / 32.7K of 2026-07-01. Last row 2026-08-02T22:34:15Z (det) and
+  22:29:50Z (objective, macro); the 2026-10-25 mtime on the two WS files is the RM-872 archive
+  split (LEDGER 1835), not accrual. Same stop as G7-05 / G7-06. (2) VERDICTS: det_coach HOLD
+  (domain alignment 294/18,689 = 0.0157; within-trade 5/256 = 0.0195); objective_playbook HOLD
+  (11,072/27,345 = 0.4049 < 0.70); macro_response REVIEW (11,075/15,171 = 0.73 >= 0.70,
+  `tools/macro_response_shadow_report.py:380`). (3) THE MACRO REVIEW IS DEGENERATE, NOT AGREEMENT:
+  Haiku's register is ACTIVE on 14,097 of the 15,171 both-present rows, so a constant "ACTIVE"
+  predictor scores 0.9292, 20 points above the det coach; the det register is constant per
+  `lead_state` on these rows (ahead 9,284 / even 2,391 all ACTIVE, behind 3,496 all PASSIVE; the
+  tool's own docstring `:27-28`), and the BEHIND bucket aligns 225/3,496 = 0.0644. The same
+  baseline beats the det side on objective (constant "dragon" 11,306/27,345 = 0.4135 vs 0.4049;
+  det names dragon on 24,478 rows, 0.895), and det_coach's det domain is one value (trade
+  x18,689). None of the three `_flip_hint`s (`tools/det_coach_shadow_report.py:514`,
+  `tools/objective_playbook_shadow_report.py:334`, `tools/macro_response_shadow_report.py:359`)
+  compares against a native majority-class baseline (grep `baseline|majority` over the three hits
+  classifier prose only). Filed as S144-G-144 (report-tool change, outside this lane's write set):
+  a gate clears only on alignment ABOVE the native majority share. (4) PREP for the next SR game,
+  stated before it: probe = the three commands with `--path <main>/data/<file>.jsonl --json`;
+  ACCRUAL PASS iff each file's last `ts` is after the game start and `total` grew; a flip is
+  operator-gated and never read off one game. SUBSTITUTION: the rates are COMPUTE over logged rows;
+  they show both coaches were fed, not that a deterministic line RENDERED. One game moves no
+  verdict (15K-27K comparable rows already), so the residual is an offline decision plus the
+  S144-G-144 tool fix, not a game wait: filed as a "Not actually live-gated" CANDIDATE only;
+  moving the row is a human doc edit.
 - **G7-11** (was G11) A3 tail: surface the DS-coach hints (anti-tank + scaling power-curve, SHADOW-only
   per item 328) only after `data/ds_coach_hints_shadow.jsonl` accrues + validates. SOURCE: RM-10.
 - **G7-12** (was G12) ADR-007 phase 3 prose-coach deprecation - after phase-1 detectors prove out in
