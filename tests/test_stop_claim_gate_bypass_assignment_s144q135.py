@@ -37,7 +37,7 @@ ASSIGNED = [
     "$r = @(sh -c 'git commit -n -m x')",
     "$env:R = pwsh -Command 'git push --no-verify'",
     "$r += bash -c 'git push --no-verify'",
-    "$r = cmd /c \"git push --no-verify\"",
+    '$r = cmd /c "git push --no-verify"',
     "$x = \"$(bash -c 'git push --no-verify')\"",
     "r=$(bash -c 'git push --no-verify')",
     "r=`bash -c 'git push --no-verify'`",
@@ -64,7 +64,7 @@ NOT_COUNTED = [
     "FOO=1 bash -c 'git status'",
     "$r = git log --grep '--no-verify'",
     "r=\"$(git log --grep '--no-verify')\"",
-    "$F = \"--no-verify\"; git status",
+    '$F = "--no-verify"; git status',
     # PowerShell string values, not commands: a single-quoted first word
     # (`'bash' -c ...` there is a parse error, never a run), and `(...)` / a
     # backtick inside double quotes are literal text.

@@ -189,12 +189,12 @@ NOT_COUNTED = [
     "if ($x -eq -Path (git commit -n)) { }",
     "if ($x -eq $x -bnot (git commit -n)) { }",
     "if ($x -and Test-Path -Path (git commit -n)) { }",
-    "if (\"git commit -n\") { }",
+    'if ("git commit -n") { }',
     "if ('git commit -n') { }",
     "foreach ($c in 'git commit -n', 'x') { }",
     "if ($x -eq 'git commit -n') { }",
     "if ($m -match '(git commit -n)') { }",
-    "if ($m -eq \"(git commit -n)\") { }",
+    'if ($m -eq "(git commit -n)") { }',
     "foreach ($f in (git log -n 3)) { }",
     "foreach ($f in git log -n 3) { }",
     "if (git log -n 1) { }",
@@ -332,7 +332,7 @@ def test_an_absolute_git_c_in_a_condition_group_is_placed_there(tmp_path):
     ("if (-not (a)) { }", ["a"]),
     ("if ([string]::Concat(a)) { }", []),
     ("if ($m -eq '(a)') { }", []),
-    ("if ($m -eq \"(a)\") { }", []),
+    ('if ($m -eq "(a)") { }', []),
     ("if ($(a (b))) { }", []),
     ("if ($x) { }", []),
     ("if ($r = a) { }", ["$r = a"]),
@@ -406,12 +406,12 @@ def test_nested_group_bodies_stay_linear(head):
 
 
 @pytest.mark.parametrize("head", [
-    "if (powershell -Command \"if (", "if ($r = powershell -Command \"if (",
-    "foreach ($f in powershell -Command \"foreach ($g in "])
+    'if (powershell -Command "if (', 'if ($r = powershell -Command "if (',
+    'foreach ($f in powershell -Command "foreach ($g in '])
 def test_nested_groups_in_a_launcher_stay_cheap(head):
     """Verifier round 5: 30 nested groups inside a launcher's script took
     1.1-1.4 s (HEAD 0.04 s) before the bodies were emptied."""
-    command = _nested(head, ")\") { }", 30)
+    command = _nested(head, ')") { }', 30)
     assert len(command) <= gate.COMMAND_PARSE_MAX
     start = time.perf_counter()
     assert gate._has_bypass(command) is False

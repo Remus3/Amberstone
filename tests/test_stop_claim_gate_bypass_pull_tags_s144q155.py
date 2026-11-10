@@ -43,7 +43,7 @@ from tools import stop_claim_gate as gate
 COUNTED = [
     "git pull -t '--no-verify'",
     "git pull -t '--no-gpg-sign'",
-    "git pull -t \"--no-verify\"",
+    'git pull -t "--no-verify"',
     # a cluster ending in t: -q is a flag, so the t is --tags
     "git pull -qt '--no-verify'",
     "git pull -at '--no-gpg-sign'",

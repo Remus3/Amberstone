@@ -110,7 +110,7 @@ def test_a_dead_pid_sentinel_is_still_reclaimed(
 
     assert common.acquire_lock() is True
     assert sentinel.read_bytes() == _mine()
-    assert common._LOCK_OWNER_PID == os.getpid()
+    assert os.getpid() == common._LOCK_OWNER_PID
     assert json.loads((state / "lockfile").read_text("utf-8"))["pid"] == os.getpid()
     assert _side_files(state) == []
 

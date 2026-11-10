@@ -182,11 +182,11 @@ def _direct_agent_log_appends(src: str) -> list[int]:
         if not isinstance(node, ast.Call):
             continue
         fn = node.func
-        if isinstance(fn, ast.Attribute) and fn.attr == "open" \
-                and isinstance(fn.value, ast.Name) and fn.value.id == "log_path":
-            found.append(node.lineno)
-        elif isinstance(fn, ast.Name) and fn.id == "open" and node.args \
-                and isinstance(node.args[0], ast.Name) and node.args[0].id == "log_path":
+        method_open = isinstance(fn, ast.Attribute) and fn.attr == "open" \
+            and isinstance(fn.value, ast.Name) and fn.value.id == "log_path"
+        builtin_open = isinstance(fn, ast.Name) and fn.id == "open" and bool(node.args) \
+            and isinstance(node.args[0], ast.Name) and node.args[0].id == "log_path"
+        if method_open or builtin_open:
             found.append(node.lineno)
     return found
 

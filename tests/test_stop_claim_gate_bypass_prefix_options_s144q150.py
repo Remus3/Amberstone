@@ -83,7 +83,7 @@ PAIRS = [
 # eval runs its joined words as a script in the same shell (same directory)
 EVAL_PAIRS = [
     ("eval 'git commit -n'", "git commit -n"),
-    ("eval \"git push --no-verify\"", "git push --no-verify"),
+    ('eval "git push --no-verify"', "git push --no-verify"),
     # already counted by HEAD through its git word (extra=True): kept for
     # the placement check only; so are `sudo --host remote` / `--host=` and
     # MOVED_DIRECT, which HEAD counted but placed at the caller's cwd
@@ -126,7 +126,7 @@ NOT_COUNTED = [
     "doas -u root bash -c 'git status'",
     "eval 'git status'",
     "eval 'git log -n 3'",
-    "eval \"git commit -m -n\"",
+    'eval "git commit -m -n"',
     "sudo -h host bash -c 'git status'",
     # these run nothing
     "xargs --help bash -c 'git commit -n'",

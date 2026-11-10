@@ -40,7 +40,7 @@ COUNTED = [
     "git am -S '--no-verify'",
     "git pull -S '--no-verify'",
     "git commit-tree -S '--no-gpg-sign'",
-    "bash -c \"git commit -S -n\"",
+    'bash -c "git commit -S -n"',
 ]
 NOT_COUNTED = [
     # the acceptance pin: in log, -S is the pickaxe and takes the next word

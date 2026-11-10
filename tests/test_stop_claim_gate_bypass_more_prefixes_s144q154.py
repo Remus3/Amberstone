@@ -111,7 +111,7 @@ SCRIPT_PAIRS = [
     ("watch 'git commit -n'", SCRIPT_TWIN),
     ("watch -n 5 'git commit -n'", SCRIPT_TWIN),
     ("watch -d -n 1 'git commit -n'", SCRIPT_TWIN),
-    ("watch --interval=2 \"git push --no-verify\"", "git push --no-verify"),
+    ('watch --interval=2 "git push --no-verify"', "git push --no-verify"),
     ("watch 'git commit' '-n'", SCRIPT_TWIN),
     ("su -c 'git commit -n'", SCRIPT_TWIN),
     ("su root -c 'git commit -n'", SCRIPT_TWIN),

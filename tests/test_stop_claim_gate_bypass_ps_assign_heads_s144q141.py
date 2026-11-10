@@ -44,7 +44,7 @@ ASSIGNED = [
     "${r} = bash -c 'git push --no-verify'",
     "${global:r} = bash -c 'git push --no-verify'",
     "${my var} = bash -c 'git push --no-verify'",
-    "${env:R} = cmd /c \"git push --no-verify\"",
+    '${env:R} = cmd /c "git push --no-verify"',
     "${r} = \"$(bash -c 'git push --no-verify')\"",
     # same-root siblings: compound operators
     "$r -= bash -c 'git push --no-verify'",

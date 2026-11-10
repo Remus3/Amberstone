@@ -30,7 +30,7 @@ from tools import stop_claim_gate as gate
 
 ESCAPED = [
     "env -S 'git\\_commit\\_-n'",
-    "env -S \"git\\_commit\\_-n\"",
+    'env -S "git\\_commit\\_-n"',
     "env -S 'git commit\\_-n'",
     "env -S 'git\\_\\_commit\\_\\_-n'",
     "env -S 'git\\_push\\_--no-verify'",

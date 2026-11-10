@@ -3848,10 +3848,10 @@ def _substituted(value, powershell):
     for opener in opens:
         if value.startswith(opener):
             body = value[len(opener):]
-            return body[:-1] if body.endswith(")") else body
+            return body.removesuffix(")")
     if not powershell and value.startswith("`"):
         body = value[1:]
-        return body[:-1] if body.endswith("`") else body
+        return body.removesuffix("`")
     return None
 
 

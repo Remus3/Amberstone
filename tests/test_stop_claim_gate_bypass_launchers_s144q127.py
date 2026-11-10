@@ -50,7 +50,7 @@ LAUNCHED = [
     'cmd.exe /s /c "git push --no-verify"',
     'cmd //c "git push --no-verify"',
     'cmd /k "git push --no-verify"',
-    "cmd /c \"cd sub && git commit -n -m x\"",
+    'cmd /c "cd sub && git commit -n -m x"',
     "iex 'git push --no-verify'",
     'Invoke-Expression "git push --no-verify"',
     "Invoke-Expression -Command 'git push --no-verify'",
