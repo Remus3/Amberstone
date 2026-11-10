@@ -160,7 +160,7 @@ def test_no_director_prompt_line_cite_under_ops_or_tests():
     )
 
 
-@pytest.mark.parametrize("rel", (EXECUTOR, EXEC_TEST))
+@pytest.mark.parametrize("rel", [EXECUTOR, EXEC_TEST])
 def test_no_executor_line_cite(rel):
     text = _read(rel)
     hits = _LOOP_PY_LINE_CITE.findall(text)

@@ -82,7 +82,7 @@ def test_missing_file_reads_as_empty_dict(tmp_path):
     assert type(got) is dict and got == {}
 
 
-@pytest.mark.parametrize("raw", (b"", b"{", b"not json", b"\xff\xfe\x00"))
+@pytest.mark.parametrize("raw", [b"", b"{", b"not json", b"\xff\xfe\x00"])
 def test_unreadable_document_reads_as_empty_dict(tmp_path, raw):
     p = tmp_path / "artifact.json"
     p.write_bytes(raw)

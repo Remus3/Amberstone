@@ -134,7 +134,7 @@ def _git_show(spec: str) -> str:
     return out.stdout.decode("utf-8")
 
 
-@pytest.mark.parametrize("rel", (ARAM, FASTPOLL))
+@pytest.mark.parametrize("rel", [ARAM, FASTPOLL])
 def test_no_line_cite_into_policy_or_aram(rel):
     hits = [(n, line.strip()) for n, line in enumerate(_src(rel).splitlines(), 1)
             if BANNED.search(line)]

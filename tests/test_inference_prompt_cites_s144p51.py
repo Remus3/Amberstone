@@ -128,7 +128,7 @@ def _git_show(spec: str) -> str:
     return out.stdout.decode("utf-8")
 
 
-@pytest.mark.parametrize("rel", (ARENA, ARAM))
+@pytest.mark.parametrize("rel", [ARENA, ARAM])
 def test_no_inference_line_cite(rel):
     hits = [(n, line.strip()) for n, line in enumerate(_src(rel).splitlines(), 1)
             if BANNED_INFERENCE.search(line)]

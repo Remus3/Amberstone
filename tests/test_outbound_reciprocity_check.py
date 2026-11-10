@@ -412,7 +412,7 @@ def test_nul_root_in_per_host_config_is_unknown_and_exits_inconclusive(
     assert rc == orc.EXIT_INCONCLUSIVE
 
 
-@pytest.mark.parametrize("kind", ("real_dir", "dir_link"))
+@pytest.mark.parametrize("kind", ["real_dir", "dir_link"])
 def test_directory_inbox_still_lists_both_halves(tmp_path, kind):
     """Positive control: without it, a _scan that returned None for EVERYTHING
     would pass both tests above."""
