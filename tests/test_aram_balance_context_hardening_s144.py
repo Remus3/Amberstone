@@ -33,11 +33,14 @@ from __future__ import annotations
 import json
 import logging
 import math
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from core import aram_balance_context as mod
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 PATCH = "16.99.9"
 

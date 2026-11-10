@@ -31,11 +31,14 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 import agents.agent4_coach_mentor.advisory_sweeper as sw
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _ago(hours: float) -> str:

@@ -13,11 +13,14 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from dashboard import _context, _writers
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _GOOD = {"mode": "game", "pregame": "old", "log": ["x"], "action": "farm"}
 
