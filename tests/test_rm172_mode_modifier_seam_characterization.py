@@ -253,7 +253,7 @@ def _measure_gate_a() -> set[str]:
 
 
 def _route_defs() -> dict[str, bool]:
-    """Per-route: does the handler REALLY read the flag and forward it?
+    """Report per route whether the handler REALLY reads the flag and forwards it.
 
     DELIBERATELY NOT a substring match over the route's source segment. That is
     what this helper did until 2026-08-07, and an adversarial pass proved it
@@ -308,7 +308,7 @@ def _route_defs() -> dict[str, bool]:
 
 
 def _reaches_build_champion() -> dict[str, bool]:
-    """Per-route: can it reach ``engine.build_champion`` transitively?
+    """Report per route whether it can reach ``engine.build_champion`` transitively.
 
     AST call-graph over the whole ``agents/daemon_slayer`` package, matched on
     call NAME (plain and attribute form). Deliberately name-based rather than

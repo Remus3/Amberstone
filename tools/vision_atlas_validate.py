@@ -92,7 +92,9 @@ def _self_and_confuser(scored, stem):
 
 
 def validate_category(category, thresholds=THRESHOLDS, worst_n=_WORST_N):
-    """Run the pristine-ceiling validation for one category. Returns a dict:
+    """Run the pristine-ceiling validation for one category.
+
+    Returns a dict:
 
     {
       "category": str,

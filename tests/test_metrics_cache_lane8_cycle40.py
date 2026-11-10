@@ -1,4 +1,5 @@
-"""
+"""Characterization and regression suite for core/metrics_cache.py (lane 8 cycle 40).
+
 tests/test_metrics_cache_lane8_cycle40.py
 
 Lane 8 (Headless-True-Audit) cycle 40 - core/metrics_cache.py.
@@ -564,8 +565,10 @@ class TestIncidentTail(_Base):
         self.assertLessEqual(len(self._refresh().last_5_incidents[0]["detail"]), 120)
 
     def test_reader_is_read_only(self):
-        """The module docstring's first design rule is 'Read-only: never
-        writes to any file.'"""
+        """The reader writes no file, as the module's first design rule says.
+
+        That rule reads 'Read-only: never writes to any file.'
+        """
         before = {p.name: p.read_bytes() for p in self._td.iterdir()}
         self._refresh()
         after = {p.name: p.read_bytes() for p in self._td.iterdir()}

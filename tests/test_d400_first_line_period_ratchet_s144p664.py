@@ -58,6 +58,13 @@ one-line summary ending in a period (a summary line above a path-led or wrapped 
 statement), 11 sites, so the baseline is now 116 sites in 100 files. test_tft_stage_gate_rm615 (lane/true-audit) and
 test_stale_fade_gentle_t12 / test_panel_visibility_permode (lane/uiux) stay in the baseline until those lanes land.
 
+Ninth slice (S144-P-674): ten more modules (tests test_inbox_responder_runner, test_last_match_tabs_reframe_dom,
+test_metrics_cache_lane8_cycle40, test_no_environ_in_assert_operands,
+test_rm172_mode_modifier_seam_characterization and tools det_coach_shadow_report, ds_patch_diff,
+mine_event_patterns, rm_id_registry, vision_atlas_validate) gained a one-line summary ending in a period (a question
+reworded as a statement, or a summary line above a path-led or wrapped opening), 15 sites, so the baseline is now
+101 sites in 90 files.
+
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
 """
@@ -153,12 +160,7 @@ _BASELINE = {
     "tests/snapshot_panels/test_overlay_hotkey_hints.py": 1,
     "tests/snapshot_panels/test_overlay_launcher_menu.py": 1,
     "tests/snapshot_panels/test_stale_fade_view_t12.py": 1,
-    "tests/test_inbox_responder_runner.py": 2,
-    "tests/test_last_match_tabs_reframe_dom.py": 2,
-    "tests/test_metrics_cache_lane8_cycle40.py": 2,
-    "tests/test_no_environ_in_assert_operands.py": 2,
     "tests/test_panel_visibility_permode.py": 1,
-    "tests/test_rm172_mode_modifier_seam_characterization.py": 2,
     "tests/test_run_packaged_smoke_updater_pkg6b.py": 1,
     "tests/test_stale_fade_gentle_t12.py": 1,
     "tests/test_tft_stage_gate_rm615.py": 1,
@@ -169,8 +171,6 @@ _BASELINE = {
     "tools/champion_loadout_collapse_to_paths.py": 1,
     "tools/champion_loadout_invariants.py": 1,
     "tools/champion_loadout_sweep_item_s8.py": 1,
-    "tools/det_coach_shadow_report.py": 1,
-    "tools/ds_patch_diff.py": 1,
     "tools/gated_g303_variant_reach.py": 1,
     "tools/gated_g314_tower_input.py": 1,
     "tools/gated_g5_focus_layout.py": 1,
@@ -179,11 +179,8 @@ _BASELINE = {
     "tools/gated_tft_live_keys.py": 1,
     "tools/gated_tls_2999_probe.py": 1,
     "tools/gated_y01_chain_report.py": 1,
-    "tools/mine_event_patterns.py": 1,
     "tools/package_portable.py": 1,
     "tools/probe_101qq_hero_rank_double.py": 1,
-    "tools/rm_id_registry.py": 1,
-    "tools/vision_atlas_validate.py": 1,
 }
 
 

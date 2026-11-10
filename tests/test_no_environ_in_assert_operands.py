@@ -151,7 +151,7 @@ def _collect_aliases(tree: ast.AST) -> set[str]:
 
 
 def _rewriter_reaches_environ(node: ast.AST, aliases: set[str]) -> bool:
-    """Would pytest's assertion explanation render an environ mapping?"""
+    """Say whether pytest's assertion explanation would render an environ mapping."""
     if _is_environ_expr(node, aliases):
         return True
     if isinstance(node, (*_COMPREHENSIONS, ast.Lambda)):
@@ -162,8 +162,10 @@ def _rewriter_reaches_environ(node: ast.AST, aliases: set[str]) -> bool:
 
 
 def _value_renders_environ(node: ast.AST, aliases: set[str]) -> bool:
-    """Is this VALUE (a unittest arg or an assert msg) an environ mapping or a
-    string built from one?"""
+    """Say whether this VALUE is an environ mapping or a string built from one.
+
+    The value is a unittest arg or an assert msg.
+    """
     if _is_environ_expr(node, aliases):
         return True
     if isinstance(node, ast.JoinedStr):

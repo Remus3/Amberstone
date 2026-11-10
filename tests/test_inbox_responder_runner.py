@@ -149,7 +149,7 @@ def posix_fsencode(name) -> bytes:
 
 
 def filesystem_can_list_note_name(name: str, encoding=None, errors=None) -> bool:
-    """Can a directory listing on a host with this filesystem codec ever yield `name`?
+    """Say whether a directory listing on a host with this filesystem codec can ever yield `name`.
 
     A str listing (`Path.iterdir`, which `pending_notes` uses) DECODES every
     entry with the filesystem codec, so anything it yields re-encodes with that
@@ -657,8 +657,10 @@ def _assert_auditor_sees_a_write(tmp_dir: Path) -> None:
 
 
 def _selection_drives_an_arm(items, module) -> bool:
-    """Does the collected selection contain an arm of `module` that drives the
-    runner through the `world` fixture (and so must write a tmp responder log)?"""
+    """Say whether the selection holds an arm of `module` that uses the `world` fixture.
+
+    Such an arm drives the runner through that fixture, so it must write a tmp responder log.
+    """
     return any(getattr(i, "module", None) is module
                and "world" in getattr(i, "fixturenames", ()) for i in items)
 
