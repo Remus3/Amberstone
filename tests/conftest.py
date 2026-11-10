@@ -382,8 +382,8 @@ def _disabled_hot_reload_watcher(project_root):
     """Stand-in for `core.hot_reload.start_watcher` - starts nothing.
 
     THE MOST DAMAGING ROW IN THE CENSUS, and the one that is not about bytes.
-    `web_dashboard.py:58-61` calls `start_watcher(_APP_DIR)` at MODULE level,
-    inside a bare `try/except ImportError`. So merely importing
+    `web_dashboard._start_hot_reload_watcher` calls `start_watcher(_APP_DIR)`
+    at MODULE level (import time). So merely importing
     `web_dashboard` - which several test modules do at collection - starts a
     daemon thread that polls every non-frozen `.py` in the repo every 2
     seconds and, on any change, writes `restart_trigger.txt`

@@ -38,13 +38,54 @@ s209 changes:
 - Dropped the `game-start` sticky tier. GameStart sets sticky directly
   to `in-progress`; CS->null inference advances to `in-progress` as well,
   so the CS-end -> InProgress gap renders active-match.
+
+JS value semantics (S144-T-685): ``phase`` and ``mode`` are read in the JS
+straight off a polled ``/api/state`` body, so they can be any JSON value, not
+just a string or null. The JS compares them with ``===`` / ``Array.includes``
+(never raises, never matches a non-string) and tests them with ``!`` (JS
+truthiness: ``[]`` and ``{}`` are TRUTHY, ``0`` / ``false`` / ``""`` / null
+are falsy). The mirror used Python ``in frozenset`` (raises ``TypeError`` on
+a list or dict) and Python truthiness (``[]`` falsy), so on 976 of 5184
+malformed ticks it raised or derived a different view than the runtime.
+``_is_one_of`` and ``_js_falsy`` below carry the JS semantics; parity is now
+EXECUTED, not asserted - ``tests/test_view_router_js_parity.py`` runs the
+real main.js functions under node over an exhaustive per-tick grid.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 IN_GAME_MODES = frozenset({"sr", "aram", "arena", "brawl", "tft"})
+
+
+def _is_one_of(value: Any, names: frozenset[str] | tuple[str, ...]) -> bool:
+    """JS ``value === "a" || value === "b"`` / ``[...].includes(value)``.
+
+    Only a string can equal one of the string literals, and the check never
+    raises: a list or dict ``phase`` is simply no match, as in the JS (a bare
+    ``in frozenset`` raises ``TypeError: unhashable type`` on it).
+    """
+    return isinstance(value, str) and value in names
+
+
+def _js_falsy(value: Any) -> bool:
+    """JS ``!value`` for a JSON-decoded value.
+
+    Falsy in JS: null, false, ``""``, ``0`` and NaN. Everything else is
+    truthy - including ``[]`` and ``{}``, which Python's ``not`` calls falsy.
+    ``True`` is an ``int`` in Python but is checked first, so it stays truthy.
+    """
+    if value is None or value is False:
+        return True
+    if value is True:
+        return False
+    if isinstance(value, str):
+        return value == ""
+    if isinstance(value, (int, float)):
+        return value == 0 or (isinstance(value, float) and math.isnan(value))
+    return False
 
 # Stable post-game phases - once observed after in-progress, clear sticky.
 _POSTGAME_PHASES = frozenset({
@@ -114,12 +155,12 @@ def update_game_started(
     if phase == "InProgress":
         return "in-progress"
 
-    if phase in _STICKY_CLEAR_PHASES:
+    if _is_one_of(phase, _STICKY_CLEAR_PHASES):
         # In-progress -> stable post-game: clear sticky.
-        if prior == "in-progress" and phase in _POSTGAME_PHASES:
+        if prior == "in-progress" and _is_one_of(phase, _POSTGAME_PHASES):
             return None
         # ChampSelect dodge: user backed out, clear sticky.
-        if prior == "champ-select" and phase in _DODGE_PHASES:
+        if prior == "champ-select" and _is_one_of(phase, _DODGE_PHASES):
             return None
         return prior
 
@@ -128,13 +169,13 @@ def update_game_started(
     # "in-progress" so the gap renders active-match. Gated on ``live`` so a
     # transient null-phase blip DURING champ select (no game running) does
     # not misfire into the in-game view.
-    if prior == "champ-select" and not phase and live:
+    if prior == "champ-select" and _js_falsy(phase) and live:
         return "in-progress"
 
     # Null-phase in-game promotion (item 281) arms the sticky. Same gate the
     # view derivation already trusts to render active-match: a real live game
     # (liveclient non-empty) in a real in-game mode.
-    if not phase and live and mode in IN_GAME_MODES:
+    if _js_falsy(phase) and live and _is_one_of(mode, IN_GAME_MODES):
         return "in-progress"
 
     return prior
@@ -177,7 +218,8 @@ def derive_view(
     # when a game is actually live. Without this, a stale aram/sr mode flag
     # during an idle lobby (LCU phase blipped to null) promoted a phantom
     # active-match rendering an old coach payload as a live match.
-    if active_match_enabled and not phase and mode in IN_GAME_MODES and live:
+    if (active_match_enabled and _js_falsy(phase)
+            and _is_one_of(mode, IN_GAME_MODES) and live):
         return DeriveResult("active-match", game_started)
     if phase == "ChampSelect":
         return DeriveResult("champ-select", game_started)
@@ -200,11 +242,13 @@ def derive_view(
     if game_started == "champ-select":
         return DeriveResult("champ-select", game_started)
 
-    if phase in _LOBBY_PHASES:
+    if _is_one_of(phase, _LOBBY_PHASES):
         return DeriveResult("lobby", game_started)
     # item 281: when no game is live, an in-game mode flag (left stale from
     # a prior game) must fall back to home, not the in-game last-match grid.
-    if mode in (None, "", "client", "lobby") or not live:
+    # JS ``!mode`` is every falsy value (0 and false too), not just null/"".
+    if (_js_falsy(mode) or _is_one_of(mode, ("client", "lobby"))
+            or not live):
         return DeriveResult("home", game_started)
     return DeriveResult("last-match", game_started)
 
@@ -230,7 +274,8 @@ def is_postgame_pgr_edge(
     NOT edges even though they sit in the sticky-clear arm - a mid-game blip
     to one of those must not flush the in-game view (s209).
     """
-    return prior_game_started == "in-progress" and phase in _POSTGAME_PHASES
+    return (prior_game_started == "in-progress"
+            and _is_one_of(phase, _POSTGAME_PHASES))
 
 
 def is_urgent(target_view: str) -> bool:

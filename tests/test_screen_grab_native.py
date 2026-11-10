@@ -15,8 +15,12 @@ from core import screen_grab
 
 
 def _fake_grab(w=2560, h=1440):
+    # Textured, not uniform: S144-T-728 made grab_native refuse a near-uniform
+    # frame with reason "blank" (tests/test_screen_grab_hardening_s144.py).
     from PIL import Image
-    return lambda: Image.new("RGB", (w, h), (30, 40, 50))
+    img = Image.new("RGB", (w, h), (30, 40, 50))
+    img.paste((220, 210, 200), (0, 0, w // 2, h))
+    return lambda: img
 
 
 class GrabNativeTests(unittest.TestCase):

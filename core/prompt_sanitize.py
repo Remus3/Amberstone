@@ -51,11 +51,19 @@ _WORD_RE = re.compile(r"\w")
 # it could not be closed by listing codepoints, and a list is exactly what
 # goes stale: keying off the name means a filler or joiner added by a
 # future Unicode revision is covered without a code change. Measured at
-# authoring time the rule selects 25 codepoints - 12 FILLER, 12 JOINER,
+# authoring time the rule selected 25 codepoints - 12 FILLER, 12 JOINER,
 # and U+2800 - and every one of them is invisible or a zero-width joining
 # mark. Verify with the sweep in the test file before widening it.
+#
+# S144-T-99: the suffix was "PATTERN BLANK", which matched U+2800 alone.
+# EGYPTIAN HIEROGLYPH FULL BLANK / HALF BLANK (U+13441 / U+13442) render
+# as nothing too, but they are Lo - word characters - so one of them
+# between "Ignore" and "previous" fused the phrase past every pattern.
+# The suffix is now " BLANK" (leading space: a whole final word), which
+# selects exactly those three today; BLANK SYMBOL (U+2422) draws a glyph
+# and does not END in the word, so it is kept.
 _BLANK_NAME_SUBSTRINGS = ("FILLER", "JOINER")
-_BLANK_NAME_SUFFIX = "PATTERN BLANK"
+_BLANK_NAME_SUFFIX = " BLANK"
 # Invisible by design but carrying no name signal to key off.
 _BLANK_EXPLICIT = frozenset((chr(0x17B4), chr(0x17B5)))
 
@@ -163,8 +171,9 @@ _INJECTION_PATTERNS = (
     # ahead of the three role-marker patterns below, so it ate the role
     # word in "forget all system: ..." and patterns 3-5 never saw it. Lazy
     # means it matches empty, leaving the role word exposed to its own
-    # pattern. The loop is single-pass and never re-scans a substitution,
-    # so a word this match consumes is a word nothing else ever inspects.
+    # pattern. A word this match consumes is inside a marker, and no later
+    # pass (see _neutralise) can match inside a marker, so a consumed word
+    # is a word nothing else ever inspects - the laziness still matters.
     re.compile(r"(?i)forget\s+(everything|all|previous)\s+\w*?"),
     re.compile(r"(?i)\bsystem\s*[:>]\s*"),
     re.compile(r"(?i)\bassistant\s*[:>]\s*"),
@@ -173,6 +182,48 @@ _INJECTION_PATTERNS = (
     re.compile(r"```+"),
 )
 _INJECTION_MARKER = "[BLOCKED:override]"
+
+# S144-T-99: the list used to run ONCE, top to bottom, and a substitution
+# can be what EXPOSES a match. "disregard above instructionforget all "
+# has no word boundary after "instruction" until the forget pattern turns
+# the glued tail into a marker - by which time the disregard pattern had
+# already run, so "disregard above instruction" reached the prompt live.
+# The list now runs to a fixpoint.
+#
+# It terminates: no pattern matches inside a marker (pinned by a test), so
+# every match starts and ends on text outside markers and each
+# substitution strictly reduces the characters that are not part of one.
+# The pass cap is not needed for termination; it bounds the WORK. Each
+# pass is linear, but a chain of phrases can need a pass per link, so
+# without a cap a 1 MiB body could cost a pass per few dozen bytes. Text
+# that has not settled within the cap FAILS CLOSED: the caller replaces
+# the whole value with one marker rather than return text nobody checked
+# (a verifier built a 40-link chain that, returned unsettled, was more
+# live than the pre-fixpoint output). Benign text costs one pass.
+_MAX_PASSES = 8
+
+
+def _neutralise(text: str) -> tuple:
+    """Apply every injection pattern until nothing changes.
+
+    Returns ``(text, settled)``; ``settled`` is False when the pass cap ran
+    out while the text was still changing."""
+    for _ in range(_MAX_PASSES):
+        before = text
+        for p in _INJECTION_PATTERNS:
+            text = p.sub(_INJECTION_MARKER, text)
+        if text == before:
+            return text, True
+    return text, False
+
+
+def _cap(out: str, max_len: int) -> str:
+    """Final length cap. RM-197 bypass 2: the ellipsis used to be added
+    ON TOP of a max_len-1 slice, so the result was max_len+2 and the cap
+    was not an upper bound at all. It is one now, for every max_len."""
+    if len(out) > max_len:
+        out = out[:max_len] if max_len <= 3 else out[: max_len - 3] + "..."
+    return out
 
 # Most game-state strings (champion, item, summoner-name) are <= 32 chars
 # in practice. 200 lets longer composite strings (ally_status_str etc.)
@@ -199,33 +250,63 @@ def clean(value: object, *, max_len: int = DEFAULT_MAX_LEN) -> str:
     # Strip control characters except common whitespace, mapping every
     # invisible separator to a real space rather than deleting it.
     out = "".join(_strip_char(ch) for ch in value)
-    # Inject-pattern neutralisation runs FIRST, while \n and \t are still
-    # real whitespace that \s can match. RM-197 bypass 1: tokenising the
-    # newline first turned "System\n:" into "System[\\n]:", which the
-    # role-marker patterns could no longer see - one newline defeated the
-    # block while the same string without it was caught.
-    for p in _INJECTION_PATTERNS:
-        out = p.sub(_INJECTION_MARKER, out)
+    # Tab -> single space (tab is a delimiter in some prompt formats), then
+    # collapse runs of spaces. S144-T-99: both used to run AFTER the
+    # patterns, and the collapse SHRINKS text, so a gap padded past the
+    # distance bound passed every pattern and was then squeezed back to
+    # two spaces - "ignore" + 60 spaces + "previous instructions" came out
+    # as a live "ignore  previous instructions". Every step after the
+    # patterns must now only grow or keep text, never close a gap.
+    out = out.replace("\t", " ")
+    out = re.sub(r" {3,}", "  ", out)
+    # Inject-pattern neutralisation runs before the newline token, while
+    # \n is still real whitespace that \s can match. RM-197 bypass 1:
+    # tokenising the newline first turned "System\n:" into
+    # "System[\\n]:", which the role-marker patterns could no longer see -
+    # one newline defeated the block while the same string without it was
+    # caught.
+    out, settled = _neutralise(out)
+    if not settled:
+        out = _INJECTION_MARKER
     # Replace newlines with a token so multi-line input stays contained
     # in a single visible line - preserves info, removes the newline as
     # an LLM section delimiter.
     out = out.replace("\n", _NEWLINE_TOKEN)
-    # Tab -> single space (tab is a delimiter in some prompt formats).
-    out = out.replace("\t", " ")
-    # Collapse repeated whitespace.
-    out = re.sub(r" {3,}", "  ", out)
     # Final length cap - append an ellipsis so a downstream reader can see
-    # truncation happened. RM-197 bypass 2: the ellipsis used to be added
-    # ON TOP of a max_len-1 slice, so the result was max_len+2 and the cap
-    # was not an upper bound at all. It is one now, for every max_len.
-    if len(out) > max_len:
-        out = out[:max_len] if max_len <= 3 else out[: max_len - 3] + "..."
-    return out
+    # truncation happened.
+    return _cap(out, max_len)
 
 
 def clean_iter(values: Iterable, *, max_len: int = DEFAULT_MAX_LEN) -> list:
     """Apply :func:`clean` to each element of an iterable. None values
-    are filtered out so a list-with-Nones doesn't produce empty strings."""
+    are filtered out so a list-with-Nones doesn't produce empty strings.
+
+    S144-T-99: every caller JOINS the result (", " for items and comps,
+    "\\n- " for arena choices, one line each for comp context), so a
+    phrase split across entries - ["ignore", "previous", "instructions"] -
+    reached the prompt whole although no single entry matched. The
+    cleaned entries are therefore also checked joined by a newline, which
+    every pattern gap and role-marker ``\\s*`` spans and which cannot occur
+    inside a cleaned entry (clean() tokenises it). A match across entries
+    becomes one marker and the entries it spanned MERGE into one (the text
+    before and after it is kept); each entry is re-capped and the rebuilt
+    list is checked again, to a fixpoint under the same pass cap.
+
+    Why merge and re-check rather than keep the entries apart: the check
+    is only sound if the list it last measured IS the list returned.
+    Dropping the entries a match emptied, or truncating a merged entry,
+    removes text - and with it separators - so a gap the check measured
+    over the bound can close under it in the caller's join (a verifier
+    built one: a role match spanning six blank entries left "ignore" and
+    "previous" 50 apart here and 44 apart after ", ".join). Once the list
+    settles, a join whose separator is one or more non-word characters
+    other than ":", ">" and "<" (every caller uses ", ", "\\n- " or a line
+    break) puts at least as much text in every gap as the newline did and
+    adds nothing a role pattern can use. A list that does not settle
+    within the pass caps FAILS CLOSED as a single marker, never as a
+    rebuilt list nobody re-checked. A list whose newline join matches
+    nothing is returned exactly as clean() left each entry.
+    """
     out = []
     for v in values:
         if v is None:
@@ -233,4 +314,18 @@ def clean_iter(values: Iterable, *, max_len: int = DEFAULT_MAX_LEN) -> list:
         s = clean(v, max_len=max_len)
         if s:
             out.append(s)
-    return out
+    if len(out) < 2:
+        return out
+    cap = max(max_len, 0)
+    for _ in range(_MAX_PASSES):
+        joined = "\n".join(out)
+        neutral, settled = _neutralise(joined)
+        if not settled:
+            break
+        if neutral == joined:
+            return out
+        # Rebuilt from a settled check, but merging and re-capping change
+        # the text, so the next round checks it again - even one entry.
+        out = [_cap(piece, cap) for piece in neutral.split("\n") if piece]
+    blocked = _cap(_INJECTION_MARKER, cap)
+    return [blocked] if blocked else []

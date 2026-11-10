@@ -44,6 +44,16 @@ through resolve_set.
 A set's meta file is that set's own: a missing tft_set<N>_meta.json is
 never replaced by another set's file (the old sites fell back to Set 17,
 which fed Set 17 comps to a Set 18 game).
+
+Input contract (s144 true-audit): every reader here takes values RC did not
+author (a dashboard ?set= query, the RC_TFT_SET env pin, LCU payloads, live
+game data, comp_state.json) and never raises on junk. A set id is ASCII
+digits 1-999 only; a value that is not one is no set id. A set_number handed
+to a path builder is parsed the same way; one that does not parse names no
+set (a path that reads as absent, an empty roster), so it never borrows
+another set's file and no caller value is ever interpolated into a file
+name. Only None means "the resolved set". Only a file name the path builders produce
+counts as ingested ("tft_set018_*" or "tft_set0_*" never does).
 """
 from __future__ import annotations
 
@@ -51,6 +61,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 from pathlib import Path
 
@@ -68,11 +79,20 @@ LIVE_SET_KEYS = (
     "tftSetNumber",
 )
 
-_SET_FILE_RE = re.compile(r"^tft_set(\d{1,3})_(?:meta|cdragon)\.json$")
-_SET_ID_RE = re.compile(r"^(?:tft_?)?set_?(\d{1,3})(?:_\w*)?$", re.IGNORECASE)
+# ASCII only: \d and \w would otherwise match any Unicode digit / word char,
+# and a non-ASCII digit either breaks int() ("\u00b2") or names a file the
+# path builders never produce. No leading zero, so every match round-trips
+# through meta_path / cdragon_path.
+_SET_FILE_RE = re.compile(r"^tft_set([1-9]\d{0,2})_(?:meta|cdragon)\.json$", re.ASCII)
+_SET_ID_RE = re.compile(r"^(?:tft_?)?set_?(\d{1,3})(?:_\w*)?$", re.IGNORECASE | re.ASCII)
+_DIGITS_RE = re.compile(r"\d{1,9}", re.ASCII)
 
 _monotonic = time.monotonic
+# The noted live set and when it was noted. Written by the TFT worker thread,
+# read by coach and dashboard threads: the pair is only ever read or written
+# under _live_lock, so a reader never pairs one note's set with another's time.
 _live: dict = {"set": None, "at": 0.0}
+_live_lock = threading.Lock()
 _warned: set = set()
 
 
@@ -80,19 +100,31 @@ def meta_dir(root=None) -> Path:
     return Path(root if root is not None else ROOT) / "data" / "meta"
 
 
-def parse_set_id(value) -> int | None:
-    """18, "18", "TFTSet18", "TFTSet17_PAIRS", "TFT_Set17", "Set18" -> int."""
+def _ascii_int(value) -> int | None:
+    """A non-bool int, or an ASCII digit string (surrounding whitespace ok,
+    at most 9 digits); None for anything else. Never raises."""
     if isinstance(value, bool):
         return None
     if isinstance(value, int):
-        return value if 1 <= value <= 999 else None
+        return value
+    if isinstance(value, str):
+        s = value.strip()
+        if _DIGITS_RE.fullmatch(s):
+            return int(s)
+    return None
+
+
+def parse_set_id(value) -> int | None:
+    """18, "18", "TFTSet18", "TFTSet17_PAIRS", "TFT_Set17", "Set18" -> int.
+
+    ASCII digits only, 1-999; anything else (a non-ASCII digit, a huge digit
+    string, a float, a bool, a container) is None. Never raises."""
+    n = _ascii_int(value)
+    if n is not None:
+        return n if 1 <= n <= 999 else None
     if not isinstance(value, str):
         return None
-    s = value.strip()
-    if s.isdigit():
-        n = int(s)
-        return n if 1 <= n <= 999 else None
-    m = _SET_ID_RE.match(s)
+    m = _SET_ID_RE.match(value.strip())
     if not m:
         return None
     n = int(m.group(1))
@@ -123,24 +155,34 @@ def note_live_set(value) -> int | None:
     """Record the set a live game reports; None/unparseable clears nothing."""
     n = parse_set_id(value)
     if n is not None:
-        _live["set"] = n
-        _live["at"] = _monotonic()
+        at = _monotonic()
+        with _live_lock:
+            _live["set"] = n
+            _live["at"] = at
     return n
 
 
 def clear_live_set() -> None:
-    _live["set"] = None
-    _live["at"] = 0.0
+    with _live_lock:
+        _live["set"] = None
+        _live["at"] = 0.0
 
 
 def noted_live_set() -> int | None:
-    n = _live["set"]
-    if n is None:
-        return None
-    if _monotonic() - _live["at"] > LIVE_TTL_S:
-        clear_live_set()
-        return None
-    return n
+    """The noted set while fresh (LIVE_TTL_S), else None (and the note is
+    dropped). The clock is read BEFORE the pair, and the pair is read and
+    expired under the lock, so a note landing concurrently is either seen
+    whole or survives for the next read - never answered with the old set."""
+    now = _monotonic()
+    with _live_lock:
+        n = _live["set"]
+        if n is None:
+            return None
+        if now - _live["at"] > LIVE_TTL_S:
+            _live["set"] = None
+            _live["at"] = 0.0
+            return None
+        return n
 
 
 def note_live_set_from_game_data(game_data) -> int | None:
@@ -162,11 +204,7 @@ QUEUE_SETS = {6110: 17}
 def set_from_lcu(default_set=None, queue_id=None) -> int | None:
     """The running set from LCU facts: a revival queue's own set first, else
     the tftsets.json mDefaultSet ("TFTSet18" -> 18); None when neither parses."""
-    q = None
-    if isinstance(queue_id, int) and not isinstance(queue_id, bool):
-        q = queue_id
-    elif isinstance(queue_id, str) and queue_id.strip().isdigit():
-        q = int(queue_id.strip())
+    q = _ascii_int(queue_id)
     if q in QUEUE_SETS:
         return QUEUE_SETS[q]
     return parse_set_id(default_set)
@@ -205,10 +243,8 @@ def lcu_tft_queue_id(session) -> int | None:
     q = data.get("queue") if isinstance(data, dict) else None
     if not isinstance(q, dict) or q.get("gameMode") != "TFT":
         return None
-    qid = q.get("id")
-    if isinstance(qid, str) and qid.strip().isdigit():
-        qid = int(qid.strip())
-    if isinstance(qid, bool) or not isinstance(qid, int) or qid <= 0:
+    qid = _ascii_int(q.get("id"))
+    if qid is None or qid <= 0:
         return None
     return qid
 
@@ -278,10 +314,26 @@ def resolve_set(live_set=None, *, root=None) -> int:
     return available[-1] if available else FALLBACK_SET
 
 
+# The file-name token for an explicit set_number that is not a set id. It is
+# no set (_SET_FILE_RE never matches it, no writer produces it), so its path
+# reads as absent: an explicit bad set never borrows another set's file.
+_NO_SET = "_invalid"
+
+
+def _explicit_or_resolved(set_number, root) -> int | None:
+    """None (absent) -> the resolved set; an explicit value -> its set id, or
+    None when it is not one. Never a raw caller value."""
+    if set_number is None:
+        return resolve_set(root=root)
+    return parse_set_id(set_number)
+
+
 def meta_path(set_number=None, *, pbe=False, root=None) -> Path:
     """The set's meta file; its PBE twin only when pbe and the twin exists."""
-    n = set_number if set_number is not None else resolve_set(root=root)
+    n = _explicit_or_resolved(set_number, root)
     d = meta_dir(root)
+    if n is None:
+        return d / f"tft_set{_NO_SET}_meta.json"
     if pbe:
         twin = d / f"tft_set{n}_pbe_meta.json"
         if twin.exists():
@@ -290,15 +342,18 @@ def meta_path(set_number=None, *, pbe=False, root=None) -> Path:
 
 
 def cdragon_path(set_number=None, *, root=None) -> Path:
-    n = set_number if set_number is not None else resolve_set(root=root)
-    return meta_dir(root) / f"tft_set{n}_cdragon.json"
+    n = _explicit_or_resolved(set_number, root)
+    return meta_dir(root) / f"tft_set{_NO_SET if n is None else n}_cdragon.json"
 
 
 def load_json_file(path) -> dict:
-    """A JSON object off disk, or {} when absent / unreadable / not an object."""
+    """A JSON object off disk, or {} when absent / unreadable / not an object.
+
+    RecursionError is "unreadable" too: a deeply nested document blows the
+    decoder's stack, and that must not escape into a coach path."""
     try:
         obj = json.loads(Path(path).read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError):
         return {}
     return obj if isinstance(obj, dict) else {}
 
@@ -316,8 +371,27 @@ def comp_state(root=None) -> dict:
     return load_json_file(Path(root if root is not None else ROOT) / "data" / "comp_state.json")
 
 
+_PBE_ON = frozenset({"true", "1", "yes", "on"})
+
+
 def pbe_flag(root=None) -> bool:
-    return bool(comp_state(root).get("pbe", False))
+    """data/comp_state.json's PBE switch (see pbe_enabled)."""
+    return pbe_enabled(comp_state(root))
+
+
+def pbe_enabled(state) -> bool:
+    """A comp_state "pbe" value is on only for True, 1 or a "true"/"1"/"yes"/
+    "on" string (any case); "false", "0", 2, a list and every other value is
+    off, so a stringly-typed "false" never routes the coach to the PBE twin.
+    For a caller that already holds the comp_state dict."""
+    value = state.get("pbe", False) if isinstance(state, dict) else False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value == 1
+    if isinstance(value, str):
+        return value.strip().lower() in _PBE_ON
+    return False
 
 
 def _str_list(value) -> list[str]:
@@ -329,8 +403,11 @@ def _str_list(value) -> list[str]:
 
 
 def roster(set_number=None, *, root=None) -> list[str]:
-    """Champion display names: CDragon extract first, then the meta file."""
-    n = set_number if set_number is not None else resolve_set(root=root)
+    """Champion display names: CDragon extract first, then the meta file.
+    An explicit set_number that is not a set id has no roster."""
+    n = _explicit_or_resolved(set_number, root)
+    if n is None:
+        return []
     names = _str_list(load_cdragon(n, root=root).get("champions"))
     if names:
         return names
@@ -343,7 +420,9 @@ def roster(set_number=None, *, root=None) -> list[str]:
 
 
 def trait_names(set_number=None, *, root=None) -> list[str]:
-    n = set_number if set_number is not None else resolve_set(root=root)
+    n = _explicit_or_resolved(set_number, root)
+    if n is None:
+        return []
     names = _str_list(load_cdragon(n, root=root).get("all_traits"))
     return names or _str_list(load_meta(n, root=root).get("all_traits"))
 

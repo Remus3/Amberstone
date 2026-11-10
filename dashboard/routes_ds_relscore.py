@@ -59,11 +59,21 @@ Failure modes:
   - 400  champion param literally missing OR present-but-blank.
   - 400  mode outside the four above, with a fixed text and the supported list
          (RM-1330); the ranker is not called and nothing is cached.
+  - 400  "unknown champion" / "unknown item": an id the patch snapshot does
+         not carry, or "too many items": more than ``_MAX_ITEM_PARAMS``
+         raw entries (S144-T-680). A fixed text, never the caller's value;
+         the ranker is not called, nothing is cached, nothing is logged
+         above DEBUG. Ids are checked BEFORE the six-slot count, so junk
+         ids are never answered (or cached) as a full build.
   - 200  ok=false reason=no_rows when the ranker returns zero candidates.
   - 200  ok=false reason=build_full when six inventory slots are occupied,
          so there is no next slot to rank. An expected terminal state, NOT
          an error - it is cached like any success (see Don't-redo below).
   - 503  rank_items / DataSnapshot import or compute fails.
+
+  A ranker row whose delta_dps is not finite (NaN / inf) is dropped before
+  the bar is built (S144-T-680): ``json.dumps`` would emit a bare ``NaN``
+  token that the browser's ``JSON.parse`` rejects, blanking the panel.
 
 5-min TTL in-process cache keyed on (champion, mode, sorted items, level),
 bounded at ``_CACHE_MAX`` entries (expired entries dropped on write).
@@ -101,6 +111,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 import time
 from urllib.parse import parse_qs, urlparse
@@ -129,6 +140,12 @@ _SUPPORTED_MODES: tuple[str, ...] = ("SR", "ARAM", "ARENA", "BRAWL")
 _SNAPSHOT = None
 _SNAPSHOT_LOCK = threading.Lock()
 
+# S144-T-680: the raw ``items`` list is capped before it reaches the cache
+# key. A Live Client inventory is at most seven rows (six slots plus the
+# trinket) and the panel sends nothing else, so 16 leaves room for
+# consumable rows while refusing an unbounded list.
+_MAX_ITEM_PARAMS = 16
+
 _DEFAULT_LEVEL = 11
 _DEFAULT_TOP_N = 12
 
@@ -137,6 +154,15 @@ _DEFAULT_TOP_N = 12
 # (the ``len(current_ids) >= slot_count`` check in
 # agents.daemon_slayer.onhit_dps.rank_items_by_onhit and its per-scorer twins).
 _INVENTORY_SLOTS = 6
+
+
+class _ClientError(Exception):
+    """A caller mistake answered 400 with ``public`` - a FIXED text that
+    never carries the caller's value (S144-T-680)."""
+
+    def __init__(self, public: str) -> None:
+        super().__init__(public)
+        self.public = public
 
 
 def _get_snapshot():
@@ -189,6 +215,28 @@ def _parse_level(raw: str) -> int:
     return max(1, min(18, lv))
 
 
+def _check_ids(snapshot, champion: str, items: list[str]) -> None:
+    """Raise ``_ClientError`` for an id the patch snapshot does not carry.
+
+    Before S144-T-680 an unknown id reached ``DataSnapshot.champion`` /
+    ``.item``, raised ``KeyError`` and landed on the 503 catch-all: a WARNING
+    carrying the caller's value, uncached, so it re-ran and re-logged on
+    every poll and read as an engine fault.
+    """
+    if champion not in snapshot.champions:
+        raise _ClientError("unknown champion")
+    for item_id in items:
+        if item_id not in snapshot.items:
+            raise _ClientError("unknown item")
+
+
+def _finite(value) -> bool:
+    try:
+        return math.isfinite(float(value))
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
 def _cache_key(champion, mode, items, level) -> tuple:
     return (champion, mode, tuple(sorted(items)), level)
 
@@ -215,6 +263,8 @@ def _compute(champion, mode, items, level) -> dict:
     """Build the response payload from scratch (no cache)."""
     from agents.daemon_slayer.rank import rank_items
 
+    snapshot = _get_snapshot()
+    _check_ids(snapshot, champion, items)
     target = _resolve_target(mode, level)
 
     # A full inventory is an EXPECTED terminal answer, not an engine fault.
@@ -233,7 +283,6 @@ def _compute(champion, mode, items, level) -> dict:
             "count":    0,
         }
 
-    snapshot = _get_snapshot()
     result = rank_items(
         snapshot,
         champion_id=champion,
@@ -246,7 +295,9 @@ def _compute(champion, mode, items, level) -> dict:
         top_n=_DEFAULT_TOP_N,
         sort_by="delta",
     )
-    ranked = list(result.ranked)
+    # S144-T-680: a non-finite delta would reach json.dumps as a bare NaN /
+    # Infinity token, which JSON.parse rejects - drop the row instead.
+    ranked = [r for r in result.ranked if _finite(r.delta_dps)]
     if not ranked:
         return {
             "ok":       False,
@@ -258,9 +309,10 @@ def _compute(champion, mode, items, level) -> dict:
         }
 
     # Relative bar: each row's delta as a percent of the BEST row's delta.
-    # Rows arrive sorted desc by delta, so ranked[0] is the max. Guard a
-    # non-positive top delta (degenerate itemless build) -> all rows 0.0.
-    top_delta = float(ranked[0].delta_dps)
+    # Rows arrive sorted desc by delta, but the max is taken explicitly so
+    # the bar never depends on the ranker's order. Guard a non-positive top
+    # delta (degenerate itemless build) -> all rows 0.0.
+    top_delta = max(float(r.delta_dps) for r in ranked)
     rows = []
     for r in ranked:
         delta = round(float(r.delta_dps), 1)
@@ -298,6 +350,16 @@ def _cache_put(key: tuple, now: float, payload: dict) -> None:
             _CACHE.pop(oldest, None)
 
 
+def _send_client_error(h, public: str) -> None:
+    """400 with a fixed text; DEBUG only, since a caller's mistake is not a
+    fault worth a WARNING on every poll (S144-T-680)."""
+    log.debug("api/ds-relscore rejected: %s", public)
+    h._send(400, json.dumps({
+        "ok":    False,
+        "error": public,
+    }).encode("utf-8"), "application/json")
+
+
 def _serve_ds_relscore(h) -> None:
     """GET /api/ds-relscore handler."""
     t0 = time.time()
@@ -321,8 +383,11 @@ def _serve_ds_relscore(h) -> None:
             }).encode("utf-8"), "application/json")
             return
 
-        items = _drop_non_inventory(
-            _parse_item_list((qs.get("items") or [""])[0].strip()))
+        raw_items = _parse_item_list((qs.get("items") or [""])[0].strip())
+        if len(raw_items) > _MAX_ITEM_PARAMS:
+            _send_client_error(h, "too many items")
+            return
+        items = _drop_non_inventory(raw_items)
         level = _parse_level((qs.get("level") or [""])[0].strip())
 
         key = _cache_key(champion, mode, items, level)
@@ -339,6 +404,9 @@ def _serve_ds_relscore(h) -> None:
 
         try:
             payload = _compute(champion, mode, items, level)
+        except _ClientError as exc:
+            _send_client_error(h, exc.public)
+            return
         except ImportError as exc:
             log.warning("api/ds-relscore import: %s", exc)
             h._send(503, json.dumps({

@@ -43,6 +43,16 @@ _ERROR_MORE_DATA = 234
 _PID_SLOTS = 4096
 _NO_WINDOW = 0x08000000
 _K32 = None
+# S144-T-731: kill_tree's inputs are bounded. A pid outside 1.._PID_MAX never reaches a
+# kill; grace_s is clamped to 0.._GRACE_MAX_S (junk or NaN = the default) so a job that
+# will not empty cannot hold the caller forever; poll_s is clamped to the poll band (junk
+# or NaN = the default) so the sweep never busy-spins or makes time.sleep raise.
+_PID_MAX = 2 ** 31 - 1
+_GRACE_DEFAULT_S = 10.0
+_GRACE_MAX_S = 300.0
+_POLL_DEFAULT_S = 0.1
+_POLL_MIN_S = 0.01
+_POLL_MAX_S = 1.0
 
 
 def _kernel32():
@@ -183,21 +193,31 @@ class KillJob:
         except OSError:
             return False
 
-    def close(self, kill: bool) -> None:
+    def close(self, kill: bool) -> bool:
         """kill=True ends the tree first; kill=False swaps kill-on-close for breakaway-OK
         first, exactly the kit's _WinJob.close(kill=False), so the processes still in the
-        job outlive the handle and are as free as they were before this job existed."""
+        job outlive the handle and are as free as they were before this job existed.
+
+        Returns True when the requested outcome holds. kill=True is always True on an open
+        job: closing the last handle of a kill-on-close job ends the tree even when
+        TerminateJobObject was refused. kill=False is False when the OS refused the swap
+        (S144-T-731): kill-on-close is then still set, so closing the handle ENDS the
+        processes still in the job, and the caller should log that. False on a job that
+        is already closed (nothing is done)."""
         if not self.handle:
-            return
+            return False
+        ok = False
         try:
             if kill:
                 self.kill()
+                ok = True
             else:
                 with contextlib.suppress(OSError):
-                    self._set_limits(JOB_BREAKAWAY_OK_AFTER_CLEAN_END)
+                    ok = self._set_limits(JOB_BREAKAWAY_OK_AFTER_CLEAN_END)
         finally:
             self._k32.CloseHandle(self.handle)
             self.handle = None
+        return ok
 
 
 def _last_error() -> int:
@@ -210,29 +230,62 @@ def _taskkill_exe() -> str:
     return str(Path(root) / "System32" / "taskkill.exe") if root else "taskkill"
 
 
-def kill_tree(pid: int, job: KillJob | None = None, grace_s: float = 10.0,
-              poll_s: float = 0.1) -> dict:
+def _valid_pid(pid):
+    """`pid` if it is a plain int in 1.._PID_MAX, else None. Never coerced: 0 and the
+    negatives are process GROUPS to os.kill (0 = the caller's own group, -1 = every
+    process the caller may signal), a bool is not a pid, and a value past pid_t makes
+    os.kill raise OverflowError."""
+    if isinstance(pid, bool) or not isinstance(pid, int):
+        return None
+    return pid if 0 < pid <= _PID_MAX else None
+
+
+def _bounded_s(value, default: float, low: float, high: float) -> float:
+    """A seconds argument as a float clamped to low..high; a bool, a non-number or NaN
+    is `default`, +inf (or an int too large for a float) is `high`, -inf `low`."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    try:
+        value = float(value)
+    except OverflowError:  # an int past float range
+        return high if value > 0 else low
+    if value != value:  # NaN
+        return default
+    return min(high, max(low, value))
+
+
+def kill_tree(pid: int, job: KillJob | None = None, grace_s: float = _GRACE_DEFAULT_S,
+              poll_s: float = _POLL_DEFAULT_S) -> dict:
     """End `pid` and everything it started. First the old path, unchanged:
     `taskkill /F /T /PID pid`, a parent-pid walk run while the root still lives (the
     caller holds its Popen, so the pid cannot be reused). Then, with a job, the sweep
     that walk cannot do: TerminateJobObject, repeated until the job is empty or grace_s
     runs out, which ends a process whose parent had already exited. Returns {"job":
     used a job, "taskkill_rc": its exit code or None, "survivors": pids still in the job
-    at the end ([] = all gone) or None without a job / when the list is unreadable}."""
-    out = {"job": bool(job is not None and job.handle), "taskkill_rc": None,
-           "survivors": None}
-    if _IS_WINDOWS:
+    at the end ([] = all gone) or None without a job / when the list is unreadable}.
+
+    S144-T-731: a pid that is not a plain int in 1.._PID_MAX reaches no kill at all
+    (taskkill_rc None) but the job sweep still runs, since the job, not the pid, is what
+    reaches an orphan; grace_s is clamped to 0.._GRACE_MAX_S and poll_s to
+    _POLL_MIN_S.._POLL_MAX_S (a junk or NaN value is the default); a job stand-in with no
+    handle attribute counts as no job."""
+    out = {"job": bool(job is not None and getattr(job, "handle", None)),
+           "taskkill_rc": None, "survivors": None}
+    target = _valid_pid(pid)
+    if target is not None and _IS_WINDOWS:
         with contextlib.suppress(OSError, subprocess.SubprocessError):
             out["taskkill_rc"] = subprocess.run(
-                [_taskkill_exe(), "/F", "/T", "/PID", str(int(pid))], capture_output=True,
+                [_taskkill_exe(), "/F", "/T", "/PID", str(target)], capture_output=True,
                 timeout=30, creationflags=_NO_WINDOW).returncode
-    else:
+    elif target is not None:
         import signal
         with contextlib.suppress(OSError):
-            os.kill(int(pid), signal.SIGKILL)
+            os.kill(target, getattr(signal, "SIGKILL", signal.SIGTERM))
     if not out["job"]:
         return out
-    deadline = time.monotonic() + max(0.0, grace_s)
+    grace = _bounded_s(grace_s, _GRACE_DEFAULT_S, 0.0, _GRACE_MAX_S)
+    poll_s = _bounded_s(poll_s, _POLL_DEFAULT_S, _POLL_MIN_S, _POLL_MAX_S)
+    deadline = time.monotonic() + grace
     try:
         while True:
             job.kill()

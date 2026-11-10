@@ -23,6 +23,7 @@ does not read as a confident 100%.
 from __future__ import annotations
 
 import logging
+import math
 import sqlite3
 from pathlib import Path
 from typing import Optional
@@ -59,107 +60,165 @@ DEFAULT_BUCKETS = (
 
 
 def _open_ro() -> Optional[sqlite3.Connection]:
+    """A read-only handle to the local rewind db, or None when it is absent
+    or unopenable. The URI comes from Path.as_uri, which percent-escapes the
+    path: an f-string URI let a '#' (fragment) or '%' (escape) in the
+    checkout path truncate or mangle it, so the real db was never opened
+    (same fix as core.duration_winrate._open_ro)."""
     if not _REWIND_DB.exists():
         return None
     try:
-        return sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True)
+        return sqlite3.connect(_REWIND_DB.resolve().as_uri() + "?mode=ro",
+                               uri=True)
     except sqlite3.Error as exc:
         log.warning("snowball_elasticity open: %s", exc)
         return None
 
 
-def _bucket_index(diff: int, buckets) -> Optional[int]:
+def _as_result(value) -> Optional[bool]:
+    """tracked_win 1 -> True, 0 -> False, anything else (NULL, 2, text) ->
+    None: an unknown result, which never enters a bucket and is never read
+    as a loss (RM-610; mirror core.duration_winrate._as_result)."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return {1: True, 0: False}.get(value)
+    return None
+
+
+_TEAMS = (100, 200)
+
+
+def _as_team(value) -> Optional[int]:
+    """A stored team id: exactly int 100 or 200 (never a bool), else None.
+    SQLite is dynamically typed, so tracked_team_id can hand back text or a
+    BLOB; int() on those raised out of the never-raises contract."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if value in _TEAMS else None
+
+
+def _bucket_index(diff: float, buckets) -> Optional[int]:
     for i, (_label, lo, hi) in enumerate(buckets):
         if (lo is None or diff >= lo) and (hi is None or diff < hi):
             return i
     return None
 
 
-# For each SR match with a timeline, the summed total_gold per team at the ONE
-# frame nearest the checkpoint (deterministic: nearest by |ts-target|, ties
-# broken by the earlier ts). Restricting to a tolerance window both bounds the
-# scan and drops games too short to have reached the checkpoint.
-_TEAM_GOLD_AT_CHECKPOINT_SQL = """
-WITH cand AS (
-    SELECT tf.match_id AS mid, tf.timestamp_ms AS ts, p.team_id AS team,
-           tf.total_gold AS g, ABS(tf.timestamp_ms - ?) AS dist
-    FROM timeline_frames tf
-    JOIN matches m ON m.match_id = tf.match_id
-    JOIN participants p
-      ON p.match_id = tf.match_id AND p.participant_id = tf.participant_id
-    WHERE m.map_id = ? AND m.has_timeline = 1
-      AND tf.timestamp_ms BETWEEN ? AND ?
-),
-pick AS (
-    SELECT mid, ts FROM (
-        SELECT mid, ts,
-               ROW_NUMBER() OVER (PARTITION BY mid ORDER BY ABS(ts - ?), ts) AS rn
-        FROM (SELECT DISTINCT mid, ts FROM cand)
-    ) WHERE rn = 1
-)
-SELECT c.mid, c.team, SUM(c.g) AS team_gold
-FROM cand c
-JOIN pick k ON k.mid = c.mid AND k.ts = c.ts
-GROUP BY c.mid, c.team
+# One row per (match, frame timestamp, team) inside the checkpoint's
+# tolerance window: the team's summed total_gold plus the counts that prove
+# the sum is honest. TOTAL (a float that never overflows) replaces SUM, whose
+# int64 "integer overflow" error on ONE junk row used to discard every match
+# of the checkpoint. rows_n counts joined rows, pids_n distinct participants
+# and nums_n rows whose gold is a real number: rows_n == pids_n rules out a
+# duplicated frame or participant row, rows_n == nums_n rules out a NULL or
+# text gold value (SUM / TOTAL skip a NULL and read text as 0, both silently
+# wrong). The tolerance window both bounds the scan and drops games too
+# short to have reached the checkpoint.
+_TEAM_GOLD_IN_WINDOW_SQL = """
+SELECT tf.match_id, tf.timestamp_ms, p.team_id,
+       TOTAL(tf.total_gold) AS team_gold,
+       COUNT(*) AS rows_n,
+       COUNT(DISTINCT tf.participant_id) AS pids_n,
+       SUM(CASE WHEN typeof(tf.total_gold) IN ('integer', 'real')
+                THEN 1 ELSE 0 END) AS nums_n
+FROM timeline_frames tf
+JOIN matches m ON m.match_id = tf.match_id
+JOIN participants p
+  ON p.match_id = tf.match_id AND p.participant_id = tf.participant_id
+WHERE m.map_id = ? AND m.has_timeline = 1
+  AND tf.timestamp_ms BETWEEN ? AND ?
+GROUP BY tf.match_id, tf.timestamp_ms, p.team_id
 """
 
 
-def _checkpoint_diffs(conn: sqlite3.Connection, target_ms: int) -> dict:
+def _team_sum(entry) -> Optional[tuple]:
+    """(gold, roster_size) for one team at one frame, or None when the sum
+    cannot be trusted: a duplicated row, a NULL / text gold value, or an
+    empty roster. TOTAL always returns a float; a non-finite one (an
+    infinite REAL) is refused by the caller's finite-difference check."""
+    gold, rows_n, pids_n, nums_n = entry
+    if not rows_n or rows_n != pids_n or rows_n != nums_n:
+        return None
+    return float(gold), rows_n
+
+
+def _checkpoint_diffs(conn: sqlite3.Connection, target_ms: int,
+                      tracked: Optional[dict] = None) -> dict:
     """Map match_id -> (tracked_team_gold - enemy_team_gold) at the frame
-    nearest ``target_ms``. A match missing either team's sum (no near frame) is
-    absent from the result."""
+    nearest ``target_ms`` (within CHECKPOINT_TOLERANCE_MS; ties go to the
+    earlier frame) at which both teams' rosters are duplicate-free and the
+    SAME size (equal size, not a full 5v5: a frame missing one player on
+    each side still counts) and every gold value is a number giving a finite
+    difference. A frame failing that is skipped for
+    the next-nearest one in the window; a match with no such frame (or no
+    resolved tracked meta) is absent from the result. ``tracked`` is
+    _tracked_meta's map, read once per call by compute_snowball_elasticity;
+    None reads it here."""
     lo = target_ms - CHECKPOINT_TOLERANCE_MS
     hi = target_ms + CHECKPOINT_TOLERANCE_MS
     try:
         rows = conn.execute(
-            _TEAM_GOLD_AT_CHECKPOINT_SQL,
-            (target_ms, SR_MAP_ID, lo, hi, target_ms),
+            _TEAM_GOLD_IN_WINDOW_SQL, (SR_MAP_ID, lo, hi),
         ).fetchall()
     except sqlite3.Error as exc:
         log.warning("snowball_elasticity checkpoint %d: %s", target_ms, exc)
         return {}
 
-    per_match: dict = {}
-    for mid, team, team_gold in rows:
-        per_match.setdefault(mid, {})[team] = team_gold
+    if tracked is None:
+        tracked = _tracked_meta(conn)
 
-    tracked = _tracked_meta(conn)
+    # match -> frame timestamp -> team -> (gold, rows_n, pids_n, nums_n)
+    per_match: dict = {}
+    for mid, ts, team, gold, rows_n, pids_n, nums_n in rows:
+        if mid not in tracked or isinstance(ts, bool) or not isinstance(ts, int):
+            continue
+        per_match.setdefault(mid, {}).setdefault(ts, {})[team] = (
+            gold, rows_n, pids_n, nums_n)
+
     diffs: dict = {}
-    for mid, teams in per_match.items():
-        meta = tracked.get(mid)
-        if meta is None:
-            continue
-        tracked_team, _win = meta
+    for mid, frames in per_match.items():
+        tracked_team = tracked[mid][0]
         enemy_team = 200 if tracked_team == 100 else 100
-        if tracked_team not in teams or enemy_team not in teams:
-            continue
-        diffs[mid] = teams[tracked_team] - teams[enemy_team]
+        for ts in sorted(frames, key=lambda t: (abs(t - target_ms), t)):
+            teams = frames[ts]
+            if tracked_team not in teams or enemy_team not in teams:
+                continue
+            own = _team_sum(teams[tracked_team])
+            foe = _team_sum(teams[enemy_team])
+            if own is None or foe is None or own[1] != foe[1]:
+                continue
+            diff = own[0] - foe[0]
+            if not math.isfinite(diff):
+                continue
+            diffs[mid] = diff
+            break
     return diffs
 
 
 def _tracked_meta(conn: sqlite3.Connection) -> dict:
     """Map match_id -> (tracked_team_id, tracked_win) for SR matches with a
-    timeline. Cached per call on the connection object to avoid re-querying for
-    each checkpoint."""
-    cache = getattr(conn, "_se_tracked_meta", None)
-    if cache is not None:
-        return cache
+    timeline whose team is 100 / 200 and whose result is resolved (0 / 1).
+    Read once per compute call and passed down; never cached on the
+    connection (an attribute cache was inert on a plain sqlite3.Connection,
+    which takes no attributes, and stale across calls on a subclass that
+    does)."""
     meta: dict = {}
     try:
-        for mid, team, win in conn.execute(
+        rows = conn.execute(
             "SELECT match_id, tracked_team_id, tracked_win FROM matches "
             "WHERE map_id = ? AND has_timeline = 1",
             (SR_MAP_ID,),
-        ).fetchall():
-            if team is None:
-                continue
-            meta[mid] = (int(team), int(win or 0))
+        ).fetchall()
     except sqlite3.Error as exc:
         log.warning("snowball_elasticity tracked meta: %s", exc)
-    try:
-        conn._se_tracked_meta = meta  # type: ignore[attr-defined]
-    except (AttributeError, TypeError):
-        pass
+        return meta
+    for mid, team, win in rows:
+        team_id = _as_team(team)
+        result = _as_result(win)
+        if team_id is None or result is None:
+            continue
+        meta[mid] = (team_id, result)
     return meta
 
 
@@ -173,8 +232,11 @@ def compute_snowball_elasticity(
     ``mode`` is accepted for API symmetry with sibling surfaces but only "sr"
     is meaningful today (anything else falls back to it). ``conn`` injects a db
     connection for tests; when None a read-only handle to the local rewind db is
-    opened + closed. Never raises - an unavailable db or empty corpus returns an
-    ok payload with every checkpoint + bucket present and winrate None.
+    opened + closed. Only a resolved result (tracked_win 0 or 1) on a 100 /
+    200 tracked team is counted; an unknown one is skipped, never read as a
+    loss. Never raises on stored data - an unavailable db, a junk row or an
+    empty corpus returns an ok payload with every checkpoint + bucket present
+    (winrate None where a bucket is empty).
 
     Each bucket carries both ``winrate`` (raw %, gated to None below
     MIN_BUCKET_N) and ``winrate_smoothed`` (Laplace-shrunk %, present whenever
@@ -190,14 +252,12 @@ def compute_snowball_elasticity(
     try:
         tracked = _tracked_meta(conn) if conn is not None else {}
         for key, target_ms in CHECKPOINTS:
-            diffs = _checkpoint_diffs(conn, target_ms) if conn is not None else {}
+            diffs = (_checkpoint_diffs(conn, target_ms, tracked)
+                     if conn is not None and tracked else {})
             tally = [[0, 0] for _ in buckets]  # [wins, games] per bucket
             for mid, diff in diffs.items():
-                meta = tracked.get(mid)
-                if meta is None:
-                    continue
-                _team, win = meta
-                bi = _bucket_index(int(diff), buckets)
+                _team, win = tracked[mid]
+                bi = _bucket_index(diff, buckets)
                 if bi is None:
                     continue
                 tally[bi][1] += 1

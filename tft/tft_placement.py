@@ -46,13 +46,19 @@ STORE. `data/tft_matches/` (gitignored), one file per (game, source):
 never overwritten once written - and atomic (tmp + replace via
 core.polled_json). Single writer: the postgame collector thread. Readers
 (`load`, `latest`) merge the two sources of one game; the upcoming per-round
-database / the tft/engine package join on `game_id`.
+database / the tft/engine package join on `game_id`. One shape gate,
+`_valid_record`, guards both ends: `persist` refuses a record that fails it
+(append-only, so a bad file would shadow the good one for ever) and the
+reader skips a file that fails it, logged once, so one bad file never raises
+out of `load` / `latest`. Game ids are 1 .. 2**63 - 1: listable by the store
+file pattern and a SQLite INTEGER.
 """
 from __future__ import annotations
 
 import copy
 import json
 import logging
+import math
 import re
 import time
 import urllib.parse
@@ -87,21 +93,54 @@ _MAX_LOBBY = 8
 _TS_FMT = "%Y-%m-%d %H:%M:%S"     # the match_history.db timestamp format
 _FILE_RE = re.compile(r"^([1-9][0-9]{0,18})\.(eog|history)\.json$")
 _STR_CAP = 120
+# A digit string is plain ASCII 0-9, at most 19 of them (2**63 - 1 has 19).
+# str.isdigit() also admits superscripts (int() raises on them) and other
+# scripts' digits (int() reads them), so it is never the test here.
+_DIGITS_RE = re.compile(r"[0-9]{1,19}")
+# Game ids the store holds: listable by _FILE_RE (19 digits at most) AND a
+# SQLite INTEGER (tft/rounds/ground_truth.py binds them; it refuses past i64).
+_MAX_GAME_ID = 2 ** 63 - 1
+# A plausible end time (2009-01-01 .. 2100-01-01 UTC). Outside it the value is
+# junk, and datetime.fromtimestamp raises on Windows for the far ends.
+_END_MIN_UNIX = 1_230_768_000
+_END_MAX_UNIX = 4_102_444_800
+# A game length / elimination time is under a day; anything past it is junk.
+_SECONDS_CAP = 86_400
 
 
 # -- small coercions -------------------------------------------------------------
 
 def _int(v) -> Optional[int]:
-    """A real int (bool excluded) or an int-valued float / digit string."""
+    """A real int (bool excluded), an int-valued finite float, or a string of
+    1-19 ASCII digits (surrounding whitespace allowed)."""
     if isinstance(v, bool):
         return None
     if isinstance(v, int):
         return v
     if isinstance(v, float) and v.is_integer():
         return int(v)
-    if isinstance(v, str) and v.strip().isdigit():
-        return int(v.strip())
+    if isinstance(v, str):
+        s = v.strip()
+        if _DIGITS_RE.fullmatch(s):
+            return int(s)
     return None
+
+
+def _game_id(v) -> Optional[int]:
+    """A game id the store can hold and list (1 .. 2**63 - 1), else None."""
+    gid = _int(v)
+    return gid if gid is not None and 1 <= gid <= _MAX_GAME_ID else None
+
+
+def _finite(v) -> Optional[float]:
+    """A finite real number (bool excluded) as float, else None."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    try:
+        f = float(v)
+    except OverflowError:              # an int past the float range
+        return None
+    return f if math.isfinite(f) else None
 
 
 def _str(v) -> str:
@@ -180,8 +219,7 @@ def scrub_raw(doc):
 def session_game_id(session) -> Optional[int]:
     """gameData.gameId of a /lol-gameflow/v1/session document, else None."""
     gd = session.get("gameData") if isinstance(session, dict) else None
-    gid = _int(gd.get("gameId")) if isinstance(gd, dict) else None
-    return gid if gid and gid > 0 else None
+    return _game_id(gd.get("gameId")) if isinstance(gd, dict) else None
 
 
 def session_is_tft(session) -> bool:
@@ -209,8 +247,14 @@ def session_is_tft(session) -> bool:
 
 
 def history_path(puuid: str, count: int = 5) -> str:
-    return HISTORY_PATH.format(puuid=urllib.parse.quote(str(puuid), safe=""),
-                               count=max(1, min(20, int(count))))
+    """The match-history route for `puuid`, `count` clamped to 1-20 (a junk
+    count reads as 5). A non-text or blank puuid raises ValueError rather
+    than being str()-ed into the route ("/tft/None/matches")."""
+    if not isinstance(puuid, str) or not puuid.strip():
+        raise ValueError("history_path: puuid must be non-blank text")
+    n = _int(count)
+    n = 5 if n is None else max(1, min(20, n))
+    return HISTORY_PATH.format(puuid=urllib.parse.quote(puuid, safe=""), count=n)
 
 
 # -- EOG parse -------------------------------------------------------------------
@@ -302,24 +346,29 @@ def is_tft_doc(doc) -> bool:
 
 def parse_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
     """Sanitised record from a tft-eog-stats document, or None when the
-    document is not one (no positive gameId, no players[] list)."""
+    document is not one (no game id in 1 .. 2**63 - 1, no players[] list).
+
+    The local entry is the ONE players[] entry flagged isLocalPlayer. When
+    several carry the flag none is marked local (never a stranger's board),
+    and the local placement / HP come from the document's own localPlayer
+    block, as they do when no entry is flagged."""
     if not isinstance(doc, dict):
         return None
-    gid = _int(doc.get("gameId"))
+    gid = _game_id(doc.get("gameId"))
     raw_players = doc.get("players")
-    if not gid or gid <= 0 or not isinstance(raw_players, list) or not raw_players:
+    if not gid or not isinstance(raw_players, list) or not raw_players:
         return None
+    flagged = [p for p in raw_players
+               if isinstance(p, dict) and p.get("isLocalPlayer") is True]
+    local_raw = flagged[0] if len(flagged) == 1 else None
     players = []
-    local_raw = None
     for p in raw_players:
         if not isinstance(p, dict):
             continue
-        if p.get("isLocalPlayer") is True and local_raw is None:
-            local_raw = p
         board = [u for u in (_eog_unit(x) for x in _list(p.get("boardPieces"))) if u]
         players.append({
             "placement": _placement(p.get("ffaStanding")) or _placement(p.get("rank")),
-            "is_local": p.get("isLocalPlayer") is True,
+            "is_local": p is local_raw,
             "partner_group_id": _int(p.get("partnerGroupId")) or 0,
             "board": board,
             "traits": _eog_trait_counts(board),
@@ -333,6 +382,9 @@ def parse_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
     local_placement = (_placement(src.get("ffaStanding")) or _placement(src.get("rank"))
                        if src else None)
     hp = _int(src.get("health")) if src else None
+    # The set is lobby-wide: any flagged entry's name serves when the flag is
+    # ambiguous (localPlayer carries "" here, measured).
+    set_core = next((s for s in (_str(p.get("setCoreName")) for p in flagged) if s), "")
     rec = _header(SOURCE_EOG, gid, now, EOG_PATH)
     rec.update({
         "ended_at": None, "ended_at_unix": None,
@@ -340,7 +392,7 @@ def parse_eog(doc, *, now: Optional[float] = None) -> Optional[dict]:
         "queue_id": _int(doc.get("queueId")),
         "queue_type": _str(doc.get("queueType")),
         "is_ranked": doc.get("isRanked") if isinstance(doc.get("isRanked"), bool) else None,
-        "set_core_name": _str((local_raw or {}).get("setCoreName")) or _str(lp.get("setCoreName")),
+        "set_core_name": set_core or _str(lp.get("setCoreName")),
         "set_number": None,
         "game_type": "",
         "local_placement": local_placement,
@@ -382,10 +434,10 @@ def parse_gameclient_eog(doc, *, now: Optional[float] = None,
     entry carries it. Unknown -> no local placement / HP, never a stranger's."""
     if not isinstance(doc, dict):
         return None
-    gid = _int(doc.get("gameId"))
+    gid = _game_id(doc.get("gameId"))
     sb = doc.get("statsBlock")
     raw_players = sb.get("players") if isinstance(sb, dict) else None
-    if not gid or gid <= 0 or not isinstance(raw_players, list) or not raw_players:
+    if not gid or not isinstance(raw_players, list) or not raw_players:
         return None
     from tft.local_player import local_player_index
     local_idx, _basis = local_player_index(raw_players, summoner_id=local_summoner_id,
@@ -467,15 +519,18 @@ def parse_history_game(game, local_puuid: str, *,
     j = game.get("json") if isinstance(game, dict) else None
     if not isinstance(j, dict):
         return None
-    gid = _int(j.get("game_id")) or _int(j.get("gameId"))
+    gid = _game_id(j.get("game_id")) or _game_id(j.get("gameId"))
     parts = j.get("participants")
-    if not gid or gid <= 0 or not isinstance(parts, list) or not parts:
+    if not gid or not isinstance(parts, list) or not parts:
         return None
     me = _str(local_puuid)
     players = []
     for p in parts:
         if not isinstance(p, dict):
             continue
+        # A non-finite or absurd value is absent, never an exception that
+        # would cost every game of this read (round(inf) / round(nan) raise).
+        elim = _finite(p.get("time_eliminated"))
         players.append({
             "placement": _placement(p.get("placement")),
             "is_local": bool(me) and p.get("puuid") == me,
@@ -483,9 +538,8 @@ def parse_history_game(game, local_puuid: str, *,
             "level": _int(p.get("level")),
             "gold_left": _int(p.get("gold_left")),
             "last_round": _int(p.get("last_round")),
-            "time_eliminated_s": _int(round(p["time_eliminated"]))
-            if isinstance(p.get("time_eliminated"), (int, float))
-            and not isinstance(p.get("time_eliminated"), bool) else None,
+            "time_eliminated_s": int(round(elim))
+            if elim is not None and abs(elim) <= _SECONDS_CAP else None,
             "board": [u for u in (_history_unit(x) for x in _list(p.get("units"))) if u],
             "traits": _history_traits(p.get("traits")),
             "augments": _augments(p.get("augments")),
@@ -496,15 +550,15 @@ def parse_history_game(game, local_puuid: str, *,
     local = next((p for p in players if p["is_local"]), None)
     ended = None
     dt = _int(j.get("game_datetime"))
-    if dt and dt > 10**11:
+    if dt and dt > 10**11 and _END_MIN_UNIX <= dt / 1000.0 <= _END_MAX_UNIX:
         ended = dt / 1000.0
-    length = j.get("game_length")
+    length = _finite(j.get("game_length"))
     rec = _header(SOURCE_HISTORY, gid, now, _HISTORY_ROUTE)
     rec.update({
         "ended_at": _stamp(ended) if ended else None,
         "ended_at_unix": ended,
-        "game_length_s": int(length) if isinstance(length, (int, float))
-        and not isinstance(length, bool) and length > 0 else None,
+        "game_length_s": int(length)
+        if length is not None and 0 < length <= _SECONDS_CAP else None,
         "queue_id": _int(j.get("queue_id")) or _int(j.get("queueId")),
         "queue_type": "",
         "is_ranked": None,
@@ -604,13 +658,77 @@ def _path(store: Path, game_id: int, source: str) -> Path:
     return store / f"{int(game_id)}.{source}.json"
 
 
+def _is_int(v) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _opt_int(v) -> bool:
+    return v is None or _is_int(v)
+
+
+def _valid_trait(t) -> bool:
+    return (isinstance(t, dict) and isinstance(t.get("name"), str)
+            and (t.get("id") is None or isinstance(t.get("id"), str))
+            and _opt_int(t.get("tier")) and _opt_int(t.get("units")))
+
+
+def _valid_unit(u) -> bool:
+    return (isinstance(u, dict) and isinstance(u.get("character_id"), str)
+            and _opt_int(u.get("star")) and _opt_int(u.get("cost"))
+            and isinstance(u.get("items"), list)
+            and all(isinstance(i, dict) for i in u["items"])
+            and isinstance(u.get("traits"), list)
+            and all(_valid_trait(t) for t in u["traits"]))
+
+
+def _valid_player(p) -> bool:
+    if not isinstance(p, dict):
+        return False
+    place = p.get("placement")
+    return ((place is None or (_is_int(place) and 1 <= place <= _MAX_LOBBY))
+            and isinstance(p.get("is_local"), bool)
+            and isinstance(p.get("board"), list)
+            and all(_valid_unit(u) for u in p["board"])
+            and isinstance(p.get("traits"), list)
+            and all(_valid_trait(t) for t in p["traits"])
+            and isinstance(p.get("augments"), list)
+            and all(isinstance(a, str) for a in p["augments"]))
+
+
+def _valid_record(d, gid: int, source: str) -> bool:
+    """True when `d` is a well-formed record of game `gid` from `source`:
+    every key merge() and the readers compute on has its parse-time type,
+    and the time stamps are finite. The store's ONE shape gate - persist()
+    refuses what fails it and the reader skips it, so one bad file never
+    raises out of load() / latest()."""
+    if not isinstance(d, dict) or d.get("schema") != SCHEMA_VERSION:
+        return False
+    if d.get("source") != source or not _is_int(d.get("game_id")) or d["game_id"] != gid:
+        return False
+    if _finite(d.get("captured_at_unix")) is None or not isinstance(d.get("captured_at"), str):
+        return False
+    ended, ended_at = d.get("ended_at_unix"), d.get("ended_at")
+    if ended is not None and _finite(ended) is None:
+        return False
+    if ended_at is not None and not isinstance(ended_at, str):
+        return False
+    players = d.get("players")
+    return isinstance(players, list) and all(_valid_player(p) for p in players)
+
+
 def persist(record, store_dir=None) -> bool:
     """Write one source record, append-only: False (and nothing written)
-    when this (game, source) is already stored or the record is not one."""
+    when this (game, source) is already stored or the record is not a
+    well-formed one (a written file is never replaced, so a bad record would
+    shadow the good one for ever)."""
     if not isinstance(record, dict) or record.get("source") not in _SOURCES:
         return False
-    gid = _int(record.get("game_id"))
-    if not gid or gid <= 0:
+    gid = _game_id(record.get("game_id"))
+    if not gid:
+        return False
+    if not _valid_record(record, gid, record["source"]):
+        _log.warning("tft store: game %s %s record refused - not well-formed",
+                     gid, record["source"])
         return False
     store = _dir(store_dir)
     target = _path(store, gid, record["source"])
@@ -623,33 +741,55 @@ def persist(record, store_dir=None) -> bool:
 
 
 def has_record(game_id, source: Optional[str] = None, store_dir=None) -> bool:
-    gid = _int(game_id)
-    if not gid or gid <= 0:
+    gid = _game_id(game_id)
+    if not gid:
         return False
     store = _dir(store_dir)
     return any(_path(store, gid, s).exists()
                for s in ((source,) if source else _SOURCES))
 
 
-def _read(path: Path) -> Optional[dict]:
+# File names already warned about, so latest() (one pass over the whole store
+# per Post Game Review build) logs a bad file once, not on every read.
+_WARNED: set[str] = set()
+
+
+def _warn_once(name: str, msg: str, *args) -> None:
+    if name in _WARNED:
+        return
+    _WARNED.add(name)
+    _log.warning(msg, *args)
+
+
+def _read(path: Path, gid: int, source: str) -> Optional[dict]:
+    """The record in `path` when it is a well-formed `source` record of game
+    `gid` (_valid_record), else None. Never raises: an unreadable, too-deep
+    or shape-invalid file is skipped and logged once by its type."""
     try:
         d = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        _log.warning("tft store: unreadable %s: %s", path.name, exc)
+    except (OSError, ValueError, RecursionError) as exc:
+        _warn_once(path.name, "tft store: unreadable %s: %s", path.name,
+                   type(exc).__name__)
         return None
-    return d if isinstance(d, dict) and d.get("schema") == SCHEMA_VERSION else None
+    if isinstance(d, dict) and d.get("schema") != SCHEMA_VERSION:
+        return None                    # another schema: not this reader's
+    if not _valid_record(d, gid, source):
+        _warn_once(path.name, "tft store: %s skipped - not a well-formed %s "
+                   "record of that game", path.name, source)
+        return None
+    return d
 
 
 def load(game_id, store_dir=None) -> Optional[dict]:
-    gid = _int(game_id)
-    if not gid or gid <= 0:
+    gid = _game_id(game_id)
+    if not gid:
         return None
     store = _dir(store_dir)
     recs = {}
     for s in _SOURCES:
         p = _path(store, gid, s)
         if p.exists():
-            recs[s] = _read(p)
+            recs[s] = _read(p, gid, s)
     return merge(recs.get(SOURCE_EOG), recs.get(SOURCE_HISTORY))
 
 

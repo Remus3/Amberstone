@@ -99,17 +99,40 @@ def make_server(host: str, port: int, handler=None) -> PooledHTTPServer:
     return PooledHTTPServer((host, port), handler or Handler)
 
 
+def _is_loopback(host: str) -> bool:
+    try:
+        _port_handoff.require_loopback(host)
+    except ValueError:
+        return False
+    return True
+
+
 def main() -> int:
-    """Entry point used by the ``moon_vision_server.py`` shim and ``python -m
-    vision_server``. Returns process exit code."""
+    """Entry point used by the ``moon_vision_server.py`` shim (the package has
+    no ``__main__``). Returns the process exit code.
+
+    Runs under pythonw, where an uncaught traceback goes nowhere, so every
+    failure path logs and returns (s144 true-audit, S144-T-691): a held port
+    with a non-loopback ``RC_VISION_BIND`` exits 0 instead of raising out of
+    the loopback-only handoff, a failed client warm-up still serves the
+    relays, and the server is always closed on the way out.
+    """
     if not api_key_present():
         log.error("No API key")
         return 1
 
+    host = _bind_host()
     # Guard: exit cleanly if another instance is already on this port.
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
         probe.settimeout(1)
         already = probe.connect_ex(("127.0.0.1", PORT)) == 0
+    if already and not _is_loopback(host):
+        # core/port_handoff only ever probes or binds loopback (ADR-011), so
+        # the session-129 wait is not available for a non-loopback override;
+        # leave the holder alone, as before that wait existed.
+        log.warning("Port %d already in use and bind host %r is not loopback "
+                    "- no handoff wait. Exiting.", PORT, host)
+        return 0
     if already:
         # Session 129 (sibling of the RC-DS-MatchDB-MCP restart race): an
         # answering connect is not yet "another instance is running". The
@@ -118,7 +141,7 @@ def main() -> int:
         # left :8889 down until the watchdog's grace ran out. Wait for the
         # port to free (core/port_handoff.py); exit only if it stays held.
         h = _port_handoff.await_port(
-            _bind_host(), PORT, window_s=_HANDOFF_WINDOW_S, poll_s=_HANDOFF_POLL_S,
+            host, PORT, window_s=_HANDOFF_WINDOW_S, poll_s=_HANDOFF_POLL_S,
             holder_live=lambda: _port_handoff.health_answers(
                 "127.0.0.1", PORT,
                 check=_port_handoff.json_check(lambda d: d.get("alive") is True)))
@@ -144,8 +167,15 @@ def main() -> int:
         log.warning("cleared %d stale vision-server instance(s) before bind: %s",
                     len(reaped), reaped)
 
-    _get_client()
-    host = _bind_host()
+    # Warm the Anthropic client. A failure here must not keep the LCU / Live
+    # Client relays down - they need no client, and every inference call
+    # builds it lazily inside its own try. The type name only: the message
+    # of a constructor error is not ours to vouch for, and could carry a key.
+    try:
+        _get_client()
+    except Exception as e:  # noqa: BLE001 - any warm-up failure degrades, never kills the relays
+        log.warning("Anthropic client warm-up failed (%s); serving without it, "
+                    "inference retries per call", type(e).__name__)
     log.info("Moon Vision Server on %s:%d  python=%s", host, PORT, sys.executable)
     # Concurrent server (S7, 2026-06-10): the plain HTTPServer serialized
     # EVERY request behind the slowest in-flight handler - an in-process
@@ -164,10 +194,18 @@ def main() -> int:
     except OSError as e:
         log.error("bind %s:%d failed: %s", host, PORT, e)
         return 1
+    # serve_forever has returned or raised by the time any branch below runs,
+    # so shutdown() (which only stops a loop running in another thread) has
+    # nothing to stop; server_close releases the listen socket and the pool.
     try:
         s.serve_forever()
     except KeyboardInterrupt:
-        s.shutdown()
+        return 0
+    except Exception:  # noqa: BLE001 - logged with its traceback; pythonw has no stderr
+        log.exception("serve loop on %s:%d failed", host, PORT)
+        return 1
+    finally:
+        s.server_close()
     return 0
 
 

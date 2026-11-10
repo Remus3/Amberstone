@@ -406,6 +406,11 @@ def vision_main(monkeypatch):
         def shutdown(self):
             return None
 
+        def server_close(self):
+            # vision_server.main closes the server on every exit path
+            # (s144 true-audit, S144-T-691).
+            return None
+
     def _make(host, port, handler=None):
         made.append((host, port))
         return _Srv()

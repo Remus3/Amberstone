@@ -19,6 +19,15 @@ source() reports "static" ("none" if the seed is missing/empty). The kill
 switch defaults OFF this phase (no live endpoint exists yet). The loader is
 thread-safe, idempotent, TTL-cached, and never raises.
 
+Value contract (lane 8, S144-T-738): the static seed and the live rows pass ONE
+value gate, _clean_avg - a real, finite, non-negative int / float, never a bool.
+The seed is validated cell by cell (_validate_static): an unknown tier / mode /
+bracket / metric, a non-dict level or a bad avg is dropped, so every level of
+the published grid is a dict (_overlay cannot raise on it) and a seed of pure
+junk reports "none", not "static". A negative live avg is dropped rather than
+overlaid, so the seed's estimate still backs that cell. An EMPTY grid (nothing
+usable at all) is retried after _EMPTY_RETRY_S, not pinned for the full TTL.
+
 Concurrency contract (this module is read from dashboard server threads via
 dashboard/routes_bench_rank_tier.py, so a blocked reader is a blocked request):
   - `_LOCK` guards the published cache fields ONLY and is NEVER held across
@@ -69,6 +78,12 @@ VALID_BRACKETS = ("early", "mid")
 VALID_METRICS = ("cs", "kda", "kp")
 
 _TTL_S = 6 * 3600.0
+# Retry interval while the published grid is EMPTY (seed missing, unreadable or
+# all junk at the last build). Without it a transient cold-start read failure
+# pinned "no benchmark" on the panel for the whole 6h _TTL_S. Short enough to
+# heal within a game, long enough that a really absent seed is not re-read on
+# every request (the retry runs in the background, stale-while-revalidate).
+_EMPTY_RETRY_S = 60.0
 # Wall-clock ceiling for ONE live sweep. 20 cells x a 6.0s socket timeout is a
 # ~120s floor on the unbounded worst case; the budget is checked between cells,
 # so a slow endpoint yields a PARTIAL live overlay (already fail-soft per cell)
@@ -107,22 +122,86 @@ def _norm_mode(mode: str) -> str | None:
     return m if m in VALID_MODES else None
 
 
+def _clean_avg(raw) -> int | float | None:
+    """The avg when it is a real measured average, else None.
+
+    bool is rejected first because it subclasses int (float(True) is 1.0); a
+    non-finite float would re-serialise as a bare NaN / Infinity token that a
+    browser JSON.parse rejects; a negative cs / kda / kp average is not a
+    measurement; an int too large for a float (json reads a 400-digit literal
+    as an int) is not one either, and a browser would parse it as Infinity.
+    The numeric type is preserved (the seed's ints stay ints)."""
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return None
+    try:
+        if not math.isfinite(float(raw)):
+            return None
+    except OverflowError:
+        return None
+    if raw < 0:
+        return None
+    return raw
+
+
+def _validate_static(tiers: dict) -> dict:
+    """Keep only the documented shape of the seed's `tiers` block:
+    tier (VALID_TIERS) -> mode (VALID_MODES) -> role (non-empty str) ->
+    bracket (VALID_BRACKETS) -> metric (VALID_METRICS) -> {"avg": <clean>}.
+    Every non-dict level, unknown key and bad avg is dropped, and so is a
+    level left empty, so {} means "nothing usable"."""
+    out: dict = {}
+    for tier in VALID_TIERS:
+        modes = tiers.get(tier)
+        if not isinstance(modes, dict):
+            continue
+        for mode in VALID_MODES:
+            roles = modes.get(mode)
+            if not isinstance(roles, dict):
+                continue
+            for role, brackets in roles.items():
+                if not (isinstance(role, str) and role
+                        and isinstance(brackets, dict)):
+                    continue
+                for bracket in VALID_BRACKETS:
+                    metrics = brackets.get(bracket)
+                    if not isinstance(metrics, dict):
+                        continue
+                    for metric in VALID_METRICS:
+                        cell = metrics.get(metric)
+                        if not isinstance(cell, dict):
+                            continue
+                        avg = _clean_avg(cell.get("avg"))
+                        if avg is None:
+                            continue
+                        dst = (out.setdefault(tier, {}).setdefault(mode, {})
+                               .setdefault(role, {}).setdefault(bracket, {}))
+                        dst[metric] = {"avg": avg}
+    return out
+
+
 def _load_static_grid() -> dict:
     """Read the committed estimate seed into the tier->mode->... grid, or {}
-    on any read/parse error (fail-soft - the panel renders 'no benchmark')."""
+    on any read/parse error (fail-soft - the panel renders 'no benchmark').
+
+    utf-8-sig so a BOM written by a Windows editor does not read as a corrupt
+    seed; RecursionError is json's answer to a pathologically nested document
+    and is fail-soft like any other parse error. The result is validated
+    (_validate_static), never trusted verbatim."""
     try:
-        raw = json.loads(_SEED_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, ValueError):
+        raw = json.loads(_SEED_PATH.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError, RecursionError):
         return {}
     tiers = raw.get("tiers") if isinstance(raw, dict) else None
-    return tiers if isinstance(tiers, dict) else {}
+    return _validate_static(tiers) if isinstance(tiers, dict) else {}
 
 
 def _fold_rows(rows: list) -> dict:
     """Fold a live source's flat metric rows into a role->bracket->metric grid.
 
     Each row: {"role","bracket","metric","avg"}. Unknown brackets/metrics and
-    non-numeric averages are dropped. role defaults to "all".
+    non-numeric averages are dropped. A missing / empty role defaults to "all";
+    a non-string role (a list, a dict, a number) is dropped rather than turned
+    into a str() repr key. A non-list `rows` folds to {}.
 
     Two value rules, both load-bearing:
       - NON-FINITE avgs are dropped. json.loads accepts NaN / Infinity /
@@ -134,12 +213,20 @@ def _fold_rows(rows: list) -> dict:
         is the belt to that braces, and it also covers a caller-supplied row.
       - BOOLS are dropped. bool subclasses int and float(True) is 1.0, so a
         `"avg": true` would silently become the average 1.0. A boolean is not a
-        measured average, so this is treated as a type error, not a value."""
+        measured average, so this is treated as a type error, not a value.
+      - NEGATIVE avgs are dropped (S144-T-738). The live overlay writes at
+        metric granularity and the route nulls a negative avg, so a negative
+        live row used to WIPE the seed's estimate for that cell instead of
+        falling back to it."""
     out: dict = {}
-    for r in rows or []:
+    if not isinstance(rows, list):
+        return out
+    for r in rows:
         if not isinstance(r, dict):
             continue
-        role = str(r.get("role") or "all")
+        role = r.get("role") or "all"
+        if not isinstance(role, str):
+            continue
         bracket = r.get("bracket")
         metric = r.get("metric")
         if bracket not in VALID_BRACKETS or metric not in VALID_METRICS:
@@ -149,10 +236,10 @@ def _fold_rows(rows: list) -> dict:
             continue
         try:
             avg = float(raw_avg)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             continue
-        if not math.isfinite(avg):
-            continue
+        if _clean_avg(avg) is None:
+            continue                     # non-finite or negative
         out.setdefault(role, {}).setdefault(bracket, {})[metric] = {"avg": avg}
     return out
 
@@ -176,7 +263,7 @@ def _try_live_grid() -> dict:
             except Exception:  # noqa: BLE001 - live path must never raise into the loader
                 rows = None
             if not rows:
-                continue
+                continue                 # a non-list folds to {} below
             mode_grid = _fold_rows(rows)
             if mode_grid:
                 grid.setdefault(tier, {})[mode] = mode_grid
@@ -266,7 +353,8 @@ def _load_once() -> None:
     """
     with _LOCK:
         loaded = _LOADED
-        fresh = loaded and (_clock() - _LOADED_AT) < _TTL_S
+        ttl = _TTL_S if _GRID else _EMPTY_RETRY_S
+        fresh = loaded and (_clock() - _LOADED_AT) < ttl
     if fresh:
         return
     if loaded:

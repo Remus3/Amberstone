@@ -74,7 +74,6 @@ _BASELINE = {
     "tft/sources/tft_log.py": 1,
     "tft/tft_placement.py": 1,
     "tools/backfill_home_items_from_rewind.py": 1,
-    "tools/backfill_match_ingest_misattribution.py": 4,
     "tools/build_portable.py": 1,
     "tools/cost_health_watchdog.py": 2,
     "tools/gated_g236_loadout_push.py": 3,

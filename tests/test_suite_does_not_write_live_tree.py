@@ -135,7 +135,7 @@ _CENSUS = (
     ("ops/runtime/coaching_ts_tft.json", 342, 6, _FIXED, "prod-path-globals",
      "core/coaching_timestamps.py:33, same constant"),
     ("ops/runtime/hot_reload.json", 388, 3, _FIXED, "hot-reload-disabled",
-     "written by the watcher THREAD web_dashboard.py:59 starts at import, so "
+     "written by the watcher THREAD web_dashboard.py starts at import, so "
      "the three credited nodeids are bystanders, not causes"),
     # --- the one that is not about bytes ---------------------------------
     ("restart_trigger.txt", 15, 1, _FIXED, "hot-reload-disabled",

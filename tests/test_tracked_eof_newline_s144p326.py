@@ -17,8 +17,8 @@ Measured 2026-11-07 over 5235 tracked files in scope:
   ``core/prom_metrics.py``, ``dashboard/_state_builder.py`` and the three ``coach_integration`` modules) were stripped
   the same cycle, leaving 18. The set only shrinks: a file that stops offending
   fails ``test_blank_eof_baseline_is_exact`` until it is dropped from the set, and a new offender fails the guard. The
-  frozen ``ops/rc_supervisor.py`` and ``web_dashboard.py`` entries and the dated ``docs/_archive`` record stay named
-  rather than fixed.
+  frozen ``ops/rc_supervisor.py`` entry and the dated ``docs/_archive`` record stay named rather than fixed.
+  ``web_dashboard.py`` (not frozen) was dropped when the s144 true-audit rewrite removed its blank EOF line.
 
 Each shape has a positive control, so a rule that stopped detecting fails loudly instead of passing for nothing.
 """
@@ -53,7 +53,6 @@ _BLANK_EOF_BASELINE = frozenset({
     "web/css/panels/next.css",
     "web/css/panels/primitives.css",
     "web/css/panels/right_now.css",
-    "web_dashboard.py",
 })
 
 

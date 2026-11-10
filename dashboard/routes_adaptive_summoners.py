@@ -9,11 +9,17 @@ GET /api/champ-select/adaptive-summoners
 Recommends the summoner spell pair for the operator's pick against the
 locked-in enemy comp. The decision tree is deliberately small:
 
-  - Flash always stays primary (slot D = id 4) - only edge case is jungle
-    on Smite-required queues, but the LCU rejects no-Smite picks so we
-    keep Flash on as a safety net.
+  - Flash (id 4) always stays, in whichever slot the base keeps it (D or
+    F is a keybind preference); the swap replaces the OTHER slot. Only
+    edge case is jungle on Smite-required queues, but the LCU rejects
+    no-Smite picks so we keep Flash on as a safety net.
+  - A swap never duplicates a spell: when the target is already in the
+    base pair the base is kept as is. A short or duplicated base is
+    filled from Flash then Heal, so the answer is always two distinct ids.
   - Secondary swaps to **Cleanse** (id 1) when >=2 hard-CC enemies are
-    locked AND the operator is BOT/MID/ADC-style role. Cleanse breaks
+    locked (scored over a full five-enemy team, so one hard-CC pick locked
+    early does not count as a CC-heavy comp) AND the operator is
+    BOT/MID/ADC-style role. Cleanse breaks
     the long-form CC that Heal can't outlast (Morgana root, Ashe arrow,
     Thresh hook chain, etc.).
   - Secondary swaps to **Barrier** (id 21) when burst_threat >= 6
@@ -33,6 +39,11 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import sqlite3
+import threading
+import time
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 log = logging.getLogger("rc.web_dashboard")
@@ -95,16 +106,35 @@ _SPELL_NAMES: dict[int, str] = {
 }
 
 
+# A query value is untrusted: only plain ASCII decimal ids of at most
+# _MAX_ID_DIGITS digits, value > 0, are read, and at most _MAX_IDS of them
+# (a lobby has at most five enemies; Arena lists more, still well under 16).
+# int() alone also accepted a sign, an underscore, zero and non-ASCII digits.
+_MAX_IDS = 16
+_MAX_ID_DIGITS = 6
+
+# Scores are over a full five-enemy team: the CC threshold below is
+# "2 hard-CC of 5", so a partly locked roster must not inflate the fraction.
+_TEAM_SIZE = 5
+
+
 def _parse_int_csv(raw: str) -> list[int]:
+    """Positive ASCII-decimal ids from a comma list, in order, duplicates
+    kept (One for All locks one champion five times), at most _MAX_IDS."""
     out: list[int] = []
-    for raw_chunk in (raw or "").split(","):
+    if not isinstance(raw, str):
+        return out
+    for raw_chunk in raw.split(","):
         chunk = raw_chunk.strip()
-        if not chunk:
+        if not (chunk.isascii() and chunk.isdigit()
+                and len(chunk) <= _MAX_ID_DIGITS):
             continue
-        try:
-            out.append(int(chunk))
-        except ValueError:
+        value = int(chunk)
+        if value <= 0:
             continue
+        out.append(value)
+        if len(out) >= _MAX_IDS:
+            break
     return out
 
 
@@ -113,65 +143,132 @@ def _parse_int_csv(raw: str) -> list[int]:
 # threat-profile classifier in core.defensive_picks already loads the
 # same file with apostrophe-and-space variants under the same keys, so
 # the names we return here flow cleanly through that pipeline.
+# A good map is cached for the process; an EMPTY one (missing, unreadable
+# or malformed file) is retried after _EMPTY_RETRY_S instead of pinning
+# "no enemy names" until RC restarts, and is not re-read inside the window.
 _ID_TO_NAME: dict[int, str] | None = None
+_ID_TO_NAME_RETRY_AT = 0.0
+_EMPTY_RETRY_S = 60.0
+_ID_TO_NAME_LOCK = threading.Lock()
+_monotonic = time.monotonic
+
+
+def _champions_path() -> Path:
+    return (Path(__file__).resolve().parent.parent
+            / "data" / "meta" / "ddragon_champions.json")
+
+
+def _read_id_to_name() -> dict[int, str]:
+    out: dict[int, str] = {}
+    try:
+        # utf-8-sig: PowerShell 5.1 writes a BOM that plain utf-8 keeps.
+        raw = json.loads(_champions_path().read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError) as exc:
+        log.warning("adaptive-summoners: ddragon_champions load failed: %s",
+                    type(exc).__name__)
+        return out
+    data = raw.get("data", raw) if isinstance(raw, dict) else None
+    if not isinstance(data, dict):
+        log.warning("adaptive-summoners: ddragon_champions has no data object")
+        return out
+    for entry in data.values():
+        if not isinstance(entry, dict):
+            continue
+        key = entry.get("key")
+        name = entry.get("name")
+        if not (isinstance(key, str) and key.isascii() and key.isdigit()
+                and len(key) <= _MAX_ID_DIGITS):
+            continue
+        if not isinstance(name, str) or not name.strip():
+            continue
+        cid = int(key)
+        if cid > 0:
+            out[cid] = name.strip()
+    return out
 
 
 def _load_id_to_name() -> dict[int, str]:
-    global _ID_TO_NAME
-    if _ID_TO_NAME is not None:
-        return _ID_TO_NAME
-    out: dict[int, str] = {}
-    try:
-        from pathlib import Path
-        raw = json.loads(
-            (Path(__file__).resolve().parent.parent
-             / "data" / "meta" / "ddragon_champions.json").read_text(encoding="utf-8")
-        )
-        data = raw.get("data", raw)
-        for entry in data.values():
-            if not isinstance(entry, dict):
-                continue
-            key = entry.get("key")
-            name = entry.get("name")
-            if key and name:
-                try:
-                    out[int(key)] = str(name)
-                except (TypeError, ValueError):
-                    continue
-    except Exception as exc:  # noqa: BLE001
-        log.warning("adaptive-summoners: ddragon_champions load failed: %s", exc)
-    _ID_TO_NAME = out
-    return out
+    global _ID_TO_NAME, _ID_TO_NAME_RETRY_AT
+    cached = _ID_TO_NAME
+    if cached or (cached is not None and _monotonic() < _ID_TO_NAME_RETRY_AT):
+        return cached
+    with _ID_TO_NAME_LOCK:
+        cached = _ID_TO_NAME
+        if cached or (cached is not None
+                      and _monotonic() < _ID_TO_NAME_RETRY_AT):
+            return cached
+        out = _read_id_to_name()
+        if not out:
+            _ID_TO_NAME_RETRY_AT = _monotonic() + _EMPTY_RETRY_S
+        _ID_TO_NAME = out
+        return out
 
 
 def _resolve_enemy_names(enemy_ids: list[int]) -> list[str]:
     """Convert champion-ids to display names via the DDragon index.
     Returns empty string for ids we can't resolve - the threat-profile
-    classifier tolerates "" silently."""
+    classifier and the CC score both skip "" slots."""
     idx = _load_id_to_name()
-    return [str(idx.get(int(cid)) or "") for cid in enemy_ids]
+    return [idx.get(cid) or "" for cid in enemy_ids]
 
 
 def _compute_cc_score(enemy_names: list[str]) -> float:
-    """Fraction of enemies in _HARD_CC_CHAMPIONS, scaled to 0-10."""
-    if not enemy_names:
+    """Hard-CC enemies over a full team, scaled to 0-10.
+
+    The denominator is max(_TEAM_SIZE, resolved enemies): unresolved ""
+    slots do not dilute the score, and a roster still being locked does
+    not inflate it (one hard-CC pick of one locked used to score 10)."""
+    names = [nm for nm in (enemy_names or []) if isinstance(nm, str) and nm]
+    if not names:
         return 0.0
-    n_total = max(1, len(enemy_names))
-    n_hits = sum(1 for nm in enemy_names if nm and nm in _HARD_CC_CHAMPIONS)
-    return min(10.0, (n_hits / n_total) * 10.0)
+    n_hits = sum(1 for nm in names if nm in _HARD_CC_CHAMPIONS)
+    return min(10.0, (n_hits / max(_TEAM_SIZE, len(names))) * 10.0)
 
 
 def _compute_threat(enemy_names: list[str]) -> dict:
     """Wraps core.defensive_picks.compute_threat_profile + adds cc_threat.
-    Defensive against import failures (engine not installed) - returns a
-    zero-threat profile so the route still answers."""
+    Defensive against import failures (engine not installed) and a bad
+    profile: the failure is logged and the route still answers with the
+    CC score alone. The returned profile is a copy, never the callee's."""
     try:
         from core.defensive_picks import compute_threat_profile
-        profile = compute_threat_profile(enemy_names) or {}
-    except Exception:  # noqa: BLE001
-        profile = {}
+        raw = compute_threat_profile(enemy_names)
+    except Exception as exc:  # noqa: BLE001 - optional engine; degrade, log
+        log.warning("adaptive-summoners: threat profile failed: %s",
+                    type(exc).__name__)
+        raw = None
+    profile = dict(raw) if isinstance(raw, dict) else {}
     profile["cc_threat"] = round(_compute_cc_score(enemy_names), 1)
     return profile
+
+
+def _score(value) -> float:
+    """A finite threat score, or 0.0 for anything else (str, bool, NaN)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0.0
+    try:
+        value = float(value)
+    except OverflowError:  # an int past the float range is not a score
+        return 0.0
+    return value if math.isfinite(value) else 0.0
+
+
+def _normalise_base(base: list[int]) -> list[int]:
+    """The variant's stored pair as two distinct positive ids: the first
+    two distinct ids of ``base``, any missing slot filled from Flash then
+    Heal (so [7] becomes [7, 4] and [4, 4] becomes [4, 7])."""
+    pair: list[int] = []
+    for sid in base or []:
+        if isinstance(sid, bool) or not isinstance(sid, int) or sid <= 0:
+            continue
+        if sid not in pair:
+            pair.append(sid)
+        if len(pair) == 2:
+            return pair
+    for filler in (_FLASH, _HEAL):
+        if len(pair) < 2 and filler not in pair:
+            pair.append(filler)
+    return pair
 
 
 def _recommend(base: list[int], role: str, threat: dict) -> dict:
@@ -182,21 +279,31 @@ def _recommend(base: list[int], role: str, threat: dict) -> dict:
            for carry; [4, 7] retained for support duo + Senna/Kalista).
     role : LCU/dashboard form; we accept either via _BARRIER_ELIGIBLE_ROLES.
     """
-    primary   = base[0] if base else _FLASH
-    secondary = base[1] if len(base) > 1 else _HEAL
-    base_secondary = secondary
+    pair = _normalise_base(base)
+    # Flash stays in whichever slot it holds; the swap targets the other.
+    swap_slot = 0 if pair[1] == _FLASH else 1
+    base_secondary = pair[swap_slot]
+    secondary = base_secondary
 
-    cc_threat    = float(threat.get("cc_threat") or 0.0)
-    burst_threat = float(threat.get("burst_threat") or 0.0)
-    role_upper = (role or "").upper()
+    threat = threat if isinstance(threat, dict) else {}
+    cc_threat    = _score(threat.get("cc_threat"))
+    burst_threat = _score(threat.get("burst_threat"))
+    role_upper = role.strip().upper() if isinstance(role, str) else ""
 
+    target = None
     if cc_threat >= _CC_SWAP_THRESHOLD and role_upper in _CLEANSE_ELIGIBLE_ROLES:
-        secondary = _CLEANSE
+        target = _CLEANSE
         reason = f"CC threat {cc_threat:.0f}/10 \xb7 Cleanse > Heal"
     elif burst_threat >= _BURST_SWAP_THRESHOLD and role_upper in _BARRIER_ELIGIBLE_ROLES:
-        secondary = _BARRIER
+        target = _BARRIER
         reason = f"burst threat {burst_threat:.0f}/10 \xb7 Barrier > Heal"
-    else:
+    if target is not None and target not in pair:
+        secondary = target
+        pair[swap_slot] = target
+    # A target already in the base pair (a swap would duplicate it, e.g.
+    # [21, 21]) keeps the base pair and the threat reason; no swap fired
+    # at all gives the baseline reason.
+    if target is None:
         reason = (
             f"baseline \xb7 {_SPELL_NAMES.get(secondary, str(secondary))}"
             + (f" (CC {cc_threat:.0f} / burst {burst_threat:.0f})"
@@ -205,7 +312,7 @@ def _recommend(base: list[int], role: str, threat: dict) -> dict:
 
     swapped = secondary != base_secondary
     return {
-        "summoners":     [primary, secondary],
+        "summoners":     pair,
         "swapped":       swapped,
         "swap_from_id":  base_secondary if swapped else None,
         "swap_from":     _SPELL_NAMES.get(base_secondary) if swapped else None,
@@ -285,9 +392,9 @@ def compute_champ_spell_winrates(
             f"WHERE champion_name = ?",
             (champion,),
         ).fetchall()
-    except Exception as exc:  # noqa: BLE001 - missing table / bad champ -> empty
-        log.debug("spell-winrates: query failed for %s/%s: %s",
-                  champion, mode, exc)
+    except sqlite3.Error as exc:  # missing table / bad champ -> empty
+        log.debug("spell-winrates: query failed for %r/%r: %s",
+                  champion, mode, type(exc).__name__)
         return []
 
     agg: dict[tuple[int, int], list[int]] = {}  # pair -> [n, wins]
@@ -342,10 +449,17 @@ def best_wr_spell_pair(
 
 # Anchored on the package root (not CWD) so a non-root working directory
 # does not silently fail-soft - mirrors routes_summspell_wpa._REWIND_DB.
-def _postgame_db_path():
-    from pathlib import Path
+def _postgame_db_path() -> Path:
     return (Path(__file__).resolve().parent.parent
             / "data" / "postgame_stats.db")
+
+
+def _postgame_db_uri(db: Path) -> str:
+    """Read-only SQLite URI for ``db``, built with Path.as_uri() so a '#',
+    '?' or '%' in the path is percent-encoded. The hand-built
+    ``file:{path}?mode=ro`` read a '#' as the start of a URI fragment and
+    opened a different file."""
+    return Path(db).resolve().as_uri() + "?mode=ro"
 
 
 def _serve_spell_winrates(h) -> None:
@@ -373,8 +487,7 @@ def _serve_spell_winrates(h) -> None:
         db = _postgame_db_path()
         pairs: list[dict] = []
         if db.exists():
-            import sqlite3
-            conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5.0)
+            conn = sqlite3.connect(_postgame_db_uri(db), uri=True, timeout=5.0)
             try:
                 pairs = compute_champ_spell_winrates(
                     conn, champion, mode, min_n=min_n_i)
@@ -390,7 +503,7 @@ def _serve_spell_winrates(h) -> None:
             "best":     (pairs[0]["pair"] if pairs else None),
         }).encode("utf-8"), "application/json")
     except Exception as exc:  # noqa: BLE001
-        log.warning("api/champ-select/spell-winrates: %s", exc)
+        log.warning("api/champ-select/spell-winrates: %s", type(exc).__name__)
         h._send(500, json.dumps(
             {"ok": False, "error": "internal error - see logs"}).encode(),
             "application/json")
@@ -411,6 +524,7 @@ def _serve_adaptive_summoners(h) -> None:
         enemy_names = _resolve_enemy_names(enemy_ids)
         threat = _compute_threat(enemy_names)
         rec = _recommend(base, role, threat)
+        base = base[:2]
 
         h._send(200, json.dumps({
             "ok":          True,
@@ -429,8 +543,10 @@ def _serve_adaptive_summoners(h) -> None:
             "threat":      threat,
         }).encode("utf-8"), "application/json")
     except Exception as exc:  # noqa: BLE001
-        log.warning("api/champ-select/adaptive-summoners: %s", exc)
-        # Raw exception text stays in the log only.
+        log.warning("api/champ-select/adaptive-summoners: %s",
+                    type(exc).__name__)
+        # Raw exception text reaches neither the response nor the log; the
+        # log carries the exception type.
         h._send(500, json.dumps(
             {"ok": False, "error": "internal error - see logs"}).encode(),
             "application/json")

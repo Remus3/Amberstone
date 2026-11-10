@@ -40,14 +40,29 @@ const _VALID_TIERS = [
 // now a DS Settings control). "" = auto (the panel's _detectRole default).
 const _VALID_ROLES = ["top", "jungle", "mid", "bot", "support"];
 
+// Only a string can name a tier / role: String() on an arbitrary object runs
+// its toString (which may throw) and could never match the ladder anyway.
 function _coerceTier(v) {
-  const t = String(v == null ? "" : v).trim().toLowerCase();
+  const t = typeof v === "string" ? v.trim().toLowerCase() : "";
   return _VALID_TIERS.indexOf(t) >= 0 ? t : "";
 }
 
 function _coerceRole(v) {
-  const r = String(v == null ? "" : v).trim().toLowerCase();
+  const r = typeof v === "string" ? v.trim().toLowerCase() : "";
   return _VALID_ROLES.indexOf(r) >= 0 ? r : "";
+}
+
+function _isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+// A real number, or a non-blank numeric string (an <input> value), else NaN.
+// Number() alone maps "" / null / false / [] to 0 and true to 1, which the
+// clamps below would silently turn into the 3 s / 30 % floor.
+function _toNumber(v) {
+  if (typeof v === "number") return v;
+  if (typeof v === "string" && v.trim() !== "") return Number(v);
+  return NaN;
 }
 
 // keepCompanion / companionAlwaysOnTop default ON: RC2 3.4 (E1) - the full
@@ -80,32 +95,38 @@ export const OVERLAY_SETTINGS_DEFAULTS = {
 };
 
 // Clamp the ACTIVE auto-revert seconds to [3,120] (mirrors the rc-shell
-// overlaySettingsFrom bounds). Non-finite -> the default.
+// clampRevertSec bounds). Not a number -> null, so the read path falls back to
+// the default and the write path keeps the current value (as the shell's
+// sanitizeSettingsPatch drops it).
 function _clampSec(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return OVERLAY_SETTINGS_DEFAULTS.activeRevertSec;
+  const n = _toNumber(v);
+  if (!Number.isFinite(n)) return null;
   return Math.min(120, Math.max(3, Math.round(n)));
 }
 
 // Clamp overlay opacity to [0.3,1.0] 2-dp (mirrors rc-shell clampOpacity).
-// Non-finite -> the default.
+// Not a number -> null (same fallback contract as _clampSec).
 function _clampOpacity(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return OVERLAY_SETTINGS_DEFAULTS.overlayOpacity;
+  const n = _toNumber(v);
+  if (!Number.isFinite(n)) return null;
   return Math.round(Math.min(1, Math.max(0.3, n)) * 100) / 100;
 }
 
+function _orDefault(v, d) {
+  return v === null ? d : v;
+}
+
 function _coerce(raw) {
-  const o = raw && typeof raw === "object" ? raw : {};
+  const o = _isPlainObject(raw) ? raw : {};
   return {
     pulseNotify: typeof o.pulseNotify === "boolean" ? o.pulseNotify : OVERLAY_SETTINGS_DEFAULTS.pulseNotify,
-    activeRevertSec: _clampSec(o.activeRevertSec),
+    activeRevertSec: _orDefault(_clampSec(o.activeRevertSec), OVERLAY_SETTINGS_DEFAULTS.activeRevertSec),
     keepCompanion: typeof o.keepCompanion === "boolean" ? o.keepCompanion : OVERLAY_SETTINGS_DEFAULTS.keepCompanion,
     companionAlwaysOnTop:
       typeof o.companionAlwaysOnTop === "boolean"
         ? o.companionAlwaysOnTop
         : OVERLAY_SETTINGS_DEFAULTS.companionAlwaysOnTop,
-    overlayOpacity: _clampOpacity(o.overlayOpacity),
+    overlayOpacity: _orDefault(_clampOpacity(o.overlayOpacity), OVERLAY_SETTINGS_DEFAULTS.overlayOpacity),
     clickThroughZones:
       typeof o.clickThroughZones === "boolean"
         ? o.clickThroughZones
@@ -120,70 +141,88 @@ function _coerce(raw) {
 }
 
 // Read the shared rc-pgr-rank-tier value directly (canonical single source of
-// truth). Never throws; "" when absent / storage disabled.
+// truth). Never throws. null when the key is ABSENT (nobody has picked yet) or
+// storage is disabled; otherwise the coerced tier, where "" is an explicit off
+// (the PGR / Settings "- off -" option writes "") and junk reads as off.
 function _readPgrRank() {
   try {
-    return _coerceTier(localStorage.getItem(PGR_RANK_KEY) || "");
+    const v = localStorage.getItem(PGR_RANK_KEY);
+    return v === null || v === undefined ? null : _coerceTier(v);
   } catch (_e) {
-    return "";
+    return null;
+  }
+}
+
+// The raw in-page mirror, coerced; defaults when absent / corrupt.
+function _readMirror() {
+  try {
+    return _coerce(JSON.parse(localStorage.getItem(LS_KEY) || "{}"));
+  } catch (_e) {
+    return { ...OVERLAY_SETTINGS_DEFAULTS };
   }
 }
 
 // Synchronous read from the in-page mirror. Never throws (a corrupt / absent
 // value -> defaults), so the render + pulse hot paths can call it freely.
 export function readOverlaySettings() {
-  let s;
-  try {
-    s = _coerce(JSON.parse(localStorage.getItem(LS_KEY) || "{}"));
-  } catch (_e) {
-    s = { ...OVERLAY_SETTINGS_DEFAULTS };
-  }
+  const s = _readMirror();
   // rc-pgr-rank-tier is the shared single source of truth: a pick made on the
-  // PGR page or the desktop Settings row wins over a stale mirror here, so the
-  // overlay reflects it without an explicit write back through this helper.
+  // PGR page or the desktop Settings row - "off" included - wins over a stale
+  // mirror here, so the overlay reflects it without an explicit write back
+  // through this helper. Only an ABSENT key falls back to the mirror.
   const pgr = _readPgrRank();
-  if (pgr) s.benchmarkRankTier = pgr;
+  if (pgr !== null) s.benchmarkRankTier = pgr;
   return s;
 }
 
-// Apply a partial patch ({pulseNotify?, activeRevertSec?}), persist to the
-// localStorage mirror, and mirror to the rc-shell config over IPC when the
-// bridge is present (fire-and-forget; a missing handler is swallowed). Returns
-// the resolved settings so a caller can reflect the clamp back into the input.
+// Apply a partial patch (any subset of the OVERLAY_SETTINGS_DEFAULTS keys),
+// persist to the localStorage mirror, and mirror to the rc-shell config over
+// IPC when the bridge is present (fire-and-forget; a missing handler is
+// swallowed). A wrong-typed boolean, or a blank / non-numeric number, is
+// dropped and the current value kept (the shell's sanitizeSettingsPatch drops
+// the same values). Returns the resolved settings so a caller can reflect the
+// clamp back into the input.
 export function writeOverlaySettings(patch) {
+  const p = _isPlainObject(patch) ? patch : {};
   const cur = readOverlaySettings();
   const next = { ...cur };
-  if (patch && typeof patch.pulseNotify === "boolean") next.pulseNotify = patch.pulseNotify;
-  if (patch && patch.activeRevertSec !== undefined) next.activeRevertSec = _clampSec(patch.activeRevertSec);
-  if (patch && typeof patch.keepCompanion === "boolean") next.keepCompanion = patch.keepCompanion;
-  if (patch && typeof patch.companionAlwaysOnTop === "boolean") next.companionAlwaysOnTop = patch.companionAlwaysOnTop;
-  if (patch && patch.overlayOpacity !== undefined) next.overlayOpacity = _clampOpacity(patch.overlayOpacity);
-  if (patch && typeof patch.clickThroughZones === "boolean") next.clickThroughZones = patch.clickThroughZones;
-  if (patch && typeof patch.separateWindows === "boolean") next.separateWindows = patch.separateWindows;
-  // Overlay item 8: rank-tier + role override. A benchmarkRankTier change also
+  if (typeof p.pulseNotify === "boolean") next.pulseNotify = p.pulseNotify;
+  next.activeRevertSec = _orDefault(_clampSec(p.activeRevertSec), next.activeRevertSec);
+  if (typeof p.keepCompanion === "boolean") next.keepCompanion = p.keepCompanion;
+  if (typeof p.companionAlwaysOnTop === "boolean") next.companionAlwaysOnTop = p.companionAlwaysOnTop;
+  next.overlayOpacity = _orDefault(_clampOpacity(p.overlayOpacity), next.overlayOpacity);
+  if (typeof p.clickThroughZones === "boolean") next.clickThroughZones = p.clickThroughZones;
+  if (typeof p.separateWindows === "boolean") next.separateWindows = p.separateWindows;
+  // Overlay item 8: rank-tier + role override. A benchmarkRankTier write also
   // mirrors to the shared rc-pgr-rank-tier key (both-ways sync) and fires a
-  // same-origin event so the stats panel repaints in THIS window.
+  // same-origin event so the stats panel repaints in THIS window. The key is
+  // re-written whenever it does not already hold the tier, not only when the
+  // resolved value changed, so a key cleared or absent never stays behind.
   let rankChanged = false;
-  if (patch && patch.benchmarkRankTier !== undefined) {
-    const t = _coerceTier(patch.benchmarkRankTier);
+  let rankMirror = false;
+  if (p.benchmarkRankTier !== undefined) {
+    const t = _coerceTier(p.benchmarkRankTier);
     rankChanged = t !== next.benchmarkRankTier;
+    rankMirror = rankChanged || _readPgrRank() !== t;
     next.benchmarkRankTier = t;
   }
-  if (patch && patch.roleOverride !== undefined) next.roleOverride = _coerceRole(patch.roleOverride);
+  if (p.roleOverride !== undefined) next.roleOverride = _coerceRole(p.roleOverride);
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(next));
   } catch (_e) {
     // best-effort; a full / disabled storage must not break the control.
   }
-  if (rankChanged) {
-    // Mirror to the shared PGR/Settings key (the single source of truth) and
-    // notify same-window listeners (the native storage event only fires in
-    // OTHER windows of the origin).
+  if (rankMirror) {
+    // Mirror to the shared PGR/Settings key (the single source of truth).
     try {
       localStorage.setItem(PGR_RANK_KEY, next.benchmarkRankTier);
     } catch (_e) {
-      // storage disabled - the rc-shell IPC mirror below still carries it.
+      // storage disabled - the in-page mirror above still carries it.
     }
+  }
+  if (rankChanged) {
+    // Notify same-window listeners (the native storage event only fires in
+    // OTHER windows of the origin).
     try {
       if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
         window.dispatchEvent(new Event(RANK_TIER_EVENT));
@@ -219,8 +258,11 @@ export function writeOverlaySettings(patch) {
 // the rc-shell over IPC. Unlike the persisted settings, these are runtime
 // COMMANDS (the shell reloads the overlay window / flips click-through), so
 // there is no localStorage mirror - a plain browser (no bridge) is a silent
-// no-op. Fire-and-forget; returns true only if the shell bridge took it.
+// no-op. Fire-and-forget; returns true only if the shell bridge took it. Only a
+// plain object naming a non-empty string action crosses the IPC boundary; the
+// shell re-validates, this just keeps junk off the channel.
 export function sendOverlayAction(msg) {
+  if (!_isPlainObject(msg) || typeof msg.action !== "string" || msg.action === "") return false;
   try {
     if (window.rcShell && typeof window.rcShell.overlayAction === "function") {
       window.rcShell.overlayAction(msg);
@@ -235,19 +277,36 @@ export function sendOverlayAction(msg) {
 // Pull the authoritative rc-shell config value into the in-page mirror once on
 // boot, so a fresh page inside the Electron shell shows the persisted settings
 // (the shell config outlives a single page). No-op in a plain browser. Always
-// resolves to a settings object (never rejects).
+// resolves to a settings object (never rejects), equal to what
+// readOverlaySettings() returns afterwards whenever storage accepted the write
+// (with disabled storage it still carries the shell values for this page).
+//
+// The shell owns only the keys its overlaySettingsFrom returns; the page-only
+// keys (benchmarkRankTier, roleOverride) are not in its reply, so only keys
+// the reply actually carries replace the mirror - a whole-object replace reset
+// the role override to auto on every shell page boot. A non-object reply
+// (no config yet, an older shell) leaves the mirror untouched.
 export function hydrateOverlaySettings() {
   try {
     if (window.rcShell && typeof window.rcShell.getOverlaySettings === "function") {
       return Promise.resolve(window.rcShell.getOverlaySettings())
         .then((s) => {
-          const merged = _coerce(s);
+          if (!_isPlainObject(s)) return readOverlaySettings();
+          const local = _readMirror();
+          const shell = _coerce(s);
+          for (const k of Object.keys(OVERLAY_SETTINGS_DEFAULTS)) {
+            if (Object.prototype.hasOwnProperty.call(s, k) && s[k] !== undefined) local[k] = shell[k];
+          }
           try {
-            localStorage.setItem(LS_KEY, JSON.stringify(merged));
+            localStorage.setItem(LS_KEY, JSON.stringify(local));
           } catch (_e) {
             // best-effort mirror.
           }
-          return merged;
+          // Same PGR precedence as readOverlaySettings, without re-reading a
+          // mirror that disabled storage could not have written.
+          const pgr = _readPgrRank();
+          if (pgr !== null) local.benchmarkRankTier = pgr;
+          return local;
         })
         .catch(() => readOverlaySettings());
     }

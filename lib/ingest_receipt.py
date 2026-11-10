@@ -33,6 +33,16 @@ Contract:
   * Append-only. A torn last line (crash mid-write) is skipped by the reader,
     never repaired in place. Lines are written with one ``write`` call under
     a process lock; the file is never rewritten, so tmp+replace does not apply.
+    The lock is per process: RC's live writer is the only appender.
+  * A torn tail never costs the NEXT receipt: an append to a file whose last
+    byte is not a newline writes one first, so the fragment stays alone on
+    its line (S144-T-700). Rows glued to a fragment before that fix are
+    salvaged by the reader: when a line does not parse, the complete row
+    starting at its LAST ``ROW_PREFIX`` is kept if it is a current-schema
+    row. The prefix cannot occur inside a value, because ``json.dumps``
+    escapes every quote in a string.
+  * ``read_receipts`` never raises: a junk ``limit`` reads as ``READ_LIMIT``,
+    a junk ``path`` reads as no file.
 """
 
 from __future__ import annotations
@@ -82,6 +92,13 @@ _APPEND_LOCK = threading.Lock()
 # Tail window the reader keeps. One row per game end; 200 is weeks of play.
 READ_LIMIT = 200
 
+# How every row this module writes begins (json.dumps default separators,
+# "v" first). The reader's salvage of a glued line anchors on it.
+ROW_PREFIX = '{"v": '
+
+# Stored in place of a non-str status whose repr cannot be taken.
+_UNREPRESENTABLE = "<unrepresentable status>"
+
 
 def classify(status: Any) -> str:
     """Status NAME -> class. Anything unrecognised is ``CLASS_UNKNOWN``."""
@@ -106,6 +123,8 @@ def should_record(status: Any) -> bool:
 
 
 def _finite(x: Any) -> float | None:
+    if isinstance(x, bool):              # True is not epoch second 1.0
+        return None
     try:
         f = float(x)
     except (TypeError, ValueError, OverflowError):
@@ -119,26 +138,45 @@ def _short_str(x: Any, limit: int = 64) -> str:
     return ""
 
 
+def _status_text(status: Any) -> str:
+    if isinstance(status, str):
+        return status
+    try:
+        text = repr(status)
+    except Exception:  # noqa: BLE001 - an unknown status is still recorded
+        return _UNREPRESENTABLE
+    return text[:64] if isinstance(text, str) else _UNREPRESENTABLE
+
+
+def _attempts(attempt: Any) -> int | None:
+    """0-based attempt index -> attempt count; anything else is unknown."""
+    if isinstance(attempt, bool) or not isinstance(attempt, int):
+        return None
+    return attempt + 1 if attempt >= 0 else None
+
+
+def _elapsed(ts: float, started: float | None) -> float | None:
+    if started is None:
+        return None
+    gap = ts - started
+    return round(gap, 3) if math.isfinite(gap) else None
+
+
 def build_row(result: dict[str, Any], *, scheduled_at: Any = None,
               attempt: Any = 0, now: Any = None) -> dict[str, Any]:
     """The receipt row for one chain end. Pure; tolerant of any input."""
     ts = _finite(now)
     if ts is None:
         ts = float(time.time())
-    started = _finite(scheduled_at)
-    try:
-        attempts = int(attempt) + 1
-    except (TypeError, ValueError, OverflowError):
-        attempts = None
     status = result.get("status")
     target = result.get("match_id")
     return {
         "v": SCHEMA_VERSION,
         "ts": ts,
         "target": target if isinstance(target, str) and target else None,
-        "status": status if isinstance(status, str) else repr(status)[:64],
-        "attempts": attempts,
-        "elapsed_s": (round(ts - started, 3) if started is not None else None),
+        "status": _status_text(status),
+        "attempts": _attempts(attempt),
+        "elapsed_s": _elapsed(ts, _finite(scheduled_at)),
         "parked": bool(result.get("parked") is True),
         "pinned": bool(result.get("pinned") is True),
         "fallback": bool(result.get("fallback") is True),
@@ -147,9 +185,15 @@ def build_row(result: dict[str, Any], *, scheduled_at: Any = None,
 
 
 def _append_line(path: Path, line: str) -> None:
+    data = line.encode("ascii")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with _APPEND_LOCK, open(path, "a", encoding="ascii", newline="\n") as fh:
-        fh.write(line)
+    with _APPEND_LOCK, open(path, "a+b") as fh:
+        end = fh.seek(0, 2)
+        if end > 0:
+            fh.seek(end - 1)
+            if fh.read(1) != b"\n":     # torn tail: keep the fragment alone
+                data = b"\n" + data
+        fh.write(data)                   # "a" mode: always at the end
 
 
 def append_receipt(result: Any, *, scheduled_at: Any = None, attempt: Any = 0,
@@ -174,23 +218,55 @@ def append_receipt(result: Any, *, scheduled_at: Any = None, attempt: Any = 0,
         return False
 
 
+def _salvage(raw: str) -> dict[str, Any] | None:
+    """The complete row at the end of a line glued to a torn fragment."""
+    at = raw.rfind(ROW_PREFIX)
+    if at <= 0:
+        return None
+    try:
+        row = json.loads(raw[at:])
+    except (ValueError, RecursionError):
+        return None
+    if not isinstance(row, dict):
+        return None
+    v = row.get("v")                     # True == 1 and 1.0 == 1: type first
+    if type(v) is int and v == SCHEMA_VERSION:
+        return row
+    return None
+
+
+def _parse_line(raw: str) -> dict[str, Any] | None:
+    try:
+        row = json.loads(raw)
+    except RecursionError:               # absurd nesting: one line, not all
+        return None
+    except ValueError:
+        row = _salvage(raw)
+    if isinstance(row, dict) and isinstance(row.get("status"), str):
+        return row
+    return None
+
+
+def _window(limit: Any) -> int:
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        return READ_LIMIT
+    return max(1, limit)
+
+
 def read_receipts(path: Path | None = None,
                   limit: int = READ_LIMIT) -> list[dict[str, Any]]:
     """The last ``limit`` well-formed rows, oldest first. Never raises."""
-    p = Path(path) if path is not None else RECEIPT_PATH
-    out: deque[dict[str, Any]] = deque(maxlen=max(1, int(limit)))
+    out: deque[dict[str, Any]] = deque(maxlen=_window(limit))
     try:
+        p = Path(path) if path is not None else RECEIPT_PATH
         with open(p, encoding="utf-8", errors="replace") as fh:
             for raw_line in fh:
                 raw = raw_line.strip()
                 if not raw:
                     continue
-                try:
-                    row = json.loads(raw)
-                except ValueError:
-                    continue
-                if isinstance(row, dict) and isinstance(row.get("status"), str):
+                row = _parse_line(raw)
+                if row is not None:
                     out.append(row)
-    except OSError:
+    except (OSError, TypeError, ValueError):
         return []
     return list(out)

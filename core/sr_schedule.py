@@ -52,7 +52,10 @@ Match-V5 timeline timestamps use).
 """
 from __future__ import annotations
 
+import math
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Optional
 
 STATUS_OFFICIAL = "official"
@@ -128,19 +131,79 @@ _ROWS: tuple[Timing, ...] = (
        "spawn' - nothing to schedule or un-skip"),
 )
 
-SCHEDULE: dict[str, Timing] = {r.key: r for r in _ROWS}
+
+def _check_row(row: object, seen: dict) -> Timing:
+    """Refuse a malformed row at import (s144 true-audit, S144-T-675).
+
+    Real exceptions, not asserts (python -O strips those). The table is the
+    ONE source every SR timer reads, so a bad row must stop the import rather
+    than reach a callout as NaN, a negative ETA or a silently lost duplicate.
+    """
+    if not isinstance(row, Timing):
+        raise ValueError(f"sr_schedule row is not a Timing: {row!r}")
+    key = row.key
+    if not isinstance(key, str) or not key.strip():
+        raise ValueError(f"sr_schedule row has an empty key: {row!r}")
+    if key in seen:
+        raise ValueError(f"sr_schedule duplicate row key {key!r}")
+    if row.status not in STATUSES:
+        raise ValueError(
+            f"sr_schedule row {key!r} has unknown status {row.status!r}")
+    if not isinstance(row.source, str) or not row.source.strip():
+        raise ValueError(f"sr_schedule row {key!r} cites no source")
+    v = row.value_s
+    if v is None:
+        return row
+    if row.status == STATUS_REMOVED:
+        raise ValueError(
+            f"sr_schedule row {key!r} is removed but carries value {v!r}")
+    # bool is an int subclass: True would read as a 1 s timer.
+    if (isinstance(v, bool) or not isinstance(v, (int, float))
+            or not math.isfinite(v) or v <= 0):
+        raise ValueError(
+            f"sr_schedule row {key!r} needs a finite value > 0, got {v!r}")
+    return row
+
+
+def _build_schedule(rows: Iterable[object]) -> Mapping[str, Timing]:
+    """Validated, READ-ONLY key -> Timing mapping.
+
+    Read-only because the named constants below and every consumer that
+    copied them are fixed at import: a row assigned or deleted afterwards
+    would make value() disagree with them - two sources again.
+    """
+    seen: dict[str, Timing] = {}
+    for row in rows:
+        checked = _check_row(row, seen)
+        seen[checked.key] = checked
+    return MappingProxyType(seen)
+
+
+SCHEDULE: Mapping[str, Timing] = _build_schedule(_ROWS)
+
+
+def _row(key: str) -> Timing:
+    # One KeyError for an unknown, non-string or unhashable key, naming the
+    # module, instead of a bare KeyError / TypeError from the mapping.
+    row = SCHEDULE.get(key) if isinstance(key, str) else None
+    if row is None:
+        raise KeyError(f"unknown sr_schedule key {key!r}")
+    return row
 
 
 def value(key: str) -> Optional[float]:
-    """Seconds for `key`, or None for a removed / never-respawning row."""
-    return SCHEDULE[key].value_s
+    """Seconds for `key`, or None for a removed / never-respawning row.
+
+    Raises KeyError for a key that is not a schedule row.
+    """
+    return _row(key).value_s
 
 
 def _req(key: str) -> float:
-    v = SCHEDULE[key].value_s
+    v = _row(key).value_s
     if v is None:
         raise ValueError(f"sr_schedule row {key!r} has no spawn value")
-    return v
+    return float(v)
 
 
 # Named seconds constants (the only place these literals live).
@@ -157,10 +220,11 @@ ELDER_RESPAWN_S = _req("elder_respawn")
 BARON_BUFF_S = _req("baron_buff")
 ELDER_BUFF_S = _req("elder_buff")
 INHIB_RESPAWN_S = _req("inhib_respawn")
-# Removed / one-shot-only rows.
-PLATES_FALL_S: Optional[float] = None
-ATAKHAN_FIRST_S: Optional[float] = None
-VOIDGRUBS_RESPAWN_S: Optional[float] = None
+# Removed / one-shot-only rows: read from their rows (None today), never
+# hard-coded, so a reinstated row reaches its constant too.
+PLATES_FALL_S: Optional[float] = value("plates_fall")
+ATAKHAN_FIRST_S: Optional[float] = value("atakhan_first")
+VOIDGRUBS_RESPAWN_S: Optional[float] = value("voidgrubs_respawn")
 # Soul is the 4th elemental drake of one side; Elder pit follows.
 SOUL_SECURED_STACKS = 4
 

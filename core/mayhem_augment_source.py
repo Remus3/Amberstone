@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from collections import Counter
@@ -97,8 +98,13 @@ NULL_REASONS = (
     "all_values_missing",
 )
 
-_RC_PATCH_RE = re.compile(r"^([0-9]+)\.([0-9]+)\.[0-9]+$")
-_CDRAGON_PATCH_RE = re.compile(r"^(latest|pbe|[0-9]+\.[0-9]+)$")
+# S144-T-697: matched with fullmatch, never re.match + "$" - "$" also matches
+# just before a trailing newline, so "16.21.1" plus a newline passed as an RC
+# patch (a directory name carrying the newline) and "16.21" plus one as a
+# CDragon dir (a URL carrying it).
+_RC_PATCH_RE = re.compile(r"([0-9]+)\.([0-9]+)\.[0-9]+")
+_CDRAGON_PATCH_RE = re.compile(r"latest|pbe|[0-9]+\.[0-9]+")
+_ID_TEXT_RE = re.compile(r"[0-9]+")
 
 
 class MayhemAugmentSourceError(AugmentSourceError):
@@ -113,19 +119,22 @@ def _http_get(url: str, timeout_s: float):
 
 
 def live_patch() -> str:
-    return _PATCH_FILE.read_text(encoding="utf-8").strip()
+    """The live RC patch from data/daemon_slayer/current.txt. utf-8-sig, so a
+    file saved with a BOM (PowerShell 5.1 ``-Encoding UTF8``) reads as the
+    patch rather than as junk; OSError on a missing file propagates."""
+    return _PATCH_FILE.read_text(encoding="utf-8-sig").strip()
 
 
 def cdragon_patch_for(rc_patch: str) -> str:
     """RC patch ``16.21.1`` -> CommunityDragon patch dir ``16.21``."""
-    m = _RC_PATCH_RE.match(rc_patch or "")
+    m = _RC_PATCH_RE.fullmatch(rc_patch) if isinstance(rc_patch, str) else None
     if not m:
         raise ValueError(f"not an RC patch (want N.N.N): {rc_patch!r}")
     return f"{int(m.group(1))}.{int(m.group(2))}"
 
 
 def kiwi_bin_url(cdragon_patch: str) -> str:
-    if not _CDRAGON_PATCH_RE.match(cdragon_patch or ""):
+    if not (isinstance(cdragon_patch, str) and _CDRAGON_PATCH_RE.fullmatch(cdragon_patch)):
         raise ValueError(f"not a CommunityDragon patch dir: {cdragon_patch!r}")
     return f"{CDRAGON_BASE}/{cdragon_patch}/{KIWI_BIN_PATH}"
 
@@ -139,11 +148,19 @@ def output_path(rc_patch: str, data_dir: Optional[Path] = None) -> Path:
 
 
 def _per_rank(values) -> Optional[list]:
-    """The entry's per-rank list, or None when absent or not all numbers."""
+    """The entry's per-rank list, or None when absent or not all FINITE numbers.
+
+    S144-T-697: the shared fetcher's parse_constant guard only sees the three
+    non-standard literals (NaN, Infinity, -Infinity); an overflowing literal
+    such as ``1e999`` is parsed by float() into inf and passes it. A
+    non-finite rank is not a magnitude, so the entry goes null like any other
+    unusable payload rather than being written as a bare Infinity token."""
     if not isinstance(values, list) or not values:
         return None
     for v in values:
         if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return None
+        if isinstance(v, float) and not math.isfinite(v):
             return None
     return list(values)
 
@@ -260,11 +277,14 @@ def serialize(snap: dict) -> bytes:
     last with rows in NUMERIC id order (a sort_keys dump would put "12317"
     before "2034"), keys inside a row sorted, DataValue entries in source
     order. json.dumps always emits "\\n", and the bytes are written as-is, so
-    no CRLF translation can happen on Windows."""
+    no CRLF translation can happen on Windows. allow_nan=False: a non-finite
+    number raises ValueError here instead of becoming a NaN / Infinity token
+    that no strict JSON reader accepts (S144-T-697)."""
     augs = snap.get("augments") or {}
     doc = _sorted_keys({k: v for k, v in snap.items() if k != "augments"})
     doc["augments"] = {k: _sorted_keys(augs[k]) for k in sorted(augs, key=int)}
-    return (json.dumps(doc, indent=2, ensure_ascii=True) + "\n").encode("ascii")
+    text = json.dumps(doc, indent=2, ensure_ascii=True, allow_nan=False)
+    return (text + "\n").encode("ascii")
 
 
 def write_snapshot(path: Path, snap: dict) -> None:
@@ -306,8 +326,10 @@ def refresh(
 ) -> dict:
     """Fetch the bin, build the snapshot, enforce the floors, write the file.
 
-    Raises AugmentSourceError (fetch) or MayhemAugmentSourceError (shape or
-    floor); nothing is written on any failure."""
+    Raises AugmentSourceError (fetch), MayhemAugmentSourceError (shape or
+    floor), ValueError (a malformed patch, before any fetch) or OSError (an
+    unreadable current.txt before any fetch, or a failed write, which leaves
+    the old file in place); nothing is written on any failure."""
     rc_patch = rc_patch or live_patch()
     cd_patch = cdragon_patch or cdragon_patch_for(rc_patch)
     url = kiwi_bin_url(cd_patch)
@@ -327,12 +349,35 @@ def refresh(
     return snap
 
 
+def _id_of(key) -> int:
+    """One augment id from an ids file: a non-negative non-bool int, or a
+    string of ASCII digits. Anything else is a ValueError naming the bad key."""
+    if isinstance(key, int) and not isinstance(key, bool) and key >= 0:
+        return key
+    if isinstance(key, str) and _ID_TEXT_RE.fullmatch(key):
+        return int(key)
+    raise ValueError(f"not an augment id: {key!r}")
+
+
 def _ids_from(path: Path) -> list[int]:
-    doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    """Augment ids from a JSON list, a dict keyed by id, or a document whose
+    ``augments`` dict is keyed by id (the mayhem / cherry file shape).
+
+    S144-T-697: every key is validated (``true`` is not id 1, ``1.5`` is not
+    id 1, a bare string is not a list of its characters), and the CLI calls
+    this BEFORE the fetch, so a junk file costs no download and never follows
+    a write. Raises OSError or ValueError (UnicodeDecodeError and
+    JSONDecodeError are ValueErrors)."""
+    doc = json.loads(Path(path).read_bytes().decode("utf-8-sig"))
+    if isinstance(doc, dict) and "augments" in doc:
+        doc = doc["augments"]
     if isinstance(doc, dict):
-        doc = doc.get("augments", doc)
-    keys = doc.keys() if isinstance(doc, dict) else doc
-    return [int(k) for k in keys]
+        keys = list(doc)
+    elif isinstance(doc, list):
+        keys = doc
+    else:
+        raise ValueError(f"ids file is a {type(doc).__name__}, want a list or an object")
+    return [_id_of(k) for k in keys]
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -344,12 +389,16 @@ def main(argv: Optional[list[str]] = None) -> int:
                     help="JSON of augment ids (list, or a dict / {'augments': dict} keyed by id)"
                          " for a subset census")
     args = ap.parse_args(argv)
+    # S144-T-697: the ids file is read FIRST and every failure - a junk ids
+    # file, a missing current.txt, a failed write - is one FAILED line, never
+    # a traceback, and never a traceback printed after the data file was
+    # already replaced.
     try:
+        ids = _ids_from(Path(args.ids_from)) if args.ids_from else None
         snap = refresh(args.patch, cdragon_patch=args.cdragon_patch)
-    except (AugmentSourceError, ValueError) as exc:
+    except (AugmentSourceError, ValueError, OSError) as exc:
         print(f"FAILED: {exc}", file=sys.stderr)
         return 1
-    ids = _ids_from(Path(args.ids_from)) if args.ids_from else None
     cov = coverage(snap, ids)
     print(f"WROTE {output_path(snap['rc_patch']).as_posix()}")
     print(f"source {snap['source']}")

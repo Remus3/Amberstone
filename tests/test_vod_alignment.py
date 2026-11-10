@@ -13,9 +13,11 @@ the recording started.
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 
-from core.vod_alignment import AlignmentTracker, Poll
+from core.vod_alignment import MAX_ANCHORS, AlignmentTracker, Poll
 
 REC = 1000.0  # synthetic record-start wall stamp
 
@@ -137,3 +139,127 @@ def test_game_time_drop_resets_baseline_without_proof():
     # A drop is not an advance and must not create an anchor by itself.
     tr.observe(Poll(wall=REC + 2.0, game_time=10.0))
     assert len(tr.resolve()["anchors"]) == n
+
+
+# -- s144 true-audit (S144-T-677): junk constructor input, unbounded anchor
+# growth, and a junk-game_time marker rewritten to a bogus seek at resolve.
+
+_BAD_NUMBERS = (float("nan"), float("inf"), float("-inf"), None, True, "x")
+
+
+def _play(tr, *, start=REC, seconds=60, offset=10.0):
+    """Loading frozen at 0 for ``offset`` s, then 1:1 play."""
+    tr.observe(Poll(wall=start, game_time=0.0))
+    tr.observe(Poll(wall=start + offset, game_time=0.0))
+    for s in range(1, seconds + 1):
+        tr.observe(Poll(wall=start + offset + s, game_time=float(s)))
+
+
+@pytest.mark.parametrize("bad", _BAD_NUMBERS)
+def test_unusable_record_start_falls_back_one_to_one_never_raises(bad):
+    # An OBS outputDuration of Infinity (json.loads accepts the literal)
+    # used to make every offset non-finite and add an anchor on EVERY
+    # advancing poll; a None start raised TypeError in the recorder.
+    tr = AlignmentTracker(record_start_wall=bad)
+    _play(tr)
+    m = tr.mark(game_time=5.0, wall=REC + 15.0, key="k")
+    assert m["video_time"] == pytest.approx(5.0)
+    res = tr.resolve()
+    assert tr.proven is False
+    assert res["proven"] is False
+    assert res["method"] == "fallback_1to1"
+    assert res["game_time_offset_s"] == 0.0
+    assert res["anchors"] == []
+    assert tr.video_time_for(42.0) == pytest.approx(42.0)
+    json.dumps(res, allow_nan=False)
+
+
+@pytest.mark.parametrize("bad", (*_BAD_NUMBERS, -1.0))
+def test_unusable_tolerance_uses_the_default(bad):
+    # NaN or negative made every advancing poll a new anchor; +inf made a
+    # real pause never re-anchor.
+    tr = AlignmentTracker(record_start_wall=REC, tolerance_s=bad)
+    _play(tr, seconds=100)
+    for s in range(1, 200):
+        jitter = 0.1 if s % 2 else -0.1
+        tr.observe(Poll(wall=REC + 110 + s + jitter, game_time=100.0 + s))
+    assert len(tr.resolve()["anchors"]) == 1
+    # A 30 s pause still re-anchors.
+    for s in range(1, 31):
+        tr.observe(Poll(wall=REC + 310 + s, game_time=299.0))
+    tr.observe(Poll(wall=REC + 341.0, game_time=300.0))
+    assert len(tr.resolve()["anchors"]) == 2
+
+
+def test_numeric_string_tolerance_is_honoured():
+    tr = AlignmentTracker(record_start_wall=REC, tolerance_s="5")
+    _play(tr)
+    # A 3 s shift is inside a 5 s tolerance: no new anchor.
+    tr.observe(Poll(wall=REC + 74.0, game_time=61.0))
+    assert len(tr.resolve()["anchors"]) == 1
+
+
+def test_time_scaled_stream_anchor_growth_is_bounded():
+    # A stream whose game clock runs at 2x wall (a replay) moves the offset
+    # by 0.5 s every poll: one anchor per poll, forever, each one written
+    # into every sidecar rewrite and scanned on every lookup.
+    tr = AlignmentTracker(record_start_wall=REC)
+    for i in range(20000):
+        tr.observe(Poll(wall=REC + i * 0.5, game_time=float(i)))
+    res = tr.resolve()
+    assert 1 <= len(res["anchors"]) <= MAX_ANCHORS
+    assert res["anchors_capped"] is True
+    gts = [a["game_time"] for a in res["anchors"]]
+    assert gts == sorted(gts)
+
+
+def test_real_game_is_not_capped():
+    tr = AlignmentTracker(record_start_wall=REC)
+    _play(tr)
+    res = tr.resolve()
+    assert len(res["anchors"]) == 1
+    assert res["anchors_capped"] is False
+
+
+@pytest.mark.parametrize("bad", (None, "x", float("nan"), float("inf"), True))
+def test_junk_game_time_marker_keeps_its_wall_stamp_through_resolve(bad):
+    # Before: the marker was stored as game_time 0.0, so resolve() rewrote
+    # its correct wall-stamp guess (30 s) to 0 + offset (35 s) - a seek to
+    # the wrong moment.
+    tr = AlignmentTracker(record_start_wall=REC)
+    m = tr.mark(game_time=bad, wall=REC + 30.0, key="j")
+    assert m["game_time"] is None
+    assert m["video_time"] == pytest.approx(30.0)
+    assert m["provisional"] is True
+    tr.observe(Poll(wall=REC + 40.0, game_time=5.0))
+    tr.observe(Poll(wall=REC + 41.0, game_time=6.0))  # proof: offset 35
+    after = tr.mark(game_time=bad, wall=REC + 50.0, key="j2")
+    assert after["video_time"] == pytest.approx(50.0)
+    assert after["game_time"] is None
+    res = tr.resolve()
+    by_key = {x["key"]: x for x in res["markers"]}
+    assert by_key["j"]["video_time"] == pytest.approx(30.0)
+    assert by_key["j"]["game_time"] is None
+    assert by_key["j"]["provisional"] is True
+    assert by_key["j2"]["video_time"] == pytest.approx(50.0)
+    json.dumps(res, allow_nan=False)
+
+
+def test_junk_game_time_and_junk_wall_marker_is_zero_and_json_safe():
+    tr = AlignmentTracker(record_start_wall=REC)
+    m = tr.mark(game_time=None, wall=float("nan"))
+    assert m["video_time"] == 0.0
+    assert m["game_time"] is None
+    json.dumps(tr.resolve(), allow_nan=False)
+
+
+def test_good_marker_still_rewritten_alongside_a_junk_one():
+    tr = AlignmentTracker(record_start_wall=REC)
+    tr.mark(game_time=None, wall=REC + 3.0, key="junk")
+    tr.mark(game_time=0.0, wall=REC + 3.0, key="good")
+    tr.observe(Poll(wall=REC + 10.0, game_time=0.0))
+    tr.observe(Poll(wall=REC + 12.0, game_time=2.0))  # proof: offset 10
+    by_key = {x["key"]: x for x in tr.resolve()["markers"]}
+    assert by_key["good"]["video_time"] == pytest.approx(10.0)
+    assert by_key["good"]["provisional"] is False
+    assert by_key["junk"]["video_time"] == pytest.approx(3.0)

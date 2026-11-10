@@ -151,6 +151,19 @@ _AUTHOR_RE = re.compile(r"(?:^|[-.])from-(?P<code>[A-Za-z0-9]+)", re.IGNORECASE)
 # the universe.
 _STAGING_PREFIX = "_"
 
+# What a digest starts with when the bytes behind it could not be read. Such a
+# value is a MARKER, not a content identity: every file that fails with the same
+# exception class carries the SAME marker, so two different unreadable notes
+# would otherwise compare equal - and an equal digest is what scores DELIVERED.
+# S144-T-699: a marker is never matched, never merged with another note, and
+# never counted as delivery; a note whose own bytes are unreadable is UNKNOWN.
+UNREADABLE_PREFIX = "UNREADABLE:"
+
+
+def is_unreadable(digest: str) -> bool:
+    """True when ``digest`` is an unreadable marker rather than a content hash."""
+    return digest.startswith(UNREADABLE_PREFIX)
+
 
 # ------------------------------------------------------------------ digests
 
@@ -170,7 +183,7 @@ def _file_digest(path: Path) -> str:
             for chunk in iter(lambda: fh.read(1 << 20), b""):
                 h.update(chunk)
     except OSError as exc:
-        return f"UNREADABLE:{type(exc).__name__}"
+        return f"{UNREADABLE_PREFIX}{type(exc).__name__}"
     return h.hexdigest()
 
 
@@ -182,20 +195,40 @@ def _dir_digest(path: Path) -> str:
     the payload. Folding the relative paths in as well as the bytes means a
     payload that GROWS, or that is delivered with a file renamed, is not
     silently equal to the one already sent.
+
+    A payload with ANY unreadable member is itself unreadable (S144-T-699).
+    Folding the member's marker into the hash instead made two payloads with
+    the same names and one unreadable member each hash EQUAL whatever that
+    member held, which scored as delivery for bytes nobody compared.
+
+    The same holds for a directory that cannot be LISTED, the payload itself
+    or any subdirectory. The walk is ``os.walk`` with an ``onerror`` recorder,
+    not ``Path.rglob``: rglob silently skips a subdirectory it cannot list, so
+    a difference hidden inside one hashed equal, and an unlistable payload
+    hashed as an empty one.
     """
     h = hashlib.sha256()
-    try:
-        members = sorted(p for p in path.rglob("*") if p.is_file())
-    except OSError as exc:
-        return f"UNREADABLE:{type(exc).__name__}"
+    errors: list = []
+    members: list = []
+    for dirpath, _dirnames, filenames in os.walk(path, onerror=errors.append):
+        for fname in filenames:
+            candidate = Path(dirpath) / fname
+            if candidate.is_file():
+                members.append(candidate)
+    if errors:
+        return f"{UNREADABLE_PREFIX}{type(errors[0]).__name__}"
+    members.sort()
     for member in members:
         try:
             rel = member.relative_to(path).as_posix()
-        except ValueError:  # pragma: no cover - rglob cannot produce this
+        except ValueError:  # pragma: no cover - os.walk cannot produce this
             continue
+        member_digest = _file_digest(member)
+        if is_unreadable(member_digest):
+            return member_digest
         h.update(rel.encode("utf-8", "surrogateescape"))
         h.update(b"\0")
-        h.update(_file_digest(member).encode("ascii"))
+        h.update(member_digest.encode("ascii"))
         h.update(b"\n")
     return h.hexdigest()
 
@@ -277,6 +310,14 @@ def load_sibling_roots(
     inconclusive run - rather than a guess. A guessed root that happens not to
     exist would read as UNKNOWN, which is harmless; a guessed root that happens
     to hit some unrelated directory would report confident nonsense.
+
+    The same goes for a WRONG SHAPE (S144-T-699): a document that is not an
+    object, or a ``repos`` that is not a list, yields zero roots instead of a
+    traceback, and only non-blank STRING entries are roots. Before this a
+    string ``repos`` was iterated as characters - every character, ``/``
+    included, became a recipient root - and ``null`` became the root ``None``.
+    A UTF-8 BOM is accepted, since a BOM-prefixed file otherwise read as
+    unparseable and silently left the run with no recipients.
     """
     base = Path(root) if root is not None else REPO_ROOT
     environ = os.environ if env is None else env
@@ -286,10 +327,13 @@ def load_sibling_roots(
         return [Path(p) for p in _split_roots(raw)]
 
     try:
-        blob = json.loads(_config_path(base).read_text(encoding="utf-8"))
+        blob = json.loads(_config_path(base).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return []
-    return [Path(str(p)) for p in (blob.get("repos") or []) if str(p).strip()]
+    repos = blob.get("repos") if isinstance(blob, dict) else None
+    if not isinstance(repos, list):
+        return []
+    return [Path(p) for p in repos if isinstance(p, str) and p.strip()]
 
 
 def resolve_self_code(env: Optional[Mapping[str, str]] = None) -> str:
@@ -380,6 +424,9 @@ class Report:
     slots_unknown: int
     notes: list = field(default_factory=list)
     verdict: str = VERDICT_UNKNOWN
+    # Indices of the slots that were actually read. None for a Report built by
+    # hand, where render falls back to inferring readability from the notes.
+    readable_slots: Optional[tuple] = None
 
     @property
     def notes_checked(self) -> int:
@@ -439,9 +486,20 @@ def check(
     )
 
     # -- the recipients ---------------------------------------------------
+    #
+    # A slot whose inbox IS this repo's own inbox (the root configured as its
+    # own recipient, under any spelling) is UNKNOWN, never read (S144-T-699).
+    # Read, every note stranded locally would score DELIVERED to it - a note
+    # written into your own inbox counted as a note you sent, the very defect
+    # this tool audits.
+    local_inbox = root / INBOX_DIRNAME
     slot_entries: list = []  # index -> {name: digest} or None for UNKNOWN
     for sib in sibling_roots:
-        slot_entries.append(scan_visible(Path(sib) / INBOX_DIRNAME))
+        inbox = Path(sib) / INBOX_DIRNAME
+        if _same_dir(inbox, local_inbox):
+            slot_entries.append(None)
+            continue
+        slot_entries.append(scan_visible(inbox))
     readable = [i for i, e in enumerate(slot_entries) if e is not None]
 
     # -- the universe -----------------------------------------------------
@@ -454,15 +512,18 @@ def check(
     by_digest: dict = {}
 
     def _admit(name: str, digest: str, local: bool) -> None:
-        note = by_digest.get(digest)
+        # An unreadable marker is shared by every file that failed the same
+        # way, so it cannot key a note on its own: two different unreadable
+        # notes would merge into one. Such a note is keyed by its NAME too.
+        key = (digest, name) if is_unreadable(digest) else digest
+        note = by_digest.get(key)
         if note is None:
             note = Note(digest=digest)
-            by_digest[digest] = note
+            by_digest[key] = note
         if name not in note.names:
             note.names = tuple(sorted((*note.names, name)))
         note.in_local = note.in_local or local
 
-    local_inbox = root / INBOX_DIRNAME
     for scan in (scan_visible(local_inbox), scan_staged(local_inbox)):
         for name, digest in (scan or {}).items():
             if is_authored_by(name, code):
@@ -474,12 +535,21 @@ def check(
 
     # -- score ------------------------------------------------------------
     for note in by_digest.values():
+        unreadable_note = is_unreadable(note.digest)
+        unreadable_copy = False
         for slot, entries in enumerate(slot_entries):
-            if entries is None:
+            if entries is None or unreadable_note:
+                # Nothing to compare: the slot was not read, or this note's own
+                # bytes were not. Never DELIVERED, never ABSENT.
                 note.per_slot[slot] = STATUS_UNKNOWN
                 continue
             if note.digest in entries.values():
                 note.per_slot[slot] = STATUS_DELIVERED
+            elif any(is_unreadable(entries[n]) for n in note.names if n in entries):
+                # A same-name copy whose bytes could not be read: its content
+                # is UNKNOWN, not known to differ, so not NAME_ONLY either.
+                note.per_slot[slot] = STATUS_UNKNOWN
+                unreadable_copy = True
             elif any(n in entries for n in note.names):
                 # The name arrived and the bytes did not. THIS is the case a
                 # name-based check calls delivered, and it is the reason this
@@ -487,10 +557,14 @@ def check(
                 note.per_slot[slot] = STATUS_NAME_ONLY
             else:
                 note.per_slot[slot] = STATUS_ABSENT
-        if not readable:
+        if not readable or unreadable_note:
             note.verdict = STATUS_UNKNOWN
         elif note.reach > 0:
             note.verdict = STATUS_DELIVERED
+        elif unreadable_copy:
+            # No confirmed copy anywhere, but a recipient holds one that could
+            # not be compared: "reached nobody" is not established either.
+            note.verdict = STATUS_UNKNOWN
         else:
             note.verdict = STATUS_UNDELIVERED
 
@@ -501,6 +575,7 @@ def check(
         slots_readable=len(readable),
         slots_unknown=len(sibling_roots) - len(readable),
         notes=notes,
+        readable_slots=tuple(readable),
     )
 
     # -- verdict ----------------------------------------------------------
@@ -509,15 +584,37 @@ def check(
     # which outranks everything else: a run that could not see a single
     # recipient has not established that the universe is empty either, and an
     # empty universe is never CLEAN no matter how many recipients were readable.
+    # A note whose delivery could not be established (its own bytes unreadable)
+    # keeps the run off CLEAN too: CLEAN claims EVERY authored note reached
+    # someone, and for that note nobody knows. A real UNDELIVERED still wins.
     if not readable:
         report.verdict = VERDICT_UNKNOWN
     elif not notes:
         report.verdict = VERDICT_EMPTY
     elif report.undelivered_count:
         report.verdict = VERDICT_UNDELIVERED
+    elif report.unknown_count:
+        report.verdict = VERDICT_UNKNOWN
     else:
         report.verdict = VERDICT_CLEAN
     return report
+
+
+def _same_dir(a: Path, b: Path) -> bool:
+    """True when ``a`` and ``b`` name one directory, whatever the spelling.
+
+    ``samefile`` sees through ``..``, case and links when both exist; when
+    either cannot be stat'ed, the normalised absolute spellings are compared,
+    which still catches a self root whose inbox does not exist yet.
+    """
+    try:
+        return os.path.samefile(a, b)
+    except (OSError, ValueError):
+        pass
+    try:
+        return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+    except (OSError, ValueError):
+        return False
 
 
 # ------------------------------------------------------------------- render
@@ -532,6 +629,12 @@ _VERDICT_NOTE = {
                      "A stranded note and a delivered one are indistinguishable here.",
 }
 
+# UNKNOWN with at least one readable recipient: the run saw recipients, but a
+# note's own bytes could not be read, so its delivery was not established.
+_VERDICT_NOTE_UNREADABLE_NOTE = (
+    "at least one authored note could not be read, so its delivery was not "
+    "established; no note reached nobody.")
+
 
 def render(report: Report, show_names: bool = False) -> str:
     """A summary safe to paste into a public tree.
@@ -542,7 +645,14 @@ def render(report: Report, show_names: bool = False) -> str:
     because this repo wrote it. Same reasoning as the slot numbering in
     ``tools/sibling_name_sweep.py``, which prints a slot and resolves it to a
     literal only on demand, on the operator's own machine.
+
+    The text is ASCII-only (S144-T-699): a note name and the self code are free
+    text, so any other character is backslash-escaped rather than handed to a
+    console codec that may refuse it mid-report.
     """
+    verdict_note = _VERDICT_NOTE[report.verdict]
+    if report.verdict == VERDICT_UNKNOWN and report.slots_readable:
+        verdict_note = _VERDICT_NOTE_UNREADABLE_NOTE
     lines = [
         "# outbound reciprocity check",
         "",
@@ -550,7 +660,7 @@ def render(report: Report, show_names: bool = False) -> str:
         f"- recipient slots: {report.slots_configured} configured, "
         f"{report.slots_readable} readable, {report.slots_unknown} UNKNOWN",
         f"- {report.undelivered_count} undelivered out of {report.notes_checked} checked",
-        f"- verdict: {report.verdict} - {_VERDICT_NOTE[report.verdict]}",
+        f"- verdict: {report.verdict} - {verdict_note}",
     ]
     if report.notes:
         hist = report.reach_histogram
@@ -560,7 +670,8 @@ def render(report: Report, show_names: bool = False) -> str:
             lines.append(f"- reached {reach} of {report.slots_readable} readable "
                          f"slot(s): {hist[reach]} note(s)")
         if report.unknown_count:
-            lines.append(f"- verdict UNKNOWN (nothing readable): {report.unknown_count}")
+            lines.append(f"- verdict UNKNOWN (delivery not established): "
+                         f"{report.unknown_count}")
         if report.name_mismatch_count:
             lines.append(f"- name present but CONTENT DIFFERS somewhere: "
                          f"{report.name_mismatch_count} note(s)")
@@ -579,15 +690,20 @@ def render(report: Report, show_names: bool = False) -> str:
         for slot in range(report.slots_configured):
             got = sum(1 for n in report.notes
                       if n.per_slot.get(slot) == STATUS_DELIVERED)
-            state = "UNKNOWN" if any(
-                n.per_slot.get(slot) == STATUS_UNKNOWN for n in report.notes) else "readable"
+            if report.readable_slots is not None:
+                readable_slot = slot in report.readable_slots
+            else:
+                readable_slot = not any(
+                    n.per_slot.get(slot) == STATUS_UNKNOWN for n in report.notes)
+            state = "readable" if readable_slot else "UNKNOWN"
             lines.append(f"- slot {slot} ({state}): {got} of {report.notes_checked}")
     elif report.slots_configured:
         lines.append("")
         lines.append("## per-slot delivery")
         for slot in range(report.slots_configured):
             lines.append(f"- slot {slot}: nothing authored to compare")
-    return "\n".join(lines) + "\n"
+    text = "\n".join(lines) + "\n"
+    return text.encode("ascii", "backslashreplace").decode("ascii")
 
 
 def to_dict(report: Report, show_names: bool = False) -> dict:

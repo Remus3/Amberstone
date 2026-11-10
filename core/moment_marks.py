@@ -52,6 +52,14 @@ PIN_LABEL = "you flagged"
 # least one champ select + load + remake window earlier, so it stays out).
 ATTACH_SLACK_S = 300.0
 
+# Our own choice: the longest game length the attach window trusts. The EOG
+# gameLength / history gameDuration fallback is SECONDS today, but Match-V5
+# gameDuration was MILLISECONDS before patch 11.20; a length in ms would open a
+# window weeks wide and pin every null-gameId mark ever pressed to this game.
+# 4 h is far beyond any real League / Arena / TFT game, so clamping costs no
+# real mark.
+MAX_GAME_LENGTH_S = 4 * 3600.0
+
 _DIGITS = re.compile(r"[0-9]{1,20}")
 
 
@@ -85,29 +93,51 @@ def _finite(v: Any) -> Optional[float]:
     return f if math.isfinite(f) else None
 
 
-def build_mark(gamestats: Any, game_id: Any, wall_ts: float) -> Optional[dict]:
+def build_mark(gamestats: Any, game_id: Any, wall_ts: Any) -> Optional[dict]:
     """One mark row from a :2999 gamestats payload, or None when gameTime is
-    missing / non-numeric / non-finite / negative."""
+    missing / non-numeric / non-finite / negative, or wall_ts is not a finite
+    number (a NaN / Infinity row is one the readers reject)."""
     if not isinstance(gamestats, dict):
         return None
     gt = _finite(gamestats.get("gameTime"))
-    if gt is None or gt < 0:
+    wt = _finite(wall_ts)
+    if gt is None or gt < 0 or wt is None:
         return None
     return {
         "game_id": _norm_game_id(game_id),
         "game_time_s": round(gt, 3),
-        "wall_ts": round(float(wall_ts), 3),
+        "wall_ts": round(wt, 3),
     }
+
+
+def _canonical_row(mark: Any) -> dict:
+    """The {game_id, game_time_s, wall_ts} row the readers accept, or
+    ValueError. Same field rule as read_marks_strict (_finite on both
+    times), and the values are written back as floats, so nothing written
+    here can poison a later strict read."""
+    if not isinstance(mark, dict):
+        raise ValueError(f"mark is not a dict: {type(mark).__name__}")
+    gt, wt = _finite(mark.get("game_time_s")), _finite(mark.get("wall_ts"))
+    if gt is None or wt is None:
+        raise ValueError("mark needs finite game_time_s and wall_ts")
+    return {"game_id": _norm_game_id(mark.get("game_id")),
+            "game_time_s": gt, "wall_ts": wt}
 
 
 def append_mark(mark: dict, path: Optional[os.PathLike] = None) -> None:
     """Append one JSON line (ASCII, LF). Windows: the shared FILE_APPEND_DATA
-    helper; elsewhere one os.write on an O_APPEND fd. Raises OSError."""
+    helper; elsewhere one os.write on an O_APPEND fd.
+
+    Only the canonical row is written (extra keys dropped, game_id
+    normalised). Raises ValueError, before touching disk, for a row the
+    readers would reject - one such line makes read_marks_strict raise on
+    every later read - and OSError on a write failure."""
     from core.operator_notify import _on_windows, _portable_append, _win32_append
 
+    row = _canonical_row(mark)
+    data = (json.dumps(row, ensure_ascii=True) + "\n").encode("ascii")
     p = Path(path) if path is not None else marks_path()
     p.parent.mkdir(parents=True, exist_ok=True)
-    data = (json.dumps(mark, ensure_ascii=True) + "\n").encode("ascii")
     if _on_windows():
         _win32_append(p, data)
     else:
@@ -142,14 +172,20 @@ def read_marks(path: Optional[os.PathLike] = None) -> list[dict]:
 
 def select_marks_for_game(marks: Iterable[dict], game_id: str,
                           window_start: float, window_end: float) -> list[dict]:
-    """Exact gameId match, or gameId null with wall_ts in the window."""
+    """Exact gameId match, or gameId null with wall_ts in the window. A row
+    that is not a dict, or a null-gameId row without a finite wall_ts, is
+    skipped rather than raising."""
     picked = []
     for m in marks:
+        if not isinstance(m, dict):
+            continue
         gid = m.get("game_id")
         if gid is not None:
             if gid == game_id:
                 picked.append(m)
-        elif window_start <= m["wall_ts"] <= window_end:
+            continue
+        wt = _finite(m.get("wall_ts"))
+        if wt is not None and window_start <= wt <= window_end:
             picked.append(m)
     return picked
 
@@ -170,13 +206,13 @@ def attach_for_game(game_id: Any, game_length_s: Any, ended_at: Any, *,
     gid = _norm_game_id(game_id)
     if gid is None:
         return []
-    length = _finite(game_length_s) or 0.0
+    length = min(max(_finite(game_length_s) or 0.0, 0.0), MAX_GAME_LENGTH_S)
     end = _finite(ended_at)
     if end is None:
         end = time.time()
     picked = select_marks_for_game(
         read_marks(marks_file), gid,
-        end - max(length, 0.0) - ATTACH_SLACK_S, end + ATTACH_SLACK_S)
+        end - length - ATTACH_SLACK_S, end + ATTACH_SLACK_S)
     if not picked:
         return []
     pins = sorted((_pin(m) for m in picked),
@@ -202,7 +238,12 @@ def _game_id_from_match_id(match_id: Any) -> Optional[str]:
 
 
 def pins_for_match(match_id: Any, out_dir: Optional[os.PathLike] = None) -> list[dict]:
-    """The "you flagged" pins for a Replay / PGR match_id; [] on any miss."""
+    """The "you flagged" pins for a Replay / PGR match_id; [] on any miss.
+
+    Each pin is rebuilt from its finite game_time_s / wall_ts and any other
+    pin is dropped: json.loads accepts NaN / Infinity, and the routes'
+    default json.dumps would write them back as bare NaN - invalid JSON that
+    makes the browser reject the whole payload."""
     gid = _game_id_from_match_id(match_id)
     if gid is None:
         return []
@@ -214,7 +255,14 @@ def pins_for_match(match_id: Any, out_dir: Optional[os.PathLike] = None) -> list
     pins = doc.get("pins") if isinstance(doc, dict) else None
     if not isinstance(pins, list):
         return []
-    return [p for p in pins if isinstance(p, dict)]
+    out = []
+    for p in pins:
+        if not isinstance(p, dict):
+            continue
+        gt, wt = _finite(p.get("game_time_s")), _finite(p.get("wall_ts"))
+        if gt is not None and wt is not None:
+            out.append(_pin({"game_time_s": gt, "wall_ts": wt}))
+    return out
 
 
 class MarksUnreadable(Exception):
