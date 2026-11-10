@@ -23,7 +23,9 @@ Contract pinned here:
     text is unchanged (control);
   - the cue is one line, whole, inside the board, beside (not over) the
     eyebrow text, at the eyebrow's type and colour, and the eyebrow row keeps
-    its one-line height, so the wrapper stays the fixed 132 px box (and the
+    its one-line height, so the wrapper stays the fixed 212 px box (two chip
+    rows of a name and three item lines since S144-U-290; 132 px before, when
+    the item line was one ellipsised line) (and the
     board eyebrow itself is one line with its whole text as the title, the
     RM-1767 verifier SHOULD-FIX);
   - the eyebrow row is pinned (sticky, the pane colour behind it), so the
@@ -141,7 +143,7 @@ def _units_word(n: int) -> str:
 
 def test_baseline_has_no_cue_and_keeps_the_eyebrow(mock_server, pw_browser):
     # Control: two rows fit at 1920x920, so nothing is below and the cue is
-    # hidden; the eyebrow text and the 132 px wrapper are unchanged.
+    # hidden; the eyebrow text and the 212 px wrapper are unchanged.
     ctx, page, errors = _open(pw_browser, mock_server, 1920, 920)
     try:
         m = page.evaluate(_MEASURE)
@@ -150,7 +152,7 @@ def test_baseline_has_no_cue_and_keeps_the_eyebrow(mock_server, pw_browser):
         ctx.close()
     assert not errors, errors[:3]
     assert m["below"] == 0, m
-    assert m["wrapH"] == 132 and m["wrapScroll"] <= m["wrapH"], m
+    assert m["wrapH"] == 212 and m["wrapScroll"] <= m["wrapH"], m
     assert m["sec"]["text"] == "7 UNITS - as of 17:27", m["sec"]
     assert m["cue"] is not None, "no .am-tft-more cue element in the board"
     assert not _shown(m["cue"]), m["cue"]
@@ -165,7 +167,7 @@ def test_cue_counts_the_units_below_the_box(w, h, mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, errors[:3]
-    assert m["wrapH"] == 132, m["wrapH"]
+    assert m["wrapH"] == 212, m["wrapH"]
     cue, sec, head = m["cue"], m["sec"], m["head"]
     assert cue is not None, "no .am-tft-more cue element in the board"
     assert cue["ariaHidden"] == "true", cue
@@ -176,7 +178,7 @@ def test_cue_counts_the_units_below_the_box(w, h, mock_server, pw_browser):
     assert sec["title"] == sec["text"] and sec["text"].startswith("7 UNITS"), sec
     assert m["headIsWrapChild"], "eyebrow row is not a direct wrapper child"
     # One text line plus the eyebrow's own 6 px gap (padding on the pinned
-    # row), so the 132 px box is unchanged.
+    # row), so the 212 px box is unchanged.
     assert head["height"] <= one_line + 6.5, head
     # Independent of the code's counting method: seven units in `cols`
     # columns, two chip rows visible in the fixed box.
@@ -244,7 +246,7 @@ def test_cue_never_spills_a_board_narrower_than_itself(
     assert m["below"] >= 1 and _shown(m["cue"]), m
     assert m["cue"]["right"] <= m["wrapRight"] + 0.5, (w, m["cue"], m["wrapRight"])
     assert box["scrollW"] <= box["clientW"], (w, box)
-    assert m["wrapH"] == 132, m["wrapH"]
+    assert m["wrapH"] == 212, m["wrapH"]
 
 
 def test_cue_stays_pinned_while_units_remain_below(mock_server, pw_browser):

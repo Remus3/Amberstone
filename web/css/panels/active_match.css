@@ -397,10 +397,14 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
  * the filled lists occupy the SAME box: the pane grid sizes its rows from
  * content, and a board landing at round 1 used to grow every pane ~31px
  * (measured, 1920x920 fixture). Board: eyebrow + two chip rows (a level-10
- * board); more units scroll inside. Lobby: eyebrow + eight rows. */
+ * board) of a name line and three item lines (S144-U-290: the item line
+ * wraps, below); more units scroll inside. 212px at the v2.1 tokens, inside
+ * the 336px BUILD body at 1920x920, so the pane grid does not move.
+ * Lobby: eyebrow + eight rows. */
 #view-active-match .am-tft-board-wrap {
   height: calc(var(--fs-xs) * 1.2 + 6px
-               + 2 * (var(--fs-sm) * 1.25 + var(--fs-xs) * 1.25 + 8px) + 6px);
+               + 2 * (var(--fs-sm) * 1.25 + 3 * var(--fs-xs) * 1.25 + 8px)
+               + 6px);
   overflow-y: auto;
 }
 #view-active-match .am-tft-lobby-wrap {
@@ -519,13 +523,21 @@ body:not([data-shell="overlay"]) #view-active-match .am-pane-build > .am-pane-bo
 #view-active-match .am-tft-unit-star[data-star="1"] {
   color: var(--text-dim);
 }
+/* S144-U-290: the items wrap, clamped at three lines (a unit holds at most
+ * three items). One nowrap line cut the recorded "Guinsoos Rageblade" - a
+ * chip's ONE item - at the 1920x920 baseline (146px of text in a 142px
+ * chip) and showed half of "BF Sword / Guinsoos Rageblade". The chip title
+ * still carries every name whole for a clamped line. */
 #view-active-match .am-tft-unit-items {
   color: var(--text-dim);
   font-size: var(--fs-xs);
   line-height: 1.25;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 #view-active-match .am-tft-unit-items.is-empty {
   font-style: italic;

@@ -141,8 +141,9 @@ def test_short_names_are_whole(w, h, mock_server, pw_browser):
 def test_wrapper_height_is_fixed_and_overflow_scrolls_inside(
         w, h, mock_server, pw_browser):
     # No reflow when the board lands: the wrapper is the fixed two-chip-row
-    # box (eyebrow + 2 rows, 132 px at the v2.1 tokens) at every width; a
+    # box (eyebrow + 2 rows of a name and three item lines, 212 px at the
+    # v2.1 tokens since S144-U-290, 132 px before) at every width; a
     # board needing more rows scrolls inside it, as the named region.
     m = _measure(pw_browser, mock_server, w, h)
-    assert m["wrapH"] == 132, m["wrapH"]
+    assert m["wrapH"] == 212, m["wrapH"]
     assert m["wrapRole"] == "region" and m["wrapLabel"] == "Your board"
