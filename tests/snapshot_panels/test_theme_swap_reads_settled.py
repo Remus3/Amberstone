@@ -211,7 +211,7 @@ document-wide detector at each getComputedStyle read its own _measure
 makes), the s144 uiux module of S144-U-245:
   - test_zoi_debug_readout: boot-stamped (?theme=), never swaps in-page;
     it adds the transitions-off sheet, drives map_state.js
-    renderMinimapCanvases() with a deep-enemy call (no style read), then
+    renderZonePill() with a deep-enemy call (no style read), then
     reads the ?debug=1 readout under the Active Match map in one
     evaluate. Nothing it reads transitions, so the sheet is belt and
     braces, not a fix.

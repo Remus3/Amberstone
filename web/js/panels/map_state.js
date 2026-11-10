@@ -127,13 +127,12 @@ function _clearZone() {
   }
 }
 
-// S144-U-258: the name is kept for its callers and pins, but this no longer
-// paints anything. The minimap canvas stack it drew into rendered in no view
-// and is retired; what is left is the header zone pill (via _updateZone),
-// computed at once even in a hidden tab - a few champions' worth of math,
-// with no paint to defer behind document.hidden any more.
+// The header zone pill (via _updateZone), computed at once even in a hidden
+// tab - a few champions' worth of math, nothing to paint. S144-U-258 retired
+// the never-rendered minimap canvas stack this used to draw into;
+// S144-U-289 renamed it from its canvas-era name to what it still does.
 // Guard: tests/snapshot_panels/test_minimap_canvas_stack_retired.py.
-function renderMinimapCanvases(p) {
+function renderZonePill(p) {
   if (!p.positions || (!p.positions.allies && !p.positions.enemies)) {
     _clearZone();
     return;
@@ -275,7 +274,7 @@ function renderMinimap(p) {
   _snapshotSpells(p.ally_spells);
   _tickSpellCooldowns();
   renderItemValueDiff(p);
-  renderMinimapCanvases(p);
+  renderZonePill(p);
   // S144-U-261: the tower / team score / game time chips left this panel
   // 2026-04-23 (header row 2 carries those signals); their MM slots, the
   // guarded writes here and in the old 1 s objective tick, and their
@@ -332,8 +331,10 @@ export {
   _tickSpellCooldowns,
   _applyGamePhase,
   _snapshotSpells, _fmtMMSS,
-  // RM-1211: main.js calls both; unexported, each call threw a ReferenceError.
-  _spellKey, renderMinimapCanvases,
+  // RM-1211: main.js calls _spellKey; unexported, its call threw a
+  // ReferenceError. renderZonePill is a test seam: the zone-pill snapshot
+  // tests drive it; main.js reaches it only through renderMinimap.
+  _spellKey, renderZonePill,
   // S144-U-255: test seam for the relocated item-value bar.
   renderItemValueDiff,
 };

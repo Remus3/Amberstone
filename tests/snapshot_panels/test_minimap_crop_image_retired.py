@@ -21,7 +21,7 @@ by breaking a live neighbour:
 - the Active Match MAP pane's own use of /api/minimap-crop as a base-image
   fallback (web/js/panels/active_match.js), which is an <img> src and not
   this poll;
-- the header zone pill (map_state.js renderMinimapCanvases ->
+- the header zone pill (map_state.js renderZonePill ->
   _updateZone; S144-U-258 later retired the canvas stack, so the panel
   shell and its objective rows are the served positive control);
 - the overlay's /api/state minimap poller (main.js setupMinimapPoller),
@@ -76,7 +76,7 @@ def test_anchor_the_scans_read_real_files():
     # S144-U-264 retired the #minimap shell; the kept neighbours anchor.
     assert 'data-for="right-now"' in files["web/index.html"]
     assert 'id="zone-pill"' in files["web/index.html"]
-    assert "function renderMinimapCanvases(" in files[
+    assert "function renderZonePill(" in files[
         "web/js/panels/map_state.js"]
     assert "function _updateZone(" in files["web/js/panels/map_state.js"]
     assert "(function setupMinimapPoller()" in files["web/js/main.js"]

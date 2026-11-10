@@ -5,7 +5,7 @@ the header zone pill goes back to its "-" placeholder and the body loses
 its zone tint, instead of keeping the last zone call.
 
 THE DEFECTS. MEASURED headless under /?ui_mock=1&mode=sr#active-match by
-driving web/js/panels/map_state.js renderMinimapCanvases() with a value
+driving web/js/panels/map_state.js renderZonePill() with a value
 shape that puts you deep in enemy pressure (three enemies stacked on your
 dot), then with one that drops your position:
 - your champion dead (ally_respawns > 0) or missing from the ally
@@ -52,9 +52,9 @@ _DRIVE = """async () => {
   };
   const out = {};
   for (const [k, p] of Object.entries(lost)) {
-    m.renderMinimapCanvases(deep);
+    m.renderZonePill(deep);
     const before = read();
-    m.renderMinimapCanvases(p);
+    m.renderZonePill(p);
     out[k] = {before, after: read()};
   }
   return out;

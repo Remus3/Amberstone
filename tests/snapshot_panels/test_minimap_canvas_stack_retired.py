@@ -20,8 +20,9 @@ for the tab to come back because the deferral sat in front of it.
 KEPT, and pinned here as positive controls so the retirement cannot pass
 by breaking a live neighbour:
 - the header zone pill and body[data-zone] / body[data-myteam]
-  (map_state.js renderMinimapCanvases -> _updateZone, the exported name
-  kept so its callers and pins do not move);
+  (map_state.js renderZonePill -> _updateZone; S144-U-289 renamed the
+  entry point from its canvas-era name, which it no longer lived up to,
+  and the old name is pinned gone with the other retired names);
 - the overlay ZOI canvas #am-zoi-canvas, which carries the shared
   .mm-zoi-canvas class (its grid.css rule stays) and is painted by
   panels/minimap_zoi.js, not by map_state.js;
@@ -42,6 +43,8 @@ _NAMES = (
     '"mm-zoi-canvas")', "_paintMinimapCanvases", "_drawZoi",
     "pendingZoi", "mapFadeIn", "mapFilterOverride", '"map-br"',
     '"map-sat"',
+    # S144-U-289: the entry point's canvas-era name (it paints no canvas).
+    "renderMinimap" + "Canvases",
 )
 # Helpers only the painters used; scoped to map_state.js.
 _MAP_STATE_NAMES = ("_dataRGB", "_DATA_SENTINEL", "_rgbCss", "loRes",
@@ -81,9 +84,10 @@ def test_anchor_the_scans_read_real_files():
     assert 'id="zone-pill"' in html
     assert 'class="mm-zoi-canvas" id="am-zoi-canvas"' in html
     ms = files["web/js/panels/map_state.js"]
-    assert "export function renderMinimapCanvases(" in ms or (
-        "function renderMinimapCanvases(" in ms
-        and "renderMinimapCanvases," in ms)
+    assert "export function renderZonePill(" in ms or (
+        "function renderZonePill(" in ms
+        and "renderZonePill," in ms)
+    assert "renderZonePill(p);" in ms
     assert "function _updateZone(" in ms
     assert "function _bubbleKernel(" in ms
     assert ".mm-zoi-canvas {" in files["web/css/panels/grid.css"]
@@ -135,7 +139,7 @@ def test_the_served_page_has_no_canvas_stack(mock_server, pw_browser, mode):
     assert got["panelCanvases"] == -1, got
 
 
-# Drives renderMinimapCanvases with a deep-enemy value shape (three enemies
+# Drives renderZonePill with a deep-enemy value shape (three enemies
 # stacked on you, one ally far away) and counts every canvas the call
 # creates or opens. `forceShown` forces the #minimap panel on screen, so on
 # the pre-fix tree the paint ran (S144-U-264 removed the panel node, so it
@@ -182,7 +186,7 @@ _DRIVE = """async ({forceShown, tabHidden}) => {
   let paint = null;
   try {
     hiddenSeen = document.hidden;
-    m.renderMinimapCanvases(deep);
+    m.renderZonePill(deep);
     paint = {...counts};
     // Positive control: the counters see a canvas made and opened here.
     const before = counts.getContext + counts.createCanvas;

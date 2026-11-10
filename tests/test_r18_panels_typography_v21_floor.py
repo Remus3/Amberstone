@@ -182,7 +182,7 @@ def test_map_state_canvas_labels_documented_exception() -> None:
     subject left: pin that no canvas font, and so no sub-floor canvas label,
     comes back without a new reviewed exception."""
     text = MAP_STATE_JS.read_text(encoding="utf-8")
-    assert "function renderMinimapCanvases(" in text, (
+    assert "function renderZonePill(" in text, (
         "map_state.js: scan anchor missing (the zone pill entry point)")
     for needle in ("ctx.font", 'bold 11px', 'bold 13px'):
         assert needle not in text, (

@@ -9,7 +9,7 @@ floor, and reaches the WCAG 1.4.3 AA text floor (4.5:1) on its own
 
 THE DEFECTS. MEASURED headless under /?ui_mock=1&mode=sr&debug=1
 #active-match by driving web/js/panels/map_state.js
-renderMinimapCanvases() with a value shape that puts you deep in enemy
+renderZonePill() with a value shape that puts you deep in enemy
 pressure (three enemies stacked on your dot), then with one that drops
 your position (the S144-U-244 payloads):
 - STALE: S144-U-244's _clearZone() reset the header zone pill on every
@@ -73,8 +73,8 @@ _DRIVE = """async () => {
                 Jinx: {x: 0.81, y: 0.20}},
     },
   };
-  window.__zoiRender = m.renderMinimapCanvases;
-  m.renderMinimapCanvases({
+  window.__zoiRender = m.renderZonePill;
+  m.renderZonePill({
     champion: 'Ahri', my_team: 'blue', game_time_s: 900,
     positions: {allies: {Ahri: {x: 0.15, y: 0.85}, Garen: {x: 0.17, y: 0.83}},
                 enemies: {}},
