@@ -9,7 +9,8 @@ Revitalize grants flat Heal and Shield Power and therefore earned ZERO, the exac
 structural gap this registry fills - the same reasoning the sibling
 ``_rune_resist_grants`` registry carries for the resist axis.
 
-The DDragon 16.14.1 ``runesReforged.json`` longDesc, quoted VERBATIM:
+The DDragon ``runesReforged.json`` longDesc, identical in every vendored
+snapshot 16.11.1..16.22.1, quoted VERBATIM:
 
   * 8453 Revitalize: "Gain 5% Heal and Shield Power.<br><br>Heals and shields you
     cast or receive are 10% stronger on targets below 40% health."
@@ -44,11 +45,14 @@ stat, and it was rejected: 8351 Glacial Augment SCALES ITS SLOW BY the wielder's
 HSP ("20% (+90% per 100% Heal and Shield Power)") - it is a CONSUMER of the stat,
 not a GRANTER of it, so crediting it here would invert the direction of the term.
 Every other Resolve rune grants a different axis entirely (8439 Aftershock / 8429
-Conditioning / 8242 Unflinching resists - the ``_rune_resist_grants`` lane; 8446
-Demolish tower damage; 8451 Overgrowth max health; 8473 Bone Plating flat damage
-block) or heals/shields an ALLY rather than granting the wielder HSP (8463 Font
-of Life, 8465 Guardian - the ally-throughput lane ``hps.py`` already owns). Each
-was read and rejected rather than overlooked.
+Conditioning / 8242 Unflinching resists - the ``_rune_resist_grants`` lane; 8437
+Grasp of the Undying self-heal plus permanent health and 8451 Overgrowth max
+health - the ``_rune_health_grants`` lane; 8444 Second Wind missing-health self-heal - the ``_rune_self_heal`` lane;
+8446 Demolish tower damage; 8473 Bone Plating flat damage block; 8401 Shield Bash
+damage on the attack after a shield - ``rune_procs.py``) or heals/shields an ALLY
+rather than granting the wielder HSP (8463 Font of Life, 8465 Guardian - the
+ally-throughput lane ``hps.py`` already owns). Each was read and rejected rather
+than overlooked; the list covers all 12 Resolve runes at 16.22.1.
 
 FAIL-SOFT, mirroring ``_hsp_amp``: an empty / None rune list, a non-iterable, or
 any lookup failure returns 0.0, so the orchestrator's DEFAULT-OFF seam stays
