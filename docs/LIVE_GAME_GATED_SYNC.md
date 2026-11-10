@@ -3455,6 +3455,36 @@ survivability flips below cannot roll otherwise.
   resolver default would apply the ARAM-win-anchored archetype in SR and Arena too (blast radius
   bounded to the 6 tabled champs, but NOT ARAM-scoped). This needs a call-site choice plus a mode gate,
   not the 1-line flip the row implied. **NO LIVE RESIDUAL until that code lands.**
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 144, S144-G-131, source read at `b09a7b6fa`; NOT a
+  tick).** The MIS-FILED verdict holds; three corrections. (1) STILL DEFAULT-OFF AND UNCONSUMED:
+  `inspect.signature(core.archetype_picks.get_archetype_for)` reads `(champion: str,
+  prefer_aram_win_axis: bool = False)` (def `core/archetype_picks.py:798`, override branch `:833`),
+  and in tracked non-test code no call passes the flag - in tracked `.py` files outside `tests/` the
+  name appears only in the resolver itself (def, docstring, branch), two comments
+  (`core/archetype_picks.py:113,226`) and the build script's strings (item 3); beyond Python it is
+  named only in prose (the table's own `_comment`, `ops/audit/ds_cross_eval/TIER2_REPORT.md`, docs),
+  never in a call. The resolver
+  takes no mode argument, so the mode-gate hazard holds by signature. (2) COUNT AND CITES DRIFTED: the
+  row says "13" but its own list names 14 sites, and all 14 still exist, 13 of them moved:
+  `coach_integration/archetype_dispatch.py:380`, `coach_integration/enemy_stats.py:218`,
+  `core/build_order_precompute.py:513`, `core/build_planner/kit_synergy.py:590,641`,
+  `core/ds_antitank_hint.py:114`, `core/zoi_capability.py:140`, `dashboard/routes_archetype.py:190,242`,
+  `dashboard/routes_ds_sweep.py:214`, `dashboard/routes_spike_curve.py:196` (the only cite that held),
+  `dashboard/routes_state.py:1155,1581`, `dashboard/_state_builder.py:793`. Five more default-flag
+  callers live in `tools/` (`ds_matchdb_mcp_server.py:311,391` via alias `_get_archetype_for`,
+  `daemon_slayer_build_orders_generate.py:205`, `ds_cross_eval/probe_champion.py:207`,
+  `gated_g238_top_pick_flip.py:340`); a resolver-default flip would reach them too. (3) "ONE BUILD
+  SCRIPT" PASSES `True` IS REFUTED: `ops/audit/ds_perm_swarm/build_aram_archetype_override.py` never
+  imports the resolver - it names the seam only in its docstring (`:37`) and in the JSON `_comment`
+  string it writes (`:211-212`). `True` is passed only in `tests/test_aram_archetype_override.py`
+  (`:189,199,212,227`). (4) TABLE REPRODUCES, BUT STALE: `core/aram_archetype_override.json`
+  `champions` holds 6 entries, and resolving kit default vs override reads Kayle onhit -> carry,
+  KogMaw onhit -> carry, Shaco assassin -> mage, Shyvana bruiser -> mage, Zilean enchanter -> mage
+  (DIFFER) and Taric tank -> tank (same): **5 of 6**, as filed. The table's own `patch` field is
+  `16.12.1` (file last changed 2026-06-17) while DS serves `16.22.1`, so the rewind-WIN anchors are
+  ten patches old; any future flip should rebuild the table first. Still headless code work, not a
+  game. Idle: `/api/state` `mode_key` `client`, `liveclient` empty, LCU phase None at 2026-11-10
+  00:49 local; no game.
 - **G3-05** (was C5) RF1 bruiser survivability flip - **EYEBALL CLOSED 2026-07-18** (on top of the
   LIVE-VALIDATED 2026-06-18 Yasuo read; the row's own "further tabled rolls (Darius/Udyr) optional"
   residual is now discharged headless). MEASURED at `[3078,3053,3742]`, L13, mode=ARAM, top_n=200,
