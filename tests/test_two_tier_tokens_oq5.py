@@ -1,4 +1,5 @@
-"""
+"""OQ5 two-tier design tokens: a primitive hue layer under the semantic tokens.
+
 tests/test_two_tier_tokens_oq5.py
 
 OQ5 (QA46, operator-queue 2026-07-01) - two-tier design tokens in

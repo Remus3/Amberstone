@@ -7,7 +7,7 @@ production modules (22 sites: agents/_supervisor_http.py, dashboard/routes_ops_p
 routes_post_game_wpa, routes_post_game_rubric, routes_personal_context, routes_replay_events) got the closing period
 ruff asks for - text inside a docstring only, no token outside a string changes, so behaviour is unchanged.
 
-Not touched, and named in ``_BASELINE`` with their counts (178 sites in 160 files), so it drains in later slices:
+Not touched, and named in ``_BASELINE`` with their counts (now 167 sites in 150 files), so it drains in later slices:
 a docstring whose summary opens on its own line or wraps over several lines needs the sentence rewritten, not a
 period appended; ``agents/daemon_slayer/`` belongs to the ds lane and ``ops/launcher/`` is PKG-owned; files other
 lane branches changed and have not landed stay in the baseline until they land.
@@ -17,6 +17,11 @@ history_view, home_review_r30, home_view, item_value_diff, lobby_view, overlay_f
 overlay_phase_surfaces, overlay_stats_role) gained a one-line summary ending in a period (four ``Hard rule:
 ASCII-only`` test docstrings and six module docstrings that opened on a path line), 10 sites, so the baseline is
 now 178 sites in 160 files.
+
+Third slice (S144-P-666): ten more modules (tests/snapshot_panels test_render_dedup_reshow, test_replay_view,
+test_session_view, test_settings_view, test_spike_curve, test_user_builds_view, test_xss_escaping,
+test_ui_mock_active_match_map_stall, tests/snapshot_regressions/test_app_authority, tests/test_two_tier_tokens_oq5)
+gained a one-line summary ending in a period, 11 sites, so the baseline is now 167 sites in 150 files.
 
 ``ops/fleet_kit/`` is vendored byte-for-byte and pinned by its MANIFEST, so it is not scanned. The run uses NO
 config (``--isolated``) so a per-file-ignore cannot hide a finding. The baseline only shrinks.
@@ -112,16 +117,7 @@ _BASELINE = {
     "scripts/wakeup_prune.py": 1,
     "tests/snapshot_panels/test_overlay_hotkey_hints.py": 1,
     "tests/snapshot_panels/test_overlay_launcher_menu.py": 1,
-    "tests/snapshot_panels/test_render_dedup_reshow.py": 1,
-    "tests/snapshot_panels/test_replay_view.py": 1,
-    "tests/snapshot_panels/test_session_view.py": 1,
-    "tests/snapshot_panels/test_settings_view.py": 1,
-    "tests/snapshot_panels/test_spike_curve.py": 2,
     "tests/snapshot_panels/test_stale_fade_view_t12.py": 1,
-    "tests/snapshot_panels/test_ui_mock_active_match_map_stall.py": 1,
-    "tests/snapshot_panels/test_user_builds_view.py": 1,
-    "tests/snapshot_panels/test_xss_escaping.py": 1,
-    "tests/snapshot_regressions/test_app_authority.py": 1,
     "tests/test_aram_coach_shadow_choices_native_emit.py": 1,
     "tests/test_base_coach_structured_field_limit.py": 1,
     "tests/test_coach_choices_alt_hotkey.py": 1,
@@ -174,7 +170,6 @@ _BASELINE = {
     "tests/test_state_builder_latency_rc2.py": 1,
     "tests/test_tft_local_player_reconcile_s135.py": 1,
     "tests/test_tft_stage_gate_rm615.py": 1,
-    "tests/test_two_tier_tokens_oq5.py": 1,
     "tests/test_view_router_registry_rm341.py": 1,
     "tests/test_view_section_btn_selector_removed.py": 1,
     "tests/test_vision_seed_reachability_rm26.py": 1,

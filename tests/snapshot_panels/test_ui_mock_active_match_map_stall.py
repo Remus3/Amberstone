@@ -129,7 +129,9 @@ def _vs_sr(t_now):
 
 
 class _Feed:
-    """The /api/vision-state stand-in. kind: 'live' writes a new t_now on
+    """The /api/vision-state stand-in.
+
+    kind: 'live' writes a new t_now on
     every poll, 'frozen' serves one file forever, 'dead' answers 503.
     (main.js's Home minimap polls the same route, so a feed switches state
     by an explicit call, never by a hit count.)"""

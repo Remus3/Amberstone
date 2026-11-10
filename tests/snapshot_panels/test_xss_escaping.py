@@ -1,4 +1,5 @@
-"""
+"""Regression coverage: dynamic data is escaped on the web surface.
+
 tests/snapshot_panels/test_xss_escaping.py
 
 Regression coverage for the P2-W3 web-surface audit (DEEP-AUDIT cycle 13).
