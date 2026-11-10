@@ -6614,6 +6614,30 @@ Rail tools: `tools/hz_shadow_report.py`, `tools/replay_build_order_validate.py`,
   finding as G7-08), and it is the same reason G7-19 stays PARKED.
   RESIDUAL (accrual, background only): the corpus tightens as matchmade games accumulate. Re-read the
   n>=20 count before proposing any pairwise-WR consumer.
+  **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 150, S144-G-141, source read at `639800106`; no game
+  up; NOT a tick).** The finding reproduces almost to the pair. (1) DENSITY RE-DERIVED over the main
+  checkout's `data/rewind_history.db` opened `mode=ro`, counting each unordered cross-team champion
+  pair once per match, the same join `core/draft_elo_db.py:237` `pair_winrate` runs with
+  `side="enemy"`: over the 667 `game_mode` CLASSIC matches, **8,201 distinct pairs, 55.1% of
+  C(173,2) = 14,878, 41 at n>=10, EXACTLY ONE at n>=20 (max n=24), median n=1** (filed: 8,188 /
+  55.0% / one / median 1). Over the route's own `DEFAULT_SR_QUEUES` (400 / 420 / 430 / 440 / 490,
+  662 matches): 8,167 (54.9%), one at n>=20. Ranked q420 alone (516): 6,974 (46.9%), one at n>=20.
+  The champion universe is unchanged: DDragon 16.22.1 `champion.json` carries 173, and all 173 occur
+  in the corpus. SAME-TEAM (ally) pairs, the side `core/draft_score.py:197` reads, are thinner:
+  7,043 distinct over CLASSIC, one at n>=20 (max 22); q420 alone has ZERO at n>=20. The newest SR
+  `game_creation_ts` is 2026-07-21 UTC, the same ingest stall G7-06 / G7-08 record, so the
+  RESIDUAL's "the corpus tightens as matchmade games accumulate" has not been true since then.
+  (2) THE CONSUMER CAVEAT IS ALREADY OVERTAKEN: three dashboard routes read these per-pair rates today -
+  `dashboard/routes_draft_elo.py` and `dashboard/routes_ban_suggest.py` (both added 2026-05-20, before
+  this row) and `dashboard/routes_draft_score.py` (added 2026-07-23, five days after it). Per pair
+  the DB side is Laplace alpha=1 only (`core/draft_elo_db.py:203` `_rate`, `:208`; no per-pair
+  minimum n in any of the three), so a 1-game pair reads 0.667 or 0.333 (draft_score may blend a
+  101qq duo rate at `_DUO_BLEND = 0.30`, `:78`, where that source covers the pair); `core/draft_score.py` sums `g` over the 10 ally pairs (`:204`) and lets the
+  synergy layer contribute once that SUM reaches `MIN_GAMES = 5` (`:66`, `:115`), so five 1-game
+  pairs clear the gate. Whether that is acceptable is a headless design question for the draft
+  owners, NOT a gated one; recorded here so the next reader does not re-read "before proposing any
+  consumer" as "no consumer exists". VERDICT: row stands (settled headless, background accrual only);
+  no game state moves it.
 - **G7-10** (was G10) B1 `det_coach_shadow` / WS3 `objective_playbook_shadow` / WS4
   `macro_response_shadow` flip gates (rows accruing ~37.6K / 33.6K / 32.7K on 2026-07-01; the flip
   DECISIONS are pending). SOURCE: commits `ee70536a` / `2cdf64cb` / `aec17657`.
