@@ -64,7 +64,7 @@
    "persistence": "TIMED",
    "magnitude": 0.55,
    "conditional": true,
-   "source_quote": "Infernum or Crescendum off-hand turret placement contests ground around its fixed position; weapon-loadout dependent"
+   "source_quote": "Crescendum main-hand Q Sentry deploys a turret at a fixed position that waits up to 20 seconds and fires the off-hand weapon for 4 seconds once an enemy comes in range; weapon-loadout dependent"
   },
   {
    "champion": "AurelionSol",

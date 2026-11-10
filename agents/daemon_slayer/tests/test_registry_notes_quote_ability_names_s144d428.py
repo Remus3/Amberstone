@@ -39,11 +39,24 @@ mis-keyed rows, 9 context leads) and 3 led on a non-ability "<Name>
 (<slot>)"; one more quote (Aurelion Sol BASE) named the pre-rework Star
 Surge. The ten slips are fixed; the 23 others are pinned below.
 
+S144-D-433..435 (cycle 938): the zonecontrol Aphelios W quote named
+Infernum beside Crescendum, but only Crescendum's Q form (Sentry) places a
+turret; it now names Crescendum and Sentry (still a mis-keyed W row, so its
+pin moved with the lead). The Aphelios pairing check now also covers
+quotes naming several weapons (every Q form named must have its weapon
+named). A possessive opening ("Ekko's ...", "Jarvan IV's ...") is now
+stripped like a plain one; MEASURED 2026-11-10: 14 sidecar quotes open on
+a possessive and none of them leads on another slot's ability.
+
 LIMITS (a clean run is not proof every quote is right): only the FIRST
-ability name is checked, a possessive opening ("Ekko's ...") is not
-stripped, names under 4 characters are skipped, and a stale or invented
-name without a "(<slot>)" suffix is caught only where a test names it
-(Star Surge below). Magnitudes and ranges in the quotes are not checked.
+ability name is checked, names under 4 characters are skipped, and a stale
+or invented name without a "(<slot>)" suffix is caught only where a test
+names it (Star Surge below). threatrange Aurora W "Aurora's Rite" is such a
+name: her kit has no "Rite" and no pull, so the row itself (W as CC) is
+in question; it is reported as S144-D-436 in the ds lane's cycle 938
+report for the merger to file (Tier-2, registry data). Magnitudes and ranges in the quotes
+are not checked, and an Aphelios quote naming a Q form but no weapon is
+not paired.
 """
 
 from __future__ import annotations
@@ -93,7 +106,7 @@ _MIS_KEYED: dict[tuple[str, str, str, str], str] = {
         "Q's turrets; his W is Hextech Micro-Rockets",
     ("threatrange", "Aphelios", "W", "Infernum"):
         "Infernum's Q form (Duskwave cone) keyed to W; his W is the Phase swap",
-    ("zonecontrol", "Aphelios", "W", "Infernum"):
+    ("zonecontrol", "Aphelios", "W", "Crescendum"):
         "Crescendum's Q form (Sentry turret) keyed to W; his W is Phase",
 }
 
@@ -142,12 +155,19 @@ def _ability_names(abilities: Mapping[str, Any]) -> dict[str, dict[str, set[str]
 
 
 def _strip_subject(quote: str, champ_names: Iterable[str]) -> str:
-    """Drop a leading champion name and slot letter ("Ekko Q ...")."""
+    """Drop a leading champion name, possessive or not, and slot letter
+    ("Ekko Q ...", "Ekko's Q ...", "Jarvan IV's ...")."""
     text = quote.strip()
     for name in sorted(champ_names, key=len, reverse=True):
-        if name and text.startswith(name + " "):
-            text = text[len(name) + 1:]
-            break
+        if not name:
+            continue
+        for sep in (" ", "'s ", "' "):
+            if text.startswith(name + sep):
+                text = text[len(name) + len(sep):]
+                break
+        else:
+            continue
+        break
     if len(text) > 2 and text[0] in _SLOTS and text[1] == " ":
         text = text[2:]
     return text
@@ -202,6 +222,36 @@ def lead_departures(
             if match and match.group(1) not in kit:
                 unknown.append(f"{axis} {champ} {slot}: {match.group(0)!r}")
     return departures, unknown
+
+
+def aphelios_pair_mismatches(
+    sidecars: Mapping[str, list[Mapping[str, Any]]],
+    kit: Mapping[str, Any],
+) -> tuple[list[str], int]:
+    """Return (quotes naming a Q form without its weapon, quotes checked).
+
+    The snapshot pairs passive weapon form i with Q form i (Infernum with
+    Duskwave, Crescendum with Sentry, ...). A quote naming at least one
+    weapon and at least one Q form must name, for every Q form, the weapon
+    of the same form_index; quotes naming several weapons are checked too.
+    """
+    weapons = {f["name"]: f["form_index"] for f in kit["P"] if f["form_index"]}
+    q_forms = {f["name"]: f["form_index"] for f in kit["Q"] if f["form_index"]}
+    bad: list[str] = []
+    checked = 0
+    for axis, entries in sidecars.items():
+        for e in entries:
+            if e["champion"] != "Aphelios":
+                continue
+            quote = e["source_quote"]
+            w = {weapons[n] for n in weapons if n in quote}
+            q = {q_forms[n] for n in q_forms if n in quote}
+            if not w or not q:
+                continue
+            checked += 1
+            if not q <= w:
+                bad.append(f"{axis} {e.get('source') or e.get('spell')}: {quote!r}")
+    return bad, checked
 
 
 def _live() -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any], dict[str, str]]:
@@ -274,25 +324,32 @@ class TestQuoteAbilityNames(unittest.TestCase):
 
     def test_aphelios_quotes_pair_each_weapon_with_its_own_q_form(self) -> None:
         # The snapshot pairs passive weapon form i with Q form i (Infernum
-        # with Duskwave, Severum with Onslaught, ...). A quote naming exactly
-        # one weapon and one Q form must name a matching pair.
+        # with Duskwave, Severum with Onslaught, ...). Every Q form a quote
+        # names must have its weapon named too (S144-D-434: quotes naming
+        # several weapons are checked, not only one-weapon quotes).
         kit = self.abilities["Aphelios"]
-        weapons = {f["name"]: f["form_index"] for f in kit["P"] if f["form_index"]}
-        q_forms = {f["name"]: f["form_index"] for f in kit["Q"] if f["form_index"]}
-        self.assertEqual(sorted(weapons.values()), sorted(q_forms.values()))
-        checked = 0
-        for axis, entries in self.sidecars.items():
-            for e in entries:
-                if e["champion"] != "Aphelios":
-                    continue
-                quote = e["source_quote"]
-                w = [n for n in weapons if n in quote]
-                q = [n for n in q_forms if n in quote]
-                if len(w) == 1 and len(q) == 1:
-                    checked += 1
-                    with self.subTest(axis=axis, quote=quote):
-                        self.assertEqual(weapons[w[0]], q_forms[q[0]])
-        self.assertGreater(checked, 0)
+        weapons = sorted(f["form_index"] for f in kit["P"] if f["form_index"])
+        q_forms = sorted(f["form_index"] for f in kit["Q"] if f["form_index"])
+        self.assertEqual(weapons, q_forms)
+        bad, checked = aphelios_pair_mismatches(self.sidecars, kit)
+        self.assertEqual(bad, [])
+        # MEASURED 2026-11-10: 3 quotes name a pair - threatrange Q
+        # (Calibrum / Moonshot), threatrange W (Infernum / Duskwave) and
+        # zonecontrol W (Crescendum / Sentry).
+        self.assertGreaterEqual(checked, 3)
+
+    def test_zonecontrol_aphelios_turret_names_only_crescendum(self) -> None:
+        # S144-D-433: only Crescendum's Q form (Sentry) places a turret; the
+        # quote once read "Infernum or Crescendum off-hand turret".
+        rows = [
+            e for e in self.sidecars["zonecontrol"]
+            if e["champion"] == "Aphelios" and e.get("source") == "W"
+        ]
+        self.assertEqual(len(rows), 1)
+        quote = rows[0]["source_quote"]
+        self.assertIn("Crescendum", quote)
+        self.assertIn("Sentry", quote)
+        self.assertNotIn("Infernum", quote)
 
     def test_no_quote_cites_aurelion_sols_pre_rework_q(self) -> None:
         # Star Surge was Aurelion Sol's Q before his rework; the live Q is
@@ -353,6 +410,78 @@ class TestDetectorOnPlantedRows(unittest.TestCase):
 
     def test_non_ability_slot_rows_are_skipped(self) -> None:
         self.assertEqual(self._run("Z-Drive Resonance", slot="BASE"), (set(), []))
+
+    # S144-D-435: a possessive opening is stripped like a plain one.
+    def test_possessive_opening_wrong_slot_lead(self) -> None:
+        dep, unk = self._run("Ekko's Z-Drive Resonance boomerang ~1050")
+        self.assertEqual(dep, {("threatrange", "Ekko", "Q", "Z-Drive Resonance")})
+        self.assertEqual(unk, [])
+
+    def test_possessive_opening_with_slot_letter(self) -> None:
+        dep, _ = self._run("Ekko's Q Z-Drive Resonance boomerang")
+        self.assertEqual(dep, {("threatrange", "Ekko", "Q", "Z-Drive Resonance")})
+
+    def test_possessive_opening_own_slot_passes(self) -> None:
+        self.assertEqual(self._run("Ekko's Timewinder boomerang"), (set(), []))
+
+    def test_possessive_opening_invented_name_with_slot_paren(self) -> None:
+        dep, unk = self._run("Ekko's Temporal Grenade (Q) - slows")
+        self.assertEqual(dep, set())
+        self.assertEqual(len(unk), 1)
+
+    def test_possessive_display_name_with_space(self) -> None:
+        abilities = {"JarvanIV": {
+            "P": [{"name": "Martial Cadence"}],
+            "Q": [{"name": "Dragon Strike"}],
+        }}
+        rows = {"antitank": [{
+            "champion": "JarvanIV", "source": "Q",
+            "source_quote": "Jarvan IV's Martial Cadence basic attacks",
+        }]}
+        dep, _ = lead_departures(rows, abilities, {"JarvanIV": "Jarvan IV"})
+        self.assertEqual(dep, {("antitank", "JarvanIV", "Q", "Martial Cadence")})
+
+
+class TestApheliosPairingOnPlantedRows(unittest.TestCase):
+    """S144-D-434: the pairing check sees one- and two-weapon quotes."""
+
+    _KIT = {
+        "P": [
+            {"name": "The Hitman and the Seer", "form_index": 0},
+            {"name": "Calibrum", "form_index": 1},
+            {"name": "Infernum", "form_index": 4},
+            {"name": "Crescendum", "form_index": 5},
+        ],
+        "Q": [
+            {"name": "Weapons of the Faithful", "form_index": 0},
+            {"name": "Moonshot", "form_index": 1},
+            {"name": "Duskwave", "form_index": 4},
+            {"name": "Sentry", "form_index": 5},
+        ],
+    }
+
+    def _run(self, quote: str):
+        rows = {"zonecontrol": [
+            {"champion": "Aphelios", "source": "W", "source_quote": quote},
+        ]}
+        return aphelios_pair_mismatches(rows, self._KIT)
+
+    def test_matching_pair_passes(self) -> None:
+        self.assertEqual(self._run("Crescendum Q Sentry turret"), ([], 1))
+
+    def test_mismatched_pair_fails(self) -> None:
+        bad, checked = self._run("Infernum Q Sentry turret")
+        self.assertEqual((len(bad), checked), (1, 1))
+
+    def test_two_weapons_one_unpaired_form_fails(self) -> None:
+        bad, checked = self._run("Infernum or Calibrum Sentry turret")
+        self.assertEqual((len(bad), checked), (1, 1))
+
+    def test_two_weapons_paired_form_passes(self) -> None:
+        self.assertEqual(self._run("Infernum or Crescendum Sentry turret"), ([], 1))
+
+    def test_weapons_without_a_q_form_are_not_checked(self) -> None:
+        self.assertEqual(self._run("Infernum or Crescendum turret"), ([], 0))
 
 
 if __name__ == "__main__":
