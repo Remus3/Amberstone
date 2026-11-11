@@ -1471,7 +1471,7 @@ class _Ctx:
 class _Frame:
     """One memoised entry being recorded: what it attempted and what it added."""
 
-    __slots__ = ("consumed", "attempts", "walked", "added")
+    __slots__ = ("added", "attempts", "consumed", "walked")
 
     def __init__(self, consumed: set) -> None:
         self.consumed = consumed  # the `_Ctx.consumed` set the entry runs against
@@ -1487,7 +1487,7 @@ class _Frame:
 
 
 class _ScanMemo:
-    __slots__ = ("entries", "frames", "overlays", "host", "hits")
+    __slots__ = ("entries", "frames", "hits", "host", "overlays")
 
     def __init__(self) -> None:
         self.entries: dict = {}  # key -> (attempts, {fingerprint: (signals, walked)})
