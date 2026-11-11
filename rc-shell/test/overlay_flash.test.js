@@ -109,6 +109,15 @@ function makeNode() {
     addEventListener(type, fn) { (listeners[type] || (listeners[type] = [])).push(fn); },
     querySelector() { return null; },
     appendChild() {},
+    // Every real Element has these; overlay_layout's tall-widget fit (S144-U-283)
+    // measures the dropped widget and the primary widgets and walks its drop
+    // sections. A zero box with no children reads as "nothing placed, nothing
+    // overflowing".
+    children: [],
+    scrollHeight: 0,
+    clientHeight: 0,
+    querySelectorAll() { return []; },
+    getBoundingClientRect() { return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }; },
   };
 }
 
