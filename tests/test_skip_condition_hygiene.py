@@ -557,10 +557,24 @@ class _Model:
 
     # -- indexing ----------------------------------------------------------
     def _index(self) -> None:
-        for node in ast.walk(self.tree):
+        # ONE breadth-first pass (s160). This used to be two `ast.walk`s plus a
+        # third child iteration per node, and every module in the universe
+        # pays it. The loop is `ast.walk` unrolled - `nodes` is its FIFO queue,
+        # read by index and never popped - so the visit order and child order
+        # are walk's, `self.nodes == list(ast.walk(self.tree))`, and the parent
+        # map is assigned in the same order as before. `_skip_sites` reads
+        # `self.nodes` instead of walking the tree a fourth time.
+        parent = self.parent
+        nodes: list[ast.AST] = [self.tree]
+        i = 0
+        while i < len(nodes):
+            node = nodes[i]
+            i += 1
             for child in ast.iter_child_nodes(node):
-                self.parent[child] = node
-        for scope in [n for n in ast.walk(self.tree) if isinstance(n, _SCOPES)]:
+                parent[child] = node
+                nodes.append(child)
+        self.nodes = nodes
+        for scope in [n for n in nodes if isinstance(n, _SCOPES)]:
             assigns: dict[str, list[ast.expr]] = {}
             funcs: dict[str, ast.AST] = {}
             body = getattr(scope, "body", [])
@@ -1342,7 +1356,17 @@ def _host_eval(
 
 
 def _host_values(node, model: _Model, scope: ast.AST) -> list:
-    return [_host_eval(node, model, scope, h) for h in _HOST_PROFILES]
+    # s160: memoised per scan (see `_ScanMemo`). With `seen` empty and `depth`
+    # 0, `_host_eval` is a pure function of the node, the model, the scope and
+    # the helper-argument overlays in force, so the key below is exact.
+    memo = _SCAN_MEMO
+    if memo is None:
+        return [_host_eval(node, model, scope, h) for h in _HOST_PROFILES]
+    key = (node, model, scope, memo.overlays)
+    vals = memo.host.get(key)
+    if vals is None:
+        vals = memo.host[key] = tuple(_host_eval(node, model, scope, h) for h in _HOST_PROFILES)
+    return list(vals)
 
 
 def _constant_values(vals: list) -> bool:
@@ -1393,11 +1417,133 @@ class _Ctx:
         # waiting.
 
     def take(self, expr: ast.AST | None, model: _Model, scope: ast.AST, seen: frozenset) -> None:
-        if expr is None or id(expr) in self.consumed:
+        if expr is None:
             return
-        for n in ast.walk(expr):
-            self.consumed.add(id(n))
+        # s160: `_ScanMemo` bookkeeping. This membership test is the ONLY
+        # place the walk reads `consumed`, so recording every attempt and
+        # every id a take adds is what lets a memoised entry be replayed.
+        memo = _SCAN_MEMO
+        frame = memo.frames[-1] if memo is not None and memo.frames else None
+        if frame is not None:
+            frame.attempts.add(id(expr))
+        if id(expr) in self.consumed:
+            return
+        walked = [id(n) for n in ast.walk(expr)]
+        if frame is not None and self.consumed is frame.consumed:
+            frame.added.update(i for i in walked if i not in self.consumed)
+            frame.walked.update(walked)
+        self.consumed.update(walked)
         _record_chain(_segments(expr, model, scope, seen, 0), self.sig)
+
+
+# --------------------------------------------------------------------------- #
+# Per-scan memo (s160)
+# --------------------------------------------------------------------------- #
+# CI run 42954031303 timed `test_every_skip_gates_on_an_environment_capability`
+# out at 300s, and its prior green runs had crept 105s -> 205s. The cost was
+# not the module count: a bare skip whose guard resolves into `load_config` in
+# tools/sibling_name_sweep.py re-walked the same helpers ~21000 times per
+# module (one `_read_link_line` entry per path through its callers), a million
+# `_collect` calls for each of three such sites.
+#
+# The memo makes a helper entry (`_enter_local_function`, `_enter_symbol`)
+# run once per distinct situation and REPLAYS its effect afterwards, so it
+# changes no verdict and narrows nothing - the census below every finding is
+# byte-identical (measured on the whole tree when this landed). Exactness
+# rests on three facts about the walk, each checkable in this file:
+#
+# * Its control flow never reads the accumulated signals or `consumed`;
+#   `_Ctx.take` is the sole reader of `consumed`, and only to decide whether
+#   to record a chain and add the expression's ids. So which takes are
+#   ATTEMPTED is fixed by the entry's key, and the entry's whole effect is a
+#   function of the key plus the consumed status, at entry, of those attempts
+#   (the fingerprint).
+# * The rest of the state it reads is either immutable after `_Model._index`
+#   or the helper-argument overlays, which are part of the key
+#   (`_ScanMemo.overlays`), as are `seen`, `depth` and `broad_handler`.
+# * Signals only accumulate (`_Signals.merge` is a union), so running an entry
+#   into a fresh accumulator and merging it is the same as running it in
+#   place, and replaying = merge the recorded signals + add the recorded ids.
+#
+# The memo lives for ONE `scan_source` call. Keys hold AST nodes and models,
+# and attempts are recorded by `id()`; a module's nodes all stay alive for its
+# own scan, so an id cannot be recycled while the memo can still be read.
+class _Frame:
+    """One memoised entry being recorded: what it attempted and what it added."""
+
+    __slots__ = ("consumed", "attempts", "walked", "added")
+
+    def __init__(self, consumed: set) -> None:
+        self.consumed = consumed  # the `_Ctx.consumed` set the entry runs against
+        self.attempts: set[int] = set()  # ids `take` asked about, in any context
+        self.walked: set[int] = set()  # ids its takes put in `consumed`
+        self.added: set[int] = set()  # ...of which were not there before
+
+    def absorb(self, attempts, walked, added, consumed: set) -> None:
+        self.attempts |= attempts
+        if consumed is self.consumed:
+            self.walked |= walked
+            self.added |= added
+
+
+class _ScanMemo:
+    __slots__ = ("entries", "frames", "overlays", "host", "hits")
+
+    def __init__(self) -> None:
+        self.entries: dict = {}  # key -> (attempts, {fingerprint: (signals, walked)})
+        self.frames: list[_Frame] = []
+        self.overlays: tuple = ()  # (fn, call) of every helper overlay in force
+        self.host: dict = {}  # `_host_values` results
+        self.hits = 0  # replayed entries; read by the differential test only
+
+
+_SCAN_MEMO: _ScanMemo | None = None
+_LAST_SCAN_MEMO: _ScanMemo | None = None  # the most recent scan's memo, for that test
+
+
+def _run_entry(key: tuple, ctx: _Ctx, run) -> None:
+    """Run `run(ctx)` - one helper entry - through the per-scan memo."""
+    memo = _SCAN_MEMO
+    if memo is None:
+        run(ctx)
+        return
+    consumed = ctx.consumed
+    full = (key, memo.overlays, ctx.broad_handler)
+    known = memo.entries.get(full)
+    if known is not None:
+        attempts, outcomes = known
+        hit = outcomes.get(frozenset(a for a in attempts if a in consumed))
+        if hit is not None:
+            memo.hits += 1
+            signals, walked = hit
+            added = walked - consumed
+            consumed |= walked
+            ctx.sig.merge(signals)
+            if memo.frames:
+                memo.frames[-1].absorb(attempts, walked, added, consumed)
+            return
+    frame = _Frame(consumed)
+    memo.frames.append(frame)
+    sub = _Ctx(ctx.broad_handler)
+    sub.consumed = consumed
+    try:
+        run(sub)
+    finally:
+        memo.frames.pop()
+    ctx.sig.merge(sub.sig)
+    attempts = frozenset(frame.attempts)
+    fingerprint = frozenset(a for a in attempts if a in consumed and a not in frame.added)
+    outcome = (sub.sig, frozenset(frame.walked))
+    if known is None:
+        memo.entries[full] = (attempts, {fingerprint: outcome})
+    elif known[0] == attempts:
+        known[1][fingerprint] = outcome
+    else:
+        # Unreachable by the argument above. If it ever fires, the memo is
+        # unsound and every verdict this scan produced is suspect - say so.
+        raise AssertionError(f"_ScanMemo: one entry attempted two different take sets: {key[:2]}")
+    if memo.frames:
+        memo.frames[-1].absorb(attempts, frame.walked, frame.added, consumed)
 
 
 _MAX_RESOLUTION_DEPTH = 8
@@ -1806,14 +1952,22 @@ def _enter_symbol(target: _Model, symbol: str, model: _Model, ctx: _Ctx, seen: f
     key = f"{target.rel}::{symbol}"
     if key in seen:
         return
+    _run_entry(
+        ("symbol", target, symbol, seen, depth),
+        ctx,
+        lambda c: _walk_symbol(target, symbol, c, seen | {key}, depth + 1),
+    )
+
+
+def _walk_symbol(target: _Model, symbol: str, ctx: _Ctx, seen: frozenset, depth: int) -> None:
     if symbol in target.optional_names:
         ctx.sig.optional_import = True
     fn = target.funcs.get(target.tree, {}).get(symbol)
     if fn is not None:
-        _collect(fn, target, fn, ctx, seen | {key}, depth + 1)
+        _collect(fn, target, fn, ctx, seen, depth)
         return
     for bound in target.assigns.get(target.tree, {}).get(symbol, []):
-        _collect(bound, target, target.tree, ctx, seen | {key}, depth + 1)
+        _collect(bound, target, target.tree, ctx, seen, depth)
 
 
 def _positional_params(fn: ast.AST) -> list[str]:
@@ -1832,15 +1986,32 @@ def _enter_local_function(fn: ast.AST, call: ast.Call, model: _Model, ctx: _Ctx,
     key = f"{model.rel}::{getattr(fn, 'name', '?')}"
     if key in seen or depth >= _MAX_RESOLUTION_DEPTH:
         return
+    _run_entry(
+        ("local", fn, call, model, seen, depth),
+        ctx,
+        lambda c: _walk_local_function(fn, call, model, c, seen | {key}, depth + 1),
+    )
+
+
+def _walk_local_function(fn: ast.AST, call: ast.Call, model: _Model, ctx: _Ctx, seen: frozenset, depth: int) -> None:
     saved = model.assigns.get(fn, {})
     overlay = dict(saved)
     for param, arg in zip(_positional_params(fn), call.args):
         overlay.setdefault(param, [arg])
     model.assigns[fn] = overlay
+    # The overlay is a function of (fn, call): `saved` is always the module's
+    # own bindings, because re-entering `fn` while it is overlaid is refused by
+    # the `seen` key above. So (fn, call) names the overlay exactly in memo keys.
+    memo = _SCAN_MEMO
+    outer = memo.overlays if memo is not None else ()
+    if memo is not None:
+        memo.overlays = (*outer, (fn, call))
     try:
-        _collect(fn, model, fn, ctx, seen | {key}, depth + 1)
+        _collect(fn, model, fn, ctx, seen, depth)
     finally:
         model.assigns[fn] = saved
+        if memo is not None:
+            memo.overlays = outer
 
 
 def _collect_call(node: ast.Call, model: _Model, scope: ast.AST, ctx: _Ctx, seen: frozenset, depth: int) -> None:
@@ -1908,7 +2079,7 @@ def _collect_call(node: ast.Call, model: _Model, scope: ast.AST, ctx: _Ctx, seen
 def _skip_sites(model: _Model) -> list[_Site]:
     sites: list[_Site] = []
     seen_calls: set[int] = set()
-    for node in ast.walk(model.tree):
+    for node in model.nodes:  # == ast.walk(model.tree), recorded by _Model._index
         # Unconditional skips first, and NOT restricted to ast.Call: a bare
         # `@pytest.mark.skip` decorator is an ast.Attribute with no call at all.
         if isinstance(node, ast.Attribute):
@@ -2201,23 +2372,33 @@ def _condition_pinned(model: _Model, site: _Site) -> bool:
     return True
 
 
-def scan_source(rel: str, source: str) -> list[_Finding]:
-    """Classify every skip construct in one module's source."""
+def scan_source(rel: str, source: str, memo: bool = True) -> list[_Finding]:
+    """Classify every skip construct in one module's source.
+
+    `memo=False` runs the walk without `_ScanMemo`, for the differential test
+    that holds the memo to changing nothing.
+    """
+    global _SCAN_MEMO, _LAST_SCAN_MEMO
     model = _Model(_REPO_ROOT / rel, source)
     model.rel = rel
     findings: list[_Finding] = []
-    for site in _skip_sites(model):
-        sig = _signals_for(model, site)
-        findings.append(
-            _Finding(
-                site,
-                _classify(sig),
-                sig.evidence(),
-                frozenset(sig.tracked | sig.firstparty_import | sig.vanished),
-                frozenset(sig.forced),
-                _condition_pinned(model, site),
+    outer, _SCAN_MEMO = _SCAN_MEMO, (_ScanMemo() if memo else None)
+    _LAST_SCAN_MEMO = _SCAN_MEMO
+    try:
+        for site in _skip_sites(model):
+            sig = _signals_for(model, site)
+            findings.append(
+                _Finding(
+                    site,
+                    _classify(sig),
+                    sig.evidence(),
+                    frozenset(sig.tracked | sig.firstparty_import | sig.vanished),
+                    frozenset(sig.forced),
+                    _condition_pinned(model, site),
+                )
             )
-        )
+    finally:
+        _SCAN_MEMO = outer
     return findings
 
 
@@ -2559,9 +2740,15 @@ def test_lfs_chains_do_not_leak_into_the_tracked_defect_signal():
 
 def test_every_skip_gates_on_an_environment_capability():
     """The guard itself: no skip may fire on something a checkout always has."""
+    findings = scan_tree()
+    # An EMPTY scan passes the assertion below vacuously, so anchor it (s160):
+    # 560 sites on 2026-11-11. The floor is half that - a scan that loses half
+    # the tree's skips has gone blind; converting skips one by one never gets
+    # near it.
+    assert len(findings) >= 280, f"only {len(findings)} skip sites found - the scan went blind"
     bad = [
         f"  {f.site.label} -> {f.verdict}: {f.evidence}"
-        for f in scan_tree()
+        for f in findings
         if f.verdict != CAPABILITY and not _excused(f)
     ]
     assert not bad, (
@@ -2570,6 +2757,115 @@ def test_every_skip_gates_on_an_environment_capability():
         "under test being absent must FAIL instead (see "
         "docs/_archive/2026-07/SKIPIF_AUDIT_2026-07-27.md):\n" + "\n".join(bad)
     )
+
+
+# --- s160: `_ScanMemo` must change nothing ----------------------------------- #
+# The memo is a speed fix (CI run 42954031303 timed the guard out at 300s), so
+# its only acceptable effect is time. These hold it to that: the whole finding
+# census - verdict, evidence, gated artifacts, forced verdicts, pinning - must be
+# identical with the memo off, on a probe built to re-enter helpers through
+# overlays with path arguments the outer walk consumes in between (the case
+# the fingerprint exists for), and on two real anchor modules. Each also
+# asserts the memo REPLAYED something, so it cannot pass by never firing.
+_MEMO_PROBE = """
+import os
+import shutil
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def _leaf(p):
+    return (p / "data" / "rows.json").exists() or os.environ.get("RC_LEAF")
+
+
+def _mid(p):
+    return _leaf(p) and _leaf(ROOT / "docs") and _leaf(p / "sub")
+
+
+def _top():
+    return _mid(ROOT) or _mid(ROOT / "tools") or shutil.which("git")
+
+
+def test_a():
+    if not _top():
+        pytest.skip("a")
+
+
+def test_b():
+    if _mid(ROOT) and not _top():
+        pytest.skip("b")
+
+
+def test_c():
+    if not (ROOT / "data" / "rows.json").exists():
+        pytest.skip("c")
+    if not _leaf(ROOT / "data"):
+        pytest.skip("c2")
+
+
+@pytest.mark.skipif(not _top() or not _mid(ROOT / "data"), reason="d")
+def test_d():
+    pass
+"""
+
+
+def _census(findings: list[_Finding]) -> list[tuple]:
+    return [(f.site.label, f.verdict, f.evidence, f.gates_on, f.forced, f.condition_pinned) for f in findings]
+
+
+def _memo_differential(rel: str, source: str) -> None:
+    with_memo = _census(scan_source(rel, source))
+    hits = _LAST_SCAN_MEMO.hits if _LAST_SCAN_MEMO is not None else 0
+    without = _census(scan_source(rel, source, memo=False))
+    assert with_memo, f"{rel}: no skip sites - the differential compares nothing"
+    assert with_memo == without, f"{rel}: _ScanMemo changed the findings:\n{with_memo}\n!=\n{without}"
+    assert hits > 0, f"{rel}: the memo never replayed an entry, so this proves nothing about replay"
+
+
+def test_scan_memo_changes_no_finding_on_a_reentrant_probe():
+    _memo_differential("tests/test_mutant.py", _MEMO_PROBE)
+
+
+@pytest.mark.parametrize("rel", ["tests/test_loop_concurrency.py", "tests/test_ds_live_route_gate.py"])
+def test_scan_memo_changes_no_finding_on_real_anchor_modules(rel):
+    _memo_differential(rel, (_REPO_ROOT / rel).read_text(encoding="utf-8"))
+
+
+def test_model_index_is_ast_walk_unrolled():
+    """`_Model._index` visits exactly what `ast.walk` visits, in walk's order.
+
+    `_skip_sites` iterates `model.nodes` in place of `ast.walk(model.tree)`,
+    and the parent map must come out as the old walk-based loop built it.
+    """
+    for src in (_MEMO_PROBE, (_REPO_ROOT / "tests" / "test_loop_concurrency.py").read_text(encoding="utf-8")):
+        model = _Model(_REPO_ROOT / "tests" / "test_mutant.py", src)
+        walked = list(ast.walk(model.tree))
+        assert len(model.nodes) == len(walked) > 100
+        assert all(a is b for a, b in zip(model.nodes, walked))
+        expected: dict[ast.AST, ast.AST] = {}
+        for node in walked:
+            for child in ast.iter_child_nodes(node):
+                expected[child] = node
+        got = list(model.parent.items())
+        assert len(got) == len(expected)
+        assert all(k1 is k2 and v1 is v2 for (k1, v1), (k2, v2) in zip(got, expected.items()))
+
+
+def test_signals_merge_carries_every_field():
+    """`_Signals.merge` carries every field.
+
+    A replayed memo entry is merged in, so a field merge skipped would vanish
+    from every replayed helper entry.
+    """
+    full = _Signals()
+    for name in _Signals.__dataclass_fields__:
+        setattr(full, name, {"x"} if isinstance(getattr(full, name), set) else True)
+    empty = _Signals()
+    empty.merge(full)
+    assert empty == full
 
 
 def test_allowlisted_modules_still_exist():
