@@ -1,0 +1,201 @@
+RM-2089 (s160 C4, 2026-11-11): the patch for the GITIGNORED live lane driver
+ops/loop/control/lane_prompts/s144_lane_driver.py (untracked, so this file is its only
+tracked carrier). The driver's per-cycle sync stops using the S144_LANDED_<LANE> marker
+once main carries it by ancestry (a --no-ff landing), and skips the rebase when the
+lane already contains main; the choice lives in the tracked ops/loop/lane_sync.py
+(tests/test_lane_sync_landed_marker_rm2089.py).
+Preimage sha256 c4c1e4213f7e7076ca21ead68f5f60fc1b5ea9b9f7c9b64b66e96e138a9b92da
+Postimage sha256 ba41777bd5b7aaf97120a54ce404ab17db23096714625c171e6b7575bb514254
+Order: ops/loop/lane_sync.py on main first (without it the patched driver falls back
+to its safe rule: ff / current / plain rebase main, never the marker). Then, between
+cycles, from the repo root: check the preimage hash, `git apply --check <this file>`,
+`git apply <this file>`, check the postimage hash, py_compile the driver. Each cycle
+runs in a fresh child process that reads the driver from disk, so no rotator restart
+is needed. Rollback: a copy of the driver taken before applying.
+
+--- a/ops/loop/control/lane_prompts/s144_lane_driver.py
++++ b/ops/loop/control/lane_prompts/s144_lane_driver.py
+@@ -84,10 +84,19 @@
+ prevention, this scan is the alarm. A hit writes control/lanes/S144_LANES_STOP.
+ 
+ SYNC. Lane worktrees sync to the LOCAL `main` branch, never origin/main. Lane
+-commits stay on lane/<name>; a merger lands them into main. If the merger writes
+-control/lanes/S144_LANDED_<LANE> holding the lane tip it landed, the next sync
+-replays only newer commits (`git rebase --onto main <landed>`); otherwise a plain
+-`git rebase main` drops commits whose patches main already carries. The ff-only
++commits stay on lane/<name>; a merger lands them into main. The choice of git
++operation is the tracked ops/loop/lane_sync.py (choose_sync, RM-2089): a lane whose
++HEAD is an ancestor of main fast-forwards; a lane that already CONTAINS main is left
++alone (sync_result "current", no rebase); otherwise, if the merger wrote
++control/lanes/S144_LANDED_<LANE> holding the lane tip it landed AND main does not
++carry that tip by ancestry (a squash / folded-twin landing), the sync replays only
++newer commits (`git rebase --onto main <landed>`); in every other case (no marker, or
++a marker main already carries, e.g. a --no-ff landing) a plain `git rebase main`
++replays exactly the lane commits main lacks. RM-2089, measured 2026-11-11: the s159
++--no-ff landing left every marker an ancestor of main, so `--onto main <landed>`
++replayed the whole landing (483 commits) and CONFLICTED on every cycle from 239 on.
++Without lane_sync.py the driver never uses the marker (ff / current / plain rebase).
++The ff-only
+ merge goes through fleet_gitlock (it accepts merge); the REBASE runs as plain git
+ in the lane worktree (lane_git): fleet_gitlock accepts only commit / push / merge /
+ reset / revert, and the first s144 rotator sent rebase through it, so every sync
+@@ -280,6 +289,26 @@
+         return None
+ 
+ 
++_LANE_SYNC_FAULT_SAID = False
++
++
++def lane_sync_mod():
++    """RM-2089: tracked ops/loop/lane_sync.py (the sync choice: ff / current / rebase,
++    and when the landed marker is the --onto upstream), or None. A driver applied before
++    that module lands on main, or a fault in it, falls back to sync_plan's safe rule
++    (ff / current / plain rebase main, never the marker): this never raises."""
++    global _LANE_SYNC_FAULT_SAID
++    try:
++        from ops.loop import lane_sync as LS  # noqa: PLC0415
++        return LS
++    except Exception as exc:  # noqa: BLE001 - never stops a rotator or a child
++        if not _LANE_SYNC_FAULT_SAID:
++            _LANE_SYNC_FAULT_SAID = True
++            say(f"lane_sync unavailable, sync never uses the landed marker: "
++                f"{type(exc).__name__}: {exc}")
++        return None
++
++
+ def apply_lane_model(rec: dict, lane: str) -> None:
+     """FLEET-1b: the runner inherits this process's environment (lane_launcher._spawn
+     passes no env), and ops/loop/run_lane.ps1 lets RC_LANE_MODEL win over config.json.
+@@ -926,11 +955,13 @@
+ 
+ def sync_worktree(wt: Path, lane: str, owner: str) -> tuple[str, str, str]:
+     """Bring a clean lane worktree onto LOCAL main. Returns (note, main_sha, result);
+-    result in recovered / dirty_skipped / ff / ff_refused / ff_failed / rebased /
+-    conflict / refused / failed / error / abort_failed. A git operation left in progress
+-    is aborted first (recovered: the caller skips the cycle; abort_failed: the caller
+-    parks the lane). The ff-only merge keeps the kit lock (fleet_gitlock accepts
+-    merge); the rebase runs as plain git (lane_git)."""
++    result in recovered / dirty_skipped / ff / ff_refused / ff_failed / current /
++    rebased / conflict / refused / failed / error / abort_failed. A git operation left
++    in progress is aborted first (recovered: the caller skips the cycle; abort_failed:
++    the caller parks the lane). The ff-only merge keeps the kit lock (fleet_gitlock
++    accepts merge); the rebase runs as plain git (lane_git). sync_plan (tracked
++    ops/loop/lane_sync.py) picks the operation; current = the lane already contains
++    main (RM-2089): nothing to sync, no rebase."""
+     main_sha = (git(ROOT, "rev-parse", "main").stdout or "").strip()
+     status, rnote = recover_worktree(wt, lane)
+     if status == "unsafe":
+@@ -941,7 +972,8 @@
+     if git(wt, "diff", "--quiet").returncode or git(wt, "diff", "--cached", "--quiet").returncode:
+         return ("worktree has uncommitted changes - left for the worker (not synced)", main_sha,
+                 "dirty_skipped")
+-    if is_ancestor(wt, "HEAD", "main"):
++    plan = sync_plan(wt, lane)
++    if plan.kind == "ff":
+         m = lane_git(wt, owner, "merge", "--ff-only", "--quiet", "main")
+         dropped = []
+         if m.returncode and "untracked working tree files would be overwritten" in (m.stderr or ""):
+@@ -959,22 +991,59 @@
+         if dropped:
+             note += f" (removed {len(dropped)} untracked byte-identical copy of a main file)"
+         return note, main_sha, result
+-    landed = ""
+-    raw = None
++    if plan.kind == "current":
++        ahead = (git(wt, "rev-list", "--count", "main..HEAD").stdout or "").strip()
++        return f"{plan.how}; {ahead} unlanded commit(s) on top of local main", main_sha, \
++            "current"
++    result, note = _rebase_lane(wt, owner, lane, plan.how, plan.args)
++    return note, main_sha, result
++
++
++class _SyncPlan(tuple):
++    """Fallback twin of ops/loop/lane_sync.SyncPlan (kind, args, how, marker_state)."""
++    __slots__ = ()
++
++    def __new__(cls, kind, args, how, marker_state=""):
++        return tuple.__new__(cls, (kind, tuple(args), how, marker_state))
++
++    kind = property(lambda self: self[0])
++    args = property(lambda self: self[1])
++    how = property(lambda self: self[2])
++    marker_state = property(lambda self: self[3])
++
++
++def read_landed(lane: str) -> str:
++    """First token of control/lanes/S144_LANDED_<LANE> (the lane tip a merger landed),
++    or "" when the file is absent, unreadable or empty."""
+     try:
+-        raw = (LANES_DIR / LANE_CFG[lane]["landed"]).read_text(encoding="utf-8")
++        raw = (LANES_DIR / LANE_CFG[lane]["landed"]).read_text(encoding="utf-8").split()
+     except OSError:
+-        pass
+-    if raw:
+-        landed = raw.split()[0].strip() if raw.split() else ""
+-    if landed and git(wt, "cat-file", "-e", landed + "^{commit}").returncode == 0 \
+-            and is_ancestor(wt, landed, "HEAD"):
+-        result, note = _rebase_lane(wt, owner, lane,
+-                                    f"rebase --onto main {landed[:12]} (merger landed marker)",
+-                                    ("--onto", "main", landed))
+-    else:
+-        result, note = _rebase_lane(wt, owner, lane, "rebase main", ("main",))
+-    return note, main_sha, result
++        return ""
++    return raw[0].strip() if raw else ""
++
++
++def sync_plan(wt, lane: str):
++    """RM-2089: what a clean lane worktree needs to sit on local main - kind ff /
++    current / rebase, plus the rebase args and a one-line how. lane_sync.choose_sync
++    decides; without it (or on a fault in it) the safe rule here never uses the landed
++    marker. A git call that raises propagates, as before."""
++    landed = read_landed(lane)
++    LS = lane_sync_mod()
++    if LS is not None:
++        try:
++            return LS.choose_sync(lambda *a: git(wt, *a), landed)
++        except subprocess.TimeoutExpired:
++            raise
++        except Exception as exc:  # noqa: BLE001 - a fault in the seam: the safe rule
++            say(f"lane_sync.choose_sync failed for {lane}, safe rule (marker unused): "
++                f"{type(exc).__name__}: {exc}")
++    if is_ancestor(wt, "HEAD", "main"):
++        return _SyncPlan("ff", (), "fast-forward to local main")
++    if is_ancestor(wt, "main", "HEAD"):
++        return _SyncPlan("current", (), "lane already contains local main - nothing to sync "
++                         "(no rebase)")
++    return _SyncPlan("rebase", ("main",), "rebase main (lane_sync unavailable: landed "
++                     "marker unused)")
+ 
+ 
+ def plan_sync(wt: Path, lane: str) -> tuple[str, str]:
+@@ -998,22 +1067,16 @@
+             or git(wt, "--no-optional-locks", "diff", "--cached", "--quiet").returncode):
+         return ("worktree has uncommitted changes - a live cycle leaves it to the worker "
+                 "(not synced)"), main_sha_
+-    if is_ancestor(wt, "HEAD", "main"):
++    plan = sync_plan(wt, lane)
++    if plan.kind == "ff":
+         behind = (git(wt, "rev-list", "--count", "HEAD..main").stdout or "").strip()
+         return f"would fast-forward to local main ({behind} commit(s) behind)", main_sha_
+-    landed = ""
+-    try:
+-        raw = (LANES_DIR / LANE_CFG[lane]["landed"]).read_text(encoding="utf-8").split()
+-        landed = raw[0].strip() if raw else ""
+-    except OSError:
+-        pass
+-    if landed and git(wt, "cat-file", "-e", landed + "^{commit}").returncode == 0 \
+-            and is_ancestor(wt, landed, "HEAD"):
+-        how = f"rebase --onto main {landed[:12]} (merger landed marker)"
+-    else:
+-        how = "rebase main"
++    if plan.kind == "current":
++        ahead = (git(wt, "rev-list", "--count", "main..HEAD").stdout or "").strip()
++        return (f"would not sync: {plan.how}; {ahead} unlanded commit(s) on top of local "
++                f"main"), main_sha_
+     marks = [ln[:1] for ln in (git(wt, "cherry", "main", "HEAD").stdout or "").splitlines()]
+-    return (f"would {how}: {marks.count('+')} lane commit(s) not on main by patch, "
++    return (f"would {plan.how}: {marks.count('+')} lane commit(s) not on main by patch, "
+             f"{marks.count('-')} patch-equivalent (dropped by the rebase)"), main_sha_
+ 
+ 
