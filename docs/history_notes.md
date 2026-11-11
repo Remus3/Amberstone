@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-09 - session 156: all seven lanes landed + pushed (push 1 `d86c2e2f5..a2abb3bb7`), CI fix push `a585214c6`, eight s156 slices landed by the C9 merger (DS 16.22.1 / ENGINE 1.291.0, TFT Set 18, SR schedule, skins reader, draft + runes, ROADMAP split), cifix for 8 CI-only reds, gated suite-2 GREEN on `843a79730`, push 2 `a585214c6..843a79730`
+
+- **Landings (LEDGER 2082-2092):** C12 lane landing 272 commits (suite 1 green, 73577 passed); slices C1, S2-S7 and the folded held tails merged by C9; cifix `c922b2491`; merger follow-ups through `843a79730`.
+- **Suite-2 (gated, TIER TABLE):** A 10 red (pre-cifix), B 2 red, C VOID (memory watchdog kill at 444 MB free; lane workers run pytest outside the gate), D GREEN on `843a79730`: 76028 passed, exit 0 (session scratchpad `s156-suite-2.txt`).
+- **Push 2 (operator chat orders):** `a585214c6..843a79730`, 95 commits, every pre-push gate clean (sweep ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO); bot_merge_check clean; contributors one.
+- **Ops:** run budget reset 228 -> 0 (cap 500); route repointed with fallback armed (RM-2074 / RM-2075); RC daily ceiling $1000 (MAIN); client relaunched via explorer + product-launcher API (CLI arg crashed the UX).
+- **Do NOT redo:** the lane landing, the slice merges, the cifix, suite-2 run D, push 2, the client relaunch.
+- **Next:** lane/repo reconcile (lane lock held or rotator stopped; drop the rival RM-723 pair, cherry-pick S144-P-468..484); the kit-defect note to MAIN (operator ask); RM-2075 KIT v20 line; atlas DS count; DS :8860 ENGINE 1.291.0 at next app launch.
+
+---
+
 # 2026-11-08 - session 155: gated suite GREEN twice (-n 6 on 47075c685, -n 4 on d86c2e2f5, both operator-ordered), PUSHED 64951a903..d86c2e2f5 in two operator-approved pushes, hosted ci GREEN with the full dual suite (RM-2037 / RM-2041 / RM-1657 / RM-2036 CLOSED), lanes resumed after the billing renewal, RM-1267 CLOSED
 
 - **Suites (LEDGER 2077):** C1 on `47075c685` at -n 6: 69420 passed, exit 0; C10 -n 6 on `d86c2e2f5` killed at 79 percent by Claude Code's low-memory background-shell reaper (4.3 GB free, 5 lanes live), C11 found no failure; C12 -n 4 on `d86c2e2f5`: 69420 passed in 0:22:15, exit 0.

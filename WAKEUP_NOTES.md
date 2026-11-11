@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-11-10 - session 159: u5 red fixed and pushed (`f84014933`), the 516-commit s144 lane landing gated green at -n 4 and pushed (`f84014933..8aa74df1b`), "-n 4 standing", rotator relaunched
+
+- **C1-C5 (LEDGER 2101):** dispatch 42749327744 red = 2 known + a NEW u5 guard red; fixed in `f84014933` (`fleet_test_guard.budget(15)`), pushed `683aafe11..f84014933` on the operator's "run anyway and yes", ci/docs-guards/codeql green. S144_LANES_STOP of 05:41:59 a false stop (0xC0000142 at shutdown, as LEDGER 2008). S144-Q-173 = Q-174 (closed); S144-Q-178 open, next queue candidate. Quiesce Decision 6 retired.
+- **C7 landing (LEDGER 2101):** 501 lane commits + 8 merges + 7 fixes = 516 into main `79fb8e2e3`; true-audit / repo as FOLDED copies (`6ef029ff4`, `196b6a88d`); -n 8 VOID at 87 percent; graded -n 4 run 88613 passed, exit 0. Four commit-message slips recorded in LEDGER 2101.
+- **C6 + C9 (`8aa74df1b`):** atlas DS count 15378; operator "-n 4 standing" written into CLAUDE.md, tools/done.md, the command docs and their guards. Adjudicator ruling2 (launch line 2 reads >= 23100 MB) recorded in LEDGER 2101.
+- **/done (LEDGER 2102):** pushed `f84014933..8aa74df1b` (517); push ci mode=full covers HEAD (no dispatch); bot_merge_check clean. C8: dry plans read, leak scan clean, S144_LANES_STOP to the Recycle Bin, rotator pid 1644 relaunched (first child true-audit 21:39). RM-2082 CLOSED as a flake; S159 filings RM-2084..RM-2089. RC app DOWN since the 05:42 reboot.
+- **Do NOT redo:** the u5 fix, the landing and its push, the -n 4 standing order, the C4 false-stop read, the RM-2082 close.
+- **Next:** read the push ci 42954031303 (mode=full) + codeql + docs-guards; record the first lane cycle after the relaunch (and RM-2089's queue sync); fold "-n 4 standing" into RC's next REPLY to MAIN; then the next BACKLOG rows.
+
+---
+
 # 2026-11-09c - session 158: pushed `50e5ad38f..683aafe11` (operator yes), lane-0 timeout explained and the lane loop hardened (`5f498779e` + `08579afca`), lane/repo reconciled, Dependabot #32 decided, RC relaunched for L9
 
 - **C1-C4, C6-C8 (LEDGER 2098):** s157 dispatch 42734265057 red on one suspected flake (focus ring [sr], RM-2082); #32 already landed as `0a2879497`, never take a bot lock (`e14a5e432`); RM-723 SHIPPED and RM-1255 / RM-1506 reconciled (`734b0c094`); RC up via WMI, DS 1.291.0, L9 read-backs mostly PASS (q090 deviates, d159 / t101 partial).
@@ -25,14 +36,3 @@
 - **Dependabot:** #33 closed itself; #32 still OPEN.
 - **Do NOT redo:** the RM-723 test fix, the RM-2075 line, the BACKLOG mark.
 - **Next:** on the operator's yes with RAM >= 25135 MB, League down and lanes idle: gated suite on HEAD, then push; then the lane/repo reconcile; investigate the lane-0 queue timeout_killed at 13:05.
-
----
-
-# 2026-11-09 - session 156: all seven lanes landed + pushed (push 1 `d86c2e2f5..a2abb3bb7`), CI fix push `a585214c6`, eight s156 slices landed by the C9 merger (DS 16.22.1 / ENGINE 1.291.0, TFT Set 18, SR schedule, skins reader, draft + runes, ROADMAP split), cifix for 8 CI-only reds, gated suite-2 GREEN on `843a79730`, push 2 `a585214c6..843a79730`
-
-- **Landings (LEDGER 2082-2092):** C12 lane landing 272 commits (suite 1 green, 73577 passed); slices C1, S2-S7 and the folded held tails merged by C9; cifix `c922b2491`; merger follow-ups through `843a79730`.
-- **Suite-2 (gated, TIER TABLE):** A 10 red (pre-cifix), B 2 red, C VOID (memory watchdog kill at 444 MB free; lane workers run pytest outside the gate), D GREEN on `843a79730`: 76028 passed, exit 0 (session scratchpad `s156-suite-2.txt`).
-- **Push 2 (operator chat orders):** `a585214c6..843a79730`, 95 commits, every pre-push gate clean (sweep ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO); bot_merge_check clean; contributors one.
-- **Ops:** run budget reset 228 -> 0 (cap 500); route repointed with fallback armed (RM-2074 / RM-2075); RC daily ceiling $1000 (MAIN); client relaunched via explorer + product-launcher API (CLI arg crashed the UX).
-- **Do NOT redo:** the lane landing, the slice merges, the cifix, suite-2 run D, push 2, the client relaunch.
-- **Next:** lane/repo reconcile (lane lock held or rotator stopped; drop the rival RM-723 pair, cherry-pick S144-P-468..484); the kit-defect note to MAIN (operator ask); RM-2075 KIT v20 line; atlas DS count; DS :8860 ENGINE 1.291.0 at next app launch.
