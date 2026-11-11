@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-09b - session 157: RM-723 Linux CI red fixed forward in the TEST (`f5e48a27d`), RM-2075 KIT v20 line reconciled (`f2f40f47f`), NOTHING PUSHED (no operator yes; gated-suite line unmet)
+
+- **C2 RM-723 (LEDGER 2095):** the 4 ids of `tests/test_task_xml_templates_rm723.py` red on Linux CI because the test joined Windows targets onto the host root; now rendered under a fixed Windows root and mapped by parts. Verifier: Linux 0/4 -> 5/0, Windows 28 passed. Renderer and `ops/*.xml` untouched.
+- **C4 RM-2075 (LEDGER 2096):** CLAUDE.md KIT v20 now says only the kit writes the route file and arms a fallback only on the operator's word; byte delta 0; pinned in `tests/test_fleet_kit_v20.py`.
+- **C3 merge:** Tier-1 on the merged tree (5 files + 114 ratchet files) 2111 passed; BACKLOG RM-2075 SHIPPED `edb8ff62c`.
+- **Push:** NONE. Local main = origin `843a79730` + 5 commits (s156 /done, the two fixes, BACKLOG, s157 /done). Origin CI stays red (only the 4 RM-723 ids) until the push. Scheduled codeql 42630670612 on `843a79730` is green, so the push-run 504 is covered.
+- **Dependabot:** #33 closed itself; #32 still OPEN.
+- **Do NOT redo:** the RM-723 test fix, the RM-2075 line, the BACKLOG mark.
+- **Next:** on the operator's yes with RAM >= 25135 MB, League down and lanes idle: gated suite on HEAD, then push; then the lane/repo reconcile; investigate the lane-0 queue timeout_killed at 13:05.
+
+---
+
 # 2026-11-09 - session 156: all seven lanes landed + pushed (push 1 `d86c2e2f5..a2abb3bb7`), CI fix push `a585214c6`, eight s156 slices landed by the C9 merger (DS 16.22.1 / ENGINE 1.291.0, TFT Set 18, SR schedule, skins reader, draft + runes, ROADMAP split), cifix for 8 CI-only reds, gated suite-2 GREEN on `843a79730`, push 2 `a585214c6..843a79730`
 
 - **Landings (LEDGER 2082-2092):** C12 lane landing 272 commits (suite 1 green, 73577 passed); slices C1, S2-S7 and the folded held tails merged by C9; cifix `c922b2491`; merger follow-ups through `843a79730`.

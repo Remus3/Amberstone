@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-11-11 - session 160: the 7 CI reds of ci 42954031303 fixed locally (`a1366cf85`, `aea39eb94`, `fae4c1cb5`), q090 decided (`9affe2d6f`), RM-2089 fixed (`ae8136bdf` + the live driver), lanes drained and relaunched; NOT pushed, gated suite not run (RAM under the line)
+
+- **C1 (LEDGER 2103):** 6 snapshot_panels reds = Linux headless-shell whole-px glyphs (hotkey pill CSS fix; TFT board Linux row pinned) + 2 test races; the skip-hygiene timeout memoised (64.7 s -> 10.5 s, identical records). Verifier CONFIRMED; CI on the fix UNMEASURED until a push.
+- **C2:** first post-relaunch lane cycles: job object, 3-round verifier cap and 16/60 min pace all MET (141 cycles, 0 timeouts / kills). S144-Q-178 still open (split as S144-Q-179 (a)); no MAIN answer to the kit note; 30 stashes.
+- **C3 / C4:** q090 = stale expectation (400 is the RM-243 contract). RM-2089 CLOSED: `ops/loop/lane_sync.py`; the gitignored driver patched (backup `.bak-s160`); every first sync after the relaunch rebased cleanly.
+- **C5 + rulings:** lanes drained by staged stop files, 4 commits + 1 fix landed, rotator relaunched (pid 8996). Free RAM peaked 22751 MB < 23100, so no gated run. Ruling 1 killed a runaway ungated serial suite (a bare `.py` run in bash; RM-2090). Ruling 2: relaunch, drain again before the next gated try.
+- **/done (LEDGER 2104):** no push (landing rule unmet, needs the operator's yes); memory: 2 new feedback notes.
+- **Do NOT redo:** the 7-red fixes, the q090 decision, the RM-2089 fix and driver patch, the NA2 read, the 7cba5420d refutation.
+- **Next:** drain lanes, confirm >= 23100 MB free (or the operator's "run anyway"), gated -n 4 --exclusive suite on HEAD, push on the operator's yes, watch CI.
+
+---
+
 # 2026-11-10 - session 159: u5 red fixed and pushed (`f84014933`), the 516-commit s144 lane landing gated green at -n 4 and pushed (`f84014933..8aa74df1b`), "-n 4 standing", rotator relaunched
 
 - **C1-C5 (LEDGER 2101):** dispatch 42749327744 red = 2 known + a NEW u5 guard red; fixed in `f84014933` (`fleet_test_guard.budget(15)`), pushed `683aafe11..f84014933` on the operator's "run anyway and yes", ci/docs-guards/codeql green. S144_LANES_STOP of 05:41:59 a false stop (0xC0000142 at shutdown, as LEDGER 2008). S144-Q-173 = Q-174 (closed); S144-Q-178 open, next queue candidate. Quiesce Decision 6 retired.
@@ -24,15 +36,3 @@
 - **Push (LEDGER 2100):** 5 commits incl. the Agent 6 report; bot_merge_check clean; 2c dispatched ONE full run 42749327744 on `683aafe11`. Push ci 42749286101 RED on 2 repo-wide guards from `5f498779e`'s new files (mutator census, Q001 ratchet); fixed forward LOCALLY as `255595a24` (verifier CONFIRM, ratchets + censuses 2284 passed), NOT pushed.
 - **Do NOT redo:** the C9 fixes, the lane/repo reconcile and C10 fixes, the #32 decision, the RM-723 / RM-1255 / RM-1506 closes, the push, the `255595a24` fix.
 - **Next:** push `255595a24` + the /done docs on the operator's yes (origin red until then); read the first lane cycle under the job object once the run budget frees (from about 22:17 on 11-09); read dispatch 42749327744 (RM-2082); the stranded S144-Q-173 files in rc-lane-queue; the gated full-box suite and the next landing.
-
----
-
-# 2026-11-09b - session 157: RM-723 Linux CI red fixed forward in the TEST (`f5e48a27d`), RM-2075 KIT v20 line reconciled (`f2f40f47f`), NOTHING PUSHED (no operator yes; gated-suite line unmet)
-
-- **C2 RM-723 (LEDGER 2095):** the 4 ids of `tests/test_task_xml_templates_rm723.py` red on Linux CI because the test joined Windows targets onto the host root; now rendered under a fixed Windows root and mapped by parts. Verifier: Linux 0/4 -> 5/0, Windows 28 passed. Renderer and `ops/*.xml` untouched.
-- **C4 RM-2075 (LEDGER 2096):** CLAUDE.md KIT v20 now says only the kit writes the route file and arms a fallback only on the operator's word; byte delta 0; pinned in `tests/test_fleet_kit_v20.py`.
-- **C3 merge:** Tier-1 on the merged tree (5 files + 114 ratchet files) 2111 passed; BACKLOG RM-2075 SHIPPED `edb8ff62c`.
-- **Push:** NONE. Local main = origin `843a79730` + 5 commits (s156 /done, the two fixes, BACKLOG, s157 /done). Origin CI stays red (only the 4 RM-723 ids) until the push. Scheduled codeql 42630670612 on `843a79730` is green, so the push-run 504 is covered.
-- **Dependabot:** #33 closed itself; #32 still OPEN.
-- **Do NOT redo:** the RM-723 test fix, the RM-2075 line, the BACKLOG mark.
-- **Next:** on the operator's yes with RAM >= 25135 MB, League down and lanes idle: gated suite on HEAD, then push; then the lane/repo reconcile; investigate the lane-0 queue timeout_killed at 13:05.
