@@ -70,6 +70,7 @@ the taller third row.
 """
 import copy
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -185,6 +186,28 @@ _EXPECTED_BELOW = {
               (768, 1024): 3, (640, 900): 3, (480, 800): 4},
 }
 
+# The table above is the Windows measurement. Which grid row a chip lands in
+# is a text-width fact of the host: the hosted Linux runner draws the RM-1078
+# stub face at whole-pixel advances (9 px a glyph at the chip name's 18 px
+# bold, where Windows draws 8.82), the same fact
+# test_build_insights_chart_tabs_narrow.py and
+# test_champ_select_build_row_mid_width.py record. At 1100x900 the items board's
+# 143.4 px chips leave a 125.4 px name line; "Fiddlesticks" plus a gap and its
+# star takes 124.8 px of it on Windows (one line) and 127.2 px on Linux, so
+# there the star drops under the name (S144-U-300), the second chip row is
+# 22.5 px taller, ends at 817.3 below the 794.6 box bottom, and its three
+# units join "Vi" below: 4, not 1. CI run 42954031303 read 4; WSL Ubuntu with
+# the CI Playwright build reads the same chip edges. Every other entry reads
+# the same on both hosts (measured there too). The row model and the cue
+# checks below hold on every host.
+_WHOLE_PIXEL_BELOW = {("items", (1100, 900)): 4}
+
+
+def _expected_below(board: str, size: tuple[int, int]) -> int:
+    if sys.platform != "win32" and (board, size) in _WHOLE_PIXEL_BELOW:
+        return _WHOLE_PIXEL_BELOW[(board, size)]
+    return _EXPECTED_BELOW[board][size]
+
 
 def _open(pw_browser, mock_server, w: int, h: int, payload: dict | None = None):
     mock_server._store["data"] = {}
@@ -268,7 +291,7 @@ def test_cue_counts_the_units_below_the_box(w, h, board, mock_server,
     # the code's counting; the row model checks the layout is whole grid
     # rows (no ragged row, at most `cols` chips a row) and agrees with it.
     assert len(m["chips"]) == 7, m["chips"]
-    assert m["below"] == _EXPECTED_BELOW[board][(w, h)], (
+    assert m["below"] == _expected_below(board, (w, h)), (
         w, h, board, m["cols"], m["below"])
     assert m["below"] == _row_model_below(m), (w, h, board, m["cols"], m["below"])
     if m["below"] == 0:

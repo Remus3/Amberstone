@@ -52,8 +52,16 @@ _EMPTY_EXPECT = {
 }
 
 
+# Ready once the first state envelope has rendered: the call pane's static
+# "Awaiting coach..." placeholder (web/index.html #am-call-body) is replaced by
+# the "no in-game session" line the docstring above measures. Counting the
+# visible notices alone passed on the three static placeholders before that
+# first SSE tick, so a slow first tick measured "Awaiting coach..." too: CI run
+# 42954031303 [terminal-dashboard]; reproduced by holding the first
+# /api/state-stream message 1.5 s.
 def _empty_ready(shell):
-    return ("() => [...document.querySelectorAll('#view-active-match"
+    return ("() => !document.querySelector('#am-call-body > .am-empty')"
+            " && [...document.querySelectorAll('#view-active-match"
             " .am-empty')].filter((e) => e.checkVisibility()).length"
             f" >= {len(_EMPTY_EXPECT[shell])}")
 

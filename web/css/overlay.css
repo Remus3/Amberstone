@@ -819,12 +819,16 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
   padding-top: 18px;
 }
 /* The launcher square has no room inside: under it, in the gap above the rc-shell
- * ON/OFF icon (design 24,72), reaching left so it clears the TFT vitals (x 70). */
+ * ON/OFF icon (design 24,72), reaching left so it clears the TFT vitals (x 70).
+ * No side padding: the S144-U-278 backing pill is the text box itself. The gap is
+ * 70 px and "Ctrl+Shift+A" alone takes 67.69 px from x 1 where a host draws
+ * whole-pixel glyph advances (the Linux CI runner: 6 px a glyph at 12 px), so the
+ * 1 px a side it had reached x 70.69 there (66.25 px and x 69.25 on Windows). */
 body[data-shell="overlay"] .ovx-launcher > .ovx-hotkey-hint {
   top: 35px;
   left: -24px;
   right: auto;
-  padding: 0 1px; /* S144-U-278: the backing pill still clears x 70 */
+  padding: 0;
   letter-spacing: -0.03em;
 }
 /* No text to read in a fight (rule 3, section 6). */

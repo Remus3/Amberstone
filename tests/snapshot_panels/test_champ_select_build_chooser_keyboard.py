@@ -263,8 +263,15 @@ def test_the_focus_ring_is_never_clipped(mode, mock_server, pw_browser):
                 [_CLICKABLE, i],
             )
             page.keyboard.press("Shift")
-            got = page.evaluate_handle("() => document.activeElement")
-            res = page.evaluate(_RING_BOX_JS, got)
+            # One read of the focused row and its ring. A handle taken in one
+            # evaluate and read in the next goes stale when an async land
+            # (build-order, DS, descriptions) rebuilds the chooser between the
+            # two: the row is re-focused by its keys, but the handle still
+            # names the detached node, whose computed box-shadow is "" and
+            # read as no ring - CI run 42954031303 ('sr', 0); reproduced by
+            # firing rc:lol-descriptions-ready between the two reads.
+            res = page.evaluate(
+                "() => (" + _RING_BOX_JS + ")(document.activeElement)")
             assert res["ring"], (mode, i)
             assert res["cuts"] == [], (mode, i, res)
     finally:
