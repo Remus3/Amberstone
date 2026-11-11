@@ -104,7 +104,7 @@ proceed. Caveman ULTRA output default (compress ~90 percent; code/paths/numbers 
 ### 3. Phase loop discipline (after EVERY phase)
 1. Lint: `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m py_compile <touched>`; any .py edited -> `"%LOCALAPPDATA%\Programs\Python\Python314\python.exe" -m ruff check .` (F541 is the common CI-killer).
 2. Test gate green BEFORE commit, per the TIER TABLE in `tools/done.md`: Tier-1 = the touched modules' test files; Tier-2 = ONE gated parallel run by
-   the merger over both trees (it covers `tests/snapshot_panels/`): `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300`.
+   the merger over both trees (it covers `tests/snapshot_panels/`): `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 4 --dist loadfile --max-worker-restart=0 --timeout=300`.
 3. Restart-aware: routes -> `echo restart > restart_trigger.txt` + confirm health alive/last_reload_ok;
    engine math -> taskkill DS (RC's DsWatchdog relaunches it within ~30 s); web/css|js/panels/* -> asset-hash
    auto-reload (ADR-008), no RC restart - say so.

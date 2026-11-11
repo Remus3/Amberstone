@@ -12,7 +12,11 @@ lane docs ran serial or ungated whole suites. Pinned here:
   * every LOCAL whole-suite command in a command doc - written `-m pytest`
     naming no test file and not a `--collect-only` count - sits inside a
     `fleet_suite_gate.py run` call on the same line;
-  * every gated pytest call runs `-n 8 --dist loadfile`, and caps xdist
+  * every gated pytest call runs `-n 4 --dist loadfile` (operator 2026-11-10,
+    "-n 4 standing": overrides MAIN ORDER 2026-10-25 2045's `-n 8` for RC
+    until the operator or MAIN changes it; an `-n 8` landing VOIDed drawing
+    >= 23.1 of 24.0 GB free, `-n 4` peaked ~20 GB and passed; never
+    `-n auto`), and caps xdist
     worker restarts with `--max-worker-restart=0` (RM-754: after a
     `--timeout` kill, `--dist loadfile` hands the crashed test to every
     replacement worker, 1 + 4 x n times by default, so one hung test can hold
@@ -20,7 +24,7 @@ lane docs ran serial or ungated whole suites. Pinned here:
     "not in pytest.ini" half live in tests/test_xdist_worker_restart_cap_rm754.py);
   * the stale "NOT yet adopted" xdist block is gone from tools/done.md;
   * exactly one TIER TABLE exists across tools/*.md, in tools/done.md, and it
-    says what each tier runs, that Tier-2 runs once by the merger at -n 8 and
+    says what each tier runs, that Tier-2 runs once by the merger at -n 4 and
     that the verifier re-runs only cited tests plus collect-only counts.
 
 Scope note: a bare `pytest ...` span (no `-m`) in these docs is a citation of
@@ -63,7 +67,10 @@ _CHAIN = re.compile(r"\s*(?:&&|\|\||\|&|;|\|)\s*|\s+&\s+")
 # Options whose value names a file the run SKIPS (RM-1103); the
 # `--opt=value` form is one token, `--opt value` two.
 _SKIP_OPTS = ("--ignore", "--ignore-glob", "--deselect")
-_TIER_FLAGS = (re.compile(r"(?:^|\s)-n(?:\s*|=)8(?=\s|$)"),
+# The TIER TABLE worker count: one literal number, never `auto` (operator
+# 2026-11-10, "-n 4 standing"; was 8 under MAIN ORDER 2026-10-25 2045).
+TIER_WORKERS = "4"
+_TIER_FLAGS = (re.compile(rf"(?:^|\s)-n(?:\s*|=){TIER_WORKERS}(?=\s|$)"),
                re.compile(r"(?:^|\s)--dist(?:\s+|=)loadfile(?=\s|$)"))
 
 
@@ -96,9 +103,9 @@ def _names_a_test_file(args: str) -> bool:
 
 
 def _has_tier_table_flags(cmd: str) -> bool:
-    """`-n 8 --dist loadfile --max-worker-restart=0` as whole tokens, so `-n 80`
+    """`-n 4 --dist loadfile --max-worker-restart=0` as whole tokens, so `-n 40`
     or `--dist loadfilex` is not read as the TIER TABLE flags (RM-1103).
-    Every spelling pytest parses the same way (`-n8`, `-n=8`, `--dist=loadfile`)
+    Every spelling pytest parses the same way (`-n4`, `-n=4`, `--dist=loadfile`)
     is accepted: the guard pins what the run does, not its spelling (RM-1104
     (d)). The restart cap stays the one literal token the RM-754 guards name."""
     return (all(rx.search(cmd) for rx in _TIER_FLAGS)
@@ -154,8 +161,20 @@ def test_every_gated_pytest_call_runs_in_parallel():
                 if not _has_tier_table_flags(cmd):
                     bad.append(f"tools/{name}:{n}: {cmd.strip()[:140]}")
     assert seen >= 8, f"only {seen} gated pytest calls found - the sweep went blind"
-    assert not bad, (f"gated suite without -n 8 --dist loadfile {RESTART_CAP}:\n"
-                     + "\n".join(bad))
+    assert not bad, (f"gated suite without -n {TIER_WORKERS} --dist loadfile "
+                     f"{RESTART_CAP}:\n" + "\n".join(bad))
+
+
+def test_the_tier_table_flags_refuse_auto_and_the_retired_8():
+    # Operator 2026-11-10 "-n 4 standing": the retired `-n 8` and an `-n auto`
+    # (in any spelling) are not the TIER TABLE flags.
+    for bad in ("-n 8 --dist loadfile --max-worker-restart=0",
+                "-n auto --dist loadfile --max-worker-restart=0",
+                "-n=auto --dist loadfile --max-worker-restart=0",
+                "-nauto --dist loadfile --max-worker-restart=0",
+                "--numprocesses auto --dist loadfile --max-worker-restart=0"):
+        assert not _has_tier_table_flags(bad), bad
+    assert _has_tier_table_flags("-n 4 --dist loadfile --max-worker-restart=0")
 
 
 def test_the_detector_catches_a_serial_whole_suite():
@@ -175,9 +194,9 @@ def test_the_detector_closes_the_s144q34_holes(tmp_path, monkeypatch):
     assert not _names_a_test_file(" tests -q -n 8 --ignore=tests/test_x.py")
     assert not _names_a_test_file(" tests -n 8 --deselect tests/test_x.py::t")
     assert _names_a_test_file(" tests/test_a.py -n 8 --ignore=tests/test_b.py")
-    assert _has_tier_table_flags("-n 8 --dist loadfile --max-worker-restart=0")
-    assert not _has_tier_table_flags("-n 80 --dist loadfile --max-worker-restart=0")
-    assert not _has_tier_table_flags("-n 8 --dist loadfilex --max-worker-restart=0")
+    assert _has_tier_table_flags("-n 4 --dist loadfile --max-worker-restart=0")
+    assert not _has_tier_table_flags("-n 40 --dist loadfile --max-worker-restart=0")
+    assert not _has_tier_table_flags("-n 4 --dist loadfilex --max-worker-restart=0")
     gated = ("`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- "
              "python -m pytest tests -q -n 8 --dist loadfile "
              "--max-worker-restart=0")
@@ -204,7 +223,8 @@ def test_the_tier_table_says_who_runs_what():
     start = done.index(TIER_TABLE_HEAD)
     table = done[start:done.index("\n\n", start)]
     for needle in ("Tier-0", "Tier-1", "Tier-2", "Verifier",
-                   "ONCE", "merger", "--collect-only", "-n 8 --dist loadfile",
+                   "ONCE", "merger", "--collect-only",
+                   f"-n {TIER_WORKERS} --dist loadfile",
                    f"{GATE} run --owner <id> --"):
         assert needle in table, needle
     # The table comes before section 0, so the executor reads it first.

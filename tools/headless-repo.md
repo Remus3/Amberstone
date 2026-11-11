@@ -209,7 +209,7 @@ Tier-1 and grep the whole tree for the old path as a STRING - including in `.md`
 broke. Same for a rename, and for splitting one module into two.
 
 **Run every suite from the REPO ROOT**, a whole one through the gate (TIER TABLE in `tools/done.md`):
-`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300` with cwd = repo
+`python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest agents/daemon_slayer/tests -q -n 4 --dist loadfile --max-worker-restart=0 --timeout=300` with cwd = repo
 root. Measured 2026-07-26: from inside `agents/daemon_slayer/`
 the same suite reported 15 failed against 9917 passed - **two real and thirteen pure CWD artifacts**, all of whose tests pass from the root, because registry tests
 `open()` files by a repo-root-relative path and from inside the package the path doubles (`FileNotFoundError: 'agents\daemon_slayer\champion_block_index.json'`).
@@ -289,7 +289,7 @@ own single-thread edits. Tier-0 cosmetic edits are exempt; nothing else is.
 
 1. **Tests, from the REPO ROOT** (section 7), per the TIER TABLE in `tools/done.md`: Tier-1 names the touched modules' test files; a Tier-2 change, or the
    wrap of a multi-slice wave you merged, takes ONE gated parallel run over both trees (it covers `tests/snapshot_panels/`):
-   `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 8 --dist loadfile --max-worker-restart=0 --timeout=300`;
+   `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest tests agents/daemon_slayer/tests -q -n 4 --dist loadfile --max-worker-restart=0 --timeout=300`;
    `npm test` under `rc-shell/` if the Electron overlay moved. Report the counts observed THIS run, never a prior or subagent-reported number.
 2. **Guards, explicitly** - cheap, and this lane's own subject matter: `python tools/drift_guard.py` (exit 0), `python tools/gen_archmap.py --check`, `python
    tools/gen_state_schema.py --check`, `pytest tests/test_doc_size_budget.py tests/test_ci_docs_guard_coverage.py tests/test_web_js_esm_parse.py -q`. If you removed

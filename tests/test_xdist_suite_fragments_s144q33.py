@@ -21,7 +21,8 @@ backtick span, or one line of a fenced block - that runs xdist (`-n <x>` /
 `agents/daemon_slayer/tests` and the like) without naming a test file and
 without being a `--collect-only` count sits inside a `fleet_suite_gate.py run`
 call, and every gated call in a living ops doc carries the TIER TABLE flags
-(`-n 8 --dist loadfile --max-worker-restart=0`). A bare `-n 8` span in prose
+(`-n 4 --dist loadfile --max-worker-restart=0` since operator 2026-11-10,
+"-n 4 standing"; was `-n 8`). A bare `-n 8` span in prose
 (a worker count, not a command) is not a suite and is not matched.
 
 RM-1103 (the s144 queue cycle 48 verifier's five blind spots) tightened the
@@ -55,6 +56,7 @@ from tests.test_command_docs_suite_gate import (
     _CHAIN,
     COMMANDS,
     RESTART_CAP,
+    TIER_WORKERS,
     _has_tier_table_flags,
     _names_a_test_file,
 )
@@ -196,8 +198,8 @@ def test_every_gated_call_in_a_living_ops_doc_carries_the_tier_table_flags():
             if not _has_tier_table_flags(span):
                 bad.append(f"{rel}:{n}: {span[:140]}")
     assert seen >= 1, "no gated pytest call in the living ops docs - the sweep went blind"
-    assert not bad, (f"gated suite without -n 8 --dist loadfile {RESTART_CAP}:\n"
-                     + "\n".join(bad))
+    assert not bad, (f"gated suite without -n {TIER_WORKERS} --dist loadfile "
+                     f"{RESTART_CAP}:\n" + "\n".join(bad))
 
 
 def test_the_detector_catches_each_filed_fragment():
@@ -216,7 +218,7 @@ def test_the_detector_spares_counts_files_prose_and_the_gated_command():
                  "python -m pytest tests -q"):
         assert not _is_xdist_whole_suite(span), span
     gated = ("python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- "
-             "python -m pytest tests agents/daemon_slayer/tests -q -n 8 "
+             "python -m pytest tests agents/daemon_slayer/tests -q -n 4 "
              "--dist loadfile --max-worker-restart=0 --timeout=300")
     assert _is_xdist_whole_suite(gated) and _is_gated(gated)
 
@@ -266,13 +268,13 @@ def test_a_gate_does_not_cover_a_chained_ungated_suite():
 
 
 def test_the_tier_table_flags_are_matched_as_whole_tokens():
-    # RM-1103 (e): `-n 80` and `--dist loadfilex` are not the TIER TABLE flags.
-    ok = "-q -n 8 --dist loadfile --max-worker-restart=0"
+    # RM-1103 (e): `-n 40` and `--dist loadfilex` are not the TIER TABLE flags.
+    ok = "-q -n 4 --dist loadfile --max-worker-restart=0"
     assert _has_tier_table_flags(ok)
-    for bad in ("-q -n 80 --dist loadfile --max-worker-restart=0",
-                "-q -n 8 --dist loadfilex --max-worker-restart=0",
-                "-q -n 8 --dist loadscope --max-worker-restart=0",
-                "-q -n 8 --dist loadfile"):
+    for bad in ("-q -n 40 --dist loadfile --max-worker-restart=0",
+                "-q -n 4 --dist loadfilex --max-worker-restart=0",
+                "-q -n 4 --dist loadscope --max-worker-restart=0",
+                "-q -n 4 --dist loadfile"):
         assert not _has_tier_table_flags(bad), bad
 
 
@@ -345,14 +347,17 @@ def test_every_argparse_spelling_of_n_runs_xdist():
 
 def test_the_tier_table_flags_accept_each_argparse_spelling():
     # RM-1104 (d), the choice pinned: the guard pins what the run DOES, so
-    # every spelling pytest parses identically to `-n 8 --dist loadfile` is
-    # accepted; a different value is not. `--max-worker-restart=0` stays the
+    # every spelling pytest parses identically to `-n 4 --dist loadfile` is
+    # accepted; a different value is not (the retired `-n 8` and `-n auto`
+    # included; operator 2026-11-10). `--max-worker-restart=0` stays the
     # one literal token the RM-754 guards and the TIER TABLE name.
-    for ok in ("-n8 --dist loadfile --max-worker-restart=0",
-               "-n=8 --dist loadfile --max-worker-restart=0",
-               "-n 8 --dist=loadfile --max-worker-restart=0"):
+    for ok in ("-n4 --dist loadfile --max-worker-restart=0",
+               "-n=4 --dist loadfile --max-worker-restart=0",
+               "-n 4 --dist=loadfile --max-worker-restart=0"):
         assert _has_tier_table_flags(ok), ok
-    for bad in ("-n=80 --dist loadfile --max-worker-restart=0",
-                "-n8 --dist=loadscope --max-worker-restart=0",
-                "-n 8 --dist loadfile --max-worker-restart 0"):
+    for bad in ("-n=40 --dist loadfile --max-worker-restart=0",
+                "-n4 --dist=loadscope --max-worker-restart=0",
+                "-n 4 --dist loadfile --max-worker-restart 0",
+                "-n8 --dist loadfile --max-worker-restart=0",
+                "-n=auto --dist loadfile --max-worker-restart=0"):
         assert not _has_tier_table_flags(bad), bad

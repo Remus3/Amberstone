@@ -347,7 +347,7 @@ These govern HOW a step runs; the SHAPE of work is set by "Session Default" belo
 - **R2** Runtime state via `curl -k https://127.0.0.1:8888/api/...` or `ops/runtime/health.json`; never screenshot to read a number.
 - **R3** Visual tools only for rendered-pixel / layout checks and live-game capture; the UI-audit ritual + game-monitor are the sanctioned visual uses.
 - **R4** Prefer built-in tools; shell = absolute paths, one compound command.
-- **Tiers:** Tier-0 cosmetic = `py_compile` (no suite, no restart); Tier-1 one module = `py_compile` + touched test files; Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION` = full dual suite ONCE by merger via `fleet_suite_gate` `-n 8 --dist loadfile` + DS `:8860` restart; verifier = cited tests + `--collect-only` (table: `tools/done.md`). A whole suite runs only through the gate: never serial, never by a slice.
+- **Tiers:** Tier-0 cosmetic = `py_compile` (no suite, no restart); Tier-1 one module = `py_compile` + touched test files; Tier-2 schema / engine / scorer / item-effect / `ENGINE_VERSION` = full dual suite ONCE by merger via `fleet_suite_gate` `-n 4 --dist loadfile` (operator 2026-11-10, Suite speed) + DS `:8860` restart; verifier = cited tests + `--collect-only` (table: `tools/done.md`). A whole suite runs only through the gate: never serial, never by a slice.
 - **R5** Classify every change into a tier; run only that tier. **R6** Run a suite ONCE; re-run only if edited since or the pipe glitched.
 - **R7** Adversarial verification is the DEFAULT: every substantive claim gets an independent verifier / refutation pass before "done" (Tier-0 exempt).
 - **R8** Never re-Read a file just Edited. **R9** Multi-agent is the default shape; substance decides, not file count. **R10** Batch independent reads. **R11** No screenshot ritual for backend / version / doc changes.
@@ -386,7 +386,7 @@ Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carr
 ## Testing Discipline
 
 - **TDD first:** failing test, then fix, then the touched test files; the whole dual suite (`tests` + `agents/daemon_slayer/tests`) is the merger's ONE gated Tier-2 run. Every pytest runs from the repo root - never `pytest .`.
-- **Suite speed (MAIN ORDER 2026-10-25 2045):** in-session loops = touched modules or `--lf`; whole suite once at merge / /done, `-n 8` locally (never `-n auto`).
+- **Suite speed (MAIN ORDER 2026-10-25 2045):** in-session loops = touched modules or `--lf`; whole suite once at merge / /done, `-n 4` locally (never `-n auto`; operator 2026-11-10, "-n 4 standing": overrides MAIN 2045's `-n 8` for RC until the operator or MAIN changes it).
 - Do not restate suite counts anywhere; measure with `--collect-only -q` (doc counts are unguarded and go stale).
 - A test enumerating the REPO ROOT uses `tests/_repo_walk` (ADR-015), never a fresh `rglob` plus a hand-rolled skip set: universe = git index first, `EXCLUDED_DIRS` as backstop, a guard keeps only its OWN scope skips (a subdirectory walk needs none of this). Ask whether an EMPTY enumeration would pass, and anchor it if so.
 - Before a mutation / fault-injection round, digest every durable store it could reach and attribute any change to a named writer before grading; an unattributed change voids the round.
