@@ -3,24 +3,33 @@
 
 GETs use extra="allow" (forward-compat - new fields never break validation).
 
-POST body models are NOT input gates, and this file used to claim they were.
-Read this before trusting one of them (lane 8 audit, 2026-08-03):
+POST body models GATE the paths wired into ``dashboard._dispatch.
+_REQUEST_MODELS``, and only those. Read this before trusting one of them:
 
-  * The only consumer is ``dashboard._dispatch._validate_request_body``,
-    which is SOFT-WARN by design - it logs a WARNING per field error and
-    never raises. ``dispatch_post`` then calls the route with the unchanged
-    body whatever the result. A model here documents and observes a shape;
-    it does not enforce one.
+  * Since RM-243 (2026-10-03, LEDGER 1512) ``dispatch_post`` REFUSES a body
+    that fails its model: 400 ``bad_request_body`` with a ``fields`` list
+    (location + pydantic's generic message, never the input), and the route
+    never runs. ``_validate_request_body`` itself never raises; it returns
+    the field list (before RM-243 it only logged, which the lane 8 audit of
+    2026-08-03 recorded here, and this text kept saying until s160 / q090).
+    So an ``int`` field here makes NaN, Infinity, "abc" or 7.9 a 400 over
+    HTTP; a route-level fall-to-default (``routes_state._payload_int``)
+    only sees what the model admits (a JSON boolean, 0, an out-of-range int)
+    or a direct caller.
   * The policy is also mixed, not uniform: of the 5 POST paths wired into
     ``_REQUEST_MODELS``, only ``/api/input`` and ``/api/command`` forbid
     extra fields; ds-preview, build-order and team-context/refresh all
-    allow them. (A sixth, speak, was removed with its route in RM-762.)
+    allow them, and an extra key is not typed at all. (A sixth, speak, was
+    removed with its route in RM-762.)
 
-So a route may not assume its body was validated. The routes that matter do
-their own checking - ``_serve_command_post`` whitelists the command and 400s
-on anything else - and any new POST route must do the same.
-``tests/test_dashboard_post_trust_boundary.py`` pins both facts so a change
-to either is deliberate.
+So a route still may not assume its body is clean: an unmapped POST path has
+no model, an allowed extra is unchecked, and a model admits values a route
+must still bound. The routes that matter do their own checking -
+``_serve_command_post`` whitelists the command and 400s on anything else -
+and any new POST route must do the same.
+``tests/test_dashboard_post_trust_boundary.py`` and
+``tests/test_post_body_validator_rejects_rm243.py`` pin these facts so a
+change to either is deliberate.
 
 The coaching payload inside StateResponse.coach is validated separately by
 core.coaching_payload.validate_coaching_payload(), which handles per-mode

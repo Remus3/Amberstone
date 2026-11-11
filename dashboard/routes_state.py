@@ -186,6 +186,13 @@ def _payload_int(payload: dict, key: str, default: int,
     missing or falsey value always did. A JSON boolean is not an integer
     either (``int(True)`` read as 1), so it takes the default too. The result
     is clamped to ``[lo, hi]`` when given.
+
+    Over HTTP this is the SECOND layer on /api/ds-preview and
+    /api/build-order: their request model (``dashboard/api_schema.py``,
+    RM-243) answers 400 ``bad_request_body`` first for NaN, Infinity,
+    "abc", a list or 7.9, so here only what the model admits arrives (a
+    boolean, 0, an out-of-range integer). /api/console-error has no model,
+    so there this is the only guard (s160, q090).
     """
     raw = payload.get(key)
     if not raw or isinstance(raw, bool):

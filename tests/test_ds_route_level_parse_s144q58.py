@@ -33,6 +33,14 @@ forwarded a non-finite ``caster_missing_hp_pct`` (NaN is truthy) and both
 maps that to None, and the caller reads it as "engine unavailable" - the whole
 ranking goes dark for one bad optional seam. The client now drops a non-finite
 or unparseable optional seam, so the engine default applies.
+
+Scope (s160, q090): these tests call the route functions DIRECTLY, so the
+"answered 500" above and the 200 asserted here are the ROUTE's behaviour.
+Over HTTP the RM-243 request-model gate in ``dispatch_post`` runs first and
+answers 400 ``bad_request_body`` to every token below except ``true`` (and to
+the ``"7.9"`` / ``null`` positive controls), on ds-preview and build-order;
+console-error has no model. The HTTP contract is pinned in
+``tests/test_ds_post_int_fields_http_contract_q090.py``.
 """
 from __future__ import annotations
 

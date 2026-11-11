@@ -173,22 +173,36 @@ class TestNonDictBody:
 class TestSchemaContractIsHonest:
     """Pin what the validation layer ACTUALLY does, not what it claims."""
 
-    def test_docstring_does_not_claim_a_gate_it_does_not_provide(self):
+    def test_docstring_states_the_gate_it_provides(self):
         """The contract is read off disk, per the standing rule that a
-        contract test must read the contract rather than restate it."""
+        contract test must read the contract rather than restate it.
+
+        This used to require the word "soft": the validator only logged
+        then. RM-243 made dispatch_post refuse a failing body, and the stale
+        "soft-warn ... calls the route whatever the result" text led RM-1328
+        to expect a 200 over HTTP for a body the gate answers 400 (s160,
+        q090; tests/test_ds_post_int_fields_http_contract_q090.py)."""
         import dashboard.api_schema as _mod
         # Anchor on the module's real location - a relative path here
         # silently depends on CWD being the repo root (verifier note).
         src = Path(_mod.__file__).read_text(encoding="utf-8")
-        head = src.split('"""')[1]
+        head = " ".join(src.split('"""')[1].split())
         assert "strict input gates" not in head, (
-            "api_schema.py still advertises 'strict input gates'. "
-            "_dispatch._validate_request_body never raises, so no model here "
-            "gates anything - the word invites a route author to skip their "
-            "own validation.")
-        assert "soft" in head.lower(), (
-            "the docstring must say the validation is soft-warn, so a reader "
-            "learns the truth from the module they are editing")
+            "api_schema.py advertises 'strict input gates'. Only the "
+            "_REQUEST_MODELS paths are gated, extras are unchecked and a "
+            "model admits values a route must still bound - the word invites "
+            "a route author to skip their own validation.")
+        assert "SOFT-WARN" not in head and "whatever the result" not in head, (
+            "api_schema.py says the models are soft-warn and the route runs "
+            "whatever the result; since RM-243 dispatch_post answers 400 "
+            "bad_request_body and the route never runs.")
+        assert "bad_request_body" in head and "RM-243" in head, (
+            "the docstring must say a failing body is refused (400 "
+            "bad_request_body, RM-243), so a reader learns the HTTP contract "
+            "from the module they are editing")
+        assert "may not assume its body is clean" in head, (
+            "the docstring must still tell a route author to do their own "
+            "checking")
 
     def test_extra_policy_per_wired_post_path_is_pinned(self):
         """Pin the extra-field policy of each wired POST path (3 of 5 allow extra).
@@ -208,9 +222,10 @@ class TestSchemaContractIsHonest:
         }, f"the extra-policy census changed: {actual}"
 
     def test_validation_is_soft_and_that_is_pinned(self):
-        """An invalid body must NOT raise out of the validator - callers
-        depend on the soft contract. If this ever becomes strict, it is a
-        breaking change that must be made deliberately."""
+        """An invalid body must NOT raise out of the validator: it returns
+        the field list and dispatch_post turns that into the 400 (RM-243).
+        A validator that raises would escape as a 500, so this stays
+        pinned; the name predates RM-243 and is kept for history."""
         from dashboard._dispatch import _validate_request_body
         _validate_request_body("/api/command", {"command": 123, "bogus": True})
         _validate_request_body("/api/input", {})

@@ -1,9 +1,12 @@
 """Phase 4.1 dispatch-level soft-warn validation tests.
 
-Covers `dashboard._dispatch._validate_request_body` - the soft-warn POST
-body validator that mirrors the Phase 4.3 coaching_payload pattern.
-Validation never rejects; it only logs warnings. These tests pin the
-warning surface so a future schema drift becomes visible.
+Covers `dashboard._dispatch._validate_request_body` - the POST body
+validator that mirrors the Phase 4.3 coaching_payload pattern. These tests
+pin the warning surface so a future schema drift becomes visible. The
+validator itself still never raises, but since RM-243 `dispatch_post`
+REFUSES a body it reports (400 bad_request_body, route not run); the
+"soft-warn" in this module's history is the pre-RM-243 design
+(tests/test_post_body_validator_rejects_rm243.py pins the refusal).
 """
 from __future__ import annotations
 

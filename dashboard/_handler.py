@@ -728,8 +728,9 @@ class Handler(HostAllowlistMixin, HeadDeadlineMixin, BaseHTTPRequestHandler):
         # stderr and the connection closed with NO HTTP RESPONSE AT ALL. Same
         # for /api/input; ds-preview, build-order and speak turned it into a
         # 500. `_dispatch._validate_request_body` already NOTICES this ("expected
-        # dict, got list") and then returns without acting, because it is
-        # soft-warn by design. Fixed here, at the single trust boundary, rather
+        # dict, got list") and then returned without acting, because it was
+        # soft-warn by design then (RM-243 later made dispatch_post refuse a
+        # body that fails its model). Fixed here, at the single trust boundary, rather
         # than in ~40 route handlers: verified that zero POST routes consume a
         # positional/list body, so dict-or-400 costs nothing. Same root-cause
         # family as LEDGER 1180 - a payload shape assumed rather than asserted.
