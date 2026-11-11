@@ -82,9 +82,10 @@ def _run(mock_server, pw_browser, mode, vp, query, grown, act):
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     if grown:
-        for path, payload in (("**/api/ds-preview", _DS_PREVIEW),
-                              ("**/api/build-plan", _BUILD_PLAN)):
-            page.route(path, _fulfil_with(json.dumps(payload)))
+        # String-glob matchers, one call each (RM-1506: a name the guard
+        # cannot prove is a string reads as a callable matcher).
+        page.route("**/api/ds-preview", _fulfil_with(json.dumps(_DS_PREVIEW)))
+        page.route("**/api/build-plan", _fulfil_with(json.dumps(_BUILD_PLAN)))
     want = list(_GROUPS) if grown else ["THREATS"]
     try:
         page.goto(

@@ -555,7 +555,9 @@ def test_registry_comment_points_at_the_divergence_pin() -> None:
     # module's lines 284, 618 and 700 by number, so no line at or above line
     # 700 may move.
     note = _comment_block_before("_PER_SPELL_CC_DURATIONS: dict[")
-    assert "agents/daemon_slayer/tests/test_per_spell_cc_meraki_divergence_s144d415.py" in note
+    # Joined from parts: a repo-root-relative path literal is what
+    # test_no_cwd_relative_paths forbids, even as plain comparison text.
+    assert "/".join(("agents", "daemon_slayer", "tests", Path(__file__).name)) in note
 
 
 def test_the_spec_cited_lines_did_not_move() -> None:

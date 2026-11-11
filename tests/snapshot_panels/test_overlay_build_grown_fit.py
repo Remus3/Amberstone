@@ -163,9 +163,10 @@ def _measure(mock_server, pw_browser, mode, vp, query):
     page.add_init_script(_WS_STUB)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
-    for path, payload in (("**/api/ds-preview", _DS_PREVIEW),
-                          ("**/api/build-plan", _BUILD_PLAN)):
-        page.route(path, _fulfil_with(json.dumps(payload)))
+    # String-glob matchers, one call each (RM-1506: a name the guard cannot
+    # prove is a string reads as a callable matcher).
+    page.route("**/api/ds-preview", _fulfil_with(json.dumps(_DS_PREVIEW)))
+    page.route("**/api/build-plan", _fulfil_with(json.dumps(_BUILD_PLAN)))
     try:
         page.goto(
             mock_server.url + f"/?ui_mock=1&mode={mode}&overlay=1{query}",
