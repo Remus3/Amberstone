@@ -207,6 +207,12 @@ class TestCoachFeedsFixedCurveNotEnemyBuild:
         for p in _repo_walk.repo_files(_ROOT, patterns=("*.py",)):
             if p.name in skip_names:
                 continue
+            # Production callers only: a test that drives the function (the
+            # s144 true-audit tests/test_enemy_aware_stats_true_audit_s144.py)
+            # is not a coach-tick wire, so the test trees are not scanned.
+            rel_parts = p.relative_to(_ROOT).parts
+            if "tests" in rel_parts[:-1]:
+                continue
             txt = p.read_text(encoding="utf-8", errors="ignore")
             if needle in txt:
                 callers.append(p.relative_to(_ROOT).as_posix())
