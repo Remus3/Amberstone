@@ -139,6 +139,17 @@ def _measure(mock_server, pw_browser, theme, mode):
             " return !!b && !b.querySelector('.threat-donut-loading')"
             " && !!b.querySelector('.threat-donut-empty text'); }",
             timeout=10_000)
+        if mode in ("aram", "mayhem"):
+            # The w-arambalance panel fetches /api/aram-balance once and the
+            # mock serves no grid, so it settles on its failure state. Read
+            # only after that render: a read before it found the panel empty,
+            # so the sweep passed alone and failed only when a loaded suite
+            # let the render land first (s159 landing).
+            page.wait_for_function(
+                "() => { const p = document.getElementById('aram-balance-panel');"
+                " return !!p && !!p.dataset.abSig"
+                " && p.dataset.abSig !== '__loading__'; }",
+                timeout=10_000)
         page.add_style_tag(content=_SHEET)
         got = {"live": page.evaluate(_READ, 0),
                "idle": page.evaluate(_READ, 1)}

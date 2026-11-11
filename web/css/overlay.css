@@ -628,6 +628,20 @@ body[data-shell="overlay"] #aram-balance-panel {
   border-top: none;
   padding: 0;
 }
+/* s159 landing: the panel's head (the caption, or the loading / unavailable
+ * title) and its one-line empty / failure text painted the dashboard's
+ * --text-faint / --text-dim straight onto the see-through widget frame:
+ * 1.09-1.75:1 over a game pixel, live and idle, in all six themes (the
+ * S144-U-299 sweep, once it waits for the panel to settle). The S144-U-301
+ * treatment: the --ovx-bg-nested 0.9 inset backing under --ovx-text ink,
+ * no colour outside the --ovx-* table (doctrine section 5). */
+body[data-shell="overlay"] #aram-balance-panel .ab-head,
+body[data-shell="overlay"] #aram-balance-panel .ab-empty {
+  color: rgba(var(--ovx-text), 0.75);
+  background: rgba(var(--ovx-bg-nested), 0.9);
+  padding: 2px 6px;
+  border-radius: var(--panel-radius-sm);
+}
 
 /* BATCH A (2026-07-06): drop the "BUILD" pane-head title bar in-game (operator:
  * "knows what it is; wastes vertical space"). The widget chrome already labels

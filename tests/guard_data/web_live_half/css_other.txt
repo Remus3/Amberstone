@@ -5,7 +5,7 @@
 
 2a7c4c0e5636d75854b76ba6ab1a00a6402c083a562c3d1153be834107399fba  web/css/hextech.css
 
-cff9f404e13ec2c8e962e6a24b1edafb92ed1de8ce3949bb272c4c2a8b2bbc58  web/css/overlay.css
+7cb22d9d528223aa9ea0bfbc0a127b9498b767f47a98f99de226507051979e51  web/css/overlay.css
 
 2a19cb3f9552620860e6e798b9a75374a50a923da9060ce88f3aa0e5729f91b7  web/css/themes.css
 
