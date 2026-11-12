@@ -35,15 +35,31 @@ WHAT IS ASSERTED
     a constant copied into this file
     (``feedback_contract_test_must_read_the_contract_from_disk``).
 
-DECISION RECORD (measured 2026-07-30)
-    Tracking beats regeneration here. The precompute's sole input is
-    ``data/rewind_history.db``, 1,870,598,144 bytes and gitignored at
-    ``.gitignore:32`` (``**/*.db``) as a personal match corpus, so a clean
-    checkout can never regenerate the snapshot. The snapshot itself is 300,745
-    bytes of pure-ASCII aggregate statistics (776 cells, zero identifiers) and a
-    re-run over an unchanged corpus is byte-identical - sha256 5aa4d89a8430a77d
-    both times. ``tools/aram_item_interaction_precompute.py`` stays the tracked
-    refresh path.
+DECISION RECORD (measured 2026-07-30; snapshot re-measured 2026-11-11, RM-2093)
+    Tracking beats regeneration here. The precompute's corpus input is
+    ``data/rewind_history.db``, 1,870,598,144 bytes and gitignored by the
+    ``.gitignore`` pattern ``**/*.db`` as a personal match corpus, so a clean
+    checkout can never regenerate the snapshot. The snapshot itself is 289,462
+    LF bytes of pure-ASCII aggregate statistics (2049 matches, 777 cells,
+    1297 dropped below min_n, zero identifiers) and a re-run over all four
+    unchanged inputs (below) is byte-identical - sha256 c0ff0ae488cbdfd4.
+    ``tools/aram_item_interaction_precompute.py`` stays the tracked refresh
+    path.
+
+    The corpus is not the only input. The generator reads four:
+      * ``data/rewind_history.db`` - the gitignored match corpus (above);
+      * ``data/daemon_slayer/<current.txt>/items.json`` - the DS item catalog
+        behind the legendary gate (``core.item_wpa.load_legendary_ids``);
+      * ``data/daemon_slayer/<current.txt>/champions.json`` - the DS champion
+        catalog behind the comp-shape facts
+        (core/aram_item_interaction.py:174-177);
+      * ``data/post_game_wpa_model.json`` - the tracked WPA model behind the
+        selection-bias correction (core/aram_item_interaction.py:619).
+    So a DS patch bump can change the snapshot with no corpus change. The
+    16.15.1 -> 16.18.1 bump moved Stormrazor from id 3097 back to 3095 (the
+    id the corpus logs) and left the snapshot one cell stale, 776 -> 777
+    (RM-2093). Re-run the precompute after every DS patch bump (and after any
+    retrain of the WPA model).
 """
 from __future__ import annotations
 

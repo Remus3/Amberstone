@@ -7756,6 +7756,21 @@
       "wpa_shrunk": -0.0402
     },
     {
+      "avg_purchase_time_s": 305.9,
+      "expected_winrate": 0.5237,
+      "gold_swing": -367.6,
+      "item_id": 3095,
+      "n": 17,
+      "n_gold_swing": 17,
+      "name": "Stormrazor",
+      "shape": "mixed/fl_light",
+      "timing": "early",
+      "winrate": 0.4706,
+      "winrate_smoothed": 0.4737,
+      "wpa": -0.0532,
+      "wpa_shrunk": -0.0411
+    },
+    {
       "avg_purchase_time_s": 690.6,
       "expected_winrate": 0.5131,
       "gold_swing": -322.1,
@@ -11641,7 +11656,7 @@
       "wpa_shrunk": -0.2916
     }
   ],
-  "cells_dropped_below_min_n": 1281,
+  "cells_dropped_below_min_n": 1297,
   "generated_note": "offline precompute of core.aram_item_interaction; descriptive corpus evidence only, never an input to daemon_slayer rank",
   "map_id": 12,
   "matches": 2049,
