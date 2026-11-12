@@ -6473,6 +6473,8 @@ Rides on top of whatever gate is already running. No separate game needed.
   `HTTP "GET /?overlay=1... HTTP/1.1" 200 -` (note the quote - `grep "HTTP GET"` matches nothing).
   SOURCE: LEDGER 1166; ROADMAP.md RM-145.
 
+- **L9-t100** `[NEW ROW 2026-11-11]` `core/replay_camera.py` `RenderClient` (:350) against a PLAYING replay, live half (L9 residue, `ops/runtime/drive_rc/l9/followups.md` section 3; s161 decision KEEP live-gated, LEDGER 2105). The s144 true-audit cycle t100 tested it through a fake opener only (`tests/test_replay_camera_audit_s144.py`, the `wire` fixture); `/replay/render` answers only while the League client plays a replay. CHECK with a replay playing: a `RenderClient` read of `/replay/render` parses through `camera_from` (:259) with finite fields, and one position write (`_write_position`, :412) moves the replay camera. Gated on a playing replay, never closed synthetically. Not counted in the OPEN figure above.
+
 ---
 
 ## GATE 7 - ACCRUAL RAILS (ride EVERY session; NEVER close on one game)

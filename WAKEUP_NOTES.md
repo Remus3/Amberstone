@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-11-11b - session 161: RM-1271 hook (`38e46c755`), RM-2091 DDragon mirror retry + pythonw log (`65fa2a001`), RM-2092 DS log file (`69d3b62a6`), RM-2093 ARAM Stormrazor cell (`de62be5cf`); Q-148 / Q-178 / Q-179 CLOSED WON'T-FIX; NOT pushed, gated suite not run (Vanguard tray up)
+
+- **C2 (LEDGER 2105):** RC-DDragonMirrorRefresh FAILURE = a transient blip on the 11-11 02:30 run; replay 0 failures; fixed as RM-2091 (bounded retry pass, log file under pythonw). Task drift recorded only (fires 02:30 vs 03:30; S4U vs Interactive).
+- **C3 decisions:** RM-1271 hook added (1459 / 1462 lane commits carry `Lane:`); S144-Q-148 / -178 / -179 CLOSED WON'T-FIX (the stop-claim gate never blocks; hooks are the barrier); L9 residue decided (d159 -> RM-2092, t096 -> RM-2093, t097 / q084 CLOSED, t100 live-gated row L9-t100, the rest -> RM-2094 at the next RC launch).
+- **C4 NOT DONE:** 60 min wait for the gated `-n 4 --exclusive` run; RAM cleared 23100 MB (22.6-25.2 GB) but vgtray.exe ran on all 62 reads and the sampler refuses on it. Rulings D1 (no run while Riot / Vanguard runs), D2 (push on a gated exit 0, no further yes), D3 (drain + relaunch recipe): LEDGER 2105.
+- **Filed:** RM-2094..RM-2100 (BACKLOG "S161 filings"); next free RM-2101, LEDGER 2107.
+- **What's next:** operator exits the Vanguard tray and Riot Client; then drain (D3), gated run on HEAD, push per D2, CI watch, relaunch the lanes.
+- **Do NOT redo:** the four fixes above are on local main; the stash `44ed11ea3` work is CLOSED WON'T-FIX, not pending.
+
+---
+
 # 2026-11-11 - session 160: the 7 CI reds of ci 42954031303 fixed locally (`a1366cf85`, `aea39eb94`, `fae4c1cb5`), q090 decided (`9affe2d6f`), RM-2089 fixed (`ae8136bdf` + the live driver), lanes drained and relaunched; NOT pushed, gated suite not run (RAM under the line)
 
 - **C1 (LEDGER 2103):** 6 snapshot_panels reds = Linux headless-shell whole-px glyphs (hotkey pill CSS fix; TFT board Linux row pinned) + 2 test races; the skip-hygiene timeout memoised (64.7 s -> 10.5 s, identical records). Verifier CONFIRMED; CI on the fix UNMEASURED until a push.
@@ -26,13 +37,3 @@
 - **/done (LEDGER 2102):** pushed `f84014933..8aa74df1b` (517); push ci mode=full covers HEAD (no dispatch); bot_merge_check clean. C8: dry plans read, leak scan clean, S144_LANES_STOP to the Recycle Bin, rotator pid 1644 relaunched (first child true-audit 21:39). RM-2082 CLOSED as a flake; S159 filings RM-2084..RM-2089. RC app DOWN since the 05:42 reboot.
 - **Do NOT redo:** the u5 fix, the landing and its push, the -n 4 standing order, the C4 false-stop read, the RM-2082 close.
 - **Next:** read the push ci 42954031303 (mode=full) + codeql + docs-guards; record the first lane cycle after the relaunch (and RM-2089's queue sync); fold "-n 4 standing" into RC's next REPLY to MAIN; then the next BACKLOG rows.
-
----
-
-# 2026-11-09c - session 158: pushed `50e5ad38f..683aafe11` (operator yes), lane-0 timeout explained and the lane loop hardened (`5f498779e` + `08579afca`), lane/repo reconciled, Dependabot #32 decided, RC relaunched for L9
-
-- **C1-C4, C6-C8 (LEDGER 2098):** s157 dispatch 42734265057 red on one suspected flake (focus ring [sr], RM-2082); #32 already landed as `0a2879497`, never take a bot lock (`e14a5e432`); RM-723 SHIPPED and RM-1255 / RM-1506 reconciled (`734b0c094`); RC up via WMI, DS 1.291.0, L9 read-backs mostly PASS (q090 deviates, d159 / t101 partial).
-- **C2, C5, C9-C12 (LEDGER 2099):** lane-0 cycle 227 = the 9000 s cycle timeout after 7 verifier rejections; Fix A (3-round verifier cap + job-object kill, `ops/loop/proc_tree.py`) and Fix B (16 starts per rolling hour) landed; live driver + template deployed, rotator pid 23632. lane/repo rebased (3 RM-723 commits dropped, 142 kept) + 19 reds conformed; tip `9338b87eb`, not landed.
-- **Push (LEDGER 2100):** 5 commits incl. the Agent 6 report; bot_merge_check clean; 2c dispatched ONE full run 42749327744 on `683aafe11`. Push ci 42749286101 RED on 2 repo-wide guards from `5f498779e`'s new files (mutator census, Q001 ratchet); fixed forward LOCALLY as `255595a24` (verifier CONFIRM, ratchets + censuses 2284 passed), NOT pushed.
-- **Do NOT redo:** the C9 fixes, the lane/repo reconcile and C10 fixes, the #32 decision, the RM-723 / RM-1255 / RM-1506 closes, the push, the `255595a24` fix.
-- **Next:** push `255595a24` + the /done docs on the operator's yes (origin red until then); read the first lane cycle under the job object once the run budget frees (from about 22:17 on 11-09); read dispatch 42749327744 (RM-2082); the stranded S144-Q-173 files in rc-lane-queue; the gated full-box suite and the next landing.

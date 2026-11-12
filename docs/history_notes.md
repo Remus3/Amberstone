@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-09c - session 158: pushed `50e5ad38f..683aafe11` (operator yes), lane-0 timeout explained and the lane loop hardened (`5f498779e` + `08579afca`), lane/repo reconciled, Dependabot #32 decided, RC relaunched for L9
+
+- **C1-C4, C6-C8 (LEDGER 2098):** s157 dispatch 42734265057 red on one suspected flake (focus ring [sr], RM-2082); #32 already landed as `0a2879497`, never take a bot lock (`e14a5e432`); RM-723 SHIPPED and RM-1255 / RM-1506 reconciled (`734b0c094`); RC up via WMI, DS 1.291.0, L9 read-backs mostly PASS (q090 deviates, d159 / t101 partial).
+- **C2, C5, C9-C12 (LEDGER 2099):** lane-0 cycle 227 = the 9000 s cycle timeout after 7 verifier rejections; Fix A (3-round verifier cap + job-object kill, `ops/loop/proc_tree.py`) and Fix B (16 starts per rolling hour) landed; live driver + template deployed, rotator pid 23632. lane/repo rebased (3 RM-723 commits dropped, 142 kept) + 19 reds conformed; tip `9338b87eb`, not landed.
+- **Push (LEDGER 2100):** 5 commits incl. the Agent 6 report; bot_merge_check clean; 2c dispatched ONE full run 42749327744 on `683aafe11`. Push ci 42749286101 RED on 2 repo-wide guards from `5f498779e`'s new files (mutator census, Q001 ratchet); fixed forward LOCALLY as `255595a24` (verifier CONFIRM, ratchets + censuses 2284 passed), NOT pushed.
+- **Do NOT redo:** the C9 fixes, the lane/repo reconcile and C10 fixes, the #32 decision, the RM-723 / RM-1255 / RM-1506 closes, the push, the `255595a24` fix.
+- **Next:** push `255595a24` + the /done docs on the operator's yes (origin red until then); read the first lane cycle under the job object once the run budget frees (from about 22:17 on 11-09); read dispatch 42749327744 (RM-2082); the stranded S144-Q-173 files in rc-lane-queue; the gated full-box suite and the next landing.
+
+---
+
 # 2026-11-09b - session 157: RM-723 Linux CI red fixed forward in the TEST (`f5e48a27d`), RM-2075 KIT v20 line reconciled (`f2f40f47f`), NOTHING PUSHED (no operator yes; gated-suite line unmet)
 
 - **C2 RM-723 (LEDGER 2095):** the 4 ids of `tests/test_task_xml_templates_rm723.py` red on Linux CI because the test joined Windows targets onto the host root; now rendered under a fixed Windows root and mapped by parts. Verifier: Linux 0/4 -> 5/0, Windows 28 passed. Renderer and `ops/*.xml` untouched.
