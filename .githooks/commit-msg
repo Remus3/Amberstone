@@ -52,3 +52,29 @@ python "ops/fleet_kit/fleet_identity.py" commit-msg "$1" || true
 
 # 3. Validate the subject line against Conventional Commits.
 "$PY" "$ROOT/scripts/precommit_msg_check.py" "$1" || exit 1
+
+# 4. RM-1271 (MAIN ORDER 2026-10-31-2215 item 5; adjudicated s161 after 1459 of
+# 1462 lane commits 2026-11-04..11-11 carried it; the 3 misses are s158
+# main-session fixups on lane/repo): a commit on a lane branch
+# `lane/<x>` must END with the trailer line `Lane: <x>`. Only lane branches are
+# checked - a detached HEAD (every rebase step) and any other branch, main
+# included, pass untouched. "End" = the last non-blank line once `#` comment
+# lines are dropped and anything below a scissors line is cut, as git's default
+# cleanup does; trailing whitespace is ignored. Runs after both strips (1, 1b),
+# so a stripped AI trailer below `Lane:` cannot fail a correct commit. Inline
+# POSIX sh on purpose, never a new script under the tree root: a lane worktree
+# runs main's hook against its own older tree, where a newer script would be
+# missing and would refuse every lane commit. printf, not echo: dash's echo
+# expands backslashes in the quoted line.
+lane_branch="$(git symbolic-ref --short -q HEAD || true)"
+case "$lane_branch" in
+    lane/?*)
+        lane="${lane_branch#lane/}"
+        lane_last="$(sed -e '/^# -\{24\} >8 -\{24\}$/,$d' -e '/^#/d' \
+            -e 's/[[:space:]]*$//' -e '/^$/d' "$1" | tail -n 1)"
+        if [ "$lane_last" != "Lane: $lane" ]; then
+            printf '%s\n' "commit-msg: RM-1271 a commit on lane/$lane must end with the trailer line 'Lane: $lane' (last line: '$lane_last')" >&2
+            exit 1
+        fi
+        ;;
+esac
