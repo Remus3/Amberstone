@@ -8,12 +8,21 @@ manifest round-trip, and the fetch_one decision tree under mocked HTTP.
 from __future__ import annotations
 
 import json
+import logging
+import threading
+import types
+import urllib.error
+from collections import Counter
+from contextlib import contextmanager
+from pathlib import Path
 from unittest import mock
 
 import pytest
 
+from tests._module_view import bind_module_view, bind_subprocess
 from tests._sleep_probe import record_sleeps
 from tools import ddragon_mirror_refresh as ddr
+from tools import upstream_drift_check as udc
 
 
 # ---------------------------------------------------------------------------
@@ -577,3 +586,294 @@ def test_http_does_not_retry_on_404(monkeypatch):
     assert res.status == 404
     assert len(calls) == 1
     assert sleeps == []
+
+
+# ---------------------------------------------------------------------------
+# RM-2091: the 2026-11-11 RC-DDragonMirrorRefresh run (pythonw, --check-changed)
+# exited 2 because a short CDN outage failed a few dozen HEAD probes inside the
+# same window - each asset gives up after its two _http backoffs and was counted
+# failed at once, with no second pass - and the failing URLs were lost, because
+# under pythonw sys.stderr is None and logging only wrote there. A read-only
+# replay the same day had 0 failures.
+
+_OUTAGE_V = "16.22.1"
+_OUTAGE_ITEMS = 197  # + 3 maps = 200 assets
+# 15 / 200 = 7.5%: far over the 0.5% exit tolerance, under the 10% line past
+# which the retry pass is skipped as a real outage. 40 / 200 = 20% is over it.
+_BLIP = 15
+_OUTAGE = 40
+
+
+def _outage_env(monkeypatch, tmp_path):
+    """Wire main() onto tmp_path with a 200-asset mirror already on disk.
+
+    Every asset exists with manifest etag '"v1"' and the fake CDN serves
+    '"v2"', so a clean --check-changed run re-fetches all 200 as "changed".
+    Returns (assets, captured) where captured["stats"] is run()'s PlanStats.
+    """
+    meta, web = tmp_path / "meta", tmp_path / "web"
+    monkeypatch.setattr(ddr, "META_DIR", meta)
+    monkeypatch.setattr(ddr, "WEB_DIR", web)
+    monkeypatch.setattr(ddr, "INDEX_PATH", meta / "_index.json")
+    monkeypatch.setattr(ddr, "LOG_PATH", tmp_path / "logs" / "ddragon_mirror_refresh.log", raising=False)
+    items = {str(1000 + i): {"image": {"full": f"{1000 + i}.png"}} for i in range(_OUTAGE_ITEMS)}
+    bundles = {
+        "champion": {"data": {}},
+        "item": {"data": items},
+        "runesReforged": [],
+        "summoner": {"data": {}},
+        "profileicon": {"data": {}},
+    }
+    monkeypatch.setattr(ddr, "resolve_latest_version", lambda: _OUTAGE_V)
+    monkeypatch.setattr(ddr, "read_index", lambda: {"latest_pulled": _OUTAGE_V})
+    monkeypatch.setattr(ddr, "read_or_pull_bundle", lambda version, name, force=False: bundles[name])
+    monkeypatch.setattr(ddr, "pull_all_champion_details", lambda *a, **k: {})
+    # prune_stale_versions binds the LIVE web dir as a default argument at def
+    # time, so redirecting WEB_DIR does not redirect it: stub it out.
+    monkeypatch.setattr(ddr, "prune_stale_versions", mock.Mock(return_value=[]))
+    monkeypatch.setattr(ddr, "write_index", mock.Mock())
+    assets = ddr.enumerate_assets(_OUTAGE_V, bundles)
+    assert len(assets) == 200
+    manifest = {"version": _OUTAGE_V, "assets": {}}
+    for a in assets:
+        dest = web / _OUTAGE_V / a.rel_dest
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"png-v1")
+        manifest["assets"][a.rel_dest] = {"etag": '"v1"', "size": 6}
+    ddr.write_manifest(_OUTAGE_V, manifest)
+
+    captured: dict = {}
+    real_run = ddr.run
+
+    def spy_run(*a, **k):
+        captured["stats"] = real_run(*a, **k)
+        return captured["stats"]
+
+    monkeypatch.setattr(ddr, "run", spy_run)
+    return assets, captured
+
+
+def _fake_cdn(monkeypatch, *, head_fails):
+    """Fake the module's OWN http_head / http_get names (never a stdlib one).
+
+    ``head_fails(url, n)`` (n = 1-based HEAD call count) -> True raises
+    URLError, the class the real _http re-raises once its own backoffs are
+    spent. Returns the list of HEAD urls in call order.
+    """
+    lock = threading.Lock()
+    heads: list[str] = []
+
+    def head(url):
+        with lock:
+            heads.append(url)
+            n = len(heads)
+        if head_fails(url, n):
+            raise urllib.error.URLError("simulated outage")
+        return ddr.HttpResult(200, {"etag": '"v2"', "content-length": "6"}, b"")
+
+    def get(url, headers=None):
+        return ddr.HttpResult(200, {"etag": '"v2"'}, b"png-v2")
+
+    monkeypatch.setattr(ddr, "http_head", head)
+    monkeypatch.setattr(ddr, "http_get", get)
+    return heads
+
+
+@contextmanager
+def _root_logging_restored():
+    """Undo whatever main() attaches to the root logger (NOW-7 leak gate)."""
+    root = logging.getLogger()
+    before, level = list(root.handlers), root.level
+    try:
+        yield
+    finally:
+        for h in [h for h in root.handlers if h not in before]:
+            root.removeHandler(h)
+            h.close()
+        root.setLevel(level)
+
+
+def test_transient_outage_recovers_on_retry_pass_exit_zero(monkeypatch, tmp_path):
+    assets, captured = _outage_env(monkeypatch, tmp_path)
+    heads = _fake_cdn(monkeypatch, head_fails=lambda url, n: n <= _BLIP)
+
+    with record_sleeps() as sleeps:
+        rc = ddr.main(["--check-changed"])
+
+    assert rc == 0
+    stats = captured["stats"]
+    assert (stats.total, stats.failed, stats.fetched_changed) == (200, 0, 200)
+    assert sum(row[0] for row in stats.by_class.values()) == 200  # the retry does not re-count totals
+    assert all(row[3] == 0 for row in stats.by_class.values())
+    manifest = ddr.read_manifest(_OUTAGE_V)
+    assert {e["etag"] for e in manifest["assets"].values()} == {'"v2"'}
+    assert len(heads) == 200 + _BLIP  # first-pass probes + one sequential retry for each failure
+    assert sleeps == [ddr.RETRY_PASS_PAUSE_S]
+    # A console run (stderr present) keeps logging on stderr only.
+    assert not (tmp_path / "logs").exists()
+
+
+def test_persistent_failures_still_exit_two_after_one_retry(monkeypatch, tmp_path):
+    assets, captured = _outage_env(monkeypatch, tmp_path)
+    doomed = {a.url for a in assets[:_BLIP]}
+    heads = _fake_cdn(monkeypatch, head_fails=lambda url, n: url in doomed)
+
+    with record_sleeps():
+        rc = ddr.main(["--check-changed"])
+
+    assert rc == 2
+    stats = captured["stats"]
+    assert (stats.total, stats.failed, stats.fetched_changed) == (200, _BLIP, 200 - _BLIP)
+    assert sum(row[3] for row in stats.by_class.values()) == _BLIP
+    per_url = Counter(heads)
+    assert {per_url[u] for u in doomed} == {2}  # exactly one retry each
+    assert {per_url[a.url] for a in assets if a.url not in doomed} == {1}
+    manifest = ddr.read_manifest(_OUTAGE_V)["assets"]
+    assert {manifest[a.rel_dest]["etag"] for a in assets if a.url in doomed} == {'"v1"'}
+    assert {manifest[a.rel_dest]["etag"] for a in assets if a.url not in doomed} == {'"v2"'}
+
+
+def test_pythonw_no_stderr_logs_failed_urls_to_file(monkeypatch, tmp_path):
+    assets, _ = _outage_env(monkeypatch, tmp_path)
+    doomed = {a.url for a in assets[:2]}
+    _fake_cdn(monkeypatch, head_fails=lambda url, n: url in doomed)
+    # pythonw: no stderr stream. Scoped to the module under test's own `sys`.
+    bind_module_view(monkeypatch, ddr, "sys", stderr=None)
+    log_path = tmp_path / "logs" / "ddragon_mirror_refresh.log"
+
+    with _root_logging_restored(), record_sleeps():
+        rc = ddr.main(["--check-changed"])
+
+    assert rc == 2  # 2 / 200 = 1% > 0.5%
+    assert log_path.is_file(), "a pythonw run wrote no log file"
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    for url in doomed:
+        hits = [ln for ln in lines if url in ln and " WARNING " in ln]
+        assert any("URLError" in ln and "simulated outage" in ln for ln in hits), url
+    assert any("exit=2" in ln for ln in lines)
+
+
+def test_pythonw_crash_traceback_lands_in_log(monkeypatch, tmp_path):
+    _outage_env(monkeypatch, tmp_path)
+
+    def boom():
+        raise RuntimeError("versions.json HTTP 503")
+
+    monkeypatch.setattr(ddr, "resolve_latest_version", boom)
+    bind_module_view(monkeypatch, ddr, "sys", stderr=None)
+    log_path = tmp_path / "logs" / "ddragon_mirror_refresh.log"
+
+    with _root_logging_restored(), pytest.raises(RuntimeError, match="HTTP 503"):
+        ddr.main(["--check-changed"])
+
+    text = log_path.read_text(encoding="utf-8")
+    assert "Traceback" in text
+    assert "versions.json HTTP 503" in text
+
+
+# ---------------------------------------------------------------------------
+# RM-2091 follow-up: the retry pass is bounded. One timeout-type retry costs up
+# to ~63 s (_http: 3 x DEFAULT_TIMEOUT + backoffs) and RC-DDragonMirrorRefresh
+# has a 30-minute limit (ops/install_RC_DDragonMirror.ps1), so an unbounded
+# sequential pass could get the task killed before write_manifest.
+
+
+def test_retry_pass_stops_at_its_wall_clock_budget(monkeypatch, tmp_path, caplog):
+    assets, captured = _outage_env(monkeypatch, tmp_path)
+    doomed = [a.url for a in assets[:_BLIP]]
+    doomed_set = set(doomed)
+    lock = threading.Lock()
+    clock = [0.0]
+
+    def fake_sleep(seconds=0.0):
+        with lock:
+            clock[0] += seconds
+
+    def fake_monotonic():
+        with lock:
+            return clock[0]
+
+    def fails(url, n):
+        if url in doomed_set:
+            fake_sleep(30.0)  # every failing probe is a timeout-type failure
+            return True
+        return False
+
+    # Only the module under test sees this clock (its own `time` name).
+    bind_module_view(monkeypatch, ddr, "time", monotonic=fake_monotonic, sleep=fake_sleep)
+    monkeypatch.setattr(ddr, "RETRY_PASS_PAUSE_S", 5.0)
+    monkeypatch.setattr(ddr, "RETRY_PASS_BUDGET_S", 100.0, raising=False)
+    heads = _fake_cdn(monkeypatch, head_fails=fails)
+
+    with caplog.at_level(logging.INFO, logger="ddragon_mirror_refresh"):
+        rc = ddr.main(["--check-changed"])
+
+    # 5 s pause, then retries start at +5, +35, +65, +95 (< 100); the 5th would
+    # start at +125, so it and the rest stay failed.
+    assert rc == 2
+    assert captured["stats"].failed == _BLIP
+    per_url = Counter(heads)
+    assert [u for u in doomed if per_url[u] == 2] == doomed[:4]
+    assert {per_url[u] for u in doomed[4:]} == {1}
+    skipped = [r.getMessage() for r in caplog.records if "retry skipped: budget" in r.getMessage()]
+    assert len(skipped) == _BLIP - 4
+    assert all(any(u in m for m in skipped) for u in doomed[4:])
+    manifest = ddr.read_manifest(_OUTAGE_V)["assets"]  # still written after a cut-short pass
+    assert {manifest[a.rel_dest]["etag"] for a in assets if a.url not in doomed_set} == {'"v2"'}
+
+
+def test_mass_outage_skips_the_retry_pass_with_one_warning(monkeypatch, tmp_path, caplog):
+    _, captured = _outage_env(monkeypatch, tmp_path)
+    heads = _fake_cdn(monkeypatch, head_fails=lambda url, n: n <= _OUTAGE)
+
+    with caplog.at_level(logging.INFO, logger="ddragon_mirror_refresh"), record_sleeps() as sleeps:
+        rc = ddr.main(["--check-changed"])
+
+    assert rc == 2
+    assert captured["stats"].failed == _OUTAGE
+    assert len(heads) == 200  # no retry, though every one of the 40 would have recovered
+    assert sleeps == []  # and no pause
+    warns = [r for r in caplog.records if r.levelno == logging.WARNING and "retry pass skipped" in r.getMessage()]
+    assert len(warns) == 1
+
+
+def test_drift_trigger_runs_the_mirror_without_a_retry_pass(monkeypatch, tmp_path):
+    """upstream_drift_check.trigger_refresh gives this script 120 s: no room for
+    the retry pause plus a retry budget, so its exact argv runs no retry pass."""
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    bind_subprocess(monkeypatch, udc, run=fake_run)
+    udc.trigger_refresh()
+    [(cmd, kwargs)] = [c for c in calls if "ddragon_mirror_refresh.py" in str(c[0][1])]
+    assert kwargs["timeout"] == 120
+
+    _, captured = _outage_env(monkeypatch, tmp_path)
+    heads = _fake_cdn(monkeypatch, head_fails=lambda url, n: n <= _BLIP)
+    with record_sleeps() as sleeps:
+        rc = ddr.main(cmd[2:])
+
+    assert (rc, len(heads), sleeps) == (2, 200, [])
+    assert captured["stats"].failed == _BLIP
+
+
+def test_two_no_stderr_mains_leave_one_log_handler(monkeypatch, tmp_path):
+    _outage_env(monkeypatch, tmp_path)
+    _fake_cdn(monkeypatch, head_fails=lambda url, n: False)
+    bind_module_view(monkeypatch, ddr, "sys", stderr=None)
+    log_path = tmp_path / "logs" / "ddragon_mirror_refresh.log"
+
+    with _root_logging_restored(), record_sleeps():
+        first = ddr.main(["--check-changed"])
+        second = ddr.main(["--check-changed"])
+        mine = [
+            h
+            for h in logging.getLogger().handlers
+            if getattr(h, "baseFilename", None) and Path(h.baseFilename) == log_path
+        ]
+
+    assert (first, second) == (0, 0)
+    assert len(mine) == 1

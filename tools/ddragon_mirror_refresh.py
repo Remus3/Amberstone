@@ -63,11 +63,18 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core import polled_json  # noqa: E402
+from core.log_rotation import rotating_file_handler  # noqa: E402
 from lib.wiki_consent import open_consented  # noqa: E402
 
 META_DIR = ROOT / "data" / "meta_build" / "ddragon"
 WEB_DIR = ROOT / "web" / "data" / "ddragon"
 INDEX_PATH = META_DIR / "_index.json"
+# RM-2091: the RC-DDragonMirrorRefresh task runs this under pythonw, where
+# sys.stderr is None and a stderr-only logger drops every line - the
+# 2026-11-11 exit 2 left no record of which assets failed or why. With no
+# stderr, main() logs here instead (read at call time, so a test redirects it).
+LOG_PATH = ROOT / "logs" / "ddragon_mirror_refresh.log"
+LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 VERSIONS_URL = f"{DDRAGON_BASE}/api/versions.json"
@@ -84,6 +91,19 @@ TRANSIENT_HTTP_CODES = frozenset({429, 500, 502, 503, 504})
 # operationally normal; only a failure RATIO above this trips a non-zero exit
 # (item 376 - benign nightly result=2 from one 404 among ~6800 assets).
 FAIL_RATIO_TOLERANCE = 0.005
+# RM-2091: an asset that still fails after its own _http backoffs (~3 s) gets
+# ONE more sequential attempt after the parallel pass, this long after it ends.
+# A short CDN outage fails every asset probed inside it (8 workers, ~7k assets),
+# which alone crossed FAIL_RATIO_TOLERANCE on 2026-11-11; a replay had 0 fails.
+RETRY_PASS_PAUSE_S = 5.0
+# The pass is bounded: one timeout-type retry can cost ~63 s (3 x DEFAULT_TIMEOUT
+# + backoffs) and the task has a 30-minute limit (ops/install_RC_DDragonMirror.ps1),
+# so no new retry starts this many seconds after the pass begins (pause included);
+# the rest stay failed. --retry-budget overrides it; 0 skips the pass.
+RETRY_PASS_BUDGET_S = 180.0
+# More failures than this share of the plan is a real outage, not a blip:
+# retrying them one at a time is pointless, so the pass is skipped.
+RETRY_PASS_MAX_FAIL_RATIO = 0.10
 
 # RM-353: the version string is CDN input and it becomes a filesystem path
 # segment (META_DIR / version, WEB_DIR / version, and CACHE_ROOT / version in
@@ -611,7 +631,8 @@ def fetch_one(asset: Asset, dest: Path, *, manifest_entry: dict | None,
 
 def run(version: str, *, dry_run: bool, check_changed: bool, force: bool,
         rate_limit: float = MIN_INTERVAL_SEC,
-        workers: int = DEFAULT_WORKERS) -> PlanStats:
+        workers: int = DEFAULT_WORKERS,
+        retry_budget: float = RETRY_PASS_BUDGET_S) -> PlanStats:
     manifest = read_manifest(version)
     bundles: dict[str, Any] = {}
     for name in BUNDLE_NAMES:
@@ -633,22 +654,21 @@ def run(version: str, *, dry_run: bool, check_changed: bool, force: bool,
 
     manifest_lock = threading.Lock()
     stats_lock = threading.Lock()
+    retry: list[tuple[int, Asset]] = []
 
-    def _work(a: Asset) -> None:
-        dest = version_dir / a.rel_dest
+    def _attempt(a: Asset) -> tuple[str, dict | None, str]:
+        """One fetch of ``a``: (status, new_entry, failure reason; "" on success)."""
         with manifest_lock:
             me = manifest["assets"].get(a.rel_dest)
-        with stats_lock:
-            stats.bump(a.cls, "total")
         try:
-            status, new_entry = fetch_one(a, dest, manifest_entry=me,
-                                          check_changed=check_changed, force=force)
+            status, new_entry = fetch_one(
+                a, version_dir / a.rel_dest, manifest_entry=me, check_changed=check_changed, force=force
+            )
         except Exception as e:  # noqa: BLE001 - network anomalies are heterogeneous
-            logger.warning("fetch %s failed: %s", a.url, e)
-            with stats_lock:
-                stats.failed += 1
-                stats.bump(a.cls, "fail")
-            return
+            return "fail_error", None, f"{type(e).__name__}: {e}"
+        return status, new_entry, (status if status.startswith("fail") else "")
+
+    def _record(a: Asset, status: str, new_entry: dict | None) -> None:
         with stats_lock:
             if status == "skip_present":
                 stats.skipped_present += 1
@@ -661,14 +681,25 @@ def run(version: str, *, dry_run: bool, check_changed: bool, force: bool,
             elif status.startswith("fail"):
                 stats.failed += 1
                 stats.bump(a.cls, "fail")
-                logger.warning("fetch %s -> %s", a.url, status)
         if new_entry is not None and status in ("new", "changed"):
             with manifest_lock:
                 manifest["assets"][a.rel_dest] = new_entry
 
+    def _work(i: int, a: Asset) -> None:
+        with stats_lock:
+            stats.bump(a.cls, "total")
+        status, new_entry, reason = _attempt(a)
+        if reason:
+            # Held for the retry pass below; counted once, by its final outcome.
+            logger.warning("fetch %s failed: %s", a.url, reason)
+            with stats_lock:
+                retry.append((i, a))
+            return
+        _record(a, status, new_entry)
+
     stats.total = len(assets)
     with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
-        futures = [ex.submit(_work, a) for a in assets]
+        futures = [ex.submit(_work, i, a) for i, a in enumerate(assets)]
         # Drain via as_completed for prompt error visibility; result is None.
         for fut in as_completed(futures):
             try:
@@ -677,6 +708,42 @@ def run(version: str, *, dry_run: bool, check_changed: bool, force: bool,
                 logger.warning("worker raised: %s", e)
                 with stats_lock:
                     stats.failed += 1
+
+    # RM-2091: one sequential retry per failed asset, after a pause, so a short
+    # CDN outage that failed a burst of parallel probes does not decide the run.
+    # Bounded by retry_budget; skipped outright for a real outage.
+    if retry:
+        retry.sort(key=lambda t: t[0])
+        if retry_budget <= 0:
+            skip = f"disabled (retry budget {retry_budget:g}s)"
+        elif len(retry) > RETRY_PASS_MAX_FAIL_RATIO * len(assets):
+            skip = f"{len(retry)}/{len(assets)} failed, over {RETRY_PASS_MAX_FAIL_RATIO:.0%} - a real outage"
+        else:
+            skip = ""
+        if skip:
+            logger.warning("retry pass skipped: %s; %d asset(s) stay failed", skip, len(retry))
+            for _, a in retry:
+                _record(a, "fail_error", None)
+        else:
+            deadline = time.monotonic() + retry_budget
+            logger.info(
+                "retrying %d failed asset(s) once, sequentially, after %.0fs (budget %.0fs)",
+                len(retry),
+                RETRY_PASS_PAUSE_S,
+                retry_budget,
+            )
+            time.sleep(RETRY_PASS_PAUSE_S)
+            for _, a in retry:
+                if time.monotonic() >= deadline:
+                    logger.warning("fetch %s failed: retry skipped: budget", a.url)
+                    _record(a, "fail_error", None)
+                    continue
+                status, new_entry, reason = _attempt(a)
+                if reason:
+                    logger.warning("fetch %s failed on retry: %s", a.url, reason)
+                else:
+                    logger.info("fetch %s recovered on retry: %s", a.url, status)
+                _record(a, status, new_entry)
 
     write_manifest(version, manifest)
     return stats
@@ -786,6 +853,34 @@ def _exit_code_for(stats: PlanStats) -> int:
     return 2
 
 
+def _configure_logging(level: str) -> Path | None:
+    """Log to stderr as always; with no stderr (pythonw), to LOG_PATH instead.
+
+    Returns the log file path when the file sink is in use, else None. A sink
+    that cannot be opened never stops the refresh itself.
+    """
+    lvl = getattr(logging, level)
+    if sys.stderr is not None:
+        logging.basicConfig(level=lvl, format=LOG_FORMAT)
+        return None
+    path = LOG_PATH
+    root = logging.getLogger()
+    root.setLevel(lvl)
+    # Idempotent: a second main() in one process reuses the open handler.
+    for h in root.handlers:
+        base = getattr(h, "baseFilename", None)
+        if base and Path(base) == path.absolute():
+            return path
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        handler = rotating_file_handler(path)
+    except OSError:
+        return None
+    handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    root.addHandler(handler)
+    return path
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Refresh the local DDragon mirror.")
     p.add_argument("--check-only", action="store_true",
@@ -804,15 +899,24 @@ def main(argv: list[str] | None = None) -> int:
                    help=f"mirror version dirs to keep (default {RETAIN_VERSIONS})")
     p.add_argument("--no-prune", action="store_true",
                    help="skip stale version-dir pruning after a clean run")
+    p.add_argument("--retry-budget", type=float, default=RETRY_PASS_BUDGET_S, metavar="SECONDS",
+                   help=f"wall-clock cap on the failed-asset retry pass (default {RETRY_PASS_BUDGET_S:g}); "
+                        "0 skips the pass")
     p.add_argument("--log-level", default="INFO",
                    choices=("DEBUG", "INFO", "WARNING", "ERROR"))
     args = p.parse_args(argv)
 
-    logging.basicConfig(
-        level=getattr(logging, args.log_level),
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    log_file = _configure_logging(args.log_level)
+    try:
+        return _refresh(args)
+    except Exception:
+        # Under pythonw an uncaught traceback goes nowhere; keep it in the log.
+        if log_file is not None:
+            logger.exception("ddragon_mirror_refresh crashed")
+        raise
 
+
+def _refresh(args: argparse.Namespace) -> int:
     # RM-353: --version is operator input and reaches the same path joins, so
     # it is validated here rather than inside the resolver alone.
     latest = validate_version(args.version or resolve_latest_version())
@@ -829,7 +933,7 @@ def main(argv: list[str] | None = None) -> int:
                 "check-changed" if args.check_changed else "default")
 
     stats = run(latest, dry_run=args.dry_run, check_changed=args.check_changed,
-                force=args.full, workers=args.workers)
+                force=args.full, workers=args.workers, retry_budget=args.retry_budget)
 
     print(render_stats_table(stats))
 
@@ -846,7 +950,19 @@ def main(argv: list[str] | None = None) -> int:
         if pruned:
             print(f"pruned stale mirror dirs: {', '.join(pruned)}")
 
-    return _exit_code_for(stats)
+    rc = _exit_code_for(stats)
+    # print() is discarded under pythonw too, so the outcome also goes to the log.
+    logger.info(
+        "ddragon_mirror_refresh done version=%s exit=%d total=%d new=%d chg=%d skip=%d fail=%d",
+        latest,
+        rc,
+        stats.total,
+        stats.fetched_new,
+        stats.fetched_changed,
+        stats.skipped_present,
+        stats.failed,
+    )
+    return rc
 
 
 if __name__ == "__main__":

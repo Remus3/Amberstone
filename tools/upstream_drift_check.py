@@ -574,9 +574,12 @@ def trigger_refresh() -> tuple[bool, str]:
          rank-tier artifact too.
     rc in (0, 1) is a benign changed/no-op exit for both; any other rc or an
     exception marks that sub-run not-ok. Returns (all_ok, detail)."""
+    # RM-2091: --retry-budget 0 - the timeout=120 below leaves no room for the
+    # mirror's retry pause plus its retry budget; the daily RC-DDragonMirrorRefresh
+    # task runs the bounded retry pass, and rc 2 here is reported, not fatal.
     runs = (
         ([sys.executable, str(ROOT / "tools" / "ddragon_mirror_refresh.py"),
-          "--check-changed"], "ddragon"),
+          "--check-changed", "--retry-budget", "0"], "ddragon"),
         ([sys.executable, str(ROOT / "scripts" / "data_pipeline.py"),
           "rank_tiers"], "rank_tiers"),
     )
