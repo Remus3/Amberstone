@@ -78,6 +78,9 @@ ENV_ROOTS = {
     # RM-812: modules/cache_engine.decisions_db_path() data/decisions.db, read
     # at call time (performance_tracker.save_rating -> coaches.feedback).
     "RC_DECISIONS_DB": "decisions.db",
+    # RM-2092: agents/daemon_slayer/server.py logs/daemon_slayer.log, read at
+    # call time by install_file_log (serve_forever); a child DS inherits it.
+    "RC_DS_LOG_FILE": "daemon_slayer.log",
 }
 
 EXTRA_IGNORE = (

@@ -66,6 +66,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import threading
 import time
 from dataclasses import asdict
@@ -84,8 +85,12 @@ from urllib.parse import parse_qs, urlsplit
 # never DS. The engine modules stay core-free; the Share mirror that once
 # required the shell to be too was removed 2026-09-07. RM-825 imports
 # ``core.log_scrub`` directly for ``log_message`` (the same stdlib-only module).
+# RM-2092 adds ``core.log_rotation`` (stdlib-only) for the DS log file handler.
 from core.http_head_deadline import HeadDeadlineMixin
 from core.http_host_gate import HostAllowlistMixin
+from core.log_rotation import DEFAULT_BACKUP_COUNT as _LOG_BACKUP_COUNT
+from core.log_rotation import DEFAULT_MAX_BYTES as _LOG_MAX_BYTES
+from core.log_rotation import rotating_file_handler as _rotating_file_handler
 from core.log_scrub import MAX_LINE_CHARS as _LOG_MAX_CHARS
 from core.log_scrub import scrub_log as _scrub_log
 from core.log_scrub import install_scrub_filter as _install_scrub_filter
@@ -3714,14 +3719,65 @@ def start_server(
     return srv
 
 
+# RM-2092: DS logged to stderr only (the basicConfig in serve_forever), and RC
+# starts DS as a child with stdout and stderr on DEVNULL
+# (core/daemon_slayer_client.py ``_spawn_child``, pinned by
+# tests/test_rm740e_ds_spawn_owner.py), so every runtime WARNING / ERROR - the
+# engine-reject line among them - was lost in production. serve_forever now
+# also writes them to a size-capped file (core.log_rotation, the RM-718 bound)
+# under the repo root, anchored to this file rather than the process cwd, or
+# to the file a non-empty RC_DS_LOG_FILE names (the suite points it at tmp).
+LOG_FILE_ENV = "RC_DS_LOG_FILE"
+LOG_FILE_HANDLER_NAME = "rc-ds-log-file"
+_LOG_FILE = Path(__file__).resolve().parents[2] / "logs" / "daemon_slayer.log"
+_LOG_FORMAT = "%(asctime)s %(name)s %(levelname)s %(message)s"
+_LOG_FILE_LOCK = threading.Lock()
+
+
+def log_file_target(path: str | os.PathLike[str] | None = None) -> Path:
+    """Return the DS log file: ``path``, a non-empty ``RC_DS_LOG_FILE``, or the default.
+
+    The default is ``<repo>/logs/daemon_slayer.log``.
+    """
+    if path is not None:
+        return Path(path)
+    override = (os.environ.get(LOG_FILE_ENV) or "").strip()
+    return Path(override) if override else _LOG_FILE
+
+
+def install_file_log(path: str | os.PathLike[str] | None = None) -> logging.Handler | None:
+    """Attach the size-capped DS log file handler to the root logger.
+
+    Idempotent: a root logger that already carries one keeps it, and it is
+    returned. A file that cannot be opened (a directory, a path through a
+    regular file, a refused write) leaves the root logger with what it had -
+    stderr in the DS process - logs one warning and returns None, so DS
+    serves without its log file rather than not at all.
+    """
+    root = logging.getLogger()
+    with _LOG_FILE_LOCK:
+        for existing in root.handlers:
+            if existing.name == LOG_FILE_HANDLER_NAME:
+                return existing
+        target = log_file_target(path)
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            handler = _rotating_file_handler(target, _LOG_MAX_BYTES, _LOG_BACKUP_COUNT)
+        except (OSError, ValueError) as exc:
+            _log.warning("log file %s unavailable (%s: %s) - logging to stderr only", target, type(exc).__name__, exc)
+            return None
+        handler.name = LOG_FILE_HANDLER_NAME
+        handler.setFormatter(logging.Formatter(_LOG_FORMAT))
+        root.addHandler(handler)
+        return handler
+
+
 def serve_forever(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT,
                   patch: Optional[str] = None,
                   data_root: Optional[Path] = None) -> int:
     """Blocking entry point used by the CLI."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    )
+    logging.basicConfig(level=logging.INFO, format=_LOG_FORMAT)
+    install_file_log()
     try:
         srv = start_server(host=host, port=port, patch=patch, data_root=data_root)
     except SnapshotNotFound as e:
