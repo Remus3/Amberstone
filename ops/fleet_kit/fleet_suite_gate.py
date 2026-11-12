@@ -297,10 +297,10 @@ def slot_live(path, alive=None, started=None):
     return not (want is not None and have is not None and abs(float(want) - have) > 1.0)
 
 
-def held(d, alive=None, started=None, upto=None):
+def held(d, alive=None, started=None, upto=None, prune=True):
     """Indices of live slots (stale slot files are removed on the way).
     upto=N limits the look to the N regular slots (KIT-15: the lane slot N
-    does not count against them)."""
+    does not count against them). v30: prune=False removes nothing."""
     out = []
     for k in range(MAX_SLOTS if upto is None else min(int(upto), MAX_SLOTS)):
         p = _slot(d, k)
@@ -308,10 +308,16 @@ def held(d, alive=None, started=None, upto=None):
             continue
         if slot_live(p, alive, started):
             out.append(k)
-        else:
+        elif prune:
             with contextlib.suppress(OSError):
                 p.unlink()
     return out
+
+
+def held_readonly(d, alive=None, started=None, upto=None):
+    """v30 KIT-BUDGET-HELD-UNLINK: held() read-only - the live slot indices,
+    never unlinking a stale slot file (fleet_test_guard.budget reads this)."""
+    return held(d, alive, started, upto, prune=False)
 
 
 def _who(who):
@@ -815,6 +821,18 @@ def free_commit_mb():
     if pi is None:
         return None
     return (pi.CommitLimit - pi.CommitTotal) * pi.PageSize / float(1 << 20)
+
+
+def free_ram_mb():
+    """v30 (DRIVE-REAPER): PhysicalAvailable in MB (GetPerformanceInfo), or None
+    where it cannot be read (POSIX, an API error). Never raises."""
+    pi = _perf_info()
+    if pi is None:
+        return None
+    try:
+        return pi.PhysicalAvailable * pi.PageSize / float(1 << 20)
+    except (AttributeError, TypeError, ValueError):
+        return None
 
 
 def commit_limit_mb():

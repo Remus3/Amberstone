@@ -75,6 +75,27 @@ $pyC = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
 if (-not (Test-Path $pyC)) { $pyC = "python" }
 $route = Join-Path $PSScriptRoot "fleet_route.py"
 $note = "lane-" + [System.IO.Path]::GetFileNameWithoutExtension($PromptFile)
+
+# KIT v30 LANE-MODEL (MAIN 2026-11-12 0345 ORDER, section 6): the lane's machine
+# default, fleet_lanes.lane_model("RC", None, <note>) from key lane_model in
+# ~/.fleet/lanes.json (MAIN's file; RC never writes it), is taken FIRST when it
+# names a model. The kit's spawn applies it only when the caller names no model,
+# and this runner always passes --model, so the runner reads it itself. Same
+# semantics as the s144 driver's apply_lane_model: no entry, a read fault, a
+# python that cannot start or any other shape keeps the model chosen above, so a
+# lane never fails to spawn over this read. The kit dir is resolved next to THIS
+# file (the MAIN checkout), run isolated (-I) with single quotes only, because
+# PowerShell 5.1 does not escape a double quote inside a native argument.
+$laneModelPy = "import sys; sys.path.insert(0, sys.argv[1]); import fleet_lanes as L; print(L.lane_model('RC', None, sys.argv[2]) or '')"
+$kitModel = ""
+try {
+  $kitDir = Join-Path (Split-Path $PSScriptRoot -Parent) "fleet_kit"
+  $kitModel = [string](& $pyC -I -c $laneModelPy $kitDir $note 2>$null)
+} catch {
+  $kitModel = ""
+}
+$kitModel = $kitModel.Trim()
+if ($kitModel -cmatch '^(?:opus|sonnet|haiku|claude-[a-z0-9][a-z0-9.-]*)(?:\[1m\])?$') { $model = $kitModel }
 # 6 h ceiling per lane run: the kit's spawn is bounded, so an unattended worker
 # must be too (same ceiling as tools/headless_run.ps1). queue_loop's own cycle
 # timeout still applies on top.
@@ -89,7 +110,7 @@ $routeArgs = @("--caller", "run_lane", "--note", $note, "--kind", "build", "--wr
 if ($effort) { $routeArgs += @("--effort", $effort) }
 $routeArgs += @("--", "--dangerously-skip-permissions")
 
-"lane start $(Get-Date -Format s) cwd=$Cwd model=$model effort=$effort prompt=$PromptFile route=fleet_route" | Out-File $Log -Encoding utf8
+"lane start $(Get-Date -Format s) cwd=$Cwd model=$model kit_lane_model=$kitModel effort=$effort prompt=$PromptFile route=fleet_route" | Out-File $Log -Encoding utf8
 # `*>&1 |` merges every stream into the pipeline so Out-File sets the encoding
 # (UTF-8): the redirection operators alone write UTF-16LE on Windows PowerShell
 # 5.1 (MEASURED 2026-08-02, a mixed-encoding lane log). The reader stays

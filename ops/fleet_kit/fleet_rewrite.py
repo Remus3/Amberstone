@@ -59,6 +59,28 @@ in the range, its PLAN_ID covers the range, the mailmap names only the
 identities seen in it, and filter-repo runs with `--refs BASE..BRANCH`;
 `run` refuses a --range that differs from the plan's. Every other gate
 (bundle of every ref, clean tree, no linked worktree, the approval) holds.
+v29 (KIT-REWRITE-GAPS, RC ANSWERs 2026-11-01 0830, 0930, 1058 and the ruling
+docs/rulings/2026-11-01-rc-rewrite-stale-refs.md):
+- `run` refuses a whole-history rewrite while any ref sits outside heads, tags
+  and stash: filter-repo would rewrite it and turn origin refs into local heads.
+  `plan` reports them up front. Order: plan, bundle (it holds them), delete them
+  as their own read-back step, run. A --range run is exempt: --refs implies
+  --partial and filter-repo leaves other refs alone.
+- `run` refuses an earlier .git/filter-repo/already_ran: under a day old it is a
+  silent continuation, over a day it prompts a process with no console.
+- The stash is part of the plan (filter-repo adds every refs/stash reflog sha to
+  its ref list, and remaps commit-message tokens that cite them).
+- `rehearse` replays the run in a scratch bare repo inside the state dir, with
+  alternates to this store: the plan's heads and tags plus refs/stash with its
+  reflog, the same argv. It writes rehearsal.json and moves no ref here; `run`
+  then compares its tips (a difference is a non-zero exit). A mirror that drops
+  the stash predicts the wrong tip.
+- --replace-message F (filter-repo's --replace-message; same local-only rule as
+  the replace file, explicit only, no default) on plan, rehearse and run.
+- The mailmap reads every ref plus the stash reflog, what filter-repo rewrites.
+- filter-repo leaves a root-level .git file per stash reflog sha it passed as a
+  rev (not a ref; for-each-ref does not list it). result.json reports the count
+  and the CLI prints it; they are left in place, no consumer was checked.
 Pure stdlib plus the sibling kit file fleet_identity.py.
 """
 
@@ -68,6 +90,8 @@ import importlib.util
 import json
 import os
 import re
+import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -79,6 +103,11 @@ FRESH_H = 6.0
 PLAN_MAX_H = 24.0
 MIN_KIT = 13
 REFS = ("--branches", "--tags")
+STASH_REF = "refs/stash"
+KEPT_PREFIXES = ("refs/heads/", "refs/tags/")  # v29: with STASH_REF, what a whole run takes
+SCRATCH = "rehearsal-scratch"
+SHA_NAME = re.compile(r"^[0-9a-f]{40}$")
+GIT_ENV_REDIRECTS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_OBJECT_DIRECTORY")
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
 
 
@@ -137,6 +166,40 @@ def ref_tips(root):
     return dict(ln.split(" ", 1) for ln in out.splitlines() if " " in ln)
 
 
+def foreign_refs(root):
+    """v29: refs a whole-history filter-repo run would rewrite beyond the plan."""
+    out = git(root, "for-each-ref", "--format=%(refname)")
+    return sorted(r for r in out.splitlines()
+                  if r and r != STASH_REF and not r.startswith(KEPT_PREFIXES))
+
+
+def stash_tip(root):
+    code, out = git(root, "rev-parse", "--verify", "--quiet", STASH_REF, check=False)
+    return out.strip() if code == 0 else None
+
+
+def stash_log(root):
+    return common_dir(root) / "logs" / "refs" / "stash"
+
+
+def stash_shas(root):
+    """v29: the refs/stash reflog shas, read as filter-repo reads them."""
+    try:
+        lines = stash_log(root).read_bytes().splitlines()
+    except OSError:
+        return []
+    return [ln.split()[1].decode("ascii") for ln in lines if len(ln.split()) >= 2]
+
+
+def stray_sha_files(root):
+    """v29: root-level .git files named by a full sha (filter-repo leaves them)."""
+    try:
+        return sorted(p.name for p in common_dir(root).iterdir()
+                      if SHA_NAME.match(p.name) and p.is_file())
+    except OSError:
+        return []
+
+
 def _sha_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -161,6 +224,22 @@ def replace_file(root, given=None):
         if given:
             raise Refused("REWRITE: replace file not found")
         return None
+    return _local_only(root, p, "replace")
+
+
+def message_file(root, given=None):
+    """v29: the --replace-message file, or None. Explicit only: no default path."""
+    if not given:
+        return None
+    p = Path(given)
+    if not p.is_absolute():
+        p = Path(root) / p
+    if not p.is_file():
+        raise Refused("REWRITE: message file not found")
+    return _local_only(root, p, "message")
+
+
+def _local_only(root, p, what):
     top = top_of(root)
     try:
         rel = p.resolve().relative_to(top.resolve()).as_posix()
@@ -168,12 +247,12 @@ def replace_file(root, given=None):
         return p
     code, _ = git(root, "ls-files", "--error-unmatch", "--", rel, check=False)
     if code == 0:
-        raise Refused("REWRITE: the replace file is TRACKED; it holds leaked values and "
-                      "must stay local (git rm --cached it and ignore it)")
+        raise Refused("REWRITE: the {} file is TRACKED; it holds leaked values and "
+                      "must stay local (git rm --cached it and ignore it)".format(what))
     code, _ = git(root, "check-ignore", "-q", "--", rel, check=False)
     if code != 0:
-        raise Refused("REWRITE: the replace file is inside the worktree and not ignored; "
-                      "ignore it or move it outside")
+        raise Refused("REWRITE: the {} file is inside the worktree and not ignored; "
+                      "ignore it or move it outside".format(what))
     return p
 
 
@@ -212,7 +291,7 @@ def operator_ident(root):
     return idents, full
 
 
-def plan_id(tips, rfile, full, rng=None):
+def plan_id(tips, rfile, full, rng=None, mfile=None, stash=None):
     h = hashlib.sha256()
     for ref in sorted(tips):
         h.update(("{} {}\n".format(ref, tips[ref])).encode("ascii"))
@@ -220,6 +299,10 @@ def plan_id(tips, rfile, full, rng=None):
     h.update(repr(full).lower().encode("utf-8"))
     if rng:  # v27: a range plan never matches a whole-history id
         h.update(("range " + rng).encode("utf-8"))
+    if mfile:  # v29: the message file and the stash feed filter-repo too
+        h.update(("message " + _sha_file(mfile)).encode("ascii"))
+    if stash and not rng:
+        h.update(("stash " + stash).encode("ascii"))
     return h.hexdigest()[:12]
 
 
@@ -265,7 +348,21 @@ def sha_change(root, flagged, graph=None, rng=None):
     return len(changed)
 
 
-def count(root, rfile, idents, rng=None):
+def message_counts(root, mfile, revs):
+    """v29: per message-file entry, by index, the commits whose message hits it."""
+    out = []
+    for i, (kind, needle) in enumerate(replace_entries(mfile), 1):
+        if kind == "glob":
+            out.append({"entry": i, "kind": kind, "commits": None})
+            continue
+        flag = "--extended-regexp" if kind == "regex" else "--fixed-strings"
+        hits = git(root, "log", "--format=%H", flag, "--grep=" + needle, *revs, check=False)[1]
+        out.append({"entry": i, "kind": kind,
+                    "commits": len([x for x in hits.splitlines() if x.strip()])})
+    return out
+
+
+def count(root, rfile, idents, rng=None, mfile=None):
     revs = [rng] if rng else list(REFS)
     rows = identity.commits(root, ["--topo-order", *revs]) or []
     bad = identity.violations(rows, idents)
@@ -290,23 +387,27 @@ def count(root, rfile, idents, rng=None):
                         "head_hits": n})
     return {"commits": len(rows), "commits_to_rewrite": len({s for s, _ in bad}),
             "classes": classes, "replace": needles,
+            "message_replace": message_counts(root, mfile, revs),
             "trigger": tiers["distinct_trigger"],
             "ride_along_only": tiers["distinct_ride_along_only"],
             "sha_change": sha_change(root, flagged, rng=rng),
             "oldest_depth": tiers["oldest_depth"]}
 
 
-def plan(root, given=None, clock=_now, rng=None):
+def plan(root, given=None, clock=_now, rng=None, msg=None):
     rng = check_range(root, rng)
     rfile = replace_file(root, given)
+    mfile = message_file(root, msg)
     idents, full = operator_ident(root)
     if not idents:
         raise Refused("REWRITE: set the operator identity in LOCAL git config first: "
                       "git config --local --add {} \"Name <address>\"".format(identity.CONFIG_KEY))
     tips = ref_tips(root)
-    doc = {"at": clock(), "plan_id": plan_id(tips, rfile, full, rng), "tips": tips,
-           "replace_sha256": _sha_file(rfile) if rfile else None, "range": rng,
-           "counts": count(root, rfile, idents, rng)}
+    doc = {"at": clock(), "plan_id": plan_id(tips, rfile, full, rng, mfile, stash_tip(root)),
+           "tips": tips, "replace_sha256": _sha_file(rfile) if rfile else None,
+           "message_sha256": _sha_file(mfile) if mfile else None, "range": rng,
+           "foreign_refs": [] if rng else foreign_refs(root),
+           "counts": count(root, rfile, idents, rng, mfile)}
     (state_dir(root) / "plan.json").write_text(json.dumps(doc, indent=1, sort_keys=True),
                                                encoding="ascii", newline="\n")
     return doc
@@ -354,7 +455,7 @@ def kit_version(root):
     return 0
 
 
-def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None, rng=None):
+def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None, rng=None, msg=None):
     """Every refusal of `run`; returns (plan doc, backup doc, rfile, full ident)."""
     if kit_version(root) < MIN_KIT:
         raise Refused(f"REWRITE: vendor kit v{MIN_KIT} first (the hooks must land "
@@ -372,13 +473,14 @@ def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None, rng=
         raise Refused(f"REWRITE: the plan is older than {int(PLAN_MAX_H)} h - "
                       "run `plan` again")
     rfile = replace_file(root, given)
+    mfile = message_file(root, msg)
     idents, full = operator_ident(root)
     if full is None:
         raise Refused("REWRITE: {} needs a `Name <address>` value for the mailmap".format(identity.CONFIG_KEY))
     tips = ref_tips(root)
-    if plan_id(tips, rfile, full, rng) != pl["plan_id"]:
-        raise Refused("REWRITE: refs or the replace file changed since the plan - "
-                      "run `plan` again")
+    if plan_id(tips, rfile, full, rng, mfile, stash_tip(root)) != pl["plan_id"]:
+        raise Refused("REWRITE: refs, the stash, the replace file or the message file "
+                      "changed since the plan - run `plan` again")
     bk = _load(root, "backup.json")
     if not bk:
         raise Refused("REWRITE: no backup bundle - run `bundle --out DIR` first")
@@ -392,6 +494,13 @@ def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None, rng=
         raise Refused("REWRITE: the backup bundle does not hold every current branch and "
                       "tag tip - take a fresh one")
     git(root, "bundle", "verify", str(bpath), timeout=3600)
+    foreign = [] if rng else foreign_refs(root)
+    if foreign:
+        raise Refused("REWRITE: {} refs outside heads, tags and stash (first: {}); filter-repo "
+                      "would rewrite them and turn origin refs into local heads. The bundle "
+                      "holds them: delete them as their own read-back step, one per call, "
+                      "symrefs first (git symbolic-ref -d REF, then git update-ref -d REF), "
+                      "then run again".format(len(foreign), ", ".join(foreign[:5])))
     if git(root, "status", "--porcelain", "--untracked-files=no").strip():
         raise Refused("REWRITE: the worktree has tracked changes - commit or stash first")
     wts = [ln for ln in git(root, "worktree", "list", "--porcelain").splitlines()
@@ -402,14 +511,20 @@ def preflight(root, confirm, given=None, clock=_now, have_filter_repo=None, rng=
         git(root, "filter-repo", "--version", check=False)[0] == 0
     if not ok:
         raise Refused("REWRITE: git filter-repo is not installed")
+    if (common_dir(root) / "filter-repo" / "already_ran").exists():
+        raise Refused("REWRITE: an earlier filter-repo run left .git/filter-repo; a new run "
+                      "would continue it. Rename that directory to a new name first")
     return pl, bk, rfile, full
 
 
 def mailmap_text(root, full, idents, rng=None):
-    """One mailmap line per non-operator identity seen on any branch or tag
-    (v27: only inside rng when given)."""
+    """One mailmap line per non-operator identity on what filter-repo rewrites:
+    every ref plus the stash reflog (v29; v27: only inside rng when given)."""
     lines, seen = [], set()
-    for r in identity.commits(root, [rng] if rng else list(REFS)) or []:
+    rows = identity.commits(root, [rng] if rng else ["--all"]) or []
+    if not rng and stash_shas(root):
+        rows += identity.commits(root, stash_shas(root)) or []
+    for r in rows:
         for n, a in ((r["an"], r["ae"]), (r["cn"], r["ce"])):
             if identity.is_operator(n, a, idents) or (n, a) in seen:
                 continue
@@ -452,26 +567,110 @@ def remotes(root):
     return out
 
 
-def filter_argv(mailmap, rfile, rng=None):
+def filter_argv(mailmap, rfile, rng=None, mfile=None):
     argv = ["git", "filter-repo", "--force", "--mailmap", str(mailmap),
             "--message-callback", message_callback()]
     if rfile is not None:
         argv += ["--replace-text", str(rfile)]
+    if mfile is not None:  # v29: the CLI reaches commit messages
+        argv += ["--replace-message", str(mfile)]
     if rng:  # v27: filter-repo rewrites only BASE..BRANCH
         argv += ["--refs", rng]
     return argv
 
 
+def _rmtree(path):
+    """A scratch tree of this tool's own; git leaves its pack files read-only."""
+    if not Path(path).exists():
+        return
+    for base, _dirs, files in os.walk(path):
+        for name in files:
+            os.chmod(os.path.join(base, name), stat.S_IWRITE | stat.S_IREAD)
+    shutil.rmtree(path)
+
+
+def rehearse(root, given=None, clock=_now, runner=None, msg=None):
+    """v29: run the planned rewrite on a scratch bare repo in the state dir, with
+    alternates to this store and refs/stash + its reflog kept, and record the
+    tips it gives. Nothing here moves: no ref, no reflog, no object is written
+    to the real repo. Foreign refs are left out, as `run` requires them gone."""
+    moved = [k for k in GIT_ENV_REDIRECTS if os.environ.get(k)]
+    if moved:
+        raise Refused("REWRITE: rehearse refuses while {} is set".format(moved[0]))
+    pl = _load(root, "plan.json")
+    if not pl:
+        raise Refused("REWRITE: no plan - run `plan` (the dry-run count) first")
+    if pl.get("range"):
+        raise Refused("REWRITE: rehearse is for a whole-history plan, not a --range one")
+    rfile, mfile = replace_file(root, given), message_file(root, msg)
+    idents, full = operator_ident(root)
+    if full is None:
+        raise Refused("REWRITE: {} needs a `Name <address>` value for the mailmap".format(identity.CONFIG_KEY))
+    tips = ref_tips(root)
+    stash = stash_tip(root)
+    if plan_id(tips, rfile, full, None, mfile, stash) != pl["plan_id"]:
+        raise Refused("REWRITE: refs, the stash, the replace file or the message file "
+                      "changed since the plan - run `plan` again")
+    sd = state_dir(root)
+    scratch = sd / SCRATCH
+    _rmtree(scratch)
+    mm = sd / "mailmap"
+    mm.write_text(mailmap_text(root, full, idents), encoding="utf-8", newline="\n")
+    runner = runner or (lambda a: subprocess.run(a, cwd=str(scratch), capture_output=True,
+                                                 creationflags=_NO_WINDOW).returncode)
+    try:
+        git(sd, "init", "-q", "--bare", SCRATCH)
+        info = scratch / "objects" / "info"
+        info.mkdir(parents=True, exist_ok=True)
+        (info / "alternates").write_text((common_dir(root) / "objects").as_posix() + "\n",
+                                         encoding="utf-8", newline="\n")
+        head = git(root, "symbolic-ref", "-q", "HEAD", check=False)
+        for ref, sha in sorted(tips.items()):
+            git(scratch, "update-ref", ref, sha)
+        if head[0] == 0:
+            git(scratch, "symbolic-ref", "HEAD", head[1].strip())
+        if stash:
+            git(scratch, "update-ref", STASH_REF, stash)
+            log = scratch / "logs" / "refs" / "stash"
+            log.parent.mkdir(parents=True, exist_ok=True)
+            log.write_bytes(stash_log(root).read_bytes())
+        argv = filter_argv(mm.resolve(), Path(rfile).resolve() if rfile else None, None,
+                           Path(mfile).resolve() if mfile else None)
+        rc = runner(argv)
+        if rc != 0:
+            raise Refused(f"REWRITE: the rehearsal's git filter-repo failed (exit {rc}); "
+                          "nothing moved in the real repo")
+        after = count(scratch, rfile, idents, None, mfile)
+        doc = {"at": clock(), "plan_id": pl["plan_id"], "tips": ref_tips(scratch), "after": after,
+               "foreign_refs_left_out": len(foreign_refs(root))}
+    finally:
+        _rmtree(scratch)
+    (sd / "rehearsal.json").write_text(json.dumps(doc, indent=1, sort_keys=True),
+                                       encoding="ascii", newline="\n")
+    return doc
+
+
+def _rehearsal_verdict(root, pid):
+    """v29: None with no rehearsal of this plan, else how the tips compare."""
+    rh = _load(root, "rehearsal.json")
+    if not rh or rh.get("plan_id") != pid:
+        return None
+    want, have = rh.get("tips") or {}, ref_tips(root)
+    differs = [r for r in set(want) | set(have) if want.get(r) != have.get(r)]
+    return {"equal": not differs, "differs": len(differs)}
+
+
 def run(root, confirm, given=None, clock=_now, runner=None, have_filter_repo=None,
-        rng=None):
-    pl, _bk, rfile, full = preflight(root, confirm, given, clock, have_filter_repo, rng)
+        rng=None, msg=None):
+    pl, _bk, rfile, full = preflight(root, confirm, given, clock, have_filter_repo, rng, msg)
+    mfile = message_file(root, msg)
     rng = pl.get("range") or None
     idents, _ = operator_ident(root)
     sd = state_dir(root)
     mm = sd / "mailmap"
     mm.write_text(mailmap_text(root, full, idents, rng), encoding="utf-8", newline="\n")
     saved = remotes(root)
-    argv = filter_argv(mm, rfile, rng)
+    argv = filter_argv(mm, rfile, rng, mfile)
     top = top_of(root)
     runner = runner or (lambda a: subprocess.run(a, cwd=str(top),
                                                  creationflags=_NO_WINDOW).returncode)
@@ -483,9 +682,10 @@ def run(root, confirm, given=None, clock=_now, runner=None, have_filter_repo=Non
     for name, url in saved.items():
         if name not in have:
             git(root, "remote", "add", name, url)
-    after = count(root, rfile, idents, rng)
+    after = count(root, rfile, idents, rng, mfile)
     doc = {"at": clock(), "plan_id": pl["plan_id"], "before": pl["counts"], "after": after,
-           "range": rng}
+           "range": rng, "stray_sha_files": len(stray_sha_files(root)),
+           "rehearsal": _rehearsal_verdict(root, pl["plan_id"])}
     (sd / "result.json").write_text(json.dumps(doc, indent=1, sort_keys=True),
                                     encoding="ascii", newline="\n")
     return doc
@@ -509,17 +709,21 @@ def _summary(counts):
     for n in counts["replace"]:
         parts.append(f"replace #{n['entry']}: {n['commits']} commits, "
                      f"{n['head_hits']} HEAD hits")
+    for n in counts.get("message_replace") or ():
+        parts.append(f"message #{n['entry']}: {n['commits']} commits")
     return "; ".join(parts)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="fleet_rewrite.py")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("plan", "bundle", "run"):
+    for name in ("plan", "bundle", "rehearse", "run"):
         sp = sub.add_parser(name)
         sp.add_argument("--root", default=".")
         if name != "bundle":
             sp.add_argument("--replace-file")
+            sp.add_argument("--replace-message")  # v29: the CLI reaches messages
+        if name in ("plan", "run"):
             sp.add_argument("--range", dest="rng")  # v27: BASE..BRANCH
         if name == "bundle":
             sp.add_argument("--out", required=True)
@@ -531,16 +735,33 @@ def main(argv=None):
         return 2
     try:
         if args.cmd == "plan":
-            doc = plan(args.root, args.replace_file, rng=args.rng)
+            doc = plan(args.root, args.replace_file, rng=args.rng, msg=args.replace_message)
             scope = "; range {}".format(doc["range"]) if doc.get("range") else ""
+            if doc["foreign_refs"]:
+                scope += "; {} refs outside heads, tags and stash: `run` refuses until they " \
+                         "are gone".format(len(doc["foreign_refs"]))
             print("PLAN {}: {}{}".format(doc["plan_id"], _summary(doc["counts"]), scope))
         elif args.cmd == "bundle":
             doc = bundle(args.root, args.out)
             print(f"BUNDLE ok: {len(doc['heads'])} refs, sha256 {doc['sha256'][:16]}")
-        else:
-            doc = run(args.root, args.confirm, args.replace_file, rng=args.rng)
-            print("REWRITE done: before {} | after {} - NOT pushed".format(_summary(doc["before"]), _summary(doc["after"])))
+        elif args.cmd == "rehearse":
+            doc = rehearse(args.root, args.replace_file, msg=args.replace_message)
+            print("REHEARSAL {}: after {}; {} tips in rehearsal.json; {} foreign refs left out; "
+                  "no real ref moved".format(doc["plan_id"], _summary(doc["after"]),
+                                             len(doc["tips"]), doc["foreign_refs_left_out"]))
             return 0 if doc["after"]["commits_to_rewrite"] == 0 else 1
+        else:
+            doc = run(args.root, args.confirm, args.replace_file, rng=args.rng,
+                      msg=args.replace_message)
+            print("REWRITE done: before {} | after {} - NOT pushed".format(_summary(doc["before"]), _summary(doc["after"])))
+            if doc["stray_sha_files"]:
+                print("{} root-level .git files named by a sha left in place (filter-repo, "
+                      "stash reflog)".format(doc["stray_sha_files"]))
+            rh = doc["rehearsal"]
+            if rh:
+                print("rehearsal tips: {}".format(
+                    "equal" if rh["equal"] else "DIFFER on {} refs - STOP".format(rh["differs"])))
+            return 0 if doc["after"]["commits_to_rewrite"] == 0 and (not rh or rh["equal"]) else 1
     except Refused as exc:
         sys.stderr.write(str(exc) + "\n")
         return 3

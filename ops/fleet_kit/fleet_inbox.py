@@ -71,6 +71,11 @@ ops/loop/control/inbox_pending_orders.json (pending rows, oldest first) and
 session_start() / `python fleet_inbox.py pending <root> [--inbox D --code C]`
 list every pending ORDER FIRST, then the unseen notes, WORK before the rest.
 
+v30 (KIT-LW-PROPOSALS-1105 (a)): classify() honours the name's addressee,
+`-from-XX-<CLASS>-to-<CODE>-` (addressee()): a note addressed to another tree
+is SKIP ("addressed to <CODE>"), whatever its class; -to-ALL-... and a name
+with no addressee classify as before.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -94,7 +99,7 @@ ANSWER_CLASSES = ("ANSWER", "ACK", "RECEIVED", "POLL-ANSWER", "INFORMATION",
 TRIAGE_SPAWN = {"model": "sonnet", "effort": "low", "timeout": 300}
 SKIP, ACK, WORK, TRIAGE = "skip", "ack", "work", "triage"
 VERDICTS = ("NOREPLY", "ACK", "ANSWER")
-KINDS = ("build", "inbox", "triage", "order", "unattributed")
+KINDS = ("build", "inbox", "triage", "order", "report", "probe", "unattributed")  # v30
 SEEN_REL = Path("ops/loop/control/inbox_seen.jsonl")
 OUTBOUND_REL = Path("ops/loop/control/outbound_notes.jsonl")
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
@@ -117,6 +122,9 @@ def triage_spawn_kwargs(floors_in_hooks):
 
 _SENDER = re.compile(r"(?:^|[-_])(?i:from)-([A-Z]+)-")
 _CLASS = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-([A-Za-z]+(?:-[A-Z]+)?)")
+_TO_AFTER_CLASS = re.compile(r"-(?i:to)-([A-Za-z0-9]+)(?=[-_.]|$)")
+_TREE_CODE = re.compile(r"^[A-Z]{2,12}$")  # a code, or a packaged name like SUPERVISOR
+GROUP_ADDRESSEES = ("ALL",)  # -to-ALL-..., -to-ALL-SEVEN-...: every tree
 _AUTO = re.compile(r"(?:^|[-_])(?i:from)-[A-Z]+-(?i:auto[-_]?reply)(?:[-_.]|$)")
 _TITLE = re.compile(r"^#+\s*(?i:from)\s+([A-Z]+)\b(?:\s*\([^)]*\))?"
                     r"(?:\s*-\s*([A-Z][A-Za-z-]*))?")
@@ -193,6 +201,21 @@ def note_class(name, head=""):
     return None
 
 
+def addressee(name):
+    """v30 (KIT-LW-PROPOSALS-1105 (a)): the tree code a note's name addresses
+    right after its class (`-from-XX-<CLASS>-to-<CODE>-`), upper-case, or None
+    when the name has no such addressee or it is not a tree code. ALL is
+    returned as "ALL" (a group)."""
+    base = _base(name)
+    m = _CLASS.search(base)
+    if not m:
+        return None
+    t = _TO_AFTER_CLASS.match(base, m.end())
+    if not t or not _TREE_CODE.match(t.group(1)):
+        return None
+    return t.group(1)
+
+
 def hop(head):
     """The `HOP: <n>` header line; absent = 1 (an original note)."""
     m = _HOP.search(head or "")
@@ -221,6 +244,10 @@ def classify(name, own_code, head=""):
     snd, cls, h = sender(name, head), note_class(name, head), hop(head)
     if snd == own_code:
         return Decision(SKIP, cls, snd, "self", h)
+    to = addressee(name)
+    if to and own_code and to != str(own_code).upper() and to not in GROUP_ADDRESSEES:
+        # v30: addressed to another tree - not this tree's work (any class)
+        return Decision(SKIP, cls, snd, f"addressed to {to}", h)
     if cls in EXEMPT:
         return Decision(WORK, cls, snd, f"class {cls} escalates", h)
     if _terminal(name, head):
@@ -618,7 +645,8 @@ def batch_note(code, to, answers, hop_n=2, stamp=None):
 # ---------------------------------------------------------------- cost split
 
 def run_kind(line):
-    """build | inbox | triage | order | unattributed. An explicit "kind" (kit
+    """build | inbox | triage | order | report | probe | unattributed. An
+    explicit "kind" (kit
     v8) wins, except that "inbox" (or no kind) on an ORDER / FIX / RULING
     note is "order" (v16); else a channel-note name (`-from-XX-`) is inbox,
     an empty note unattributed, and any other label (lane-*, drain-*, plan
@@ -643,7 +671,7 @@ def _ts(line):
 
 def cost_split(lines, since=None, until=None):
     """{"build": {"usd", "runs"}, "inbox": ..., "triage": ..., "order": ...,
-    "unattributed": ...,
+    "report": ..., "probe": ..., "unattributed": ...,
     "total_usd", "inbox_share"} over usage lines with since <= ts < until (epoch).
     inbox_share counts inbox + triage against attributed spend. v20: "fallback"
     counts the ACCT-FALLBACK runs (usage "fallback": true) per route they ran on

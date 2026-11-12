@@ -47,6 +47,9 @@ v16 (KIT-16):
         blocks (fleet_done.py archive --apply)` - it can never validate - and
         exits 1; the second stdout line reads `fail: ...` with the same text.
         A `--status failed` mark is unchanged (exit 0, the size line printed).
+    v30 (CARRY-7): at HANDOFF_SOON_BYTES (90 percent of the cap, 27648) and up
+        to the cap, mark prints a second line `warn: ...` naming the largest
+        closed block archive would move. Status, marker and exit are unchanged.
     python fleet_done.py archive [--apply] [--keep N] [--root R]
         Moves CLOSED blocks out of the hand-off into
         docs/handoff-archive/<CODE>-<YYYY-MM-DD>.txt (appended when it
@@ -113,6 +116,7 @@ HANDOFF_SUFFIX = "-NEXT-SESSION.txt"
 CHAT_LINE = "Done ritual complete, safe to clear"
 REASON_MAX = 200
 HANDOFF_WARN_BYTES = 30 * 1024
+HANDOFF_SOON_BYTES = HANDOFF_WARN_BYTES * 9 // 10  # v30 CARRY-7
 ARCHIVE_REL = Path("docs/handoff-archive")
 _RULE = re.compile(r"^={20,}\s*$")
 _OPEN_WORDS = re.compile(r"\b(NOT CLOSED|STILL OPEN|OPEN ITEMS?|CARRIED|CARRY FORWARD|TODO|"
@@ -287,6 +291,29 @@ def size_warning(size, limit=HANDOFF_WARN_BYTES):
     v18: `fail:` - mark fails on it)."""
     why = size_reason(size, limit)
     return "fail: " + why if why else None
+
+
+def soon_warning(path, limit=HANDOFF_WARN_BYTES, soon=HANDOFF_SOON_BYTES):
+    """v30 CARRY-7: the one-line warning for a hand-off from `soon` up to
+    `limit` bytes, else None. Never raises."""
+    try:
+        raw = Path(path).read_bytes()
+    except OSError:
+        return None
+    if not soon <= len(raw) <= limit:
+        return None
+    text = raw.decode("ascii", "replace")
+    lines = text.split("\n")
+    sized = [(len("\n".join(lines[s:e])), h) for s, e, h in plan_archive(text)[0]]
+    head = "warn: hand-off {} B is over 90 percent of the {} KB cap; ".format(
+        len(raw), limit // 1024)
+    if not sized:
+        return head + "archive would move no closed block"
+    size, heading = max(sized, key=lambda x: x[0])
+    # ASCII for any stdout: decode("ascii", "replace") left U+FFFD in a non-ASCII heading
+    name = _heading_key(heading)[:60].encode("ascii", "replace").decode("ascii")
+    return head + 'largest closed block "{}" {} B (fleet_done.py archive --apply)'.format(
+        name, size)
 
 
 # ---------------------------------------------------------------- archive (v16)
@@ -780,6 +807,7 @@ def main(argv=None, stdin=None, stdout=None):
             doc["session"], doc["status"], str(doc["safe_to_clear"]).lower()))
         warn = size_warning(handoff_bytes(root / doc["handoff"]) if doc.get("handoff")
                             else None)
+        warn = warn or (soon_warning(root / doc["handoff"]) if doc.get("handoff") else None)
         if warn:
             stdout.write(warn + "\n")
         return 0 if doc["status"] == args.status else 1

@@ -93,6 +93,12 @@ edit. Tree-specific rules go BELOW this block, never inside it.
     so the main session can see percent, time to completion and status mid-run
     instead of waiting for 0-to-100 at the end. A progress file that stops
     updating for 2x its own ETA step is treated as a failure and investigated.
+    A running row past 1.5x its ETA reads OVERRUN on the status line and agent
+    panel (kit v29). Whoever supervises a long run polls in bounded slices to a
+    deadline (2x the ETA) until the run exits and reads the outcome, because
+    rc 0 is not success; it never ends its turn waiting on one event. Before
+    any status answer it reads the progress files (`fleet_checklist.py
+    stale`); a row past 2x reads STALE and is acted on.
     The file lives in the MAIN checkout even when written from a linked
     worktree (resolved via the git common dir; `fleet_headless.write_progress`
     does it), and a worktree-isolated agent's only write outside its worktree
@@ -117,9 +123,12 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        without it reads `<pct>% ~<rem> Remain`). Rendered by fleet_checklist
        (render / Checklist), never hand-typed ETA prose; the item-13 b
        reprint, status answers, the status line and the agent panel show the
-       same. <box> is U+2610. The last line is `<box> /done`. At most ONE
-       trailing sentence, and only for an ordering constraint ("X waits until
-       Y lands because ..."). NO summary, review, what-went-wrong or history.
+       same. <box> is U+2610. The last line is `<box> /done`. Past 20 rows
+       the kit prints one overflow line, `(+<N> more past the 20-row cap:
+       <IDs>)`, directly above it; that line is the kit's, not the trailing
+       sentence, and no tree writes its own. At most ONE trailing sentence,
+       and only for an ordering constraint ("X waits until Y lands because
+       ..."). NO summary, review, what-went-wrong or history.
     b. After every 4 or more completed tasks, print the REMAINING tasks only,
        newly added ones marked `+` before the ID. Never list completed ones.
     c. When no task remains, run /done automatically, without a prompt.
@@ -145,8 +154,9 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        new work.
     e. Every headless run logs a usage line to
        `ops/loop/control/headless_usage.jsonl` via the kit, with `kind`
-       build / inbox / triage and a non-empty note label. MAIN reports the
-       weekly build-vs-inbox split in its insights report.
+       build / order / inbox / triage / report / probe and a non-empty note
+       label. MAIN reports the weekly build-vs-inbox split in its insights
+       report.
 15. CLI DISPLAY (kit v9; the fleet UI/UX standard ruled 2026-10-07). Display
     keys live only in the two account settings, from the kit's
     cli_display.json; a tree sets none. Status surfaces use the kit state

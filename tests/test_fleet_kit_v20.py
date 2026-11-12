@@ -36,7 +36,10 @@ KIT = ROOT / "ops" / "fleet_kit"
 # 45b5088e...6fe4edae, 24 files); the pins below now hold the v27 bytes (24 files).
 # Kit v28 (MAIN 2026-11-01 0825 ORDER, cumulative) superseded v27 (manifest
 # 0a90af35...68e949c1, 24 files); the pins below now hold the v28 bytes (24 files).
-V20_MANIFEST_SHA256 = "343471741c03a78e29c3c08fa0af713f6576ef0b2d69843a87a497b9e52a6d93"
+# Kit v30 (MAIN 2026-11-12 0345 ORDER, cumulative v29 + v30) superseded v28
+# (manifest 34347174...b9e52a6d93, 24 files); the pins below now hold the v30
+# bytes (24 files).
+V20_MANIFEST_SHA256 = "d2ac40250bd0efc071f0eb11c1e92ae04af88d750de200cf8ed4dc5714d07ea2"
 
 
 def _load(name):
@@ -54,9 +57,9 @@ def test_the_vendored_kit_is_the_v20_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V20_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 28
+    assert man["version"] == 30
     assert len(man["files"]) == 24
-    assert _load("fleet_headless").KIT_VERSION == 28
+    assert _load("fleet_headless").KIT_VERSION == 30
     assert _load("fleet_headless").KIT_PATCH == 0
 
 

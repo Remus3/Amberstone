@@ -27,8 +27,9 @@ every-4-completions reprint and at /done (`render --final`), never per step.
 A headless run never renders: render prints {"rendered": false, "reason":
 "headless"} and writes nothing.
 
-Tasks that were open at the last render and are gone now move to "done", in
-completion order; a new session number starts a fresh done list.
+Tasks that were open at the last render and are gone now, and not named past
+the cap, move to "done", in completion order; a new session number starts a
+fresh done list.
 
 `calls` is kept for a tree whose /done still names it (v19-v22): it renders
 the same files and prints one line `board: <board.html> (local only, nothing
@@ -49,6 +50,15 @@ open (RC 2128 item 4); the page gains a Lanes card from fleet_lanes status
 Standalone: imports nothing from the rest of the kit at import time (the
 Lanes card loads the sibling fleet_lanes.py by path, and a failure there only
 drops the card). ASCII source.
+
+v30 (KIT-CHECKLIST-CAPS (c), ruling docs/rulings/2026-11-08-kit-checklist-caps.md):
+parse_checklist_full() also returns the kit's overflow line `(+<N> more past
+the 20-row cap: <IDs>)` as {"count", "ids"} (a cut list drops its partial last
+id); parse_checklist() keeps its 2-tuple. build(..., over_ids, over_count): a
+prev-open row absent now but named past the cap stays open; when the list was
+cut (count above the ids given) NO absent row is inferred done on that render.
+A row passed as done still moves (v26). The page shows one "next" line, `+N
+more past the 20-row cap`. --progress reads "checklist_more" the same way.
 """
 
 import argparse
@@ -76,6 +86,9 @@ _DONE_BOX = re.compile(r"^(?:\u2610|\[ \])\s+/done\b")
 _DONE_STATES = ("done", "complete", "completed")
 _TAIL = re.compile(r"^(.*?)\s+\(([^()]*)\)$")
 _HEAD = re.compile(r"^Session\s+(\d+)\s+checklist")
+_OVER = re.compile(r"^\(\+(\d+) more past the (\d+)-row cap: (.*)\)$")
+OVER_ROW_ID = "+more"  # never a task id: ids are [A-Za-z0-9._-]
+ROWS_CAP = 20  # = fleet_checklist.ROWS_MAX
 # v20 (CHECKLIST-ETA-CLOCK): `38% ~20m of 32m [2:27PM]` is the ETA part too.
 _CLOCK = re.compile(r"^(?:\d{1,3}% ~|started \d{1,2}:\d{2}[AP]M - )")
 _OPERATOR = re.compile(r"\b(operator|you|waiting)\b", re.I)
@@ -132,12 +145,40 @@ def parse_checklist(text, strict=False):
     CLI): a box line that is neither a task row nor the /done box raises
     ChecklistError, and so does non-empty text with no task row and no /done
     box (a mis-decoded checklist must never mark every open task done)."""
-    session, rows, done_box = None, [], False
+    session, rows, _over = parse_checklist_full(text, strict)
+    return session, rows
+
+
+def parse_over(line):
+    """v30: the kit's overflow line -> {"count": N, "ids": [...]}, else None. A
+    list ending "..." was cut: its partial last id is dropped (ids unknown past
+    there, so count exceeds the ids)."""
+    m = _OVER.match(str(line).strip())
+    if not m:
+        return None
+    body = m.group(3).strip()
+    cut = body.endswith("...")
+    if cut:
+        body = body[:-3]
+    ids = [x.strip() for x in body.split(",") if x.strip()]
+    if cut and ids:
+        ids = ids[:-1]
+    return {"count": int(m.group(1)), "ids": ids}
+
+
+def parse_checklist_full(text, strict=False):
+    """v30: (session or None, rows, over or None) - parse_checklist plus the
+    kit's overflow line (parse_over)."""
+    session, rows, done_box, over = None, [], False, None
     for raw in str(text).splitlines():
         s = raw.strip()
         m = _HEAD.match(s)
         if m:
             session = int(m.group(1))
+            continue
+        o = parse_over(s)
+        if o is not None:
+            over = o
             continue
         if _DONE_BOX.match(s):
             done_box = True
@@ -162,7 +203,18 @@ def parse_checklist(text, strict=False):
     if strict and not rows and not done_box and str(text).strip():
         raise ChecklistError("checklist has no task row and no /done box - refused, "
                              "nothing written (pipe it as UTF-8 with the U+2610 box)")
-    return session, rows
+    return session, rows, over
+
+
+def over_from_progress(doc):
+    """v30 C4: a progress file's "checklist_more" -> (ids, count)."""
+    more = doc.get("checklist_more") if isinstance(doc, dict) else None
+    if not isinstance(more, dict):
+        return (), 0
+    ids = [str(x) for x in (more.get("ids") or ()) if isinstance(x, str)]
+    count = more.get("count")
+    count = int(count) if isinstance(count, int) and not isinstance(count, bool) else len(ids)
+    return ids, max(count, len(ids))
 
 
 def rows_from_progress_checklist(items):
@@ -243,16 +295,25 @@ def dumps_rows(rows):
                               for r in rows) + "\n]\n"
 
 
-def build(session, rows, state, final=False, progress=()):
+def build(session, rows, state, final=False, progress=(), over_ids=(), over_count=0):
     """Pure: (status rows, new state). state = {"session", "open": {id: task},
-    "done": [{id, task, detail}], "version"}."""
+    "done": [{id, task, detail}], "version"}. v30: over_ids / over_count from
+    the overflow line - a displaced row stays open; a cut list (over_count
+    above the ids given) infers nothing done on this render."""
     same = state.get("session") == session
     prev_open = dict(state.get("open") or {}) if same else {}
     done = list(state.get("done") or []) if same else []
     done_ids = {d["id"] for d in done}
     now_ids = [r["id"] for r in rows]
+    over_ids = list(over_ids or ())
+    over_count = max(int(over_count or 0), len(over_ids))
+    unknown_past_cap = over_count > len(over_ids)
+    kept_open = {}
     for rid, task in prev_open.items():
         if rid not in now_ids and rid not in done_ids:
+            if unknown_past_cap or rid in over_ids:
+                kept_open[rid] = task  # displaced past the cap, not done
+                continue
             done.append({"id": rid, "task": task, "detail": ""})
             done_ids.add(rid)
     # v26 (RC 2128 item 4): only a row passed as done moves to done - with or
@@ -274,6 +335,11 @@ def build(session, rows, state, final=False, progress=()):
         detail = ", ".join(x for x in (shown, r.get("eta")) if x)
         out.append({"id": r["id"], "group": group, "seq": seqs[group],
                     "task": _clip(r["task"]), "state": chip, "detail": _clip(detail)})
+    if over_count:
+        seqs["next"] += 1
+        out.append({"id": OVER_ROW_ID, "group": "next", "seq": seqs["next"],
+                    "task": f"+{over_count} more past the {ROWS_CAP}-row cap",
+                    "state": "queued", "detail": ""})
     if not final:
         for p in progress:
             if p["id"] in now_ids:
@@ -287,8 +353,10 @@ def build(session, rows, state, final=False, progress=()):
                     "state": "done", "detail": _clip(d.get("detail"))})
     order = {g: i for i, g in enumerate(GROUPS)}
     out.sort(key=lambda r: (order[r["group"]], r["seq"]))
-    new_state = {"session": session,
-                 "open": {r["id"]: _clip(r["task"]) for r in rows if r["id"] not in done_ids},
+    still = {r["id"]: _clip(r["task"]) for r in rows if r["id"] not in done_ids}
+    for rid, task in kept_open.items():
+        still.setdefault(rid, task)
+    new_state = {"session": session, "open": still,
                  "done": done, "version": state.get("version")}
     return out, new_state
 
@@ -411,7 +479,8 @@ def page_html(title, rows, updated, lanes=()):
     return "\n".join(out) + "\n"
 
 
-def render(root, session, rows, final=False, environ=None, clock=time.time, lanes=None):
+def render(root, session, rows, final=False, environ=None, clock=time.time, lanes=None,
+           over_ids=(), over_count=0):
     """Write status.json, state.json and board.html locally; return a summary
     dict. Nothing is pushed anywhere (v23)."""
     if is_headless(environ):
@@ -423,7 +492,8 @@ def render(root, session, rows, final=False, environ=None, clock=time.time, lane
     state = _load(sdir / "state.json", {})
     state = state if isinstance(state, dict) else {}
     prog = running_progress(root, clock=clock)
-    out, new_state = build(int(session), rows, state, final=final, progress=prog)
+    out, new_state = build(int(session), rows, state, final=final, progress=prog,
+                           over_ids=over_ids, over_count=over_count)
     new_state.pop("version", None)
     at = time.strftime("%Y-%m-%d %H:%M", time.localtime(clock()))
     title = (code + " status" if _CODE.match(code) else "Status board") + \
@@ -479,20 +549,23 @@ def main(argv=None):
     if a.progress:
         d = _load(a.progress, {})
         session, rows = a.session, rows_from_progress_checklist(d.get("checklist"))
+        over_ids, over_count = over_from_progress(d)
     else:
         # v26 KIT-BOARD-EMPTY: bytes decoded as UTF-8, never the console code page.
         raw = Path(a.checklist).read_bytes() if a.checklist else sys.stdin.buffer.read()
         text = raw.decode("utf-8", errors="replace").lstrip("\ufeff")
         try:
-            session, rows = parse_checklist(text, strict=True)
+            session, rows, over = parse_checklist_full(text, strict=True)
         except ChecklistError as exc:
             print(json.dumps({"rendered": False, "reason": str(exc)}))
             return 2
         session = a.session if a.session is not None else session
+        over_ids, over_count = (over["ids"], over["count"]) if over else ((), 0)
     if session is None:
         print(json.dumps({"rendered": False, "reason": "no session number"}))
         return 2
-    plan = render(a.root, session, rows, final=a.final)
+    plan = render(a.root, session, rows, final=a.final, over_ids=over_ids,
+                  over_count=over_count)
     if a.cmd == "calls":
         sys.stdout.write(calls_text(plan))
     else:

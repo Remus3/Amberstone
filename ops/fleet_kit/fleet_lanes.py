@@ -95,12 +95,32 @@ day) cost_usd in its headless_usage.jsonl and refuses ("usd_ceiling", one
 JSONL line in ops/loop/control/lanes/usd_ceiling.jsonl) at or above it. No
 entry = no ceiling; a bad value is logged and means no ceiling. Only MAIN
 writes the file; a tree names its value in a note.
+LANE MODEL (v30 LANE-MODEL): key lane_model, {tree code: {lane: model}}, a lane's
+default model. lane_model(code, lane, note) reads it; a held claim carries it
+as "model" when set; fleet_headless.spawn uses it when the caller names no
+model. An explicit model always wins, so a driver that pins one must read
+lane_model itself. A bad entry is logged and means no default.
+ERROR PAUSE (v30 CARRY-4): key lane_error_pause, {tree code: true}, OFF unless
+set. A lane acquire for that tree refuses ("error_pause") while the lane's last
+ERROR_PAUSE_COUNT (3) usage rows in a row failed and the newest is under
+ERROR_PAUSE_S (30 min) old. A usage-limit row neither counts nor resets. It
+ends by itself; the next failure restarts it. A lane acquire only: a running
+lane is never stopped. An unreadable log admits.
+PAUSE REASONS (v30 CARRY-8): note_pause appends {ts, epoch, tree, lane, reason,
+detail} to ops/loop/control/lanes/pause.jsonl, at most once an hour per lane
+and reason. The kit writes one on a run cap hit, a USD ceiling refusal, an error
+pause, and at the first acquire after a gap over PAUSE_GAP_S (2 h). A driver
+that holds itself back calls note_pause (or the CLI `pause --reason`) with the
+reason. pause_state is the READ ONLY answer for a tree idle over 2 h; status
+prints it. "none_recorded" = nothing says why: no driver, no work, or a gate
+that writes no row.
 
 Pure stdlib (psutil used only if present). No machine path, account id or repo
 name appears in this file; the governor root derives from %ProgramData%.
 """
 
 import contextlib
+import datetime as _dt
 import json
 import os
 import re
@@ -161,6 +181,21 @@ _CODE_RE = re.compile(r"^[A-Z][A-Z0-9]{0,7}$")
 USD_CEIL_KEY = "daily_usd_ceiling"
 USAGE_REL = Path("ops/loop/control/headless_usage.jsonl")
 USD_LOG_REL = Path("ops/loop/control/lanes/usd_ceiling.jsonl")
+# v30 LANE-MODEL, CARRY-4, CARRY-8
+LANE_MODEL_KEY = "lane_model"
+ERROR_PAUSE_KEY = "lane_error_pause"
+ERROR_PAUSE_COUNT = 3
+ERROR_PAUSE_S = 1800.0
+PAUSE_GAP_S = 7200.0
+PAUSE_DEDUPE_S = 3600.0
+PAUSE_REASONS = ("budget", "limit", "operator", "error", "usd_ceiling", "none_recorded")
+PAUSE_LOG_REL = Path("ops/loop/control/lanes/pause.jsonl")
+BUDGET_REL = Path("ops/loop/control/headless_budget.json")
+STATUS_REL = Path("ops/loop/control/inbox_status.json")
+BUDGET_WINDOW_S = 86400.0
+USAGE_TAIL_BYTES = 256 * 1024
+_MODEL_RE = re.compile(r"^(?:opus|sonnet|haiku|claude-[a-z0-9][a-z0-9.-]*)(?:\[1m\])?$")
+_LANE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,47}$")
 
 
 def config_path(environ=None):
@@ -209,6 +244,8 @@ def load_config(path=False, environ=None):
     cfg = dict(CONFIG_DEFAULTS, source="defaults", errors=[])
     cfg[RUNS_CAP_KEY] = {}
     cfg[USD_CEIL_KEY] = {}
+    cfg[LANE_MODEL_KEY] = {}
+    cfg[ERROR_PAUSE_KEY] = {}
     if path is None:
         return cfg
     path = Path(path)
@@ -235,6 +272,12 @@ def load_config(path=False, environ=None):
             continue
         if key == USD_CEIL_KEY:
             cfg[USD_CEIL_KEY] = _usd_map(value, errors)
+            continue
+        if key == LANE_MODEL_KEY:
+            cfg[LANE_MODEL_KEY] = _lane_model_map(value, errors)
+            continue
+        if key == ERROR_PAUSE_KEY:
+            cfg[ERROR_PAUSE_KEY] = _error_pause_map(value, errors)
             continue
         if key not in CONFIG_DEFAULTS:
             errors.append(f"unknown key {str(key)[:40]!r} ignored")
@@ -284,6 +327,253 @@ def _usd_map(value, errors):
             continue
         out[code] = usd
     return out
+
+
+def _lane_model_map(value, errors):
+    """v30: the valid {CODE: {lane: model}} entries; a bad one is one error."""
+    if not isinstance(value, dict):
+        errors.append(f"lane_model={str(value)[:40]!r} not an object, no lane default")
+        return {}
+    out = {}
+    for code, lanes in value.items():
+        if not isinstance(code, str) or not _CODE_RE.match(code) or not isinstance(lanes, dict):
+            errors.append(f"lane_model {str(code)[:12]!r} invalid, no lane default")
+            continue
+        for lane, model in lanes.items():
+            if (isinstance(lane, str) and _LANE_RE.match(lane)
+                    and isinstance(model, str) and _MODEL_RE.match(model)):
+                out.setdefault(code, {})[lane] = model
+            else:
+                errors.append(f"lane_model {code} {str(lane)[:24]!r}={str(model)[:32]!r} "
+                              "invalid, no lane default")
+    return out
+
+
+def _error_pause_map(value, errors):
+    """v30: {CODE: True} for the trees with the error pause on; True only."""
+    if not isinstance(value, dict):
+        errors.append(f"lane_error_pause={str(value)[:40]!r} not an object, off")
+        return {}
+    out = {}
+    for code, on in value.items():
+        if isinstance(code, str) and _CODE_RE.match(code) and isinstance(on, bool):
+            if on:
+                out[code] = True
+        else:
+            errors.append(f"lane_error_pause {str(code)[:12]!r}={str(on)[:20]!r} invalid, off")
+    return out
+
+
+def _note_names_lane(note, lane):
+    """A usage note names `lane` when it IS the lane, or is a lane-* label with
+    the lane as whole dash-separated tokens (lane-s144-true-audit, lane-build-x).
+    A channel-note name never does, whatever words it holds."""
+    words = str(note or "").split()
+    note = words[0] if words else ""
+    if note == lane:
+        return True
+    return note.startswith("lane-") and \
+        re.search(r"(?:^|-)" + re.escape(lane) + r"(?:-|$)", note) is not None
+
+
+def lane_model(code, lane=None, note=None, config=None):
+    """v30 LANE-MODEL: the default model of tree `code`'s lane, named by `lane`
+    or by a lane-* note, or None. The longest matching key wins. Never raises."""
+    try:
+        cfg = load_config() if config is None else config
+        lanes = (cfg.get(LANE_MODEL_KEY) or {}).get(str(code or "").upper()) or {}
+        if lane in lanes:
+            return lanes[lane]
+        for key in sorted(lanes, key=len, reverse=True):
+            if _note_names_lane(note, key):
+                return lanes[key]
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def _usage_tail(repo_root, limit=USAGE_TAIL_BYTES):
+    """v30: the usage rows in the last `limit` bytes, oldest first. Never raises."""
+    try:
+        with (Path(repo_root) / USAGE_REL).open("rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            size = fh.tell()
+            fh.seek(max(0, size - limit))
+            raw = fh.read()
+    except OSError:
+        return []
+    lines = raw.decode("ascii", "replace").split("\n")
+    if size > limit:
+        lines = lines[1:]  # the first line was cut
+    rows = []
+    for line in lines:
+        try:
+            row = json.loads(line) if line.strip() else None
+        except ValueError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def _row_epoch(row):
+    try:
+        return _dt.datetime.fromisoformat(row.get("ts")).timestamp()
+    except (TypeError, ValueError, OSError, OverflowError):
+        return None
+
+
+def _row_failed(row):
+    return bool(row.get("is_error") or row.get("error") or row.get("rc") not in (0, None))
+
+
+def _row_error_text(row, limit):
+    """One line naming why a failed usage row failed."""
+    text = row.get("error") or f"rc {row.get('rc')}"
+    return " ".join(str(text).split())[:limit]
+
+
+def _failed_streak(rows):
+    """(count, newest failed row) of the failures ending `rows`; a usage-limit
+    row neither counts nor resets."""
+    count, newest = 0, None
+    for row in reversed(rows):
+        if row.get("limit"):
+            continue
+        if not _row_failed(row):
+            break
+        count += 1
+        newest = newest or row
+    return count, newest
+
+
+def error_pause(repo_root, code, lane, now=None, config=None):
+    """v30 CARRY-4: {"errors", "until", "last_error"} while lane `lane` is held
+    after ERROR_PAUSE_COUNT failed runs in a row, else None. Off unless the tree
+    has lane_error_pause. Reads only. Never raises (an unreadable log admits)."""
+    try:
+        cfg = load_config() if config is None else config
+        if not (cfg.get(ERROR_PAUSE_KEY) or {}).get(str(code or "").upper()):
+            return None
+        rows = [r for r in _usage_tail(repo_root)
+                if r.get("slot") == lane or _note_names_lane(r.get("note"), str(lane))]
+        count, newest = _failed_streak(rows)
+        if count < ERROR_PAUSE_COUNT:
+            return None
+        ts = _row_epoch(newest)
+        now = time.time() if now is None else now
+        if ts is None or now >= ts + ERROR_PAUSE_S:
+            return None
+        return {"errors": count, "until": ts + ERROR_PAUSE_S,
+                "last_error": _row_error_text(newest, 80)}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _last_pause(root):
+    """The rows of the pause log, oldest first. Never raises."""
+    try:
+        lines = (Path(root) / PAUSE_LOG_REL).read_text(encoding="ascii",
+                                                       errors="replace").splitlines()[-200:]
+    except OSError:
+        return []
+    rows = []
+    for line in lines:
+        with contextlib.suppress(ValueError):
+            row = json.loads(line)
+            if isinstance(row, dict):
+                rows.append(row)
+    return rows
+
+
+def note_pause(repo_root, code, lane, reason, detail="", now=None):
+    """v30 CARRY-8: append one pause row; at most one per lane and reason per
+    PAUSE_DEDUPE_S. Returns the row, or None (deduped, unknown reason, write
+    failure). Never raises."""
+    try:
+        if reason not in PAUSE_REASONS:
+            return None
+        root = main_tree(repo_root)
+        now = time.time() if now is None else now
+        lane = None if lane is None else str(lane)
+        for row in _last_pause(root):
+            at = row.get("epoch")
+            if (row.get("lane") == lane and row.get("reason") == reason
+                    and isinstance(at, (int, float)) and 0 <= now - at < PAUSE_DEDUPE_S):
+                return None
+        row = {"ts": _dt.datetime.fromtimestamp(now).astimezone().isoformat(timespec="seconds"),
+               "epoch": round(now, 3), "tree": str(code), "lane": lane, "reason": reason,
+               "detail": " ".join(str(detail).split())[:200]}
+        path = root / PAUSE_LOG_REL
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="ascii", errors="replace", newline="\n") as fh:
+            fh.write(json.dumps(row, sort_keys=True) + "\n")
+        return row
+    except Exception:  # noqa: BLE001 - a pause row never blocks a lane
+        return None
+
+
+def _runs_used(root, now):
+    """Run starts in the budget file's window; None when unreadable or absent."""
+    try:
+        starts = json.loads((Path(root) / BUDGET_REL).read_text(encoding="utf-8"))["starts"]
+        return sum(1 for s in starts if isinstance(s, (int, float))
+                   and not isinstance(s, bool) and s > now - BUDGET_WINDOW_S)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _pause_why(root, code, rows, last, now, cfg):
+    """(reason, detail): a recorded row since the last run, then the kit's own
+    status file, then the budget, then the newest usage rows."""
+    used, cap = _runs_used(root, now), runs_cap(code, cfg)
+    runs = f"runs {'?' if used is None else used}/{cap}"
+    for row in reversed(_last_pause(root)):
+        at = row.get("epoch")
+        if isinstance(at, (int, float)) and (last is None or at >= last) \
+                and row.get("reason") in PAUSE_REASONS:
+            return row["reason"], str(row.get("detail") or runs)[:200]
+    state = {}
+    with contextlib.suppress(OSError, ValueError):
+        doc = json.loads((Path(root) / STATUS_REL).read_text(encoding="utf-8"))
+        state = doc if isinstance(doc, dict) else {}
+    word = state.get("state")
+    if word == "halted":
+        return "operator", f"status halted, {runs}"
+    if word == "limit":
+        return "limit", f"{str(state.get('reason') or 'usage limit')[:80]}, {runs}"
+    if used is not None and used >= cap:
+        return "budget", f"run cap, {runs}"
+    if rows and rows[-1].get("limit"):
+        return "limit", f"last run hit the {str(rows[-1].get('limit'))[:20]} limit, {runs}"
+    count, newest = _failed_streak(rows)
+    if count:
+        return "error", f"last {count} run(s) failed: {_row_error_text(newest, 60)}, {runs}"
+    return "none_recorded", ("no stop recorded: no driver, no work, or a gate that writes "
+                             f"no row, {runs}")
+
+
+def pause_state(repo_root, code, now=None, config=None, gap_s=PAUSE_GAP_S):
+    """v30 CARRY-8: {"tree", "idle_s", "last_run", "reason", "detail"} when the
+    tree has no running lane and its newest usage row is over gap_s old (a tree
+    with no row: idle_s None), else None. READ ONLY. Never raises."""
+    try:
+        root = main_tree(repo_root)
+        now = time.time() if now is None else now
+        cfg = load_config() if config is None else config
+        if any(r["state"] == RUNNING for r in repo_lane_state(root, None, now=now, config=cfg)):
+            return None
+        rows = _usage_tail(root)
+        stamps = [t for t in (_row_epoch(r) for r in rows) if t is not None]
+        last = max(stamps) if stamps else None
+        if last is not None and now - last <= gap_s:
+            return None
+        reason, detail = _pause_why(root, code, rows, last, now, cfg)
+        return {"tree": str(code), "idle_s": None if last is None else round(now - last, 1),
+                "last_run": _iso(last) if last is not None else None,
+                "reason": reason, "detail": detail}
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def usd_ceiling(code, config=None):
@@ -1056,8 +1346,18 @@ def try_acquire_lane(repo_root, code, lane, run_id, cap=None, exclusive=True, ad
             _usd_log(root, {"event": "usd-ceiling", "tree": str(code), "lane": str(lane),
                             "spent": round(spent, 2), "ceiling": ceil,
                             "at": time.strftime("%Y-%m-%dT%H:%M:%S")})
+            note_pause(root, code, lane, "usd_ceiling", reason)
             return {"ok": False, "refused": "usd_ceiling", "reason": reason,
                     "holders": []}
+    held = error_pause(root, code, str(lane), config=cfg)
+    if held:  # v30 CARRY-4
+        reason = (f"{held['errors']} failed runs in a row, held until "
+                  f"{_iso(held['until'])}: {held['last_error']}")
+        note_pause(root, code, lane, "error", reason)
+        return {"ok": False, "refused": "error_pause", "reason": reason, "holders": []}
+    gap = pause_state(root, code, config=cfg)  # v30 CARRY-8
+    gap = gap if gap and gap["idle_s"] is not None else None
+    default_model = lane_model(code, str(lane), config=cfg)  # v30 LANE-MODEL
     d = root / LANES_REL
     d.mkdir(parents=True, exist_ok=True)
     with _acquire_mutex(d):
@@ -1082,9 +1382,15 @@ def try_acquire_lane(repo_root, code, lane, run_id, cap=None, exclusive=True, ad
                        "worktree": str(wt), "repo": str(code), "index": row["index"],
                        "ts": time.time()}
             if _exclusive_create(lock, payload):
-                return {"ok": True, "index": row["index"], "token": str(lock),
-                        "worktree": str(wt), "lane": str(lane), "run_id": str(run_id),
-                        "_identity": {"run_id": payload["run_id"], "ts": payload["ts"]}}
+                if gap:  # the row for the gap this acquire ends
+                    note_pause(root, code, lane, gap["reason"],
+                               f"resumed after {gap['idle_s'] / 3600:.1f} h: {gap['detail']}")
+                claim = {"ok": True, "index": row["index"], "token": str(lock),
+                         "worktree": str(wt), "lane": str(lane), "run_id": str(run_id),
+                         "_identity": {"run_id": payload["run_id"], "ts": payload["ts"]}}
+                if default_model:
+                    claim["model"] = default_model
+                return claim
     return {"ok": False, "refused": "lanes_full", "holders": holders}
 
 
@@ -1329,8 +1635,13 @@ def status(root=None, trees=None, admit=None, config=None, now=None):
            "recommended": dict(RECOMMENDED_CONFIG),
            "free_slots": max(0, cfg["governor_width"] - running),
            "holders": holders, "queue": queue,
-           "admission": admission(cfg, _readings(admit)), "trees": {}}
+           "admission": admission(cfg, _readings(admit)), "trees": {},
+           "lane_model": dict(cfg.get(LANE_MODEL_KEY) or {}),
+           "error_pause": sorted(cfg.get(ERROR_PAUSE_KEY) or {}), "pauses": {}}
     for code, repo in (trees or {}).items():
+        idle = pause_state(repo, code, now=now, config=cfg)  # v30 CARRY-8
+        if idle:
+            out["pauses"][str(code)] = idle
         lanes = []
         for r in repo_lane_state(repo, None, now=now, config=cfg):
             if r["state"] == FREE:
@@ -1359,6 +1670,12 @@ def status_lines(doc):
     for code, u in ((doc.get("usd_ceiling") or {}).get("trees") or {}).items():
         today = "?" if u.get("today") is None else f"{u['today']:.2f}"
         lines.append(f"- {code} usd ceiling: {u['ceiling']:.2f}, today {today}")
+    for code, lanes in (doc.get("lane_model") or {}).items():
+        lines += [f"- {code} lane {ln} model: {m}" for ln, m in sorted(lanes.items())]
+    lines += [f"- {code} error pause: on" for code in doc.get("error_pause") or []]
+    for code, p in (doc.get("pauses") or {}).items():
+        idle = "no run logged" if p["idle_s"] is None else f"idle {p['idle_s'] / 3600:.1f} h"
+        lines.append(f"- {code} {idle}: {p['reason']} ({p['detail']})")
     lines.append(f"free slots: {doc['free_slots']}")
     for h in doc["holders"]:
         lane = "" if h["lane_index"] is None else f" lane {h['lane_index']}"
@@ -1619,7 +1936,9 @@ def main(argv=None, stdout=None):
     """`python fleet_lanes.py unit --root R --lane L --unit U --step S [--done]
     [--commit SHA]` writes a LANE-95 checkpoint; `resume --root R --lane L`
     prints the open unit (JSON, null when none); v25 `status [--slots DIR]
-    [--tree CODE=ROOT ...] [--json] [--no-sample]` prints the lane status.
+    [--tree CODE=ROOT ...] [--json] [--no-sample]` prints the lane status; v30
+    `pause --root R --code C [--lane L] [--reason W --detail D]` writes a pause
+    row, or without --reason prints pause_state.
     Exit 0 ok, 2 bad input."""
     import argparse
     ap = argparse.ArgumentParser(prog="fleet_lanes.py")
@@ -1634,6 +1953,12 @@ def main(argv=None, stdout=None):
     rp = sub.add_parser("resume")
     rp.add_argument("--root", required=True)
     rp.add_argument("--lane", required=True)
+    pp = sub.add_parser("pause")
+    pp.add_argument("--root", required=True)
+    pp.add_argument("--code", required=True)
+    pp.add_argument("--lane")
+    pp.add_argument("--reason", choices=PAUSE_REASONS)
+    pp.add_argument("--detail", default="")
     sp = sub.add_parser("status")
     sp.add_argument("--slots", help="governor slot root (default: the machine root)")
     sp.add_argument("--tree", action="append", default=[], metavar="CODE=ROOT")
@@ -1646,6 +1971,11 @@ def main(argv=None, stdout=None):
         return 2
     if args.cmd == "status":
         return _status_cli(args, out)
+    if args.cmd == "pause":  # v30 CARRY-8: --reason writes a row; else read only
+        doc = (note_pause(args.root, args.code, args.lane, args.reason, args.detail)
+               if args.reason else pause_state(args.root, args.code))
+        print(json.dumps(doc), file=out)
+        return 0
     try:
         if args.cmd == "unit":
             doc = checkpoint(args.root, args.lane, args.unit, args.step,

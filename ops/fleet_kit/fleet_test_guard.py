@@ -51,6 +51,9 @@ install() adds two autouse fixtures to the conftest namespace:
     hides a path the tree declares in ops/stop_sentinels.json: a declared
     stop sentinel created, changed or removed by a suite always fails it.
     v23: IGNORE adds ops/loop/control/board/board.html (the local board).
+    v30 (KIT-IGNORE-PENDING-ORDERS, LW 1535): IGNORE adds
+    ops/loop/control/inbox_pending_orders.json, which a live inbox tick
+    rewrites (fleet_inbox.PENDING_REL), so a suite never reads as changing it.
 env FLEET_TEST_GUARD=off disables both (never in a gate run).
 
 v16 (KIT-16), OPT-IN: budget(seconds) for a timing test. It returns
@@ -79,7 +82,8 @@ IGNORE = ("*.jsonl", "*.tmp", "*.log", "ops/loop/control/progress/*",
           "ops/loop/control/session_done*", "ops/loop/control/governor/*",
           "*.lock", "ops/loop/control/headless_budget.json",
           "ops/loop/control/board/state.json", "ops/loop/control/board/status.json",
-          "ops/loop/control/board/board.html")
+          "ops/loop/control/board/board.html",
+          "ops/loop/control/inbox_pending_orders.json")
 SENTINELS_REL = "ops/stop_sentinels.json"  # = fleet_headless.SENTINELS_REL
 SHOW = 5
 
@@ -147,10 +151,14 @@ def verdict(changed, deleted, created):
 
 
 def load_factor(gate=None):
-    """Live suite-gate slot holders now, clamped to 1..MAX_SLOTS (v16)."""
+    """Live suite-gate slot holders now, clamped to 1..MAX_SLOTS (v16). v30
+    (KIT-BUDGET-HELD-UNLINK, CS 2110): read-only - the gate's held_readonly(),
+    which never unlinks a stale slot file (held() is the fallback for a gate
+    without it)."""
     try:
         gate = gate or _gate()
-        n = len(gate.held(gate.gate_dir()))
+        count = getattr(gate, "held_readonly", None) or gate.held
+        n = len(count(gate.gate_dir()))
         return max(1, min(int(gate.MAX_SLOTS), n))
     except Exception:  # noqa: BLE001 - a budget helper never breaks a test
         return 1

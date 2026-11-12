@@ -100,6 +100,12 @@ edit. Tree-specific rules go BELOW this block, never inside it.
     so the main session can see percent, time to completion and status mid-run
     instead of waiting for 0-to-100 at the end. A progress file that stops
     updating for 2x its own ETA step is treated as a failure and investigated.
+    A running row past 1.5x its ETA reads OVERRUN on the status line and agent
+    panel (kit v29). Whoever supervises a long run polls in bounded slices to a
+    deadline (2x the ETA) until the run exits and reads the outcome, because
+    rc 0 is not success; it never ends its turn waiting on one event. Before
+    any status answer it reads the progress files (`fleet_checklist.py
+    stale`); a row past 2x reads STALE and is acted on.
     The file lives in the MAIN checkout even when written from a linked
     worktree (resolved via the git common dir; `fleet_headless.write_progress`
     does it), and a worktree-isolated agent's only write outside its worktree
@@ -124,9 +130,12 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        without it reads `<pct>% ~<rem> Remain`). Rendered by fleet_checklist
        (render / Checklist), never hand-typed ETA prose; the item-13 b
        reprint, status answers, the status line and the agent panel show the
-       same. <box> is U+2610. The last line is `<box> /done`. At most ONE
-       trailing sentence, and only for an ordering constraint ("X waits until
-       Y lands because ..."). NO summary, review, what-went-wrong or history.
+       same. <box> is U+2610. The last line is `<box> /done`. Past 20 rows
+       the kit prints one overflow line, `(+<N> more past the 20-row cap:
+       <IDs>)`, directly above it; that line is the kit's, not the trailing
+       sentence, and no tree writes its own. At most ONE trailing sentence,
+       and only for an ordering constraint ("X waits until Y lands because
+       ..."). NO summary, review, what-went-wrong or history.
     b. After every 4 or more completed tasks, print the REMAINING tasks only,
        newly added ones marked `+` before the ID. Never list completed ones.
     c. When no task remains, run /done automatically, without a prompt.
@@ -152,8 +161,9 @@ edit. Tree-specific rules go BELOW this block, never inside it.
        new work.
     e. Every headless run logs a usage line to
        `ops/loop/control/headless_usage.jsonl` via the kit, with `kind`
-       build / inbox / triage and a non-empty note label. MAIN reports the
-       weekly build-vs-inbox split in its insights report.
+       build / order / inbox / triage / report / probe and a non-empty note
+       label. MAIN reports the weekly build-vs-inbox split in its insights
+       report.
 15. CLI DISPLAY (kit v9; the fleet UI/UX standard ruled 2026-10-07). Display
     keys live only in the two account settings, from the kit's
     cli_display.json; a tree sets none. Status surfaces use the kit state
@@ -241,6 +251,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. L
 **KIT v27 (MAIN 2026-10-31 2347, cumulative).** No settings or FLEET-COMMON change. A lane acquire refuses `usd_ceiling` once today's cost_usd reaches MAIN's `daily_usd_ceiling` for RC in `~/.fleet/lanes.json` (RC named $1000 (MAIN ruling 2026-11-08 2014, raised from $700 on the operator's word); RC never writes it). Pending ORDER / FIX / RULING rows (`fleet_inbox.py pending`; inbox_tick's work queue) are worked first and closed with `mark_work_done`; a kit `mark_seen` of an ORDER also queues it. A rewrite takes `--range BASE..BRANCH`, still only on a MAIN ORDER. Guard `tests/test_fleet_kit_v27.py`.
 
 **KIT v28 (MAIN 2026-11-01 0825, cumulative).** No settings or FLEET-COMMON change. Pre-push scans a push whose remote old tip is absent from this clone like a NEW ref (a rewrite's force-push no longer needs the old tip fetched back); never looser: a bad identity in that range still refuses, and `git ls-remote` failing with an absent old tip refuses. Guard `tests/test_fleet_kit_v28.py`.
+
+**KIT v30 (MAIN 2026-11-12 0345, cumulative v29 + v30).** Re-embedded FLEET-COMMON items 12 (OVERRUN / STALE; `fleet_checklist.py stale` before any status answer), 13 a (the kit's 20-row overflow line) and 14 e (six kinds); no settings change. A bare `RunBudget(path)` resolves the machine cap but `RUNS_CAP` stays 120, so a run-cap gate reads `budget.cap`. `run_lane.ps1` takes `fleet_lanes.lane_model` first; a driver hold calls `fleet_lanes.note_pause`. The kit IGNORE holds `inbox_pending_orders.json` (RM-2053) and logs route writes (RM-2074). Guard `tests/test_fleet_kit_v30.py`.
 
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad: use the default tmp_path (`pytest.ini`: retention `failed`, count `1`), or, if a run truly needs one, the ONE fixed `<scratchpad>/pytest-basetemp`. Every session, lane and loop prompt follows this; the rootdir `conftest.py` refuses any other scratchpad basetemp. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 

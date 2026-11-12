@@ -20,6 +20,14 @@
 # dirname / date / printf subshell (each was a fork under msys bash), the exit
 # code comes from the command substitution itself, and python runs with -S
 # (no site import; every kit hook script is pure stdlib).
+# v30 (KIT-HOOK-FAST, ruling 2026-11-08-sweep2-candidates item 4): it may also
+# be SOURCED in the hook shell, saving one bash start:
+#
+#   FLEET_HOOK_PYTHON=... . "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_claims.py hook
+#
+# The directory then comes from BASH_SOURCE (falling back to $0), and a sourced
+# launcher's `exit` ends the hook shell, which is intended: the exit code is
+# the hook's.
 
 script="$1"
 case "$script" in
@@ -30,8 +38,9 @@ shift
 case "$script" in
   */*|*\\*) echo "fleet hook: interpreter check failed ($script)" >&2; exit 2 ;;
 esac
-case "$0" in
-  */*|*\\*) dir=${0%[/\\]*} ;;
+src=${BASH_SOURCE:-$0}
+case "$src" in
+  */*|*\\*) dir=${src%[/\\]*} ;;
   *) dir=. ;;
 esac
 nonce="$$-${RANDOM:-0}-${RANDOM:-0}-${RANDOM:-0}"

@@ -53,6 +53,8 @@ const PROGRESS_REL = ['ops', 'loop', 'control', 'progress'];
 const STATUS_REL = ['ops', 'loop', 'control', 'inbox_status.json'];
 const DONE_KEEP_S = 600;
 const STALE_FLOOR_S = 300;
+const OVERRUN_FACTOR = 1.5;
+const OVERRUN_FLOOR_S = 60;
 const ABANDON_S = 7200;
 const DROP_S = 86400;
 const HOLD_S = 86400;
@@ -274,15 +276,24 @@ function startedClock(startedMs) {
   return typeof startedMs === 'number' && startedMs > 0 ? 'started ' + fmtClock(startedMs, true) : '';
 }
 
+// v29 (SUPERVISION-GAP): past 1.5x the row's own last ETA (floor 60 s) it says
+// OVERRUN; it stays a running row. Mirrors fleet_checklist.overrun. FLEET-COMMON 3.
+function overrun(etaS, updatedMs, nowMs) {
+  if (typeof etaS !== 'number' || !isFinite(etaS)) return false;
+  if (typeof updatedMs !== 'number' || !(updatedMs > 0)) return false;
+  return (nowMs - updatedMs) / 1000 > Math.max(OVERRUN_FACTOR * Math.max(0, etaS), OVERRUN_FLOOR_S);
+}
+
 function runClock(pct, etaS, startedMs, nowMs, updatedMs) {
+  const late = overrun(etaS, updatedMs, nowMs) ? ' OVERRUN' : '';
   if (typeof startedMs === 'number' && startedMs > 0) {
     const clk = etaClock(pct, etaS, startedMs, nowMs, updatedMs);
-    return clk ? startedClock(startedMs) + ' - ' + clk : '';
+    return clk ? startedClock(startedMs) + ' - ' + clk + late : '';
   }
   const rem = fmtEta(etaS);
   if (!rem) return '';
   const p = typeof pct === 'number' && isFinite(pct) ? Math.max(0, Math.min(100, Math.trunc(pct))) + '% ' : '';
-  return p + rem + ' Remain';
+  return p + rem + ' Remain' + late;
 }
 
 function ownerDead(owner, alive) {
@@ -327,6 +338,9 @@ function progressRows(main, nowMs, alive) {
     if (!state) continue;
     let step = d.step;
     if (Array.isArray(d.checklist) && d.checklist.length && d.checklist[0]) step = d.checklist[0].task || step;
+    // v30 KIT-CHECKLIST-CAPS A2: rows past the 20-row cap read `+N more`, never dropped silently.
+    const more = d.checklist_more && Number.isInteger(d.checklist_more.count) ? d.checklist_more.count : 0;
+    if (more > 0) step = String(step || '') + ' +' + more + ' more';
     const born = st.birthtimeMs || st.ctimeMs || st.mtimeMs;
     rows.push({ state, task: d.task || name.slice(0, -5), pct: d.pct, eta: state === 'running' ? eta : null,
       step, order: born, name, startedMs: isoMs(d.started), updatedMs: isoMs(d.updated) || st.mtimeMs });
@@ -351,7 +365,10 @@ function rowLine(r, columns, plain, nowMs) {
   const eta = fmtEta(r.eta);
   const head = ' ' + pad(ascii(r.task), 13) + ' ' + bar + ' ' +
     (clk ? clk + ' ' : rpad(pct == null ? '--' : pct + '%', 4) + ' ' +
-      (run && eta ? eta + ' Remain' : pad(eta, 5)) + ' ');
+      (run && eta ? eta + ' Remain' + (overrun(r.eta, r.updatedMs, nowMs || Date.now()) ? ' OVERRUN' : '')
+        : pad(eta, 5)) + ' ') +
+    // v30 (SUPERVISION-STALL): a stale row carries the word, not only [!] and colour.
+    (r.state === 'stale' ? 'STALE ' : '');
   const room = Math.max(0, columns - 3 - head.length);
   const step = ascii(r.step).replace(/\s+/g, ' ').trim().slice(0, room);
   return sgr(plain ? '' : ROW_SGR[r.state], ROW_GLYPH[r.state]) + (head + step).replace(/\s+$/, '');
@@ -489,7 +506,7 @@ function readStdin() {
 }
 
 module.exports = { render, progressRows, rowLine, rowLines, markerVerdict, gitInfo, headOf,
-  mainHead, codeOf, laneOf, pctSlot, fitSlots, fmtEta, etaClock, startedClock, runClock, fmtHalfMin, fmtClock, SLOTS, ascii, ownerDead,
+  mainHead, codeOf, laneOf, pctSlot, fitSlots, fmtEta, etaClock, startedClock, runClock, fmtHalfMin, fmtClock, overrun, SLOTS, ascii, ownerDead,
   ABANDON_S, DROP_S };
 
 if (require.main === module) {

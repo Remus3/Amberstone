@@ -326,12 +326,61 @@ v27 (daily kit train 2026-11-01; cumulative: a tree on v24-v26 adopts v27 at onc
   pending-ORDER marker, fleet_suite_gate tree_median_hold, fleet_rewrite
   --range, fleet_hook.sh fast path, fleet_claims lazy subprocess import.
 
+v30 (daily kit train; cumulative over v28 and the unshipped v29 candidate):
+- RUNCAP-500 (operator 2026-11-01): RunBudget(path) with no cap resolves the
+  machine cap: a path ending in BUDGET_REL names its tree root, the one
+  <CODE>-NEXT-SESSION.txt there names the code, fleet_lanes.runs_cap(code) is
+  the cap. Anything else (other path, no or several hand-offs, a config
+  problem) = RUNS_CAP, 120. An explicit cap wins, never above RUNS_CAP_MAX.
+  RUNS_CAP stays the constant default: a gate that needs the live number reads
+  budget.cap, never RUNS_CAP. An unreadable file still refuses (fail closed).
+- MAIN-4: kinds "report" and "probe" (KINDS), for a report run and a settings
+  or canary probe, so they stop reading as build spend.
+- LANE-MODEL: spawn with no model takes the lane's default from fleet_lanes
+  (key lane_model in ~/.fleet/lanes.json; slot_id or a lane-* note names the
+  lane); an explicit model still wins; no key = pick_model as before.
+- CARRY-8: a cap hit also writes a pause row (fleet_lanes.note_pause).
+- RSC-3 (ruling 2026-11-01-fleet-insights-conflicts): a run with log_path that
+  times out logs the tokens its stream showed, partial true; cost_usd stays
+  null and priced false. Measured: the stream's output_tokens are stale per
+  message, so the count is a floor. A run without log_path has no stream.
+- ROUTE-FALLBACK-NOMOVE (ruling docs/rulings/2026-11-08-route-fallback-proxy-
+  limit.md): a second recognizer for the SAME one trigger. A pinned proxy
+  entry's failed run whose text carries PROXY_PIN_UNAVAILABLE (the proxy's own
+  429) opens proxy_probe(): armed route of 2+ entries, a /tc-acct/<pin> URL,
+  loopback status endpoint (2 s, no redirect, HTTP 200 JSON), the proxy state
+  file at most 150 s old, the pin matched to exactly one row by uuid forms
+  only, that row's 7-day bucket >= 1.0 with status "rejected" and a reset in
+  (now, now + 7 d + 1 h], and one live status row agreeing (not disabled, not
+  "error", same reset ms). Then cls {"window": "7d", "until", "source":
+  "proxy-status"} goes to the unchanged _limit_after_run(). Usage line
+  "limit_source": "proxy-status" on a trigger; on a miss "limit": "unknown"
+  and "limit_probe": <reason> (PROBE_REASONS). The exhaust ledger line says
+  "source": "proxy-status". No pin, uuid or name is ever written anywhere.
+- KIT-CHECKLIST-CAPS (ruling docs/rulings/2026-11-08-kit-checklist-caps.md
+  (a)): _checklist_rows clips task and state with clip(), a byte-identical
+  copy of fleet_checklist.clip (marked "...", ASCII ?); past CHECKLIST_MAX
+  the progress doc gains "checklist_more": {"count", "ids": first 10}.
+- ROUTE-WRITE-LOG (RC RM-2074): every route-file write attempt, refused ones
+  included, appends one line to ~/.fleet/headless_route_writes.jsonl (beside
+  the route file; ROUTE_WRITE_LOG): {"ts", "verb" (`route set --account`,
+  `route set split|single`), "armed", "outcome" ok|refused|failed, "code",
+  "error", "old_sha256", "new_sha256" (of the file bytes; null when absent or
+  not written), "writer": {"pid", "ppid", "argv0" (base name), "caller"
+  (module:function outside this file), "session" (CLAUDE_SESSION_ID or
+  CLAUDE_CODE_SESSION_ID when set)}}. No pin, path or account id is written;
+  a log failure never fails or changes the write.
+- ROUTE-CONFIG-DIR: child_env() drops the parent's CLAUDE_CONFIG_DIR on a
+  proxy route (the pin decides the account, never the calling session's
+  config dir) and sets it to the route's dir on a named-config-dir route.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
 import contextlib
 import datetime as _dt
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -342,9 +391,9 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
-KIT_VERSION = 28
+KIT_VERSION = 30
 KIT_PATCH = 0
 TMPDIR_ENV = "CLAUDE_CODE_TMPDIR"  # v22: headless child temp root (sidecar)
 VAR = "CLAUDE_HEADLESS_BASE_URL"
@@ -382,12 +431,15 @@ _TOKEN_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 _TASK = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 _CHECK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,47}$")  # v26: 48 = fleet_checklist.ID_MAX
 CHECKLIST_MAX = 20
+TASK_MAX = 120  # = fleet_checklist.TASK_MAX (v30 A1)
+STATE_MAX = 40  # = fleet_checklist.STATE_MAX
+CHECKLIST_MORE_IDS = 10
 ABANDON_S = 7200  # v16: a running row silent this long is abandoned
 OWNER_ENV = "FLEET_PROGRESS_OWNER"
 OWNER_NAMES = ("claude.exe", "claude")
 _START_SLACK_S = 2.0
 ATOMIC_TRIES = 8
-KINDS = ("build", "inbox", "triage", "order")
+KINDS = ("build", "inbox", "triage", "order", "report", "probe")  # v30 MAIN-4
 # MAIN 0915 section 1: the BASIC status task names, the operator's words.
 TASKS = ("Idle", "Checking Inbox", "Waiting for Slot", "Running Session",
          "Delivering Notes", "Committing", "Backing Off", "Halted", "Turn Limit Reached")
@@ -506,7 +558,41 @@ def probe(host, port, timeout=2.0, connect=socket.create_connection):
                       code="proxy-unreachable") from None
 
 
-def child_env(url, bare=False, parent=None, route=None, code=None):
+_PY_DIR = str(Path(sys.executable).parent) if sys.executable else ""  # tests patch it
+_PSF = "pythonsoftwarefoundation."
+
+
+def _norm_dir(p):
+    return os.path.normcase(str(p).rstrip("\\/") or str(p))
+
+
+def _python_first(env, pydir=None):
+    """v30 (KIT-LW-PROPOSALS-1105 b): PATH with the kit interpreter's dir (and
+    its Scripts) first, Python Manager package entries dropped; PATH untouched
+    when the interpreter dir is unknown or missing."""
+    pydir = _PY_DIR if pydir is None else pydir
+    if not pydir or not Path(pydir).is_dir():
+        return
+    key = next((k for k in env if k.upper() == "PATH"), None)
+    if key is None:  # no PATH handed on: nothing to put first, nothing created
+        return
+    head = [str(pydir)]
+    scripts = Path(pydir) / "Scripts"
+    if Path(pydir).name.lower() != "scripts" and scripts.is_dir():
+        head.append(str(scripts))
+    seen = {_norm_dir(h) for h in head}
+    rest = []
+    for entry in str(env.get(key) or "").split(os.pathsep):
+        if not entry or _norm_dir(entry) in seen:
+            continue
+        if _PSF in entry.lower() and _norm_dir(entry) != _norm_dir(pydir):  # LW 2104
+            continue
+        seen.add(_norm_dir(entry))
+        rest.append(entry)
+    env[key] = os.pathsep.join(head + rest)
+
+
+def child_env(url, bare=False, parent=None, route=None, code=None, python_first=True):
     """The child's environment: provider switches and credentials removed, the
     proxy URL set. CLAUDE_CODE_USE_POWERSHELL_TOOL is a tool switch, not a
     provider switch, and is kept. --bare reads no OAuth, so it gets a
@@ -514,7 +600,13 @@ def child_env(url, bare=False, parent=None, route=None, code=None):
     v22 (KIT-V22-SIDECAR): with code given and no CLAUDE_CODE_TMPDIR in the
     parent, the child's temp root is <sidecar root>/<CODE>/Temp/claude when
     <sidecar root>/<CODE> exists (fleet_lanes.sidecar_dir); otherwise nothing
-    is set (the v21 behaviour, never a failure)."""
+    is set (the v21 behaviour, never a failure).
+    v30 (KIT-LW-PROPOSALS-1105 b, LW 2104): the kit's interpreter dir first,
+    Python Manager package entries dropped (python_first=False leaves PATH as
+    the parent's).
+    v30 ROUTE-CONFIG-DIR: a proxy route never inherits the parent's
+    CLAUDE_CONFIG_DIR (the calling session's account would break the pin); a
+    named-config-dir route sets it explicitly to the route's dir."""
     env = dict(os.environ if parent is None else parent)
     for k in list(env):
         if k in KEEP_EXACT:
@@ -527,6 +619,7 @@ def child_env(url, bare=False, parent=None, route=None, code=None):
         # base URL was stripped above).
         env["CLAUDE_CONFIG_DIR"] = route["config_dir"]
     else:
+        env.pop("CLAUDE_CONFIG_DIR", None)  # v30 ROUTE-CONFIG-DIR
         env["ANTHROPIC_BASE_URL"] = url
     # v10: SUBAGENT-FIRST guards an operator's interactive main thread; a
     # headless run has no agent_id and no operator, so it is always exempt.
@@ -545,6 +638,8 @@ def child_env(url, bare=False, parent=None, route=None, code=None):
                 tmp.mkdir(parents=True, exist_ok=True)
         if tmp is not None and tmp.is_dir():
             env[TMPDIR_ENV] = str(tmp)
+    if python_first:
+        _python_first(env)
     return env
 
 
@@ -770,22 +865,109 @@ def route_doc_for(accounts, armed):
     return doc
 
 
-def write_accounts(accounts, armed=False, path=None):
+ROUTE_WRITE_LOG = "headless_route_writes.jsonl"
+_ROUTE_SESSION_ENVS = ("CLAUDE_SESSION_ID", "CLAUDE_CODE_SESSION_ID")
+
+
+def route_write_log_path(route_file=None):
+    """v30 ROUTE-WRITE-LOG: one JSON line per route write attempt, beside the
+    route file."""
+    return Path(route_path() if route_file is None else route_file).with_name(ROUTE_WRITE_LOG)
+
+
+def _sha_of(path):
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _route_writer():
+    """Who is writing: pid, ppid, argv[0] base name, the first caller outside
+    this file (module:function) and the Claude session id when set."""
+    caller = None
+    here = os.path.normcase(str(Path(__file__).resolve()))
+    f = sys._getframe(1)
+    while f is not None:
+        fn = f.f_code.co_filename
+        if os.path.normcase(str(Path(fn).resolve())) != here:
+            caller = Path(fn).stem + ":" + f.f_code.co_name
+            break
+        f = f.f_back
+    argv0 = sys.argv[0] if sys.argv and sys.argv[0] else None
+    w = {"pid": os.getpid(), "ppid": os.getppid() if hasattr(os, "getppid") else None,
+         "argv0": Path(argv0).name if argv0 else None, "caller": caller}
+    for k in _ROUTE_SESSION_ENVS:
+        if os.environ.get(k):
+            w["session"] = os.environ[k][:80]
+            break
+    return w
+
+
+def _log_route_write(route_file, verb, armed, outcome, old_sha, new_sha=None, exc=None):
+    """Append one ROUTE-WRITE-LOG line; never raises. An exception passed in
+    is marked logged so an outer handler does not log it twice."""
+    line = {"ts": _iso(_now()), "verb": verb, "armed": bool(armed), "outcome": outcome,
+            "old_sha256": old_sha, "new_sha256": new_sha, "writer": _route_writer()}
+    if exc is not None:
+        line["code"] = getattr(exc, "code", None) or exc.__class__.__name__
+        line["error"] = "".join(c if 32 <= ord(c) < 127 else "?" for c in str(exc))[:200]
+        with contextlib.suppress(Exception):
+            exc.route_write_logged = True
+    with contextlib.suppress(Exception):
+        p = route_write_log_path(route_file)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a", encoding="ascii", newline="\n") as fh:
+            fh.write(json.dumps(line, sort_keys=True) + "\n")
+
+
+def log_route_refusal(verb, exc, armed=False, path=None):
+    """Log a route write refused before it reached write_accounts (CLI argument
+    checks); a no-op when that refusal was already logged."""
+    if getattr(exc, "route_write_logged", False):
+        return
+    p = route_path() if path is None else Path(path)
+    _log_route_write(p, verb, armed, "refused", _sha_of(p), exc=exc)
+
+
+def write_accounts(accounts, armed=False, path=None, verb="route set --account"):
     """v26 `route set --account ...`: validate FIRST, then an atomic ASCII + LF
     write (v1 when expressible). An invalid request raises Refused and leaves
-    the file untouched. Any route set ends an active fallback at once."""
-    doc = route_doc_for(accounts, armed)
-    check_route(doc)
+    the file untouched. Any route set ends an active fallback at once.
+    v30 ROUTE-WRITE-LOG: every attempt, refused or failed included, is logged."""
     p = route_path() if path is None else Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_write(p, json.dumps(doc, sort_keys=True) + "\n", verify=True)
+    old = _sha_of(p)
+    try:
+        doc = route_doc_for(accounts, armed)
+        check_route(doc)
+    except (Refused, TypeError, KeyError, AttributeError, ValueError) as exc:
+        _log_route_write(p, verb, armed, "refused", old, exc=exc)
+        raise
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        _atomic_write(p, json.dumps(doc, sort_keys=True) + "\n", verify=True)
+    except BaseException as exc:
+        _log_route_write(p, verb, armed, "failed", old, _sha_of(p), exc=exc)
+        raise
+    _log_route_write(p, verb, armed, "ok", old, _sha_of(p))
     if os.path.lexists(fallback_state_path(p)):
         _end_fallback("route set", p)
     return read_route(p)
 
 
 def write_route(mode, config_dir=None, path=None, fallback=None, fallback_config_dir=None):
-    """v19.1 / v20 `route set split|single`: the same validated v1 write."""
+    """v19.1 / v20 `route set split|single`: the same validated v1 write.
+    v30 ROUTE-WRITE-LOG: a refusal here is logged too."""
+    verb = "route set " + (mode if mode in ROUTE_MODES else "?")
+    try:
+        accounts = _route_accounts(mode, config_dir, fallback, fallback_config_dir)
+    except Refused as exc:
+        log_route_refusal(verb, exc, armed=fallback is not None, path=path)
+        raise
+    return write_accounts(accounts, armed=fallback is not None, path=path, verb=verb)
+
+
+def _route_accounts(mode, config_dir, fallback, fallback_config_dir):
     if mode not in ROUTE_MODES:
         raise _route_invalid("mode must be split or single")
     if mode == "split" and config_dir is not None:
@@ -806,7 +988,7 @@ def write_route(mode, config_dir=None, path=None, fallback=None, fallback_config
     for e in accounts:
         if e["via"] == "config" and not isinstance(e["config_dir"], str):
             raise _route_invalid("config_dir must be a non-empty ASCII path")
-    return write_accounts(accounts, armed=fallback is not None, path=path)
+    return accounts
 
 
 def describe_accounts(accounts):
@@ -983,14 +1165,16 @@ def entry_view(route, index):
     return out
 
 
-def exhaust_entry(route, index, until, route_file=None):
+def exhaust_entry(route, index, until, route_file=None, source=None):
     """Mark entry `index` exhausted until `until` (epoch): one `exhaust`
-    ledger line, and one `halt` line when no entry is left."""
+    ledger line, and one `halt` line when no entry is left. source (v30):
+    "proxy-status" when the proxy probe confirmed it; else no key."""
     rows = [x for x in (_read_fallback_state(fallback_state_path(route_file)) or [])
             if x["entry"] != index]
     rows.append({"entry": index, "since": _now(), "until": float(until)})
     _write_fallback_state(rows, route_file)
-    _ledger("exhaust", route_file, entry=index, until=_iso(until))
+    extra = {"source": source} if source else {}
+    _ledger("exhaust", route_file, entry=index, until=_iso(until), **extra)
     if _first_free(len(route["accounts"]), rows) is None:
         _ledger("halt", route_file, until=_iso(min(x["until"] for x in rows)))
     return rows
@@ -1144,7 +1328,180 @@ def _limit_after_run(route, falling_back, cls, route_file=None, entry=None):
     if not route or not route.get("armed") or len(route.get("accounts") or ()) < 2:
         return
     if cls.get("window") == "7d" and cls.get("until"):
-        exhaust_entry(route, entry or (2 if falling_back else 1), cls["until"], route_file)
+        exhaust_entry(route, entry or (2 if falling_back else 1), cls["until"], route_file,
+                      source=cls.get("source"))
+
+
+# ---------------------------------------------------------------- proxy probe (v30)
+# Ruling docs/rulings/2026-11-08-route-fallback-proxy-limit.md C1-C11. A pinned
+# proxy entry never shows the child the upstream 7-day message: the proxy
+# answers its own 429 below. Only that exact text opens this probe, and only
+# the proxy's own quota record, cross-checked live, can confirm the 7-day
+# refusal. Every miss is a named reason and no move. Nothing read here (pin,
+# uuids, names) is ever written, logged or raised.
+
+PROXY_PIN_UNAVAILABLE = ("Pinned account is unavailable (rate-limited, errored, "
+                         "or already tried)")
+PROXY_STATUS_PATH = "/teamclaude/status"
+PROXY_STATUS_TIMEOUT = 2.0
+PROXY_STATUS_MAX_BYTES = 4 * 1024 * 1024
+PROXY_STATE_MAX_AGE = 150  # s; the proxy saves every 60 s
+PROBE_REASONS = ("not-armed", "unpinned", "not-loopback", "status-unreachable",
+                 "status-bad", "state-missing", "state-stale", "state-bad",
+                 "pin-unmatched", "pin-ambiguous", "not-exhausted",
+                 "reset-out-of-range", "live-mismatch")
+
+
+def proxy_text_seen(text):
+    """C2: the proxy's exact pinned-unavailable text (case-sensitive) on a
+    line no longer than LIMIT_LINE_MAX."""
+    for raw in str(text or "").splitlines():
+        line = raw.strip()
+        if line and len(line) <= LIMIT_LINE_MAX and PROXY_PIN_UNAVAILABLE in line:
+            return True
+    return False
+
+
+def proxy_state_path():
+    """C4: the proxy's state file, by its own rule: TEAMCLAUDE_CONFIG, else
+    $XDG_CONFIG_HOME/teamclaude.json, else ~/.config/teamclaude.json; ".json"
+    becomes ".state.json", any other name gains ".state"."""
+    cfg = os.environ.get("TEAMCLAUDE_CONFIG")
+    if not cfg:
+        base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+        cfg = str(Path(base) / "teamclaude.json")
+    return Path(cfg[:-len(".json")] + ".state.json" if cfg.endswith(".json")
+                else cfg + ".state")
+
+
+def _proxy_fetch(host, port, timeout=PROXY_STATUS_TIMEOUT):
+    """C3: one GET of the status endpoint; (http status, body bytes). No
+    redirect is followed (http.client never follows one). Tests patch this."""
+    conn = http.client.HTTPConnection(host, port, timeout=timeout)
+    try:
+        conn.request("GET", PROXY_STATUS_PATH, headers={"Accept": "application/json"})
+        resp = conn.getresponse()
+        return resp.status, resp.read(PROXY_STATUS_MAX_BYTES + 1)
+    finally:
+        conn.close()
+
+
+def _num(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _url_pin(url):
+    """C1: the pin of an effective base URL path /tc-acct/<pin>, else None."""
+    try:
+        path = urlsplit(str(url or "")).path
+    except ValueError:
+        return None
+    if not path.startswith(PIN_PATH):
+        return None
+    pin = unquote(path[len(PIN_PATH):]).strip("/")
+    return pin or None
+
+
+def _match_pin(pin, rows):
+    """C5: (row, None) for exactly one row, else (None, reason). Uuid forms
+    only, case-folded, in the proxy's order acct/org, acct, org."""
+    want = pin.casefold()
+
+    def qualified(r):
+        a, o = r.get("accountUuid"), r.get("orgUuid")
+        return f"{a}/{o}" if isinstance(a, str) and a and isinstance(o, str) and o else None
+
+    for form in (qualified, lambda r: r.get("accountUuid"), lambda r: r.get("orgUuid")):
+        hits = [r for r in rows
+                if isinstance(form(r), str) and form(r) and form(r).casefold() == want]
+        if len(hits) > 1:
+            return None, "pin-ambiguous"
+        if hits:
+            return hits[0], None
+    return None, "pin-unmatched"
+
+
+def _rejected_7d(q, now=None):
+    """C6 on one quota dict: None when exhausted, else the miss reason."""
+    if not isinstance(q, dict):
+        return "not-exhausted"
+    u7 = q.get("unified7d")
+    if not (_num(u7) and u7 >= 1.0 and q.get("unifiedStatus") == "rejected"):
+        return "not-exhausted"
+    reset = q.get("unified7dReset")
+    if not _num(reset):
+        return "reset-out-of-range"
+    if now is not None and not now < reset / 1000 <= now + WEEK_S + 3600:
+        return "reset-out-of-range"
+    return None
+
+
+def proxy_probe(route, entry, url, now=None):
+    """C1-C8: (cls, None) on a confirmed proxy-masked 7-day refusal, cls =
+    {"window": "7d", "until": epoch, "source": "proxy-status"}; else (None,
+    reason in PROBE_REASONS). Called only after C2 (proxy_text_seen) held.
+    Every I/O failure is a reason, never an exception or a message."""
+    now = _now() if now is None else now
+    if not route or not route.get("armed") or len(route.get("accounts") or ()) < 2:
+        return None, "not-armed"
+    if not isinstance(entry, dict) or entry.get("via") != "proxy":
+        return None, "unpinned"
+    pin = _url_pin(url)
+    if not pin:
+        return None, "unpinned"
+    try:
+        parts = urlsplit(str(url))
+        host, port = parts.hostname, parts.port
+    except ValueError:
+        return None, "not-loopback"
+    if host not in LOOPBACK or not port:
+        return None, "not-loopback"
+    try:
+        code, body = _proxy_fetch(host, port, PROXY_STATUS_TIMEOUT)
+    except Exception:  # noqa: BLE001 - any failure to reach it is one reason
+        return None, "status-unreachable"
+    try:
+        if code != 200 or len(body) > PROXY_STATUS_MAX_BYTES:
+            return None, "status-bad"
+        live = json.loads(body.decode("utf-8"))
+        accounts = live.get("accounts") if isinstance(live, dict) else None
+        if not isinstance(accounts, list):
+            return None, "status-bad"
+    except Exception:  # noqa: BLE001
+        return None, "status-bad"
+    sp = proxy_state_path()
+    try:
+        st = sp.stat()
+    except OSError:
+        return None, "state-missing"
+    if now - st.st_mtime > PROXY_STATE_MAX_AGE:
+        return None, "state-stale"
+    try:
+        doc = json.loads(sp.read_text(encoding="utf-8"))
+    except OSError:
+        return None, "state-missing"
+    except Exception:  # noqa: BLE001
+        return None, "state-bad"
+    rows = doc.get("quota") if isinstance(doc, dict) else None
+    if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+        return None, "state-bad"
+    row, why = _match_pin(pin, rows)
+    if row is None:
+        return None, why
+    q = row.get("quota")
+    why = _rejected_7d(q, now)
+    if why:
+        return None, why
+    reset = q["unified7dReset"]
+    for acc in accounts:
+        if not isinstance(acc, dict) or acc.get("disabled") is not False:
+            continue
+        if acc.get("status") == "error":
+            continue
+        lq = acc.get("quota")
+        if _rejected_7d(lq) is None and lq.get("unified7dReset") == reset:
+            return {"window": "7d", "until": reset / 1000, "source": "proxy-status"}, None
+    return None, "live-mismatch"
 
 
 # ---------------------------------------------------------------- note rules
@@ -1335,6 +1692,76 @@ def check_door(bare=False, extra=(), floors_in_hooks=False):
         raise Refused("--bare refused: this tree's floors live in hooks, which --bare skips")
 
 
+# ---------------------------------------------------------------- drive permissions
+
+DRIVE_ALLOW_TOOLS = ("Read", "Grep", "Glob", "Edit", "Write", "MultiEdit", "TodoWrite",
+                     "ToolSearch")
+_DRIVE_PATH = re.compile(r"^(?:([A-Za-z]):[\\/]|/([A-Za-z])(?:/|$))(.*)$", re.DOTALL)
+
+
+def _unique(items):
+    out = []
+    for x in items:
+        if x not in out:
+            out.append(x)
+    return out
+
+
+def python_spellings(exe):
+    """v30 (DRIVE-ALLOW-LIST, ruling 2026-11-08-sweep2-candidates item 3): every
+    spelling of one interpreter path a drive's shell may write as its first
+    word. A drive-letter path in any form (backslash, forward or msys /c/...)
+    gives [backslash form, forward form, msys /x/... form] - the drive
+    letter as given for the first two (upper-cased from the msys form), lower-
+    case in the msys form; a POSIX path gives [exe]. Pure string work."""
+    exe = str(exe)
+    m = _DRIVE_PATH.match(exe)
+    if not m:
+        return [exe]
+    drive = m.group(1) or m.group(2).upper()
+    rest = m.group(3).replace("\\", "/")
+    return _unique([f"{drive}:\\" + rest.replace("/", "\\"), f"{drive}:/{rest}",
+                    f"/{drive.lower()}/{rest}"])
+
+
+def drive_permissions(python_exe, allow_tools=DRIVE_ALLOW_TOOLS, allow_cmds=(), deny_cmds=(),
+                      deny_words=(), bare_names=("python", "python3", "py"),
+                      shells=("Bash", "PowerShell")):
+    """v30 (DRIVE-ALLOW-LIST): the acceptEdits extra arguments of a drive from
+    ONE interpreter path: ("--permission-mode", "acceptEdits", "--allowedTools",
+    <list>, "--disallowedTools", <list>). Bash's interpreter first words are the
+    forward and msys spellings plus bare_names; PowerShell's the backslash and
+    forward spellings plus bare_names. Allow: allow_tools, then per shell
+    Shell(<first>:*) and Shell(<cmd>:*) per allow_cmds entry. Deny: per shell
+    Shell(<cmd>:*) per deny_cmds entry, and per deny word w Shell(<first> *w*)
+    for every first word plus the full-path catch-all Shell(*w*). Order stable,
+    duplicates dropped; a non-ASCII entry or one with a comma raises ValueError."""
+    sp = python_spellings(python_exe)
+    win = len(sp) == 3
+
+    def firsts(shell):
+        forms = ([sp[1], sp[2]] if shell == "Bash" else [sp[0], sp[1]]) if win else list(sp)
+        return _unique([*forms, *bare_names])
+
+    allow, deny = list(allow_tools), []
+    for shell in shells:
+        allow += [f"{shell}({f}:*)" for f in firsts(shell)]
+        allow += [f"{shell}({c}:*)" for c in allow_cmds]
+    for shell in shells:
+        deny += [f"{shell}({c}:*)" for c in deny_cmds]
+        for w in deny_words:
+            deny += [f"{shell}({f} *{w}*)" for f in firsts(shell)]
+            deny.append(f"{shell}(*{w}*)")
+    allow, deny = _unique(allow), _unique(deny)
+    for entry in allow + deny:
+        if "," in entry:
+            raise ValueError(f"permission entry {entry!r} contains a comma")
+        if not entry.isascii():
+            raise ValueError(f"permission entry {entry!r} is not ASCII")
+    return ("--permission-mode", "acceptEdits", "--allowedTools", ",".join(allow),
+            "--disallowedTools", ",".join(deny))
+
+
 # ---------------------------------------------------------------- budget
 
 def _try_os_lock(fd):
@@ -1363,14 +1790,51 @@ def _os_unlock(fd):
             fcntl.flock(fd, fcntl.LOCK_UN)
 
 
+HANDOFF_SUFFIX = "-NEXT-SESSION.txt"
+
+
+def _budget_root(path):
+    """v30: the tree root of a budget file at <root>/BUDGET_REL, else None."""
+    path, rel = Path(path), BUDGET_REL.parts
+    return path.parents[len(rel) - 1] if path.parts[-len(rel):] == rel else None
+
+
+def _budget_tree_code(path):
+    """v30: the tree code of a budget file at <root>/BUDGET_REL, from the one
+    <CODE>-NEXT-SESSION.txt at that root; None for any other path or count."""
+    root = _budget_root(path)
+    if root is None:
+        return None
+    names = [p.name for p in root.iterdir() if p.name.endswith(HANDOFF_SUFFIX)]
+    return names[0][:-len(HANDOFF_SUFFIX)] if len(names) == 1 else None
+
+
+def _machine_cap(path):
+    """v30 RUNCAP-500: the machine cap for a bare RunBudget(path), else
+    RUNS_CAP. Never raises, never above RUNS_CAP_MAX."""
+    with contextlib.suppress(Exception):  # a config problem keeps the default
+        code = _budget_tree_code(path)
+        if code:
+            cap = int(_lanes().runs_cap(code))
+            if 1 <= cap <= RUNS_CAP_MAX:
+                return cap
+    return RUNS_CAP
+
+
 class RunBudget:
     """Runs started per rolling window, persisted as epoch seconds. A missing
     file is zero runs; a file that exists but cannot be read or parsed REFUSES
     every start until a person repairs or removes it (fail closed). Starts are
-    counted under an exclusive lock file next to the budget file."""
+    counted under an exclusive lock file next to the budget file.
+    v30: cap None = the machine cap (_machine_cap); an explicit cap wins, at
+    most RUNS_CAP_MAX."""
 
-    def __init__(self, path, cap=RUNS_CAP, window=WINDOW_S, clock=time.time,
+    def __init__(self, path, cap=None, window=WINDOW_S, clock=time.time,
                  lock_wait=10.0, lock_stale=120.0):
+        if cap is None:
+            cap = _machine_cap(path)
+        elif isinstance(cap, (int, float)) and cap > RUNS_CAP_MAX:
+            cap = RUNS_CAP_MAX
         self.path, self.cap, self.window, self.clock = Path(path), cap, window, clock
         self.lock_wait, self.lock_stale = lock_wait, lock_stale
 
@@ -1560,6 +2024,15 @@ def _refused_status(root, code, budget, exc):
     _status_quietly(root, code, state, REFUSED_TASK, budget, reason=str(exc))
 
 
+def clip(text, limit=TASK_MAX):
+    """One marked text rule (KIT-CHECKLIST-CAPS A1, the fleet_board._clip form):
+    whitespace collapsed to single spaces, ASCII with ? for anything else, and
+    past limit cut to exactly limit chars ending "..."."""
+    text = " ".join(str(text or "").split())
+    text = text.encode("ascii", "replace").decode("ascii")
+    return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
 def _checklist_rows(checklist):
     """FLEET-COMMON item 13 d: the remaining tasks as [{id, task, state, eta_s}]."""
     if not isinstance(checklist, (list, tuple)):
@@ -1573,8 +2046,8 @@ def _checklist_rows(checklist):
         state, eta = r.get("state"), r.get("eta_s")
         if state is not None and not isinstance(state, str):
             raise ValueError(f"bad checklist state {state!r}")
-        row = {"id": r["id"], "task": " ".join(r["task"].split())[:120],
-               "state": None if state is None else " ".join(state.split())[:40],
+        row = {"id": r["id"], "task": clip(r["task"]),
+               "state": None if state is None else clip(state, STATE_MAX),
                "eta_s": None if eta is None else max(0, int(eta))}
         # v20 (CHECKLIST-ETA-CLOCK): optional pct and started (epoch seconds).
         if isinstance(r.get("pct"), (int, float)) and not isinstance(r["pct"], bool):
@@ -1584,6 +2057,17 @@ def _checklist_rows(checklist):
             row["started"] = float(r["started"])
         rows.append(row)
     return rows
+
+
+def _checklist_more(checklist):
+    """v30 KIT-CHECKLIST-CAPS A2: past CHECKLIST_MAX, {"count": N, "ids": the
+    first CHECKLIST_MORE_IDS valid ids past the cap}; None at or under it."""
+    over = list(checklist[CHECKLIST_MAX:])
+    if not over:
+        return None
+    ids = [r["id"] for r in over if isinstance(r, dict) and isinstance(r.get("id"), str)
+           and _CHECK_ID.match(r["id"])]
+    return {"count": len(over), "ids": ids[:CHECKLIST_MORE_IDS]}
 
 
 def _started_iso(value):
@@ -1638,6 +2122,9 @@ def write_progress(root, task, pct, step, eta_s, status, clock=time.time, checkl
            "status": status, "updated": _iso(clock())}
     if checklist is not None:
         doc["checklist"] = _checklist_rows(checklist)
+        more = _checklist_more(checklist)
+        if more:
+            doc["checklist_more"] = more
     if reason:
         doc["reason"] = " ".join(str(reason).split())[:120]
     who = default_owner() if owner is None else (_owner_doc(owner) if int(owner) > 0 else None)
@@ -1878,8 +2365,8 @@ def close_owned_progress(root, pid, reason="owner process ended without a final 
 
 
 def run_kind(note, kind=None, head=""):
-    """build | inbox | triage | order as given; else inbox for a channel-note
-    name, unattributed for an empty note, build for any other label (v8).
+    """build | inbox | triage | order | report | probe as given; else inbox for
+    a channel-note name, unattributed for an empty note, build for any other label (v8).
     v16: a note whose class (note_class: name, else the title in head) is
     ORDER / FIX / RULING is "order" when kind is None or "inbox"."""
     if kind is not None and kind not in KINDS:
@@ -1921,6 +2408,7 @@ def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=No
                kind=None, slot=None, route=None, fallback=False, unit=None):
     r = result if isinstance(result, dict) else {}
     u = r.get("usage") if isinstance(r.get("usage"), dict) else {}
+    sid = r.get("session_id")
     return {
         "ts": _iso(time.time()), "kit": KIT_VERSION, "code": code, "note": note,
         "model": model, "effort": effort, "bare": bare, "rc": rc,
@@ -1933,8 +2421,7 @@ def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=No
         "cost_usd": None if error == "timeout" else _cost(r),
         "priced": error != "timeout" and _cost(r) is not None,
         # v27 KIT-USAGE-SESSIONID: the child's session id from its result.
-        "session_id": (r.get("session_id")[:64] if isinstance(r.get("session_id"), str)
-                       and r.get("session_id") else None),
+        "session_id": sid[:64] if isinstance(sid, str) and sid else None,
         "num_turns": r.get("num_turns"),
         "is_error": r.get("is_error") if isinstance(r.get("is_error"), bool) else None,
         "subtype": r.get("subtype") if isinstance(r.get("subtype"), str) else None,
@@ -2303,6 +2790,26 @@ def _result_from_log(log_path):
     return found
 
 
+def _partial_usage(log_path):
+    """v30 RSC-3: the usage of a stream-json log with no result event: per
+    message id the last usage seen, summed. None when the log shows none."""
+    msgs: dict = {}
+    with contextlib.suppress(OSError), Path(log_path).open(encoding="utf-8",
+                                                          errors="replace") as fh:
+        for line in fh:
+            ev = _json_or_none(line.strip())
+            is_msg = isinstance(ev, dict) and ev.get("type") == "assistant"
+            msg = ev.get("message") if is_msg else None
+            usage = msg.get("usage") if isinstance(msg, dict) else None
+            if isinstance(usage, dict):
+                msgs[msg.get("id") or len(msgs)] = usage
+    if not msgs:
+        return None
+    keys = ("input_tokens", "output_tokens", "cache_creation_input_tokens",
+            "cache_read_input_tokens")
+    return {k: sum(u[k] for u in msgs.values() if isinstance(u.get(k), int)) for k in keys}
+
+
 _LANES_LOCK = threading.Lock()
 
 
@@ -2328,6 +2835,68 @@ def _lanes():
         spec.loader.exec_module(mod)
         sys.modules[name] = mod
         return mod
+
+
+_SUITE_GATE_LOCK = threading.Lock()
+
+
+def _suite_gate():
+    """v30 (DRIVE-REAPER): the sibling kit module fleet_suite_gate.py, loaded by
+    path like _lanes() - one loader at a time, published in sys.modules only
+    after exec_module finished; a failed load publishes nothing."""
+    name = f"fleet_kit_suite_gate_v{KIT_VERSION}"
+    mod = sys.modules.get(name)
+    if mod is not None:
+        return mod
+    with _SUITE_GATE_LOCK:
+        mod = sys.modules.get(name)
+        if mod is not None:
+            return mod
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            name, Path(__file__).with_name("fleet_suite_gate.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        sys.modules[name] = mod
+        return mod
+
+
+DRIVE_MIN_FREE_RAM_MB = 8192  # v30 DRIVE-REAPER: the operator's 8 GB (answers E)
+
+
+def check_drive_room(root, cwd, min_free_ram_mb=None, suite_idle=False, free=None,
+                     holders=None):
+    """v30 (DRIVE-REAPER, ruling 2026-11-08-sweep2-candidates item 2): raise
+    Blocked when a drive should not start. min_free_ram_mb set: free RAM
+    unreadable or under it -> code "low-ram". suite_idle: a live suite-gate
+    holder in this tree (or an unreadable gate) -> code "suite-busy".
+    free / holders are test hooks (a number or list, or a callable returning
+    one); defaults read fleet_suite_gate."""
+    if min_free_ram_mb is not None:
+        if free is None:
+            free = _suite_gate().free_ram_mb
+        try:
+            mb = free() if callable(free) else free
+        except Exception:  # noqa: BLE001 - unreadable reads as unknown, fail closed
+            mb = None
+        if mb is None:
+            raise Blocked("free RAM unreadable", code="low-ram")
+        if mb < min_free_ram_mb:
+            raise Blocked(f"free RAM {mb:.0f} MB under {min_free_ram_mb} MB", code="low-ram")
+    if suite_idle:
+        try:
+            gate = _suite_gate()
+            tree = gate.tree_name(cwd or root)
+            if holders is None:
+                recs = gate.holder_records(gate.gate_dir())
+            else:
+                recs = holders() if callable(holders) else holders
+            busy = any(isinstance(r, dict) and r.get("tree") == tree
+                       for r in (x[1] if isinstance(x, tuple) else x for x in recs))
+        except Exception:  # noqa: BLE001 - fail closed on any gate read error
+            raise Blocked("suite gate unreadable", code="suite-busy") from None
+        if busy:
+            raise Blocked("whole suite running in this tree", code="suite-busy")
 
 
 def _governor(root, code, governor, governor_timeout, governor_root, budget, note,
@@ -2372,6 +2941,11 @@ def cap_hit(code, budget, route_file=None):
     nxt = _iso(starts[0] + budget.window) if starts else None
     _ledger("cap-hit", route_file, tree=str(code), count=len(starts), cap=budget.cap,
             window_start=_iso(budget.clock() - budget.window), next_free=nxt)
+    root = _budget_root(budget.path)  # any other path names no tree: no row
+    with contextlib.suppress(Exception):  # v30 CARRY-8: a pause row never blocks
+        if root is not None:
+            _lanes().note_pause(root, code, None, "budget",
+                                f"run cap {len(starts)}/{budget.cap}, next free {nxt or '?'}")
     return nxt
 
 
@@ -2471,7 +3045,8 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
           setting_sources=DEFAULT_SOURCES, floors_in_hooks=False, pin=None,
           log_path=None, halt_file=None, governor=None, governor_timeout=None,
           governor_root=None, governor_since=None, kind=None, stdin_data=None,
-          slot_id=None, progress_task=None, route_source=None, unit_id=None):
+          slot_id=None, progress_task=None, route_source=None, unit_id=None,
+          min_free_ram_mb=None, suite_idle=False):
     """Start ONE headless run and wait for it. Returns the usage line (dict)
     plus "result" (and "stderr" when return_stderr). Raises Refused, before
     anything starts, when the fleet rules forbid it; the status file then reads
@@ -2494,7 +3069,11 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
     row (when given) that still say running are written as failed.
     v19.1: the route file is read first, fresh, on every call (route_source is
     a tests-only hook; the CLI never passes it). v20 (LANE-95): unit_id names
-    the resumable unit the run works on; the usage line records it as "unit"."""
+    the resumable unit the run works on; the usage line records it as "unit".
+    v30 (DRIVE-REAPER): min_free_ram_mb (a drive passes DRIVE_MIN_FREE_RAM_MB)
+    and suite_idle=True refuse with Blocked ("low-ram" / "suite-busy", status
+    "blocked") when free RAM is short or a whole suite runs in this tree;
+    checked before the governor and again once its slot is won. Defaults off."""
     root = Path(root)
     route_source = read_route if route_source is None else route_source
     budget = tree_budget(root, code)
@@ -2523,7 +3102,11 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
             raise Refused(f"no kind - every run names its kind, one of {KINDS}",
                           code="no-kind")
         check_door(bare, extra, floors_in_hooks)
+        check_drive_room(root, cwd, min_free_ram_mb, suite_idle)
         run_kind(note, kind)  # an unknown kind refuses before anything starts
+        if model is None:  # v30 LANE-MODEL: the lane's default; explicit wins
+            with contextlib.suppress(Exception):
+                model = _lanes().lane_model(code, slot_id, note)
         model, effort = pick_model(writes_code, model), pick_effort(note, effort)
         if stdin and stdin_data is not None:
             raise Refused("stdin=True and stdin_data both feed stdin - pick one")
@@ -2566,10 +3149,16 @@ def spawn(root, code, prompt, note="", writes_code=False, bare=False,
             _status_quietly(root, code, "backoff", "Backing Off", budget)
             raise Refused(f"no governor slot within {_secs(governor_timeout)}",
                           code=SLOT_TIMEOUT_CODE) from None
+        if min_free_ram_mb is not None or suite_idle:
+            try:  # v30: a governor wait can be long - read the room again
+                check_drive_room(root, cwd, min_free_ram_mb, suite_idle)
+            except Refused as room_exc:  # its own shape (CS 2356 item 5 pin)
+                _refused_status(root, code, budget, room_exc)
+                raise
         return _spawn_slotted(root, code, prompt, note, bare, budget, run, url, argv,
                               model, effort, cwd, stdin, timeout, log_path,
                               return_stderr, slot, kind, stdin_data, slot_id,
-                              progress_task, route, (primary, falling_back, route), unit_id,
+                              progress_task, route, (primary, falling_back, route, url), unit_id,
                               degraded)
 
 
@@ -2685,8 +3274,12 @@ def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_pa
     if run_error is None and rc not in (0, None):
         # v27 KIT-HEADLESS-STDERR: a failed run's row names why (stderr tail).
         error = stderr_tail(getattr(proc, "stderr", None)) or f"rc {rc}"
-    line = usage_line(result, code, note, model, effort, bare, rc,
-                      time.time() - started, error, kind, slot_name, route, fb[1], unit_id)
+    partial = _partial_usage(log_path) if log_path and run_error and result is None else None
+    line = usage_line({"usage": partial} if partial else result, code, note, model, effort,
+                      bare, rc, time.time() - started, error, kind, slot_name, route, fb[1],
+                      unit_id)
+    if partial:
+        line["partial"] = True  # v30 RSC-3: tokens seen so far; never a price
     line["governor_slot"] = Path(slot).name if slot else None
     _entry_fields(line, fb)
     if degraded:
@@ -2700,7 +3293,22 @@ def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_pa
         # a failed run; a timeout or a successful run's text is never read.
         res = result.get("result") if isinstance(result, dict) else None
         err = getattr(proc, "stderr", None)
-        cls = classify_limit("\n".join(x for x in (res, err) if isinstance(x, str)))
+        text = "\n".join(x for x in (res, err) if isinstance(x, str))
+        cls = classify_limit(text)
+        if not (cls and cls.get("window") == "7d") and proxy_text_seen(text):
+            # v30 ROUTE-FALLBACK-NOMOVE: the proxy's own pinned 429 hides the
+            # window; only its quota record, cross-checked live, confirms it.
+            got, why = None, "status-unreachable"
+            with contextlib.suppress(Exception):
+                got, why = proxy_probe(fb[0], fb[2] if len(fb) > 2 else None,
+                                       fb[3] if len(fb) > 3 else None)
+            if got:
+                cls = got
+                line["limit_source"] = "proxy-status"
+            else:
+                line["limit_probe"] = why
+                if not cls:
+                    line["limit"] = "unknown"
     if cls:
         line["limit"] = cls["window"] or "unknown"
         with contextlib.suppress(OSError, Refused):
@@ -2808,6 +3416,9 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
                                 fallback=args.fallback,
                                 fallback_config_dir=args.config_dir if single_fb else None)
             except Refused as exc:
+                log_route_refusal("route set --account" if args.account else
+                                  "route set " + str(args.mode), exc,
+                                  armed=args.fallback is not None)
                 print(json.dumps({"error": str(exc)[:200], "code": exc.code}), file=out)
                 return CLI_USAGE
             except OSError as exc:

@@ -402,7 +402,15 @@ def test_no_tracked_source_sets_anthropic_base_url_persistently():
         if re.search(r"setx\s+ANTHROPIC_BASE_URL|SetEnvironmentVariable\(\s*['\"]ANTHROPIC_BASE_URL",
                      text, re.IGNORECASE):
             offenders.append(_repo_walk.relative_posix(path, REPO))
-        if "auto-fallback" in text and "teamclaude" in text:
-            offenders.append(_repo_walk.relative_posix(path, REPO))
+        rel = _repo_walk.relative_posix(path, REPO)
+        # Kit v30 (MAIN 2026-11-12 0345): the vendored fleet_headless (MAIN's
+        # bytes, pinned by its MANIFEST, never edited here) now names the proxy
+        # for its pinned-proxy fallback probe (`/teamclaude/status`, the proxy's
+        # state file) and its docstring says an "auto-fallback flag is refused at
+        # the door". Prose about the flag is not a launch, so in the kit only the
+        # flag itself (`--auto-fallback`) counts beside the proxy's name.
+        needle = "--auto-fallback" if rel.startswith("ops/fleet_kit/") else "auto-fallback"
+        if needle in text and "teamclaude" in text:
+            offenders.append(rel)
     assert scanned, "empty enumeration would pass vacuously"
     assert not offenders
