@@ -252,7 +252,9 @@ function renderSpendGates() {
 // Loads recent matches from /api/replay/matches; clicking one fetches
 // /api/replay/match/<id> and lets the user scrub through per-minute
 // snapshots. Items, level, gold, CS reflect the slider position.
-const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null, loadSeq: 0, listSeq: 0 };
+// RM-2102: pendingId is the newest pick's match id while its reply is in
+// flight (_replayShowPending clears `match` for that time), else null.
+const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null, loadSeq: 0, listSeq: 0, pendingId: null };
 
 // UI scale v2.1 page #3 audit ritual step 5 state-coverage mock fixture
 // (2026-05-23). When body.dataset.uiMock === "1" the three fetch
@@ -413,6 +415,9 @@ function _replayViewRefresh() {
         ul.appendChild(li);
         if (focusMatchId && m.match_id === focusMatchId) focusRow = btn;
       }
+      // RM-2102: the rebuilt rows carry no mark, so re-apply it from the
+      // held state (the pick in flight, else the loaded match); no load.
+      _replayMarkHeldRow();
       // s220 PGR S5: auto-load the focused match (from PGR Review ->).
       // Fires AFTER all rows are mounted so .active highlighting works.
       if (focusRow) {
@@ -459,19 +464,47 @@ function _replayRevealMain() {
     }
   } catch (_) {}
 }
-function _replayLoadMatch(matchId, rowEl, opts) {
-  const reveal = !!(opts && opts.reveal);
-  // RM-1062: aria-current names the loaded match for a screen reader.
-  document.querySelectorAll(".replay-match-row.active").forEach(r => {
+// RM-1062: aria-current names the loaded match for a screen reader. The one
+// writer of the row mark: rowEl (or none) gets .active + aria-current,
+// every other row in the document loses both.
+function _replayMarkRow(rowEl) {
+  document.querySelectorAll(".replay-match-row.active, .replay-match-row[aria-current]").forEach(r => {
+    if (r === rowEl) return;
     r.classList.remove("active");
     r.removeAttribute("aria-current");
   });
   if (rowEl) { rowEl.classList.add("active"); rowEl.setAttribute("aria-current", "true"); }
+}
+// RM-2102: _replayViewRefresh rebuilds #replay-match-list on every entry to
+// the view, and the rebuilt rows carried no mark, so after a re-entry no row
+// named the match the view still held. The mark is applied from state: the
+// newest pick still in flight (as the pick itself marks its row before the
+// reply lands), else the loaded match (_REPLAY.match); neither (nothing
+// picked, or the newest pick failed) marks no row. A pick a newer one
+// superseded is never named: pendingId is the newest pick's id, and a late
+// reply returns on the loadSeq guard before it can mark.
+// Guard: tests/snapshot_panels/test_replay_reentry_keeps_loaded_mark.py.
+function _replayMarkHeldRow() {
+  const id = _REPLAY.pendingId || (_REPLAY.match && _REPLAY.match.match_id) || null;
+  const ul = document.getElementById("replay-match-list");
+  let row = null;
+  if (id && ul) {
+    for (const r of ul.querySelectorAll(".replay-match-row")) {
+      if (r.dataset.matchId === id) { row = r; break; }
+    }
+  }
+  _replayMarkRow(row);
+  return row;
+}
+function _replayLoadMatch(matchId, rowEl, opts) {
+  const reveal = !!(opts && opts.reveal);
+  _replayMarkRow(rowEl);
   // S144-U-183: only the newest pick's reply is applied. Pick A on a slow
   // reply then pick B, and A's late reply used to repaint the meta line,
   // scrubber, map and grid as A under row B, and re-arm the recording lane
   // for A. Guard: tests/snapshot_panels/test_replay_stale_load.py.
   const seq = ++_REPLAY.loadSeq;
+  _REPLAY.pendingId = matchId;
   const meta = document.getElementById("replay-meta");
   if (meta) meta.textContent = "loading " + matchId + "...";
   // s220 PGR S5: fire the Match-V5 timeline event ribbon fetch in
@@ -500,6 +533,7 @@ function _replayLoadMatch(matchId, rowEl, opts) {
     if (seq !== _REPLAY.loadSeq) return;
     _replaySetGridBusy(false);
     _REPLAY.match = null;
+    _REPLAY.pendingId = null;
     _REPLAY.snapshotIdx = 0;
     const slider = document.getElementById("replay-slider");
     if (slider) { slider.max = "0"; slider.value = "0"; slider.disabled = true; }
@@ -518,7 +552,11 @@ function _replayLoadMatch(matchId, rowEl, opts) {
       if (!d) { failed(); return; }
       _replaySetGridBusy(false);
       _REPLAY.match = d;
+      _REPLAY.pendingId = null;
       _REPLAY.snapshotIdx = 0;
+      // RM-2102: the newest pick is the marked one when its reply lands
+      // (the list may have been rebuilt while it was in flight).
+      _replayMarkHeldRow();
       // S144-U-188: the ribbon enables its rows only for the match the
       // scrubber holds, and only when it has frames to seek.
       try { setReplayEventsScrubber(d.match_id, (d.snapshots || []).length); } catch (_) {}
