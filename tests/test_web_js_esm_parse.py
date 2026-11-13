@@ -18,7 +18,12 @@ The mechanism, isolated on node v24.15.0 with four one-file probes:
     same, duplicate inside a function body    -> node --check exit 0  (MISSED)
 
 So `--check` goes blind on exactly the shape every module in this tree has: a
-file that opens with `import`. The source-level tests grep text rather than
+file that opens with `import`. RE-MEASURED 2026-11-12 (RM-2101): node v24.22.2
+on the CI image ubuntu-26.04 (20261101.186, nightly run 43260688399) CATCHES
+the third shape - `--check` exits 1 with "Identifier 'a' has already been
+declared". The hole is therefore version-dependent, which is why the pin below
+is too; the sweep is not, because the local runtime and an older CI image
+still sit on the blind side. The source-level tests grep text rather than
 running a parser, so they cannot see it either. Only a real module parse does.
 The bug was found by loading the page and reading the console, which is the
 slowest possible feedback loop for a one-token mistake.
@@ -34,6 +39,7 @@ runtime; that is what the panel contract tests and the live checks are for.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -61,6 +67,48 @@ def _modules() -> list[Path]:
         for p in WEB_JS.rglob("*.js")
         if not p.name.endswith(_SKIP_SUFFIXES)
     )
+
+
+# RM-2101: the two MEASURED `node --check` outcomes on the import-leading probe
+# in test_node_check_goes_blind_on_a_file_that_leads_with_import. Both bounds
+# are measurements, not guesses; the fix landed somewhere in
+# (_LAST_MEASURED_BLIND, _FIRST_MEASURED_CAUGHT] and nothing in between was run.
+#   blind:  node v24.15.0, local, 2026-07-31 (exit 0; module docstring).
+#   caught: node v24.22.2, CI image ubuntu-26.04 20261101.186, nightly run
+#           43260688399, 2026-11-12 (exit 1, "Identifier 'a' has already been
+#           declared"; version read from the node stderr in that run's log).
+# Assumptions, stated because each one decides a branch:
+#   1. Every release AT OR AFTER 24.22.2 keeps the fix, later majors included.
+#      If one measures blind, the pin goes red; record it as a new data point,
+#      never by weakening the sweep.
+#   2. Every release AT OR BELOW 24.15.0 is blind. Only 24.15.0 itself was
+#      measured; the rest inherits the pre-RM-2101 pin, which asserted blind on
+#      every version.
+#   3. Strictly between the bounds the outcome is UNMEASURED, so the pin
+#      accepts either exit code there rather than invent a threshold. A run on
+#      such a version that wants to narrow the gap moves one bound to it.
+_LAST_MEASURED_BLIND = (24, 15, 0)
+_FIRST_MEASURED_CAUGHT = (24, 22, 2)
+
+_NODE_VERSION_RE = re.compile(r"v?(\d+)\.(\d+)\.(\d+)(?:[-+]\S*)?")
+
+
+def _parse_node_version(text: str) -> tuple[int, int, int]:
+    """`node --version` output -> (major, minor, patch); raises on anything else."""
+    m = _NODE_VERSION_RE.fullmatch(text.strip())
+    if m is None:
+        raise ValueError(f"not a node version string: {text!r}")
+    major, minor, patch = (int(g) for g in m.groups())
+    return (major, minor, patch)
+
+
+def _expected_node_check_outcome(version: tuple[int, int, int]) -> str:
+    """'blind' | 'caught' | 'unmeasured' for `node --check` on the probe."""
+    if version <= _LAST_MEASURED_BLIND:
+        return "blind"
+    if version >= _FIRST_MEASURED_CAUGHT:
+        return "caught"
+    return "unmeasured"
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
@@ -126,9 +174,20 @@ def test_node_check_goes_blind_on_a_file_that_leads_with_import(tmp_path):
     with `export` is caught, which is why the earlier version of this test
     'proved' the opposite of the real behaviour.
 
-    If a future Node closes this hole the test goes red; correct the docstring
+    RM-2101: the expected `--check` outcome now follows the running Node's
+    version (`_expected_node_check_outcome`): blind where blindness was
+    measured, caught where the catch was measured, either way in the unmeasured
+    gap between. The ESM parse must raise SyntaxError on EVERY version - that
+    half is the sweep's own premise and is never relaxed. If a Node contradicts
+    its region the test goes red; record the new measurement in the bounds
     above rather than weakening the sweep, because the sweep is right either way.
     """
+    ver = subprocess.run(["node", "--version"],
+                         capture_output=True, text=True, timeout=60, check=False)
+    assert ver.returncode == 0, f"node --version failed: {ver.stderr[-400:]}"
+    version = _parse_node_version(ver.stdout)
+    expected = _expected_node_check_outcome(version)
+
     (tmp_path / "other.js").write_text("export const x = 1;\n", encoding="utf-8")
     probe = tmp_path / "probe.js"
     probe.write_text(
@@ -146,8 +205,66 @@ def test_node_check_goes_blind_on_a_file_that_leads_with_import(tmp_path):
          str(probe)],
         capture_output=True, text=True, timeout=60, check=False)
 
-    assert chk.returncode == 0, (
-        "node --check now CATCHES a duplicate const in an import-leading file - "
-        "update the docstring above; do NOT drop the ESM sweep")
+    shown = "v{}.{}.{}".format(*version)
+    if expected == "blind":
+        assert chk.returncode == 0, (
+            f"node {shown} --check now CATCHES a duplicate const in an "
+            "import-leading file, inside the measured-blind region - record "
+            "the new measurement in _LAST_MEASURED_BLIND / "
+            "_FIRST_MEASURED_CAUGHT and the module docstring; do NOT drop the "
+            "ESM sweep")
+    elif expected == "caught":
+        assert chk.returncode != 0, (
+            f"node {shown} --check is BLIND again on a duplicate const in an "
+            "import-leading file, inside the measured-caught region - record "
+            "the new measurement in the bounds above; the ESM sweep stays")
+    # "unmeasured": either exit code is accepted; nothing pinned it there.
     assert esm.returncode == 1, (
-        "the ESM parse must raise SyntaxError where --check stayed silent")
+        f"node {shown}: the ESM parse must raise SyntaxError on the probe "
+        f"(--check exit {chk.returncode}); the sweep depends on it")
+
+
+# RM-2101: the pure decision the live pin above turns on, covered on BOTH sides
+# without needing a second Node install. Neither test needs node on PATH.
+
+@pytest.mark.parametrize(("text", "want"), [
+    ("v24.15.0\n", (24, 15, 0)),
+    ("v24.22.2", (24, 22, 2)),
+    ("24.22.2", (24, 22, 2)),
+    ("v26.0.0-nightly20261101abcdef", (26, 0, 0)),
+])
+def test_node_version_text_parses_to_a_tuple(text, want):
+    assert _parse_node_version(text) == want
+
+
+@pytest.mark.parametrize("text", ["", "node", "v24.15", "Node.js v24.22.2"])
+def test_unparseable_node_version_text_raises(text):
+    # Fail loud: a version that silently parsed to (0, 0, 0) would land in the
+    # "blind" region and re-pin the hole on a Node nobody measured.
+    with pytest.raises(ValueError):
+        _parse_node_version(text)
+
+
+@pytest.mark.parametrize(("version", "want"), [
+    # measured blind (local, 2026-07-31) and everything at or below it
+    ((24, 15, 0), "blind"),
+    ((24, 14, 9), "blind"),
+    # measured caught (CI nightly 43260688399, 2026-11-12) and everything after
+    ((24, 22, 2), "caught"),
+    ((24, 22, 3), "caught"),
+    ((24, 23, 0), "caught"),
+    ((26, 1, 0), "caught"),
+    # strictly between the two measurements: nobody ran the probe there
+    ((24, 15, 1), "unmeasured"),
+    ((24, 16, 0), "unmeasured"),
+    ((24, 22, 1), "unmeasured"),
+])
+def test_expected_node_check_outcome_follows_the_measured_bounds(version, want):
+    assert _expected_node_check_outcome(version) == want
+
+
+def test_the_measured_bounds_do_not_overlap():
+    # If a new measurement is recorded with the bounds crossed, one version
+    # would be both "blind" and "caught" and the first branch would silently
+    # win. Pin the ordering so that edit fails here instead.
+    assert _LAST_MEASURED_BLIND < _FIRST_MEASURED_CAUGHT
