@@ -21,6 +21,13 @@ else fails ``test_no_new_findings``.
 Scope: production code. ``tests/``, any ``*/tests/`` directory, ``agents/daemon_slayer``, the
 ``agents/agent3_testing/suite`` test suite and ``tools/ds_cross_eval`` are out of scope. The run
 uses NO config (``--isolated``) so a per-file-ignore cannot hide a finding.
+
+``ops/fleet_kit/`` is out of scope too (s162): it is vendored byte-for-byte and pinned by its
+MANIFEST.json, so RC cannot fix a finding there. Kit v30 brought one ISC002 into
+``fleet_rewrite.py`` and reddened this guard. A fence, not a baseline row, so the next kit version
+cannot trip it either; ``test_fence_hides_only_manifest_pinned_kit_files`` keeps the fence off
+RC-authored code and ``test_an_rc_authored_finding_is_still_counted`` proves the count path.
+Precedent: ``tests/test_isc001_same_line_concat_ratchet_s144p507.py`` (``_OUT_OF_SCOPE``).
 """
 from __future__ import annotations
 
@@ -41,12 +48,15 @@ pytestmark = pytest.mark.skipif(
 )
 
 _RULES = ("C408", "C416", "ISC002", "PERF402", "PLC0206", "RSE102", "SIM117", "TRY201")
+# Vendored byte-for-byte, pinned by ops/fleet_kit/MANIFEST.json: MAIN's bytes, never RC-authored.
+_VENDORED = "ops/fleet_kit/"
 _OUT_OF_SCOPE = (
     "tests/",
     "tools/tests/",
     "agents/daemon_slayer/",
     "agents/agent3_testing/suite/",
     "tools/ds_cross_eval/",
+    _VENDORED,
 )
 # file -> finding count that stays because another owner holds the file. Only shrinks.
 _BASELINE = {
@@ -82,16 +92,29 @@ def _ruff(args: list[str], stdin: str | None = None) -> list[dict]:
     return json.loads(proc.stdout)
 
 
-@pytest.fixture(scope="module")
-def tree_counts() -> dict[str, int]:
-    tracked = {relative_posix(p) for p in repo_files(REPO_ROOT, ("*.py",))}
-    assert len(tracked) > 100, "the tracked-file walk returned almost nothing"
+def _in_scope(rel: str) -> bool:
+    return not rel.startswith(_OUT_OF_SCOPE) and "/tests/" not in rel
+
+
+def _count(findings: list[dict], tracked: set[str]) -> dict[str, int]:
     counts: collections.Counter = collections.Counter()
-    for d in _ruff(["--select", ",".join(_RULES), "."]):
+    for d in findings:
         rel = relative_posix(Path(d["filename"]).resolve())
-        if rel in tracked and not rel.startswith(_OUT_OF_SCOPE) and "/tests/" not in rel:
+        if rel in tracked and _in_scope(rel):
             counts[rel] += 1
     return dict(counts)
+
+
+@pytest.fixture(scope="module")
+def tracked() -> set[str]:
+    files = {relative_posix(p) for p in repo_files(REPO_ROOT, ("*.py",))}
+    assert len(files) > 100, "the tracked-file walk returned almost nothing"
+    return files
+
+
+@pytest.fixture(scope="module")
+def tree_counts(tracked) -> dict[str, int]:
+    return _count(_ruff(["--select", ",".join(_RULES), "."]), tracked)
 
 
 def test_no_new_findings(tree_counts):
@@ -145,6 +168,30 @@ def test_probe_is_live():
     found = _ruff(["--select", ",".join(_RULES), "--stdin-filename", "probe_mod.py", "-"],
                   stdin=_PROBE)
     assert {d["code"] for d in found} == set(_RULES), sorted({d["code"] for d in found})
+
+
+_ISC002_PROBE = 'S = "a" \\\n    "b"\n'
+
+
+@pytest.mark.parametrize("rel", ["core/build_order.py", "ops/launcher/update_cycle.py"])
+def test_an_rc_authored_finding_is_still_counted(rel, tracked):
+    """The vendored fence drops the kit only: the same ISC002 under an RC-authored path is counted."""
+    args = ["--select", ",".join(_RULES), "--stdin-filename"]
+    found = _ruff([*args, rel, "-"], stdin=_ISC002_PROBE)
+    assert {d["code"] for d in found} == {"ISC002"}, found
+    assert _count(found, tracked) == {rel: 1}
+    kit = _ruff([*args, _VENDORED + "fleet_rewrite.py", "-"], stdin=_ISC002_PROBE)
+    assert {d["code"] for d in kit} == {"ISC002"}, kit
+    assert _count(kit, tracked) == {}
+
+
+def test_fence_hides_only_manifest_pinned_kit_files(tracked):
+    """Every tracked .py the fence drops is a MANIFEST.json-pinned kit file, so no RC-authored file hides there."""
+    manifest = json.loads((REPO_ROOT / _VENDORED / "MANIFEST.json").read_text(encoding="utf-8"))
+    fenced = {rel for rel in tracked if rel.startswith(_VENDORED)}
+    assert fenced, f"no tracked .py under {_VENDORED}: the fence guards nothing, drop it"
+    unpinned = sorted(rel for rel in fenced if rel[len(_VENDORED):] not in manifest["files"])
+    assert not unpinned, f"not pinned by MANIFEST.json, so RC-authored and in scope: {unpinned}"
 
 
 def test_rewrites_are_equivalent():
