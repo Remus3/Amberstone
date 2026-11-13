@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-10 - session 159: u5 red fixed and pushed (`f84014933`), the 516-commit s144 lane landing gated green at -n 4 and pushed (`f84014933..8aa74df1b`), "-n 4 standing", rotator relaunched
+
+- **C1-C5 (LEDGER 2101):** dispatch 42749327744 red = 2 known + a NEW u5 guard red; fixed in `f84014933` (`fleet_test_guard.budget(15)`), pushed `683aafe11..f84014933` on the operator's "run anyway and yes", ci/docs-guards/codeql green. S144_LANES_STOP of 05:41:59 a false stop (0xC0000142 at shutdown, as LEDGER 2008). S144-Q-173 = Q-174 (closed); S144-Q-178 open, next queue candidate. Quiesce Decision 6 retired.
+- **C7 landing (LEDGER 2101):** 501 lane commits + 8 merges + 7 fixes = 516 into main `79fb8e2e3`; true-audit / repo as FOLDED copies (`6ef029ff4`, `196b6a88d`); -n 8 VOID at 87 percent; graded -n 4 run 88613 passed, exit 0. Four commit-message slips recorded in LEDGER 2101.
+- **C6 + C9 (`8aa74df1b`):** atlas DS count 15378; operator "-n 4 standing" written into CLAUDE.md, tools/done.md, the command docs and their guards. Adjudicator ruling2 (launch line 2 reads >= 23100 MB) recorded in LEDGER 2101.
+- **/done (LEDGER 2102):** pushed `f84014933..8aa74df1b` (517); push ci mode=full covers HEAD (no dispatch); bot_merge_check clean. C8: dry plans read, leak scan clean, S144_LANES_STOP to the Recycle Bin, rotator pid 1644 relaunched (first child true-audit 21:39). RM-2082 CLOSED as a flake; S159 filings RM-2084..RM-2089. RC app DOWN since the 05:42 reboot.
+- **Do NOT redo:** the u5 fix, the landing and its push, the -n 4 standing order, the C4 false-stop read, the RM-2082 close.
+- **Next:** read the push ci 42954031303 (mode=full) + codeql + docs-guards; record the first lane cycle after the relaunch (and RM-2089's queue sync); fold "-n 4 standing" into RC's next REPLY to MAIN; then the next BACKLOG rows.
+
+---
+
 # 2026-11-09c - session 158: pushed `50e5ad38f..683aafe11` (operator yes), lane-0 timeout explained and the lane loop hardened (`5f498779e` + `08579afca`), lane/repo reconciled, Dependabot #32 decided, RC relaunched for L9
 
 - **C1-C4, C6-C8 (LEDGER 2098):** s157 dispatch 42734265057 red on one suspected flake (focus ring [sr], RM-2082); #32 already landed as `0a2879497`, never take a bot lock (`e14a5e432`); RM-723 SHIPPED and RM-1255 / RM-1506 reconciled (`734b0c094`); RC up via WMI, DS 1.291.0, L9 read-backs mostly PASS (q090 deviates, d159 / t101 partial).

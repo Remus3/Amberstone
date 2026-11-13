@@ -6,6 +6,19 @@
 
 ---
 
+# 2026-11-13 - session 163 (picked up s162, which hit account 2's weekly limit before /done): gated -n 4 suite green on `4bb4badb6` and pushed `8aa74df1b..4bb4badb6`; RM-2081 / RM-1273 / RM-2101 / RM-2102 / RM-2094 CLOSED; CLI pin 2.1.323; agreement renewed to 2026-12-31; lanes relaunched (pid 18116)
+
+- **Session number (LEDGER 2107):** s162 never ran /done, so this /done writes `SESSION: 164`; marker and board say 163.
+- **C1-C3:** kit v30 ratchet fence `6b1393489`; rotator drained; C3 ruling KEEP s152 c4 (no FIFO join while another tree holds the gate); gated run 88749 passed exit 0; pushed 23 commits. Push ci timed out at 45 min (RM-1386, re-measured: needs a module-count escalation under ~1000).
+- **CI verdict:** dispatch 43491658216 on `4bb4badb6` 2 failed / 88241 passed, both judged hosted flakes (RM-2113, RM-2114); re-run under Py3.12 first.
+- **Closures:** RM-2081 verdict (a) (Bloodmail AD 30 -> 40); RM-1273 CLAUDE.md 54165 B; RM-2101 Node-aware pin `4897cb6ba`; RM-2102 replay row re-mark `63fc27d1d`; RM-2094 all 9 read-backs PASS (app up via WMI).
+- **Ops:** ruff 0.17.3 in gitignored `ops/runtime/ruff0173` (global ruff 0.15.22 fails the ratchets; reinstall = operator ASK); two stashes exported to `ops/runtime/branch_bundles/` and dropped (only copy, RM-2110); note_pause driver patch (`.bak-s163`); ONE ANSWER to MAIN 0345 (TERMINAL).
+- **Filed:** RM-2104..RM-2115 (BACKLOG "S163 filings"); next free RM-2116, LEDGER 2109.
+- **What's next:** re-run the two flake modules under Py3.12 (RM-2113 / RM-2114); RM-1386 selector threshold; read the /done dispatch result.
+- **Do NOT redo:** the s163 closures above; the C3 push; the MAIN 0345 answer (never answer an answer).
+
+---
+
 # 2026-11-11b - session 161: RM-1271 hook (`38e46c755`), RM-2091 DDragon mirror retry + pythonw log (`65fa2a001`), RM-2092 DS log file (`69d3b62a6`), RM-2093 ARAM Stormrazor cell (`de62be5cf`); Q-148 / Q-178 / Q-179 CLOSED WON'T-FIX; NOT pushed, gated suite not run (Vanguard tray up)
 
 - **C2 (LEDGER 2105):** RC-DDragonMirrorRefresh FAILURE = a transient blip on the 11-11 02:30 run; replay 0 failures; fixed as RM-2091 (bounded retry pass, log file under pythonw). Task drift recorded only (fires 02:30 vs 03:30; S4U vs Interactive).
@@ -26,14 +39,3 @@
 - **/done (LEDGER 2104):** no push (landing rule unmet, needs the operator's yes); memory: 2 new feedback notes.
 - **Do NOT redo:** the 7-red fixes, the q090 decision, the RM-2089 fix and driver patch, the NA2 read, the 7cba5420d refutation.
 - **Next:** drain lanes, confirm >= 23100 MB free (or the operator's "run anyway"), gated -n 4 --exclusive suite on HEAD, push on the operator's yes, watch CI.
-
----
-
-# 2026-11-10 - session 159: u5 red fixed and pushed (`f84014933`), the 516-commit s144 lane landing gated green at -n 4 and pushed (`f84014933..8aa74df1b`), "-n 4 standing", rotator relaunched
-
-- **C1-C5 (LEDGER 2101):** dispatch 42749327744 red = 2 known + a NEW u5 guard red; fixed in `f84014933` (`fleet_test_guard.budget(15)`), pushed `683aafe11..f84014933` on the operator's "run anyway and yes", ci/docs-guards/codeql green. S144_LANES_STOP of 05:41:59 a false stop (0xC0000142 at shutdown, as LEDGER 2008). S144-Q-173 = Q-174 (closed); S144-Q-178 open, next queue candidate. Quiesce Decision 6 retired.
-- **C7 landing (LEDGER 2101):** 501 lane commits + 8 merges + 7 fixes = 516 into main `79fb8e2e3`; true-audit / repo as FOLDED copies (`6ef029ff4`, `196b6a88d`); -n 8 VOID at 87 percent; graded -n 4 run 88613 passed, exit 0. Four commit-message slips recorded in LEDGER 2101.
-- **C6 + C9 (`8aa74df1b`):** atlas DS count 15378; operator "-n 4 standing" written into CLAUDE.md, tools/done.md, the command docs and their guards. Adjudicator ruling2 (launch line 2 reads >= 23100 MB) recorded in LEDGER 2101.
-- **/done (LEDGER 2102):** pushed `f84014933..8aa74df1b` (517); push ci mode=full covers HEAD (no dispatch); bot_merge_check clean. C8: dry plans read, leak scan clean, S144_LANES_STOP to the Recycle Bin, rotator pid 1644 relaunched (first child true-audit 21:39). RM-2082 CLOSED as a flake; S159 filings RM-2084..RM-2089. RC app DOWN since the 05:42 reboot.
-- **Do NOT redo:** the u5 fix, the landing and its push, the -n 4 standing order, the C4 false-stop read, the RM-2082 close.
-- **Next:** read the push ci 42954031303 (mode=full) + codeql + docs-guards; record the first lane cycle after the relaunch (and RM-2089's queue sync); fold "-n 4 standing" into RC's next REPLY to MAIN; then the next BACKLOG rows.

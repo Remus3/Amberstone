@@ -380,7 +380,7 @@ Every session is **orchestrated + multi-agent + self-adjudicating + self-adversa
 - The push half gates on DIFF CONTENT, not destination. Name pinned artifacts by SYMBOL only (`SHARED_SHA256`, `CHANNEL_PIN`), never by line number.
 - The sibling-name sweep (`tools/sibling_name_sweep.py`, `.githooks/pre-push`) is "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO" - never claim "sibling names cannot leak", never soften that phrasing. It has named blind spots (bare channel code; `--no-verify`), so a clean report is not proof.
 - **There is NO TIMEOUT: RC halts and WAITS.**
-- RC-InboxResponder stays DISARMED until an expiring agreement record arms it; an unattended loop never arms another repo. ARMED 2026-10-02 by the operator: `ops/runtime/inbox_responder_agreement.json`, renewed 30 days in s145 (LEDGER 1984, same scope), expires 2026-12-01.
+- RC-InboxResponder stays DISARMED until an expiring agreement record arms it; an unattended loop never arms another repo. ARMED 2026-10-02 by the operator: `ops/runtime/inbox_responder_agreement.json`, renewed 30 days in s145 (LEDGER 1984, same scope), renewed s163 (LEDGER 2107, same scope), expires 2026-12-31.
 - Headless spawns: only the kit's `spawn()` (item 10), via `ops/loop/fleet_route.py` (its fail-closed pre-check `ops/loop/headless_env.py` stays, refusals in `logs/headless_route.log`) or, for inbox triage, directly from `ops/loop/inbox_tick.py` with `fleet_inbox.triage_spawn_kwargs(True)` (non-bare). Only off-kit path: the DISARMED pre-v8 responder `tools/inbox_responder_spawn.py`. Any other spawn is forbidden; guard `tests/test_headless_env.py`; long form and full caller roster: `docs/FLEET_KIT_ADOPTION.md`.
 - Long form: `docs/SIBLING_SWEEP_AND_BOUNDARY.md`.
 
