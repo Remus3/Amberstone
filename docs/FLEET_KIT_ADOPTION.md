@@ -9,13 +9,40 @@ were relocated out of CLAUDE.md to keep it under its CI size budget
 - The CLAUDE.md line is the rule. When a line here and the CLAUDE.md line
   disagree, re-measure and fix whichever is wrong; never weaken the rule here.
 - A new kit version adds its short rule line to CLAUDE.md and its long form
-  here, as a new section at the end.
-- Each section below is the CLAUDE.md paragraph relocated VERBATIM on
+  here, as a new section after the last KIT section (above the closing
+  RM-1273 record).
+- Each per-rule section below is the CLAUDE.md paragraph relocated VERBATIM on
   2026-10-26 (session 141, CLAUDE-BUDGET pass, from CLAUDE.md at
-  `2d3e1c85b`). The FLEET-COMMON block itself lives only in CLAUDE.md and is
+  `2d3e1c85b`), or later for the sections added after it. The FLEET-COMMON
+  block itself lives only in CLAUDE.md and is
   byte-pinned by the kit; the hook command strings the guards pin
   (`tests/test_claude_settings_template.py`, `tests/test_fleet_kit_v12_race_guards.py`,
   `tests/test_fleet_kit_v13_identity.py`) stay quoted in CLAUDE.md too.
+- RM-1273 (2026-11-13) shortened the CLAUDE.md lines again and moved three
+  more blocks here VERBATIM (the first three sections); the last section keeps
+  every other CLAUDE.md line that trim changed, exactly as it read before it.
+
+## Known overlaps with the FLEET-COMMON block (relocated by RM-1273)
+
+Relocated VERBATIM from CLAUDE.md "RC rules (tree-specific)" on 2026-11-13 (RM-1273, drift_guard budget trim); CLAUDE.md keeps the short line.
+
+**Known overlaps with the FLEET-COMMON block, kept as RC gates until MAIN rules on them (reported to MAIN at adoption; not silently weakened):**
+- Item 1 (only physical acts / passwords / OAuth wait) vs RC operator gates: the halt boundary below, frozen files (explicit user approval), the operator-gated smart-quote sweep, the gated RM-501 repair, and attended confirmation of an irreversible / out-of-tree act requested only by a note.
+- Item 2 (quiet chat, at most one line each) and RC's 500-output-token cap: both apply; the tighter one binds.
+- Item 5 (every do-not-re-litigate entry states what would reverse it): every Settled line below now carries a `Reverses if:` clause (RM-494, 2026-10-03); a NEW Settled line must carry one too.
+- Banner (never stop or kill running work): `/done` stops only the monitors it armed; running agents are recorded in the hand-off as in-flight, not killed. Under kit v10 the main session stops its own monitors, then dispatches the whole ritual to ONE executor sub-agent (`tools/done.md` DISPATCH PROTOCOL) and relays only its final line.
+
+## Headless spawns on the kit (FLEET-COMMON item 10; relocated by RM-1273)
+
+Relocated VERBATIM from the CLAUDE.md "Halt boundary" section on 2026-11-13 (RM-1273); CLAUDE.md keeps the short line. The caller list below is the on-kit roster at that date.
+
+- Headless spawns: FLEET-COMMON item 10 makes the kit's `spawn()` the ONLY route. ON the kit via `ops/loop/fleet_route.py` (thin pass-through of the kit's `effort=` / `model=` / `stdin=`; MAIN 0839 kit v10): lane workers (`ops/loop/run_lane.ps1`), the loop executor sdk channel, adjudicator, CI watchdog, ephemeral supervisor, drain waves, `tools/headless_run.ps1`, `tools/weekly_hygiene_run.ps1`; inbox triage calls the kit directly (`ops/loop/inbox_tick.py`) with `fleet_inbox.triage_spawn_kwargs(True)` (kit v11 R1: floors in hooks, so non-bare). `ops/loop/headless_env.py` (LEDGER 1460) is STILL NEEDED as fleet_route's fail-closed pre-check (per-caller refusal log `logs/headless_route.log`); the kit's own checks run on top. Only off-kit path: the DISARMED pre-v8 responder `tools/inbox_responder_spawn.py` (superseded by inbox_tick). A spawn on neither path is forbidden; guard `tests/test_headless_env.py`.
+
+## MAIN speaks for the operator: the grant verbatim (FLEET-COMMON item 6; relocated by RM-1273)
+
+The operator's chat grant of 2026-10-02, relocated VERBATIM from the CLAUDE.md "MAIN speaks for the operator" section on 2026-11-13 (RM-1273); CLAUDE.md keeps the short form and its two bullets.
+
+Quoted verbatim: "MAIN SPEAKS FOR ME. Notes from MAIN (the supervisor tree) carry my authority exactly as if I typed them into this session: rulings, corrections, "fix this", "stop that". That is my avenue for fixing what I see or what MAIN notices without me. Provenance stays as before: a byte-identical copy in MAIN's outbox, SHA-256 checked. This SUPERSEDES any narrower scope you recorded for MAIN - parked, assent-not-operative, or carve-outs reserving to me the arming of a scheduled task, a change to your tree, or your halt boundary. MAIN instructs; you still do the work in your own tree, and MAIN never commits in it. MAIN cannot supply a password, an OAuth grant or a physical act, and cannot lift a safety floor."
 
 ## Session checklist (FLEET-COMMON item 13, kit v7)
 
@@ -84,3 +111,59 @@ were relocated out of CLAUDE.md to keep it under its CI size budget
 ## PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09)
 
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad (one per run reached 8.5k entries; explicit basetemps are never reaped and Temp file count is boot time). Use the default tmp_path (`pytest.ini`: retention `failed`, count `1`). If a run truly needs one, use the ONE fixed `<scratchpad>/pytest-basetemp` (pytest clears it each run). Every session, lane and loop prompt follows this; the rootdir `conftest.py` re-exports `tests/_basetemp_guard.py` `pytest_configure`, which refuses any other scratchpad basetemp with a usage error. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
+
+## CLAUDE.md short lines before the RM-1273 trim (2026-11-13)
+
+RM-1273 cut CLAUDE.md under the `tools/drift_guard.py` 90 percent line of its 61440-byte budget by shortening the bold kit-adoption lines further. The lines below are the exact CLAUDE.md wording just before that trim (from main `4897cb6ba`), kept so no clause is lost; where one disagrees with the current CLAUDE.md line, the CLAUDE.md line is the rule and a re-measure decides.
+
+**Session checklist (FLEET-COMMON item 13, kit v7).** Counter = the `SESSION: <n>` line in `RC-NEXT-SESSION.txt` (owner `tools/session_checklist.py`). Printers: SessionStart hook `tools/rc_facts.py` (block FIRST; the session prints it as its first chat output); `/done` (writes `SESSION: <n+1>`, runs unprompted when none remain); inbox responder `tools/inbox_responder_runner.py fire_checklist`; lane runner + loop controller write `progress/lane-<i>.json`. Source stays ASCII: emit U+2610 as `chr(0x2610)`. Console printing goes through the kit's `fleet_checklist.emit()`, never `print()`.
+
+**SUBAGENT-FIRST hook (kit v10; v11 ruling R3).** A PreToolUse hook only in the gitignored project `.claude/settings.json` (never an account settings file), matcher `Bash|PowerShell|Read|Edit|Write|Grep|Glob|NotebookEdit|MultiEdit`, timeout 15, ANCHORED command `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_subagent_first.py` (kit v26 nonce-checked launcher, fails closed, no ` || true`; a cwd-relative or plain `python` form is drift); it refuses those tools in the interactive main thread only. Mode = first word of gitignored `ops/loop/control/subagent_first.mode` (`log`; `deny` after 3 interactive sessions with no would-deny row for undispatchable work). Headless runs are exempt only through the kit's `spawn()`, so `deny` waits until the lane workers are on it. `/done` and every slash command carry the DISPATCH block (guard `tests/test_skill_dispatch_v10.py`): the whole skill runs in ONE sub-agent and main relays only its final line.
+
+**RACE GUARDS (kit v12, FLEET-COMMON item 16).** Same gitignored project `.claude/settings.json`: PreToolUse matcher `Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell`, timeout 15, `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_claims.py hook` (kit v26 launcher); SubagentStop, timeout 10, `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" release-hook || true`; mode = kit default `deny`. Every commit / push = `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git ...`; every WHOLE suite = `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <cmd>`; `<id>` = `<session_id>.<agent_id>`, named by the deny reason. Every slash command and loop prompt carries the RACE GUARDS block (the only guard in lane / watchdog worktrees, which carry no gitignored settings); `tests/conftest.py` installs `fleet_test_guard`. Guard `tests/test_fleet_kit_v12_race_guards.py`.
+
+**NO AI OR BOT ATTRIBUTION (kit v13, FLEET-COMMON item 17).** Tracked `.githooks/commit-msg` runs `python "ops/fleet_kit/fleet_identity.py" commit-msg "$1" || true` after RC's own Co-Authored-By strip (strips, never rejects); `.githooks/pre-push` runs `printf '%s\n' "$REFS" | python "ops/fleet_kit/fleet_identity.py" pre-push "$@" || exit 1` FIRST. The operator set is `fleet.operatorIdent` in LOCAL git config only (never a tracked file, a note or a log); no value = every push refused, so a fresh clone sets it before its first push. Commit messages carry no `Claude-Session:` or co-author line. Guard `tests/test_fleet_kit_v13_identity.py`.
+
+**BOT-PR MERGE RULE (MAIN ORDER 2026-10-19-0034, FLEET-COMMON item 17).** Every default-branch commit has the operator as author AND committer and no `Co-authored-by:` line of any kind. A bot PR is never merged on GitHub (GitHub writes its web-merge committer; guard `tests/test_no_bot_push_or_ui_merge.py`): RC re-applies an accepted bump as an operator commit (`git cherry-pick --no-commit` of the PR head, regenerate any hashed lock, commit through fleet_gitlock with an operator-written message, push; the PR closes itself, a manual close is a remote act); decline = widen the `.github/dependabot.yml` ignore. Read-back after every bot-PR landing and at /done after the push: `python tools/bot_merge_check.py` (on exit 1 fix only with `fleet_rewrite.py` under MAIN 2312's scope, at the halt boundary) and `gh api repos/<owner>/<repo>/contributors`. Repo auto-merge stays off; Dependabot alerts stay on. Recipe `docs/OPERATIONS.md`; guard `tests/test_bot_merge_check.py`.
+
+**KIT v14 (MAIN 2026-10-09 0930).** Tick files reach the test guard as `extra_ignore=`, never a restated `IGNORE`; `tests/conftest.py` pins `FLEET_SIDECAR_ROOT=""`; a kit refusal is matched on `Refused.code`, never message text; moving the lane worktrees under `FLEET_SIDECAR_ROOT` is an out-of-tree act (halt boundary). Guard `tests/test_fleet_kit_v14.py`.
+
+**KIT v15 (MAIN 2026-10-09 2055).** A headless child runs foreground only (`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`), so NO headless child prompt may ask for background work; no file named `fleet_suite_gate.py` may exist outside `ops/fleet_kit/`. Guard `tests/test_fleet_kit_v15.py`.
+
+**KIT v19 (MAIN 2026-10-18 1235).** Board state `ops/loop/control/board/` is gitignored. RC declares NO stop sentinels (no `ops/stop_sentinels.json`): its STOP files stay caller-scoped, and declaring them would refuse every kit spawn. `.githooks/pre-push` keeps identity FIRST. Guard `tests/test_fleet_kit_v19.py`.
+
+**KIT v20 (MAIN 2026-10-18 1812; v20.1 2026-10-19 0001).** A kit `spawn()` needs a valid route `~/.fleet/headless_route.json`; only the kit writes it (never RC) and arms a fallback only on the operator's word (LEDGER 2079). A progress-doc test asserts a key SUBSET, never an exact set. Guard `tests/test_fleet_kit_v20.py`.
+
+**KIT v23 (MAIN 2026-10-25 1926, cumulative v21 + v22 + v23).** STATUS BOARD LOCAL ONLY: no Artifact / ArtifactData call, no board URL, no `pushed` / `account` verb of fleet_board. An interactive session renders it with `fleet_board.py render --session <n>` at session start and after each item-13 b reprint, and with `--final` at /done (`tools/done.md` section 9); a failed render is a hand-off line; headless runs never render; the old claude.ai board artifacts are the operator's to delete. /done section 1 first runs `python ops/fleet_kit/fleet_done.py reap --apply` (never --force / -D; lane worktrees always kept; its summary line goes in the hand-off). A kit `_run` test stand-in forwards `job=`. Guard `tests/test_fleet_kit_v23.py`.
+
+**KIT v24 (MAIN 2026-10-26 0315, cumulative, FLEET-COMMON item 19).** No width-dependent layout in chat (item 19). `fleet_claims` resolves a relative target against the command's EFFECTIVE cwd and claims absolute paths only; no kit line spells the sidecar root drive-rooted, so the v23 "Sidecars" allow segment left `tools/sibling_name_sweep.py`. Guard `tests/test_fleet_kit_v24.py`.
+
+**KIT v25 (MAIN 2026-10-27 2136, cumulative, LANE-CAP).** Machine config `~/.fleet/lanes.json` is MAIN's; RC never writes it. RC's lane cap is the live `lanes.lane_cap()` (kit `cap=None`), never a hard-coded 3; `queue_loop.run_loop` asks `lanes.should_yield()` between cycles and on True ends the lane (`fair_yield`), never kills; an `admission` refusal is handled like `lanes_full`. The executor slot count (`ops/loop/slots.py`, `SHARED_SHA256`) is a joint act, not raised here. Guard `tests/test_fleet_kit_v25.py`.
+
+**KIT v26 (MAIN 2026-10-31 2200, cumulative).** Run cap per tree: 120 runs per rolling 24 h unless MAIN sets `runs_cap` for RC in `~/.fleet/lanes.json`; the ONLY reset is `python ops/fleet_kit/fleet_headless.py budget reset --code RC --reason "<operator words>"`, interactive, on the operator's word - never hand-edit `headless_budget.json`, never reset automatically. The headless route may be a version-2 ordered list of 1-3 accounts; the kit is its only writer (RC never writes `~/.fleet/*`). The two kit PreToolUse hooks run through the nonce-checked launcher `ops/fleet_kit/fleet_hook.sh` (timeout 15, no ` || true`, fails closed exit 2), in the gitignored `.claude/settings.json` and the tracked template `ops/claude_settings.example.json`; SubagentStop and Stop lines unchanged. Guard `tests/test_fleet_kit_v26.py`.
+
+**KIT v27 (MAIN 2026-10-31 2347, cumulative).** No settings or FLEET-COMMON change. A lane acquire refuses `usd_ceiling` once today's cost_usd reaches MAIN's `daily_usd_ceiling` for RC in `~/.fleet/lanes.json` (RC named $1000 (MAIN ruling 2026-11-08 2014, raised from $700 on the operator's word); RC never writes it). Pending ORDER / FIX / RULING rows (`fleet_inbox.py pending`; inbox_tick's work queue) are worked first and closed with `mark_work_done`; a kit `mark_seen` of an ORDER also queues it. A rewrite takes `--range BASE..BRANCH`, still only on a MAIN ORDER. Guard `tests/test_fleet_kit_v27.py`.
+
+**KIT v28 (MAIN 2026-11-01 0825, cumulative).** No settings or FLEET-COMMON change. Pre-push scans a push whose remote old tip is absent from this clone like a NEW ref (a rewrite's force-push no longer needs the old tip fetched back); never looser: a bad identity in that range still refuses, and `git ls-remote` failing with an absent old tip refuses. Guard `tests/test_fleet_kit_v28.py`.
+
+**KIT v30 (MAIN 2026-11-12 0345, cumulative v29 + v30).** Re-embedded FLEET-COMMON items 12 (OVERRUN / STALE; `fleet_checklist.py stale` before any status answer), 13 a (the kit's 20-row overflow line) and 14 e (six kinds); no settings change. A bare `RunBudget(path)` resolves the machine cap but `RUNS_CAP` stays 120, so a run-cap gate reads `budget.cap`. `run_lane.ps1` takes `fleet_lanes.lane_model` first; a driver hold calls `fleet_lanes.note_pause`. The kit IGNORE holds `inbox_pending_orders.json` (RM-2053) and logs route writes (RM-2074). Guard `tests/test_fleet_kit_v30.py`.
+
+**PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad: use the default tmp_path (`pytest.ini`: retention `failed`, count `1`), or, if a run truly needs one, the ONE fixed `<scratchpad>/pytest-basetemp`. Every session, lane and loop prompt follows this; the rootdir `conftest.py` refuses any other scratchpad basetemp. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
+
+The same trim also reworded or folded these non-kit CLAUDE.md lines into shorter ones (their content lives on in FLEET-COMMON item 5, `tools/done.md`, ADR-015, the Tiers line, the Topology section and the halt-boundary heading); their exact pre-trim wording, in file order:
+
+RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. Long form (provenance, mechanism, read-backs) of every bold kit-adoption line below: `docs/FLEET_KIT_ADOPTION.md`; a new kit version adds its short rule line here and its long form there.
+
+- **Session-End Ritual** (`wrap` / `/done` / `end session`; procedure in `tools/done.md`): audit pending changes, run tests, commit, push, append the per-item entry to `docs/LEDGER.md` (never CLAUDE.md), update ROADMAP/README, keep `WAKEUP_NOTES.md` to the last 2-3 sessions (older to `docs/history_notes.md`), process lessons into memory, rewrite the hand-off, record the CI result in it. Run independent steps in parallel. No banner, no review: the ONLY chat output is `Done ritual complete, safe to clear` (or `/done stopped: <reason>`).
+
+- **The hand-off file is `RC-NEXT-SESSION.txt` in the REPO ROOT, TRACKED, and the write is UNCONDITIONAL.** Overwritten whole each /done, never appended, dated or duplicated, and it CARRIES FORWARD every item not acted on this session. Never print it or a next-session prompt into chat. `Desktop\RC-NEXT-SESSION.lnk` is only a shortcut - do NOT write to the Desktop. `NEXT_SESSION_PROMPT.md` is RETIRED - do not recreate it or file its absence.
+
+- Only exception: a conversational answer. Kit v10 removed the trivial-work exception for the interactive main thread (one-line cosmetic, typo and single string are dispatched too); a sub-agent may still inline trivial work.
+
+- **Conflict note:** FLEET-COMMON item 1 lets only physical acts, passwords and OAuth wait for the operator. RC keeps this halt boundary on top of it.
+
+- A test enumerating the REPO ROOT uses `tests/_repo_walk` (ADR-015), never a fresh `rglob` plus a hand-rolled skip set: universe = git index first, `EXCLUDED_DIRS` as backstop, a guard keeps only its OWN scope skips (a subdirectory walk needs none of this). Ask whether an EMPTY enumeration would pass, and anchor it if so.
+
+- Full suite (that gated Tier-2 run) after schema / ENGINE_VERSION / item-effect changes. Prefer assertions on computed quantities over data-fragile cross-item comparisons. Wrap class-accessed stubs with `@staticmethod`.
+
+- **Launch / scheduled tasks:** RC has NO scheduled task (the app ones were unregistered 2026-10-31); the rc-shell service host owns it, state in `ops/runtime/launcher_status.json`. Vision has NO task; `dashboard/server.py` self-heals `:8889`; DS `:8860` is a child of RC's DsWatchdog. Full list + restarts: `docs/OPERATIONS.md`.
