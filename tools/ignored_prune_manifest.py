@@ -88,6 +88,7 @@ RULES: tuple[Rule, ...] = (
     Rule("control_scratch", "ops/loop/control/progress/drain-waves-*.json",
          "B22-02 drain wave progress"),
     Rule("lane_log", "ops/loop/reports/lane_*.log", "B23-01 lane run logs"),
+    Rule("lane_log", "ops/loop/reports/lane_*.stream.jsonl", "RM-2116 lane stream-json logs"),
     Rule("runtime_scratch", "ops/runtime/_*.log", "B24-02 underscore scratch logs"),
     Rule("runtime_scratch", "ops/runtime/merge_verify*.txt", "B26-02 merge verify output"),
     Rule("runtime_scratch", "ops/runtime/home_qa_suite.txt", "B25-02 one-off suite output"),

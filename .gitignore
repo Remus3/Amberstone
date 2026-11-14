@@ -447,6 +447,8 @@ data/rofl_archive_growth.jsonl
 # Headless lane worker logs - runtime churn, one per lane run (S5 lane_launcher).
 # The mdclean-*.md reports in the same dir ARE deliberate artifacts and stay tracked.
 ops/loop/reports/lane_*.log
+# RM-2116: each lane run's stream-json claude output, written beside its log.
+ops/loop/reports/lane_*.stream.jsonl
 # The lane-10 DRIVER's own artifacts (ops/loop/queue_loop.py, 2026-09-05). Same
 # class as the worker logs above and deliberately NOT tracked: the JSONL is
 # rewritten every cycle by a process that runs for hours, so committing it would

@@ -121,6 +121,12 @@ $routeArgs = @("--caller", "run_lane", "--note", $note, "--kind", "build", "--wr
   "--model", $model, "--cwd", $Cwd, "--timeout", $timeoutS,
   "--prompt-file", $PromptFile, "--prompt-stdin")
 if ($effort) { $routeArgs += @("--effort", $effort) }
+# RM-2116: each run streams its claude output as stream-json into its own file beside
+# the lane log (the kit's log_path=), so the rc-cause line in the usage row names the
+# run's last tool_use, not only a permission-denied one. The .stream.jsonl name never
+# matches lane_launcher's lane_<lane>_*.log run count; it is gitignored like the log.
+$streamLog = [System.IO.Path]::ChangeExtension($Log, ".stream.jsonl")
+$routeArgs += @("--log-path", $streamLog)
 $routeArgs += @("--", "--dangerously-skip-permissions")
 
 "lane start $(Get-Date -Format s) cwd=$Cwd model=$model kit_lane_model=$kitModel effort=$effort prompt=$PromptFile route=fleet_route" | Out-File $Log -Encoding utf8

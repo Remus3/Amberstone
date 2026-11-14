@@ -117,3 +117,65 @@ def test_a_fault_in_the_cause_never_fails_the_run(monkeypatch, tmp_path):
     monkeypatch.setattr(fleet_route, "_usage_cause", lambda: UC)
     line, _proc = fleet_route.spawn("TASK", caller="t", note="n", root=tmp_path)
     assert line["rc"] == 1
+
+
+# RM-2116: the lanes' default json output names a tool only through a permission
+# denial, so a lane run passes a per-run stream-json log (run_lane.ps1 --log-path ->
+# fleet_route CLI -> kit log_path=) and the cause line names the last tool_use.
+STREAM = [
+    {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Read"}]}},
+    {"type": "assistant", "message": {"content": [{"type": "tool_use", "name": "Bash"}]}},
+    {"type": "result", "subtype": "success", "is_error": False, "result": "all done"},
+]
+
+
+def _stream_run(rc):
+    def run(argv, **kw):
+        fh = kw["stdout"]
+        fh.write("".join(json.dumps(e) + "\n" for e in STREAM))
+        fh.flush()
+        return CompletedProcess(args=argv, returncode=rc, stdout=None, stderr="")
+    return run
+
+
+def test_stream_json_run_through_the_real_kit_names_the_last_tool_use(monkeypatch, tmp_path):
+    for mod in (fleet_route, fleet_route.kit()):
+        bind_subprocess(monkeypatch, mod, run=_stream_run(1))
+    log = tmp_path / "logs" / "run.stream.jsonl"
+    fleet_route.spawn("TASK", caller="t", note="lane-s144-ds", root=tmp_path,
+                      log_path=str(log))
+    row = json.loads((tmp_path / "ops/loop/control/headless_usage.jsonl").read_text(
+        encoding="utf-8").splitlines()[-1])
+    assert row["error"].splitlines()[-1] == (
+        "rc-cause: rc 1 with result subtype success; result: all done; last tool: Bash")
+
+
+def test_route_cli_log_path_reaches_spawn_and_prints_the_result(monkeypatch, tmp_path,
+                                                                 capsys):
+    log = tmp_path / "run.stream.jsonl"
+    log.write_text("".join(json.dumps(e) + "\n" for e in STREAM), encoding="utf-8")
+    seen = {}
+
+    def fake_spawn(prompt, **kw):
+        seen.update(kw)
+        return {"rc": 0}, CompletedProcess(["c"], 0, stdout=None, stderr="")
+
+    monkeypatch.setattr(fleet_route, "spawn", fake_spawn)
+    code = fleet_route.main(["--caller", "run_lane", "--prompt", "TASK",
+                             "--log-path", str(log)])
+    assert code == 0
+    assert seen["log_path"] == str(log)
+    out = json.loads(capsys.readouterr().out)
+    assert out["result"] == "all done" and out["type"] == "result"
+
+
+def test_route_cli_without_log_path_keeps_json_mode(monkeypatch):
+    seen = {}
+
+    def fake_spawn(prompt, **kw):
+        seen.update(kw)
+        return {"rc": 0}, CompletedProcess(["c"], 0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(fleet_route, "spawn", fake_spawn)
+    assert fleet_route.main(["--caller", "t", "--prompt", "TASK"]) == 0
+    assert seen.get("log_path") is None

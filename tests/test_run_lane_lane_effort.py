@@ -101,3 +101,17 @@ def test_run_lane_under_powershell_51_resolves_lane_effort(tmp_path, cfg, stem, 
     got, log = _run(tmp_path, cfg, stem)
     assert got == want
     assert re.search(rf"effort={want or ''}( |$)", log.splitlines()[0])
+
+
+@pytest.mark.skipif(_powershell_51() is None, reason="Windows PowerShell 5.1 not present")
+def test_run_lane_streams_each_run_to_its_own_json_log(tmp_path):
+    """RM-2116: the lane passes a per-run stream-json log beside its lane log, so the
+    rc-cause line can name the last tool; the name never matches lane_launcher's
+    lane_<lane>_*.log run count."""
+    _run(tmp_path, {"executor_effort": "high"}, "s144-ds")
+    argv = json.loads((tmp_path / "argv.json").read_text(encoding="ascii"))
+    assert "--log-path" in argv
+    got = argv[argv.index("--log-path") + 1]
+    assert got == str(tmp_path / "lane.stream.jsonl")
+    assert argv.index("--log-path") < argv.index("--")
+    assert not got.endswith(".log")

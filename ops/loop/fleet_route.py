@@ -387,7 +387,8 @@ EXIT_USAGE = 2
 # typo such as --prompt_stdin used to be dropped and the run went ahead
 # without it.
 _VALUE_FLAGS = frozenset(("--caller", "--prompt", "--prompt-file", "--note", "--timeout",
-                          "--kind", "--model", "--effort", "--cwd", "--root", "--last"))
+                          "--kind", "--model", "--effort", "--cwd", "--root", "--last",
+                          "--log-path"))
 _BOOL_FLAGS = frozenset(("--writes-code", "--prompt-stdin", "--usage-failures"))
 
 
@@ -468,11 +469,21 @@ def _write(stream, text: str) -> None:
         stream.write(text.encode(enc, "backslashreplace").decode(enc, "replace"))
 
 
-def _result_text(line, proc) -> str:
+def _result_text(line, proc, log_path=None) -> str:
     text = line.get("result") if isinstance(line, dict) else None
     if text is None:
         out = getattr(proc, "stdout", None)
-        return out if isinstance(out, str) else ""
+        if isinstance(out, str):
+            return out
+        if log_path:
+            # RM-2116: a stream-json run's stdout went to the log; print its result
+            # record, the same json shape a json-mode run prints.
+            try:
+                found = _usage_cause().result_from_log(log_path)
+            except Exception:  # noqa: BLE001 - a report line never fails a run
+                found = None
+            return json.dumps(found) if isinstance(found, dict) else ""
+        return ""
     return text if isinstance(text, str) else json.dumps(text)
 
 
@@ -482,8 +493,12 @@ def main(argv=None) -> int:
     fleet_route.py --caller NAME (--prompt TEXT | --prompt-file PATH)
                    [--writes-code] [--note NAME] [--timeout S]
                    [--kind build|inbox|triage] [--model M] [--effort E]
-                   [--cwd DIR] [--prompt-stdin] [-- EXTRA...]
+                   [--cwd DIR] [--prompt-stdin] [--log-path FILE] [-- EXTRA...]
            fleet_route.py --usage-failures [--root DIR] [--last N]
+
+    `--log-path` is the kit's own `log_path=` (RM-2116): the child runs with
+    stream-json output into FILE, so the rc-cause line names the run's last
+    tool_use; the result record read back from FILE is printed as json.
 
     `--model` / `--effort` are the kit's own parameters, passed through only
     when given (an empty value, like an empty --cwd / --kind, is "not given").
@@ -533,13 +548,17 @@ def main(argv=None) -> int:
         _write(sys.stderr, main.__doc__ or "")
         return EXIT_USAGE
     on_stdin = bool(opts.get("--prompt-stdin")) or len(prompt) > kit().ARGV_PROMPT_MAX
+    log_path = opts.get("--log-path") or None
+    # Only when given: a run without --log-path keeps the earlier spawn call shape.
+    log_kw = {"log_path": log_path} if log_path else {}
     try:
         line, proc = spawn(prompt, caller=caller, note=opts.get("--note") or "",
                            writes_code=bool(opts.get("--writes-code")), extra=extra,
                            timeout=timeout, kind=opts.get("--kind") or None,
                            model=opts.get("--model") or None,
                            effort=opts.get("--effort") or None,
-                           cwd=opts.get("--cwd") or None, prompt_on_stdin=on_stdin)
+                           cwd=opts.get("--cwd") or None, prompt_on_stdin=on_stdin,
+                           **log_kw)
     except RouteRefused as exc:
         _write(sys.stderr, f"{exc}\n")
         return EXIT_REFUSED
@@ -549,7 +568,7 @@ def main(argv=None) -> int:
         # traceback.
         _write(sys.stderr, "headless run timed out; the kit killed the process tree\n")
         return EXIT_TIMEOUT
-    _write(sys.stdout, _result_text(line, proc) + "\n")
+    _write(sys.stdout, _result_text(line, proc, log_path) + "\n")
     err = getattr(proc, "stderr", None)
     if isinstance(err, str) and err:
         _write(sys.stderr, err)
