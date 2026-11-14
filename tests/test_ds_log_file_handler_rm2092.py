@@ -65,6 +65,25 @@ def test_warning_lands_in_the_file(tmp_path, clean_root):
     assert b"\r\n" not in data  # LF rows (RM-481), the core.log_rotation handler
 
 
+def test_the_file_takes_warning_and_up_only_rm2106(tmp_path, clean_root):
+    # RM-2106: the contract is WARNING-and-up. serve_forever sets the root to
+    # INFO for stderr, so without its own level the file took every INFO line.
+    target = tmp_path / "level.log"
+    handler = server.install_file_log(target)
+    assert handler is not None
+    assert handler.level == logging.WARNING
+    clean_root.setLevel(logging.INFO)
+    lg = logging.getLogger(_DS_LOGGER)
+    lg.info("rm2106 info probe")
+    lg.warning("rm2106 warning probe")
+    lg.error("rm2106 error probe")
+    handler.flush()
+    text = target.read_text(encoding="utf-8")
+    assert "rm2106 info probe" not in text
+    assert "daemon_slayer.server WARNING rm2106 warning probe" in text
+    assert "daemon_slayer.server ERROR rm2106 error probe" in text
+
+
 def test_the_handler_is_the_shared_size_capped_rotating_one(tmp_path, clean_root):
     handler = server.install_file_log(tmp_path / "ds.log")
     assert isinstance(handler, log_rotation.SafeRotatingFileHandler)

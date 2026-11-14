@@ -3729,6 +3729,7 @@ def start_server(
 # to the file a non-empty RC_DS_LOG_FILE names (the suite points it at tmp).
 LOG_FILE_ENV = "RC_DS_LOG_FILE"
 LOG_FILE_HANDLER_NAME = "rc-ds-log-file"
+LOG_FILE_LEVEL = logging.WARNING  # RM-2106: the file contract is WARNING-and-up
 _LOG_FILE = Path(__file__).resolve().parents[2] / "logs" / "daemon_slayer.log"
 _LOG_FORMAT = "%(asctime)s %(name)s %(levelname)s %(message)s"
 _LOG_FILE_LOCK = threading.Lock()
@@ -3767,6 +3768,9 @@ def install_file_log(path: str | os.PathLike[str] | None = None) -> logging.Hand
             _log.warning("log file %s unavailable (%s: %s) - logging to stderr only", target, type(exc).__name__, exc)
             return None
         handler.name = LOG_FILE_HANDLER_NAME
+        # RM-2106: the file takes WARNING-and-up only. serve_forever sets the
+        # root to INFO for stderr, so a NOTSET handler wrote every INFO line.
+        handler.setLevel(LOG_FILE_LEVEL)
         handler.setFormatter(logging.Formatter(_LOG_FORMAT))
         root.addHandler(handler)
         return handler
