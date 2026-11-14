@@ -27,7 +27,7 @@ f41861da536c4bf13ffca118dab04e833a61636c7d983029d41cbf1a019fc297  web/js/panels/
 
 d864ad293a48f36278f999c6bfa6abe3311778dd23a4d164691cc5213ee9d7fa  web/js/panels/coach_decisions.js
 
-9d09b8464ddb77b5a42cf5e8b5e1e054716dda26c61d6188f8df63ca4c69325c  web/js/panels/dev.js
+45663b44548d37b6d694a16fe7b068aa01ad8ef1ec1860970eb88d555c95bad2  web/js/panels/dev.js
 
 7dd55b0dcf03acc31d15f108c2739067467d6626507e5d61e5f30909badb4f44  web/js/panels/draft_elo.js
 
