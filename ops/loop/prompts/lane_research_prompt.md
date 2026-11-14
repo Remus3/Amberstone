@@ -24,7 +24,9 @@ OUTPUT: NEW files only, under docs/_archive/2026-07-28-research-consolidation/20
 cited (URL + access date), 7-bit ASCII, no em/en dashes. NO edits to existing files,
 NO engine/code changes, NO restarts, NO test-suite runs (Tier-0).
 
-LANDING: commit on this branch (git commit -F tmpfile, ASCII msg). Then try landing to
+LANDING: commit on this branch (git commit -F tmpfile, ASCII msg; a UNIQUE tmpfile
+commitmsg-<session>-<task>.txt written in its own call, read back with git diff --cached
+--stat before the commit - RM-2118). Then try landing to
 main: git fetch origin; git rebase origin/main; git push origin HEAD:main - retry x3 on
 race (other autonomous lanes push tonight). If still refused, push the branch
 (git push -u origin docs/research-20260716) and stop. Final act: append a 5-line summary

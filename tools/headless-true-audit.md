@@ -332,7 +332,8 @@ Every audited file gets a durable record, or the next run re-audits it.
 5. **Backfill check (6e):** for every hardening change, state what the ALREADY-BAD state was and what you did about it. "Future occurrences prevented" alone is
    an incomplete fix.
 6. **Verifier gate, then commit + push `lane/true-audit`.** Stage only files you authored; never `git add -A`. Commit message via `git commit -F <tmpfile>`
-   (ASCII-only) or a single-quoted here-string - never a double-quoted here-string or a piped string (BOM plus ANSI-mangle risk). Never amend. Confirm `gh run
+   (ASCII-only) or a single-quoted here-string - never a double-quoted here-string or a piped string (BOM plus ANSI-mangle risk). The tmpfile is UNIQUE per
+   agent (`commitmsg-<session>-<task>.txt`), written in its own tool call, read back with `git diff --cached --stat` before the commit (RM-2118). Never amend. Confirm `gh run
    list --limit 4` green and fix red before declaring done.
 7. **Do NOT merge into `main` from the worktree** unless the main tree is verifiably idle. Leave the merge to the merger and say in the hand-off that the branch
    is ready. Per the plan, this lane ships LAST.

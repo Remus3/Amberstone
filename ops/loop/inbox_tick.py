@@ -88,6 +88,15 @@ CLOSE_WAIT_S (polled every LOCK_POLL_S) for a pass that holds it; still held
 -> LockHeld, nothing written, CLI exit 3 (1 stays "no pending row"). --pending
 is read-only and takes no lock; --migrate-legacy takes it and fails fast.
 
+THE STANDARD DELIVERY OF A HAND-WRITTEN NOTE (RM-2118). An interactive session
+or agent that authored a note sends it with
+  python ops/loop/inbox_tick.py --send <scratch>/<stamp>-from-RC-<CLS>-to-<CODE>-<topic>.md
+send_note(root, path) checks the name (destination and class come from it),
+ASCII + LF bytes and OutboundCap(root).allow(cls), then delivers through the
+SAME _make_deliver seam the tick uses (atomic write, re-hash, one
+inbox_deliveries.jsonl row) and records the OutboundCap row. Never a one-off
+script and never a hand-appended inbox_deliveries.jsonl line (s164 incident).
+
 Stdlib only; importable as `ops.loop.inbox_tick` or by file path.
 """
 from __future__ import annotations
@@ -99,6 +108,7 @@ import importlib
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime
@@ -385,6 +395,56 @@ def _make_deliver(root: Path, participants: dict, agreement):
                                         "sha256": want, "reached": f"{reached}/1"})
         return reached
     return deliver
+
+
+# ---- the standard delivery of a hand-written note (RM-2118) -----------------
+
+_SEND_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{4}-from-" + CODE
+                        + r"-([A-Z]+)-to-([A-Z]+)-[A-Za-z0-9._-]+\.md$")
+
+
+def _raw_agreement(root: Path):
+    """The agreement record as written, read ONLY for MAIN's inbox path (a
+    lookup, not an arming check: a channel reply is the operator's standing
+    carve-out). None when absent or unreadable."""
+    try:
+        data = json.loads((Path(root) / AGREEMENT_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def send_note(root, path, *, participants=None, deliver=None) -> dict:
+    """Deliver ONE authored note file. Raises ValueError on a bad name or
+    non-ASCII / CRLF bytes (nothing written). Returns {"note", "to", "cls",
+    "reached": "1/1" | "0/1", "sha256", "held"} - held is "outbound_cap" when
+    the day's cap refused it, "" otherwise."""
+    root, path = Path(root), Path(path)
+    m = _SEND_NAME.match(path.name)
+    if not m:
+        raise ValueError(f"not an RC note name: {path.name}")
+    cls, to = m.group(1), m.group(2)
+    data = path.read_bytes()
+    try:
+        body = data.decode("ascii")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{path.name}: not ASCII") from exc
+    if "\r" in body:
+        raise ValueError(f"{path.name}: CR byte (LF only)")
+    out = {"note": path.name, "to": to, "cls": cls, "reached": "0/1",
+           "sha256": hashlib.sha256(data).hexdigest(), "held": ""}
+    cap = fleet_inbox.OutboundCap(root)
+    if not cap.allow(cls):
+        out["held"] = "outbound_cap"
+        return out
+    if participants is None:
+        participants, _retired = load_roster(root)
+    send = deliver or _make_deliver(root, participants, _raw_agreement(root))
+    reached = send(to, path.name, body)
+    if reached:
+        cap.record(path.name, cls, to)
+        out["reached"] = "1/1"
+    return out
 
 
 # ---- the pass --------------------------------------------------------------
@@ -828,6 +888,8 @@ def main(argv=None) -> int:
                       help="close the open WORK row(s) of NOTE (no tick)")
     mode.add_argument("--migrate-legacy", action="store_true",
                       help="convert pre-RM-685 state rows in place (no tick)")
+    mode.add_argument("--send", metavar="NOTE_FILE", default=None,
+                      help="deliver ONE authored note (RM-2118 standard path; no tick)")
     ap.add_argument("--outcome", default="done", help="outcome text for --done")
     args = ap.parse_args(argv)
     if args.root:
@@ -838,6 +900,14 @@ def main(argv=None) -> int:
         for row in pending(root):
             print(json.dumps(row, sort_keys=True))
         return 0
+    if args.send is not None:
+        try:
+            res = send_note(root, args.send)
+        except (OSError, ValueError) as exc:
+            print(f"inbox_tick: --send refused: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(res, sort_keys=True))
+        return 0 if res["reached"] == "1/1" else 1
     if args.done is not None:
         try:
             done = close(root, args.done, outcome=args.outcome)

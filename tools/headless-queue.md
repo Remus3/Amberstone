@@ -193,7 +193,7 @@ python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- python -m pytest te
 
 The loop must not accumulate unshipped rows, so a cycle ends on `main` whenever it can.
 
-1. **Commit on `lane/queue`.** Stage only the files you authored; **never `git add -A`**. Never amend. Message via `git commit -F <tmpfile>` (Write the file, ASCII-only) or a single-quoted here-string - **never a double-quoted here-string and never a piped string** (BOM plus ANSI-mangle risk, the same root cause as the no-em-dash rule).
+1. **Commit on `lane/queue`.** Stage only the files you authored; **never `git add -A`**. Never amend. Message via `git commit -F <tmpfile>` (Write the file, ASCII-only) or a single-quoted here-string - **never a double-quoted here-string and never a piped string** (BOM plus ANSI-mangle risk, the same root cause as the no-em-dash rule). The tmpfile is UNIQUE per agent (`commitmsg-<session>-<task>.txt`), written in its own tool call, read back with `git diff --cached --stat` before the commit (RM-2118).
 2. `git fetch origin`, then rebase onto `origin/main`, then **re-run the tier's tests** on the rebased tree. A rebase can land your change on top of someone else's and a suite that passed pre-rebase proves nothing about the merged result.
 3. `git push origin HEAD:refs/heads/main`. **Fast-forward only. NEVER `--force`.**
 4. **If the push is rejected**, re-fetch and rebase ONCE more. If it is still rejected, push `lane/queue` instead, say so plainly in the cycle report with the reason, and continue to the next cycle. Do not loop on a contested ref.

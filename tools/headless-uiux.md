@@ -241,7 +241,8 @@ Also: fix any section-B defect, add fixtures, add snapshot tests, restructure pa
    restart_trigger.txt` plus a health.json confirm.
 5. **Verifier gate, then merge, then commit + push.** Stage only files you authored; never `git add -A`.
    Unstage `_scratch/`, `tools/pseudo_screen_out/*.png`, `ops/runtime/ui_recon/*.png`. Commit message via
-   `git commit -F <tmpfile>` (ASCII only).
+   `git commit -F <tmpfile>` (ASCII only; a UNIQUE per-agent tmpfile `commitmsg-<session>-<task>.txt`, written in its
+   own tool call, read back with `git diff --cached --stat` before the commit - RM-2118).
 6. **Append the per-item entry to `docs/LEDGER.md`** (append-only, newest-first). **NEVER to `CLAUDE.md`** -
    it is CI size-budgeted under 60KB and is touched only for rule / frozen-list / Settled changes. Append
    every ruling to `docs/qa/UI_UX_PROGRAM_QA_2026-07-22.md` too; that is this program's memory.

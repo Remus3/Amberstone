@@ -176,7 +176,7 @@ It removes only a linked worktree that can lose nothing (`git worktree remove`, 
     before that hardcoded `Claude Opus 4.7 (1M context)`. Both were wrong in the same
     direction: prose describing a step the tooling deletes. Verify against `.githooks/` before
     re-editing this line.)
-  - **Commit through the tree's git lock** (FLEET-KIT v12, FLEET-COMMON item 16 a): write the message to a tmpfile (ASCII), then `python "<repo>/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "<repo>" commit -F <tmpfile>`. A bare `git commit` is denied by the claims hook. Exit 3 = the lock, a leftover index.lock, or a staged path another live agent claims refused the run (its stderr line says which): wait or unstage that path, never bypass.
+  - **Commit through the tree's git lock** (FLEET-KIT v12, FLEET-COMMON item 16 a): write the message to a tmpfile (ASCII), then `python "<repo>/ops/fleet_kit/fleet_gitlock.py" run --owner <id> -- git -C "<repo>" commit -F <tmpfile>`. The tmpfile is UNIQUE per agent (`commitmsg-<session>-<task>.txt`, never a shared `msg.txt`: sub-agents share the session scratchpad, RM-2118), written in its own tool call, and read back with `git diff --cached --stat` plus its first line before the commit. A bare `git commit` is denied by the claims hook. Exit 3 = the lock, a leftover index.lock, or a staged path another live agent claims refused the run (its stderr line says which): wait or unstage that path, never bypass.
   - If pre-commit hooks fail: fix and create a new commit (never `--amend`).
 
 ### 2. Push

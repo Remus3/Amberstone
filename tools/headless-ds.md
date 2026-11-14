@@ -216,7 +216,8 @@ issued from the Bash tool (Git Bash rewrites the switches as paths: `Invalid arg
 2. `python -m py_compile` every changed `.py`, then `python -m ruff check .` (F541 is the most common CI-killer). Bounce DS and confirm `/health` serves the new
    version.
 3. Commit + push. Do NOT `git add -A` - stage only files you authored. Special chars go through `git commit -F <tmpfile>` (ASCII-only) or a single-quoted
-   here-string; `tools/precommit_gate.py` is the backstop and the git hooks are AUTHORITATIVE. Never amend. Confirm `gh run list --limit 4` green and fix red
+   here-string; the tmpfile is UNIQUE per agent (`commitmsg-<session>-<task>.txt`), written in its own tool call, read back with
+   `git diff --cached --stat` before the commit (RM-2118); `tools/precommit_gate.py` is the backstop and the git hooks are AUTHORITATIVE. Never amend. Confirm `gh run list --limit 4` green and fix red
    before declaring done.
 4. **Ledger entry goes in `docs/LEDGER.md`** (append-only, newest-first). **NEVER `CLAUDE.md`** - it is CI size-budgeted under 60KB and reserved for rule /
    frozen-list / Settled changes.

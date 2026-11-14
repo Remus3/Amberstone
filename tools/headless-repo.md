@@ -299,7 +299,8 @@ own single-thread edits. Tier-0 cosmetic edits are exempt; nothing else is.
    `tools/precommit_gate.py` and the git hooks are the authoritative backstop, and a hook's PRESENCE is never proof it fires.
 4. **Verifier gate (section 9), THEN merge, THEN commit + push `lane/repo`.** Stage only files you authored - never `git add -A`. Unstage `_scratch/`, `ops/runtime/*`,
    `logs/*`, any `.png` capture, any `_*.txt` run scratch. Message via `git commit -F <tmpfile>` (ASCII-only) or a single-quoted here-string - never a double-quoted
-   here-string or a piped string (BOM plus ANSI-mangle risk). Never amend. Run `git show --stat` after every commit, and never commit while subagents are still live.
+   here-string or a piped string (BOM plus ANSI-mangle risk). The tmpfile is UNIQUE per agent (`commitmsg-<session>-<task>.txt`), written in its own tool
+   call, read back with `git diff --cached --stat` before the commit (RM-2118). Never amend. Run `git show --stat` after every commit, and never commit while subagents are still live.
 5. **Do NOT merge into `main` from the worktree** unless the main tree is verifiably idle (`docs/MISSION_CONTROL_PLAN.md`, Decisions 1). Leave the merge to the merger
    and say in the hand-off that the branch is ready.
 6. **Append the per-item entry to `docs/LEDGER.md`** - newest-first, at the TOP, matching the surrounding format: item number, `DONE <date>`, one-line scope, then what

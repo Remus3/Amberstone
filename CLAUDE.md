@@ -301,7 +301,7 @@ Machine paths are never written here (MAIN 2246 sec 3): `<repo>` = this checkout
 - **Always `py_compile` before restart.** Syntax errors crash silently under `pythonw.exe`.
 - **Atomic writes only:** `tmp.write_text(...); tmp.replace(target)`. Overlays poll mid-write.
 - **Never `Stop-Process`.** Hangs MCP pipe. Use `taskkill /F /PID`.
-- **Commit messages:** `git commit -F <tmpfile>` (ASCII) or a single-quoted here-string; never double-quoted or piped. `tools/precommit_gate.py` blocks banned glyphs + net-new ruff.
+- **Commit messages:** `git commit -F <tmpfile>` (ASCII) or a single-quoted here-string; never double-quoted or piped. `tools/precommit_gate.py` blocks banned glyphs + net-new ruff. RM-2118: sub-agents of one session share its scratchpad, so the tmpfile is UNIQUE per agent (`commitmsg-<session>-<task>.txt`, never `msg.txt`), written fresh in its own tool call (never chained after a command that can fail or be denied), and read back with `git diff --cached --stat` plus the file's first line before the commit.
 - **Never add a `Co-Authored-By: Claude` trailer, and never file its absence as a defect** (`.githooks/commit-msg` strips it, operator policy 2026-06-03). Audit with an ANCHORED predicate on the message tail.
 - **Git hooks are the AUTHORITATIVE gate; a fresh clone has NONE.** First action in a fresh clone: `python scripts/install_hooks.py`. Claude hooks are defense in depth only.
 - **Hook findings are version-specific and expire - re-measure, never inherit.** Before concluding a hook did not fire, rule out (1) invalid `settings.json` (single-backslash paths) and (2) an untrusted workspace (trust key is per path STRING). Presence is not proof; the only valid test is end-to-end (stage a banned glyph, commit, assert HEAD unchanged). Memory `reference_git_hooks_authoritative_and_traps`.
@@ -378,7 +378,7 @@ Every session is **orchestrated + multi-agent + self-adjudicating + self-adversa
 
 - The five-way responder work (tests, fixes, hardening) runs on a HEADLESS LOOP; the runner is BUILT (RM-384, LEDGER 1364).
 - **BOUNDARY: halt and PING THE OPERATOR before any byte leaves the tree** - any write, delete or lock outside the repo root, any PUSH WHOSE DIFF CAN LEAK, any edit to a cross-repo byte-pinned or grammar-pinned artifact. Arming is a halt point but not the earliest. Binds EVERY RC session, attended included.
-- **ONE carve-out:** delivering a channel REPLY into a sibling's `moon_sync_inbox/` is PRE-AUTHORISED; deliver, re-hash every destination, publish the reached-count. It authorises nothing else.
+- **ONE carve-out:** delivering a channel REPLY into a sibling's `moon_sync_inbox/` is PRE-AUTHORISED; deliver, re-hash every destination, publish the reached-count. It authorises nothing else. Deliver an authored note ONLY with `python ops/loop/inbox_tick.py --send <note>` (re-hash, `inbox_deliveries.jsonl` row and OutboundCap row in one call; never a one-off script or a hand-appended `inbox_deliveries.jsonl` line, RM-2118).
 - The push half gates on DIFF CONTENT, not destination. Name pinned artifacts by SYMBOL only (`SHARED_SHA256`, `CHANNEL_PIN`), never by line number.
 - The sibling-name sweep (`tools/sibling_name_sweep.py`, `.githooks/pre-push`) is "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO" - never claim "sibling names cannot leak", never soften that phrasing. It has named blind spots (bare channel code; `--no-verify`), so a clean report is not proof.
 - **There is NO TIMEOUT: RC halts and WAITS.**

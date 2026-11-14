@@ -101,6 +101,10 @@ enforce most of them:
    python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git commit -F <message file>
    ```
 
+   RM-2118: the message file is UNIQUE per agent (`commitmsg-<session>-<task>.txt`;
+   parallel agents share one scratch directory), written in its own step and
+   read back with `git diff --cached --stat` before the commit.
+
    A plain `git merge` of a non-agent branch (for example
    `Merge remote-tracking branch 'origin/main'`) is still accepted as git
    writes it.

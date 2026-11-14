@@ -162,7 +162,7 @@ A live-validated flip is the one shape here that routinely IS Tier-2. Do not let
 - **Resync the doc after any tick.** `.claude/workflows/live-gated-resync.js` rebuilds the drain list and the session estimate; the counts, the "ARENA NEEDED" line and the "ESTIMATED SESSIONS" line at the tail must all agree with the rows above them. A ticked row with a stale header count is how the doc stops being trusted.
 - **Append to the live-flip ledger** (line 1370, newest first) for anything flipped live.
 - **Append the per-item entry to `docs/LEDGER.md`**, never to CLAUDE.md (CI size-budgeted under 60KB).
-- **Commit on `lane/gated`, in the worktree, never in the main tree.** Commit messages with special characters go through `git commit -F <tmpfile>` (ASCII-only). No em-dashes, no en-dashes, no smart quotes, anywhere - code, comments, docs, commit messages.
+- **Commit on `lane/gated`, in the worktree, never in the main tree.** Commit messages with special characters go through `git commit -F <tmpfile>` (ASCII-only; a UNIQUE per-agent tmpfile `commitmsg-<session>-<task>.txt`, written in its own tool call, read back with `git diff --cached --stat` before the commit - RM-2118). No em-dashes, no en-dashes, no smart quotes, anywhere - code, comments, docs, commit messages.
 - **Do NOT run `/done`.** That ritual is the operator-present sibling's. Leave the branch clean and the report on disk.
 
 ---

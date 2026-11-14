@@ -10,7 +10,7 @@ Rules:
 - Recall first per row: python tools/perseus_recall.py "<row id + topic>". If a settled/ledger hit says CLOSED/REFUTED/shipped, mark the row skipped with that reason.
 - Read each row's full text in ROADMAP.md / BACKLOG.md first; re-probe ground truth (grep file:line) - rows may be stale; a stale/already-fixed row = status 'already_done' with evidence.
 - TDD: failing test first, then fix, then sibling sweep. Root cause, no band-aids.
-- ONE COMMIT PER ROW, message first line starts with the row id (e.g. 'fix(coach): RM-305 ...'). Use git commit -F <tmpfile>, ASCII only, no Co-Authored-By.
+- ONE COMMIT PER ROW, message first line starts with the row id (e.g. 'fix(coach): RM-305 ...'). Use git commit -F <tmpfile>, ASCII only, no Co-Authored-By. The tmpfile is UNIQUE per agent (commitmsg-<session>-<task>.txt), written in its own tool call, read back with git diff --cached --stat before the commit (RM-2118).
 - DO NOT edit ROADMAP.md, BACKLOG.md, docs/LEDGER.md, WAKEUP_NOTES.md, RC-NEXT-SESSION.txt (the merger owns them).
 - NEVER run the full suite (box OOMs). Run only targeted tests: python -m pytest <files> -q -p no:cacheprovider. Before any pytest, count running pytest processes (tasklist / Get-CimInstance Win32_Process filter commandline like '%pytest%'); if 3+ are running, wait and retry (poll every 30s, max 10 min).
 - Run ruff on changed .py files before reporting.
