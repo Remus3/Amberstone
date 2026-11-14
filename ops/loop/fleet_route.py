@@ -52,6 +52,12 @@ every one of those additions is a named kit gap reported to MAIN, not a patch:
    file and the usage rows MAIN reads stay in one place; the child then still
    runs in the worktree (cwd defaults to this file's tree). In the main tree
    nothing changes.
+8. THE RC CAUSE OF A SUCCESS-SUBTYPE FAILURE (MAIN ORDER 2026-11-14 0930
+   section 3). A child that exits non-zero while its result says subtype
+   success gets one `rc-cause: ...` stderr line (ops/loop/usage_cause.py:
+   the result's first line and the last tool) inside this module's `run`
+   seam, so the kit's own v27 stderr tail puts it into the usage row's
+   error field. The vendored usage writer is not edited.
 
 The STOP flags (`ops/loop/control/STOP`, `ops/runtime/INBOX_RESPONDER_STOP`)
 and the responder's agreement-record arming check are NOT enforced by the kit
@@ -108,6 +114,27 @@ def _headless_env():
         return mod
     except ImportError:
         return _load("rc_ops_loop_headless_env", Path(__file__).resolve().parent / "headless_env.py")
+
+
+def _usage_cause():
+    """ops/loop/usage_cause.py (MAIN ORDER 2026-11-14 0930 section 3, the rc cause)."""
+    try:
+        from ops.loop import usage_cause as mod  # noqa: PLC0415
+        return mod
+    except ImportError:
+        return _load("rc_ops_loop_usage_cause", Path(__file__).resolve().parent / "usage_cause.py")
+
+
+def _annotate_cause(proc, log_path) -> None:
+    """Item 8 (MAIN ORDER 2026-11-14 0930 section 3): a run that exits non-zero while
+    its result says subtype success gets one `rc-cause: ...` line (the result's first
+    line, the last tool) appended to its stderr, BEFORE the kit builds the usage row;
+    the kit's v27 stderr tail then carries it into the row's error field, so the
+    vendored usage writer stays untouched. A fault here never fails the run."""
+    try:
+        _usage_cause().annotate(proc, log_path)
+    except Exception:  # noqa: BLE001 - a report line never fails a run
+        pass
 
 
 class RouteRefused(RuntimeError):
@@ -244,6 +271,7 @@ def spawn(prompt: str, *, caller: str, note: str = "", writes_code: bool = False
             seen["timeout"] = exc
             raise
         seen["proc"] = proc
+        _annotate_cause(proc, log_path)
         return proc
 
     # FLEET-KIT-v4: the child's working directory is the kit's own `cwd=`
