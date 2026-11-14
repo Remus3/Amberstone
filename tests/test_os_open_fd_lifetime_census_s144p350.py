@@ -41,6 +41,8 @@ _SITES = {
     "ops/launcher/update_cycle.py": 1,
     "ops/loop/drain_waves_2_3.py": 1,
     "ops/loop/inbox_tick.py": 1,
+    # 5393cac6a8 (MAIN ORDER 2026-11-14 0930 O2): append_line's non-Windows fallback, FINALLY shape
+    "ops/loop/lane_backoff.py": 1,
     "ops/loop/slots.py": 1,
     "ops/rc_supervisor.py": 1,
     "ops/rc_transactional_deploy.py": 1,
@@ -262,6 +264,19 @@ def test_drain_waves_take_lock_closes_the_fd_when_the_write_fails(tmp_path, monk
     opened, closed = _track_close_and_fail_write(monkeypatch)
     with pytest.raises(OSError):
         dw._take_lock()
+    assert opened and closed == opened
+
+
+def test_lane_backoff_append_line_closes_the_fd_when_the_write_fails(tmp_path, monkeypatch):
+    import pytest
+
+    from core import operator_notify
+    from ops.loop import lane_backoff as lb
+
+    monkeypatch.setattr(operator_notify, "_on_windows", lambda: False)
+    opened, closed = _track_close_and_fail_write(monkeypatch)
+    with pytest.raises(OSError):
+        lb.append_line(tmp_path / "ledger" / "backoff.jsonl", "row")
     assert opened and closed == opened
 
 

@@ -105,6 +105,7 @@ _UNLINK_CEILING = {
     "ops/launcher/updater.py": 1,
     "ops/loop/claude_stub.py": 1,
     "ops/loop/executor.py": 1,
+    "ops/loop/lane_backoff.py": 1,  # 5393cac6a8: check() drops its own back-off state file when the streak ends
     "ops/loop/lane_launcher.py": 1,
     "ops/loop/loop_controller.py": 5,  # S144-Q-138: _publish_claim drops its own claim scratch file
     "ops/loop/slots.py": 3,
