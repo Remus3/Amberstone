@@ -28,6 +28,8 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 > - **Main session, after:** wait for the executor's completion notification and relay its final line VERBATIM as the only chat output - nothing before or after it. If the executor ends without one of those two lines, relay `/done stopped: done executor returned no final line`.
 > - **The executor:** runs every section below itself. It may fan out its own helpers (a `verifier`, a background CI watch), but it owns the ritual and its final line. Section 3 covers the tasks IT started; the main session's in-flight work arrives in the prompt and goes into the hand-off as in-flight. Section 9's done marker and the one line are its last acts.
 
+> **AGENT PINS (MAIN ORDER 2026-11-14 0930 O4).** Every Agent spawn in this ritual names model and effort: the /done executor `model: sonnet`, `effort: medium`; a `verifier` helper takes its frontmatter pins (sonnet, medium); a background CI-watch helper `model: haiku`, `effort: low`.
+
 > **CHAT OUTPUT CONTRACT (FLEET-KIT v3 items 2, 3 and 5; operator order 2026-10-03).**
 > /done's ONLY chat output is the single line `Done ritual complete, safe to clear`,
 > or, when something stopped the ritual, one line `/done stopped: <reason>` instead -

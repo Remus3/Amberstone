@@ -254,6 +254,8 @@ RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. E
 
 **KIT v30 (MAIN 2026-11-12 0345, cumulative v29 + v30).** A run-cap gate reads `budget.cap` (`RUNS_CAP` stays 120). `run_lane.ps1` takes `fleet_lanes.lane_model` first; a driver hold calls `fleet_lanes.note_pause`. The kit IGNORE holds `inbox_pending_orders.json` (RM-2053) and logs route writes (RM-2074). Guard `tests/test_fleet_kit_v30.py`.
 
+**AGENT PINS (MAIN ORDER 2026-11-14 0930 O4).** Every Agent spawn names model and effort; `.claude/agents/*.md` frontmatter pins both (verifier: sonnet, medium); `tools/done.md` carries the spawn pins outside its byte-pinned blocks.
+
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad: use the default tmp_path (`pytest.ini`: retention `failed`, count `1`) or, if truly needed, the ONE fixed `<scratchpad>/pytest-basetemp`; this binds every session, lane and loop prompt, and the rootdir `conftest.py` refuses any other. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 
 **Known overlaps with FLEET-COMMON, kept as RC gates until MAIN rules, not silently weakened (long form `docs/FLEET_KIT_ADOPTION.md`):** item 1 vs the RC operator gates (halt boundary, frozen files, smart-quote sweep, RM-501 repair, attended confirmation of a note-only irreversible / out-of-tree act); item 2 vs the 500-output-token cap (the tighter binds); item 5: every Settled line, new ones too, carries `Reverses if:` (RM-494); banner: `/done` stops only its own monitors, records running agents as in-flight, and runs in ONE executor sub-agent (`tools/done.md` DISPATCH PROTOCOL).
