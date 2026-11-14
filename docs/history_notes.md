@@ -41,6 +41,18 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-11 - session 160: the 7 CI reds of ci 42954031303 fixed locally (`a1366cf85`, `aea39eb94`, `fae4c1cb5`), q090 decided (`9affe2d6f`), RM-2089 fixed (`ae8136bdf` + the live driver), lanes drained and relaunched; NOT pushed, gated suite not run (RAM under the line)
+
+- **C1 (LEDGER 2103):** 6 snapshot_panels reds = Linux headless-shell whole-px glyphs (hotkey pill CSS fix; TFT board Linux row pinned) + 2 test races; the skip-hygiene timeout memoised (64.7 s -> 10.5 s, identical records). Verifier CONFIRMED; CI on the fix UNMEASURED until a push.
+- **C2:** first post-relaunch lane cycles: job object, 3-round verifier cap and 16/60 min pace all MET (141 cycles, 0 timeouts / kills). S144-Q-178 still open (split as S144-Q-179 (a)); no MAIN answer to the kit note; 30 stashes.
+- **C3 / C4:** q090 = stale expectation (400 is the RM-243 contract). RM-2089 CLOSED: `ops/loop/lane_sync.py`; the gitignored driver patched (backup `.bak-s160`); every first sync after the relaunch rebased cleanly.
+- **C5 + rulings:** lanes drained by staged stop files, 4 commits + 1 fix landed, rotator relaunched (pid 8996). Free RAM peaked 22751 MB < 23100, so no gated run. Ruling 1 killed a runaway ungated serial suite (a bare `.py` run in bash; RM-2090). Ruling 2: relaunch, drain again before the next gated try.
+- **/done (LEDGER 2104):** no push (landing rule unmet, needs the operator's yes); memory: 2 new feedback notes.
+- **Do NOT redo:** the 7-red fixes, the q090 decision, the RM-2089 fix and driver patch, the NA2 read, the 7cba5420d refutation.
+- **Next:** drain lanes, confirm >= 23100 MB free (or the operator's "run anyway"), gated -n 4 --exclusive suite on HEAD, push on the operator's yes, watch CI.
+
+---
+
 # 2026-11-10 - session 159: u5 red fixed and pushed (`f84014933`), the 516-commit s144 lane landing gated green at -n 4 and pushed (`f84014933..8aa74df1b`), "-n 4 standing", rotator relaunched
 
 - **C1-C5 (LEDGER 2101):** dispatch 42749327744 red = 2 known + a NEW u5 guard red; fixed in `f84014933` (`fleet_test_guard.budget(15)`), pushed `683aafe11..f84014933` on the operator's "run anyway and yes", ci/docs-guards/codeql green. S144_LANES_STOP of 05:41:59 a false stop (0xC0000142 at shutdown, as LEDGER 2008). S144-Q-173 = Q-174 (closed); S144-Q-178 open, next queue candidate. Quiesce Decision 6 retired.

@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-11-14 - session 164: MAIN ORDER 0930 O1-O4 shipped (lane effort `e4f79551d`, back-off / LAND DUE `5393cac6a`, verifier pin `5ebb1bc94`, O3e ruled out `6bd97bbb9`), RM-1386 shipped (`c6bf5fcde`), s163 CI reds triaged, ONE answer to MAIN (`268ac7c28`); O3d QA split HELD
+
+- **LEDGER 2109.** Rotator restarted pid 18116 -> 16308 (live driver deployed, backup .bak-s164); ds + gated skipped live at 11:34.
+- **Blocked / decided:** O3d split built byte-faithful on `hold/s164-o3d-qa-split` (`6e384504e`), not landed until `lane/uiux` lands (RM-2117; the ref must survive reap). Incident RM-2118: R1's first commit took O3d's message (local amends only; main verified clean).
+- **Filed:** RM-2116..RM-2118; next free RM-2119, LEDGER 2110.
+- **What's next:** read the /done push ci (mode=full, selector edited) + RM-2113 on Py3.12; `lane_run_ledger.py effort-measure` before 11-22; land lane/uiux then redo the O3d split.
+- **Do NOT redo:** O1-O4, O3e (ruled out), RM-1386, the MAIN 0930 answer (TERMINAL, never answer an answer).
+
+---
+
 # 2026-11-13 - session 163 (picked up s162, which hit account 2's weekly limit before /done): gated -n 4 suite green on `4bb4badb6` and pushed `8aa74df1b..4bb4badb6`; RM-2081 / RM-1273 / RM-2101 / RM-2102 / RM-2094 CLOSED; CLI pin 2.1.323; agreement renewed to 2026-12-31; lanes relaunched (pid 18116)
 
 - **Session number (LEDGER 2107):** s162 never ran /done, so this /done writes `SESSION: 164`; marker and board say 163.
@@ -27,15 +37,3 @@
 - **Filed:** RM-2094..RM-2100 (BACKLOG "S161 filings"); next free RM-2101, LEDGER 2107.
 - **What's next:** operator exits the Vanguard tray and Riot Client; then drain (D3), gated run on HEAD, push per D2, CI watch, relaunch the lanes.
 - **Do NOT redo:** the four fixes above are on local main; the stash `44ed11ea3` work is CLOSED WON'T-FIX, not pending.
-
----
-
-# 2026-11-11 - session 160: the 7 CI reds of ci 42954031303 fixed locally (`a1366cf85`, `aea39eb94`, `fae4c1cb5`), q090 decided (`9affe2d6f`), RM-2089 fixed (`ae8136bdf` + the live driver), lanes drained and relaunched; NOT pushed, gated suite not run (RAM under the line)
-
-- **C1 (LEDGER 2103):** 6 snapshot_panels reds = Linux headless-shell whole-px glyphs (hotkey pill CSS fix; TFT board Linux row pinned) + 2 test races; the skip-hygiene timeout memoised (64.7 s -> 10.5 s, identical records). Verifier CONFIRMED; CI on the fix UNMEASURED until a push.
-- **C2:** first post-relaunch lane cycles: job object, 3-round verifier cap and 16/60 min pace all MET (141 cycles, 0 timeouts / kills). S144-Q-178 still open (split as S144-Q-179 (a)); no MAIN answer to the kit note; 30 stashes.
-- **C3 / C4:** q090 = stale expectation (400 is the RM-243 contract). RM-2089 CLOSED: `ops/loop/lane_sync.py`; the gitignored driver patched (backup `.bak-s160`); every first sync after the relaunch rebased cleanly.
-- **C5 + rulings:** lanes drained by staged stop files, 4 commits + 1 fix landed, rotator relaunched (pid 8996). Free RAM peaked 22751 MB < 23100, so no gated run. Ruling 1 killed a runaway ungated serial suite (a bare `.py` run in bash; RM-2090). Ruling 2: relaunch, drain again before the next gated try.
-- **/done (LEDGER 2104):** no push (landing rule unmet, needs the operator's yes); memory: 2 new feedback notes.
-- **Do NOT redo:** the 7-red fixes, the q090 decision, the RM-2089 fix and driver patch, the NA2 read, the 7cba5420d refutation.
-- **Next:** drain lanes, confirm >= 23100 MB free (or the operator's "run anyway"), gated -n 4 --exclusive suite on HEAD, push on the operator's yes, watch CI.
