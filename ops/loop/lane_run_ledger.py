@@ -100,6 +100,20 @@ MODEL_TRIAL_MEASURE = (
     "verifier-rejected and reverted commits per lane. Keep sonnet on a lane only if "
     "its USD per lane commit falls and its rejected-or-reverted count does not rise.")
 
+# MAIN ORDER 2026-11-14 0930 O1 (ruling D2): ds and research run at medium effort,
+# every other lane stays at executor_effort (high) as the control. The lane's effort
+# is ops/loop/config.json `lane_effort`, read by ops/loop/run_lane.ps1 with
+# `executor_effort` as the fallback; this constant is what effort_trial_measure
+# judges and a test pins it equal to the config. MAIN reads the result 2026-11-22;
+# the end date matches the model trial's, and nothing flips back on it.
+EFFORT_TRIAL = {"ds": "medium", "research": "medium"}
+EFFORT_TRIAL_START = "2026-11-14"
+EFFORT_TRIAL_END = "2026-12-08"
+EFFORT_TRIAL_MEASURE = (
+    "per trial lane, before vs during: USD per lane commit, zero-commit (empty) cycles "
+    "and commits per run (effort_trial_measure); and from the merger's records, "
+    "verifier-rejected or reverted commits.")
+
 CLEAN = "clean"
 FAILED_REPORTS_SUCCESS = "failed_reports_success"
 CRASH = "crash"
@@ -429,6 +443,34 @@ def fill_verifier_cap(text: str, cap: int = VERIFIER_ROUND_CAP) -> str:
     return text
 
 
+def _window(usage, cycles, lane, lo, hi_exclusive, want=None, want_effort=None) -> dict:
+    """One lane's figures over [lo, hi_exclusive) by local day. `want` keeps only runs
+    and cycles on that model; `want_effort` keeps only runs on that effort (a cycle row
+    carries no effort, so cycles are windowed by day, and by model when `want` is set)."""
+    rows = [r for r in usage if r.get("note") == LANE_NOTE_PREFIX + lane
+            and lo <= _day(r.get("ts")) < hi_exclusive
+            and (want is None or r.get("model") == want)
+            and (want_effort is None or r.get("effort") == want_effort)]
+    cyc = [c for c in cycles if c.get("lane") == lane
+           and lo <= _day(c.get("ended")) < hi_exclusive
+           and (want is None or c.get("model") == want)]
+    usd = sum(_usd(r) for r in rows)
+    commits = sum(int(c.get("own_commits") or 0) for c in cyc)
+    return {
+        "runs": len(rows), "usd": round(usd, 2),
+        "usd_per_run": round(usd / len(rows), 2) if rows else None,
+        "lane_commits": commits,
+        "commits_per_run": round(commits / len(rows), 2) if rows else None,
+        "usd_per_lane_commit": round(usd / commits, 2) if commits else None,
+        "zero_commit_cycles": sum(1 for c in cyc if not c.get("own_commits")),
+        "models": sorted({str(r.get("model")) for r in rows}),
+    }
+
+
+def _day_after(day: str) -> str:
+    return (datetime.date.fromisoformat(day) + datetime.timedelta(days=1)).isoformat()
+
+
 def trial_measure(usage, cycles, *, start=MODEL_TRIAL_START, end=MODEL_TRIAL_END,
                   before_days: int = 7) -> dict:
     """{lane: {"before": ..., "during": ...}} from the rows on disk. "during" on a
@@ -437,38 +479,34 @@ def trial_measure(usage, cycles, *, start=MODEL_TRIAL_START, end=MODEL_TRIAL_END
     half of MODEL_TRIAL_MEASURE is the merger's, not here."""
     first = datetime.date.fromisoformat(start)
     before_from = (first - datetime.timedelta(days=before_days)).isoformat()
-
-    def window(lane, lo, hi_exclusive, want=None):
-        rows = [r for r in usage if r.get("note") == LANE_NOTE_PREFIX + lane
-                and lo <= _day(r.get("ts")) < hi_exclusive
-                and (want is None or r.get("model") == want)]
-        cyc = [c for c in cycles if c.get("lane") == lane
-               and lo <= _day(c.get("ended")) < hi_exclusive
-               and (want is None or c.get("model") == want)]
-        usd = sum(_usd(r) for r in rows)
-        commits = sum(int(c.get("own_commits") or 0) for c in cyc)
-        return {
-            "runs": len(rows), "usd": round(usd, 2),
-            "usd_per_run": round(usd / len(rows), 2) if rows else None,
-            "lane_commits": commits,
-            "commits_per_run": round(commits / len(rows), 2) if rows else None,
-            "usd_per_lane_commit": round(usd / commits, 2) if commits else None,
-            "zero_commit_cycles": sum(1 for c in cyc if not c.get("own_commits")),
-            "models": sorted({str(r.get("model")) for r in rows}),
-        }
-
-    after_end = (datetime.date.fromisoformat(end) + datetime.timedelta(days=1)).isoformat()
     lanes = sorted({str(r["note"])[len(LANE_NOTE_PREFIX):] for r in usage if _is_lane(r)})
-    return {lane: {"before": window(lane, before_from, start),
-                   "during": window(lane, start, after_end, MODEL_TRIAL.get(lane))}
+    return {lane: {"before": _window(usage, cycles, lane, before_from, start),
+                   "during": _window(usage, cycles, lane, start, _day_after(end),
+                                     MODEL_TRIAL.get(lane))}
             for lane in lanes}
+
+
+def effort_trial_measure(usage, cycles, *, start=EFFORT_TRIAL_START, end=EFFORT_TRIAL_END,
+                         before_days: int = 7) -> dict:
+    """The effort trial's twin of trial_measure: {lane: {"before", "during"}} for each
+    EFFORT_TRIAL lane (a lane with no rows still reports, all zero). "during" counts
+    only runs the kit logged at the trial effort, since the start day also holds that
+    lane's earlier runs at the default. Figures per EFFORT_TRIAL_MEASURE; the
+    verifier-rejected and reverted share is the merger's, not here."""
+    first = datetime.date.fromisoformat(start)
+    before_from = (first - datetime.timedelta(days=before_days)).isoformat()
+    return {lane: {"before": _window(usage, cycles, lane, before_from, start),
+                   "during": _window(usage, cycles, lane, start, _day_after(end),
+                                     want_effort=effort)}
+            for lane, effort in sorted(EFFORT_TRIAL.items())}
 
 
 # ------------------------------------------------------------------ CLI
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Read-only lane ledger figures.")
-    ap.add_argument("what", choices=("daily", "read-daily", "week", "measure", "runs"))
+    ap.add_argument("what", choices=("daily", "read-daily", "week", "measure",
+                                     "effort-measure", "runs"))
     ap.add_argument("--root", default=str(Path(__file__).resolve().parents[2]))
     args = ap.parse_args(argv)
     usage = usage_rows(args.root)
@@ -480,6 +518,8 @@ def main(argv=None) -> int:
         doc = week_usd(usage)
     elif args.what == "measure":
         doc = trial_measure(usage, cycle_rows(args.root))
+    elif args.what == "effort-measure":
+        doc = effort_trial_measure(usage, cycle_rows(args.root))
     else:
         doc = {"all": peak_rolling_runs(usage), "lane": peak_rolling_runs(usage, lanes=True),
                "non_lane": peak_rolling_runs(usage, lanes=False)}

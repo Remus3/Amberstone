@@ -62,6 +62,19 @@ try {
     $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
     if ($cfg.executor_model) { $model = [string]$cfg.executor_model }
     if ($cfg.executor_effort) { $effort = [string]$cfg.executor_effort }
+    # MAIN ORDER 2026-11-14 0930 O1 (ruling D2, lane effort trial): config
+    # lane_effort[<lane>] wins over executor_effort for that lane; every lane it
+    # does not name keeps executor_effort. The lane is the prompt-file stem with
+    # its s144- prefix cut (the note is lane-s144-<lane>; a lane name may hold a
+    # dash, so the property is read by name, not as $cfg.lane_effort.<lane>). A
+    # value outside the kit's EFFORTS is ignored, so a typo never fails a spawn.
+    $stem = [System.IO.Path]::GetFileNameWithoutExtension($PromptFile)
+    if ($stem -cmatch '^s[0-9]+-(.+)$' -and $cfg.lane_effort) {
+      $laneEffort = $cfg.lane_effort.PSObject.Properties[$Matches[1]]
+      if ($laneEffort -and ([string]$laneEffort.Value) -cmatch '^(?:low|medium|high|xhigh|max)$') {
+        $effort = [string]$laneEffort.Value
+      }
+    }
   }
 } catch {
   # any read or parse fault keeps the fallbacks set above

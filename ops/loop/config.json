@@ -12,6 +12,7 @@
   "channel": "sdk",
   "executor_model": "claude-opus-5-5",
   "executor_effort": "high",
+  "lane_effort": {"ds": "medium", "research": "medium"},
   "executor_cmd": "claude.cmd",
   "claude_window_title": "Claude",
   "adjudicator": "claude",

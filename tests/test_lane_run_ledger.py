@@ -286,6 +286,43 @@ def test_trial_measure_splits_before_during_and_ignores_the_default_model_during
     assert out["queue"]["during"]["runs"] == 1  # a non-trial lane is not model-filtered
 
 
+def test_effort_trial_measure_splits_before_and_during_on_the_trial_effort():
+    ds, med = "lane-s144-ds", "medium"
+    usage = [_row(note=ds, cost=6.0, ts="2026-11-10T01:00:00-06:00") | {"effort": "high"},
+             _row(note=ds, cost=2.0, ts="2026-11-14T01:00:00-06:00") | {"effort": "high"},
+             _row(note=ds, cost=1.0, ts="2026-11-14T05:00:00-06:00") | {"effort": med},
+             _row(note=ds, cost=1.0, ts="2026-11-15T05:00:00-06:00") | {"effort": med},
+             _row(note="lane-s144-repo", cost=9.0, ts="2026-11-15T05:00:00-06:00")
+             | {"effort": "high"}]
+    cycles = [{"lane": "ds", "ended": "2026-11-10T01:00:00-06:00", "own_commits": 3},
+              {"lane": "ds", "ended": "2026-11-14T05:00:00-06:00", "own_commits": 0},
+              {"lane": "ds", "ended": "2026-11-15T05:00:00-06:00", "own_commits": 2}]
+    out = RL.effort_trial_measure(usage, cycles)
+    assert sorted(out) == ["ds", "research"]  # the trial lanes only, never repo
+    assert out["ds"]["before"]["usd_per_lane_commit"] == 2.0
+    during = out["ds"]["during"]
+    assert (during["runs"], during["usd"], during["lane_commits"]) == (2, 2.0, 2)
+    assert during["zero_commit_cycles"] == 1 and during["models"] == ["claude-opus-5-5"]
+    assert out["research"]["during"]["runs"] == 0  # a trial lane with no rows still reports
+
+
+def test_effort_trial_constants_name_ds_and_research_at_medium_from_today():
+    assert RL.EFFORT_TRIAL == {"ds": "medium", "research": "medium"}
+    assert RL.EFFORT_TRIAL_START == "2026-11-14"
+    assert RL.EFFORT_TRIAL_START < RL.EFFORT_TRIAL_END
+
+
+def test_effort_measure_cli_reports_the_trial_lanes(tmp_path):
+    _write_tree(tmp_path, [_row(note="lane-s144-ds", cost=1.0,
+                                ts="2026-11-15T05:00:00-06:00") | {"effort": "medium"}],
+                {"ds": []})
+    r = subprocess.run([sys.executable, "-m", "ops.loop.lane_run_ledger", "effort-measure",
+                        "--root", str(tmp_path)], cwd=str(REPO_ROOT), capture_output=True,
+                       text=True, check=False)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout)["ds"]["during"]["runs"] == 1
+
+
 def _runner_text():
     return (REPO_ROOT / "ops" / "loop" / "run_lane.ps1").read_text(encoding="utf-8")
 
