@@ -1535,6 +1535,60 @@ def shell_host_lines(
     return HOST_LIVE, lines, anomalies
 
 
+# RM-2107 (S144-G-45): the heartbeat writer (ops/rc_dev_runtime.py, FROZEN)
+# ticks every 1s and sets alive=true on each tick, but cannot clear it when the
+# box reboots under it, so a dead RC leaves alive=true behind (pid 16164 read
+# alive=true for days after the 2026-11-10 reboot). The reader owes the check.
+# 120s is far above the 1s cadence, so a slow tick never reads as dead.
+HEALTH_STALE_S = 120.0
+
+
+def _pid_alive(pid: int) -> bool:
+    """True if `pid` runs. Delegates to ops/loop/slots.py (import only - that
+    file is byte-pinned). An unimportable probe fails OPEN (True) so a broken
+    import never invents an outage; the heartbeat age still applies."""
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    if str(_CODE_ROOT) not in sys.path:
+        sys.path.insert(0, str(_CODE_ROOT))
+    try:
+        from ops.loop.slots import pid_alive
+    except ImportError:
+        return True
+    return bool(pid_alive(pid))
+
+
+def _iso_epoch(ts) -> float | None:
+    if not isinstance(ts, str) or not ts:
+        return None
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return dt.timestamp() if dt.tzinfo is not None else None
+
+
+def rc_health_alive(health: dict, *, now: float, pid_alive=None,
+                    stale_s: float = HEALTH_STALE_S) -> tuple[bool, str]:
+    """(alive, why) for a health.json payload. alive only when the file says
+    so AND its pid runs AND its heartbeat is fresh; `why` names the refuting
+    fact when the file's claim is overruled, else "". A missing or unparseable
+    `updated_at` leaves the pid probe as the only check."""
+    if not health.get("alive"):
+        return False, ""
+    pid = health.get("pid")
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False, "health.json says alive=true but carries no pid"
+    probe = pid_alive if pid_alive is not None else _pid_alive
+    if not probe(pid):
+        return False, f"health.json says alive=true but pid {pid} is not running"
+    written = _iso_epoch(health.get("updated_at"))
+    if written is not None and now - written > stale_s:
+        return False, (f"health.json says alive=true but its heartbeat is stale "
+                       f"({now - written:.0f}s old)")
+    return True, ""
+
+
 def main(session: str | None = None) -> int:
     out = []
     out.append("# RC live state (rc_facts.py)\n")
@@ -1550,19 +1604,21 @@ def main(session: str | None = None) -> int:
     except Exception:  # noqa: BLE001
         anomalies.append("Legion: ops/runtime/health.json unreadable")
     pid = health.get("pid")
-    alive = bool(health.get("alive"))
+    alive, alive_why = rc_health_alive(health, now=time.time())
     mode = health.get("mode") or "?"
     rc_version = health.get("rc_version") or "?"
     last_reload_ok = health.get("last_reload_ok")
     out.append(
         f"- RC: pid={pid} alive={alive} mode={mode} version={rc_version} "
         f"last_reload_ok={last_reload_ok}"
+        + (f" ({alive_why})" if alive_why else "")
     )
     # A45d: the "RC is down" family is held here and graded once the shell
     # host and the task list are known (see the decision after the agents).
     rc_down: list[str] = []
     if not alive:
-        rc_down.append(f"Legion: RC not alive (pid={pid})")
+        rc_down.append(f"Legion: RC not alive (pid={pid}"
+                       + (f"; {alive_why})" if alive_why else ")"))
     if last_reload_ok is False:
         anomalies.append("Legion: last RC reload failed")
     host_doc, host_err = read_launcher_status(_APP)

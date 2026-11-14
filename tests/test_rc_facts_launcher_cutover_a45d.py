@@ -214,6 +214,9 @@ def _world(tmp_path, monkeypatch, *, tasks, port_up, status=None, alive=False):
         path.write_text(json.dumps(status), encoding="utf-8")
     monkeypatch.setattr(rc_facts, "_HEALTH", health)
     monkeypatch.setattr(rc_facts, "_APP", tmp_path)
+    # RM-2107: rc_facts now probes the health pid; this world's pid 1528 is
+    # synthetic, so it runs exactly when the world says RC is alive.
+    monkeypatch.setattr(rc_facts, "_pid_alive", lambda pid: alive)
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: port_up)
     monkeypatch.setattr(rc_facts, "_health_all", dict)
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
