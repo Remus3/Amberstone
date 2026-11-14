@@ -95,6 +95,13 @@ MODE_NONE = "none"
 # A push this wide is a batch landing, and a batch runs the batch suite.
 MAX_CHANGED_PATHS = 300
 
+# RM-1386: a slice over this many selected modules takes the full dual suite.
+# Measured: 1021 modules hit the 45 min slice step at 98 pct (ci 41972484459),
+# 1931 modules at 97 pct (ci 43472706916); the full suite's 160 min step ran
+# 88.9k outcomes in 75 min (dispatch 43491658216). 800 leaves ~20 pct headroom
+# under the ~1000 modules that already timed out.
+MAX_SELECTED_MODULES = 800
+
 _FULL_EXACT = {
     "pytest.ini": "pytest configuration reaches every module",
     "pyproject.toml": "may carry pytest configuration",
@@ -304,6 +311,10 @@ def select_impacted(changed: Iterable[str], tracked: Iterable[str],
                     reasons.setdefault(mod, []).append(label)
 
     selected = sorted(reasons)
+    if len(selected) > MAX_SELECTED_MODULES:
+        return Selection(MODE_FULL, detail=(
+            f"{len(selected)} selected test modules is over MAX_SELECTED_MODULES="
+            f"{MAX_SELECTED_MODULES} - a slice that wide outruns the 45 min slice step (RM-1386)"))
     detail = f"{len(relevant)} changed path(s) -> {len(selected)} test module(s)"
     return Selection(MODE_SLICE if selected else MODE_NONE, selected,
                      {m: reasons[m] for m in selected}, detail)

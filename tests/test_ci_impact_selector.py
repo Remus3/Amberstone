@@ -135,6 +135,38 @@ def test_a_push_too_wide_to_map_escalates():
     assert str(sel.MAX_CHANGED_PATHS) in out.detail
 
 
+def _wide_universe(n_importers):
+    """A universe where one source file is imported by n test modules."""
+    texts = {"core/wide.py": "X = 1\n"}
+    for i in range(n_importers):
+        texts[f"tests/test_wide_{i}.py"] = "from core import wide\n"
+    return sorted(texts), texts
+
+
+def test_a_slice_over_the_module_threshold_escalates_to_full():
+    """RM-1386: 1021 modules timed out the 45 min slice step (s150), so a
+    slice must stay under MAX_SELECTED_MODULES or the push takes mode=full."""
+    assert sel.MAX_SELECTED_MODULES < 1000
+    tracked, texts = _wide_universe(sel.MAX_SELECTED_MODULES + 1)
+    out = _select(["core/wide.py"], tracked, texts)
+    assert out.mode == sel.MODE_FULL
+    assert out.modules == []
+    assert str(sel.MAX_SELECTED_MODULES) in out.detail
+
+
+def test_a_slice_at_the_module_threshold_stays_a_slice():
+    tracked, texts = _wide_universe(sel.MAX_SELECTED_MODULES)
+    out = _select(["core/wide.py"], tracked, texts)
+    assert out.mode == sel.MODE_SLICE
+    assert len(out.modules) == sel.MAX_SELECTED_MODULES
+
+
+def test_a_slice_just_below_the_module_threshold_stays_a_slice():
+    tracked, texts = _wide_universe(sel.MAX_SELECTED_MODULES - 1)
+    out = _select(["core/wide.py"], tracked, texts)
+    assert out.mode == sel.MODE_SLICE
+
+
 # ---- the map ---------------------------------------------------------------
 
 def test_a_changed_test_module_selects_itself():
