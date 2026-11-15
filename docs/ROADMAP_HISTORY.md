@@ -1,5 +1,11 @@
 # Riot Commander - Roadmap History (archived shipped/closed entries)
 
+## 2026-11-14 - size-budget relocation (session 166 /done), 1 line
+
+`ROADMAP.md` read 90.3 percent of its budget (drift_guard warn line 73728); the closed s161 row moved VERBATIM.
+
+- **[x] RM-1271, RM-2091, RM-2092, RM-2093 (s161, SHIPPED; pushed s163 in `8aa74df1b..4bb4badb6`; LEDGER 2105):** 1271 the `.githooks/commit-msg` lane trailer step, a lane/<x> commit must end `Lane: <x>` (`38e46c755`); 2091 the DDragon mirror refresh bounded retry pass and a log file under pythonw (`65fa2a001`); 2092 the DS rotating `logs/daemon_slayer.log` (`69d3b62a6`); 2093 the ARAM item-interaction snapshot Stormrazor cell, 776 -> 777 (`de62be5cf`). Residue: RM-2097..RM-2100.
+
 ## 2026-11-08c - session 156 C9 merger closes
 
 - **[x] RM-1158 SHIPPED (s156 slice S6 `6a9d04e45`, merge `6bb3152ab`):** `scripts/tft_patch_delta.py` no longer reports a CommunityDragon hash-to-name key resolution as a value change.

@@ -41,6 +41,19 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-13 - session 163 (picked up s162, which hit account 2's weekly limit before /done): gated -n 4 suite green on `4bb4badb6` and pushed `8aa74df1b..4bb4badb6`; RM-2081 / RM-1273 / RM-2101 / RM-2102 / RM-2094 CLOSED; CLI pin 2.1.323; agreement renewed to 2026-12-31; lanes relaunched (pid 18116)
+
+- **Session number (LEDGER 2107):** s162 never ran /done, so this /done writes `SESSION: 164`; marker and board say 163.
+- **C1-C3:** kit v30 ratchet fence `6b1393489`; rotator drained; C3 ruling KEEP s152 c4 (no FIFO join while another tree holds the gate); gated run 88749 passed exit 0; pushed 23 commits. Push ci timed out at 45 min (RM-1386, re-measured: needs a module-count escalation under ~1000).
+- **CI verdict:** dispatch 43491658216 on `4bb4badb6` 2 failed / 88241 passed, both judged hosted flakes (RM-2113, RM-2114); re-run under Py3.12 first.
+- **Closures:** RM-2081 verdict (a) (Bloodmail AD 30 -> 40); RM-1273 CLAUDE.md 54165 B; RM-2101 Node-aware pin `4897cb6ba`; RM-2102 replay row re-mark `63fc27d1d`; RM-2094 all 9 read-backs PASS (app up via WMI).
+- **Ops:** ruff 0.17.3 in gitignored `ops/runtime/ruff0173` (global ruff 0.15.22 fails the ratchets; reinstall = operator ASK); two stashes exported to `ops/runtime/branch_bundles/` and dropped (only copy, RM-2110); note_pause driver patch (`.bak-s163`); ONE ANSWER to MAIN 0345 (TERMINAL).
+- **Filed:** RM-2104..RM-2115 (BACKLOG "S163 filings"); next free RM-2116, LEDGER 2109.
+- **What's next:** re-run the two flake modules under Py3.12 (RM-2113 / RM-2114); RM-1386 selector threshold; read the /done dispatch result.
+- **Do NOT redo:** the s163 closures above; the C3 push; the MAIN 0345 answer (never answer an answer).
+
+---
+
 # 2026-11-11b - session 161: RM-1271 hook (`38e46c755`), RM-2091 DDragon mirror retry + pythonw log (`65fa2a001`), RM-2092 DS log file (`69d3b62a6`), RM-2093 ARAM Stormrazor cell (`de62be5cf`); Q-148 / Q-178 / Q-179 CLOSED WON'T-FIX; NOT pushed, gated suite not run (Vanguard tray up)
 
 - **C2 (LEDGER 2105):** RC-DDragonMirrorRefresh FAILURE = a transient blip on the 11-11 02:30 run; replay 0 failures; fixed as RM-2091 (bounded retry pass, log file under pythonw). Task drift recorded only (fires 02:30 vs 03:30; S4U vs Interactive).

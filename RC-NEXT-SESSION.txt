@@ -1,18 +1,18 @@
 NEXT SESSION
 ------------
-SESSION: 166
-OPEN ITEMS ONLY. The s165 hand-off (written at the s164 /done) is VERBATIM at `git show b962442693:RC-NEXT-SESSION.txt`;
-s164's at 97ffb3a1b, s162's at bbd3113ed, s161's at 247325fa4, s160's at 79f73eaf7, s159's at 5af8d6d64, s158's at
-50e5ad38f, s157's at d2d4840f1; older hand-offs: ARCHIVES below; closed history and the s133-s150 DO NOT RE-LITIGATE
+SESSION: 167
+OPEN ITEMS ONLY. The s166 hand-off (written at the s165 /done) is VERBATIM at `git show 5a88fcd5b7:RC-NEXT-SESSION.txt`,
+s165's (written at the s164 /done) at b962442693;
+s164's at 97ffb3a1b, s162's at bbd3113ed, s161's at 247325fa4; older hand-offs (s157-s160 in the DO NOT RE-LITIGATE block): ARCHIVES below; closed history and the s133-s150 DO NOT RE-LITIGATE
 entries are VERBATIM in A1106 block 3. Every item still open is carried below as a tight line; read the source first.
-SESSION NUMBER: s165 ran normally (counter 165 -> 166); s163 carried the s162 gap (LEDGER 2107).
+SESSION NUMBER: s166 ran as /clear then /done, no work (counter 166 -> 167); s163 carried the s162 gap (LEDGER 2107).
 OPERATOR SCOPE (chat s150, VERBATIM; stands until the operator changes it): "continue headlessly - all driver lanes -
 operator away ; full access approved". Operator s150: "No, keep lanes running" - superseded for a gated suite by the
 s157 ruling "a - full box next time" (SUITE LAUNCH LINE).
 OPERATOR WORDS: s159 "-n 4 standing" (landings at -n 4 until the operator or MAIN changes it; over MAIN 2045's -n 8;
 8aa74df1b; told to MAIN in a66309aa3); s161 "self-adjudicate" (D1-D3 bind, LEDGER 2105); s163 "Continue" and "there
-was work in another session that was on account 2 unfinished;" (acted on); s164 only "Continue"; s165 none (headless,
-standing scope; no steer, no intent).
+was work in another session that was on account 2 unfinished;" (acted on); s164 only "Continue"; s165 and s166 none
+(standing scope; no steer, no intent).
 
 STANDING RULES
 - REWRITE 2026-11-01 (LEDGER 2009, A1101): doc hashes older than origin 8d8c321b7 are PRE-REWRITE: map via
@@ -72,11 +72,13 @@ BATCHED OPERATOR ASK (s163, one line): (1) OK to reinstall global ruff 0.17.3 in
 (2) the ~2.2 GB stash bundles in ops/runtime/branch_bundles/ (RM-2110, the ONLY copy of 2 dropped stashes): keep or
 Recycle Bin? (s161's vgtray ask is spent; D1 still binds the next landing.)
 
-NEXT ACTION (s165 /done)
-1. CI: read the s165 /done push (ci is mode=full: 969 selected modules > MAX 800, so the push ci IS the full run;
-   run ids in Status) + codeql + docs-guards: `gh run list --branch main --limit 6`; a red: Py3.12 re-run first, fix
-   forward. Green: close RM-2113 (playwright absent in the 3.12 venv) and RM-2114 (re-ran green on 3.12.10, 12
-   passed); red on either: harden. The s164 push reds (docs-guards pin + 5 ci tests) were fixed s165.
+NEXT ACTION (s166 /done)
+1. CI RED, FIX FORWARD: s165 push ci 43658294580 (mode=full) 3 failed / 88346 passed; codeql + docs-guards green.
+   (a) tests/test_container_builtin_return_ratchet_s144p160.py + tests/test_dead_weight_lint_bundle_ratchet_s144p270.py:
+   ruff PIE807 / RET501 / PLR1711 finding in tests/test_rc_facts_health_pid_rm2107.py (RM-2107 test; the global-ruff
+   gate missed it: fix it, ruff0173 env). (b) tests/snapshot_panels/test_item_value_bar_relocated.py
+   ::test_the_bar_renders_inside_the_map_pane[ember-923x1280]: Py3.12 re-run first (flake or real). RM-2113 / RM-2114 (the
+   two s163 flakes) did NOT red in this run: close both if the next full run also stays green.
 2. MAIN 0930 ORDER follow-through (answered, TERMINAL): re-run `python ops/loop/lane_run_ledger.py effort-measure`
    BEFORE 11-22 (s165 C2: first ds effort=medium row 2026-11-14T11:45:25-06:00, opus-5-5, rc 0, 0 commits; ds during
    1 run $0.53; research during 0 runs). O3d: land lane/uiux first, re-run the QA split on the merged file (ref
@@ -127,7 +129,7 @@ NEXT ACTION (s165 /done)
    .claude/worktrees/v2.txt. Commit-message slips (cannot amend): s159 480e7a833, 6ae94b0c2, 7cba5420d, 191ff42e8;
    s160 long subjects a1366cf85, 9affe2d6f. s161 drift RECORDED ONLY: RC-DDragonMirrorRefresh fires 02:30 (doc
    03:30), logon S4U. s163: slot 0.lock DEAD_PID 19268 (RM-2108); a C6 / C7 agent hung 3 h (TaskStop). s165: the
-   gitignored .claude/commands/done.md copy had gone stale (refreshed from tools/done.md at C7).
+   gitignored .claude/commands/done.md copy refreshed at C7.
 
 FIRST (each session): CPU / FREE RAM glance; `python ops/loop/inbox_tick.py --pending`; `gh pr list`; `gh run list
 --branch main --limit 6`; git fetch + origin/main still an ancestor of main; lane progress files (0 workers = the
@@ -137,8 +139,7 @@ IN-FLIGHT (do not stop; read progress files, never kill to look): the lane rotat
 ops/loop/control/lane_prompts/s144_lane_driver.py --spawn-detached, gitignored; status files, stops, PARKED, leak
 alarm, budget reset: A1101 block 10), its 7 lanes (progress/lane-<i>.json, s144-lanes.json). RC app DOWN at the s165
 /done read (pid 6360 gone, ops/runtime/health.json 21 h stale, :8888 no answer; no game; no autostart, ASK 45;
-launch via WMI only if a read-back needs it). A CS tree session may hold the suite gate (C3: wait). No s165 agent or
-monitor running.
+launch via WMI only if a read-back needs it). A CS tree session may hold the suite gate (C3: wait). No agent or monitor running.
 
 CARRIED OPEN ITEMS (full text VERBATIM in A1107 block 1 and A1106 block 3)
 - MAIN ORDER 2215 CLOSED s153 (do NOT re-run the scratchpad deliver.py). Residue: RM-1271 SHIPPED s161 (no kit
@@ -175,8 +176,7 @@ CARRIED OPEN ITEMS (full text VERBATIM in A1107 block 1 and A1106 block 3)
   (rename its guard `_ag_` if applied). Watch test_champ_select_arena_augment_options.py
   ::test_enter_and_space_pick_exactly_one_option (failed once under --dist load). s145-l7-land2, s145-prefold-main
   (eef5d6ff1): keep. RM-1222 legacy-state read untested live.
-- s155: C10's unnamed F at 23 percent (the reaped -n 6 run) was not found by C11 (about 600 files; an inferred
-  load flake): act only if a later suite reds that region.
+- s155: C10's unnamed F at 23 percent (reaped -n 6 run): inferred load flake; act only if a suite reds that region.
 
 ====================
 SESSION 144 ITEMS (LEDGER 1938-1974), all OPEN, VERBATIM in A1106 block 1 (read it before acting on one)
@@ -223,8 +223,7 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
   fallback only on the operator's word, CLAUDE.md KIT v20 since f2f40f47f); the s130 board finding (RM-823); B3
   read-back of MAIN 2237 (the next pane shows the acct2 status line, no [Legion] line); the old lane folder +
   junction are MAIN's to release.
-- Worktrees (s165 /done reap "4 removed, 7 kept, 4 listed"; removed the landed C3-C6 / C9 agent worktrees, branches
-  kept; listed agent-a39dfc1f9a98afe39 (squashed into 65fa2a001), agent-a6151dbdd48913b79 (de62be5cf + a merger
+- Worktrees (s166 /done reap "0 removed, 7 kept, 4 listed"; listed agent-a39dfc1f9a98afe39 (squashed into 65fa2a001), agent-a6151dbdd48913b79 (de62be5cf + a merger
   edit), agent-a74eeca3565e814f9 (RM-1271 + merger edits), agent-a9c5f5e90007897b9 (the O3d hold 6e384504e, KEEP);
   kept the 7 lanes). 66+ `worktree-agent-*` branches (cherry-picked, `-d` refuses): delete each only after a patch
   check; the s152 slice/* branches too. 117 local branches + 56 stashes; the KEEP / NEVER PUSH set stays unmerged on
@@ -262,8 +261,7 @@ reuse not ruled out).
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line; full text VERBATIM in A31 block 4, older in block 2)
 ====================
 Closed asks with reasons: s144-s147 A1101 block 13, earlier A26, s152-s156 `git show d2d4840f1:RC-NEXT-SESSION.txt`,
-s157 at 50e5ad38f, s158 at 5af8d6d64; s159's asks CLOSED; s160's SUPERSEDED by s161 D1 / D2; s161's vgtray ask
-SPENT (s163 landed). s163: the line above NEXT ACTION.
+s157 at 50e5ad38f, s158 at 5af8d6d64; s159-s161 asks closed / spent. s163: the line above NEXT ACTION.
 s150 batch line: RM-1658 (keep the advisory badge hidden or restore a surface).
 s147 batch line: (1) autostart the shell at logon - yes or no?; (2) ASKS 53 approve the frozen
 ops/rc_supervisor.py:393 edit; (3) live-game read-backs S6, G7-17, RM-860, RM-869; (4) optional:
@@ -284,8 +282,7 @@ OPEN - WATCH AND DATA (act only when seen; detail VERBATIM in A27 block 2)
   42510026781's mypy step read 457 errors, success); the rm738 timing flake (re-measure on a quiet box);
   vision_wedge_*.txt / "vision server hung" = new evidence; the UNATTRIBUTED 2026-10-10 hang.
 - Expected, not a finding: the PostToolUse credential hook flags a published FAKE key literal in an old
-  docs/LEDGER.md entry (the W3 secret-handling entry, now near :2527) on any LEDGER edit; the push scan reads added
-  lines only, so it never blocks.
+  docs/LEDGER.md entry (W3, near :2527) on any LEDGER edit; the push scan reads added lines only.
 
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
@@ -320,20 +317,19 @@ tests/*ratchet* and tests/*census* file (memory feedback_new_test_files_meet_rep
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s165 /done, LEDGER 2110): commits since b962442693: 3caee0c9f2, 5963953070, 0f44a392d8, cbfcccb45f,
-8c8328a079, e4d8171c8d, d7521ce8b2, 5655e35cb4 + the /done docs eb8006afb2; ONE push b962442693..eb8006afb2 (ls-remote read back; bot_merge_check clean;
-this edit is a LOCAL commit: push with s166's). CI in progress at the /done: ci 43658294580, codeql
-43658294668, docs-guards 43658294632. Full suite
-(2c): NOT dispatched - the selector prints mode=full for the push range (969 > 800), so the push ci IS the full run
-(candidate b). Gate: ruff 0.17.3 clean; hygiene 14 passed; drift_guard 0; doc guards 2565 passed; C11 verifier
-CONFIRMED (87 passed). No local whole suite (Tier-1, lanes live). RC app DOWN, no game. WAKEUP pruned to 3.
-Session file 1.6 MB.
+Status (s166 /done; s166 did no work, LEDGER not appended): s165 shipped b962442693..eb8006afb2 (its commits: see
+the s165 DO NOT RE-LITIGATE line); s165 push ci 43658294580 RED (NEXT ACTION 1), codeql 43658294668 + docs-guards
+43658294632 green. s166 /done: ROADMAP closed s161 row moved to docs/ROADMAP_HISTORY.md (drift_guard 1 warn -> 0),
+WAKEUP s166 entry, pruned to 3; one push of 5a88fcd5b7 + that docs commit (range: read origin/main). Gate: ruff 0.17.3
+clean; hygiene 14 passed; drift_guard 0; 7 doc-guard files 94 passed. Full suite (2c): NOT dispatched - the s165 push ci
+(mode=full) covers the tree (docs differ only), its result is the red above. No local whole suite (Tier-0). RC app DOWN
+(health.json stale, :8888 / :8889 closed; no autostart), no game. Session file 0.8 MB.
 
 Context: tools/done.md TIER TABLE; tools/landing_sampler.py; .github/workflows/ci.yml; tools/ci_impact_selector.py;
 BACKLOG "S153" .. "S165 filings"; ops/loop/control/lane_prompts/; ops/loop/run_lane.ps1 + fleet_route.py (RM-2116);
 ops/loop/lane_run_ledger.py; docs/LIVE_GAME_GATED_SYNC.md; inbox via ops/loop/inbox_tick.py --pending.
 
-Acceptance: the s165 push ci (mode=full) read with any red fixed forward; RM-2113 / RM-2114 closed or hardened;
+Acceptance: the s165 push ci red (3 tests) fixed forward and a green full run read; RM-2113 / RM-2114 closed or hardened;
 effort-measure re-run before 11-22; RM-2119..RM-2123 worked or carried; O3d split landed after lane/uiux; lanes
 healthy (note_pause read when the budget reaches 400); INBOX-AGREE by 2026-12-31.
 

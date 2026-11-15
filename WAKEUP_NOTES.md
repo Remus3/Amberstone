@@ -6,6 +6,14 @@
 
 ---
 
+# 2026-11-14 - session 166: no work (operator /clear then /done); s165 push ci read RED (3 failures), carried as NEXT ACTION 1
+
+- **Read:** ci 43658294580 (mode=full) 3 failed / 88346 passed: tests/snapshot_panels/test_item_value_bar_relocated.py ember-923x1280 (probable theme or layout flake, re-run on 3.12 first) and two ruff ratchets (tests/test_container_builtin_return_ratchet_s144p160.py, tests/test_dead_weight_lint_bundle_ratchet_s144p270.py) naming one new finding in tests/test_rc_facts_health_pid_rm2107.py (PIE807 / RET501 / PLR1711). codeql and docs-guards green.
+- **Done:** ROADMAP closed s161 row relocated to docs/ROADMAP_HISTORY.md (drift_guard warn at 90.3 percent cleared).
+- **Do NOT redo:** nothing shipped beyond that; every other s165 item stays open.
+
+---
+
 # 2026-11-14 - session 165: s164 push CI reds fixed forward (`3caee0c9f2`, `5963953070`, `d7521ce8b2`); RM-2106 / RM-2107 / RM-2116 / RM-2118 CLOSED; C11 guard ignore for live lane back-off files (`5655e35cb4`)
 
 - **LEDGER 2110.** 8 commits + /done docs, ONE push from `b962442693` (selector mode=full: the push ci IS the full run).
@@ -25,16 +33,3 @@
 - **Filed:** RM-2116..RM-2118; next free RM-2119, LEDGER 2110.
 - **What's next:** read the /done push ci (mode=full, selector edited) + RM-2113 on Py3.12; `lane_run_ledger.py effort-measure` before 11-22; land lane/uiux then redo the O3d split.
 - **Do NOT redo:** O1-O4, O3e (ruled out), RM-1386, the MAIN 0930 answer (TERMINAL, never answer an answer).
-
----
-
-# 2026-11-13 - session 163 (picked up s162, which hit account 2's weekly limit before /done): gated -n 4 suite green on `4bb4badb6` and pushed `8aa74df1b..4bb4badb6`; RM-2081 / RM-1273 / RM-2101 / RM-2102 / RM-2094 CLOSED; CLI pin 2.1.323; agreement renewed to 2026-12-31; lanes relaunched (pid 18116)
-
-- **Session number (LEDGER 2107):** s162 never ran /done, so this /done writes `SESSION: 164`; marker and board say 163.
-- **C1-C3:** kit v30 ratchet fence `6b1393489`; rotator drained; C3 ruling KEEP s152 c4 (no FIFO join while another tree holds the gate); gated run 88749 passed exit 0; pushed 23 commits. Push ci timed out at 45 min (RM-1386, re-measured: needs a module-count escalation under ~1000).
-- **CI verdict:** dispatch 43491658216 on `4bb4badb6` 2 failed / 88241 passed, both judged hosted flakes (RM-2113, RM-2114); re-run under Py3.12 first.
-- **Closures:** RM-2081 verdict (a) (Bloodmail AD 30 -> 40); RM-1273 CLAUDE.md 54165 B; RM-2101 Node-aware pin `4897cb6ba`; RM-2102 replay row re-mark `63fc27d1d`; RM-2094 all 9 read-backs PASS (app up via WMI).
-- **Ops:** ruff 0.17.3 in gitignored `ops/runtime/ruff0173` (global ruff 0.15.22 fails the ratchets; reinstall = operator ASK); two stashes exported to `ops/runtime/branch_bundles/` and dropped (only copy, RM-2110); note_pause driver patch (`.bak-s163`); ONE ANSWER to MAIN 0345 (TERMINAL).
-- **Filed:** RM-2104..RM-2115 (BACKLOG "S163 filings"); next free RM-2116, LEDGER 2109.
-- **What's next:** re-run the two flake modules under Py3.12 (RM-2113 / RM-2114); RM-1386 selector threshold; read the /done dispatch result.
-- **Do NOT redo:** the s163 closures above; the C3 push; the MAIN 0345 answer (never answer an answer).
