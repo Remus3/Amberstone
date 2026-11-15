@@ -6,6 +6,18 @@
 
 ---
 
+# 2026-11-14 - session 165: s164 push CI reds fixed forward (`3caee0c9f2`, `5963953070`, `d7521ce8b2`); RM-2106 / RM-2107 / RM-2116 / RM-2118 CLOSED; C11 guard ignore for live lane back-off files (`5655e35cb4`)
+
+- **LEDGER 2110.** 8 commits + /done docs, ONE push from `b962442693` (selector mode=full: the push ci IS the full run).
+- **Closures:** RM-2106 DS log WARNING-and-up `0f44a392d8`; RM-2107 rc_facts alive needs live pid + heartbeat `cbfcccb45f`; RM-2116 lane stream-json last tool `8c8328a079`; RM-2118 unique commitmsg tmpfile + `inbox_tick.py --send` `e4d8171c8d`.
+- **Verifiers:** C3-C6, C9, C11 CONFIRMED; C10 PLAUSIBLE (its flake fixed by C11). C7 merged-tree Tier-1 6383 passed after the stale `.claude/commands/done.md` copy refresh.
+- **C2:** first ds effort=medium row 11-14 11:45 (1 run, $0.53); re-measure before 11-22.
+- **Filed:** RM-2119..RM-2123; next free RM-2124, LEDGER 2111. RC app found DOWN at /done (pid 6360 gone).
+- **What's next:** read this push's ci (close RM-2113 / RM-2114 if green), effort-measure before 11-22, RM-2119..RM-2123, lanes watch (4 lanes LAND DUE).
+- **Do NOT redo:** the 5 CI-red fixes, RM-2106 / 2107 / 2116 / 2118, C11.
+
+---
+
 # 2026-11-14 - session 164: MAIN ORDER 0930 O1-O4 shipped (lane effort `e4f79551d`, back-off / LAND DUE `5393cac6a`, verifier pin `5ebb1bc94`, O3e ruled out `6bd97bbb9`), RM-1386 shipped (`c6bf5fcde`), s163 CI reds triaged, ONE answer to MAIN (`268ac7c28`); O3d QA split HELD
 
 - **LEDGER 2109.** Rotator restarted pid 18116 -> 16308 (live driver deployed, backup .bak-s164); ds + gated skipped live at 11:34.
@@ -26,14 +38,3 @@
 - **Filed:** RM-2104..RM-2115 (BACKLOG "S163 filings"); next free RM-2116, LEDGER 2109.
 - **What's next:** re-run the two flake modules under Py3.12 (RM-2113 / RM-2114); RM-1386 selector threshold; read the /done dispatch result.
 - **Do NOT redo:** the s163 closures above; the C3 push; the MAIN 0345 answer (never answer an answer).
-
----
-
-# 2026-11-11b - session 161: RM-1271 hook (`38e46c755`), RM-2091 DDragon mirror retry + pythonw log (`65fa2a001`), RM-2092 DS log file (`69d3b62a6`), RM-2093 ARAM Stormrazor cell (`de62be5cf`); Q-148 / Q-178 / Q-179 CLOSED WON'T-FIX; NOT pushed, gated suite not run (Vanguard tray up)
-
-- **C2 (LEDGER 2105):** RC-DDragonMirrorRefresh FAILURE = a transient blip on the 11-11 02:30 run; replay 0 failures; fixed as RM-2091 (bounded retry pass, log file under pythonw). Task drift recorded only (fires 02:30 vs 03:30; S4U vs Interactive).
-- **C3 decisions:** RM-1271 hook added (1459 / 1462 lane commits carry `Lane:`); S144-Q-148 / -178 / -179 CLOSED WON'T-FIX (the stop-claim gate never blocks; hooks are the barrier); L9 residue decided (d159 -> RM-2092, t096 -> RM-2093, t097 / q084 CLOSED, t100 live-gated row L9-t100, the rest -> RM-2094 at the next RC launch).
-- **C4 NOT DONE:** 60 min wait for the gated `-n 4 --exclusive` run; RAM cleared 23100 MB (22.6-25.2 GB) but vgtray.exe ran on all 62 reads and the sampler refuses on it. Rulings D1 (no run while Riot / Vanguard runs), D2 (push on a gated exit 0, no further yes), D3 (drain + relaunch recipe): LEDGER 2105.
-- **Filed:** RM-2094..RM-2100 (BACKLOG "S161 filings"); next free RM-2101, LEDGER 2107.
-- **What's next:** operator exits the Vanguard tray and Riot Client; then drain (D3), gated run on HEAD, push per D2, CI watch, relaunch the lanes.
-- **Do NOT redo:** the four fixes above are on local main; the stash `44ed11ea3` work is CLOSED WON'T-FIX, not pending.

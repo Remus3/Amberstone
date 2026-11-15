@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-11b - session 161: RM-1271 hook (`38e46c755`), RM-2091 DDragon mirror retry + pythonw log (`65fa2a001`), RM-2092 DS log file (`69d3b62a6`), RM-2093 ARAM Stormrazor cell (`de62be5cf`); Q-148 / Q-178 / Q-179 CLOSED WON'T-FIX; NOT pushed, gated suite not run (Vanguard tray up)
+
+- **C2 (LEDGER 2105):** RC-DDragonMirrorRefresh FAILURE = a transient blip on the 11-11 02:30 run; replay 0 failures; fixed as RM-2091 (bounded retry pass, log file under pythonw). Task drift recorded only (fires 02:30 vs 03:30; S4U vs Interactive).
+- **C3 decisions:** RM-1271 hook added (1459 / 1462 lane commits carry `Lane:`); S144-Q-148 / -178 / -179 CLOSED WON'T-FIX (the stop-claim gate never blocks; hooks are the barrier); L9 residue decided (d159 -> RM-2092, t096 -> RM-2093, t097 / q084 CLOSED, t100 live-gated row L9-t100, the rest -> RM-2094 at the next RC launch).
+- **C4 NOT DONE:** 60 min wait for the gated `-n 4 --exclusive` run; RAM cleared 23100 MB (22.6-25.2 GB) but vgtray.exe ran on all 62 reads and the sampler refuses on it. Rulings D1 (no run while Riot / Vanguard runs), D2 (push on a gated exit 0, no further yes), D3 (drain + relaunch recipe): LEDGER 2105.
+- **Filed:** RM-2094..RM-2100 (BACKLOG "S161 filings"); next free RM-2101, LEDGER 2107.
+- **What's next:** operator exits the Vanguard tray and Riot Client; then drain (D3), gated run on HEAD, push per D2, CI watch, relaunch the lanes.
+- **Do NOT redo:** the four fixes above are on local main; the stash `44ed11ea3` work is CLOSED WON'T-FIX, not pending.
+
+---
+
 # 2026-11-11 - session 160: the 7 CI reds of ci 42954031303 fixed locally (`a1366cf85`, `aea39eb94`, `fae4c1cb5`), q090 decided (`9affe2d6f`), RM-2089 fixed (`ae8136bdf` + the live driver), lanes drained and relaunched; NOT pushed, gated suite not run (RAM under the line)
 
 - **C1 (LEDGER 2103):** 6 snapshot_panels reds = Linux headless-shell whole-px glyphs (hotkey pill CSS fix; TFT board Linux row pinned) + 2 test races; the skip-hygiene timeout memoised (64.7 s -> 10.5 s, identical records). Verifier CONFIRMED; CI on the fix UNMEASURED until a push.
