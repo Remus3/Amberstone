@@ -321,7 +321,9 @@ tests/*ratchet* and tests/*census* file (memory feedback_new_test_files_meet_rep
 STATUS, CONTEXT, ACCEPTANCE
 ====================
 Status (s165 /done, LEDGER 2110): commits since b962442693: 3caee0c9f2, 5963953070, 0f44a392d8, cbfcccb45f,
-8c8328a079, e4d8171c8d, d7521ce8b2, 5655e35cb4 + the /done docs commit; ONE push from b962442693 (range in LEDGER-free Status below). CI: RUNIDS. Full suite
+8c8328a079, e4d8171c8d, d7521ce8b2, 5655e35cb4 + the /done docs eb8006afb2; ONE push b962442693..eb8006afb2 (ls-remote read back; bot_merge_check clean;
+this edit is a LOCAL commit: push with s166's). CI in progress at the /done: ci 43658294580, codeql
+43658294668, docs-guards 43658294632. Full suite
 (2c): NOT dispatched - the selector prints mode=full for the push range (969 > 800), so the push ci IS the full run
 (candidate b). Gate: ruff 0.17.3 clean; hygiene 14 passed; drift_guard 0; doc guards 2565 passed; C11 verifier
 CONFIRMED (87 passed). No local whole suite (Tier-1, lanes live). RC app DOWN, no game. WAKEUP pruned to 3.
