@@ -41,6 +41,16 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-14 - session 164: MAIN ORDER 0930 O1-O4 shipped (lane effort `e4f79551d`, back-off / LAND DUE `5393cac6a`, verifier pin `5ebb1bc94`, O3e ruled out `6bd97bbb9`), RM-1386 shipped (`c6bf5fcde`), s163 CI reds triaged, ONE answer to MAIN (`268ac7c28`); O3d QA split HELD
+
+- **LEDGER 2109.** Rotator restarted pid 18116 -> 16308 (live driver deployed, backup .bak-s164); ds + gated skipped live at 11:34.
+- **Blocked / decided:** O3d split built byte-faithful on `hold/s164-o3d-qa-split` (`6e384504e`), not landed until `lane/uiux` lands (RM-2117; the ref must survive reap). Incident RM-2118: R1's first commit took O3d's message (local amends only; main verified clean).
+- **Filed:** RM-2116..RM-2118; next free RM-2119, LEDGER 2110.
+- **What's next:** read the /done push ci (mode=full, selector edited) + RM-2113 on Py3.12; `lane_run_ledger.py effort-measure` before 11-22; land lane/uiux then redo the O3d split.
+- **Do NOT redo:** O1-O4, O3e (ruled out), RM-1386, the MAIN 0930 answer (TERMINAL, never answer an answer).
+
+---
+
 # 2026-11-13 - session 163 (picked up s162, which hit account 2's weekly limit before /done): gated -n 4 suite green on `4bb4badb6` and pushed `8aa74df1b..4bb4badb6`; RM-2081 / RM-1273 / RM-2101 / RM-2102 / RM-2094 CLOSED; CLI pin 2.1.323; agreement renewed to 2026-12-31; lanes relaunched (pid 18116)
 
 - **Session number (LEDGER 2107):** s162 never ran /done, so this /done writes `SESSION: 164`; marker and board say 163.

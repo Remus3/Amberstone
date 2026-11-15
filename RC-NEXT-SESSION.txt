@@ -1,17 +1,17 @@
 NEXT SESSION
 ------------
-SESSION: 167
+SESSION: 168
 OPEN ITEMS ONLY. The s166 hand-off (written at the s165 /done) is VERBATIM at `git show 5a88fcd5b7:RC-NEXT-SESSION.txt`,
 s165's (written at the s164 /done) at b962442693;
 s164's at 97ffb3a1b, s162's at bbd3113ed, s161's at 247325fa4; older hand-offs (s157-s160 in the DO NOT RE-LITIGATE block): ARCHIVES below; closed history and the s133-s150 DO NOT RE-LITIGATE
 entries are VERBATIM in A1106 block 3. Every item still open is carried below as a tight line; read the source first.
-SESSION NUMBER: s166 ran as /clear then /done, no work (counter 166 -> 167); s163 carried the s162 gap (LEDGER 2107).
+SESSION NUMBER: s167 = lane halt (operator order) then /done (LEDGER 2111); s166 no work; s163 carried the s162 gap (LEDGER 2107).
 OPERATOR SCOPE (chat s150, VERBATIM; stands until the operator changes it): "continue headlessly - all driver lanes -
 operator away ; full access approved". Operator s150: "No, keep lanes running" - superseded for a gated suite by the
 s157 ruling "a - full box next time" (SUITE LAUNCH LINE).
 OPERATOR WORDS: s159 "-n 4 standing" (landings at -n 4 until the operator or MAIN changes it; over MAIN 2045's -n 8;
 8aa74df1b; told to MAIN in a66309aa3); s161 "self-adjudicate" (D1-D3 bind, LEDGER 2105); s163 "Continue" and "there
-was work in another session that was on account 2 unfinished;" (acted on); s164 only "Continue"; s165 and s166 none
+was work in another session that was on account 2 unfinished;" (acted on); s164 only "Continue"; s165 and s166 none; s167 "when the lanes finish their current task halt them and push commit done" (acted on: lanes halted, nothing to push)
 (standing scope; no steer, no intent).
 
 STANDING RULES
@@ -72,8 +72,22 @@ BATCHED OPERATOR ASK (s163, one line): (1) OK to reinstall global ruff 0.17.3 in
 (2) the ~2.2 GB stash bundles in ops/runtime/branch_bundles/ (RM-2110, the ONLY copy of 2 dropped stashes): keep or
 Recycle Bin? (s161's vgtray ask is spent; D1 still binds the next landing.)
 
-NEXT ACTION (s166 /done)
-1. CI RED, FIX FORWARD: s165 push ci 43658294580 (mode=full) 3 failed / 88346 passed; codeql + docs-guards green.
+NEXT ACTION (s167 /done)
+0. LANES HALTED (s167, operator order; LEDGER 2111). Rotator pid 16308 exited 0 (cycles done 331), no lane process or lock,
+   7 lane worktrees clean (.claude/worktrees/rc-lane-<lane>), 8 S144_*_STOP files armed in ops/loop/control/lanes/.
+   RE-ARM ONLY ON THE OPERATOR'S WORD (D3, LEDGER 2105): the 8 S144_*_STOP files to the Recycle Bin; python
+   ops/loop/control/lane_prompts/s144_lane_driver.py --leak-scan exit 0; git ls-remote origin "refs/heads/lane/*" empty;
+   --lane <x> --dry for each of the 7 lanes; --spawn-detached. Do not clear the stop files otherwise.
+   UNLANDED lane commits ahead of main, NOT on origin by design (never push a lane): ds 57, gated 20, queue 176, repo 246,
+   research 110, true-audit 219, uiux 237, lane/repo-backup-s158 145. Landing on main is OPEN work (item 5).
+0b. PENDING ORDER FIRST (kit v27): MAIN 2026-11-14-0936 ORDER to ALL EIGHT, FLEET-KIT-v31 cumulative, plus its kit folder,
+   in moon_sync_inbox/ - UNREAD and NOT marked seen at the s167 /done (`python ops/loop/inbox_tick.py --pending` shows it
+   queued). Read the headings, adopt, close with mark_work_done.
+(items 1-14 below are the s166 list, still open; item 1 re-read at s167: STILL RED, see 1)
+1. CI RED, FIX FORWARD (s167 read: still red on d49e8440f6: s166 push ci 43681939902 failure; nightly 43729744693 3 failed /
+   88344 passed = the two ratchets of (a) PLUS a NEW red tests/test_fleet_kit_v30.py::test_note_pause_records_a_budget_hold_once_per_hour
+   (asserts a ts 2026-11-15T16:01:41 row: read it for contamination by the live pause.jsonl; judge flake vs real)).
+   Original s165 read: push ci 43658294580 (mode=full) 3 failed / 88346 passed; codeql + docs-guards green.
    (a) tests/test_container_builtin_return_ratchet_s144p160.py + tests/test_dead_weight_lint_bundle_ratchet_s144p270.py:
    ruff PIE807 / RET501 / PLR1711 finding in tests/test_rc_facts_health_pid_rm2107.py (RM-2107 test; the global-ruff
    gate missed it: fix it, ruff0173 env). (b) tests/snapshot_panels/test_item_value_bar_relocated.py
@@ -92,10 +106,8 @@ NEXT ACTION (s166 /done)
    (batched; no note sent s165); RM-2122 stale docstring headcounts in tests/test_os_open_fd_lifetime_census_s144p350.py
    ("17 calls in 13 files") and tests/test_tree_removal_census_s144p343.py ("43 files / 96 calls"); RM-2123
    lane/true-audit makes the same three Path.open changes as d7521ce8b2: expect a conflict at its landing.
-4. LANES WATCH: rotator pid 16308 live at the s165 /done (cycles done 106; s164 11:28:55 start, live driver
-   b57e048d, backup .bak-s164; back-off ledger ops/loop/control/lanes/backoff.jsonl, kick S144_WORK_<LANE>;
-   model_changes.jsonl); note_pause at budget 400 not yet exercised; job-object timeout kill sweep not exercised;
-   verifier non-convergence 9 of 141 (s160). RM-2104, RM-2115. Repo lane on sonnet is INTENTIONAL
+4. LANES WATCH (HALTED s167, see 0): back-off ledger ops/loop/control/lanes/backoff.jsonl; note_pause at budget 400 and the
+   job-object timeout kill not exercised; RM-2104, RM-2115. Repo lane on sonnet is INTENTIONAL
    (ops/loop/lane_run_ledger.py:94 MODEL_TRIAL repo=sonnet through 2026-12-08, LEDGER 2010 / 2077).
 5. NEXT LANDING (land_due in progress/s144-lanes.json at the s165 /done): repo 240, uiux 164, true-audit 154, queue
    135 due; research 82, ds 57, gated 20. Gate: an exclusive -n 4 suite (PhysicalAvailable >= 23100 MB, 0 lane
@@ -135,11 +147,9 @@ FIRST (each session): CPU / FREE RAM glance; `python ops/loop/inbox_tick.py --pe
 --branch main --limit 6`; git fetch + origin/main still an ancestor of main; lane progress files (0 workers = the
 suite line's lane half); vgtray.exe / Riot Client absent (D1).
 
-IN-FLIGHT (do not stop; read progress files, never kill to look): the lane rotator (owner pid 16308; driver
-ops/loop/control/lane_prompts/s144_lane_driver.py --spawn-detached, gitignored; status files, stops, PARKED, leak
-alarm, budget reset: A1101 block 10), its 7 lanes (progress/lane-<i>.json, s144-lanes.json). RC app DOWN at the s165
-/done read (pid 6360 gone, ops/runtime/health.json 21 h stale, :8888 no answer; no game; no autostart, ASK 45;
-launch via WMI only if a read-back needs it). A CS tree session may hold the suite gate (C3: wait). No agent or monitor running.
+IN-FLIGHT: NONE at the s167 /done (lanes halted, see 0; driver ops/loop/control/lane_prompts/s144_lane_driver.py, gitignored;
+status files, stops, PARKED, leak alarm, budget reset: A1101 block 10). RC app DOWN at the s165 read (no autostart, ASK 45;
+launch via WMI only if a read-back needs it). A CS tree session may hold the suite gate (C3: wait).
 
 CARRIED OPEN ITEMS (full text VERBATIM in A1107 block 1 and A1106 block 3)
 - MAIN ORDER 2215 CLOSED s153 (do NOT re-run the scratchpad deliver.py). Residue: RM-1271 SHIPPED s161 (no kit
@@ -179,27 +189,9 @@ CARRIED OPEN ITEMS (full text VERBATIM in A1107 block 1 and A1106 block 3)
 - s155: C10's unnamed F at 23 percent (reaped -n 6 run): inferred load flake; act only if a suite reds that region.
 
 ====================
-SESSION 144 ITEMS (LEDGER 1938-1974), all OPEN, VERBATIM in A1106 block 1 (read it before acting on one)
+SESSION 144 ITEMS + s133-s143 CARRIED ITEMS: all still OPEN; the full text (both former blocks of this file) is VERBATIM in
+docs/handoff-archive/A1106 (blocks 1 and 2) and in `git show d49e8440f6:RC-NEXT-SESSION.txt`. Read them before acting on one.
 ====================
-- PKG-6c residue (M2 LOW, LOW 1, LOW 2; WA14, WA17, the [H] shell-build smoke); RM-1047, RM-1048; the L3-L6
-  lane follow-ups (RM-925, rc_root.js:16 + PACKAGING_PLAN.md:180, RM-721 (c), RM-730 (a), CLAUDE.md
-  --max-worker-restart=0?, aram_coach.py:332 cites, RM-1053, RM-1115, the RM-258 lib/ header, S144-U-64,
-  RM-848 / -847 / -871 / -843); RM-962 ruled, RM-787 + RM-954 backfill and RM-955 BLOCKED-consent; BACKLOG OPEN
-  RM-1005, -1015, -1031, -1054, -1056..-1059, -1110, -1114, -1118..-1120, -1148, -1149, -1151, PARTIAL -1053,
-  -1115, -1145; CI watch test_gated_tls_2999_probe + test_gated_y01_chain_report; driver leftovers; 9 stashes
-  kept (verify `git stash list`; drop only after a check).
-
-====================
-CARRIED FROM s133-s143, all OPEN, VERBATIM in A1106 block 2 (detail A31 block 2)
-====================
-- s143 anthropic 2.x declined until ANTHROPIC-2X (s154 C3 declined 2.5.0 too; ignore widened to ">1.11.0,<3.0.0"),
-  the PKG-7 branch (ASKS 50); s142 WA9-WA12, CSP S15, the PKG-7 unregister notes; s141 K branch keep vs delete;
-  s138-139 RM-907 read-back; s136-137 RM-905, RM-703, T13, TFT-HUD-00..12, T8 LT-02r, snapshot_shape.py:619, T9 /
-  T10, row 8685, the _debug coach prompt, "LEVEL TO 10", RM-899; s135 RM-906, TFT-04 / -02 / -07, N9, P0-F, RM-888
-  (c); s134 ASKS 21 / 32, TFT-15, RM-292 (c), TFT-NEXT slices, S18-META, the test_http_auth_wrong_token watch, A26
-  block 4 standing notes; s133 RM-819 d, RM-821, RM-826 (g), RM-834 (d), RM-842 / -843 / -847 / -848, RM-871,
-  RM-881, the queue-ready index, RM-823, RM-833, S6, RM-883 / -884, the window-flash kit-guard ruling, G7-17,
-  RM-860, RM-869, GATE 5, G5-05.
 
 ====================
 OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 2)
@@ -317,7 +309,7 @@ tests/*ratchet* and tests/*census* file (memory feedback_new_test_files_meet_rep
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s166 /done; s166 did no work, LEDGER not appended): s165 shipped b962442693..eb8006afb2 (its commits: see
+Status (s167 /done: lane halt only, LEDGER 2111, docs commit only, origin/main d49e8440f6 = HEAD at read so no push needed, next LEDGER 2112; then s166 /done): s165 shipped b962442693..eb8006afb2 (its commits: see
 the s165 DO NOT RE-LITIGATE line); s165 push ci 43658294580 RED (NEXT ACTION 1), codeql 43658294668 + docs-guards
 43658294632 green. s166 /done: ROADMAP closed s161 row moved to docs/ROADMAP_HISTORY.md (drift_guard 1 warn -> 0),
 WAKEUP s166 entry, pruned to 3; one push of 5a88fcd5b7 + that docs commit (range: read origin/main). Gate: ruff 0.17.3

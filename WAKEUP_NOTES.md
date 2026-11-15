@@ -6,6 +6,15 @@
 
 ---
 
+# 2026-11-15 - session 167: lanes HALTED (operator order), /done only (LEDGER 2111)
+
+- Drain via S144_LANES_STOP: rotator pid 16308 exit 0 (331 cycles), nothing killed, 8 stop files armed, lane worktrees clean. No code commit; origin/main = d49e8440f6.
+- CI still red on d49e8440f6: PIE807/RET501/PLR1711 ratchets on tests/test_rc_facts_health_pid_rm2107.py + a new nightly red test_fleet_kit_v30 note_pause test + the snapshot flake.
+- What's next: pending MAIN ORDER FLEET-KIT-v31 (kit v27: pending ORDERs first), then fix the CI reds forward (ruff0173 env). Lanes re-arm only on the operator's word.
+- Do NOT redo: the lane halt; do not push or merge lane branches.
+
+---
+
 # 2026-11-14 - session 166: no work (operator /clear then /done); s165 push ci read RED (3 failures), carried as NEXT ACTION 1
 
 - **Read:** ci 43658294580 (mode=full) 3 failed / 88346 passed: tests/snapshot_panels/test_item_value_bar_relocated.py ember-923x1280 (probable theme or layout flake, re-run on 3.12 first) and two ruff ratchets (tests/test_container_builtin_return_ratchet_s144p160.py, tests/test_dead_weight_lint_bundle_ratchet_s144p270.py) naming one new finding in tests/test_rc_facts_health_pid_rm2107.py (PIE807 / RET501 / PLR1711). codeql and docs-guards green.
@@ -23,13 +32,3 @@
 - **Filed:** RM-2119..RM-2123; next free RM-2124, LEDGER 2111. RC app found DOWN at /done (pid 6360 gone).
 - **What's next:** read this push's ci (close RM-2113 / RM-2114 if green), effort-measure before 11-22, RM-2119..RM-2123, lanes watch (4 lanes LAND DUE).
 - **Do NOT redo:** the 5 CI-red fixes, RM-2106 / 2107 / 2116 / 2118, C11.
-
----
-
-# 2026-11-14 - session 164: MAIN ORDER 0930 O1-O4 shipped (lane effort `e4f79551d`, back-off / LAND DUE `5393cac6a`, verifier pin `5ebb1bc94`, O3e ruled out `6bd97bbb9`), RM-1386 shipped (`c6bf5fcde`), s163 CI reds triaged, ONE answer to MAIN (`268ac7c28`); O3d QA split HELD
-
-- **LEDGER 2109.** Rotator restarted pid 18116 -> 16308 (live driver deployed, backup .bak-s164); ds + gated skipped live at 11:34.
-- **Blocked / decided:** O3d split built byte-faithful on `hold/s164-o3d-qa-split` (`6e384504e`), not landed until `lane/uiux` lands (RM-2117; the ref must survive reap). Incident RM-2118: R1's first commit took O3d's message (local amends only; main verified clean).
-- **Filed:** RM-2116..RM-2118; next free RM-2119, LEDGER 2110.
-- **What's next:** read the /done push ci (mode=full, selector edited) + RM-2113 on Py3.12; `lane_run_ledger.py effort-measure` before 11-22; land lane/uiux then redo the O3d split.
-- **Do NOT redo:** O1-O4, O3e (ruled out), RM-1386, the MAIN 0930 answer (TERMINAL, never answer an answer).
