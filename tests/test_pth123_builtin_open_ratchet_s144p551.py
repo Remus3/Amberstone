@@ -220,6 +220,9 @@ _FIXED = (
     "tft/sources/tft_log.py",
     # S144-P-568: lib/ingest_receipt.py fully clean (the ASCII LF append handle, a Path receiver; tests patch _append_line, never the module-level open name); tests/test_inbox_responder_runner.py gives up its metrics-file append and keeps the audit-hook probe that writes through a short-name / verbatim-prefix string on purpose
     "lib/ingest_receipt.py",
+    # s165 C10: the MAIN ORDER 2026-11-14 O2/O3 lane modules landed with three builtin binary reads (the cycles tail, the runner-log head, the usage tail), each a with item, now Path(x).open("rb"); no test patches either module's open name
+    "ops/loop/lane_backoff.py",
+    "ops/loop/lane_model_log.py",
 )
 
 

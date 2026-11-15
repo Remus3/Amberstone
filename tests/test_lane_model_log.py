@@ -116,3 +116,18 @@ def test_stamp_merges_the_last_lines_into_the_status_file(tmp_path):
     assert doc["task"] == "s144-lanes" and doc["daily"] == {}
     assert doc["model_changes"] == block and len(block["lines"]) == 10
     assert block["lines"][-1].endswith("(r14)")
+
+
+def test_str_paths_read_like_paths_and_usage_rows_reads_only_the_tail(tmp_path):
+    """s165 C10: both reads are Path(x).open("rb"): a str path reads like the Path, an
+    absent one reads as nothing, and usage_rows drops the partial first line of its tail."""
+    log = tmp_path / "lane.log"
+    log.write_bytes(b"\xef\xbb\xbflane start t model=claude-sonnet-5-5 kit_lane_model= x\r\n")
+    assert ML.start_line_models(str(log)) == ML.start_line_models(log) == (SONNET, "")
+    assert ML.start_line_models(str(tmp_path / "absent.log")) == (None, None)
+    usage = _usage(tmp_path / "u.jsonl", [_row(f"2026-11-14T10:{i:02d}:00", OPUS) for i in range(60)])
+    whole = ML.usage_rows(usage)
+    assert len(whole) == 60 and ML.usage_rows(str(usage)) == whole
+    tail = ML.usage_rows(str(usage), tail_bytes=200)
+    assert tail and tail[-1] == whole[-1] and len(tail) < 60
+    assert ML.usage_rows(str(tmp_path / "absent.jsonl")) == []

@@ -109,7 +109,7 @@ def start_line_models(log_path):
     """(model, kit_lane_model) from the runner's "lane start" line; (None, None) when
     the log is absent or has no such line. The log is UTF-8 with a BOM, CRLF."""
     try:
-        with open(log_path, "rb") as fh:
+        with Path(log_path).open("rb") as fh:
             head = fh.read(8192)
     except (OSError, TypeError):
         return None, None
@@ -137,7 +137,7 @@ def _ts(row) -> float | None:
 
 def usage_rows(usage_path, tail_bytes: int = USAGE_TAIL_BYTES) -> list:
     try:
-        with open(usage_path, "rb") as fh:
+        with Path(usage_path).open("rb") as fh:
             fh.seek(0, 2)
             size = fh.tell()
             fh.seek(max(0, size - tail_bytes))

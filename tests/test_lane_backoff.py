@@ -207,3 +207,13 @@ def test_ledger_and_state_files_are_ascii_lf(tmp_path):
         data = (tmp_path / name).read_bytes()
         assert b"\r" not in data
         data.decode("ascii")
+
+
+def test_tail_cycles_takes_a_str_path_and_reads_the_same_records(tmp_path):
+    """s165 C10: the read is Path(path).open("rb"), so a str path (the shape a driver
+    may pass) reads exactly what the Path does, and an absent str path is []."""
+    p = tmp_path / "c.jsonl"
+    p.write_bytes(b"".join(json.dumps(_cyc(i)).encode() + b"\n" for i in range(1, 50)))
+    assert BO.tail_cycles(str(p), tail_bytes=512) == BO.tail_cycles(p, tail_bytes=512)
+    assert BO.tail_cycles(str(p))[-1]["cycle"] == 49
+    assert BO.tail_cycles(str(tmp_path / "absent.jsonl")) == []

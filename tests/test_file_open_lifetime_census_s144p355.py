@@ -24,6 +24,10 @@ exclusive-create opens; S144-Q-123 gave ops/loop/headless_env.py one for its ref
 Re-measured 2026-11-10 at the s159 landing (all seven lanes merged): 214 opens, 198 ``with``
 items and 16 not; the true-audit lane added two ``with`` opens (dashboard/routes_aram_balance.py
 ``_read_patch``, tools/lane_usage_median.py ``load_rows``).
+Re-measured 2026-11-14 (s165 C10): 218 opens, 202 ``with`` items and 16 not; the MAIN ORDER
+2026-11-14 O2/O3 commit 5393cac6a8 added four binary-or-text reads, each a ``with`` item closed
+on every path (ops/loop/lane_backoff.py ``tail_cycles``, ops/loop/lane_model_log.py
+``start_line_models`` and ``usage_rows``, ops/loop/usage_cause.py ``_events``).
 The kinds seen:
 builtin ``open``, ``io.open``, ``codecs`` / ``gzip`` / ``bz2`` / ``lzma`` / ``tarfile`` ``.open``,
 ``os.fdopen`` and ``zipfile.ZipFile``, plus a ``<receiver>.open(`` method call (``Path.open``)
@@ -48,7 +52,7 @@ _OUT_OF_SCOPE = ("tests/", "ops/fleet_kit/", "agents/agent3_testing/suite/", "do
 _OPEN_MODULES = {"io", "codecs", "gzip", "bz2", "lzma", "tarfile"}
 _MODE = re.compile(r"^[rwaxbt+U]{1,4}$")
 
-_MEASURED_TOTAL = 214
+_MEASURED_TOTAL = 218
 _MEASURED_NOT_WITH = 16
 
 _SINK = ("a process-lifetime --log-file sink for a one-shot CLI: it replaces sys.stdout and "

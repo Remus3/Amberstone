@@ -102,7 +102,7 @@ def tail_cycles(path: Path, tail_bytes: int = TAIL_BYTES) -> list:
     """The cycle records in the last `tail_bytes` of a cycles jsonl; a partial first
     line and any unparsable line are skipped. [] when the file is absent."""
     try:
-        with open(path, "rb") as fh:
+        with Path(path).open("rb") as fh:
             fh.seek(0, os.SEEK_END)
             size = fh.tell()
             fh.seek(max(0, size - tail_bytes))
