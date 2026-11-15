@@ -47,6 +47,9 @@ RM-874 residual (s134 M1c gated run: 8 teardown ERRORs + the NOW-6 nested run,
 all green in isolation): the s134 driver adds s<NNN>_<lane>_last.json (its
 per-cycle result record) and s<NNN>_reports/<lane>_<run_id>.md (the headless
 lane worker's report); the reports glob is the one sanctioned subdirectory.
+s165 C11: the s144 driver's O2 back-off adds s<NNN>_<lane>_backoff.json
+(lane_backoff.check state_path; teardown ERROR on s144_ds / s144_gated);
+pinned by tests/test_fleet_guard_lane_backoff_ignore_s165.py.
 ASCII only.
 """
 
@@ -95,6 +98,11 @@ EXTRA_IGNORE = (
     # (s<NNN>_reports/<lane>_<run_id>.md), both written mid-suite.
     "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_*_last.json",
     "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_reports/*.md",
+    # s165 C11: the live driver's empty-cycle back-off state (MAIN ORDER
+    # 2026-11-14 0930 O2): s<NNN>_lane_driver.backoff_state_path() ->
+    # s<NNN>_<lane>_backoff.json, written / unlinked by
+    # ops/loop/lane_backoff.check() on its own cadence while suites run.
+    "ops/loop/control/lane_prompts/s[0-9][0-9][0-9]_*_backoff.json",
     # ops/loop/control/inbox_pending_orders.json left this list at kit v30: the
     # kit IGNORE now carries it (RM-2053, closed).
 )
