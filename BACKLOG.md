@@ -7,6 +7,10 @@ _Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-
 
 ---
 
+## S168 filings (2026-11-16) - RM-2124 (filed by the s168 /done executor, LEDGER 2112; next free RM-2125)
+
+- **RM-2124 OPEN (tests; Tier-1; gated: none) - `tests/test_wiki_fetch_refusal_rm1227.py` (2 tests) is DATE-DEPENDENT: both failed in the s168 gated dual suite that crossed local midnight (the grant date became 2026-11-16 mid-run) and pass when the file runs alone.** Acceptance: the test pins its clock (or derives the grant date once per test), and a run straddling midnight no longer reds it; a regression test that fakes the date across 23:59:59 -> 00:00:00.
+
 ## S165 filings (2026-11-14) - RM-2119..RM-2123 (filed by the s165 /done executor from the session's verifier and merger residue, LEDGER 2110; next free RM-2124)
 
 - **RM-2119 OPEN (lanes; Tier-1 ops; gated: none; RM-2116 sibling sweep) - three headless runners still capture json-mode output, so their rc-cause line cannot name the last tool: `tools/headless_run.ps1`, `tools/weekly_hygiene_run.ps1`, `ops/loop/executor.py`.** RM-2116 (`8c8328a079`) moved only `ops/loop/run_lane.ps1` to a per-run `lane_*.stream.jsonl` via `ops/loop/fleet_route.py --log-path`. Acceptance: each runner either passes a stream-json log path (with a test like `tests/test_usage_cause.py`) or a recorded decision why it stays json-mode.

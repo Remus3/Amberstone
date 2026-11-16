@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-11-16 - session 168: CI red (a) fixed `b4f1195fc6`, (b) flake, (c) kit note_pause bug; kit v31 built, NOT landed (LEDGER 2112)
+
+- PIE807 in tests/test_rc_facts_health_pid_rm2107.py:88 fixed (`b4f1195fc6`, pushed at /done).
+- note_pause red = KIT bug (`round(now, 3)` -> negative age); test fix 77fadb1c on branch worktree-agent-a0b2d535c77f34922; report to MAIN in the v31 ANSWER.
+- Kit v31 adoption a6ccfd7073 on that branch; gated -n 2 suite EXIT 1 (22 failed / 59 errors); kit-caused: tests/test_usage_cause.py (2), probably the s144p600 ratchet. Main reset to b4f1195fc6.
+- NEXT: fix those reds on the branch, gated suite, land via one fleet_gitlock commit, send the ONE ANSWER (HOP 2), then mark_work_done.
+- -n 4 suite was reaped by the Claude Code background-shell memory reaper at 91 percent; -n 2 completed (52m). Do NOT re-investigate (memory reference_cc_background_shell_memory_reaper).
+- RM-2124 filed (wiki_fetch refusal tests are date-dependent at midnight).
+
+---
+
 # 2026-11-15 - session 167: lanes HALTED (operator order), /done only (LEDGER 2111)
 
 - Drain via S144_LANES_STOP: rotator pid 16308 exit 0 (331 cycles), nothing killed, 8 stop files armed, lane worktrees clean. No code commit; origin/main = d49e8440f6.
@@ -20,15 +31,3 @@
 - **Read:** ci 43658294580 (mode=full) 3 failed / 88346 passed: tests/snapshot_panels/test_item_value_bar_relocated.py ember-923x1280 (probable theme or layout flake, re-run on 3.12 first) and two ruff ratchets (tests/test_container_builtin_return_ratchet_s144p160.py, tests/test_dead_weight_lint_bundle_ratchet_s144p270.py) naming one new finding in tests/test_rc_facts_health_pid_rm2107.py (PIE807 / RET501 / PLR1711). codeql and docs-guards green.
 - **Done:** ROADMAP closed s161 row relocated to docs/ROADMAP_HISTORY.md (drift_guard warn at 90.3 percent cleared).
 - **Do NOT redo:** nothing shipped beyond that; every other s165 item stays open.
-
----
-
-# 2026-11-14 - session 165: s164 push CI reds fixed forward (`3caee0c9f2`, `5963953070`, `d7521ce8b2`); RM-2106 / RM-2107 / RM-2116 / RM-2118 CLOSED; C11 guard ignore for live lane back-off files (`5655e35cb4`)
-
-- **LEDGER 2110.** 8 commits + /done docs, ONE push from `b962442693` (selector mode=full: the push ci IS the full run).
-- **Closures:** RM-2106 DS log WARNING-and-up `0f44a392d8`; RM-2107 rc_facts alive needs live pid + heartbeat `cbfcccb45f`; RM-2116 lane stream-json last tool `8c8328a079`; RM-2118 unique commitmsg tmpfile + `inbox_tick.py --send` `e4d8171c8d`.
-- **Verifiers:** C3-C6, C9, C11 CONFIRMED; C10 PLAUSIBLE (its flake fixed by C11). C7 merged-tree Tier-1 6383 passed after the stale `.claude/commands/done.md` copy refresh.
-- **C2:** first ds effort=medium row 11-14 11:45 (1 run, $0.53); re-measure before 11-22.
-- **Filed:** RM-2119..RM-2123; next free RM-2124, LEDGER 2111. RC app found DOWN at /done (pid 6360 gone).
-- **What's next:** read this push's ci (close RM-2113 / RM-2114 if green), effort-measure before 11-22, RM-2119..RM-2123, lanes watch (4 lanes LAND DUE).
-- **Do NOT redo:** the 5 CI-red fixes, RM-2106 / 2107 / 2116 / 2118, C11.

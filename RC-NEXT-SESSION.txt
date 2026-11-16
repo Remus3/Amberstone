@@ -1,18 +1,17 @@
 NEXT SESSION
 ------------
-SESSION: 168
-OPEN ITEMS ONLY. The s166 hand-off (written at the s165 /done) is VERBATIM at `git show 5a88fcd5b7:RC-NEXT-SESSION.txt`,
+SESSION: 169
+OPEN ITEMS ONLY. The s168 hand-off (written at the s167 /done) is VERBATIM at `git show a82eaea7de:RC-NEXT-SESSION.txt`; the s166 hand-off (written at the s165 /done) is VERBATIM at `git show 5a88fcd5b7:RC-NEXT-SESSION.txt`,
 s165's (written at the s164 /done) at b962442693;
 s164's at 97ffb3a1b, s162's at bbd3113ed, s161's at 247325fa4; older hand-offs (s157-s160 in the DO NOT RE-LITIGATE block): ARCHIVES below; closed history and the s133-s150 DO NOT RE-LITIGATE
 entries are VERBATIM in A1106 block 3. Every item still open is carried below as a tight line; read the source first.
-SESSION NUMBER: s167 = lane halt (operator order) then /done (LEDGER 2111); s166 no work; s163 carried the s162 gap (LEDGER 2107).
+SESSION NUMBER: s168 = CI-red work + kit v31 build, not landed (LEDGER 2112); s167 = lane halt (operator order) then /done (LEDGER 2111); s166 no work; s163 carried the s162 gap (LEDGER 2107).
 OPERATOR SCOPE (chat s150, VERBATIM; stands until the operator changes it): "continue headlessly - all driver lanes -
 operator away ; full access approved". Operator s150: "No, keep lanes running" - superseded for a gated suite by the
 s157 ruling "a - full box next time" (SUITE LAUNCH LINE).
 OPERATOR WORDS: s159 "-n 4 standing" (landings at -n 4 until the operator or MAIN changes it; over MAIN 2045's -n 8;
 8aa74df1b; told to MAIN in a66309aa3); s161 "self-adjudicate" (D1-D3 bind, LEDGER 2105); s163 "Continue" and "there
-was work in another session that was on account 2 unfinished;" (acted on); s164 only "Continue"; s165 and s166 none; s167 "when the lanes finish their current task halt them and push commit done" (acted on: lanes halted, nothing to push)
-(standing scope; no steer, no intent).
+was work in another session that was on account 2 unfinished;" (acted on); s164 only "Continue"; s165 and s166 none; s167 "when the lanes finish their current task halt them and push commit done" (acted on: lanes halted, nothing to push); s168 operator away, no words (no steer, no intent).
 
 STANDING RULES
 - REWRITE 2026-11-01 (LEDGER 2009, A1101): doc hashes older than origin 8d8c321b7 are PRE-REWRITE: map via
@@ -69,10 +68,27 @@ STANDING RULES
   s154 hand-off = `git show 47075c685:RC-NEXT-SESSION.txt`.
 
 BATCHED OPERATOR ASK (s163, one line): (1) OK to reinstall global ruff 0.17.3 into Python314 (out-of-tree, optional)?
+(s168: it would also clear the local-only pre-existing reds, LEDGER 2112: 59 errors tests/test_unused_noqa_ratchet_s144p103.py,
+bug_class_lint bundles 2-5, furb192, return_ratchet, pt018_ruf036, sorted_first_min; plus test_subagent_prompt_flag CLI pin)
 (2) the ~2.2 GB stash bundles in ops/runtime/branch_bundles/ (RM-2110, the ONLY copy of 2 dropped stashes): keep or
 Recycle Bin? (s161's vgtray ask is spent; D1 still binds the next landing.)
 
-NEXT ACTION (s167 /done)
+NEXT ACTION (s168 /done)
+1K. KIT v31 LANDING (MAIN ORDER 2026-11-14-0936, STILL PENDING in fleet_inbox; do NOT mark_work_done until landed). Branch
+   worktree-agent-a0b2d535c77f34922 (worktree .claude/worktrees/agent-a0b2d535c77f34922, KEEP) = a6ccfd7073 (adoption: kit
+   files, CLAUDE.md KIT v31 line, FLEET_KIT_ADOPTION, done.md `archive --auto`, tests/test_fleet_kit_v31.py, pins; verifier
+   9/9 static, MANIFEST 6359f695...829d) + 77fadb1ce2 (note_pause test pinned clock). s168 gated -n 2 suite on main+kit:
+   22 failed / 88797 passed / 59 errors, EXIT 1 (main reset --keep to b4f1195fc6). Fix on the branch: tests/test_usage_cause.py
+   (2, KIT-CAUSED: an RC reader depends on the old error format) and probably the s144p600 subprocess-check ratchet; the rest
+   are pre-existing local reds (ASK line) or RM-2124. Then gated suite, ONE fleet_gitlock landing commit, cp tools/done.md
+   to .claude/commands/done.md (byte-match, test_fleet_kit_v23), send the ONE ANSWER (HOP 2) via inbox_tick --send, then
+   mark_work_done. ANSWER draft (scratch, may vanish; regenerate from the ORDER's reply section): C:\Users\ADMINI~1\AppData\
+   Local\Temp\claude\85cac20b3cee87c1\54e08128-1ef7-4e81-9330-71f122d13060\scratchpad\s168-answer-draft.md; it carries the
+   note_pause KIT defect (`round(now, 3)` stamp rounding up + call within 0.5 ms = negative age, dedup miss; verifier
+   CONFIRMED), RM-2121, RM-831/778/798/823; placeholders <<VENDOR_SHA>>, <<SUITE_LINE>>. Name per _SEND_NAME
+   (<date>-<HHMM>-from-RC-ANSWER-to-MAIN-<slug>.md); tracked copy docs/_archive/2026-11/_outbound_<name>, path <= 129 chars.
+   SUITE SIZE: -n 4 was reaped by Claude Code's background-shell memory reaper at 91 percent (VOID); -n 2 finished in 52m
+   (LEDGER 2112, memory reference_cc_background_shell_memory_reaper). Standing -n 4 unchanged; record any one-run departure.
 0. LANES HALTED (s167, operator order; LEDGER 2111). Rotator pid 16308 exited 0 (cycles done 331), no lane process or lock,
    7 lane worktrees clean (.claude/worktrees/rc-lane-<lane>), 8 S144_*_STOP files armed in ops/loop/control/lanes/.
    RE-ARM ONLY ON THE OPERATOR'S WORD (D3, LEDGER 2105): the 8 S144_*_STOP files to the Recycle Bin; python
@@ -80,19 +96,11 @@ NEXT ACTION (s167 /done)
    --lane <x> --dry for each of the 7 lanes; --spawn-detached. Do not clear the stop files otherwise.
    UNLANDED lane commits ahead of main, NOT on origin by design (never push a lane): ds 57, gated 20, queue 176, repo 246,
    research 110, true-audit 219, uiux 237, lane/repo-backup-s158 145. Landing on main is OPEN work (item 5).
-0b. PENDING ORDER FIRST (kit v27): MAIN 2026-11-14-0936 ORDER to ALL EIGHT, FLEET-KIT-v31 cumulative, plus its kit folder,
-   in moon_sync_inbox/ - UNREAD and NOT marked seen at the s167 /done (`python ops/loop/inbox_tick.py --pending` shows it
-   queued). Read the headings, adopt, close with mark_work_done.
-(items 1-14 below are the s166 list, still open; item 1 re-read at s167: STILL RED, see 1)
-1. CI RED, FIX FORWARD (s167 read: still red on d49e8440f6: s166 push ci 43681939902 failure; nightly 43729744693 3 failed /
-   88344 passed = the two ratchets of (a) PLUS a NEW red tests/test_fleet_kit_v30.py::test_note_pause_records_a_budget_hold_once_per_hour
-   (asserts a ts 2026-11-15T16:01:41 row: read it for contamination by the live pause.jsonl; judge flake vs real)).
-   Original s165 read: push ci 43658294580 (mode=full) 3 failed / 88346 passed; codeql + docs-guards green.
-   (a) tests/test_container_builtin_return_ratchet_s144p160.py + tests/test_dead_weight_lint_bundle_ratchet_s144p270.py:
-   ruff PIE807 / RET501 / PLR1711 finding in tests/test_rc_facts_health_pid_rm2107.py (RM-2107 test; the global-ruff
-   gate missed it: fix it, ruff0173 env). (b) tests/snapshot_panels/test_item_value_bar_relocated.py
-   ::test_the_bar_renders_inside_the_map_pane[ember-923x1280]: Py3.12 re-run first (flake or real). RM-2113 / RM-2114 (the
-   two s163 flakes) did NOT red in this run: close both if the next full run also stays green.
+(items 1-14 below are the s166 list; item 1 worked s168)
+1. CI RED (s168, LEDGER 2112): (a) FIXED b4f1195fc6 (PIE807 at test_rc_facts_health_pid_rm2107.py:88), pushed at the s168
+   /done - read its push ci (Status). (b) ember-923x1280 snapshot: FLAKE on local evidence only (3/3 local Py3.14; no local
+   3.12 pytest); RM-2113 / RM-2114 stay open until a fully green full run. (c) test_fleet_kit_v30 note_pause: KIT bug; it
+   stays red on main until kit v31 lands with 77fadb1ce2 (item 1K). RM-2124 (wiki_fetch refusal tests red across midnight).
 2. MAIN 0930 ORDER follow-through (answered, TERMINAL): re-run `python ops/loop/lane_run_ledger.py effort-measure`
    BEFORE 11-22 (s165 C2: first ds effort=medium row 2026-11-14T11:45:25-06:00, opus-5-5, rc 0, 0 commits; ds during
    1 run $0.53; research during 0 runs). O3d: land lane/uiux first, re-run the QA split on the merged file (ref
@@ -130,7 +138,7 @@ NEXT ACTION (s167 /done)
    on an xdist worker, RM-2044 per-commit sweep (never soften "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO"); s154
    RM-2045..RM-2048; s155 RM-2049, RM-2050; s156 RM-2052, RM-2054, RM-2056..RM-2073, RM-2075..RM-2080; s158 RM-2083;
    s159 RM-2084..RM-2088; s160 RM-2090; s161 RM-2095..RM-2100; s162 RM-2103; s163 RM-2104, RM-2105, RM-2108..RM-2115;
-   s164 RM-2117; s165 RM-2119..RM-2123 ("S165 filings"; next free RM-2124).
+   s164 RM-2117; s165 RM-2119..RM-2123 ("S165 filings"); s168 RM-2124 ("S168 filings"; next free RM-2125).
 13. Dated: RM-1344 18.7 re-read on or after 2026-11-26 (s162 re-dated, `f318c482f`); INBOX-AGREE now expires
    2026-12-31 00:00 (renewed s163; renew before it); RM-1267 re-read 2026-12-08 (repo lane on sonnet); MAIN reads
    back-off + effort results 11-22, agent pins 11-28, repo sonnet trial 12-08; RM-1269 OPEN until RM-1266 ships (two
@@ -147,7 +155,7 @@ FIRST (each session): CPU / FREE RAM glance; `python ops/loop/inbox_tick.py --pe
 --branch main --limit 6`; git fetch + origin/main still an ancestor of main; lane progress files (0 workers = the
 suite line's lane half); vgtray.exe / Riot Client absent (D1).
 
-IN-FLIGHT: NONE at the s167 /done (lanes halted, see 0; driver ops/loop/control/lane_prompts/s144_lane_driver.py, gitignored;
+IN-FLIGHT: NONE at the s168 /done (lanes halted, see 0; driver ops/loop/control/lane_prompts/s144_lane_driver.py, gitignored;
 status files, stops, PARKED, leak alarm, budget reset: A1101 block 10). RC app DOWN at the s165 read (no autostart, ASK 45;
 launch via WMI only if a read-back needs it). A CS tree session may hold the suite gate (C3: wait).
 
@@ -215,7 +223,7 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
   fallback only on the operator's word, CLAUDE.md KIT v20 since f2f40f47f); the s130 board finding (RM-823); B3
   read-back of MAIN 2237 (the next pane shows the acct2 status line, no [Legion] line); the old lane folder +
   junction are MAIN's to release.
-- Worktrees (s166 /done reap "0 removed, 7 kept, 4 listed"; listed agent-a39dfc1f9a98afe39 (squashed into 65fa2a001), agent-a6151dbdd48913b79 (de62be5cf + a merger
+- Worktrees (s168 /done reap "0 removed, 7 kept, 5 listed": + agent-a0b2d535c77f34922 = kit v31, KEEP; s166 listed agent-a39dfc1f9a98afe39 (squashed into 65fa2a001), agent-a6151dbdd48913b79 (de62be5cf + a merger
   edit), agent-a74eeca3565e814f9 (RM-1271 + merger edits), agent-a9c5f5e90007897b9 (the O3d hold 6e384504e, KEEP);
   kept the 7 lanes). 66+ `worktree-agent-*` branches (cherry-picked, `-d` refuses): delete each only after a patch
   check; the s152 slice/* branches too. 117 local branches + 56 stashes; the KEEP / NEVER PUSH set stays unmerged on
@@ -223,8 +231,8 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
   5af8d6d64:RC-NEXT-SESSION.txt` (Worktrees line).
 - RM-681 PARTIAL: one attended live call per path (truststore MET s133 c6). Origin
   c1/deps-pip-anthropic1-measure was deleted under MAIN 0909; 24c54ec39 stays in the kit bundle.
-- Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free RM-2124 (pin
-  docs/DS_SWEEP_TRACKER.md); next LEDGER 2111 (2110 = s165). ROADMAP top open: PKG (WA9-WA14, WA17), the PKG-6c
+- Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free RM-2125 (pin
+  docs/DS_SWEEP_TRACKER.md); next LEDGER 2113 (2112 = s168). ROADMAP top open: PKG (WA9-WA14, WA17), the PKG-6c
   residue, RM-488, RM-596, RM-597, the RM-681.. rows, the RM-985..RM-2044 lane index, the s154-s165 filings;
   EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45
@@ -252,20 +260,9 @@ reuse not ruled out).
 ====================
 OPEN - OPERATOR ASKS (batched, re-ask in ONE line; full text VERBATIM in A31 block 4, older in block 2)
 ====================
-Closed asks with reasons: s144-s147 A1101 block 13, earlier A26, s152-s156 `git show d2d4840f1:RC-NEXT-SESSION.txt`,
-s157 at 50e5ad38f, s158 at 5af8d6d64; s159-s161 asks closed / spent. s163: the line above NEXT ACTION.
-s150 batch line: RM-1658 (keep the advisory badge hidden or restore a surface).
-s147 batch line: (1) autostart the shell at logon - yes or no?; (2) ASKS 53 approve the frozen
-ops/rc_supervisor.py:393 edit; (3) live-game read-backs S6, G7-17, RM-860, RM-869; (4) optional:
-RC-PatchRefresh StartWhenAvailable on, and dismiss Dependabot alert 144 (tolerable_risk).
-Open asks (tight; never touch riot.txt; each ask's one-line text VERBATIM in the OPEN - OPERATOR ASKS block of
-`git show b962442693:RC-NEXT-SESSION.txt`, full text A31 block 4): 1 repo topics (RM-731); 2 Pages deployment
-records; 3 refs/pull purge; 4 Desktop shortcuts; 5 re-clone after the rewrites; 6 sidecar bundle off-box; 7
-CI-watchdog checkout; 9 RM-686 proxy; 10 crash dumps; 11 the 90 historical findings; 12 physical setup (OBS etc.);
-17 kit archive starred-banner gap; 18 board URL; 21 operatorIdent address; 22 bridge secret; 23
-remoteControlAtStartup; 24 frozen approvals; 26 stuck note; 28 RM-803; 29 RM-782; 30 RM-785 / RM-816 reaper; 32
-TFT key; 33 old key; 36 RM-906; 38 lift-worktree parent; 45 autostart; 46 hotkey live check; 47 LAN POST 403
-(PKG-5); 53 ops/rc_supervisor.py:393.
+All still OPEN, unchanged since s167; this block VERBATIM in `git show a82eaea7de:RC-NEXT-SESSION.txt` (closed-asks
+pointers, the s150 / s147 batch lines). Open: RM-1658; s147 (1)-(4); asks 1-7, 9-12, 17, 18, 21-24, 26, 28-30, 32, 33,
+36, 38, 45-47, 53. Never touch riot.txt.
 
 ====================
 OPEN - WATCH AND DATA (act only when seen; detail VERBATIM in A27 block 2)
@@ -279,6 +276,8 @@ OPEN - WATCH AND DATA (act only when seen; detail VERBATIM in A27 block 2)
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
+- s168 (LEDGER 2112): b4f1195fc6 shipped; ember snapshot judged flake; note_pause red root-caused to the kit (reverses if a
+  Py3.12 run reds b4f1195fc6, the snapshot reds on 3.12, or a verifier refutes the round(now, 3) cause).
 - s165 (LEDGER 2110): shipped, do not redo: the s164 CI-red fixes 3caee0c9f2 / 5963953070 / d7521ce8b2, RM-2106
   0f44a392d8, RM-2107 cbfcccb45f, RM-2116 8c8328a079, RM-2118 e4d8171c8d, C11 5655e35cb4 (reverses if a hosted or
   Py3.12 run reds one, or a verifier refutes one). Repo lane on sonnet is intentional (reverses if MODEL_TRIAL_END
@@ -286,18 +285,9 @@ DO NOT RE-LITIGATE (each with Reverses if:)
 - s164 (LEDGER 2109): O3e startup-token RULED OUT (docs/_archive/2026-11/RC-O3e-startup-token-2026-11-14.md; reverses if a
   per-run startup token count is measured rising at constant mix); the MAIN 0930 answer is TERMINAL (never answer an
   answer); RM-1386 shipped c6bf5fcde (reverses if a push slice under 800 modules times out); O1-O4 shipped, do not redo.
-- s163 (LEDGER 2107, each Reverses if VERBATIM there): RM-2081 verdict (a); RM-1273 trim; the C3 ruling; the
-  session-number gap; RM-2113 / RM-2114 judged flakes; the MAIN 0345 answer is TERMINAL (never answer an answer).
-  Shipped s163, do not redo: RM-2101 (4897cb6ba), RM-2102 (63fc27d1d), RM-2094 read-backs, CLI pin 2.1.323, the
-  agreement renewal, the C7 stash export + drop, the 4bb4badb6 and 7fd9c1ceb pushes.
-- s161 (LEDGER 2105-2106): VERBATIM with their Reverses if in `git show bbd3113ed:RC-NEXT-SESSION.txt` (the RM-1271
-  hook, Q-148 / -178 / -179 WON'T-FIX, t097 / q084, rulings D1 / D2 / D3). s160 (LEDGER 2103-2104), s159 (LEDGER
-  2101-2102): in `git show 247325fa4:RC-NEXT-SESSION.txt` and `git show 79f73eaf7:RC-NEXT-SESSION.txt`; s158 in
-  `git show 5af8d6d64:RC-NEXT-SESSION.txt`; s156-s157 (incl. the s157 /done PUSH DECISION) in `git show
-  50e5ad38f:RC-NEXT-SESSION.txt`. Read them before re-opening any.
-- s151-s155: every entry with its Reverses if: VERBATIM in `git show ef2c3621e:RC-NEXT-SESSION.txt` (DO NOT
-  RE-LITIGATE block). s133-s150: VERBATIM in A1106 block 3 (its DO NOT RE-LITIGATE block) and the archives it names.
-  Read them before re-opening any.
+- s163 and older (s163 RM-2081 (a), RM-1273, C3, the number gap, RM-2113 / RM-2114 flakes, MAIN 0345 TERMINAL; s161
+  D1-D3; s133-s160): VERBATIM with their Reverses if in `git show a82eaea7de:RC-NEXT-SESSION.txt` and the git shows /
+  archives it names. Read them before re-opening any.
 
 ====================
 PROCEDURE: docs/OPERATIONS.md "Session procedure" + the lines VERBATIM in A25 blocks 3 and 6 - READ them
@@ -309,13 +299,15 @@ tests/*ratchet* and tests/*census* file (memory feedback_new_test_files_meet_rep
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s167 /done: lane halt only, LEDGER 2111, docs commit only, origin/main d49e8440f6 = HEAD at read so no push needed, next LEDGER 2112; then s166 /done): s165 shipped b962442693..eb8006afb2 (its commits: see
-the s165 DO NOT RE-LITIGATE line); s165 push ci 43658294580 RED (NEXT ACTION 1), codeql 43658294668 + docs-guards
-43658294632 green. s166 /done: ROADMAP closed s161 row moved to docs/ROADMAP_HISTORY.md (drift_guard 1 warn -> 0),
-WAKEUP s166 entry, pruned to 3; one push of 5a88fcd5b7 + that docs commit (range: read origin/main). Gate: ruff 0.17.3
-clean; hygiene 14 passed; drift_guard 0; 7 doc-guard files 94 passed. Full suite (2c): NOT dispatched - the s165 push ci
-(mode=full) covers the tree (docs differ only), its result is the red above. No local whole suite (Tier-0). RC app DOWN
-(health.json stale, :8888 / :8889 closed; no autostart), no game. Session file 0.8 MB.
+Status (s168 /done): ONE push from origin a82eaea7de: b4f1195fc6 + the /done docs commit (range: read origin/main).
+Push ci = slice (selector: 1 changed path -> 362 modules); read `gh run list --branch main --limit 6` first (in progress
+at the /done). Full suite (2c): not covered (last full runs on d49e8440f6 and older differ by a .py), so ONE
+workflow_dispatch fired after the push: `gh run list --workflow ci.yml --event workflow_dispatch --limit 1`, then
+`gh run view <id>`. Gate (fresh): ruff 0.17.3 env clean; hygiene trio 14 passed; drift_guard 0; rm_id_registry 23 passed.
+Session gated suite: -n 2 on main + kit, EXIT 1 (item 1K); the -n 4 run VOID (reaped). Session-start board render
+SKIPPED; --final rendered at /done. Inbox marked seen (rc_facts --mark-inbox-seen); v31 ORDER still pending. RC app DOWN
+(:8888 no answer; health.json stale), no game. Session file 1.7 MB. s167 /done: lane halt, LEDGER 2111, no push.
+s165 push ci 43658294580 RED; s166 push ci 43681939902 and nightly 43729744693 RED (item 1).
 
 Context: tools/done.md TIER TABLE; tools/landing_sampler.py; .github/workflows/ci.yml; tools/ci_impact_selector.py;
 BACKLOG "S153" .. "S165 filings"; ops/loop/control/lane_prompts/; ops/loop/run_lane.ps1 + fleet_route.py (RM-2116);
