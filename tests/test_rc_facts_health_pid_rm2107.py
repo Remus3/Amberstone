@@ -85,7 +85,7 @@ def test_main_reports_a_dead_pid_as_not_alive(tmp_path, monkeypatch):
     monkeypatch.setattr(rc_facts, "_port_listening", lambda *a, **k: False)
     monkeypatch.setattr(rc_facts, "_health_all", dict)
     monkeypatch.setattr(rc_facts, "_http_get_json", lambda *a, **k: None)
-    monkeypatch.setattr(rc_facts, "_legion_tasks", lambda: [])
+    monkeypatch.setattr(rc_facts, "_legion_tasks", list)
     monkeypatch.setattr(rc_facts, "_last_boot_iso", lambda: None)
     monkeypatch.setattr(rc_facts, "_inbox_section", lambda *a, **k: ([], [], set()))
     from tools import slot_bucket_audit, upstream_drift_check
