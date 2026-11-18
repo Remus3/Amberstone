@@ -66,20 +66,16 @@ STANDING RULES
   s154 hand-off = `git show 47075c685:RC-NEXT-SESSION.txt`.
 
 NEXT ACTION (s169 /done)
-A. CI FIRST: s169 push 79d4e92a80..d5976ec80e. ci push 44233023556 RED = ONE test: tests/test_dynamic_load_census_s144p342.py (the X2 scratch_root.py
-   kit binder was an unlisted dynamic load); fixed forward in the /done commit (2 _SITES rows, calls 72; all 228 census files passed). That run read
-   88412 passed, 1 failed (full escalated, 61 min). codeql 44233023673, docs-guards 44233023683, fleet-identity-guard 44233023559 success. The
-   section-2c dispatch ci 44233027971 was still in_progress at the /done (66+ min). The /done push is ONE follow-up push (the push tier allowed one):
-   read `gh run list --branch main --limit 8` and `gh run view 44233027971`; badge goal (operator): ci, docs-guards, CodeQL, fleet-identity-guard green.
-   2005 ORDER wants 3 green runs in a row (ci, docs-guards): observed so far docs-guards 1 green on d5976ec80e; remainder carried.
-B. CODEQL: 2 of the 26 alerts still open after the pushed analysis: #109 agents/agent7_context/ui_feedback.py:140 and #110 input_parser.py:141
+A. CI (read FIRST): pushes 79d4e92a80..d5976ec80e..f19544818e..(final hand-off commit). d5976ec80e: push ci 44233023556 and the 2c dispatch 44233027971
+   RED, both ONE test (tests/test_dynamic_load_census_s144p342.py, the X2 scratch_root.py kit binder; 88412 passed), codeql / docs-guards /
+   fleet-identity-guard green. f19544818e (census fix): ci 44241022354, docs-guards, codeql, fleet-identity-guard ALL green. Observed for the 2005
+   ORDER's 3-in-a-row: docs-guards 2 green, ci 1 green (2 more ci runs owed). Read `gh run list --branch main --limit 8` for the final commit's runs.
+B. CODEQL: 2 of the 26 alerts still open after the analysis on f19544818e: #109 agents/agent7_context/ui_feedback.py:140 and #110 input_parser.py:141
    (py/polynomial-redos, raised ON the 408f3726c2 fix code; the regexes still match user text). Dependabot: 0 open (#145 closed by 8fcc0e14ad).
-C. G3 APPLIED (operator approved): case b, the additive PATCH answered 404 so the whole protection was PUT rebuilt from protection-before.json plus
-   required_status_checks {strict false, contexts [fleet-identity-guard]}; read back, every other field unchanged. RISK: enforce_admins is TRUE on main,
-   so a direct push of a not-yet-checked commit can be refused by the required check. The /done follow-up push was the live test; check
-   `git ls-remote origin main` against HEAD. Rollback = gh api -X DELETE repos/<o>/<r>/branches/main/protection/required_status_checks/contexts
-   -f "contexts[]=fleet-identity-guard" (the answer to MAIN carried this). G4: no Dependabot PRs / branches. G5: vulnerability-alerts 204,
-   automated-security-fixes enabled false (left as is).
+C. G3 ROLLED BACK (operator approved G3; case b): the additive PATCH 404'd, the whole-protection PUT added required_status_checks, then the /done push was
+   REFUSED (GH006: enforce_admins is TRUE on main, so a direct push of an unchecked commit fails). Rolled back with DELETE .../required_status_checks;
+   read back == protection-before. RC has NO required check now; MAIN was asked to rule (enforce_admins false vs no required check; never touch
+   enforce_admins unasked). G2 success, G4 no Dependabot PRs / branches, G5 vulnerability-alerts 204, automated-security-fixes enabled false (left).
 D. CLI PIN red locally: tests/test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin (CLI 2.1.327 vs pin 2.1.323); fix = python
    tools/repin_subagent_cli.py (4 headless runs); it skips on CI (no claude on PATH).
 E. RECYCLE BIN TRAP: SendToRecycleBin (powershell 5.1 Microsoft.VisualBasic) did not land 9 tiny / empty E:\ root items in the bin while an entry-count
@@ -299,9 +295,8 @@ tests/*ratchet* and tests/*census* file (memory feedback_new_test_files_meet_rep
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s169 /done): ONE follow-up push over 79d4e92a80..d5976ec80e (the 8 session commits, pushed first): the census fix + docs + this
-hand-off. Gate: ruff 0.17.3 clean; hygiene trio 14 passed; drift_guard 0 (22 mirror-drift re-copied); census files 228 passed; bot_merge_check clean.
-Gated suite at bb868f9bed -n 4: 21 failed / 88825 passed / 59 errors (ruff-version env, 4 PTH, CLI pin; all addressed). Push ci full 1 failed (item A).
+Status (s169 /done): pushes 79d4e92a80..d5976ec80e (8 session commits) then ..f19544818e (census fix + docs + hand-off) then a final hand-off-only commit. Gate: ruff 0.17.3 clean; hygiene trio 14 passed; drift_guard 0 (22 mirror-drift re-copied); census files 228 passed; bot_merge_check clean.
+Gated suite at bb868f9bed -n 4: 21 failed / 88825 passed / 59 errors (ruff-version env, 4 PTH, CLI pin; all addressed). Full suite (2c): dispatch 44233027971 1 failed (census, fixed).
 RC app DOWN, no game. Session file 2.0 MB. Reap: 3 removed (a57c28e7c, ab0f740f6, ad8e5c59f), 8 kept, 6 listed (item F).
 
 Context: tools/done.md TIER TABLE; tools/landing_sampler.py; .github/workflows/ci.yml; tools/ci_impact_selector.py;
