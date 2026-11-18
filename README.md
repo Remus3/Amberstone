@@ -6,14 +6,16 @@ A local, real-time coaching companion for League of Legends and Teamfight
 Tactics. A deterministic engine does the item and damage math; the AI coach only
 narrates what that math already decided.
 
-[![CI](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml) [![License: Apache-2.0](https://img.shields.io/github/license/Remus3/Amberstone)](./LICENSE) [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](./.github/workflows/ci.yml) [![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)](#limitations) [![Codebase atlas](https://img.shields.io/badge/atlas-interactive%20map-orange)](https://remus3.github.io/Amberstone/atlas.html)
+[![CI](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/ci.yml) [![Docs guards](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml/badge.svg)](https://github.com/Remus3/Amberstone/actions/workflows/docs-guards.yml) [![Release](https://img.shields.io/github/v/release/Remus3/Amberstone)](https://github.com/Remus3/Amberstone/releases/latest) [![License: Apache-2.0](https://img.shields.io/github/license/Remus3/Amberstone)](./LICENSE) [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](./.github/workflows/ci.yml) [![Platform: Windows](https://img.shields.io/badge/platform-Windows-lightgrey)](#limitations) [![Codebase atlas](https://img.shields.io/badge/atlas-interactive%20map-orange)](https://remus3.github.io/Amberstone/atlas.html)
 
 It watches the match you are actually in through the Riot Live Client API and
 turns it into short, situation-specific advice on a dashboard and an in-game
 overlay.
 
 It is a single-machine personal build: one Windows PC runs the game, the engine,
-the coach and the overlay together, with no hosted version and no installer.
+the coach and the overlay together. Release
+[v0.1.0](https://github.com/Remus3/Amberstone/releases/tag/v0.1.0) is a tagged
+source release with no binary assets and no installer.
 
 **[Explore the codebase as a map](https://remus3.github.io/Amberstone/atlas.html)**
 draws the project's main components as one interactive page, with source files
@@ -84,8 +86,10 @@ when Riot actually rotates one of them in.
 
 ## Quickstart
 
-There is no hosted version and no packaged release; it runs from a checkout on
-the same Windows PC as the game.
+There is no hosted coach and no binary release: v0.1.0 is a tagged source
+release, so it runs from a checkout on the same Windows PC as the game. The
+only hosted page is the static
+[codebase atlas](https://remus3.github.io/Amberstone/atlas.html).
 
 1. Install Python 3.12 or newer (CI tests on 3.12) and
    [Git LFS](https://git-lfs.com/), then clone:
@@ -262,7 +266,8 @@ machine-learned win predictor - the engine exists so neither is needed. No repla
 shipping feature, since the format is re-obfuscated each patch. No replacement
 for the in-game HUD: the Live Client API exposes no cooldowns, buffs, wards or
 XP, so the overlay augments the HUD and cannot stand in for it. No hosted
-service. An installer is being packaged, with no release of it yet.
+coaching service. An installer is being packaged; the only release so far is
+the source tag [v0.1.0](https://github.com/Remus3/Amberstone/releases/tag/v0.1.0).
 
 Open work lives in [`ROADMAP.md`](./ROADMAP.md), the longer-horizon queue in
 [`BACKLOG.md`](./BACKLOG.md), and the completion record in
