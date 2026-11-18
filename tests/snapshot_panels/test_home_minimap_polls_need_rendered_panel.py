@@ -26,6 +26,8 @@ test_minimap_crop_image_retired.py). So this module now pins:
 - with a live ARAM game up, neither route is fetched from the Home view,
   whether the panel is hidden (every real view) or forced to render by
   `show_coaching_main` (one test rule that shows <main> in every view);
+  the game reaches the page over the stream only (see _Game: an answered
+  /api/state poll re-routes the page to Active Match mid-test);
 - a positive control: the counter does count a fetch of either route, so
   a zero above is not a blind counter.
 Requests are counted in the page from ANY caller by wrapping window.fetch.
@@ -72,8 +74,20 @@ _LIVECLIENT = {
 
 
 class _Game:
-    """The live ARAM game the page sees, over /api/state-stream and
-    /api/state."""
+    """The live ARAM game the page sees, over /api/state-stream ONLY.
+
+    The plain /api/state poll answers 503, so the view stays on the boot
+    Home view for the whole test. Why: the stream path re-resolves the view
+    only for an envelope carrying `lcu` (none here), but the HTTP fallback
+    poll (setupHttpFallback in web/js/main.js, every 2 s) re-resolves it on
+    every answered poll, and the router derives "active-match" for a live
+    ARAM game. That poll is skipped while state.lastSseTs is under 4 s old,
+    and lastSseTs is stamped from the FAKE page clock, so whether it fired
+    inside the 6 s page-clock jump depended on a real-time SSE reconnect
+    landing during the jump. When none did (a loaded runner) the view
+    flipped to active-match mid-test: the nightly on 79d4e92a red
+    'active-match' == 'home'. Active Match fetches /api/vision-state itself
+    (a different consumer), so the Home view is the one these zeros pin."""
 
     def __init__(self):
         self.base = json.loads(
@@ -89,8 +103,8 @@ class _Game:
                       body="retry: 150\n\ndata: " + self.payload() + "\n\n")
 
     def poll(self, route):
-        route.fulfill(status=200, content_type="application/json",
-                      body=self.payload())
+        route.fulfill(status=503, content_type="application/json",
+                      body="{}")
 
 
 class _Hits:
@@ -230,6 +244,44 @@ def test_a_hidden_panel_sends_neither_poll(mock_server, pw_browser):
     assert not errors, errors[:3]
     assert got["view"] == "home", got
     assert not got["rendered"], got
+    assert got["polls"] == {"crop": 0, "vs": 0}, got
+    assert crop.hits == 0 and vs.hits == 0, (crop.hits, vs.hits)
+
+
+def test_the_home_view_holds_when_no_sse_reconnect_lands(
+    mock_server, pw_browser, monkeypatch
+):
+    """Regression for the 79d4e92a nightly red: the routed stream answers
+    its first connection only (every reconnect aborted, the way a loaded
+    runner lands none inside the page-clock jump), so state.lastSseTs goes
+    stale in page time and the HTTP fallback DOES poll /api/state. The
+    view must still be Home with zero polls; the poll count proves the
+    fallback path ran (before the 503 poll this read 'active-match')."""
+    first = _Game.stream
+    seen = {"stream": 0, "poll": 0}
+
+    def stream_once(self, route):
+        seen["stream"] += 1
+        if seen["stream"] == 1:
+            return first(self, route)
+        return route.abort()
+
+    real_poll = _Game.poll
+
+    def counted_poll(self, route):
+        seen["poll"] += 1
+        return real_poll(self, route)
+
+    monkeypatch.setattr(_Game, "stream", stream_once)
+    monkeypatch.setattr(_Game, "poll", counted_poll)
+    ctx, page, errors, crop, vs = _open(pw_browser, mock_server, shown=False)
+    try:
+        got = _advance(page, 6_000)
+    finally:
+        _close(page, ctx, mock_server)
+    assert not errors, errors[:3]
+    assert seen["poll"] >= 1, seen
+    assert got["view"] == "home", got
     assert got["polls"] == {"crop": 0, "vs": 0}, got
     assert crop.hits == 0 and vs.hits == 0, (crop.hits, vs.hits)
 

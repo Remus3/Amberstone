@@ -23,6 +23,7 @@ import json
 import shutil
 import socket
 import sys
+import time
 import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
@@ -49,7 +50,31 @@ import upstream_drift_check as drift  # noqa: E402
 FIX = Path(__file__).resolve().parent / "fixtures" / "game_data_replay"
 WIKI_URL = "https://wiki.leagueoflegends.com/en-us/Module:ChampionData/data?action=raw"
 CDRAGON_URL = "https://raw.communitydragon.org/latest/game/data/characters/ahri/ahri.bin.json"
-TODAY = _dt.date.today()
+# RM-2124: a fixed date, and the consent module's clock pinned to it by the
+# ``net`` fixture. TODAY used to be ``date.today()`` read once at import while
+# lib.wiki_consent re-read the host clock on every check, so a run that
+# crossed local midnight between collection and a test saw an ``expires=TODAY``
+# grant as expired and a ``TODAY + 1`` grant as valid (2 reds in the s168
+# gated suite, green alone).
+TODAY = _dt.date(2026, 11, 16)
+
+
+class _PinnedDate(_dt.date):
+    """``date`` whose ``today()`` is TODAY, whatever the host clock says."""
+
+    @classmethod
+    def today(cls):
+        return TODAY
+
+
+class _PinnedClock:
+    """Stands in for lib.wiki_consent's ``datetime`` module: ``date`` is
+    pinned, every other name is the real module's."""
+
+    date = _PinnedDate
+
+    def __getattr__(self, name):
+        return getattr(_dt, name)
 
 
 class _NetworkTouched(OSError):
@@ -93,6 +118,7 @@ def net(monkeypatch, tmp_path):
     consent_dir = tmp_path / "consent"
     consent_dir.mkdir()
     monkeypatch.setattr(wiki_consent, "CONSENT_PATH", consent_dir / "wiki_fetch_consent.json")
+    monkeypatch.setattr(wiki_consent, "_dt", _PinnedClock())  # RM-2124
     return calls
 
 
@@ -121,6 +147,31 @@ def test_valid_record_is_consent(net):
     wiki_consent.require_consent()
     _grant(expires=TODAY.isoformat())
     assert wiki_consent.consent_problem() is None
+
+
+def test_consent_verdicts_hold_while_the_host_clock_crosses_midnight(net, monkeypatch):
+    """RM-2124 regression: the host clock moves 23:59:59 -> 00:00:00 between
+    two checks and neither verdict changes, because the consent clock is the
+    pinned TODAY. The positive control shows the faked host clock really did
+    roll the date, and that the module's unpinned reading would have flipped
+    the ``expires=TODAY`` verdict to expired."""
+    before = _dt.datetime.combine(TODAY, _dt.time(23, 59, 59)).timestamp()
+    host_dates = []
+    verdicts = []
+    for ts in (before, before + 1.0):
+        monkeypatch.setattr(time, "time", lambda ts=ts: ts)
+        host_dates.append(_dt.date.today())
+        _grant(expires=TODAY.isoformat())
+        valid = wiki_consent.consent_problem()
+        _grant(granted=(TODAY + _dt.timedelta(days=1)).isoformat())
+        future = wiki_consent.consent_problem()
+        verdicts.append((valid, future))
+    assert host_dates == [TODAY, TODAY + _dt.timedelta(days=1)], host_dates
+    assert verdicts[0] == verdicts[1], verdicts
+    assert verdicts[0][0] is None
+    assert verdicts[0][1] == "consent record 'granted' date is in the future"
+    _grant(expires=TODAY.isoformat())
+    assert wiki_consent.consent_problem(today=host_dates[1]) == "consent record has expired"
 
 
 @pytest.mark.parametrize("body", [

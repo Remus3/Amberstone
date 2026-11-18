@@ -89,8 +89,16 @@ _DRIVE = """async (me) => {
   return {ok: true};
 }"""
 
-_MEASURE = """async () => {
+# The render is repeated AFTER the only await, so the render and every read
+# below run in one synchronous turn. Why: the page's own 2 s HTTP fallback
+# poll (setupHttpFallback in web/js/main.js; live once the boot SSE stamp is
+# 4 s old, and the mock /api/state is {}) writes state.latest.liveclient =
+# null and re-renders the map panel, which hides the bar. Landing between
+# the _DRIVE render and this read it red the s165 push CI
+# ([ember-923x1280]: shown False with the text still "+4,200").
+_MEASURE = """async (me) => {
   await document.fonts.ready;
+  window.__ivbRender(me, 'sr');
 """ + _HELPERS + """
   const root = getComputedStyle(document.documentElement);
   const tok = (name) => rgba(root.getPropertyValue(name).trim());
@@ -179,7 +187,7 @@ def _measure(mock_server, pw_browser, theme, vp):
         for me, key in (("You", "ahead"), ("Foe1", "behind")):
             drove = page.evaluate(_DRIVE, me)
             assert "err" not in drove, drove
-            got[key] = page.evaluate(_MEASURE)
+            got[key] = page.evaluate(_MEASURE, me)
             assert "err" not in got[key], got[key]
         got["hidden"] = page.evaluate(_HIDDEN)
         got["theme"] = got["ahead"]["theme"]
@@ -262,3 +270,60 @@ def test_the_bar_hides_outside_a_two_team_roster(case, measured, mock_server,
     assert r["before"], r  # anchored: the SR render showed it first
     assert not r["shown"], r
     assert r["cls"], r
+
+
+_COUNT_STATE_POLLS = r"""(() => {
+  const s = { n: 0 };
+  window.__statePolls = s;
+  const orig = window.fetch;
+  window.fetch = function (input) {
+    const url = String((input && input.url) || input);
+    if (/\/api\/state(\?|$)/.test(url)) s.n += 1;
+    return orig.apply(this, arguments);
+  };
+})();"""
+
+
+def test_the_measure_holds_when_a_fallback_poll_lands_mid_read(
+    mock_server, pw_browser
+):
+    """Regression for the s165 push CI red ([ember-923x1280] shown False):
+    drive the bar, then wait until the page's own 2 s HTTP fallback poll
+    (live once the boot SSE stamp is 4 s old) has landed and hidden it.
+    The read still sees the bar because _MEASURE re-renders in the same
+    turn as its reads (without that re-render this read 'shown': False,
+    text '+4,200')."""
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(viewport={"width": 923, "height": 1280})
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    page.add_init_script(_COUNT_STATE_POLLS)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    try:
+        page.goto(
+            mock_server.url + "/?ui_mock=1&mode=sr&theme=ember#active-match",
+            wait_until="domcontentloaded", timeout=15_000,
+        )
+        page.wait_for_function(
+            "() => document.body.dataset.view === 'active-match'",
+            timeout=10_000)
+        page.add_style_tag(content=_SHEET)
+        drove = page.evaluate(_DRIVE, "You")
+        assert "err" not in drove, drove
+        # A content wait, not a sleep: the page's own fallback poll hides
+        # the driven bar (the CI race, made certain).
+        page.wait_for_function(
+            "() => window.__statePolls.n >= 1 && "
+            "!document.getElementById('gold-diff').checkVisibility()",
+            timeout=20_000)
+        got = page.evaluate(_MEASURE, "You")
+        polls = page.evaluate("() => window.__statePolls.n")
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, errors[:3]
+    assert "err" not in got, got
+    assert polls >= 1, polls
+    assert got["shown"], got
+    assert re.fullmatch(r"\+4,?200", got["text"]), got["text"]
