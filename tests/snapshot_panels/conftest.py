@@ -167,10 +167,13 @@ def _tracked_web_dirs():
 
 def _in_tracked_dir(full: str) -> bool:
     """`full` is an already normpath-contained string under _WEB_ROOT_STR."""
-    parent = os.path.dirname(full)
+    # CodeQL py/path-injection (#103-#105) recognises only the os.path
+    # normpath + startswith(root + sep) string shape, so the probes stay on
+    # os.path; each PTH directive below names that reason.
+    parent = os.path.dirname(full)  # noqa: PTH120 - CodeQL sanitizer shape
     dirs = _tracked_web_dirs()
     if dirs is None:
-        return os.path.isdir(parent)
+        return os.path.isdir(parent)  # noqa: PTH112 - CodeQL sanitizer shape
     return Path(parent) in dirs
 
 
@@ -182,10 +185,10 @@ def _is_missing_icon(path: str) -> bool:
         return False
     if not path.lower().endswith(_ICON_SUFFIXES):
         return False
-    full = os.path.normpath(os.path.join(_WEB_ROOT_STR, unquote(path).lstrip("/")))
+    full = os.path.normpath(os.path.join(_WEB_ROOT_STR, unquote(path).lstrip("/")))  # noqa: PTH118 - CodeQL sanitizer shape
     if not full.startswith(_WEB_ROOT_STR + os.sep):
         return False
-    if os.path.isfile(full):
+    if os.path.isfile(full):  # noqa: PTH113 - CodeQL sanitizer shape
         return False
     return not _in_tracked_dir(full)
 
