@@ -119,9 +119,31 @@ _RE_FONT_SHRINK = re.compile(
 )
 # A whole number, not the tail of a longer one: "150%" is 150, never
 # 50; "100%" is 100, never 0; "1.5%" is 1.5, never 5.
-_RE_PCT = re.compile(
-    r"(?<![\d.])(\d+(?:\.\d+)?)\s*(?:%|percents?\b|pct\b)", re.IGNORECASE,
-)
+#
+# s169 (CodeQL alert 108): this was one `(?<![\d.])(\d+...)` search. The
+# lookbehind keeps it linear at runtime, but CodeQL does not model it and read
+# `\d+` retried from every digit of a long run. The scan now walks the maximal
+# digit-or-dot runs once (`[\d.]+`, a single quantifier that cannot fail) and
+# matches the number only at the start of a run that begins with a digit,
+# the exact set of start positions the lookbehind allowed.
+class _PctSearch:
+    """``re.Pattern.search`` for a whole percentage; group(1) is the number."""
+
+    def __init__(self) -> None:
+        self.run = re.compile(r"[\d.]+")
+        self.at = re.compile(r"(\d+(?:\.\d+)?)\s*(?:%|percents?\b|pct\b)", re.IGNORECASE)
+
+    def search(self, text: str) -> re.Match[str] | None:
+        for run in self.run.finditer(text):
+            if text[run.start()] == ".":
+                continue
+            m = self.at.match(text, run.start())
+            if m is not None:
+                return m
+        return None
+
+
+_RE_PCT = _PctSearch()
 # Any larger request is clamped by the x0.5 - x2.0 multiplier anyway.
 _MAX_PCT = 1000
 

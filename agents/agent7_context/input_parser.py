@@ -87,25 +87,88 @@ class ParseResult:
 # the greedy end of the separator run DOWN to the keyword, so its answer is the
 # largest start that works: the greedy end itself, or - only when the
 # separators run to the very end - the last char before the end (and before
-# a final newline). Each form below tries exactly those two: the greedy run is
-# taken atomically (lookahead capture + backreference), the fallback asserts
-# the separators reach the end and lands on that last char. Same matches and
-# groups as before, pinned by tests/test_input_parser_redos_codeql.py.
-_RE_AGENT_DIRECT = re.compile(
-    r"^\s*agent\s*(?P<n>[0-7])"
-    r"(?:(?=(\s*(?:(?:,|:|-)\s*)?))\2"
-    r"|(?=\s*(?:(?:,|:|-)\s*)?\Z)[\s\S]*(?=[^\n]\n?\Z))"
-    r"(?P<rest>.+)$",
-    re.IGNORECASE,
+# a final newline). Same matches and groups as before, pinned by
+# tests/test_input_parser_redos_codeql.py.
+#
+# s169 (CodeQL alerts 106 / 107): the single-regex form of that rewrite kept a
+# `[\s\S]*` fallback arm ahead of `.+$`, a shape CodeQL cannot see is pinned by
+# its lookahead. The rule is now three single-purpose regexes joined in code
+# (_HeadSepLine): an anchored head (keyword), a separator run (one `\s*` then an
+# optional separator char whose own `\s*` starts after a required char, so it
+# is unambiguous) and a line (`[^\n]+` then a lookahead at the end), each tried
+# once at a known offset. No quantifier is ever retried against another.
+_SEP_AGENT = re.compile(r"\s*(?:[,:-]\s*)?")
+_SEP_NOTE = re.compile(r"\s*(?:[:,]\s*)?")
+# `.+$` of the prior patterns: non-newline chars up to the end, or up to a final
+# newline (`$` without MULTILINE).
+_LINE = re.compile(r"[^\n]+(?=\n?\Z)")
+
+
+class _RuleMatch:
+    """The slice of ``re.Match`` that InputParser and the oracle tests use."""
+
+    __slots__ = ("_end", "_groups")
+
+    def __init__(self, groups: dict[str, str], end: int) -> None:
+        self._groups = groups
+        self._end = end
+
+    def group(self, name: str) -> str:
+        return self._groups[name]
+
+    def groupdict(self) -> dict[str, str]:
+        return dict(self._groups)
+
+    def span(self) -> tuple[int, int]:
+        return (0, self._end)
+
+
+class _HeadSepLine:
+    """``^HEAD SEP? (?P<rest>.+)$`` as an unambiguous three-step match.
+
+    The prior engine's answer for the rest is the largest start that works: the
+    end of the greedy separator run, or - only when the separators run to the
+    very end of the text - the last non-newline char before the end (and
+    before a final newline). Both candidates are computed directly.
+    """
+
+    def __init__(self, head: re.Pattern[str], sep: re.Pattern[str], rest_name: str) -> None:
+        self.head = head
+        self.sep = sep
+        self.rest_name = rest_name
+
+    def match(self, text: str) -> _RuleMatch | None:
+        head = self.head.match(text)
+        if head is None:
+            return None
+        groups = head.groupdict()
+        sep_end = self.sep.match(text, head.end()).end()
+        line = _LINE.match(text, sep_end)
+        if line is not None:
+            groups[self.rest_name] = line.group()
+            return _RuleMatch(groups, line.end())
+        if sep_end != len(text):
+            return None
+        # Separators reach the end: the rest is the last char before the end,
+        # or before a final newline.
+        last = len(text) - 1
+        if last >= head.end() and text[last] != "\n":
+            start = last
+        elif last - 1 >= head.end() and text[last] == "\n" and text[last - 1] != "\n":
+            start = last - 1
+        else:
+            return None
+        groups[self.rest_name] = text[start]
+        return _RuleMatch(groups, start + 1)
+
+
+_RE_AGENT_DIRECT = _HeadSepLine(
+    re.compile(r"\s*agent\s*(?P<n>[0-7])", re.IGNORECASE), _SEP_AGENT, "rest",
 )
 _RE_AUDIT = re.compile(r"\baudit\b.*\b(now|full|pass)\b|\bfull\s+audit\b", re.IGNORECASE)
 _RE_STATUS = re.compile(r"\b(status|queue|what'?s\s+(in\s+)?(the\s+)?queue|what\s+is\s+pending)\b", re.IGNORECASE)
-_RE_NOTE = re.compile(
-    r"^\s*(?:note|remember|remind\s+me)"
-    r"(?:(?=(\s*(?:[:,]\s*)?))\1"
-    r"|(?=\s*(?:[:,]\s*)?\Z)[\s\S]*(?=[^\n]\n?\Z))"
-    r"(?P<body>.+)$",
-    re.IGNORECASE,
+_RE_NOTE = _HeadSepLine(
+    re.compile(r"\s*(?:note|remember|remind\s+me)", re.IGNORECASE), _SEP_NOTE, "body",
 )
 _RE_RESTART_RC = re.compile(r"^\s*(?:please\s+)?restart\s+(?:rc|the\s+app|riot\s*commander)\s*$", re.IGNORECASE)
 _RE_DESTRUCTIVE = re.compile(r"\b(?:rm\s+-rf|drop\s+table|delete\s+all|wipe\b|truncate\b|nuke\b)", re.IGNORECASE)

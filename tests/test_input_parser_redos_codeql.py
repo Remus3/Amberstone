@@ -114,3 +114,69 @@ def test_the_rewrite_matches_the_prior_patterns_exactly():
                     if _result(getattr(ip, name).match(text)) != _result(old.match(text)):
                         diffs.append((name, text))
     assert not diffs, diffs[:5]
+
+
+# ---- CodeQL py/polynomial-redos alerts 106 / 107 (s169) ---------------------
+# The s118 rewrite is linear at runtime, but its fallback arm is still
+# `[\s\S]*` + a `\Z` lookahead pin ahead of `.+$`, and CodeQL's static model
+# does not see the pin: it reads two adjacent unbounded quantifiers over the
+# same chars (alerts 107 / 106 at the `.match(text)` calls in
+# InputParser.parse). The robust fix is a rule with no such shape: an anchored
+# head regex, a separator regex and a single-quantifier line regex, joined in
+# code. These tests pin that shape and the exact matches.
+
+def _pattern_sources(rule):
+    """Every regex source a rule object runs (a Pattern, or an object holding some)."""
+    if isinstance(rule, re.Pattern):
+        return [rule.pattern]
+    return [v.pattern for v in vars(rule).values() if isinstance(v, re.Pattern)]
+
+
+def test_rules_carry_no_adjacent_overlapping_unbounded_quantifiers():
+    bad = []
+    for name in ("_RE_AGENT_DIRECT", "_RE_NOTE"):
+        sources = _pattern_sources(getattr(ip, name))
+        assert sources, name          # an empty enumeration must not pass
+        for src in sources:
+            if "[\\s\\S]*" in src or "(?<!" in src or ".+$" in src:
+                bad.append((name, src))
+    assert not bad, bad
+
+
+def test_real_inputs_parse_as_before():
+    cases = [
+        ("_RE_AGENT_DIRECT", "Agent 6, audit this file", {"n": "6", "rest": "audit this file"}),
+        ("_RE_AGENT_DIRECT", "agent3: do x", {"n": "3", "rest": "do x"}),
+        ("_RE_AGENT_DIRECT", "  agent0 - status please\n", {"n": "0", "rest": "status please"}),
+        ("_RE_AGENT_DIRECT", "agent7 go", {"n": "7", "rest": "go"}),
+        ("_RE_NOTE", "note: buy more wards", {"body": "buy more wards"}),
+        ("_RE_NOTE", "Remember, the dragon timer", {"body": "the dragon timer"}),
+        ("_RE_NOTE", "remind me to ping Agent 4", {"body": "to ping Agent 4"}),
+    ]
+    for name, text, groups in cases:
+        m = getattr(ip, name).match(text)
+        assert m is not None, (name, text)
+        assert m.groupdict() == groups, (name, text, m.groupdict())
+    for name, text in (("_RE_AGENT_DIRECT", "agent8 x"), ("_RE_AGENT_DIRECT", "agent3"),
+                       ("_RE_NOTE", "note"), ("_RE_NOTE", "hello note: x")):
+        assert getattr(ip, name).match(text) is None, (name, text)
+
+
+def test_pathological_runs_of_each_separator_class_stay_fast():
+    n = 50_000
+    shapes = [
+        ("_RE_AGENT_DIRECT", "agent0" + "0" * n + "\ny"),
+        ("_RE_AGENT_DIRECT", "agent0" + "\t" * n + "x\ny"),
+        ("_RE_AGENT_DIRECT", "agent0," + " " * n),
+        ("_RE_NOTE", "note" + "0" * n + "\ny"),
+        ("_RE_NOTE", "note:" + " \n" * (n // 2) + "x"),
+        ("_RE_NOTE", "remind  me" + " " * n),
+    ]
+    slow = []
+    for name, text in shapes:
+        start = time.perf_counter()
+        getattr(ip, name).match(text)
+        elapsed = time.perf_counter() - start
+        if elapsed > 0.5:
+            slow.append((name, text[:12], round(elapsed, 2)))
+    assert not slow, slow

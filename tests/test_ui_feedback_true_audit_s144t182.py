@@ -8,7 +8,11 @@ JSON reply.
 """
 from __future__ import annotations
 
+import itertools
 import logging
+import random
+import re
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -591,3 +595,71 @@ def test_r4_reset_is_a_set_request(tmp_path: Path, monkeypatch) -> None:
     p, _ = _parser(tmp_path, monkeypatch)
     r = p.parse("reset --canvas to #ffffff")
     assert r.intent == "ui_feedback_color_var"
+
+
+# ---- CodeQL py/polynomial-redos alert 108 (s169) ----------------------------
+# `_RE_PCT.search(text)` in `_try_font_size` was
+# `(?<![\d.])(\d+(?:\.\d+)?)\s*(?:%|percents?\b|pct\b)`. At runtime the
+# lookbehind keeps it linear, but CodeQL does not model the lookbehind and
+# reads `\d+` retried from every digit of a long run of "0" (quadratic). The
+# rewrite scans maximal [\d.] runs once and matches the number only at the
+# start of a run that begins with a digit - the same set of start positions.
+_OLD_PCT = re.compile(
+    r"(?<![\d.])(\d+(?:\.\d+)?)\s*(?:%|percents?\b|pct\b)", re.IGNORECASE,
+)
+
+
+def _pct_view(m):
+    return None if m is None else (m.span(), m.group(1))
+
+
+def test_pct_rule_has_no_lookbehind_dependent_unanchored_digit_loop() -> None:
+    rule = ufb._RE_PCT
+    sources = (
+        [rule.pattern] if isinstance(rule, re.Pattern)
+        else [v.pattern for v in vars(rule).values() if isinstance(v, re.Pattern)]
+    )
+    assert sources
+    assert not [s for s in sources if "(?<!" in s], sources
+
+
+def test_pct_rule_matches_the_prior_pattern_exactly() -> None:
+    rng = random.Random(169)
+    pieces = ["1", "5", "0", ".", "%", " ", "pct", "percent", "percents", "x", "\n", "a"]
+    diffs = []
+    for _ in range(8000):
+        text = "".join(rng.choice(pieces) for _ in range(rng.randint(0, 10)))
+        if _pct_view(ufb._RE_PCT.search(text)) != _pct_view(_OLD_PCT.search(text)):
+            diffs.append(text)
+    for size in range(7):
+        for tail in itertools.product("0.5% x", repeat=size):
+            text = "".join(tail)
+            if _pct_view(ufb._RE_PCT.search(text)) != _pct_view(_OLD_PCT.search(text)):
+                diffs.append(text)
+    assert not diffs, diffs[:5]
+
+
+@pytest.mark.parametrize(("text", "want"), [
+    ("make the font 25% bigger", "25"),
+    ("increase text by 1.5%", "1.5"),
+    ("make the font 150% bigger", "150"),
+    ("text 12 percent smaller", "12"),
+    ("font 7 pct bigger", "7"),
+    ("make it .5% bigger", None),
+    ("bigger by 1.2.3%", None),
+])
+def test_pct_rule_real_inputs(text: str, want: str | None) -> None:
+    m = ufb._RE_PCT.search(text)
+    assert (m.group(1) if m else None) == want, text
+
+
+def test_pct_rule_pathological_digit_runs_stay_fast() -> None:
+    n = 50_000
+    slow = []
+    for text in ("0" * n + "x", "0." * n + "x", "." * n + "0", "9" * n + " " * 100 + "q"):
+        start = time.perf_counter()
+        ufb._RE_PCT.search(text)
+        elapsed = time.perf_counter() - start
+        if elapsed > 0.5:
+            slow.append((text[:6], round(elapsed, 2)))
+    assert not slow, slow
