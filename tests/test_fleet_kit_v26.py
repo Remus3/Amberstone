@@ -39,8 +39,14 @@ TEMPLATE = ROOT / "ops" / "claude_settings.example.json"
 # Kit v30 (MAIN 2026-11-12 0345 ORDER, cumulative v29 + v30) superseded v28
 # (manifest 34347174...b9e52a6d93, block cacc3ca3...4e77dd0); the pins below now
 # hold the v30 bytes (24 files).
-V26_MANIFEST_SHA256 = "d2ac40250bd0efc071f0eb11c1e92ae04af88d750de200cf8ed4dc5714d07ea2"
-V26_COMMON_BLOCK_SHA256 = "6205943cb187258bdd72f9799fd03cbd90354562d8f561ccf2e4c19fbedea5ee"
+# Kit v31 (MAIN 2026-11-14 0936 ORDER, cumulative) superseded v30
+# (manifest d2ac4025...5714d07ea2, block unchanged); the pins below now
+# hold the v31 bytes (24 files).
+# Kit v32 (MAIN 2026-11-16 1947 ORDER, cumulative) superseded v31
+# (manifest 6359f695...899a3829d, block 6205943c...bedea5ee); the pins below
+# now hold the v32 bytes (25 files, FLEET-COMMON items 17 and 18 changed).
+V26_MANIFEST_SHA256 = "cede0b7c8a80ca6ece410c07b572e4ac9dabe0bf7769d9c82d692bb1858c757d"
+V26_COMMON_BLOCK_SHA256 = "0dbee15df74d42c2b50747c8194c9afd0d09c8ac7e03659515b9b3df7eca40a1"
 END = "<!-- FLEET-COMMON END -->"
 
 LAUNCHER = '"$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh"'
@@ -112,11 +118,11 @@ def test_the_vendored_kit_is_the_v26_order_bytes_and_conforms():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V26_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 30 and len(man["files"]) == 24
+    assert man["version"] == 32 and len(man["files"]) == 25
     assert "fleet_hook.sh" in man["files"]
     assert man["common_block_sha256"] == V26_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (30, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (32, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
     assert fh.conformance(ROOT) == []

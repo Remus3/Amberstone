@@ -159,6 +159,14 @@ python ops/fleet_kit/fleet_done.py reap --apply
 
 It removes only a linked worktree that can lose nothing (`git worktree remove`, never --force; `git branch -d`, never -D) and LISTS every other one with its reason; listed worktrees stay. Keep its summary line for the section-10 hand-off. A reap failure is a hand-off line, never a ritual failure.
 
+**Auto-archive the hand-off - before this section's commit (FLEET-KIT v31 KIT-HANDOFF-ARCHIVE; MAIN 2026-11-14 0936 ORDER section 4).** Run from the repo root:
+
+```
+python ops/fleet_kit/fleet_done.py archive --auto
+```
+
+It applies only when `RC-NEXT-SESSION.txt` is at 27648 B or more (else it prints `archive skipped`): framed CLOSED blocks and every STATE OBSERVED block older than the newest move to `docs/handoff-archive/RC-<YYYY-MM-DD>.txt`, each leaving a one-line pointer. Still at 27648 B or more afterwards, it prints up to five `  section: "<name>" <N> B` lines - trim those before section 10. Commit the hand-off and the archive file together.
+
 - `git -C "<repo>" status -s`
 - If output is empty: skip to section 2.
 - Otherwise:

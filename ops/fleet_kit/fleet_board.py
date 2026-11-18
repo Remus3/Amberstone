@@ -35,7 +35,7 @@ fresh done list.
 the same files and prints one line `board: <board.html> (local only, nothing
 to push)`. `pushed` and `account` are kept as no-ops that print one line.
 ops/status_board.json is no longer read except its optional "code" (the
-page title); a tree may leave the file or delete it.
+page title) and, from v32, "opt_in".
 
 v26: task IDs up to ID_MAX (48) chars, shared with fleet_checklist (VW FIX
 0612: a 17+ char ID was silently dropped); a box line that is not a task row
@@ -59,6 +59,15 @@ prev-open row absent now but named past the cap stays open; when the list was
 cut (count above the ids given) NO absent row is inferred done on that render.
 A row passed as done still moves (v26). The page shows one "next" line, `+N
 more past the 20-row cap`. --progress reads "checklist_more" the same way.
+
+v32 (KIT-BOARD-OPT-IN, operator order 2026-11-16: "each repo does not need to
+have the status board update unless opted in"): rendering is OPT-IN per tree.
+The signal is `"opt_in": true` (the JSON literal true, nothing else) in the
+tree's own tracked ops/status_board.json, read from the MAIN checkout of
+--root. Without it every render / calls is a SILENT no-op: rc 0, nothing
+printed, nothing read from stdin, nothing written - so a /done or hook that
+calls it never fails or prints. render() returns {"rendered": False,
+"reason": "not opted in"}. `pushed` and `account` are unchanged.
 """
 
 import argparse
@@ -101,6 +110,16 @@ def is_headless(environ=None):
     env = os.environ if environ is None else environ
     return (env.get("FLEET_SUBAGENT_FIRST") == "off"
             or env.get("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS") == "1")
+
+
+def opted_in(root):
+    """v32: True only when the tree's ops/status_board.json (MAIN checkout of
+    root) holds "opt_in": true. Missing, unreadable or any other value = out."""
+    try:
+        cfg = _load(main_checkout(root) / CONFIG_REL, {})
+    except Exception:  # noqa: BLE001 - opt-out must never fail a caller
+        return False
+    return isinstance(cfg, dict) and cfg.get("opt_in") is True
 
 
 def main_checkout(path):
@@ -483,6 +502,8 @@ def render(root, session, rows, final=False, environ=None, clock=time.time, lane
            over_ids=(), over_count=0):
     """Write status.json, state.json and board.html locally; return a summary
     dict. Nothing is pushed anywhere (v23)."""
+    if not opted_in(root):  # v32: opt-in per tree
+        return {"rendered": False, "reason": "not opted in"}
     if is_headless(environ):
         return {"rendered": False, "reason": "headless"}
     root = main_checkout(root)
@@ -538,6 +559,8 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.cmd in ("pushed", "account"):
         print("v23: the status board is local only; nothing to record")
+        return 0
+    if not opted_in(a.root):  # v32: opted out = silent no-op, before any read
         return 0
     if is_headless():  # v26: a headless run renders nothing, before any parse
         plan = {"rendered": False, "reason": "headless"}

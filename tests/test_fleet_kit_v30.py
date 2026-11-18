@@ -33,8 +33,14 @@ from tests import _repo_walk
 ROOT = Path(__file__).resolve().parent.parent
 KIT = ROOT / "ops" / "fleet_kit"
 RUN_LANE = ROOT / "ops" / "loop" / "run_lane.ps1"
-V30_MANIFEST_SHA256 = "d2ac40250bd0efc071f0eb11c1e92ae04af88d750de200cf8ed4dc5714d07ea2"
-V30_COMMON_BLOCK_SHA256 = "6205943cb187258bdd72f9799fd03cbd90354562d8f561ccf2e4c19fbedea5ee"
+# Kit v31 (MAIN 2026-11-14 0936 ORDER, cumulative) superseded v30
+# (manifest d2ac4025...5714d07ea2, block unchanged); the pins below now
+# hold the v31 bytes (24 files).
+# Kit v32 (MAIN 2026-11-16 1947 ORDER, cumulative) superseded v31
+# (manifest 6359f695...899a3829d, block 6205943c...bedea5ee); the pins below
+# now hold the v32 bytes (25 files, FLEET-COMMON items 17 and 18 changed).
+V30_MANIFEST_SHA256 = "cede0b7c8a80ca6ece410c07b572e4ac9dabe0bf7769d9c82d692bb1858c757d"
+V30_COMMON_BLOCK_SHA256 = "0dbee15df74d42c2b50747c8194c9afd0d09c8ac7e03659515b9b3df7eca40a1"
 BEGIN, END = "<!-- FLEET-COMMON BEGIN -->\n", "<!-- FLEET-COMMON END -->"
 PENDING = "ops/loop/control/inbox_pending_orders.json"
 
@@ -78,10 +84,10 @@ def test_the_vendored_kit_is_the_v30_order_bytes_and_conforms():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V30_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 30 and len(man["files"]) == 24
+    assert man["version"] == 32 and len(man["files"]) == 25
     assert man["common_block_sha256"] == V30_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (30, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (32, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
     assert fh.conformance(ROOT) == []
@@ -319,14 +325,26 @@ def test_run_lane_under_powershell_51_takes_the_kit_lane_model_first(
 # ---------------------------------------------------------------- pause, kinds, caps
 
 def test_note_pause_records_a_budget_hold_once_per_hour(tmp_path):
+    # The clock is pinned, never time.time(): note_pause stores epoch as
+    # round(now, 3), so a wall-clock first call that rounds UP leaves a second
+    # call within 0.5 ms reading now - epoch < 0, which is not deduped (nightly
+    # red 43729744693 on Linux CI; kit defect reported to MAIN, kit not edited).
     lanes = _load("fleet_lanes")
     assert {"budget", "limit", "operator", "error", "usd_ceiling"} <= set(lanes.PAUSE_REASONS)
-    row = lanes.note_pause(tmp_path, "RC", None, "budget", "budget wait: 400/500")
+    # State-independent (MAIN ORDER 2026-11-16 2005 item 3): the pause log lives
+    # under this test's fresh tmp_path (main_tree of a non-worktree dir is the dir
+    # itself) and starts absent, so no earlier run's row can dedupe this one.
+    assert lanes.main_tree(tmp_path) == tmp_path.resolve()
+    assert not (tmp_path / lanes.PAUSE_LOG_REL).exists()
+    t0 = 1_794_758_501.0
+    row = lanes.note_pause(tmp_path, "RC", None, "budget", "budget wait: 400/500", now=t0)
     assert row is not None and row["reason"] == "budget" and row["tree"] == "RC"
-    assert lanes.note_pause(tmp_path, "RC", None, "budget", "again") is None
-    assert lanes.note_pause(tmp_path, "RC", None, "not-a-reason", "x") is None
+    assert lanes.note_pause(tmp_path, "RC", None, "budget", "again", now=t0 + 1.0) is None
+    assert lanes.note_pause(tmp_path, "RC", None, "not-a-reason", "x", now=t0 + 2.0) is None
     rows = (tmp_path / lanes.PAUSE_LOG_REL).read_text(encoding="ascii").splitlines()
     assert len(rows) == 1
+    assert lanes.note_pause(tmp_path, "RC", None, "budget", "next hour", now=t0 + 3601.0)
+    assert len((tmp_path / lanes.PAUSE_LOG_REL).read_text(encoding="ascii").splitlines()) == 2
 
 
 def test_report_and_probe_are_kinds_and_a_misaddressed_note_is_skipped():

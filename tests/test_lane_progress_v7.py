@@ -69,17 +69,20 @@ def test_the_helpers_are_the_vendored_kit():
     # Kit v30 (MAIN 2026-11-12 0345, cumulative v29 + v30): write_progress
     # clips each row's task (fleet_checklist.clip) and adds "checklist_more"
     # past 20 rows.
-    assert lp.fleet_headless.KIT_VERSION == 30
+    # Kit v31 (MAIN 2026-11-14 0936, cumulative): write_progress unchanged.
+    # Kit v32 (MAIN 2026-11-16 1947, cumulative): adds fleet_identity_guard.yml
+    # (25 files), write_progress unchanged.
+    assert lp.fleet_headless.KIT_VERSION == 32
 
 
 def test_the_vendored_kit_is_v15_with_its_twenty_two_file_set():
     man = json.loads((ROOT / "ops/fleet_kit/MANIFEST.json").read_text(encoding="ascii"))
-    assert man["version"] == 30
+    assert man["version"] == 32
     assert sorted(man["files"]) == sorted([
         "FLEET-COMMON.md", "LICENSE", "NOTICE", "cli_display.json", "fleet_board.py",
         "fleet_checklist.py", "fleet_claims.py", "fleet_done.py",
         "fleet_gitlock.py", "fleet_headless.py", "fleet_hook.sh", "fleet_identity.py",
-        "fleet_inbox.py", "fleet_lanes.py", "fleet_rewrite.py", "fleet_secrets.py",
+        "fleet_identity_guard.yml", "fleet_inbox.py", "fleet_lanes.py", "fleet_rewrite.py", "fleet_secrets.py",
         "fleet_statusline.js", "fleet_subagent_first.py",
         "fleet_subagent_status.js", "fleet_suite_gate.py",
         "fleet_test_guard.py", "fleet_watch.py",

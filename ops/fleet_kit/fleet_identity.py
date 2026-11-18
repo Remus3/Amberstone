@@ -24,6 +24,19 @@ every commit of lsha except what the remote advertises and this clone holds
 (wider than an update's range, never looser). ls-remote failing with an absent
 old tip refuses, as for a new ref: nothing would bound the range.
 
+v32 (KIT-ID-GUARD, survey 2026-11-16): the local hooks cannot see a merge made
+in GitHub's web UI (a Dependabot squash-merge put a bot author on a default
+branch). `ci-check <base> <head> [--event push|pull_request]` is the SERVER
+side: the vendored workflow fleet_identity_guard.yml runs it on every pull
+request and every push to the default branch, as a required status check.
+CI has no operator identity (local config never reaches a runner), so it
+checks the bot / AI rules only: an author or committer that is_ai_or_bot(),
+and every forbidden message line (a trailer naming one, ...). The GitHub
+web-UI merge committer fails on --event push only (a web-UI merge reached the
+default branch); on a pull request it prints as a notice. Range: `<head>
+^<base>`; an empty, all-zero or absent base scans the whole history of head
+(stricter, never looser). Exit 0 clean, 1 violation, 2 listing failure.
+
 Why: GitHub lists a contributor for every identity in default-branch history,
 including co-author trailers. Claude and bot identities entered through
 harness trailers, Claude-authored commits, Dependabot merges and workflow
@@ -33,6 +46,7 @@ pushes; settings alone did not stop them.
     python fleet_identity.py pre-push <remote> <url>  git pre-push hook (stdin)
     python fleet_identity.py check <rev-range>        CI backstop / by hand
     python fleet_identity.py check --history [--by-class] [REF]   survey (v14)
+    python fleet_identity.py ci-check <base> <head> [--event push|pull_request]  (v32)
 
 commit-msg: STRIPS forbidden attribution lines (a co-author / sign-off /
   co-developed trailer naming Claude, Anthropic or a bot, any `Claude-*:`
@@ -552,8 +566,87 @@ def history(cwd=None, ref=None, by_class=False, idents=None, runner=None, out=No
     return 0
 
 
+# ---------------------------------------------------------------- server side (v32)
+
+CI_EVENTS = ("push", "pull_request")
+
+
+def ci_violations(rows, web_merge_fails=True):
+    """(failures, notices) as [(short sha, class)] for the CI guard. No
+    operator set: only bot / AI identities and forbidden message lines fail;
+    the web-UI merge committer fails when web_merge_fails, else is a notice."""
+    fail, note = [], []
+    for r in rows:
+        short = r["sha"][:10]
+        for role, n, a in (("author", r["an"], r["ae"]), ("committer", r["cn"], r["ce"])):
+            if role == "committer" and is_web_merge(n, a):
+                (fail if web_merge_fails else note).append((short, "web-merge-committer"))
+            elif is_ai_or_bot(n) or is_ai_or_bot(a):
+                fail.append((short, "ai-or-bot-" + role))
+        for c in message_violations(r["msg"]):
+            fail.append((short, c))
+    return fail, note
+
+
+def _no_base(cwd, base, runner=None):
+    """True when base names no usable commit (empty, all-zero, or absent)."""
+    b = str(base or "").strip()
+    if not b or b == "-" or ZERO.match(b):
+        return True
+    if runner:
+        return False
+    return _git(cwd, "cat-file", "-e", b + "^{commit}") is None
+
+
+def ci_check(base, head, event="push", cwd=None, runner=None, out=None):
+    """The server-side guard: exit 0 clean, 1 violation, 2 listing failure."""
+    cwd = cwd or os.getcwd()
+    out = out or sys.stdout
+    if (event not in CI_EVENTS or not str(head or "").strip()
+            or str(head).strip().startswith("-")):
+        print("IDENTITY ci-check: usage ci-check <base> <head> [--event push|pull_request]",
+              file=out)
+        return 2
+    whole = _no_base(cwd, base, runner)
+    rng = [head] if whole else [head, "^" + str(base).strip()]
+    rows = commits(cwd, rng, runner)
+    if rows is None:
+        print("::error::IDENTITY ci-check could not list the commits", file=out)
+        return 2
+    fail, note = ci_violations(rows, web_merge_fails=(event == "push"))
+    for short, cls in note[:20]:
+        print("::notice::IDENTITY {} {} (fails on a push to the default branch)".format(
+            short, cls), file=out)
+    for short, cls in fail[:50]:
+        print("::error::IDENTITY {} {}".format(short, cls), file=out)
+    scope = "whole history" if whole else "range"
+    if fail:
+        print("IDENTITY ci-check: {} violation(s) in {} commit(s) ({}, {}); no AI or bot "
+              "author, committer or attribution may reach the default branch (FLEET-COMMON "
+              "17). A Dependabot PR is never merged on GitHub: re-apply it locally."
+              .format(len(fail), len(rows), event, scope), file=out)
+        return 1
+    print("IDENTITY ci-check: {} commit(s) clean ({}, {})".format(len(rows), event, scope),
+          file=out)
+    return 0
+
+
 def main(argv=None, stdin=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["ci-check"]:
+        rest = argv[1:]
+        event = "push"
+        if "--event" in rest:
+            i = rest.index("--event")
+            if i + 1 >= len(rest):
+                print(__doc__)
+                return 2
+            event = rest[i + 1]
+            rest = rest[:i] + rest[i + 2:]
+        if len(rest) != 2:
+            print(__doc__)
+            return 2
+        return ci_check(rest[0], rest[1], event)
     if argv[:2] == ["check", "--history"]:
         rest = argv[2:]
         by_class = "--by-class" in rest

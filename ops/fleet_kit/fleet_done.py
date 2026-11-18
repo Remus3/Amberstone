@@ -75,6 +75,23 @@ v16 (KIT-16):
         (atomic replace); nothing is deleted. A hand-off with no framed
         headings has nothing to archive.
 
+v31 (FI-A15 / KIT-HANDOFF-ARCHIVE; ruling 2026-11-14-s76-model-effort D4):
+    archive also moves every STATE OBSERVED block older than the newest. A
+        STATE OBSERVED BLOCK is a line starting at column 0 with "STATE
+        OBSERVED" plus the indented, non-blank lines straight after it; the
+        first one in the file is the newest and always stays (--keep does
+        not touch it). One inside a closed block that moves goes with it.
+        Its place keeps one line `(state block "<heading>" archived to
+        docs/handoff-archive/<file>)`.
+    python fleet_done.py archive --auto [--root R]
+        The /done step: applies the archive only when the hand-off is at
+        HANDOFF_SOON_BYTES (27648) or more, else prints `archive skipped`
+        and changes nothing. Run it before the /done commit.
+    archive output: when the hand-off is still at 27648 B or more after the
+        step, up to five `  section: "<name>" <N> B` lines name the largest
+        sections (a section starts at a column-0 line after a blank line or
+        at a framed heading), so the next relocation is chosen by size.
+
 v22 (KIT-V22-REAP):
     python fleet_done.py reap [--apply] [--root R]
         Lists every LINKED worktree of the tree and, with --apply, removes
@@ -98,6 +115,7 @@ Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
 import argparse
+import contextlib
 import datetime as _dt
 import hashlib
 import json
@@ -119,6 +137,7 @@ HANDOFF_WARN_BYTES = 30 * 1024
 HANDOFF_SOON_BYTES = HANDOFF_WARN_BYTES * 9 // 10  # v30 CARRY-7
 ARCHIVE_REL = Path("docs/handoff-archive")
 _RULE = re.compile(r"^={20,}\s*$")
+_STATE = re.compile(r"^STATE OBSERVED\b")  # v31 FI-A15
 _OPEN_WORDS = re.compile(r"\b(NOT CLOSED|STILL OPEN|OPEN ITEMS?|CARRIED|CARRY FORWARD|TODO|"
                          r"NEXT ACTION|WAITING|BLOCKED|PENDING)\b", re.I)
 # v11: three git calls at most per stop-hook run, so 3 x 10 s stays under the
@@ -351,10 +370,50 @@ def _is_heading(lines, j):
     return len(line) > 6 and line.startswith("***") and line.endswith("***")
 
 
+def state_blocks(lines):
+    """v31 FI-A15: [(start, end, heading)] for every STATE OBSERVED block:
+    the column-0 heading line plus the indented non-blank lines after it."""
+    out = []
+    for i, line in enumerate(lines):
+        if not _STATE.match(line):
+            continue
+        j = i + 1
+        while j < len(lines) and lines[j].strip() and lines[j][:1] in (" ", "\t"):
+            j += 1
+        out.append((i, j, line.strip()))
+    return out
+
+
+def is_state_heading(line):
+    return bool(_STATE.match(line.strip()))
+
+
+def largest_sections(text, n=5):
+    """v31 FI-A15: [(bytes, name)] of the n largest sections, largest first. A
+    section starts at a column-0 non-blank line after a blank line (or the
+    file start) or at a framed heading's first rule."""
+    lines = text.split("\n")
+    framed = {s for s, _e, _h in framed_blocks(lines)}
+    starts = [i for i, ln in enumerate(lines)
+              if i in framed or (ln.strip() and ln[:1] not in (" ", "\t")
+                                 and (i == 0 or not lines[i - 1].strip())
+                                 and not any(i in (s + 1, s + 2) for s in framed))]
+    if not starts or starts[0] != 0:
+        starts = [0] + starts
+    out = []
+    for k, s in enumerate(starts):
+        e = starts[k + 1] if k + 1 < len(starts) else len(lines)
+        body = lines[s:e]
+        name = next((x for x in body if x.strip() and not _RULE.match(x)), "")
+        size = len("\n".join(body).encode("ascii", "replace")) + 1
+        out.append((size, _heading_key(name)[:40].encode("ascii", "replace").decode("ascii")))
+    return sorted(out, key=lambda x: -x[0])[:n]
+
+
 def plan_archive(text, keep=1):
-    """(moves, kept): moves = [(start, end, heading)] to archive; kept =
-    [(heading, why)] for closed blocks that stay. Pure; the closed-block rule
-    is in the module doc."""
+    """(moves, kept): moves = [(start, end, heading)] to archive, in file
+    order; kept = [(heading, why)] for closed and STATE OBSERVED blocks that
+    stay. Pure; the rules are in the module doc."""
     lines = text.split("\n")
     moves, kept, newest = [], [], 0
     for start, end, heading in framed_blocks(lines):
@@ -370,6 +429,16 @@ def plan_archive(text, keep=1):
             kept.append((heading, "newest closed block"))
             continue
         moves.append((start, end, heading))
+    seen = False
+    for start, end, heading in state_blocks(lines):  # v31 FI-A15
+        if any(s <= start < e for s, e, _h in moves):
+            continue  # moves with the closed block around it
+        if not seen:
+            seen = True
+            kept.append((heading, "newest STATE OBSERVED block"))
+            continue
+        moves.append((start, end, heading))
+    moves.sort()
     return moves, kept
 
 
@@ -394,9 +463,11 @@ def archive(root, apply=False, keep=1, today=None, clock=None):
     for start, end, heading in moves:
         out.extend(lines[i:start])
         chunks.append("\n".join(lines[start:end]).rstrip("\n") + "\n")
-        out.append('(closed block "{}" archived to {})'.format(
-            _heading_key(heading)[:80], rel.as_posix()))
-        out.append("")
+        state = is_state_heading(heading)
+        out.append('({} block "{}" archived to {})'.format(
+            "state" if state else "closed", _heading_key(heading)[:80], rel.as_posix()))
+        if not state:
+            out.append("")
         i = end
     out.extend(lines[i:])
     new = "\n".join(out)
@@ -786,6 +857,7 @@ def main(argv=None, stdin=None, stdout=None):
     a = sub.add_parser("archive")
     a.add_argument("--apply", action="store_true")
     a.add_argument("--keep", type=int, default=1)
+    a.add_argument("--auto", action="store_true")
     a.add_argument("--root")
     r = sub.add_parser("reap")
     r.add_argument("--apply", action="store_true")
@@ -830,8 +902,15 @@ def main(argv=None, stdin=None, stdout=None):
                 word, x["name"], x["why"], "; " + x["done"] if x["done"] else ""))
         return 1 if any(x.get("orphaned") for x in rows) else 0
     if args.cmd == "archive":
+        if args.auto:  # v31 FI-A15: the /done step, from HANDOFF_SOON_BYTES only
+            name = find_handoff(root)
+            size = handoff_bytes(root / name) if name else None
+            if size is not None and size < HANDOFF_SOON_BYTES:
+                stdout.write("archive skipped: hand-off {} B is under {} B\n".format(
+                    size, HANDOFF_SOON_BYTES))
+                return 0
         try:
-            doc = archive(root, apply=args.apply, keep=max(0, args.keep))
+            doc = archive(root, apply=args.apply or args.auto, keep=max(0, args.keep))
         except (OSError, ValueError) as exc:
             stdout.write("archive: refused - {}\n".format(_one_line(exc) or "error"))
             return 1
@@ -843,6 +922,11 @@ def main(argv=None, stdin=None, stdout=None):
             stdout.write("  {}: {}\n".format(verb, _heading_key(heading)[:80]))
         for heading, why in doc["kept"]:
             stdout.write("  kept: {} ({})\n".format(_heading_key(heading)[:80], why))
+        if doc["bytes_after"] >= HANDOFF_SOON_BYTES:  # v31 FI-A15
+            with contextlib.suppress(OSError, UnicodeError, ValueError):
+                text = (root / doc["handoff"]).read_bytes().decode("ascii", "replace")
+                for size, name in largest_sections(text):
+                    stdout.write('  section: "{}" {} B\n'.format(name, size))
         return 0
     verdict, why = validate(root, session_id=args.session_id
                             or os.environ.get("CLAUDE_CODE_SESSION_ID"), pane=args.pane)

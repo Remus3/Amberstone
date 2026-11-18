@@ -202,14 +202,20 @@ edit. Tree-specific rules go BELOW this block, never inside it.
     strips, pre-push refuses; operator identity only from local git config
     `fleet.operatorIdent`), fleet_gitlock and the account attribution keys.
     A history rewrite runs only on MAIN's ORDER, via `fleet_rewrite.py`.
-18. STATUS BOARD (kit v23; operator order 2026-10-25). LOCAL ONLY: no
-    claude.ai artifact, no Artifact or ArtifactData call, no board URL.
-    Why: operator views it locally; the artifact push wasted tokens. An
-    interactive session renders its board ONLY at session start, after
-    every item-13 b reprint and at /done (`--final`):
-    `fleet_board.py render --session <n>` (checklist on stdin) writes
-    status.json and board.html to ops/loop/control/board/ in the MAIN
-    checkout; open board.html in a browser. Headless runs never render.
+    Server side (v32): the kit's fleet_identity_guard.yml is a required
+    check. Dependabot PRs are never merged on GitHub: the lane re-applies
+    the bump locally as an operator commit, pushes, and closes the PR with
+    a one-line comment. Dependabot alerts and security updates stay on.
+18. STATUS BOARD (kit v32; operator orders 2026-10-25, 2026-11-16).
+    OPT-IN per tree: only a tree whose tracked ops/status_board.json holds
+    "opt_in": true renders; elsewhere the call is a silent no-op (rc 0).
+    LOCAL ONLY: no claude.ai artifact, no Artifact or ArtifactData call, no
+    board URL. Why: operator views it locally; the artifact push wasted
+    tokens, and not every tree needs a board. An opted-in interactive
+    session renders ONLY at session start, after every item-13 b reprint
+    and at /done (`--final`): `fleet_board.py render --session <n>`
+    (checklist on stdin) writes status.json and board.html to
+    ops/loop/control/board/ in the MAIN checkout. Headless runs never render.
 19. NO WIDTH-DEPENDENT LAYOUT IN CHAT (kit v24; operator order 2026-10-25).
     Chat is read in console panes of any width and on a phone. No markdown
     tables, box-drawing frames, ASCII art or space-aligned columns in chat:
@@ -220,41 +226,45 @@ edit. Tree-specific rules go BELOW this block, never inside it.
 
 # RC rules (tree-specific)
 
-RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. Each bold line below is the rule; its long form (provenance, mechanism, read-backs, fuller pre-RM-1273 wording) is `docs/FLEET_KIT_ADOPTION.md`. A new kit version adds its short line here, its long form there.
+RC channel code: `RC`. Kit conformance: `tests/test_fleet_kit_conformance.py`. Each bold line below is the rule; its long form is `docs/FLEET_KIT_ADOPTION.md`. A new kit version adds its short line here, its long form there.
 
 **Session checklist (FLEET-COMMON item 13, kit v7).** Counter = `SESSION: <n>` in `RC-NEXT-SESSION.txt` (owner `tools/session_checklist.py`). Printers: SessionStart `tools/rc_facts.py` (block FIRST = the first chat output), `/done` (writes `SESSION: <n+1>`), `tools/inbox_responder_runner.py fire_checklist`, the lane runner and loop controller (`progress/lane-<i>.json`). Emit U+2610 as `chr(0x2610)`, printed via the kit's `fleet_checklist.emit()`, never `print()`.
 
 **SUBAGENT-FIRST hook (kit v10; v11 ruling R3).** PreToolUse only in the gitignored project `.claude/settings.json` (never an account settings file; matcher and timeout as in the template `ops/claude_settings.example.json`): `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_subagent_first.py` (fails closed; any other form is drift), interactive main thread only. Mode = first word of gitignored `ops/loop/control/subagent_first.mode` (`log`; `deny` after 3 interactive sessions with no would-deny row for undispatchable work; headless runs are exempt only through the kit's `spawn()`, so `deny` waits until the lane workers are on it). `/done` and every slash command carry the DISPATCH block (guard `tests/test_skill_dispatch_v10.py`): the whole skill runs in ONE sub-agent; main relays only its final line.
 
-**RACE GUARDS (kit v12, FLEET-COMMON item 16).** Same settings file and template: PreToolUse `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_claims.py hook`, SubagentStop `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" release-hook || true`; mode `deny`. Commit / push = `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git ...`; WHOLE suite = `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <cmd>`; `<id>` = `<session_id>.<agent_id>` (the deny reason names it). Every slash command and loop prompt carries the RACE GUARDS block (the only guard in lane / watchdog worktrees); `tests/conftest.py` installs `fleet_test_guard`. Guard `tests/test_fleet_kit_v12_race_guards.py`.
+**RACE GUARDS (kit v12, FLEET-COMMON item 16).** Same settings file and template: PreToolUse `bash "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_hook.sh" fleet_claims.py hook`, SubagentStop `python "$CLAUDE_PROJECT_DIR/ops/fleet_kit/fleet_claims.py" release-hook || true`; mode `deny`. Commit / push = `python ops/fleet_kit/fleet_gitlock.py run --owner <id> -- git ...`; WHOLE suite = `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <cmd>`; `<id>` = `<session_id>.<agent_id>` (the deny reason names it). Every slash command and loop prompt carries the RACE GUARDS block; `tests/conftest.py` installs `fleet_test_guard`. Guard `tests/test_fleet_kit_v12_race_guards.py`.
 
-**NO AI OR BOT ATTRIBUTION (kit v13, FLEET-COMMON item 17).** Tracked `.githooks/commit-msg` runs `python "ops/fleet_kit/fleet_identity.py" commit-msg "$1" || true` after RC's own Co-Authored-By strip (strips, never rejects); `.githooks/pre-push` runs `printf '%s\n' "$REFS" | python "ops/fleet_kit/fleet_identity.py" pre-push "$@" || exit 1` FIRST. The operator set is `fleet.operatorIdent` in LOCAL git config only (never tracked, noted or logged); unset = every push refused. No `Claude-Session:` or co-author line. Guard `tests/test_fleet_kit_v13_identity.py`.
+**NO AI OR BOT ATTRIBUTION (kit v13, FLEET-COMMON item 17).** Tracked `.githooks/commit-msg` runs `python "ops/fleet_kit/fleet_identity.py" commit-msg "$1" || true` after RC's own Co-Authored-By strip; `.githooks/pre-push` runs `printf '%s\n' "$REFS" | python "ops/fleet_kit/fleet_identity.py" pre-push "$@" || exit 1` FIRST. The operator set is `fleet.operatorIdent` in LOCAL git config only (never tracked, noted or logged); unset = every push refused. No `Claude-Session:` or co-author line. Guard `tests/test_fleet_kit_v13_identity.py`.
 
 **BOT-PR MERGE RULE (MAIN ORDER 2026-10-19-0034, FLEET-COMMON item 17).** Every default-branch commit: operator as author AND committer, no `Co-authored-by:` line. Never merge a bot PR on GitHub (guard `tests/test_no_bot_push_or_ui_merge.py`): re-apply an accepted bump as an operator commit (`git cherry-pick --no-commit`, fleet_gitlock); decline = widen the `.github/dependabot.yml` ignore. Read back after each bot-PR landing and at /done after the push: `python tools/bot_merge_check.py` (exit 1: fix only via `fleet_rewrite.py` under MAIN 2312's scope, at the halt boundary) and `gh api repos/<owner>/<repo>/contributors`. Auto-merge off; Dependabot alerts on. Recipe `docs/OPERATIONS.md`; guard `tests/test_bot_merge_check.py`.
 
-**KIT v14 (MAIN 2026-10-09 0930).** Tick files reach the test guard as `extra_ignore=`, never a restated `IGNORE`; `tests/conftest.py` pins `FLEET_SIDECAR_ROOT=""`; a kit refusal is matched on `Refused.code`, never message text; moving lane worktrees under `FLEET_SIDECAR_ROOT` is out-of-tree (halt boundary). Guard `tests/test_fleet_kit_v14.py`.
+**KIT v14 (MAIN 2026-10-09 0930).** Tick files reach the test guard as `extra_ignore=`, never a restated `IGNORE`; `tests/conftest.py` pins `FLEET_SIDECAR_ROOT=""`; a kit refusal is matched on `Refused.code`, never message text. Guard `tests/test_fleet_kit_v14.py`.
 
 **KIT v15 (MAIN 2026-10-09 2055).** A headless child runs foreground only (`CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`), so NO headless child prompt may ask for background work; no file named `fleet_suite_gate.py` may exist outside `ops/fleet_kit/`. Guard `tests/test_fleet_kit_v15.py`.
 
-**KIT v19 (MAIN 2026-10-18 1235).** `ops/loop/control/board/` is gitignored. RC declares NO stop sentinels (no `ops/stop_sentinels.json`; declaring its caller-scoped STOP files would refuse every kit spawn). `.githooks/pre-push` keeps identity FIRST. Guard `tests/test_fleet_kit_v19.py`.
+**KIT v19 (MAIN 2026-10-18 1235).** `ops/loop/control/board/` is gitignored. RC declares NO stop sentinels (an `ops/stop_sentinels.json` would refuse every kit spawn). `.githooks/pre-push` keeps identity FIRST. Guard `tests/test_fleet_kit_v19.py`.
 
 **KIT v20 (MAIN 2026-10-18 1812; v20.1 2026-10-19 0001).** A kit `spawn()` needs a valid route `~/.fleet/headless_route.json`; only the kit writes it (never RC) and arms a fallback only on the operator's word (LEDGER 2079). A progress-doc test asserts a key SUBSET, never an exact set. Guard `tests/test_fleet_kit_v20.py`.
 
-**KIT v23 (MAIN 2026-10-25 1926, cumulative v21 + v22 + v23).** The board renders per FLEET-COMMON item 18 (`--final` in `tools/done.md` section 9; no `pushed` / `account` verb of fleet_board); a failed render is a hand-off line. /done section 1 first runs `python ops/fleet_kit/fleet_done.py reap --apply` (never --force / -D; lane worktrees kept; its summary line goes in the hand-off). A kit `_run` test stand-in forwards `job=`. Guard `tests/test_fleet_kit_v23.py`.
+**KIT v23 (MAIN 2026-10-25 1926, cumulative v21 + v22 + v23).** The board call follows FLEET-COMMON item 18 (`--final` in `tools/done.md` section 9; no `pushed` / `account` verb). /done section 1 first runs `python ops/fleet_kit/fleet_done.py reap --apply` (never --force / -D; summary line to the hand-off). A kit `_run` test stand-in forwards `job=`. Guard `tests/test_fleet_kit_v23.py`.
 
-**KIT v24 (MAIN 2026-10-26 0315, cumulative, FLEET-COMMON item 19).** `fleet_claims` claims absolute paths only (relative targets resolve against the EFFECTIVE cwd); the "Sidecars" allow segment left `tools/sibling_name_sweep.py`. Guard `tests/test_fleet_kit_v24.py`.
+**KIT v24 (MAIN 2026-10-26 0315, cumulative, FLEET-COMMON item 19).** `fleet_claims` claims absolute paths only; the "Sidecars" allow segment left `tools/sibling_name_sweep.py`. Guard `tests/test_fleet_kit_v24.py`.
 
-**KIT v25 (MAIN 2026-10-27 2136, cumulative, LANE-CAP).** Lane cap = the live `lanes.lane_cap()` (kit `cap=None`), never a hard-coded 3; `queue_loop.run_loop` asks `lanes.should_yield()` between cycles and on True ends the lane (`fair_yield`), never kills; an `admission` refusal is handled like `lanes_full`. Raising the slot count (`ops/loop/slots.py`, `SHARED_SHA256`) is a joint act. Guard `tests/test_fleet_kit_v25.py`.
+**KIT v25 (MAIN 2026-10-27 2136, cumulative, LANE-CAP).** Lane cap = the live `lanes.lane_cap()`, never a hard-coded 3; `queue_loop.run_loop` ends the lane when `lanes.should_yield()` (`fair_yield`), never kills; `admission` is handled like `lanes_full`. Raising the slot count is a joint act. Guard `tests/test_fleet_kit_v25.py`.
 
-**KIT v26 (MAIN 2026-10-31 2200, cumulative).** Run cap 120 per rolling 24 h unless MAIN sets `runs_cap` for RC in `~/.fleet/lanes.json`; the ONLY reset is `python ops/fleet_kit/fleet_headless.py budget reset --code RC --reason "<operator words>"`, interactive, on the operator's word (never hand-edit `headless_budget.json`). RC never writes `~/.fleet/*` (`lanes.json` is MAIN's; the kit alone writes the route). Both kit PreToolUse hooks use the `fleet_hook.sh` launcher (timeout 15, no ` || true`, fails closed exit 2) in the live settings and the template. Guard `tests/test_fleet_kit_v26.py`.
+**KIT v26 (MAIN 2026-10-31 2200, cumulative).** Run cap 120 / rolling 24 h unless MAIN sets RC's `runs_cap` in `~/.fleet/lanes.json`; the ONLY reset: `python ops/fleet_kit/fleet_headless.py budget reset --code RC --reason "<operator words>"`, on the operator's word. RC never writes `~/.fleet/*`. Both kit PreToolUse hooks use the `fleet_hook.sh` launcher (timeout 15, fails closed exit 2). Guard `tests/test_fleet_kit_v26.py`.
 
-**KIT v27 (MAIN 2026-10-31 2347, cumulative).** A lane acquire refuses `usd_ceiling` once today's cost_usd reaches MAIN's `daily_usd_ceiling` for RC in `~/.fleet/lanes.json` ($1000, MAIN ruling 2026-11-08 2014). Pending ORDER / FIX / RULING rows (`fleet_inbox.py pending`) are worked first and closed with `mark_work_done`; a kit `mark_seen` of an ORDER also queues it. A rewrite takes `--range BASE..BRANCH`, only on a MAIN ORDER. Guard `tests/test_fleet_kit_v27.py`.
+**KIT v27 (MAIN 2026-10-31 2347, cumulative).** A lane acquire refuses `usd_ceiling` once today's cost_usd reaches MAIN's `daily_usd_ceiling` for RC in `~/.fleet/lanes.json` ($1000, MAIN ruling 2026-11-08 2014). Pending ORDER / FIX / RULING rows (`fleet_inbox.py pending`) are worked first and closed with `mark_work_done`. A rewrite takes `--range BASE..BRANCH`, only on a MAIN ORDER. Guard `tests/test_fleet_kit_v27.py`.
 
-**KIT v28 (MAIN 2026-11-01 0825, cumulative).** Pre-push scans a push whose remote old tip is absent from this clone like a NEW ref; a bad identity in that range still refuses, and `git ls-remote` failing with an absent old tip refuses. Guard `tests/test_fleet_kit_v28.py`.
+**KIT v28 (MAIN 2026-11-01 0825, cumulative).** Pre-push scans a push whose remote old tip is absent like a NEW ref; a bad identity or an unreadable remote refuses. Guard `tests/test_fleet_kit_v28.py`.
 
-**KIT v30 (MAIN 2026-11-12 0345, cumulative v29 + v30).** A run-cap gate reads `budget.cap` (`RUNS_CAP` stays 120). `run_lane.ps1` takes `fleet_lanes.lane_model` first; a driver hold calls `fleet_lanes.note_pause`. The kit IGNORE holds `inbox_pending_orders.json` (RM-2053) and logs route writes (RM-2074). Guard `tests/test_fleet_kit_v30.py`.
+**KIT v30 (MAIN 2026-11-12 0345, cumulative v29 + v30).** A run-cap gate reads `budget.cap`. `run_lane.ps1` takes `fleet_lanes.lane_model` first; a driver hold calls `fleet_lanes.note_pause`. The kit IGNORE holds `inbox_pending_orders.json` (RM-2053) and logs route writes (RM-2074). Guard `tests/test_fleet_kit_v30.py`.
 
-**AGENT PINS (MAIN ORDER 2026-11-14 0930 O4).** Every Agent spawn names model and effort; `.claude/agents/*.md` frontmatter pins both (verifier: sonnet, medium); `tools/done.md` carries the spawn pins outside its byte-pinned blocks.
+**KIT v31 (MAIN 2026-11-14 0936, cumulative).** A failed run's usage row gains `cause`; its `error` reads `<cause>; rc <n>[; <detail>]`. `/done` runs `fleet_done.py archive --auto` pre-commit. `fleet_headless.py agents` warns MF-4. Guard `tests/test_fleet_kit_v31.py`.
+
+**KIT v32 (MAIN 2026-11-16 1947, cumulative).** The board is OPT-IN (`"opt_in": true` in tracked `ops/status_board.json`); RC is OUT (render is a silent no-op). `.github/workflows/fleet-identity-guard.yml` is the kit's `fleet_identity_guard.yml` byte for byte (check `fleet-identity-guard`, `fleet_identity.py ci-check`). Guard `tests/test_fleet_kit_v32.py`.
+
+**AGENT PINS (MAIN ORDER 2026-11-14 0930 O4).** Every Agent spawn names model and effort; `.claude/agents/*.md` frontmatter pins both (verifier: sonnet, medium); `tools/done.md` carries them outside its byte-pinned blocks.
 
 **PYTEST BASETEMP (MAIN FIX TEMP-1, 2026-10-09).** Never pass `--basetemp` inside a session scratchpad: use the default tmp_path (`pytest.ini`: retention `failed`, count `1`) or, if truly needed, the ONE fixed `<scratchpad>/pytest-basetemp`; this binds every session, lane and loop prompt, and the rootdir `conftest.py` refuses any other. Guard `tests/test_pytest_basetemp_scratchpad_temp1.py`.
 

@@ -374,6 +374,28 @@ v30 (daily kit train; cumulative over v28 and the unshipped v29 candidate):
   proxy route (the pin decides the account, never the calling session's
   config dir) and sets it to the route's dir on a named-config-dir route.
 
+v31 (ruling docs/rulings/2026-11-14-s76-model-effort.md D4):
+- FI-A3 (Fleet Insights 2026-11-13 FLEET rec 4, RC rec 2): a failed run
+  (rc not 0, not a timeout) gets "cause", one of CAUSES (usage-limit / auth /
+  proxy / tool-crash / other), read by classify_cause() from the child's
+  stderr and its result text; a 5-hour or 7-day limit classify_limit()
+  confirmed is usage-limit. "error" now reads "<cause>; rc <n>" plus, when
+  there is one, "; <detail>" (the v27 stderr tail, else the first line of
+  the result text), so the cause comes first and rc stays the second field.
+- MF-4 (ruling D5): agent_pin_warnings(root) and `fleet_headless.py agents
+  [--root R]` WARN (exit 0, never a conformance problem) for each
+  .claude/agents/*.md without a `model:` alias or an `effort:` key. MAIN's
+  drift prints the same lines; the adoption ANSWER quotes them.
+- KIT-USAGE-RESET-MS lives in fleet_lanes.usage_pct (reset_s()).
+
+v32 (operator order 2026-11-16):
+- KIT-BOARD-OPT-IN: FLEET-COMMON 18 and fleet_board.py - the status board
+  renders only in a tree whose ops/status_board.json holds "opt_in": true;
+  elsewhere render / calls is a silent no-op (rc 0, no output, no files).
+- KIT-ID-GUARD (survey 2026-11-16): FLEET-COMMON 17 server side -
+  fleet_identity.py ci-check and the vendored workflow fleet_identity_guard.yml
+  (a required check); Dependabot PRs are re-applied locally, never merged.
+
 Pure stdlib. No machine path, account id or repo name appears in this file.
 """
 
@@ -393,7 +415,7 @@ import time
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-KIT_VERSION = 30
+KIT_VERSION = 32
 KIT_PATCH = 0
 TMPDIR_ENV = "CLAUDE_CODE_TMPDIR"  # v22: headless child temp root (sidecar)
 VAR = "CLAUDE_HEADLESS_BASE_URL"
@@ -2404,6 +2426,50 @@ def stderr_tail(text, lines=STDERR_TAIL_LINES, cap=STDERR_TAIL_CHARS):
     return tail[-cap:] or None
 
 
+CAUSES = ("usage-limit", "auth", "proxy", "tool-crash", "other")  # v31 FI-A3
+_CAUSE_AUTH = re.compile(r"invalid_grant|unauthori[sz]ed|authenticat|\b40[13]\b|oauth"
+                         r"|api[ _-]?key|credential|not logged in|please (?:run )?/?login"
+                         r"|token (?:has )?(?:expired|revoked)|permission_error", re.I)
+_CAUSE_PROXY = re.compile(r"proxy|pinned account|unknown pin|econn(?:refused|reset)|enotfound"
+                          r"|etimedout|socket hang up|connection (?:refused|reset|error)"
+                          r"|network|getaddrinfo|\b50[234]\b|bad gateway|certificate", re.I)
+_CAUSE_LIMIT = re.compile(r"usage limit|rate[ _-]?limit|\b429\b|quota"
+                          r"|limit (?:has been |was |is )?(?:reached|hit|exceeded)"
+                          r"|(?:reached|hit|exceeded) (?:your|the) (?:[\w-]+ ){0,2}limit", re.I)
+_CAUSE_CRASH = re.compile(r"traceback|exception|\bpanic\b|fatal|unhandled|segmentation"
+                          r"|out of memory|stack overflow|access violation|crash"
+                          r"|^\s*error:|\bkilled\b|\baborted\b", re.I | re.M)
+
+
+def classify_cause(text, limit=None):
+    """v31 FI-A3: a failed run's stderr plus result text -> one of CAUSES.
+    `limit` is classify_limit()'s reading: a 5h or 7d window is usage-limit.
+    Order: auth, proxy, usage-limit, tool-crash, other (an auth or proxy line
+    that also says "limit" is never read as a usage limit, as in v20)."""
+    if isinstance(limit, dict) and limit.get("window") in ("5h", "7d"):
+        return "usage-limit"
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", "replace")
+    text = str(text or "")
+    for name, rx in (("auth", _CAUSE_AUTH), ("proxy", _CAUSE_PROXY),
+                     ("usage-limit", _CAUSE_LIMIT), ("tool-crash", _CAUSE_CRASH)):
+        if rx.search(text):
+            return name
+    return "other"
+
+
+def cause_error(cause, rc, stderr=None, result_text=None):
+    """v31 FI-A3: the usage row's error for a failed run: "<cause>; rc <n>"
+    and "; <detail>" when there is one (the v27 stderr tail, else the first
+    non-empty line of the result text, ASCII, at most 200 chars)."""
+    detail = stderr_tail(stderr)
+    if not detail and isinstance(result_text, str):
+        first = next((x.strip() for x in result_text.splitlines() if x.strip()), "")
+        detail = "".join(c if 32 <= ord(c) < 127 else "?" for c in first)[:200] or None
+    head = f"{cause}; rc {rc}"
+    return f"{head}; {detail}" if detail else head
+
+
 def usage_line(result, code, note, model, effort, bare, rc, duration_s, error=None,
                kind=None, slot=None, route=None, fallback=False, unit=None):
     r = result if isinstance(result, dict) else {}
@@ -2483,6 +2549,62 @@ def verify_main(note_path, main_outbox, rel=None, git=None):
 
 KIT_REL = Path("ops/fleet_kit")
 BEGIN, END = "<!-- FLEET-COMMON BEGIN -->\n", "<!-- FLEET-COMMON END -->"
+
+
+AGENTS_REL = Path(".claude") / "agents"  # v31 MF-4
+AGENT_MODEL_ALIASES = ("opus", "sonnet", "haiku", "fable", "inherit")
+AGENT_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+
+
+def _frontmatter(text):
+    """{key: value} of a leading `---` YAML block (top-level `key: value`
+    lines only), or None when the file has none."""
+    lines = text.lstrip(chr(0xFEFF)).splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    keys = {}
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return keys
+        m = re.match(r"^([A-Za-z_][\w-]*)\s*:\s*(.*)$", line)
+        if m:
+            keys[m.group(1)] = m.group(2).strip().strip("'\"")
+    return None
+
+
+def agent_pin_warnings(root):
+    """v31 MF-4 (ruling 2026-11-14-s76-model-effort D5): one line per
+    .claude/agents/*.md that does not pin its model and effort - a missing
+    `model:` or `effort:` key, a model that is not an alias (opus / sonnet /
+    haiku / fable / inherit; a dated id breaks when it retires), or an effort
+    outside AGENT_EFFORTS. WARNINGS ONLY: never a conformance problem, never
+    fails a suite or an adoption. Claude Code docs (sub-agents page, read
+    2026-11-14) list both `model` and `effort` as subagent frontmatter."""
+    d = Path(root) / AGENTS_REL
+    out = []
+    try:
+        files = sorted(p for p in d.glob("*.md") if p.is_file())
+    except OSError:
+        return out
+    for p in files:
+        rel = (AGENTS_REL / p.name).as_posix()
+        try:
+            fm = _frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+        except OSError:
+            out.append(f"warn MF-4: {rel} unreadable")
+            continue
+        fm = fm or {}
+        model, effort = fm.get("model"), fm.get("effort")
+        if not model:
+            out.append(f"warn MF-4: {rel} has no model: key")
+        elif model.lower() not in AGENT_MODEL_ALIASES:
+            out.append(f"warn MF-4: {rel} model {model[:40]} is not an alias")
+        if not effort:
+            out.append(f"warn MF-4: {rel} has no effort: key")
+        elif effort.lower() not in AGENT_EFFORTS:
+            out.append(f"warn MF-4: {rel} effort {effort[:20]} is not one of "
+                       + "/".join(AGENT_EFFORTS))
+    return out
 
 
 def conformance(root):
@@ -3272,7 +3394,8 @@ def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_pa
     rc = getattr(proc, "returncode", None) if proc is not None else None
     run_error = error  # None, or the run never finished ("timeout")
     if run_error is None and rc not in (0, None):
-        # v27 KIT-HEADLESS-STDERR: a failed run's row names why (stderr tail).
+        # v27 KIT-HEADLESS-STDERR: a failed run's row names why (stderr tail);
+        # v31 FI-A3 rewrites it below as "<cause>; rc <n>; <detail>".
         error = stderr_tail(getattr(proc, "stderr", None)) or f"rc {rc}"
     partial = _partial_usage(log_path) if log_path and run_error and result is None else None
     line = usage_line({"usage": partial} if partial else result, code, note, model, effort,
@@ -3309,6 +3432,14 @@ def _spawn_body(root, code, note, bare, budget, run, argv, model, effort, log_pa
                 line["limit_probe"] = why
                 if not cls:
                     line["limit"] = "unknown"
+    if run_error is None and proc is not None and rc not in (0, None):
+        # v31 FI-A3: the cause first, rc second, then the detail.
+        res = result.get("result") if isinstance(result, dict) else None
+        err = getattr(proc, "stderr", None)
+        err = err.decode("utf-8", "replace") if isinstance(err, bytes) else err
+        line["cause"] = classify_cause(
+            "\n".join(x for x in (err, res) if isinstance(x, str)), cls)
+        line["error"] = cause_error(line["cause"], rc, err, res)
     if cls:
         line["limit"] = cls["window"] or "unknown"
         with contextlib.suppress(OSError, Refused):
@@ -3384,11 +3515,18 @@ def main(argv=None, spawn_fn=None, stdin=None, stdout=None):
     pp.add_argument("--status", choices=PROGRESS_STATES, required=True)
     pp.add_argument("--reason")
     pp.add_argument("--owner", type=int)
+    ag = sub.add_parser("agents")  # v31 MF-4: warnings only, always exit 0
+    ag.add_argument("--root", default=".")
     try:
         args = ap.parse_args(argv)
     except SystemExit:
         return CLI_USAGE
     out = stdout or sys.stdout
+    if args.cmd == "agents":
+        warns = agent_pin_warnings(args.root)
+        print("\n".join(warns) if warns else "MF-4: every agent file pins model and effort",
+              file=out)
+        return CLI_OK
     if args.cmd == "route":
         # v19.1: the only writer of the route file. Never prints the path.
         if args.rcmd == "set":

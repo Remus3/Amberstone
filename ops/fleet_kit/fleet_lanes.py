@@ -1719,10 +1719,21 @@ def _check_id(value, what):
     return value
 
 
+RESET_MS_FLOOR = 1e11  # v31: epoch seconds stay under this until the year 5138
+
+
+def reset_s(reset):
+    """v31 KIT-USAGE-RESET-MS: a reset stamp in epoch seconds; the proxy
+    writes milliseconds (same rule as MAIN tools/route_tripwire.py)."""
+    return reset / 1000.0 if reset > RESET_MS_FLOOR else float(reset)
+
+
 def usage_pct(path=None, now=None):
     """The highest live usage window (5-hour or 7-day) across the accounts in
     the proxy's quota file, in percent; None when unknown. A window whose reset
-    time has passed is stale and ignored."""
+    time has passed is stale and ignored. v31 KIT-USAGE-RESET-MS: the proxy
+    writes the reset in epoch MILLISECONDS; a stamp above RESET_MS_FLOOR is
+    read as ms (seconds otherwise), so a passed ms reset reads as stale."""
     p = Path(path) if path is not None else Path.home() / QUOTA_FILE
     now = time.time() if now is None else now
     try:
@@ -1742,7 +1753,7 @@ def usage_pct(path=None, now=None):
             if isinstance(v, bool) or not isinstance(v, (int, float)):
                 continue
             if isinstance(reset, (int, float)) and not isinstance(reset, bool) \
-                    and 0 < reset <= now:
+                    and 0 < reset_s(reset) <= now:
                 continue
             best = max(best if best is not None else 0.0, float(v) * 100.0)
     return best

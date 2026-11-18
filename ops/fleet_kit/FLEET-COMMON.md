@@ -195,14 +195,20 @@ edit. Tree-specific rules go BELOW this block, never inside it.
     strips, pre-push refuses; operator identity only from local git config
     `fleet.operatorIdent`), fleet_gitlock and the account attribution keys.
     A history rewrite runs only on MAIN's ORDER, via `fleet_rewrite.py`.
-18. STATUS BOARD (kit v23; operator order 2026-10-25). LOCAL ONLY: no
-    claude.ai artifact, no Artifact or ArtifactData call, no board URL.
-    Why: operator views it locally; the artifact push wasted tokens. An
-    interactive session renders its board ONLY at session start, after
-    every item-13 b reprint and at /done (`--final`):
-    `fleet_board.py render --session <n>` (checklist on stdin) writes
-    status.json and board.html to ops/loop/control/board/ in the MAIN
-    checkout; open board.html in a browser. Headless runs never render.
+    Server side (v32): the kit's fleet_identity_guard.yml is a required
+    check. Dependabot PRs are never merged on GitHub: the lane re-applies
+    the bump locally as an operator commit, pushes, and closes the PR with
+    a one-line comment. Dependabot alerts and security updates stay on.
+18. STATUS BOARD (kit v32; operator orders 2026-10-25, 2026-11-16).
+    OPT-IN per tree: only a tree whose tracked ops/status_board.json holds
+    "opt_in": true renders; elsewhere the call is a silent no-op (rc 0).
+    LOCAL ONLY: no claude.ai artifact, no Artifact or ArtifactData call, no
+    board URL. Why: operator views it locally; the artifact push wasted
+    tokens, and not every tree needs a board. An opted-in interactive
+    session renders ONLY at session start, after every item-13 b reprint
+    and at /done (`--final`): `fleet_board.py render --session <n>`
+    (checklist on stdin) writes status.json and board.html to
+    ops/loop/control/board/ in the MAIN checkout. Headless runs never render.
 19. NO WIDTH-DEPENDENT LAYOUT IN CHAT (kit v24; operator order 2026-10-25).
     Chat is read in console panes of any width and on a phone. No markdown
     tables, box-drawing frames, ASCII art or space-aligned columns in chat:

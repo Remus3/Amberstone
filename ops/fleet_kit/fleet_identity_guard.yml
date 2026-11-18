@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 the operator - the kit's owner and sole copyright holder. See NOTICE.
+#
+# Fleet kit v32 - fleet-identity-guard (FLEET-COMMON 17, server side).
+# Vendored byte-for-byte at ops/fleet_kit/fleet_identity_guard.yml and pinned
+# by MANIFEST.json. Each tree with a GitHub remote copies it, byte-for-byte, to
+# .github/workflows/fleet-identity-guard.yml and makes the check
+# "fleet-identity-guard" required on its default branch. Do not edit either copy:
+# report a defect to MAIN.
+#
+# It fails a pull request, or a push to the default branch, when any commit in
+# range has an AI or bot author or committer, or a forbidden attribution line
+# (a co-author / sign-off trailer naming one, ...). The GitHub web-UI merge
+# committer fails on a push to the default branch (the local hooks cannot see a
+# web-UI merge). Logic: `fleet_identity.py ci-check`, run from the BASE commit's
+# copy of ops/fleet_kit/fleet_identity.py so a pull request cannot weaken its
+# own check (the head copy is used only while the base has no ci-check yet).
+# Pure stdlib python, one action pinned by full commit SHA, read-only token.
+name: fleet-identity-guard
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  fleet-identity-guard:
+    name: fleet-identity-guard
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: checkout (full history, no stored credentials)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: identity check
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "pull_request" ]; then
+            base="$PR_BASE"; head="$PR_HEAD"
+          else
+            base="$PUSH_BEFORE"; head="$PUSH_AFTER"
+          fi
+          kit="ops/fleet_kit/fleet_identity.py"
+          checker="$RUNNER_TEMP/fleet_identity_ci.py"
+          if [ -n "$base" ] && git show "$base:$kit" > "$checker" 2>/dev/null \
+             && grep -q '^def ci_check(' "$checker"; then
+            echo "checker: base commit copy"
+          else
+            cp "$kit" "$checker"
+            echo "checker: head copy (the base has no ci-check yet)"
+          fi
+          python3 -I "$checker" ci-check "${base:--}" "$head" --event "$EVENT"

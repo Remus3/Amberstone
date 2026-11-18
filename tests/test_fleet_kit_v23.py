@@ -43,8 +43,14 @@ KIT = ROOT / "ops" / "fleet_kit"
 # Kit v30 (MAIN 2026-11-12 0345 ORDER, cumulative v29 + v30) superseded v28
 # (manifest 34347174...b9e52a6d93, block cacc3ca3...4e77dd0); the pins below now
 # hold the v30 bytes (24 files).
-V23_MANIFEST_SHA256 = "d2ac40250bd0efc071f0eb11c1e92ae04af88d750de200cf8ed4dc5714d07ea2"
-V23_COMMON_BLOCK_SHA256 = "6205943cb187258bdd72f9799fd03cbd90354562d8f561ccf2e4c19fbedea5ee"
+# Kit v31 (MAIN 2026-11-14 0936 ORDER, cumulative) superseded v30
+# (manifest d2ac4025...5714d07ea2, block unchanged); the pins below now
+# hold the v31 bytes (24 files).
+# Kit v32 (MAIN 2026-11-16 1947 ORDER, cumulative) superseded v31
+# (manifest 6359f695...899a3829d, block 6205943c...bedea5ee); the pins below
+# now hold the v32 bytes (25 files, FLEET-COMMON items 17 and 18 changed).
+V23_MANIFEST_SHA256 = "cede0b7c8a80ca6ece410c07b572e4ac9dabe0bf7769d9c82d692bb1858c757d"
+V23_COMMON_BLOCK_SHA256 = "0dbee15df74d42c2b50747c8194c9afd0d09c8ac7e03659515b9b3df7eca40a1"
 BOARD_FILES = ("ops/loop/control/board/status.json", "ops/loop/control/board/state.json",
                "ops/loop/control/board/board.html")
 # Every RC surface that once told a session to push the board.
@@ -74,10 +80,10 @@ def test_the_vendored_kit_is_the_v23_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V23_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 30 and len(man["files"]) == 24
+    assert man["version"] == 32 and len(man["files"]) == 25
     assert man["common_block_sha256"] == V23_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (30, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (32, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 
@@ -86,14 +92,23 @@ def test_the_vendored_kit_is_the_v23_order_bytes():
 
 def test_the_common_block_carries_item_18_local_only_and_conforms():
     block = _block()
-    assert "18. STATUS BOARD (kit v23" in block
+    # Kit v32 (MAIN 2026-11-16 1947) rewrote item 18 as OPT-IN per tree: its
+    # heading reads "kit v32" and it now names ops/status_board.json (the
+    # opt-in signal). LOCAL ONLY and the headless rule are unchanged.
+    assert "18. STATUS BOARD (kit v32" in block
     assert "LOCAL ONLY" in block and "Headless runs never render." in block
     assert "Headless runs never push" not in block
-    assert "ops/status_board.json" not in block
+    assert "OPT-IN per tree" in block and "ops/status_board.json" in block
     assert _load("fleet_headless").conformance(ROOT) == []
 
 
 # ---------------------------------------------------------------- step 3
+
+def _opt_in(root):
+    (root / "ops").mkdir(parents=True, exist_ok=True)
+    (root / "ops" / "status_board.json").write_text('{"code": "RC", "opt_in": true}\n',
+                                                    encoding="ascii")
+
 
 def test_the_board_files_ride_the_kit_ignore_not_rc_extra_ignore(tmp_path):
     from tests import _fleet_guard_config as cfg
@@ -102,8 +117,9 @@ def test_the_board_files_ride_the_kit_ignore_not_rc_extra_ignore(tmp_path):
     for rel in BOARD_FILES:
         assert rel in guard.IGNORE, rel
         assert rel not in cfg.EXTRA_IGNORE, f"{rel} is in the kit IGNORE since v21/v23"
-    (tmp_path / "ops").mkdir()
-    (tmp_path / "ops" / "status_board.json").write_text('{"code": "RC"}\n', encoding="ascii")
+    # Kit v32: render is a silent no-op unless the tmp tree opts in, so the
+    # fixture carries "opt_in": true (self-contained; the live tree stays out).
+    _opt_in(tmp_path)
     plan = board.render(tmp_path, 1, [], environ={})
     assert plan["rendered"] is True and plan["html"].endswith("board.html")
     assert "push" not in plan
@@ -119,6 +135,7 @@ def test_the_board_files_ride_the_kit_ignore_not_rc_extra_ignore(tmp_path):
 
 def test_a_headless_render_writes_nothing(tmp_path):
     board = _load("fleet_board")
+    _opt_in(tmp_path)  # kit v32: the opt-in gate runs before the headless one
     plan = board.render(tmp_path, 1, [], environ={"FLEET_SUBAGENT_FIRST": "off"})
     assert plan == {"rendered": False, "reason": "headless"}
     assert board.calls_text(plan) == "board not rendered: headless\n"

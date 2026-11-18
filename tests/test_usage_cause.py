@@ -98,7 +98,11 @@ def test_usage_row_error_field_carries_the_cause_through_the_real_kit(
         assert row["error"].splitlines()[-1] == (
             "rc-cause: rc 1 with result subtype success; result: API Error: 500 overloaded; "
             "last tool: Edit")
-        assert row["error"].splitlines()[0] == "stderr line"
+        # Kit v31 (MAIN 2026-11-14 0936, FI-A3): a failed run's "error" reads
+        # "<cause>; rc <n>; <detail>", the detail being the v27 stderr tail, and the
+        # row gains "cause". The stderr tail (with RC's rc-cause line last) follows
+        # the prefix unchanged, so only the first line's prefix is new.
+        assert row["error"].splitlines()[0] == f"{row['cause']}; rc 1; stderr line"
     elif rc == 0:
         assert row["error"] is None
     else:
@@ -146,7 +150,9 @@ def test_stream_json_run_through_the_real_kit_names_the_last_tool_use(monkeypatc
                       log_path=str(log))
     row = json.loads((tmp_path / "ops/loop/control/headless_usage.jsonl").read_text(
         encoding="utf-8").splitlines()[-1])
+    # Kit v31 (FI-A3): the one-line stderr tail now follows "<cause>; rc <n>; ".
     assert row["error"].splitlines()[-1] == (
+        f"{row['cause']}; rc 1; "
         "rc-cause: rc 1 with result subtype success; result: all done; last tool: Bash")
 
 

@@ -49,8 +49,14 @@ KIT = ROOT / "ops" / "fleet_kit"
 # Kit v30 (MAIN 2026-11-12 0345 ORDER, cumulative v29 + v30) superseded v28
 # (manifest 34347174...b9e52a6d93, block cacc3ca3...4e77dd0); the pins below now
 # hold the v30 bytes (24 files).
-V24_MANIFEST_SHA256 = "d2ac40250bd0efc071f0eb11c1e92ae04af88d750de200cf8ed4dc5714d07ea2"
-V24_COMMON_BLOCK_SHA256 = "6205943cb187258bdd72f9799fd03cbd90354562d8f561ccf2e4c19fbedea5ee"
+# Kit v31 (MAIN 2026-11-14 0936 ORDER, cumulative) superseded v30
+# (manifest d2ac4025...5714d07ea2, block unchanged); the pins below now
+# hold the v31 bytes (24 files).
+# Kit v32 (MAIN 2026-11-16 1947 ORDER, cumulative) superseded v31
+# (manifest 6359f695...899a3829d, block 6205943c...bedea5ee); the pins below
+# now hold the v32 bytes (25 files, FLEET-COMMON items 17 and 18 changed).
+V24_MANIFEST_SHA256 = "cede0b7c8a80ca6ece410c07b572e4ac9dabe0bf7769d9c82d692bb1858c757d"
+V24_COMMON_BLOCK_SHA256 = "0dbee15df74d42c2b50747c8194c9afd0d09c8ac7e03659515b9b3df7eca40a1"
 BEGIN, END = "<!-- FLEET-COMMON BEGIN -->\n", "<!-- FLEET-COMMON END -->"
 # A drive-rooted spelling of the default sidecar root (any drive, either slash).
 DRIVE_ROOTED_SIDECAR = re.compile(r"[A-Za-z]:[\\/]+Sidecars", re.I)
@@ -79,10 +85,10 @@ def test_the_vendored_kit_is_the_v24_order_bytes():
     raw = (KIT / "MANIFEST.json").read_bytes()
     assert hashlib.sha256(raw).hexdigest() == V24_MANIFEST_SHA256
     man = json.loads(raw.decode("ascii"))
-    assert man["version"] == 30 and len(man["files"]) == 24
+    assert man["version"] == 32 and len(man["files"]) == 25
     assert man["common_block_sha256"] == V24_COMMON_BLOCK_SHA256
     fh = _load("fleet_headless")
-    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (30, 0)
+    assert (fh.KIT_VERSION, fh.KIT_PATCH) == (32, 0)
     for name, want in man["files"].items():
         assert hashlib.sha256((KIT / name).read_bytes()).hexdigest() == want, name
 
@@ -93,7 +99,8 @@ def test_the_common_block_carries_item_19_after_item_18_and_conforms():
     block = _block()
     assert hashlib.sha256(block.encode("ascii")).hexdigest() == V24_COMMON_BLOCK_SHA256
     assert block.encode("ascii") == (KIT / "FLEET-COMMON.md").read_bytes()
-    i18 = block.index("\n18. STATUS BOARD (kit v23")
+    # Kit v32 (MAIN 2026-11-16 1947) rewrote item 18's heading to "kit v32".
+    i18 = block.index("\n18. STATUS BOARD (kit v32")
     i19 = block.index("\n19. NO WIDTH-DEPENDENT LAYOUT IN CHAT (kit v24; operator order 2026-10-25).")
     assert i18 < i19 and "\n20. " not in block
     item19 = block[i19:]
