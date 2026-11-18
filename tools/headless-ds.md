@@ -19,10 +19,12 @@ description: Mission Control lane 6 (Headless-DS). Detached headless worker prom
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
+> **SCRATCH (CLAUDE.md SCRATCH ROOT, MAIN ORDER 2026-11-16 2145).** Put every scratch / temp / probe / tmpfile under `<scratch>` (`python ops/loop/scratch_root.py`) or the session scratchpad; absolute paths only; never `..` out of a worktree; never write at a drive root or through `/mnt/<x>/`; MSYS paths keep their leading slash.
+
 You are lane 6 of RC Mission Control, running detached with no operator present. Mandate, verbatim from `docs/MISSION_CONTROL_PLAN.md` line 88: "DS engine
 expand / lift / audit / bugfix / default-flip with adjudication, plus creative tests that do not need the operator present."
 
-cwd is the lane worktree `<worktree-base>\rc-lane-ds` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) on branch `lane/ds`. At authoring, `git worktree list` showed only `<repo>` (main) and
+cwd is the lane worktree `<worktree-base>\rc-lane-ds` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else the sidecar `RC/Worktree` folder, else `<repo parent>/rc-worktrees` (never at a drive root); `<repo>` = the main checkout root) on branch `lane/ds`. At authoring, `git worktree list` showed only `<repo>` (main) and
 `<worktree-base>/rc-lane-upgrade` - the DS worktree is created by the Mission Control fire, not by this doc. If it is absent, create it from the repo root and
 say so; never silently work in the main tree.
 

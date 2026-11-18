@@ -96,12 +96,32 @@ LOG_DIR = _HERE / "reports"
 # GITIGNORED `ops/lane_worktrees.json` (template ops/lane_worktrees.example.json)
 # and never written here: the sibling-name sweep's structural arm halts a push
 # carrying an undeclared drive-rooted path. Order: env RC_LANE_WORKTREE_BASE,
-# then the config's `base`, then `<repo parent>/rc-worktrees`.
+# then the config's `base`, then the kit's sidecar `RC/Worktree` folder, then
+# `<repo parent>/rc-worktrees` - but NEVER when that parent is a drive root.
+#
+# MAIN ORDER 2026-11-16 2145 (E-ROOT): the old last step put the worktree
+# parent at the drive root for a checkout sitting directly under one. That
+# case now raises instead (the folder name of the sidecar root stays inside
+# the kit, so no machine path enters this file).
 WORKTREE_CONFIG = REPO_ROOT / "ops" / "lane_worktrees.json"
+
+
+def _sidecar_worktree(env) -> Path | None:
+    """The kit's `<sidecar root>/RC/Worktree`, or None when it does not resolve."""
+    kit = getattr(lanes, "fleet_lanes", None)
+    if kit is None:
+        return None
+    try:
+        root = kit.sidecar_root(environ=env)
+        return kit.sidecar_dir("RC", "Worktree", root=root or "")
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
 
 
 def resolve_worktree_base(env=None, config: Path | None = None,
                           repo_root: Path | None = None) -> Path:
+    """Lane worktree base. Raises RuntimeError rather than return a drive-root
+    child (MAIN ORDER 2145)."""
     env = os.environ if env is None else env
     override = (env.get("RC_LANE_WORKTREE_BASE") or "").strip()
     if override:
@@ -113,10 +133,28 @@ def resolve_worktree_base(env=None, config: Path | None = None,
         base = ""
     if base:
         return Path(base)
-    return Path(repo_root or REPO_ROOT).parent / "rc-worktrees"
+    sidecar = _sidecar_worktree(env)
+    if sidecar is not None:
+        return sidecar
+    parent = Path(repo_root or REPO_ROOT).parent
+    if parent == Path(parent.anchor):
+        raise RuntimeError(
+            "lane worktree base unresolved: set ops/lane_worktrees.json base or "
+            "RC_LANE_WORKTREE_BASE; refusing a drive-root worktree parent")
+    return parent / "rc-worktrees"
 
 
-WORKTREE_BASE = resolve_worktree_base()
+def _import_time_base() -> Path | None:
+    """Never raise at import (the dashboard imports this module): an unresolved
+    base is stored as None and `worktree_path` refuses at first use."""
+    try:
+        return resolve_worktree_base()
+    except RuntimeError as exc:
+        _log.warning("lane_launcher: %s", exc)
+        return None
+
+
+WORKTREE_BASE = _import_time_base()
 
 # NUL-separated git output, so a path containing whitespace cannot split wrong.
 NUL = "\x00"
@@ -186,6 +224,10 @@ class LaneLaunchError(RuntimeError):
 
 
 def worktree_path(lane: str, base: Path | None = None) -> Path:
+    if base is None and WORKTREE_BASE is None:
+        raise LaneLaunchError(
+            "lane worktree base unresolved (MAIN ORDER 2145: never a drive-root "
+            "parent) - set ops/lane_worktrees.json base or RC_LANE_WORKTREE_BASE")
     return (WORKTREE_BASE if base is None else Path(base)) / f"rc-lane-{lane}"
 
 

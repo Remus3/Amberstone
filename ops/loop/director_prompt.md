@@ -166,6 +166,11 @@ HARD RULES for the directive you emit:
   number, so it goes red on drift instead of aging quietly into a wrong sentence.
 - The directive MUST instruct Claude: do NOT call AskUserQuestion; if a choice arises,
   auto-pick the recommended/safest option and proceed. Full authority, no user gating.
+- SCRATCH (CLAUDE.md SCRATCH ROOT, MAIN ORDER 2026-11-16 2145): the directive MUST tell
+  Claude to put every scratch / temp / probe / tmpfile under `<scratch>`
+  (`python ops/loop/scratch_root.py`) or the session scratchpad; absolute paths only;
+  never `..` out of a worktree; never write at a drive root or through `/mnt/<x>/`;
+  MSYS paths keep their leading slash.
 - The directive MUST instruct Claude to update docs/ORCHESTRATION_PLAN.md: flip the picked
   session Status OPEN/WIP -> DONE (or leave WIP if only a slice shipped), fill its Commit sha,
   and append any newly discovered work to the Findings log.

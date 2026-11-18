@@ -19,6 +19,8 @@ description: Root-cause-first TDD loop for any bug or data fix. Forces a failing
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
+> **SCRATCH (CLAUDE.md SCRATCH ROOT, MAIN ORDER 2026-11-16 2145).** Put every scratch / temp / probe / tmpfile under `<scratch>` (`python ops/loop/scratch_root.py`) or the session scratchpad; absolute paths only; never `..` out of a worktree; never write at a drive root or through `/mnt/<x>/`; MSYS paths keep their leading slash.
+
 The recurring failure mode here is the too-narrow first fix: a wrong or single-case hypothesis that ships, then needs a second comprehensive pass (item 208 marksman pollution missed Golden Spatula + duplicate paths -> item 213 cleanup; item 211 race guard left corrupted rows -> two backfill rounds). This loop prevents that. Run the steps in order; do not skip step 1 or step 2.
 
 ### 1. Reproduce BEFORE fixing (RED)

@@ -19,6 +19,8 @@ description: Reconcile every Markdown doc in the repo against a single source of
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
+> **SCRATCH (CLAUDE.md SCRATCH ROOT, MAIN ORDER 2026-11-16 2145).** Put every scratch / temp / probe / tmpfile under `<scratch>` (`python ops/loop/scratch_root.py`) or the session scratchpad; absolute paths only; never `..` out of a worktree; never write at a drive root or through `/mnt/<x>/`; MSYS paths keep their leading slash.
+
 The operator wants every `.md` in the repo to tell the **same story with the same numbers**. Docs drift: README says one test count, DAEMON_SLAYER.md another, WAKEUP a third. This skill establishes canonical facts ONCE from authoritative sources, propagates them everywhere, refreshes the README in its locked style, and surfaces broken/orphaned docs - without rewriting history.
 
 This is a **documentation-only** skill. It makes NO code changes, does NOT restart RC, does NOT touch `data/`.

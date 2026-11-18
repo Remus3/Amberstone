@@ -17,6 +17,9 @@ Flag a REGRESS if you see any of:
   without an explicit approval note in the diff/commit
 - an ENGINE_VERSION or schema bump not matched by test updates
 - an em-dash / en-dash / smart-quote introduced into authored text (repo hard rule)
+- a drive-root scratch / temp / worktree path, a `..` climb out of a worktree, or a
+  `/mnt/<x>/` write introduced into code or a prompt (CLAUDE.md SCRATCH ROOT, MAIN
+  ORDER 2026-11-16 2145: scratch goes under `<scratch>` or the session scratchpad)
 
 If none of the above and the change looks coherent and tested, it is CLEAN.
 

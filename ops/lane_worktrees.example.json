@@ -1,4 +1,4 @@
 {
-  "_doc": "Per-host lane worktree base. Copy to ops/lane_worktrees.json (gitignored) and set base to this tree's folder under the machine's shared sidecar root. Read by ops/loop/lane_launcher.py; env RC_LANE_WORKTREE_BASE wins; empty or absent falls back to <repo parent>/rc-worktrees. A machine path never goes in a tracked file.",
+  "_doc": "Per-host lane worktree base. Copy to ops/lane_worktrees.json (gitignored) and set base to this tree's folder under the machine's shared sidecar root. Read by ops/loop/lane_launcher.py; env RC_LANE_WORKTREE_BASE wins; empty or absent falls back to the kit's sidecar RC/Worktree folder, then <repo parent>/rc-worktrees unless that parent is a drive root (then it refuses, MAIN ORDER 2145). A machine path never goes in a tracked file.",
   "base": ""
 }

@@ -3,6 +3,8 @@
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
+> **SCRATCH (CLAUDE.md SCRATCH ROOT, MAIN ORDER 2026-11-16 2145).** Put every scratch / temp / probe / tmpfile under `<scratch>` (`python ops/loop/scratch_root.py`) or the session scratchpad; absolute paths only; never `..` out of a worktree; never write at a drive root or through `/mnt/<x>/`; MSYS paths keep their leading slash.
+
 LANE R - DEEP RESEARCH (2026-07-16 night run, headless, autonomous, zero questions).
 You are in a dedicated git worktree on branch docs/research-20260716. Wall-clock target
 3h max: at cap, commit what exists, push, exit cleanly. Chat output caveman ultra.

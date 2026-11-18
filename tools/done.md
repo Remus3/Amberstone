@@ -20,6 +20,7 @@ description: End-of-session ritual - auto-commit any pending changes, push, do t
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
 > **PATHS (MAIN 2246 ORDER section 3).** No machine path is written in this file. `<repo>` = this tree's MAIN checkout root (in the main session it is the cwd; from a worktree, the parent of `git rev-parse --path-format=absolute --git-common-dir`). `%LOCALAPPDATA%` / `%USERPROFILE%` expand per account (`$env:LOCALAPPDATA` in PowerShell, `$LOCALAPPDATA` in Git Bash). `%USERPROFILE%/.claude/projects/<project-slug>/` = Claude Code's project dir for this checkout (`core/claude_project.py` `project_dir()`; under the account's own config dir when `CLAUDE_CONFIG_DIR` is set).
+> **SCRATCH (CLAUDE.md SCRATCH ROOT, MAIN ORDER 2026-11-16 2145).** Put every scratch / temp / probe / tmpfile under `<scratch>` (`python ops/loop/scratch_root.py`) or the session scratchpad; absolute paths only; never `..` out of a worktree; never write at a drive root or through `/mnt/<x>/`; MSYS paths keep their leading slash.
 
 The user wants to end the session cleanly so the next one starts with a fresh context window. This is /wrap, but with auto-commit instead of "stop and ask". Run all sections in order - in the ONE dispatched executor below, never in the main session.
 

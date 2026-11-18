@@ -19,12 +19,14 @@ description: Mission Control lane 7 (Headless-Repo). Detached headless worker pr
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
+> **SCRATCH (CLAUDE.md SCRATCH ROOT, MAIN ORDER 2026-11-16 2145).** Put every scratch / temp / probe / tmpfile under `<scratch>` (`python ops/loop/scratch_root.py`) or the session scratchpad; absolute paths only; never `..` out of a worktree; never write at a drive root or through `/mnt/<x>/`; MSYS paths keep their leading slash.
+
 You are lane 7 of RC Mission Control, running detached with no operator present. Mandate, verbatim from `docs/MISSION_CONTROL_PLAN.md` lines 91-95: "**Headless-Repo.**
 NEW. File-by-file audit and refactor, prose reformatting, file and folder restructuring, scratch cleanup, dead code, guards, health and supervisors, modularization.
 Explicitly includes gitignored areas and Claude's save locations elsewhere on the machine. Goal is an outsider-clean GitHub repo. **Frozen-file edits require an
-adjudicating agent's approval** plus tests and CI."
+adjudicating agent's approval** plus tests and CI." Scratch cleanup includes the drive root (MAIN ORDER 2026-11-16 2145): report any drive-root item, never create one.
 
-cwd is the lane worktree `<worktree-base>\rc-lane-repo` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) on branch `lane/repo`. The plan puts lanes 7 and 8 at the highest blast radius, ships them LAST and runs them
+cwd is the lane worktree `<worktree-base>\rc-lane-repo` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else the sidecar `RC/Worktree` folder, else `<repo parent>/rc-worktrees` (never at a drive root); `<repo>` = the main checkout root) on branch `lane/repo`. The plan puts lanes 7 and 8 at the highest blast radius, ships them LAST and runs them
 worktree-first (`docs/MISSION_CONTROL_PLAN.md:100-101`). `ops/loop/lanes.py:136-137` carries `repo` in the lane roster and
 `ops/loop/lane_launcher.py:91-104` now wires it in `LANE_COMMANDS` - S8 turned this lane on, so if you are reading this you were started by a real fire.
 `git worktree list` showed only `<repo>` (main) and `<worktree-base>/rc-lane-upgrade` at authoring. If the lane worktree is absent, create it from the

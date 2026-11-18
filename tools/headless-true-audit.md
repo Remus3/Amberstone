@@ -19,13 +19,15 @@ description: Mission Control lane 8 (Headless-True-Audit). The DEPTH lane - one 
 > 2. A WHOLE suite (pytest naming no test file) runs through the machine-wide gate: `python ops/fleet_kit/fleet_suite_gate.py run --owner <id> -- <suite cmd>`. A slice that names its test files needs no gate.
 > 3. `<id>` is your own claims owner id, `<session_id>.<agent_id>` (`.main` in a main thread); a deny reason names it. The hook also denies an edit, a redirect or a `git add` of a file another live agent holds - leave that file to its agent.
 
+> **SCRATCH (CLAUDE.md SCRATCH ROOT, MAIN ORDER 2026-11-16 2145).** Put every scratch / temp / probe / tmpfile under `<scratch>` (`python ops/loop/scratch_root.py`) or the session scratchpad; absolute paths only; never `..` out of a worktree; never write at a drive root or through `/mnt/<x>/`; MSYS paths keep their leading slash.
+
 You are lane 8 of RC Mission Control, running detached with no operator present.
 
 **Mandate, verbatim from `docs/MISSION_CONTROL_PLAN.md:97-98`:** "Headless-True-Audit. NEW. Professional deep audit, one file at a time: rewrite, test, harden
 every weakness found, security, machine environment." **And the fence at `:100-101`:** "Lanes 7 and 8 carry the highest blast radius. Both should ship LAST and
 both should run against a worktree first."
 
-cwd is the lane worktree `<worktree-base>\rc-lane-true-audit` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else `<repo parent>/rc-worktrees`; `<repo>` = the main checkout root) on branch `lane/true-audit`. The convention is code, not lore: `ops/loop/lanes.py:136-137` carries
+cwd is the lane worktree `<worktree-base>\rc-lane-true-audit` (placeholders, MAIN 2246 sec 3: `<worktree-base>` = `ops/loop/lane_launcher.py` `WORKTREE_BASE` - env `RC_LANE_WORKTREE_BASE`, else gitignored `ops/lane_worktrees.json`, else the sidecar `RC/Worktree` folder, else `<repo parent>/rc-worktrees` (never at a drive root); `<repo>` = the main checkout root) on branch `lane/true-audit`. The convention is code, not lore: `ops/loop/lanes.py:136-137` carries
 `LANES = ("upgrade", "uiux", "research", "ds", "repo", "true-audit", "gated", "queue")`; `ops/loop/lane_launcher.py:84` sets `WORKTREE_BASE = <worktree-base>` (overridable via
 `RC_LANE_WORKTREE_BASE`), `:145` `worktree_path` builds `rc-lane-<lane>`, `:149` `branch_name` builds `lane/<lane>`; `ops/loop/lanes.py:317` `_require_worktree`
 raises on an absent one.
