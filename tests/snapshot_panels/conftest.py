@@ -151,6 +151,7 @@ _ICON_STAND_IN = base64.b64decode(
 _ICON_PREFIXES = ("/data/ddragon/", "/icons/")
 _ICON_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 _WEB_ROOT = WEB_DIR.resolve()
+_WEB_ROOT_STR = os.path.normpath(str(_WEB_ROOT))
 
 
 @functools.lru_cache(maxsize=1)
@@ -164,11 +165,13 @@ def _tracked_web_dirs():
                      for rel in tracked if rel.startswith("web/"))
 
 
-def _in_tracked_dir(target: Path) -> bool:
+def _in_tracked_dir(full: str) -> bool:
+    """`full` is an already normpath-contained string under _WEB_ROOT_STR."""
+    parent = os.path.dirname(full)
     dirs = _tracked_web_dirs()
     if dirs is None:
-        return target.parent.is_dir()
-    return target.parent in dirs
+        return os.path.isdir(parent)
+    return Path(parent) in dirs
 
 
 def _is_missing_icon(path: str) -> bool:
@@ -179,12 +182,12 @@ def _is_missing_icon(path: str) -> bool:
         return False
     if not path.lower().endswith(_ICON_SUFFIXES):
         return False
-    target = (_WEB_ROOT / unquote(path).lstrip("/")).resolve()
-    if not target.is_relative_to(_WEB_ROOT):
+    full = os.path.normpath(os.path.join(_WEB_ROOT_STR, unquote(path).lstrip("/")))
+    if not full.startswith(_WEB_ROOT_STR + os.sep):
         return False
-    if target.is_file():
+    if os.path.isfile(full):
         return False
-    return not _in_tracked_dir(target)
+    return not _in_tracked_dir(full)
 
 
 def _make_handler(store: dict, closing: threading.Event) -> type:

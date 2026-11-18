@@ -84,7 +84,7 @@ def _make_handler(hits: list[str], routes: dict):
                 self._send(404, b"")
             elif route[0] == "redirect":
                 self.send_response(302)
-                self.send_header("Location", route[1])
+                self.send_header("Location", route[1].replace("\r", "").replace("\n", ""))
                 self.send_header("Content-Length", "0")
                 self.end_headers()
             elif route[0] == "status":

@@ -25,6 +25,7 @@ import socket
 import sys
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 
@@ -278,7 +279,7 @@ def test_tool_wiki_requests_reach_the_network_with_consent(net, call):
     _grant()
     with pytest.raises(_NetworkTouched):
         call()
-    assert len(net) == 1 and "wiki.leagueoflegends.com" in net[0]
+    assert len(net) == 1 and urlparse(net[0].split(" ", 1)[-1]).hostname == "wiki.leagueoflegends.com"
 
 
 def test_stats_fetch_still_reaches_communitydragon_without_consent(net):

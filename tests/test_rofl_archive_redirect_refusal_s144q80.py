@@ -82,7 +82,7 @@ def _make_handler(hits: list[str]):
 
         def _redirect(self, location: str) -> None:
             self.send_response(302)
-            self.send_header("Location", location)
+            self.send_header("Location", location.replace("\r", "").replace("\n", ""))
             self.send_header("Content-Length", "0")
             self.end_headers()
 
