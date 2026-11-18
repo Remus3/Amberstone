@@ -41,6 +41,14 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-14 - session 166: no work (operator /clear then /done); s165 push ci read RED (3 failures), carried as NEXT ACTION 1
+
+- **Read:** ci 43658294580 (mode=full) 3 failed / 88346 passed: tests/snapshot_panels/test_item_value_bar_relocated.py ember-923x1280 (probable theme or layout flake, re-run on 3.12 first) and two ruff ratchets (tests/test_container_builtin_return_ratchet_s144p160.py, tests/test_dead_weight_lint_bundle_ratchet_s144p270.py) naming one new finding in tests/test_rc_facts_health_pid_rm2107.py (PIE807 / RET501 / PLR1711). codeql and docs-guards green.
+- **Done:** ROADMAP closed s161 row relocated to docs/ROADMAP_HISTORY.md (drift_guard warn at 90.3 percent cleared).
+- **Do NOT redo:** nothing shipped beyond that; every other s165 item stays open.
+
+---
+
 # 2026-11-14 - session 165: s164 push CI reds fixed forward (`3caee0c9f2`, `5963953070`, `d7521ce8b2`); RM-2106 / RM-2107 / RM-2116 / RM-2118 CLOSED; C11 guard ignore for live lane back-off files (`5655e35cb4`)
 
 - **LEDGER 2110.** 8 commits + /done docs, ONE push from `b962442693` (selector mode=full: the push ci IS the full run).

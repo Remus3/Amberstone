@@ -6,7 +6,8 @@ time. In a tree whose loops and dashboard routes load sibling modules by path (t
 module-binding convenience; a value from a request, a config file or a data file is code execution. Nothing forced such
 a site to be written down. Measured 2026-11-07 by AST over every tracked production ``.py`` (outside ``tests/``,
 ``docs/`` and the vendored ``ops/fleet_kit/``): 68 calls, each its own ``(file, call, scope)`` site, listed in ``_SITES``
-(69 since S144-Q-123 added the sibling sweep's core/log_rotation load, 70 with headless_env's).
+(69 since S144-Q-123 added the sibling sweep's core/log_rotation load, 70 with headless_env's, 72 with s169's
+ops/loop/scratch_root.py kit binder).
 
 Result of the measurement: every target is one of
 - ``LITERAL`` - a string / path literal, or a module constant, at the call;
@@ -47,6 +48,8 @@ _POLY = "LITERAL: the repo's own core/polled_json.py, located from __file__, bou
 
 # (file, short call name, scope) -> where the module name or path comes from.
 _SITES = {
+    ("ops/loop/scratch_root.py", "import_module", "_kit"): _LITERAL,
+    ("ops/loop/scratch_root.py", "spec_from_file_location", "_kit"): _LITERAL,
     ("app/_game_lifecycle.py", "import_module", "GameLifecycleManager.on_game_start"):
         "TABLE: the module path is a value of core.coach_registry.MODE_COACH_MAP, a literal in-repo table",
     ("dashboard/routes_loop_control.py", "import_module", "_interrupt"): _LITERAL,
@@ -209,7 +212,7 @@ def test_every_production_dynamic_load_is_a_named_site():
     gone = sorted(set(_SITES) - found)
     assert not new, f"new dynamic module load (add it to _SITES with its target source): {new}"
     assert not gone, f"stale _SITES entry (drop it): {gone}"
-    assert calls == 70, f"call count moved to {calls}; a second call in a listed scope needs a look"
+    assert calls == 72, f"call count moved to {calls}; a second call in a listed scope needs a look"
 
 
 def test_every_site_names_its_target_source():

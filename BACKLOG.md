@@ -9,7 +9,7 @@ _Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-
 
 ## S168 filings (2026-11-16) - RM-2124 (filed by the s168 /done executor, LEDGER 2112; next free RM-2125)
 
-- **RM-2124 OPEN (tests; Tier-1; gated: none) - `tests/test_wiki_fetch_refusal_rm1227.py` (2 tests) is DATE-DEPENDENT: both failed in the s168 gated dual suite that crossed local midnight (the grant date became 2026-11-16 mid-run) and pass when the file runs alone.** Acceptance: the test pins its clock (or derives the grant date once per test), and a run straddling midnight no longer reds it; a regression test that fakes the date across 23:59:59 -> 00:00:00.
+- **RM-2124 SHIPPED s169 `f560075706` (clock pinned; confirm on the next midnight-crossing suite) (tests; Tier-1; gated: none) - `tests/test_wiki_fetch_refusal_rm1227.py` (2 tests) is DATE-DEPENDENT: both failed in the s168 gated dual suite that crossed local midnight (the grant date became 2026-11-16 mid-run) and pass when the file runs alone.** Acceptance: the test pins its clock (or derives the grant date once per test), and a run straddling midnight no longer reds it; a regression test that fakes the date across 23:59:59 -> 00:00:00.
 
 ## S165 filings (2026-11-14) - RM-2119..RM-2123 (filed by the s165 /done executor from the session's verifier and merger residue, LEDGER 2110; next free RM-2124)
 

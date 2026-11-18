@@ -6,6 +6,17 @@
 
 ---
 
+# 2026-11-17 - session 169: kit v31+v32 landed, 26 alerts worked, E-root move, GitHub guard (LEDGER 2113)
+
+- Landed (pushed 79d4e92a80..d5976ec80e): kit v31+v32 `ce1cb790a8`; CodeQL `ef79a22c13` / `408f3726c2`; minimatch `8fcc0e14ad`; README `cb3ae093ad`; flakes `f560075706`; PTH noqa `bb868f9bed`; scratch root `d5976ec80e`.
+- E-root (MAIN ORDER 2145): ROFL archive now under the RC sidecar Archive (env var repointed); strays moved; 2 stash bundles recycled. SendToRecycleBin did NOT recycle 9 tiny items (memory file filed).
+- Gated suite at bb868f9bed: only ruff-version ratchets (fixed by global ruff 0.17.3), PTH ratchets (fixed) and the CLI pin (local 2.1.327 vs 2.1.323; tools/repin_subagent_cli.py) red.
+- Operator: no status-board render unless asked; G3 branch protection approved; lanes stay halted until the operator says.
+- What's next: read the push ci / codeql / dispatch results, then the hand-off NEXT ACTION; CLI pin re-pin.
+- Do NOT redo: kit v31/v32 landing, the CodeQL / minimatch fixes, the E-root move.
+
+---
+
 # 2026-11-16 - session 168: CI red (a) fixed `b4f1195fc6`, (b) flake, (c) kit note_pause bug; kit v31 built, NOT landed (LEDGER 2112)
 
 - PIE807 in tests/test_rc_facts_health_pid_rm2107.py:88 fixed (`b4f1195fc6`, pushed at /done).
@@ -23,11 +34,3 @@
 - CI still red on d49e8440f6: PIE807/RET501/PLR1711 ratchets on tests/test_rc_facts_health_pid_rm2107.py + a new nightly red test_fleet_kit_v30 note_pause test + the snapshot flake.
 - What's next: pending MAIN ORDER FLEET-KIT-v31 (kit v27: pending ORDERs first), then fix the CI reds forward (ruff0173 env). Lanes re-arm only on the operator's word.
 - Do NOT redo: the lane halt; do not push or merge lane branches.
-
----
-
-# 2026-11-14 - session 166: no work (operator /clear then /done); s165 push ci read RED (3 failures), carried as NEXT ACTION 1
-
-- **Read:** ci 43658294580 (mode=full) 3 failed / 88346 passed: tests/snapshot_panels/test_item_value_bar_relocated.py ember-923x1280 (probable theme or layout flake, re-run on 3.12 first) and two ruff ratchets (tests/test_container_builtin_return_ratchet_s144p160.py, tests/test_dead_weight_lint_bundle_ratchet_s144p270.py) naming one new finding in tests/test_rc_facts_health_pid_rm2107.py (PIE807 / RET501 / PLR1711). codeql and docs-guards green.
-- **Done:** ROADMAP closed s161 row relocated to docs/ROADMAP_HISTORY.md (drift_guard warn at 90.3 percent cleared).
-- **Do NOT redo:** nothing shipped beyond that; every other s165 item stays open.
