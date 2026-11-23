@@ -23,9 +23,9 @@
 anthropic==1.11.0
 certifi==2026.10.23
 json5==0.15.0
-opencv-python==5.0.0.93
+opencv-python==5.1.0.95
 Pillow==13.0.0
 portalocker==4.4.2
 psutil==7.2.2
-pydantic==2.14.3
+pydantic==2.14.4
 websockets==17.4
