@@ -463,8 +463,15 @@ class ResourceManager:
                 if t.is_alive():
                     _log.warning("Thread %s did not stop cleanly", t.name)
 
-            # Final GC
-            gc.collect()
+            # Final GC: reclaim the young cyclic garbage the drain just left.
+            # RM-2125: a FULL collect walks the whole heap; measured at 801 MB
+            # RSS / ~4.07M tracked objects it was ~100 percent of shutdown()
+            # (median 0.46 s; 5.17 s on a busy CI worker) and delayed the
+            # quit path. Off-thread does not help (a collect holds the GIL;
+            # measured, the caller still stalled). Every production caller
+            # exits right after this and interpreter finalization collects
+            # the old generation anyway, so bound this one to gens 0-1.
+            gc.collect(1)
             _log.info("ResourceManager.shutdown() complete")
         finally:
             logging.raiseExceptions = _prev_raise
