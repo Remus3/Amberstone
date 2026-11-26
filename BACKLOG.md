@@ -9,7 +9,7 @@ _Competitor-lift teardown RECORDS (what was already shipped, what is closed, do-
 
 ## S171 filings (2026-11-26) - RM-2126, RM-2127 (filed by the s171 merger; next free RM-2128)
 
-- **RM-2126 OPEN (DS; Tier-2 DS batch; gated: none) - DS patch bump 16.22.1 -> 16.23.1.** DDragon is already refreshed (`ad15cedf11`). Needs the gated whole suite plus a DS `:8860` restart. Blocked in s171 on the 23,100 MB RAM admission gate (20,483 MB free). RM-766 (16.20.1 -> 16.21.1) is CLOSED, shipped s127.
+- **RM-2126 OPEN (DS; Tier-2 DS batch; gated: none) - DS patch bump 16.22.1 -> 16.23.1.** s171 reverted `ad15cedf11` as `849c912387` (adjudicated): the next session lands the DDragon refresh and the DS bump TOGETHER as its first action; this needs network fetches through `tools/daemon_slayer_extract.py` (no offline mode) and follow-on extractors, with template `a14fc853ea` (~165 files, ENGINE restamp ~150 sites); never merge a `patch-day-ddragon-sync` 16.23.1 proposal alone. Needs the gated whole suite plus a DS `:8860` restart. Blocked in s171 on the 23,100 MB RAM admission gate (20,483 MB free). RM-766 (16.20.1 -> 16.21.1) is CLOSED, shipped s127.
 - **RM-2127 OPEN (aspirational, low; DS) - optional near-tie hysteresis or epsilon tie-break in `coherence_rerank`** (`coherence.py` sorts with a plain stable `sorted(..., reverse=True)`), so build order does not flip across patches on sub-0.01 margins. A product choice, not a defect (from RM-2105).
 - Process note s171: the builder and verifier test unions missed `test_wallclock_wait_loop_census_s144p363` and `test_file_open_lifetime_census_s144p355`; the merger caught them. Include every census test that greps a touched file.
 
