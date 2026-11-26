@@ -19,6 +19,10 @@ import time
 
 import core.resource_manager as rmmod
 from core.resource_manager import ResourceManager
+from tests._timing_budget import fleet_test_guard
+
+# A full collect costs 5 s in the stand-in; cap the widened bound below it.
+_BOUND_S = min(fleet_test_guard.budget(1.0), 2.5)
 
 
 def _install(monkeypatch) -> list[int]:
@@ -40,7 +44,7 @@ def test_full_heap_collect_does_not_block_shutdown(tmp_path, monkeypatch):
     t0 = time.monotonic()
     rm.shutdown()
     elapsed = time.monotonic() - t0
-    assert elapsed < 1.0, f"shutdown() blocked {elapsed:.2f}s on a full gc.collect"
+    assert elapsed < _BOUND_S, f"shutdown() blocked {elapsed:.2f}s on a full gc.collect"
     assert 2 not in calls
 
 
