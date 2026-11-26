@@ -41,6 +41,15 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-15 - session 167: lanes HALTED (operator order), /done only (LEDGER 2111)
+
+- Drain via S144_LANES_STOP: rotator pid 16308 exit 0 (331 cycles), nothing killed, 8 stop files armed, lane worktrees clean. No code commit; origin/main = d49e8440f6.
+- CI still red on d49e8440f6: PIE807/RET501/PLR1711 ratchets on tests/test_rc_facts_health_pid_rm2107.py + a new nightly red test_fleet_kit_v30 note_pause test + the snapshot flake.
+- What's next: pending MAIN ORDER FLEET-KIT-v31 (kit v27: pending ORDERs first), then fix the CI reds forward (ruff0173 env). Lanes re-arm only on the operator's word.
+- Do NOT redo: the lane halt; do not push or merge lane branches.
+
+---
+
 # 2026-11-14 - session 166: no work (operator /clear then /done); s165 push ci read RED (3 failures), carried as NEXT ACTION 1
 
 - **Read:** ci 43658294580 (mode=full) 3 failed / 88346 passed: tests/snapshot_panels/test_item_value_bar_relocated.py ember-923x1280 (probable theme or layout flake, re-run on 3.12 first) and two ruff ratchets (tests/test_container_builtin_return_ratchet_s144p160.py, tests/test_dead_weight_lint_bundle_ratchet_s144p270.py) naming one new finding in tests/test_rc_facts_health_pid_rm2107.py (PIE807 / RET501 / PLR1711). codeql and docs-guards green.

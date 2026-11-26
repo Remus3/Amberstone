@@ -1,17 +1,17 @@
 NEXT SESSION
 ------------
-SESSION: 170
-OPEN ITEMS ONLY. The s169 hand-off (written at the s168 /done) is VERBATIM at `git show d5976ec80e:RC-NEXT-SESSION.txt`; s168's at a82eaea7de,
-s166's at 5a88fcd5b7, s165's at b962442693, s164's at 97ffb3a1b, s162's at bbd3113ed, s161's at 247325fa4; older hand-offs (s157-s160 in the DO NOT
-RE-LITIGATE block): ARCHIVES below; closed history and the s133-s150 DO NOT RE-LITIGATE entries are VERBATIM in A1106 block 3. Every item still open is
-carried below as a tight line; read the source first.
-SESSION NUMBER: s169 = kit v31+v32 landed, 26 GitHub alerts worked, E-root move, GitHub guard (LEDGER 2113); s168 = CI-red work (LEDGER 2112); s167 = lane halt (LEDGER 2111).
+SESSION: 171
+OPEN ITEMS ONLY. The s170 hand-off (written at the s169 /done) is VERBATIM at `git show 3cd97d8cc9:RC-NEXT-SESSION.txt`; s169's at d5976ec80e,
+s168's at a82eaea7de, s166's at 5a88fcd5b7, s165's at b962442693, s164's at 97ffb3a1b, s162's at bbd3113ed, s161's at 247325fa4; older hand-offs
+(s157-s160 in the DO NOT RE-LITIGATE block): ARCHIVES below; closed history and the s133-s150 DO NOT RE-LITIGATE entries are VERBATIM in A1106 block 3.
+Every item still open is carried below as a tight line; read the source first.
+SESSION NUMBER: s170 = nightly red fixed forward, CodeQL #109/#110, DDragon 16.23.1, CLI pin (LEDGER 2114); s169 = kit v31+v32, 26 alerts, E-root (LEDGER 2113); s168 = CI-red work (LEDGER 2112).
 OPERATOR SCOPE (chat s150, VERBATIM; stands until the operator changes it): "continue headlessly - all driver lanes -
 operator away ; full access approved". Operator s150: "No, keep lanes running" - superseded for a gated suite by the
 s157 ruling "a - full box next time" (SUITE LAUNCH LINE).
 OPERATOR WORDS: s159 "-n 4 standing" (landings at -n 4 until the operator or MAIN changes it; over MAIN 2045's -n 8;
 8aa74df1b; told to MAIN in a66309aa3); s161 "self-adjudicate" (D1-D3 bind, LEDGER 2105); s163 "Continue" and "there
-was work in another session that was on account 2 unfinished;" (acted on); s164 only "Continue"; s165 and s166 none; s167 "when the lanes finish their current task halt them and push commit done" (acted on: lanes halted, nothing to push); s168 operator away; s169: status board only when asked (SKIP the render), G3 branch protection APPROVED, lanes "not yet; I'll mention it when it is time", ruff reinstall + stash-bundle recycle done (acted on).
+was work in another session that was on account 2 unfinished;" (acted on); s164 only "Continue"; s165 and s166 none; s167 "when the lanes finish their current task halt them and push commit done" (acted on: lanes halted, nothing to push); s168 operator away; s169: status board only when asked (SKIP the render), G3 branch protection APPROVED, lanes "not yet; I'll mention it when it is time", ruff reinstall + stash-bundle recycle done (acted on). s170: operator only "continue".
 
 STANDING RULES
 - REWRITE 2026-11-01 (LEDGER 2009, A1101): doc hashes older than origin 8d8c321b7 are PRE-REWRITE: map via
@@ -65,28 +65,26 @@ STANDING RULES
   hand-off; its lines 19-26 map every older archive block), A1107 RC-2026-11-07 (block 1 the s153 hand-off); the
   s154 hand-off = `git show 47075c685:RC-NEXT-SESSION.txt`.
 
-NEXT ACTION (s169 /done)
-A. CI (read FIRST): pushes 79d4e92a80..d5976ec80e..f19544818e..(final hand-off commit). d5976ec80e: push ci 44233023556 and the 2c dispatch 44233027971
-   RED, both ONE test (tests/test_dynamic_load_census_s144p342.py, the X2 scratch_root.py kit binder; 88412 passed), codeql / docs-guards /
-   fleet-identity-guard green. f19544818e (census fix): ci 44241022354, docs-guards, codeql, fleet-identity-guard ALL green. Observed for the 2005
-   ORDER's 3-in-a-row: docs-guards 2 green, ci 1 green (2 more ci runs owed). Read `gh run list --branch main --limit 8` for the final commit's runs.
-B. CODEQL: 2 of the 26 alerts still open after the analysis on f19544818e: #109 agents/agent7_context/ui_feedback.py:140 and #110 input_parser.py:141
-   (py/polynomial-redos, raised ON the 408f3726c2 fix code; the regexes still match user text). Dependabot: 0 open (#145 closed by 8fcc0e14ad).
-C. G3 ROLLED BACK (operator approved G3; case b): the additive PATCH 404'd, the whole-protection PUT added required_status_checks, then the /done push was
-   REFUSED (GH006: enforce_admins is TRUE on main, so a direct push of an unchecked commit fails). Rolled back with DELETE .../required_status_checks;
-   read back == protection-before. RC has NO required check now; MAIN was asked to rule (enforce_admins false vs no required check; never touch
-   enforce_admins unasked). G2 success, G4 no Dependabot PRs / branches, G5 vulnerability-alerts 204, automated-security-fixes enabled false (left).
-D. CLI PIN red locally: tests/test_subagent_prompt_flag.py::test_cli_version_still_matches_the_pin (CLI 2.1.327 vs pin 2.1.323); fix = python
-   tools/repin_subagent_cli.py (4 headless runs); it skips on CI (no claude on PATH).
-E. RECYCLE BIN TRAP: SendToRecycleBin (powershell 5.1 Microsoft.VisualBasic) did not land 9 tiny / empty E:\ root items in the bin while an entry-count
-   read-back passed; cause unknown; investigate before the next recycle and read back by decoding $I records (memory
-   reference_sendtorecyclebin_can_silently_not_recycle). The 2 stash bundles DID land (ASK closed).
-F. LANDING RECIPE: fleet_gitlock refuses git cherry-pick: `git cherry-pick --no-commit <sha>` then gitlock `git commit -C <sha>` (memory
-   feedback_gitlock_refuses_cherry_pick). Slice worktrees of s169 were cherry-picked, so the reap LISTS them: agent-a0b2d535c77f34922 (kit v31 branch,
-   superseded by ce1cb790a8), plus the older listed set in the Worktrees line below; delete each only after a patch check.
-G. STATUS BOARD: operator s169 "not needed unless asked": do NOT render it (memory feedback_status_board_only_when_asked). RC stays board OPT-OUT.
-H. KIT DEFECT sent to MAIN: fleet_lanes.note_pause round(now, 3); RM-2121 RACE GUARDS block wording. All four s169 ORDERs answered and closed
-   (kit v31, kit v32, 2005, 2145); the 2109 AshLight note is TERMINAL (ledger line only).
+NEXT ACTION (s170 /done)
+A. CI (read FIRST): this /done pushes 3cd97d8cc9..bea359b213 + docs/hand-off commit, then ONE `gh workflow run ci.yml --ref main` (the nightly 45781089416 at
+   3cd97d8cc9 was red on ONE test, fixed forward in bea359b213; no full run covered HEAD). Read `gh run list --branch main --limit 8` and `gh run list
+   --workflow ci.yml --event workflow_dispatch --limit 1` (run id not in this file: a second push would cancel the first). Trailing green streak is 0:
+   the next green nightly restarts the 2005 ORDER 3-in-a-row (8 greens 11-18..11-25 had met it).
+B. CODEQL: after the push re-scan confirm #109 / #110 closed (`gh api repos/{owner}/{repo}/code-scanning/alerts/109` and /110; fixed c69edc2d83: anchored heads,
+   _line_end, code-side number parse). Dependabot 0 open. RM-2125 (shutdown() trailing gc.collect() can take >5 s on a busy worker: measure real RC shutdown).
+C. G3 STILL OPEN: no MAIN ruling (enforce_admins TRUE blocks a required check; RC has NO required check; rolled back s169, read back == before). Never touch
+   enforce_admins unasked. No pending ORDER/FIX/RULING; newest MAIN note = the 11-16 2145 ORDER.
+D. RM-1344 18.7 read DONE s170 (Verdict A: CDragon latest 16.23.8418428, 6 of 7 values still 18.6; 18.7 NOTES unread, so 18.7 content unmeasured). RM-925 / RM-2069
+   Set 18 refresh may now proceed (mark 18.6-era). DDragon 16.23.1 refreshed (ad15cedf11); DS patch bump RM-766 NOT done (separate batch).
+E. RECYCLE BIN: s169 silent-SendToRecycleBin NOT reproduced s170 (all cases landed, decoded $I); the E: bin holds only 2 records (11-26 00:03), none from s169: an
+   UNATTRIBUTED writer purged it (open). Recipe: absolute backslash path, read back by decoding the exact $I record, re-check later, never trust an entry count.
+F. WORKTREES: four clean slice worktrees KEPT (git cherry shows +, landed squashed): a39dfc1f9a98afe39 (=65fa2a0017), a6151dbdd48913b79 (=de62be5cfe),
+   a721bfdc17db9ea4d (=f560075706), a74eeca3565e814f9 (=38e46c7551). Next: tree-content equivalence check per worktree, then remove. Branch
+   worktree-agent-a53664625a6ceced2 holds fbda0c7f40 (s158 C9 lane kill job) NOT on main; its dir is empty/unregistered: decide keep / land / delete.
+   Untouched by rule: a0b2d535c77f34922 (superseded by ce1cb790a8), a9c5f5e90007897b9 (O3d hold 6e384504e), a548aae3a3bdf1fa9 (locked), 7 rc-lane-*.
+G. STATUS BOARD: operator s169 "not needed unless asked": do NOT render it. RC stays board OPT-OUT.
+H. LANDING RECIPE: fleet_gitlock refuses git cherry-pick: `git cherry-pick --no-commit <sha>` then gitlock `git commit -C <sha>` (memory
+   feedback_gitlock_refuses_cherry_pick). KIT DEFECT sent to MAIN (s169): fleet_lanes.note_pause round(now, 3); RM-2121 RACE GUARDS block wording.
 0. LANES HALTED (s167, operator order; LEDGER 2111). Rotator pid 16308 exited 0 (cycles done 331), no lane process or lock,
    7 lane worktrees clean (.claude/worktrees/rc-lane-<lane>), 8 S144_*_STOP files armed in ops/loop/control/lanes/.
    RE-ARM ONLY ON THE OPERATOR'S WORD (D3, LEDGER 2105): the 8 S144_*_STOP files to the Recycle Bin; python
@@ -97,12 +95,10 @@ H. KIT DEFECT sent to MAIN: fleet_lanes.note_pause round(now, 3); RM-2121 RACE G
 (items 1-14 below are the s166 list)
 1. CI RED: closed by NEXT ACTION A (s168 (a)/(c) fixed; ember / minimap / RM-2124 flakes hardened in f560075706, confirm on the next
    hosted run; RM-2113 / RM-2114 stay open until a fully green full run).
-2. MAIN 0930 ORDER follow-through (answered, TERMINAL): re-run `python ops/loop/lane_run_ledger.py effort-measure`
-   BEFORE 11-22 (s165 C2: first ds effort=medium row 2026-11-14T11:45:25-06:00, opus-5-5, rc 0, 0 commits; ds during
-   1 run $0.53; research during 0 runs). O3d: land lane/uiux first, re-run the QA split on the merged file (ref
-   hold/s164-o3d-qa-split = 6e384504e, sha256 025e76561776..., NEVER delete it; worktree agent-a9c5f5e90007897b9
-   holds it, reap lists it), retarget .claude/commands/headless-uiux.md (:55, :247) +
-   ops/loop/control/lane_prompts/s144-uiux.tmpl (:16) (RM-2117).
+2. MAIN 0930 ORDER follow-through (TERMINAL): effort-measure re-run DONE s170 (research during 41 runs $1.66/run $1.36/commit vs before $3.57/$6.01; ds
+   during 4 runs 0 commits, too few to judge; MAIN reads effort results). O3d: land lane/uiux first, re-run the QA split on the merged file (ref
+   hold/s164-o3d-qa-split = 6e384504e, sha256 025e76561776..., NEVER delete it; worktree agent-a9c5f5e90007897b9 holds it), retarget
+   .claude/commands/headless-uiux.md (:55, :247) + ops/loop/control/lane_prompts/s144-uiux.tmpl (:16) (RM-2117).
 3. S165 FOLLOW-UPS (BACKLOG "S165 filings"): RM-2119 stream-json last tool still json-mode in tools/headless_run.ps1,
    tools/weekly_hygiene_run.ps1, ops/loop/executor.py; RM-2120 live read-back of RM-2116 (first lane run writing
    lane_*.stream.jsonl must show a NAMED last tool in ops/loop/control/headless_usage.jsonl); RM-2121 kit gap for
@@ -134,9 +130,9 @@ H. KIT DEFECT sent to MAIN: fleet_lanes.note_pause round(now, 3); RM-2121 RACE G
    on an xdist worker, RM-2044 per-commit sweep (never soften "ARMED WITH A MEASURED ESCAPE RATE ABOVE ZERO"); s154
    RM-2045..RM-2048; s155 RM-2049, RM-2050; s156 RM-2052, RM-2054, RM-2056..RM-2073, RM-2075..RM-2080; s158 RM-2083;
    s159 RM-2084..RM-2088; s160 RM-2090; s161 RM-2095..RM-2100; s162 RM-2103; s163 RM-2104, RM-2105, RM-2108..RM-2115;
-   s164 RM-2117; s165 RM-2119..RM-2123 ("S165 filings"); s168 RM-2124 ("S168 filings"; next free RM-2125).
-13. Dated: RM-1344 18.7 re-read on or after 2026-11-26 (s162 re-dated, `f318c482f`); INBOX-AGREE now expires
-   2026-12-31 00:00 (renewed s163; renew before it); RM-1267 re-read 2026-12-08 (repo lane on sonnet); MAIN reads
+   s164 RM-2117; s165 RM-2119..RM-2123 ("S165 filings"); s168 RM-2124; s170 RM-2125 ("S170 filings"; next free RM-2126).
+13. Dated: INBOX-AGREE now expires 2026-12-31 00:00 (renewed s163; renew before it); RM-1267 re-read 2026-12-08 (repo lane on sonnet); MAIN reads
+   agent pins 11-28, repo sonnet trial 12-08; RM-1269 OPEN until RM-1266 ships (two
    back-off + effort results 11-22, agent pins 11-28, repo sonnet trial 12-08; RM-1269 OPEN until RM-1266 ships (two
    DST reds in tests/test_last_match_ingest_gameid.py) or MAIN accepts the s155 read.
 14. Notes: s156 C9 killed tail.exe 32108, 21968, 53468 unconfirmed as its own (record only). Lanes on route entry 1
@@ -151,7 +147,7 @@ FIRST (each session): CPU / FREE RAM glance; `python ops/loop/inbox_tick.py --pe
 --branch main --limit 6`; git fetch + origin/main still an ancestor of main; lane progress files (0 workers = the
 suite line's lane half); vgtray.exe / Riot Client absent (D1).
 
-IN-FLIGHT: ci dispatch 44233027971 (+ the /done push's runs) at the s169 /done; no agent or monitor; lanes halted (lanes halted, see 0; driver ops/loop/control/lane_prompts/s144_lane_driver.py, gitignored;
+IN-FLIGHT: the s170 dispatched full ci run + the /done push's runs; no agent or monitor; lanes halted (see 0; driver ops/loop/control/lane_prompts/s144_lane_driver.py, gitignored;
 status files, stops, PARKED, leak alarm, budget reset: A1101 block 10). RC app DOWN at the s165 read (no autostart, ASK 45;
 launch via WMI only if a read-back needs it). A CS tree session may hold the suite gate (C3: wait).
 
@@ -227,8 +223,8 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
   5af8d6d64:RC-NEXT-SESSION.txt` (Worktrees line).
 - RM-681 PARTIAL: one attended live call per path (truststore MET s133 c6). Origin
   c1/deps-pip-anthropic1-measure was deleted under MAIN 0909; 24c54ec39 stays in the kit bundle.
-- Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free RM-2125 (pin
-  docs/DS_SWEEP_TRACKER.md); next LEDGER 2113 (2112 = s168). ROADMAP top open: PKG (WA9-WA14, WA17), the PKG-6c
+- Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free RM-2126 (pin
+  docs/DS_SWEEP_TRACKER.md); next LEDGER 2115 (2114 = s170). ROADMAP top open: PKG (WA9-WA14, WA17), the PKG-6c
   residue, RM-488, RM-596, RM-597, the RM-681.. rows, the RM-985..RM-2044 lane index, the s154-s165 filings;
   EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45
@@ -295,16 +291,15 @@ tests/*ratchet* and tests/*census* file (memory feedback_new_test_files_meet_rep
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s169 /done): pushes 79d4e92a80..d5976ec80e (8 session commits) then ..f19544818e (census fix + docs + hand-off) then a final hand-off-only commit. Gate: ruff 0.17.3 clean; hygiene trio 14 passed; drift_guard 0 (22 mirror-drift re-copied); census files 228 passed; bot_merge_check clean.
-Gated suite at bb868f9bed -n 4: 21 failed / 88825 passed / 59 errors (ruff-version env, 4 PTH, CLI pin; all addressed). Full suite (2c): dispatch 44233027971 1 failed (census, fixed).
-RC app DOWN, no game. Session file 2.0 MB. Reap: 3 removed (a57c28e7c, ab0f740f6, ad8e5c59f), 8 kept, 6 listed (item F).
+Status (s170 /done): push 3cd97d8cc9..<this /done's HEAD> (4 session commits a28fbe9cdd, ad15cedf11, c69edc2d83, bea359b213 + docs/hand-off). Gate: ruff clean; hygiene trio 14 passed; drift_guard 0;
+merged-tree 9 touched test files + 22 repo-wide guards via the suite gate 834 passed EXIT 0. Push ci = pending (read item A). Full suite (2c): dispatched, not covered by the red nightly
+45781089416 (3cd97d8cc9 differs in non-.md paths). RC app not probed (no game). Reap: 0 removed, 8 kept, 6 listed (item F).
 
 Context: tools/done.md TIER TABLE; tools/landing_sampler.py; .github/workflows/ci.yml; tools/ci_impact_selector.py;
 BACKLOG "S153" .. "S165 filings"; ops/loop/control/lane_prompts/; ops/loop/run_lane.ps1 + fleet_route.py (RM-2116);
 ops/loop/lane_run_ledger.py; docs/LIVE_GAME_GATED_SYNC.md; inbox via ops/loop/inbox_tick.py --pending.
 
-Acceptance: item A runs green (ci, docs-guards, CodeQL, fleet-identity-guard) and the dispatch read; CodeQL #109 / #110 closed; CLI pin re-pinned;
-RM-2113 / RM-2114 closed or hardened; effort-measure re-run before 11-22; RM-2119..RM-2123 worked or carried; O3d split after lane/uiux; lanes re-armed
-only on the operator's word; INBOX-AGREE by 2026-12-31.
+Acceptance: item A runs green (ci, docs-guards, CodeQL, fleet-identity-guard) and the dispatch read; CodeQL #109 / #110 closed; RM-2119..RM-2123, RM-2125 worked or carried;
+O3d split after lane/uiux; lanes re-armed only on the operator's word; INBOX-AGREE renewed by 2026-12-31.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
