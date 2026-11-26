@@ -220,19 +220,64 @@ def test_recovery_after_outage_is_logged_and_rearms(rm, caplog, monkeypatch):
 
 # -- F4: shutdown stops the watchdog promptly and disarms remediation --------
 
+# A missed wake sleeps out the whole interval, so a long one makes it
+# unmistakable: every bound below is capped far under it.
+_WAKE_INTERVAL_S = 600.0
+_WAKE_CAP_S = 25.0
+
+
+def _record_loop_exit(rm, monkeypatch) -> list:
+    """Wrap the instance's _watchdog_loop so the thread stamps the moment
+    it leaves the loop. start_memory_watchdog looks the target up on the
+    instance, so the wrapper is what runs."""
+    exited: list[float] = []
+    loop = rm._watchdog_loop
+
+    def wrapped(interval_s):
+        try:
+            loop(interval_s)
+        finally:
+            exited.append(time.monotonic())
+
+    monkeypatch.setattr(rm, "_watchdog_loop", wrapped)
+    return exited
+
+
 def test_shutdown_wakes_and_stops_the_watchdog(tmp_path, monkeypatch):
+    """The wake latency is measured from shutdown() to the watchdog thread
+    leaving its loop - NOT to shutdown() returning. shutdown() ends with an
+    unconditional process-wide gc.collect(), whose cost scales with the
+    whole test worker's heap (CI 45781089416: 5.17 s late in an xdist
+    worker, the thread already gone), and that is not the property here."""
     rm = ResourceManager(tmp_path)
     monkeypatch.setattr(rm, "_rss_mb", lambda: 100.0)
-    rm.start_memory_watchdog(interval_s=30.0)
+    exited = _record_loop_exit(rm, monkeypatch)
+    rm.start_memory_watchdog(interval_s=_WAKE_INTERVAL_S)
     wd = rm._watchdog
     assert wd is not None and wd.is_alive()
     time.sleep(0.2)  # let it enter its interval wait
     t0 = time.monotonic()
     rm.shutdown()
-    # Capped under the unfixed 30 s interval, so a widened bound still tells fixed from broken.
-    wd.join(min(fleet_test_guard.budget(5.0), 25.0))
-    assert not wd.is_alive(), "watchdog still sleeping out its 30 s interval"
-    assert time.monotonic() - t0 < min(fleet_test_guard.budget(5.0), 25.0)
+    wd.join(min(fleet_test_guard.budget(5.0), _WAKE_CAP_S))
+    assert not wd.is_alive(), "watchdog still sleeping out its interval"
+    assert len(exited) == 1
+    assert exited[0] - t0 < min(fleet_test_guard.budget(5.0), _WAKE_CAP_S)
+
+
+def test_stop_set_between_check_and_wait_is_not_missed(tmp_path, monkeypatch):
+    """Forces the check-then-wait window: _stop is set during the tick, i.e.
+    after the loop's `while` check and before its interval wait. A
+    level-triggered Event.wait returns at once; a sleep, or an edge-style
+    wake, would sit out the 600 s interval."""
+    rm = ResourceManager(tmp_path)
+    monkeypatch.setattr(rm, "_watchdog_tick", rm._stop.set)
+    exited = _record_loop_exit(rm, monkeypatch)
+    t0 = time.monotonic()
+    rm.start_memory_watchdog(interval_s=_WAKE_INTERVAL_S)
+    wd = rm._watchdog
+    wd.join(min(fleet_test_guard.budget(5.0), _WAKE_CAP_S))
+    assert not wd.is_alive(), "stop set mid-tick was missed by the wait"
+    assert exited[0] - t0 < min(fleet_test_guard.budget(5.0), _WAKE_CAP_S)
 
 
 def test_no_remediation_after_shutdown(rm):
