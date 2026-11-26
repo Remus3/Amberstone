@@ -46,7 +46,12 @@ $promptFile = Join-Path $env:TEMP "rc_weekly_hygiene_prompt.txt"
 [System.IO.File]::WriteAllText($promptFile, $prompt, [System.Text.Encoding]::ASCII)
 
 Write-Host "[weekly_hygiene] $stamp start (requested model=$Model; the fleet kit picks)"
-$out = & $pyC $route --caller "weekly_hygiene" --note "weekly-hygiene" --timeout 7200 --prompt-file $promptFile -- --allowedTools $tools --dangerously-skip-permissions *>&1 |
+# RM-2119: the run streams as stream-json into its own per-run file beside the
+# log (the kit's log_path=), so the rc-cause line names the last tool.
+$logDir = Split-Path -Parent $log
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
+$streamLog = [System.IO.Path]::ChangeExtension($log, ".stream.jsonl")
+$out = & $pyC $route --caller "weekly_hygiene" --note "weekly-hygiene" --timeout 7200 --prompt-file $promptFile --log-path $streamLog -- --allowedTools $tools --dangerously-skip-permissions *>&1 |
     Tee-Object -FilePath $log
 $code = $LASTEXITCODE
 Write-Host "[weekly_hygiene] exit=$code log=$log"

@@ -1271,6 +1271,26 @@ SDK_CALLER = "loop_executor"
 _PREVIEW_EXE = "claude"
 
 
+def _result_from_stream_log(path):
+    """The LAST `result` record of a stream-json run log, or None when the log is
+    absent, unreadable or holds none (the caller then parses stdout, as before).
+    Inline, not ops/loop/usage_cause.result_from_log: this module is loaded by path."""
+    import json
+    found = None
+    try:
+        with Path(path).open(encoding="utf-8", errors="replace") as fh:
+            for ln in fh:
+                try:
+                    ev = json.loads(ln)
+                except ValueError:
+                    continue
+                if isinstance(ev, dict) and ev.get("type") == "result":
+                    found = ev
+    except OSError:
+        return None
+    return found
+
+
 class SdkExecutor:
     """Headless `claude -p` channel. No window, no window title, no typing.
 
@@ -1385,8 +1405,14 @@ class SdkExecutor:
         # stdin=True), exactly the `-p --input-format text` shape this channel
         # always used.
         fr = _fleet_route_module()
+        # RM-2119: the run streams as stream-json into its own per-cycle file (the
+        # kit's log_path=), so the rc-cause line names the last tool; the result is
+        # read back from that log below, stdout being the fallback.
+        stream_log = str(cfg_repo_root(self.cfg) / "logs" /
+                         f"sdk_cycle{cycle}_{int(time.time())}.stream.jsonl")
         try:
             _line, proc = fr.spawn(prompt, caller=SDK_CALLER, note=SDK_NOTE,
+                                   log_path=stream_log,
                                    writes_code=True, bare=False, extra=plan["extra"],
                                    cwd=str(cfg_repo_root(self.cfg)),
                                    timeout=timeout, kind="build", model=plan["model"],
@@ -1422,7 +1448,9 @@ class SdkExecutor:
         rc = getattr(proc, "returncode", None) if proc is not None else None
 
         try:
-            res = _json.loads(out.strip() or "{}")
+            res = _result_from_stream_log(stream_log)
+            if res is None:
+                res = _json.loads(out.strip() or "{}")
         except ValueError:
             head = (out or err or "").strip().replace("\n", " ")[:200]
             self.log(f"cycle {cycle}: sdk returned unparseable stdout: {head}")

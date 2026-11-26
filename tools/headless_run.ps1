@@ -56,7 +56,13 @@ for ($i = 1; $i -le $MaxAttempts; $i++) {
     # Re-checked EVERY attempt: deleting the var stops the retry loop too, and a
     # downed proxy exits 3 here instead of retrying another way.
     [System.IO.File]::WriteAllText($promptFile, $p, [System.Text.Encoding]::ASCII)
-    & $pyC $route --caller "headless_run" --note "headless-upgrade" --writes-code --timeout 21600 --prompt-file $promptFile -- --allowedTools $tools --dangerously-skip-permissions
+    # RM-2119: each attempt streams its claude output as stream-json into its own
+    # file under logs\ (the kit's log_path=), so the rc-cause line names the last
+    # tool. logs\ is gitignored; the .stream.jsonl name matches no lane log glob.
+    $logDir = Join-Path $repo "logs"
+    if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
+    $streamLog = Join-Path $logDir ("headless_run_{0}_attempt{1}.stream.jsonl" -f (Get-Date -Format "yyyyMMdd_HHmmss"), $i)
+    & $pyC $route --caller "headless_run" --note "headless-upgrade" --writes-code --timeout 21600 --prompt-file $promptFile --log-path $streamLog -- --allowedTools $tools --dangerously-skip-permissions
     $code = $LASTEXITCODE
     if ($code -eq 3) {
         Write-Host "[headless_run] headless route refused - spawn skipped, see logs\headless_route.log"
