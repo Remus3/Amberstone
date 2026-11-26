@@ -6,6 +6,16 @@
 
 ---
 
+# 2026-11-26 - session 171: s170 ci red reverted (RM-2126 route B), dependabot #34, RM-2125 / RM-2119 shipped (LEDGER 2115)
+
+- Shipped (pushed at /done): `849c912387` revert of `ad15cedf11` (the DDragon 16.23.1 refresh failed 172 live_rows setup errors without the DS bump), `8d6ae99667` dependabot #34 re-applied, `06e35ae4de` RM-2125 gc.collect(1), `13d87fbb03` + `d345d5aed5` RM-2119, `c20fd7314c`, BACKLOG flips.
+- Gated dual suite green at `28868207cf` (-n 2, 88947 passed). RM-2105 closed (no defect); RM-2127 filed. Recycle Bin purge unattributable (closed).
+- What's next: RM-2126 (DDragon 16.23.1 refresh + DS bump 16.22.1 -> 16.23.1 together as ONE batch, template `a14fc853ea`); read the push ci first.
+- Do NOT redo: the revert (never merge a patch-day-ddragon-sync 16.23.1 proposal alone), the RM-2125 daemon-thread variant (refuted), the Recycle Bin hunt.
+- Open: docs/_archive is gitignored (.gitignore:23) vs CLAUDE.md "tracked copy of an outbound note goes to docs/_archive"; redundant FIX note 6f5a180f.
+
+---
+
 # 2026-11-26 - session 170: nightly red fixed forward, CodeQL #109/#110, DDragon 16.23.1, CLI pin (LEDGER 2114)
 
 - Shipped (local, pushed at /done): `a28fbe9cdd` CLI pin 2.1.332, `ad15cedf11` DDragon 16.22.1 -> 16.23.1, `c69edc2d83` ReDoS CodeQL #109/#110, `bea359b213` watchdog-wake test measures loop exit not shutdown (nightly 45781089416 red = gc.collect tail).
@@ -23,14 +33,3 @@
 - Operator: no status-board render unless asked; G3 branch protection approved; lanes stay halted until the operator says.
 - What's next: read the push ci / codeql / dispatch results, then the hand-off NEXT ACTION; CLI pin re-pin.
 - Do NOT redo: kit v31/v32 landing, the CodeQL / minimatch fixes, the E-root move.
-
----
-
-# 2026-11-16 - session 168: CI red (a) fixed `b4f1195fc6`, (b) flake, (c) kit note_pause bug; kit v31 built, NOT landed (LEDGER 2112)
-
-- PIE807 in tests/test_rc_facts_health_pid_rm2107.py:88 fixed (`b4f1195fc6`, pushed at /done).
-- note_pause red = KIT bug (`round(now, 3)` -> negative age); test fix 77fadb1c on branch worktree-agent-a0b2d535c77f34922; report to MAIN in the v31 ANSWER.
-- Kit v31 adoption a6ccfd7073 on that branch; gated -n 2 suite EXIT 1 (22 failed / 59 errors); kit-caused: tests/test_usage_cause.py (2), probably the s144p600 ratchet. Main reset to b4f1195fc6.
-- NEXT: fix those reds on the branch, gated suite, land via one fleet_gitlock commit, send the ONE ANSWER (HOP 2), then mark_work_done.
-- -n 4 suite was reaped by the Claude Code background-shell memory reaper at 91 percent; -n 2 completed (52m). Do NOT re-investigate (memory reference_cc_background_shell_memory_reaper).
-- RM-2124 filed (wiki_fetch refusal tests are date-dependent at midnight).

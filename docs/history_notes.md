@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-16 - session 168: CI red (a) fixed `b4f1195fc6`, (b) flake, (c) kit note_pause bug; kit v31 built, NOT landed (LEDGER 2112)
+
+- PIE807 in tests/test_rc_facts_health_pid_rm2107.py:88 fixed (`b4f1195fc6`, pushed at /done).
+- note_pause red = KIT bug (`round(now, 3)` -> negative age); test fix 77fadb1c on branch worktree-agent-a0b2d535c77f34922; report to MAIN in the v31 ANSWER.
+- Kit v31 adoption a6ccfd7073 on that branch; gated -n 2 suite EXIT 1 (22 failed / 59 errors); kit-caused: tests/test_usage_cause.py (2), probably the s144p600 ratchet. Main reset to b4f1195fc6.
+- NEXT: fix those reds on the branch, gated suite, land via one fleet_gitlock commit, send the ONE ANSWER (HOP 2), then mark_work_done.
+- -n 4 suite was reaped by the Claude Code background-shell memory reaper at 91 percent; -n 2 completed (52m). Do NOT re-investigate (memory reference_cc_background_shell_memory_reaper).
+- RM-2124 filed (wiki_fetch refusal tests are date-dependent at midnight).
+
+---
+
 # 2026-11-15 - session 167: lanes HALTED (operator order), /done only (LEDGER 2111)
 
 - Drain via S144_LANES_STOP: rotator pid 16308 exit 0 (331 cycles), nothing killed, 8 stop files armed, lane worktrees clean. No code commit; origin/main = d49e8440f6.
