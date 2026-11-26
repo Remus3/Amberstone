@@ -292,7 +292,7 @@ STATUS, CONTEXT, ACCEPTANCE
 Status (s171 /done): push cf215e572d..<this /done's HEAD> (9 session commits 3139db13fe 8d6ae99667 06e35ae4de 13d87fbb03 d345d5aed5 14c5cdffed c20fd7314c 849c912387
 28868207cf + docs/hand-off). Gate: ruff clean; hygiene trio 14 passed; drift_guard 0; whole dual suite GREEN at 28868207cf "88947 passed, 202 skipped, 5 xfailed, 50 warnings,
 21450 subtests passed in 3244.42s" rc 0 via fleet_suite_gate -n 2 (one-run departure from -n 4: the -n 4 run was reaped by the memory reaper at ~90 percent). Full suite (2c):
-covered by that local run (docs-only delta). Push ci / PR #34 close / bot_merge_check: see the line below. RC app not probed (no game). Reap: 0 removed, 7 kept, 2 listed (item E).
+covered by that local run (docs-only delta). Pushed cf215e572d..b0ba53d0f4; this hand-off line rides a docs-only local commit, unpushed by design (rides the next push). Push runs ci 45903006209 / docs-guards 45903006341 / codeql 45903006162 / fleet-identity-guard 45903006352 = pending at /done (read them first). PR #34 closed; bot_merge_check clean (10 commits). RC app not probed (no game). Reap: 0 removed, 7 kept, 2 listed (item E).
 
 Context: tools/done.md TIER TABLE; tools/landing_sampler.py; .github/workflows/ci.yml; tools/ci_impact_selector.py;
 BACKLOG "S153" .. "S165 filings"; ops/loop/control/lane_prompts/; ops/loop/run_lane.ps1 + fleet_route.py (RM-2116);
