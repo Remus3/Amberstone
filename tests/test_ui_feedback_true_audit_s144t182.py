@@ -663,3 +663,40 @@ def test_pct_rule_pathological_digit_runs_stay_fast() -> None:
         if elapsed > 0.5:
             slow.append((text[:6], round(elapsed, 2)))
     assert not slow, slow
+
+
+# ---- CodeQL py/polynomial-redos alert 109 (s170) ----------------------------
+# Alert 109 sits on `self.at.match(text, run.start())`: matched at an offset
+# through an attribute, the `(\d+(?:\.\d+)?)\s*...` regex is modelled as a
+# search, so `\d+` and `\s*` read as retried from every char of a long run.
+# Only the single-quantifier run scanner may now carry an unbounded quantifier;
+# the number check, whitespace skip and unit word are bounded / plain code.
+def test_pct_rule_has_one_unbounded_quantifier_the_run_scanner() -> None:
+    rule = ufb._RE_PCT
+    sources = [v.pattern for v in vars(rule).values() if isinstance(v, re.Pattern)]
+    assert sources
+    looping = [s for s in sources if s != r"[\d.]+" and ("+" in s or "*" in s)]
+    assert not looping, looping
+
+
+def test_pct_rule_whitespace_and_unicode_inputs_match_the_prior_pattern() -> None:
+    texts = [
+        "font 5 " + chr(0xA0) + "% bigger", "font 5" + chr(0x2028) + "pct", "x 1\t\n%",
+        chr(0x0663) + "0% bigger", "5PERCENT", "5 percentage", "5 pcts", "5pct_",
+        "1." + chr(0x0661) + "%", "0 " * 50 + "%", "", "5" + chr(0x1C) + "%",
+        "5 PeRcEnTs!", "2.%", "3..4%",
+    ]
+    diffs = [t for t in texts if _pct_view(ufb._RE_PCT.search(t)) != _pct_view(_OLD_PCT.search(t))]
+    assert not diffs, diffs
+
+
+def test_pct_rule_pathological_space_runs_stay_fast() -> None:
+    n = 50_000
+    slow = []
+    for text in ("0 " * n + "x", "1" + " " * n + "x", ("9" + " " * 50) * 2000 + "q"):
+        start = time.perf_counter()
+        ufb._RE_PCT.search(text)
+        elapsed = time.perf_counter() - start
+        if elapsed > 0.5:
+            slow.append((text[:6], round(elapsed, 2)))
+    assert not slow, slow

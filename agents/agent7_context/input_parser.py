@@ -97,11 +97,29 @@ class ParseResult:
 # optional separator char whose own `\s*` starts after a required char, so it
 # is unambiguous) and a line (`[^\n]+` then a lookahead at the end), each tried
 # once at a known offset. No quantifier is ever retried against another.
+#
+# s170 (CodeQL alert 110): the head reached through `self.head.match(text)` is
+# modelled as a SEARCH, so its leading `\s*` read as retried from every space of
+# a long run before a missing keyword. Each head now carries an explicit `^`
+# (offset 0 in any model). The line regex had the same retried shape (`[^\n]+`
+# then a lookahead failing on an interior newline) and is now _line_end, a
+# single newline lookup in code. Pinned by tests/test_input_parser_redos_codeql.py.
 _SEP_AGENT = re.compile(r"\s*(?:[,:-]\s*)?")
 _SEP_NOTE = re.compile(r"\s*(?:[:,]\s*)?")
-# `.+$` of the prior patterns: non-newline chars up to the end, or up to a final
-# newline (`$` without MULTILINE).
-_LINE = re.compile(r"[^\n]+(?=\n?\Z)")
+
+
+def _line_end(text: str, pos: int) -> int | None:
+    """End of ``.+$`` matched at ``pos`` (``$`` without MULTILINE), or None.
+
+    One or more non-newline chars running to the end of the text, or to a
+    final newline that is the last char.
+    """
+    nl = text.find("\n", pos)
+    if pos >= len(text) or nl == pos:
+        return None
+    if nl == -1:
+        return len(text)
+    return nl if nl == len(text) - 1 else None
 
 
 class _RuleMatch:
@@ -143,10 +161,10 @@ class _HeadSepLine:
             return None
         groups = head.groupdict()
         sep_end = self.sep.match(text, head.end()).end()
-        line = _LINE.match(text, sep_end)
-        if line is not None:
-            groups[self.rest_name] = line.group()
-            return _RuleMatch(groups, line.end())
+        line_end = _line_end(text, sep_end)
+        if line_end is not None:
+            groups[self.rest_name] = text[sep_end:line_end]
+            return _RuleMatch(groups, line_end)
         if sep_end != len(text):
             return None
         # Separators reach the end: the rest is the last char before the end,
@@ -163,12 +181,12 @@ class _HeadSepLine:
 
 
 _RE_AGENT_DIRECT = _HeadSepLine(
-    re.compile(r"\s*agent\s*(?P<n>[0-7])", re.IGNORECASE), _SEP_AGENT, "rest",
+    re.compile(r"^\s*agent\s*(?P<n>[0-7])", re.IGNORECASE), _SEP_AGENT, "rest",
 )
 _RE_AUDIT = re.compile(r"\baudit\b.*\b(now|full|pass)\b|\bfull\s+audit\b", re.IGNORECASE)
 _RE_STATUS = re.compile(r"\b(status|queue|what'?s\s+(in\s+)?(the\s+)?queue|what\s+is\s+pending)\b", re.IGNORECASE)
 _RE_NOTE = _HeadSepLine(
-    re.compile(r"\s*(?:note|remember|remind\s+me)", re.IGNORECASE), _SEP_NOTE, "body",
+    re.compile(r"^\s*(?:note|remember|remind\s+me)", re.IGNORECASE), _SEP_NOTE, "body",
 )
 _RE_RESTART_RC = re.compile(r"^\s*(?:please\s+)?restart\s+(?:rc|the\s+app|riot\s*commander)\s*$", re.IGNORECASE)
 _RE_DESTRUCTIVE = re.compile(r"\b(?:rm\s+-rf|drop\s+table|delete\s+all|wipe\b|truncate\b|nuke\b)", re.IGNORECASE)

@@ -126,20 +126,54 @@ _RE_FONT_SHRINK = re.compile(
 # digit-or-dot runs once (`[\d.]+`, a single quantifier that cannot fail) and
 # matches the number only at the start of a run that begins with a digit,
 # the exact set of start positions the lookbehind allowed.
+#
+# s170 (CodeQL alert 109): the per-run `self.at.match(text, run.start())` was
+# itself modelled as a search, so its `\d+` and `\s*` read as retried. Because
+# no char the number may be followed by (`\s`, `%`, `p`) is a digit or a dot,
+# `(\d+(?:\.\d+)?)` at a run start matches only the WHOLE run, so the number is
+# checked in code (digit-led run, at most one dot, no empty part), the
+# whitespace after it is skipped with str.isspace (the same set as `\s` on str)
+# and only the bounded unit word is a regex. The run scanner is the one
+# unbounded quantifier, and it cannot fail.
+class _PctMatch:
+    """The slice of ``re.Match`` that ``_try_font_size`` and the tests use."""
+
+    __slots__ = ("_number", "_span")
+
+    def __init__(self, number: str, span: tuple[int, int]) -> None:
+        self._number = number
+        self._span = span
+
+    def group(self, index: int = 0) -> str:
+        if index == 1:
+            return self._number
+        raise IndexError("no such group")
+
+    def span(self) -> tuple[int, int]:
+        return self._span
+
+
 class _PctSearch:
     """``re.Pattern.search`` for a whole percentage; group(1) is the number."""
 
     def __init__(self) -> None:
         self.run = re.compile(r"[\d.]+")
-        self.at = re.compile(r"(\d+(?:\.\d+)?)\s*(?:%|percents?\b|pct\b)", re.IGNORECASE)
+        self.unit_word = re.compile(r"(?:percents?|pct)\b", re.IGNORECASE)
 
-    def search(self, text: str) -> re.Match[str] | None:
+    def search(self, text: str) -> _PctMatch | None:
         for run in self.run.finditer(text):
-            if text[run.start()] == ".":
+            number = run.group()
+            parts = number.split(".")
+            if len(parts) > 2 or not all(parts):
                 continue
-            m = self.at.match(text, run.start())
-            if m is not None:
-                return m
+            end = run.end()
+            while end < len(text) and text[end].isspace():
+                end += 1
+            if end < len(text) and text[end] == "%":
+                return _PctMatch(number, (run.start(), end + 1))
+            unit = self.unit_word.match(text, end)
+            if unit is not None:
+                return _PctMatch(number, (run.start(), unit.end()))
         return None
 
 

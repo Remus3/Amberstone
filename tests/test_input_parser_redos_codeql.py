@@ -180,3 +180,44 @@ def test_pathological_runs_of_each_separator_class_stay_fast():
         if elapsed > 0.5:
             slow.append((name, text[:12], round(elapsed, 2)))
     assert not slow, slow
+
+
+# ---- CodeQL py/polynomial-redos alert 110 (s170) -----------------------------
+# Alert 110 sits on `self.head.match(text)` in _HeadSepLine.match: the head
+# regex reached through an attribute is modelled as a SEARCH, so its leading
+# `\s*` reads as retried from every space of a long run before a missing
+# keyword (quadratic). An explicit `^` pins the head to offset 0 in any model.
+# The `.+$` line regex had the same retried shape (`[^\n]+` then a lookahead
+# that fails on an interior newline); it is now a newline lookup in code.
+
+def test_rule_heads_are_explicitly_anchored():
+    unanchored = [(name, getattr(ip, name).head.pattern)
+                  for name in ("_RE_AGENT_DIRECT", "_RE_NOTE")
+                  if not getattr(ip, name).head.pattern.startswith(("^", "\\A"))]
+    assert not unanchored, unanchored
+
+
+def test_rest_line_is_not_a_retried_regex():
+    assert not hasattr(ip, "_LINE")
+    for name in ("_RE_AGENT_DIRECT", "_RE_NOTE"):
+        sources = _pattern_sources(getattr(ip, name))
+        assert len(sources) == 2, (name, sources)     # head + separator only
+
+
+def test_search_shaped_pathological_inputs_stay_fast():
+    n = 100_000
+    shapes = [
+        ("_RE_AGENT_DIRECT", " " * n + "x"),
+        ("_RE_AGENT_DIRECT", " " * n + "agent"),
+        ("_RE_AGENT_DIRECT", "agent0 " + "x" * n + "\n\ny"),
+        ("_RE_NOTE", " " * n + "x"),
+        ("_RE_NOTE", "note " + "x" * n + "\ny\n"),
+    ]
+    slow = []
+    for name, text in shapes:
+        start = time.perf_counter()
+        getattr(ip, name).match(text)
+        elapsed = time.perf_counter() - start
+        if elapsed > 0.5:
+            slow.append((name, text[:12], round(elapsed, 2)))
+    assert not slow, slow
