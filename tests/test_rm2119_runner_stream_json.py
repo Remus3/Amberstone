@@ -86,6 +86,11 @@ def _fake_fr(calls, write_result, stdout=""):
             reason = "x"
 
         @staticmethod
+        def _usage_cause():
+            from ops.loop import usage_cause
+            return usage_cause
+
+        @staticmethod
         def spawn(prompt, **kw):
             calls.append(kw)
             if write_result is not None and kw.get("log_path"):
