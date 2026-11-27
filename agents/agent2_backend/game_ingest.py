@@ -235,9 +235,8 @@ def _infer_win(task_payload: dict[str, Any]) -> int | None:
                         return 0
                 elif isinstance(v, bool):
                     return int(v)
-                elif isinstance(v, (int, float)):
-                    if v in (0, 1):
-                        return int(v)
+                elif isinstance(v, (int, float)) and v in (0, 1):
+                    return int(v)
     return None
 
 
@@ -252,9 +251,8 @@ def _count(value: Any) -> int | None:
             n = int(v)
     elif isinstance(value, int):
         n = value
-    elif isinstance(value, float):
-        if math.isfinite(value) and value.is_integer():
-            n = int(value)
+    elif isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        n = int(value)
     if n is None or n < 0 or n > _MAX_KDA_COUNT:
         return None
     return n

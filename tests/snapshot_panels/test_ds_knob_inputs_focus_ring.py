@@ -25,6 +25,7 @@ Stat Sandbox strip is wired once and its readout repaints beside it.
 """
 import pytest
 
+from tests.snapshot_panels._champ_names import wait_for_champ_names
 from tests.snapshot_panels.conftest import _WS_STUB
 
 _THEMES = ["hextech", "terminal", "ember", "bloodmoon", "moonlit", "arcane"]
@@ -77,16 +78,7 @@ def _open(mock_server, pw_browser, theme="hextech"):
         mock_server.url + f"/?ui_mock=1&mode=sr&theme={theme}#active-match",
         wait_until="domcontentloaded", timeout=15_000,
     )
-    page.wait_for_function(
-        """async () => {
-          try {
-            const m = await import('/js/panels/cc_conditional_pressure.js');
-            const n = m.resolveChampNames ? m.resolveChampNames([222]) : [];
-            return !!(n && n.length && n[0]);
-          } catch (e) { return false; }
-        }""",
-        timeout=10_000,
-    )
+    wait_for_champ_names(page, [222])
     page.evaluate(_MOUNT)
     page.wait_for_function(
         "(() => { const a = document.querySelectorAll("

@@ -15,6 +15,7 @@ Drives ONE mount through champ 222 (Jinx) then 22 (Ashe) with NO reset in
 between, and asserts the strip re-renders empty for 22 and that an edit
 then lands under champion 22 (observed as the knob in 22's fetch URL).
 """
+from tests.snapshot_panels._champ_names import wait_for_champ_names
 
 _STUB = """
 (function () {
@@ -60,16 +61,7 @@ def test_knob_edit_follows_champion_change(mock_server, pw_browser):
     page.on("pageerror", lambda err: errors.append(str(err)))
     page.goto(mock_server.url + "/?ui_mock=1&mode=sr#champ-select",
               wait_until="domcontentloaded", timeout=15_000)
-    page.wait_for_function(
-        """async () => {
-          try {
-            const m = await import('/js/panels/cc_conditional_pressure.js');
-            const n = m.resolveChampNames([222, 22]);
-            return !!(n && n.length === 2 && n[0] && n[1]);
-          } catch (e) { return false; }
-        }""",
-        timeout=10_000,
-    )
+    wait_for_champ_names(page, [222, 22])
     try:
         page.evaluate(
             """async () => {

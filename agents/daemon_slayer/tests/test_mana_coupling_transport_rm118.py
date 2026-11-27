@@ -204,11 +204,10 @@ def _body_keys_by_route() -> dict[str, frozenset[str]]:
                         if isinstance(a, ast.Constant)
                         and isinstance(a.value, str)
                     )
-            elif isinstance(node, ast.Compare) and isinstance(
-                node.left, ast.Constant
-            ):
-                if isinstance(node.left.value, str):
-                    keys.add(node.left.value)
+            elif (isinstance(node, ast.Compare)
+                  and isinstance(node.left, ast.Constant)
+                  and isinstance(node.left.value, str)):
+                keys.add(node.left.value)
         out[path] = frozenset(keys)
     return out
 

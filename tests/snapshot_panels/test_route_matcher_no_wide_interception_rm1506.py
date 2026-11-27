@@ -4,7 +4,7 @@ RM-1506: a callable Playwright route matcher sends EVERY request of its context
 through the Python process, so a snapshot context's route must be a string glob
 or a compiled regex.
 
-playwright._impl._helper.RouteHandler.prepare_interception_patterns cannot hand a
+Playwright's RouteHandler.prepare_interception_patterns cannot hand a
 function to the driver, so one callable matcher widens the whole context's
 interception to the glob **/*. RM-1080 installed two of them on every snapshot
 context, and a dashboard page load makes about 225 requests. Measured 2026-11-05
@@ -17,13 +17,18 @@ the GIL the mock server and the Playwright dispatcher both need.
 test_a_page_load_sends_only_the_font_requests_to_python pins the behaviour on a
 real browser, the pattern test pins Playwright's own decision, and the AST guard
 stops a new callable matcher before it reaches a browser.
+
+s172: RouteHandler sat in playwright._impl._helper up to 1.64 and moved to
+playwright._impl.network in 1.65 (Dependabot #34), so a module-level import of
+either path breaks collection on the other. _interception_patterns asks the class
+of the live route handlers instead: that is the class the driver call is built
+from on whichever Playwright is installed.
 """
 import ast
 import re
 from urllib.parse import urlsplit
 
 import pytest
-from playwright._impl._helper import RouteHandler
 
 from tests._repo_walk import REPO_ROOT, iter_repo_files, relative_posix, self_check
 from tests.snapshot_panels import _route_match, _webfont_stub
@@ -37,12 +42,21 @@ def _font_host(url):
             or _webfont_stub.url_has_host(url, _webfont_stub.FACE_HOST))
 
 
+def _interception_patterns(routes):
+    """Playwright's own interception patterns for ROUTES, decided by the
+    RouteHandler class those live handlers were built from."""
+    assert routes, "premise: a route is installed"
+    handler_cls = type(routes[0])
+    assert handler_cls.__name__ == "RouteHandler", handler_cls
+    return handler_cls.prepare_interception_patterns(routes)
+
+
 def test_a_fixture_context_never_asks_for_wide_interception(pw_browser):
     ctx = pw_browser.new_context()
     try:
         routes = ctx._impl_obj._routes
         assert len(routes) == 2, "premise: both font routes are installed"
-        patterns = RouteHandler.prepare_interception_patterns(routes)
+        patterns = _interception_patterns(routes)
     finally:
         ctx.close()
     assert len(patterns) == 2, patterns
@@ -54,7 +68,7 @@ def test_a_stub_page_route_never_asks_for_wide_interception(pw_browser):
     page = ctx.new_page()
     try:
         _webfont_stub.route_stub_webfont(page, lambda route: None)
-        patterns = RouteHandler.prepare_interception_patterns(page._impl_obj._routes)
+        patterns = _interception_patterns(page._impl_obj._routes)
     finally:
         page.close()
         ctx.close()

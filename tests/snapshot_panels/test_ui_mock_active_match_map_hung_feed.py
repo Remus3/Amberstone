@@ -31,6 +31,7 @@ import json
 
 from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_ui_mock_active_match_map_stall import (
+    _COUNT_JS,
     _FRESH,
     _MAP_PNG,
     _ROSTER_FRESH,
@@ -38,31 +39,9 @@ from tests.snapshot_panels.test_ui_mock_active_match_map_stall import (
     _ROSTER_STALE,
     _STALLED,
     _STATUS_JS,
+    _advance_answered,
     _vs,
 )
-
-_COUNT_JS = r"""
-(() => {
-  const s = { open: 0, max: 0, started: 0 };
-  window.__amVs = s;
-  const orig = window.fetch;
-  window.fetch = function (input, opts) {
-    const p = orig.apply(this, arguments);
-    const url = String((input && input.url) || input);
-    if (url.indexOf('/api/vision-state') < 0) return p;
-    if (String(new Error().stack).indexOf('active_match.js') < 0) return p;
-    s.started += 1;
-    s.open += 1;
-    if (s.open > s.max) s.max = s.open;
-    let closed = false;
-    const close = () => { if (!closed) { closed = true; s.open -= 1; } };
-    const sig = opts && opts.signal;
-    if (sig) sig.addEventListener('abort', close);
-    p.then(close, close);
-    return p;
-  };
-})();
-"""
 
 
 class _Feed:
@@ -133,7 +112,7 @@ def test_a_live_feed_keeps_one_request_open_at_a_time(
     feed = _Feed("live")
     ctx, page, errors = _open(pw_browser, mock_server, feed)
     try:
-        got = _advance(page, 6_000)
+        got = _advance_answered(page, 6_000)
         assert got == _FRESH, got
         c = _counts(page)
         assert c["started"] >= 8, c

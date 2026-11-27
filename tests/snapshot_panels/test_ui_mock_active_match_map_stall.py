@@ -152,12 +152,46 @@ class _Feed:
                       body=json.dumps(self.shape(t_now)))
 
 
-def _open(pw_browser, mock_server, feed, mode="mayhem", fresh=_FRESH):
+# The open-request count, measured in the page: wraps window.fetch and counts
+# the /api/vision-state requests active_match.js sends (by the caller's stack;
+# main.js's Home minimap polls the same route) until each settles or its
+# signal aborts. test_ui_mock_active_match_map_hung_feed.py reads it too.
+_COUNT_JS = r"""
+(() => {
+  const s = { open: 0, max: 0, started: 0 };
+  window.__amVs = s;
+  const orig = window.fetch;
+  window.fetch = function (input, opts) {
+    const p = orig.apply(this, arguments);
+    const url = String((input && input.url) || input);
+    if (url.indexOf('/api/vision-state') < 0) return p;
+    if (String(new Error().stack).indexOf('active_match.js') < 0) return p;
+    s.started += 1;
+    s.open += 1;
+    if (s.open > s.max) s.max = s.open;
+    let closed = false;
+    const close = () => { if (!closed) { closed = true; s.open -= 1; } };
+    const sig = opts && opts.signal;
+    if (sig) sig.addEventListener('abort', close);
+    p.then(close, close);
+    return p;
+  };
+})();
+"""
+
+# web/js/panels/active_match.js _AM_TICK_MS: the poll's setInterval period.
+_TICK_MS = 500
+
+
+def _open(pw_browser, mock_server, feed, mode="mayhem", fresh=_FRESH,
+          count=False):
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(viewport={"width": 1920, "height": 920})
     page = ctx.new_page()
     page.clock.install()
     page.add_init_script(_WS_STUB)
+    if count:
+        page.add_init_script(_COUNT_JS)
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
     page.route("**/api/vision-state*", feed)
@@ -179,22 +213,51 @@ def _open(pw_browser, mock_server, feed, mode="mayhem", fresh=_FRESH):
     return ctx, page, errors
 
 
-def _advance(page, ms):
-    """Run the page clock forward, then let the polls it fired land."""
-    page.clock.run_for(ms)
+def _land(page):
+    """Let the polls the clock fired land, then read the status line."""
     page.wait_for_timeout(400)
     page.clock.run_for(500)
     page.wait_for_timeout(400)
     return page.evaluate(_STATUS_JS)
 
 
+def _advance(page, ms):
+    """Run the page clock forward, then let the polls it fired land."""
+    page.clock.run_for(ms)
+    return _land(page)
+
+
+def _advance_answered(page, ms):
+    """Run the page clock forward one poll tick at a time, and let each
+    tick's request settle before the next tick fires.
+
+    s172: one clock.run_for(ms) fires every tick in the span, and a tick that
+    finds a request still open sends nothing, so how many requests a long run
+    sends depends on how much REAL time the run spends between timers. The
+    Playwright 1.64 clock yielded a real setTimeout after each timer;
+    1.65 (Dependabot #34) yields a postTask, so a 6 s run sent 6 or 7
+    requests where it had sent 8 or more, and on the CI runner a 15 s run
+    reached only 6 hits. Stepping tick by tick and waiting on the page's own
+    open-request count makes the number of requests a property of the poll,
+    not of the clock's yield or the runner's speed. Needs _open(count=True).
+    """
+    assert page.evaluate("() => !!window.__amVs"), (
+        "premise: the request counter is installed"
+    )
+    for _ in range(ms // _TICK_MS):
+        page.clock.run_for(_TICK_MS)
+        page.wait_for_function("() => window.__amVs.open === 0",
+                               timeout=5_000)
+    return _land(page)
+
+
 def test_a_live_feed_keeps_its_counts(mock_server, pw_browser):
     """Positive control: t_now moves on every poll, so 15 s on the line
     still paints the counts."""
     feed = _Feed("live")
-    ctx, page, errors = _open(pw_browser, mock_server, feed)
+    ctx, page, errors = _open(pw_browser, mock_server, feed, count=True)
     try:
-        got = _advance(page, 15_000)
+        got = _advance_answered(page, 15_000)
         assert got == _FRESH, got
         assert feed.hits > 10, feed.hits
     finally:

@@ -299,10 +299,10 @@ def _route_defs() -> dict[str, bool]:
                 idx = sub.slice
                 if isinstance(idx, ast.Constant) and idx.value == FLAG:
                     reads = True
-            elif isinstance(sub, ast.Compare) and isinstance(sub.left, ast.Constant):
+            elif (isinstance(sub, ast.Compare) and isinstance(sub.left, ast.Constant)
+                  and sub.left.value == FLAG):
                 # defensive: the `"key" in body` tri-state idiom
-                if sub.left.value == FLAG:
-                    reads = True
+                reads = True
         out[node.name] = reads and forwards
     return out
 

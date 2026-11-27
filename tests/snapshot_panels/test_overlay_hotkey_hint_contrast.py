@@ -51,13 +51,10 @@ _EXPECT = {
     "tft": {"w-launcher"},
 }
 
-_CHOICES = """async () => {
-  const C = await import('/js/panels/coach_choices.js');
-  C.renderCoachChoices({coach: {choices: [
+_PICK = """{coach: {choices: [
     {key: 'A', label: 'Trade', confidence: 'high'},
-    {key: 'B', label: 'Back off', confidence: 'mid'}]}});
-  (await import('/js/lib/overlay_layout.js')).placeOverlayField();
-}"""
+    {key: 'B', label: 'Back off', confidence: 'mid'}]}}"""
+
 
 # One synchronous read per idle state: no poll can repaint between the
 # reminder reads and the opacity reads.
@@ -95,6 +92,33 @@ _READ = """(idle) => {
   }
   return out;
 }"""
+
+# s172: the live and the idle read run in ONE synchronous turn, right after
+# the synthetic A/B pick is rendered and the field placed. The app's own
+# render tick repaints the coach choices from the (empty) mock state about 6 s
+# after boot, which drops the pick and its reminder; under CI load that tick
+# landed between two separate reads (ember-sr: w-choices in the live read,
+# gone from the idle one; reproduced locally by waiting 7 s between them).
+# Both modules load first, so nothing awaits between the render and the reads.
+_READ_PAIR = """async (sr) => {
+  const C = await import('/js/panels/coach_choices.js');
+  const L = await import('/js/lib/overlay_layout.js');
+  const read = """ + _READ + """;
+  if (sr) C.renderCoachChoices(""" + _PICK + """);
+  L.placeOverlayField();
+  return {live: read(0), idle: read(1)};
+}"""
+
+# The reminders the app itself shows before the pick goes in (the DS
+# Controls pane is unhidden by its own renderer, after the hint is attached).
+_SHOWN_JS = """(sels) => sels.every((s) => {
+  const h = document.querySelector(s + ' > .ovx-hotkey-hint');
+  return !!h && h.checkVisibility();
+})"""
+_SHOWN = {
+    "sr": ["#w-launcher", "#am-pane-ovds", "#view-active-match .am-pane-build"],
+    "tft": ["#w-launcher"],
+}
 
 
 def _lum(c):
@@ -151,12 +175,9 @@ def _measure(mock_server, pw_browser, theme, mode):
             "() => document.body.dataset.shell === 'overlay'"
             " && !!document.querySelector('#w-launcher > .ovx-hotkey-hint')",
             timeout=10_000)
-        if mode != "tft":
-            page.wait_for_selector("#am-pane-ovds > .ovx-hotkey-hint",
-                                   state="attached", timeout=10_000)
-            page.evaluate(_CHOICES)
+        page.wait_for_function(_SHOWN_JS, arg=_SHOWN[mode], timeout=10_000)
         page.add_style_tag(content=_SHEET)
-        got = {"live": page.evaluate(_READ, 0), "idle": page.evaluate(_READ, 1)}
+        got = page.evaluate(_READ_PAIR, mode != "tft")
         got["theme"] = page.evaluate(
             "() => document.documentElement.dataset.theme || 'hextech'")
     finally:

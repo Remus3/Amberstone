@@ -32,6 +32,7 @@ import json
 
 import pytest
 
+from tests.snapshot_panels._champ_names import wait_for_champ_names
 from tests.snapshot_panels.conftest import _WS_STUB
 from tests.snapshot_panels.test_ds_matchup_text_contrast import _ratio
 
@@ -148,13 +149,7 @@ def _open(mock_server, pw_browser, theme, shape_body):
         mock_server.url + f"/?ui_mock=1&mode=sr&theme={theme}#active-match",
         wait_until="domcontentloaded", timeout=15_000,
     )
-    page.wait_for_function(
-        """async () => { try {
-          const m = await import('/js/panels/cc_conditional_pressure.js');
-          const n = m.resolveChampNames ? m.resolveChampNames([51]) : [];
-          return !!(n && n.length && n[0]); } catch (e) { return false; } }""",
-        timeout=10_000,
-    )
+    wait_for_champ_names(page, [51])
     assert page.evaluate(
         "document.documentElement.dataset.theme || 'hextech'"
     ) == theme, f"booted on the wrong theme, not {theme}"

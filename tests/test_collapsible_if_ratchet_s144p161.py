@@ -10,6 +10,10 @@ order, so each test still evaluates the same sub-expressions in the same sequenc
 Scope is the test directories only: the non-test findings (``ops/rc_supervisor.py`` is frozen, the
 rest are production modules) are left to their owners. The run uses NO config (``--isolated``) so a
 per-file-ignore cannot hide a finding, with ruff's own 120-column budget set to the project's.
+
+s172: ruff 0.17.6 (Dependabot #34) widened SIM102 to a nested ``if`` that is the whole body of the
+LAST ``elif`` of a chain. Its 4 test-code sites moved the nested test into the ``elif`` test, with
+no later branch in any of those chains, and joined ``_FIXED``.
 """
 from __future__ import annotations
 
@@ -43,6 +47,10 @@ _FIXED = (
     "tests/test_skip_condition_hygiene.py",
     "tests/test_smart_quote_hygiene.py",
     "tests/test_tracked_writer_lf_sweep.py",
+    "agents/daemon_slayer/tests/test_mana_coupling_transport_rm118.py",
+    "agents/daemon_slayer/tests/test_route_seams_reach_the_client_per_route.py",
+    "tests/test_ds_feed_index.py",
+    "tests/test_rm172_mode_modifier_seam_characterization.py",
 )
 
 

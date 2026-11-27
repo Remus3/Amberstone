@@ -222,17 +222,16 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                          "dumped in - review jungle / mid pathing 8-14min."),
             })
 
-    elif is_aram:
+    elif is_aram and opp_towers > 0 and my_towers == 0:
         # ARAM Mayhem (KIWI) and ARAM Classic - tower-diff is the
         # main team-level signal; dragons/baron don't exist.
-        if opp_towers > 0 and my_towers == 0:
-            out.append({
-                "text": f"Lost every tower trade ({opp_towers}-0)",
-                "why":  (f"Enemy team broke {opp_towers} of your towers "
-                         f"without taking one back - pure attrition loss. "
-                         f"Common in ARAM when comp lacks AOE waveclear "
-                         f"vs siege champions."),
-            })
+        out.append({
+            "text": f"Lost every tower trade ({opp_towers}-0)",
+            "why":  (f"Enemy team broke {opp_towers} of your towers "
+                     f"without taking one back - pure attrition loss. "
+                     f"Common in ARAM when comp lacks AOE waveclear "
+                     f"vs siege champions."),
+        })
 
     # -- Roster aggregates (works in any 5v5 mode) ---------------------
     roster = enriched.get("roster") or []

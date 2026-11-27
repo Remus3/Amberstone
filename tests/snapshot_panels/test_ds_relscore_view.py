@@ -25,6 +25,8 @@ the hero element) and screenshot the rendered panel.
 
 from pathlib import Path
 
+from tests.snapshot_panels._champ_names import wait_for_champ_names
+
 SCREENSHOTS = Path(__file__).parent / "screenshots"
 
 # Deterministic /api/ds-relscore payload - descending score_pct so the bar
@@ -82,16 +84,7 @@ def test_ds_relscore_bar_renders(mock_server, pw_browser):
 
     # Wait for the champion index to load so resolveChampNames([51]) -> a
     # real name (the panel hides until the locked champ resolves).
-    page.wait_for_function(
-        """async () => {
-          try {
-            const m = await import('/js/panels/cc_conditional_pressure.js');
-            const n = m.resolveChampNames ? m.resolveChampNames([51]) : [];
-            return !!(n && n.length && n[0]);
-          } catch (e) { return false; }
-        }""",
-        timeout=10_000,
-    )
+    wait_for_champ_names(page, [51])
 
     # Render the real panel into its live mount with a synthetic locked
     # champ; the stubbed /api/ds-relscore lands and repaints the rows.

@@ -221,6 +221,22 @@ _WRAP_STATE = """(sel) => Array.from(document.querySelectorAll(sel)).map((li) =>
   };
 })"""
 
+# s172: Chromium 147 serializes a computed `justify-content: flex-end` as
+# "flex-end"; Chromium 159 (Playwright 1.65, Dependabot #34) as "flow-end".
+# The guard asks this browser how it spells the declared flex-end, and that
+# spelling must be one of the two known ones, so a probe that fell back to
+# "normal" cannot pass a row that lost its packing.
+_FLEX_END = """() => {
+  const p = document.createElement("div");
+  p.style.display = "flex";
+  p.style.justifyContent = "flex-end";
+  document.body.appendChild(p);
+  const v = getComputedStyle(p).justifyContent;
+  p.remove();
+  return v;
+}"""
+_FLEX_END_SPELLINGS = frozenset({"flex-end", "flow-end"})
+
 
 @pytest.mark.parametrize("vp", ((1920, 920), (320, 640)),
                          ids=lambda v: f"{v[0]}x{v[1]}")
@@ -257,13 +273,15 @@ def test_the_wrap_reaches_match_rows_only(mock_server, pw_browser, vp):
         history = page.evaluate(
             _WRAP_STATE, "#history-match-list > .history-match-row"
         )
+        flex_end = page.evaluate(_FLEX_END)
     finally:
         ctx.close()
     assert not errors, errors
+    assert flex_end in _FLEX_END_SPELLINGS, flex_end
     assert champs and matches and history, (champs, matches, history)
     for row in champs:
         assert row == {"wrap": "nowrap", "justify": "normal",
                        "dimSpace": "normal"}, f"champ row: {row}"
     for row in matches + history:
-        assert row == {"wrap": "wrap", "justify": "flex-end",
+        assert row == {"wrap": "wrap", "justify": flex_end,
                        "dimSpace": "nowrap"}, f"match row: {row}"

@@ -22,6 +22,11 @@ kept every ``and`` operand in the nested form's order, and only the ``elif state
 A fifth slice (RM-1757) merged the last 2 in non-excluded modules (``coach_integration/_sr_prompt.py``
 WaveTracker.update, ``game_reader/snapshot_normalizer.py`` _has_smite), each with no ``else`` on either ``if``.
 
+s172: ruff 0.17.6 (Dependabot #34) widened SIM102 to a nested ``if`` that is the whole body of the LAST ``elif``
+of a chain; 0.17.3 did not report that shape. Its 4 held sites (``agents/agent2_backend/game_ingest.py`` x2,
+``dashboard/builders_last_match.py``, ``tools/champion_loadout_invariants.py``) moved the nested test into the
+``elif`` test; none of those chains has a later branch, so the same inputs reach the same body.
+
 The other 4 were the baseline below: one frozen file (``ops/rc_supervisor.py``, 2), one file another lane's branch
 changed (``agents/agent5_ui/champion_fallback.py``) and one PKG-excluded tool (``tools/package_portable.py``). The count per file can only
 fall: a file that reaches zero must leave ``_BASELINE``, and a new finding anywhere fails. The true-audit lane's
@@ -86,6 +91,9 @@ _FIXED = (
     "tft/tft_coach_engine.py",
     "coach_integration/_sr_prompt.py",
     "game_reader/snapshot_normalizer.py",
+    "agents/agent2_backend/game_ingest.py",
+    "dashboard/builders_last_match.py",
+    "tools/champion_loadout_invariants.py",
 )
 
 

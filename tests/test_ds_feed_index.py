@@ -380,11 +380,10 @@ def _filename_write_sites(feed: str) -> list[str]:
                 right = node.right
                 if isinstance(right, ast.Constant) and right.value == feed:
                     sites.append(f"{rel}:{node.lineno}")
-            elif isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant):
-                if node.value.value == feed and any(
-                    isinstance(t, ast.Name) for t in node.targets
-                ):
-                    sites.append(f"{rel}:{node.lineno}")
+            elif (isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant)
+                  and node.value.value == feed
+                  and any(isinstance(t, ast.Name) for t in node.targets)):
+                sites.append(f"{rel}:{node.lineno}")
     return sorted(set(sites))
 
 

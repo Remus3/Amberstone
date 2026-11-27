@@ -28,6 +28,8 @@ rendered panel.
 """
 from pathlib import Path
 
+from tests.snapshot_panels._champ_names import wait_for_champ_names
+
 SCREENSHOTS = Path(__file__).parent / "screenshots"
 
 # Deterministic /api/ds-statcheck payload - all 10 _STAT_ROWS keys present so
@@ -90,16 +92,7 @@ def test_ds_statcheck_panel_populated(mock_server, pw_browser):
 
     # Wait for the champion index so resolveChampNames([222]) -> 'Jinx'
     # (the panel hides until the locked champ resolves to a name).
-    page.wait_for_function(
-        """async () => {
-          try {
-            const m = await import('/js/panels/cc_conditional_pressure.js');
-            const n = m.resolveChampNames ? m.resolveChampNames([222]) : [];
-            return !!(n && n.length && n[0]);
-          } catch (e) { return false; }
-        }""",
-        timeout=10_000,
-    )
+    wait_for_champ_names(page, [222])
 
     # Render the real panel into its live mount with a synthetic locked champ;
     # the stubbed /api/ds-statcheck lands and paints the readout.

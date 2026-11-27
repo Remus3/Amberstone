@@ -185,10 +185,10 @@ def _seam_keys(fn: ast.FunctionDef) -> set[str]:
                     a.value for a in node.args
                     if isinstance(a, ast.Constant) and isinstance(a.value, str)
                 ]
-        elif isinstance(node, ast.Compare) and isinstance(node.left, ast.Constant):
+        elif (isinstance(node, ast.Compare) and isinstance(node.left, ast.Constant)
+              and isinstance(node.left.value, str)):
             # the ``"key" in body`` tri-state idiom
-            if isinstance(node.left.value, str):
-                keys.append(node.left.value)
+            keys.append(node.left.value)
     return {k for k in keys if k.startswith(_SEAM_PREFIXES)}
 
 

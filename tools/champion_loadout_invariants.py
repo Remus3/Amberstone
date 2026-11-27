@@ -278,11 +278,10 @@ def classify_row(
                     "report" if pinned else "strip",
                     "heal/shield-power item on assassin row",
                 ))
-        elif arch == "bruiser":
-            if f.heal_shield:
-                # Not in the operator's minimum rule set - report only.
-                out.append(Violation(
-                    it, "bruiser", "report",
-                    "heal/shield-power item on bruiser row",
-                ))
+        elif arch == "bruiser" and f.heal_shield:
+            # Not in the operator's minimum rule set - report only.
+            out.append(Violation(
+                it, "bruiser", "report",
+                "heal/shield-power item on bruiser row",
+            ))
     return out
