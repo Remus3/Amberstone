@@ -233,9 +233,9 @@ def _infer_win(task_payload: dict[str, Any]) -> int | None:
                         return 1
                     if r in _LOSS_STRINGS:
                         return 0
-                elif isinstance(v, bool):
-                    return int(v)
-                elif isinstance(v, (int, float)) and v in (0, 1):
+                elif isinstance(v, bool) or (
+                    isinstance(v, (int, float)) and v in (0, 1)
+                ):
                     return int(v)
     return None
 

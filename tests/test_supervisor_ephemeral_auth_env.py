@@ -185,10 +185,23 @@ def test_parent_environ_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not drifted, f"the spawn mutated parent environment keys: {drifted}"
 
 
-def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("parent_config_dir", [None, "fake-parent-config-dir"],
+                         ids=["config-dir-unset", "config-dir-set"])
+def test_rest_of_environment_passes_through(
+    monkeypatch: pytest.MonkeyPatch, parent_config_dir: str | None,
+) -> None:
     """Only the auth overrides are dropped; everything else is inherited."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-testkeytestkeytestkey0003")
     monkeypatch.setenv("RC_AUTHENV_PROBE", "kept-value")
+    # Kit v30 ROUTE-CONFIG-DIR: on a proxy route child_env() drops the
+    # parent's CLAUDE_CONFIG_DIR on purpose (the route pin decides the
+    # account, never the calling session's config dir). Pin the parent value
+    # both ways so the runner's own shell (a second-account session sets it,
+    # CI does not) never decides pass/fail.
+    if parent_config_dir is None:
+        monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    else:
+        monkeypatch.setenv("CLAUDE_CONFIG_DIR", parent_config_dir)
     # KIT-15 adds a key to every child; drop any parent copy so the exact
     # added-key list below holds whatever the runner's own env carries.
     monkeypatch.delenv("CLAUDE_CODE_DISABLE_BACKGROUND_TASKS", raising=False)
@@ -200,7 +213,11 @@ def test_rest_of_environment_passes_through(monkeypatch: pytest.MonkeyPatch) -> 
     _run(rec, "t-authenv-passthru")
     env = rec.kwargs["env"]
     assert env.get("RC_AUTHENV_PROBE") == "kept-value"
-    stripped = {"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL"}
+    # The proxy route (ANTHROPIC_BASE_URL is added below) never carries a
+    # config dir, whatever the parent held.
+    assert env.get("CLAUDE_CONFIG_DIR") is None
+    stripped = {"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+                "CLAUDE_CONFIG_DIR"}
     # FLEET-KIT-v1: the strip moved into the fleet kit, which ALSO removes every
     # CLAUDE_CODE_USE_* key (provider switches) and any ANTHROPIC_*BASE_URL.
     # That is the kit's policy, so those keys count as stripped here too.
