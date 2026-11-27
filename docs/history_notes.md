@@ -41,6 +41,15 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-26 - session 170: nightly red fixed forward, CodeQL #109/#110, DDragon 16.23.1, CLI pin (LEDGER 2114)
+
+- Shipped (local, pushed at /done): `a28fbe9cdd` CLI pin 2.1.332, `ad15cedf11` DDragon 16.22.1 -> 16.23.1, `c69edc2d83` ReDoS CodeQL #109/#110, `bea359b213` watchdog-wake test measures loop exit not shutdown (nightly 45781089416 red = gc.collect tail).
+- Reads: effort-measure (research trial cheaper, ds too few runs); RM-1344 18.7 re-read Verdict A (18.7 notes unread); no MAIN ruling on G3 yet; Recycle Bin not reproduced, E: bin purged by an unattributed writer.
+- What's next: confirm CodeQL #109/#110 closed after the re-scan, read the dispatched full ci and the next nightly (restarts the 3-in-a-row), tree-equivalence check then remove the four kept slice worktrees, RM-2125, DS patch bump RM-766 if listed.
+- Do NOT redo: the flake fix, ReDoS fix, DDragon refresh, CLI pin, Recycle Bin repro (recipe in LEDGER 2114).
+
+---
+
 # 2026-11-17 - session 169: kit v31+v32 landed, 26 alerts worked, E-root move, GitHub guard (LEDGER 2113)
 
 - Landed (pushed 79d4e92a80..d5976ec80e): kit v31+v32 `ce1cb790a8`; CodeQL `ef79a22c13` / `408f3726c2`; minimatch `8fcc0e14ad`; README `cb3ae093ad`; flakes `f560075706`; PTH noqa `bb868f9bed`; scratch root `d5976ec80e`.

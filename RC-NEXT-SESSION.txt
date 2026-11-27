@@ -1,10 +1,10 @@
 NEXT SESSION
 ------------
-SESSION: 173
-The SESSION 172 hand-off (written at the s171 /done) is VERBATIM at `git show cd5f376d44:RC-NEXT-SESSION.txt`; older ones: s171 cf215e572d, s170 3cd97d8cc9, s169 d5976ec80e,
+SESSION: 174
+The SESSION 173 hand-off (written at the s172 /done) is VERBATIM at `git show bbb0544bc0:RC-NEXT-SESSION.txt`; older ones: s172 cd5f376d44, s171 cf215e572d, s170 3cd97d8cc9, s169 d5976ec80e,
 s168 a82eaea7de, s166 5a88fcd5b7, s165 b962442693, s164 97ffb3a1b, s162 bbd3113ed, s161 247325fa4; older still: ARCHIVES below; closed history and the s133-s150 DO NOT
 RE-LITIGATE entries are VERBATIM in A1106 block 3.
-SESSION NUMBER: s172 = RM-2126 landed + s171 ci / suite reds fixed (LEDGER 2116); s171 = LEDGER 2115; s170 = 2114; s169 = 2113; s168 = 2112.
+SESSION NUMBER: s173 = CI read green + DS live verify + RM-2113 closed (LEDGER 2117); s172 = RM-2126 landed + s171 ci / suite reds fixed (LEDGER 2116); s171 = LEDGER 2115; s170 = 2114; s169 = 2113; s168 = 2112.
 OPERATOR SCOPE (chat s150, VERBATIM; stands until the operator changes it): "continue headlessly - all driver lanes -
 operator away ; full access approved".
 OPERATOR WORDS: s159 "-n 4 standing" (landings at -n 4 until the operator or MAIN changes it; over MAIN 2045's -n 8; 8aa74df1b; told to MAIN in a66309aa3); s161 "self-adjudicate" (D1-D3 bind,
@@ -60,14 +60,14 @@ STANDING RULES
   lane follow-ups), A1106 RC-2026-11-06 (block 1 s144 items, 2 s133-s143 items, 3 the s150 hand-off; its lines 19-26 map every older block), A1107 RC-2026-11-07 (block 1 the s153
   hand-off); the s154 hand-off = `git show 47075c685:RC-NEXT-SESSION.txt`.
 
-NEXT ACTION (s172 /done)
-A. READ THE RUNS FIRST: `gh run list --branch main --limit 8` for the s172 push (cd5f376d44; ci 45932675641 FULL-suite push run because the selector said mode=full, 2159 modules; docs-guards 45932675556, codeql
-   45932675585, fleet-identity-guard 45932675682, pages 45932675632 = pending at /done). A fully green ci restarts the 2005 ORDER 3-in-a-row (trailing streak 0) and may close RM-2113 / RM-2114. A red run = fix
-   FORWARD first; re-run any module that is red on CI locally under Python 3.12 (local env: Playwright 1.59 / ruff 0.17.3, CI: 1.65.2 / 0.17.6).
-B. DS :8860 LIVE VERIFY (RM-2126 residue): when RC is up (the operator launches the app; no autostart), restart DS :8860 and read `/health`: ENGINE_VERSION 1.292.0, patch 16.23.1.
-   RM-2126 SHIPPED `2ce7851bed`, ci-red fix `f03883b2aa`, red fix `bb3818ac72` (LEDGER 2116; do not redo). Landed by cherry-pick (`branch -d` refuses): 2d1ff12d4c -> 2ce7851bed,
-   e86fc9b59d -> f03883b2aa; agent-a4e68cbba69558eff was fast-forwarded. Reap s172: 2 removed, 8 kept, 2 listed (item E).
-J. S172 OPEN: SIM102 under ruff 0.17.6 at agents/daemon_slayer/_rune_health_grants.py:370 (no ratchet covers it; DS-lane work); PR-run-only reds NOT chased: map_stall
+NEXT ACTION (s173 /done)
+A. READ THE NEXT NIGHTLY: `gh run list --workflow ci.yml --event schedule --limit 3` (the third green full run of the 2005 ORDER 3-in-a-row; s173 ruling: the push full run 45932675641 counts, streak reads 2 of 3
+   but both runs cover ONE tree cd5f376d44, LEDGER 2117; Reverses if MAIN rules a push run is not a nightly). Red = fix FORWARD first; re-run a red module locally under Python 3.12 (local env: Playwright 1.59 / ruff
+   0.17.3, CI: 1.65.2 / 0.17.6). s172 push runs ALL GREEN (verifier-confirmed): ci 45932675641 mode=full 88465 passed, nightly 45963773855 88463 passed, docs-guards, codeql, pages, identity guard.
+B. CLOSED s173: DS :8860 /health = ENGINE 1.292.0, patch 16.23.1, 173 champions, 699 items (standalone start, pid 776 stopped; do not redo). RM-2126 SHIPPED `2ce7851bed`, `f03883b2aa`, `bb3818ac72` (LEDGER 2116).
+   Landed by cherry-pick (`branch -d` refuses): 2d1ff12d4c -> 2ce7851bed, e86fc9b59d -> f03883b2aa. RM-2113 CLOSED s173 (two green Py3.12 full runs; Reverses if the bloodmoon-923x1280 case reds on a hosted run).
+   RM-2114 stays OPEN (its module reddened again on an s172 PR run).
+J. OPEN: (SIM102 at agents/daemon_slayer/_rune_health_grants.py:370 RETIRED s173: local-only, CI selects no SIM, ratchet does not fence agents/daemon_slayer/; Reverses if CI ruff adds SIM or the ratchet widens there); PR-run-only reds NOT chased: map_stall
    `test_sr_canvas_draws_last_known_dots[frozen]` and `test_vision_server_pool_rm735`; upgrading the local Playwright / ruff to CI's pins is an operator choice; two SIM117 at
    tests/test_supervisor_ephemeral_auth_env.py:317,337 (not selected by config); that file's fake sk-ant- literals carry no allow-fixture pragma (harmless while the push scan reads added
    lines only); Kalista ARAM allowlist rows (2) need a wiki cross-check once the RM-1227 consent exists; Turbo Chemtank Arena 443079 canister heal 20 -> 16 percent at 16.23.1 is NOT
@@ -94,7 +94,7 @@ I. LANDING RECIPE: fleet_gitlock refuses git cherry-pick: `git cherry-pick --no-
    UNLANDED lane commits ahead of main, NOT on origin by design (never push a lane): ds 57, gated 20, queue 176, repo 246,
    research 110, true-audit 219, uiux 237, lane/repo-backup-s158 145. Landing on main is OPEN work (item 5).
 (items 1-14 below are the s166 list)
-1. CI RED: the s171 reds are FIXED (s172 `f03883b2aa`, `bb3818ac72`, NEXT ACTION A reads the new runs); RM-2113 / RM-2114 stay open until a fully green full run.
+1. CI RED: the s171 reds are FIXED (s172 `f03883b2aa`, `bb3818ac72`, NEXT ACTION A reads the new runs); RM-2113 closed s173, RM-2114 open.
 2. MAIN 0930 ORDER follow-through (TERMINAL): effort-measure re-run DONE s170 (research during 41 runs $1.66/run $1.36/commit vs before $3.57/$6.01; ds
    during 4 runs 0 commits, too few to judge; MAIN reads effort results). O3d: land lane/uiux first, re-run the QA split on the merged file (ref
    hold/s164-o3d-qa-split = 6e384504e, sha256 025e76561776..., NEVER delete it; worktree agent-a9c5f5e90007897b9 holds it), retarget
@@ -136,7 +136,7 @@ FIRST (each session): CPU / FREE RAM glance; `python ops/loop/inbox_tick.py --pe
 --branch main --limit 6`; git fetch + origin/main still an ancestor of main; lane progress files (0 workers = the
 suite line's lane half); vgtray.exe / Riot Client absent (D1).
 
-IN-FLIGHT: the s172 /done push runs (A); no agent or monitor; lanes halted (see 0; driver ops/loop/control/lane_prompts/s144_lane_driver.py, gitignored;
+IN-FLIGHT: none (no agent or monitor); lanes halted (see 0; driver ops/loop/control/lane_prompts/s144_lane_driver.py, gitignored;
 status files, stops, PARKED, leak alarm, budget reset: A1101 block 10). RC app DOWN at the s165 read (no autostart, ASK 45;
 launch via WMI only if a read-back needs it). A CS tree session may hold the suite gate (C3: wait).
 
@@ -209,7 +209,7 @@ OPEN - WORK ITEMS (bodies + acceptance in BACKLOG; detail VERBATIM in A31 block 
 - RM-681 PARTIAL: one attended live call per path (truststore MET s133 c6). Origin
   c1/deps-pip-anthropic1-measure was deleted under MAIN 0909; 24c54ec39 stays in the kit bundle.
 - Rows: the s139 open-row index (100+ ids) is VERBATIM in A26, each row in BACKLOG / ROADMAP; next free RM-2128 (pin
-  docs/DS_SWEEP_TRACKER.md); next LEDGER 2117 (2116 = s172). ROADMAP top open: PKG (WA9-WA14, WA17), the PKG-6c
+  docs/DS_SWEEP_TRACKER.md); next LEDGER 2118 (2117 = s173). ROADMAP top open: PKG (WA9-WA14, WA17), the PKG-6c
   residue, RM-488, RM-596, RM-597, the RM-681.. rows, the RM-985..RM-2044 lane index, the s154-s165 filings;
   EXTERNAL-LIFT Band 2 / 4 stay in BACKLOG.
 - Y-45 phone push needs ntfy (host local-only). Operator APPROVED Y-44 (frozen lcu_client.py) + Y-45 2026-10-03 (EXTERNAL-LIFT-DIRECTIVE.md / -2.md; -2 ingested as RM-526..RM-594).
@@ -252,6 +252,7 @@ OPEN - WATCH AND DATA (act only when seen; detail VERBATIM in A27 block 2)
 ====================
 DO NOT RE-LITIGATE (each with Reverses if:)
 ====================
+- s173 (LEDGER 2117): CI read green on cd5f376d44, DS live verify, RM-2113 closed, SIM102 local-only (reverses: see NEXT ACTION A / B / J).
 - s172 (LEDGER 2116): RM-2126 shipped 2ce7851bed; the s171 ci red was Playwright 1.65.2 / ruff 0.17.6 (Dependabot #34), NOT live_rows, fixed f03883b2aa + bb3818ac72; the CLAUDE_CONFIG_DIR
   strip is deliberate kit v30 (reverses if a hosted run reds one of the three, or a verifier refutes the Kalista ALLOWLIST rows).
 - s168 (LEDGER 2112): b4f1195fc6 shipped; note_pause red root-caused to the kit (reverses if a Py3.12 run reds b4f1195fc6 or a verifier refutes the round(now, 3) cause).
@@ -274,16 +275,14 @@ tests/*ratchet* and tests/*census* file (memory feedback_new_test_files_meet_rep
 ====================
 STATUS, CONTEXT, ACCEPTANCE
 ====================
-Status (s172 /done): pushed b0ba53d0f4..cd5f376d44 (session commits 2ce7851bed f03883b2aa bb3818ac72 + cd5f376d44 docs; this hand-off rides a docs-only local commit, unpushed by design). Gate: ruff clean; hygiene trio 14 passed;
-drift_guard 1.291.0 sweep 0 (11 dated read-at rows in docs/LIVE_GAME_GATED_SYNC.md marked 'since superseded'). Whole dual suite at -n 2 on f03883b2aa: '2 failed, 88985 passed, 202 skipped, 5 xfailed, 21456 subtests passed in 3206.40s' rc 1; both reds
-fixed in bb3818ac72 (verifier 642 passed rc 0), so the graded run covers f03883b2aa, NOT HEAD. Full suite (2c): covered by the push's own run ci 45932675641 (selector mode=full over b0ba53d0f4..cd5f376d44), NO dispatch; the previous
-ci 45903006209 on b0ba53d0f4 was a FAILURE (Playwright / ruff bumps, fixed). bot_merge_check clean (5 commits). RC app DOWN (expected: no autostart; no game). Session file 1.4 MB. Reap: 2 removed, 8 kept, 2 listed.
+Status (s173 /done): no code commit; doc commits only (LEDGER 2117, WAKEUP, BACKLOG RM-2113, this hand-off). Origin at cd5f376d44 plus the docs push at /done (see git log). Gate: ruff clean; hygiene trio green; drift_guard 0 breach.
+Full suite (2c): covered by ci 45932675641 (push, mode=full) and nightly 45963773855 on cd5f376d44; HEAD differs only in docs, NO dispatch. bot_merge_check read at /done. RC app DOWN (expected: no autostart, not a blocker; DS :8860 stopped after the verify).
+Reap s173: lane worktrees kept (7) plus listed ones as item E. Session file small.
 
 Context: tools/done.md TIER TABLE; tools/landing_sampler.py; .github/workflows/ci.yml; tools/ci_impact_selector.py;
 BACKLOG "S153" .. "S165 filings"; ops/loop/control/lane_prompts/; ops/loop/run_lane.ps1 + fleet_route.py (RM-2116);
 ops/loop/lane_run_ledger.py; docs/LIVE_GAME_GATED_SYNC.md; inbox via ops/loop/inbox_tick.py --pending.
 
-Acceptance: the s172 push runs read (A) and green (ci, docs-guards, CodeQL, fleet-identity-guard); DS :8860 reads ENGINE 1.292.0 / patch 16.23.1 once RC is up (B); RM-2120 / RM-2121 / RM-2122 carried;
-O3d split after lane/uiux; lanes re-armed only on the operator's word; INBOX-AGREE renewed by 2026-12-31.
+Acceptance: the next nightly read green (A); RM-2114 root-caused or kept open; RM-2120 / RM-2121 / RM-2122 carried; O3d split after lane/uiux; lanes re-armed only on the operator's word; INBOX-AGREE renewed by 2026-12-31.
 
 Start with: read this file first, then CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.

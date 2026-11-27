@@ -6,6 +6,15 @@
 
 ---
 
+# 2026-11-27 - session 173: s172 push runs green, DS 1.292.0 live-verified, RM-2113 closed (LEDGER 2117)
+
+- No code commit. ci push 45932675641 (mode=full) + nightly 45963773855 green on cd5f376d44; DS :8860 /health ENGINE 1.292.0 / patch 16.23.1 (standalone start, pid stopped).
+- Decisions: RM-2113 closed (two green Py3.12 full runs), RM-2114 kept open (recurred on an s172 PR run); 2005 streak counts the push run, reads 2 of 3 (one tree); J SIM102 local-only, retired.
+- What's next: read the next nightly (third green full run); rest of the hand-off carried.
+- Do NOT redo: the CI read, the DS live verify, the SIM102 re-measure.
+
+---
+
 # 2026-11-26 - session 172: RM-2126 landed (DS 16.23.1, ENGINE 1.292.0), s171 ci reds + suite reds fixed (LEDGER 2116)
 
 - Shipped: `2ce7851bed` RM-2126 (DDragon mirror, patch bump, extractor fix for minified enum refs), `f03883b2aa` ci-red fixes (Dependabot #34 Playwright / ruff regressions), `bb3818ac72` game_ingest SIM114 + hermetic CLAUDE_CONFIG_DIR test. Gated suite (-n 2) green except 2 reds, both fixed in `bb3818ac72`.
@@ -22,12 +31,3 @@
 - What's next: RM-2126 (DDragon 16.23.1 refresh + DS bump 16.22.1 -> 16.23.1 together as ONE batch, template `a14fc853ea`); read the push ci first.
 - Do NOT redo: the revert (never merge a patch-day-ddragon-sync 16.23.1 proposal alone), the RM-2125 daemon-thread variant (refuted), the Recycle Bin hunt.
 - Open: docs/_archive is gitignored (.gitignore:23) vs CLAUDE.md "tracked copy of an outbound note goes to docs/_archive"; redundant FIX note 6f5a180f.
-
----
-
-# 2026-11-26 - session 170: nightly red fixed forward, CodeQL #109/#110, DDragon 16.23.1, CLI pin (LEDGER 2114)
-
-- Shipped (local, pushed at /done): `a28fbe9cdd` CLI pin 2.1.332, `ad15cedf11` DDragon 16.22.1 -> 16.23.1, `c69edc2d83` ReDoS CodeQL #109/#110, `bea359b213` watchdog-wake test measures loop exit not shutdown (nightly 45781089416 red = gc.collect tail).
-- Reads: effort-measure (research trial cheaper, ds too few runs); RM-1344 18.7 re-read Verdict A (18.7 notes unread); no MAIN ruling on G3 yet; Recycle Bin not reproduced, E: bin purged by an unattributed writer.
-- What's next: confirm CodeQL #109/#110 closed after the re-scan, read the dispatched full ci and the next nightly (restarts the 3-in-a-row), tree-equivalence check then remove the four kept slice worktrees, RM-2125, DS patch bump RM-766 if listed.
-- Do NOT redo: the flake fix, ReDoS fix, DDragon refresh, CLI pin, Recycle Bin repro (recipe in LEDGER 2114).
