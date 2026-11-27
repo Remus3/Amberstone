@@ -6,6 +6,15 @@
 
 ---
 
+# 2026-11-26 - session 172: RM-2126 landed (DS 16.23.1, ENGINE 1.292.0), s171 ci reds + suite reds fixed (LEDGER 2116)
+
+- Shipped: `2ce7851bed` RM-2126 (DDragon mirror, patch bump, extractor fix for minified enum refs), `f03883b2aa` ci-red fixes (Dependabot #34 Playwright / ruff regressions), `bb3818ac72` game_ingest SIM114 + hermetic CLAUDE_CONFIG_DIR test. Gated suite (-n 2) green except 2 reds, both fixed in `bb3818ac72`.
+- What's next: read `gh run list --branch main --limit 8` (a green run restarts the 2005 ORDER streak; red = fix forward first); when RC is up, restart DS :8860 and verify ENGINE 1.292.0 / patch 16.23.1 via /health.
+- Do NOT redo: RM-2126, the ci-red root cause (not live_rows), the CLAUDE_CONFIG_DIR strip (deliberate, kit v30). Lesson: after a ruff-driven reshape run every tests/*ratchet* file.
+- Open: SIM102 `_rune_health_grants.py:370` (ruff 0.17.6), Kalista ARAM wiki cross-check, Turbo Chemtank 16 percent heal unmodelled.
+
+---
+
 # 2026-11-26 - session 171: s170 ci red reverted (RM-2126 route B), dependabot #34, RM-2125 / RM-2119 shipped (LEDGER 2115)
 
 - Shipped (pushed at /done): `849c912387` revert of `ad15cedf11` (the DDragon 16.23.1 refresh failed 172 live_rows setup errors without the DS bump), `8d6ae99667` dependabot #34 re-applied, `06e35ae4de` RM-2125 gc.collect(1), `13d87fbb03` + `d345d5aed5` RM-2119, `c20fd7314c`, BACKLOG flips.
@@ -22,14 +31,3 @@
 - Reads: effort-measure (research trial cheaper, ds too few runs); RM-1344 18.7 re-read Verdict A (18.7 notes unread); no MAIN ruling on G3 yet; Recycle Bin not reproduced, E: bin purged by an unattributed writer.
 - What's next: confirm CodeQL #109/#110 closed after the re-scan, read the dispatched full ci and the next nightly (restarts the 3-in-a-row), tree-equivalence check then remove the four kept slice worktrees, RM-2125, DS patch bump RM-766 if listed.
 - Do NOT redo: the flake fix, ReDoS fix, DDragon refresh, CLI pin, Recycle Bin repro (recipe in LEDGER 2114).
-
----
-
-# 2026-11-17 - session 169: kit v31+v32 landed, 26 alerts worked, E-root move, GitHub guard (LEDGER 2113)
-
-- Landed (pushed 79d4e92a80..d5976ec80e): kit v31+v32 `ce1cb790a8`; CodeQL `ef79a22c13` / `408f3726c2`; minimatch `8fcc0e14ad`; README `cb3ae093ad`; flakes `f560075706`; PTH noqa `bb868f9bed`; scratch root `d5976ec80e`.
-- E-root (MAIN ORDER 2145): ROFL archive now under the RC sidecar Archive (env var repointed); strays moved; 2 stash bundles recycled. SendToRecycleBin did NOT recycle 9 tiny items (memory file filed).
-- Gated suite at bb868f9bed: only ruff-version ratchets (fixed by global ruff 0.17.3), PTH ratchets (fixed) and the CLI pin (local 2.1.327 vs 2.1.323; tools/repin_subagent_cli.py) red.
-- Operator: no status-board render unless asked; G3 branch protection approved; lanes stay halted until the operator says.
-- What's next: read the push ci / codeql / dispatch results, then the hand-off NEXT ACTION; CLI pin re-pin.
-- Do NOT redo: kit v31/v32 landing, the CodeQL / minimatch fixes, the E-root move.

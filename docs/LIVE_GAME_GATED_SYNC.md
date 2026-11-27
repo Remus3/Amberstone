@@ -1724,7 +1724,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   (R7/R12 precedent, `rank_items` does not forward it), the on_hit remainder needs net-new cadence
   math, and `assumed_stacks` needs a live stack feed. Own-build re-ranks are unverifiable headless.
   **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 124, 2026-11-09, S144-G-111; NOT a tick, NOT a
-  re-open; no game, RC :8888 not answering, read at `d2d4840f1` + this lane, DS ENGINE 1.291.0,
+  re-open; no game, RC :8888 not answering, read at `d2d4840f1` + this lane, DS ENGINE 1.291.0 (since superseded),
   patch 16.22.1).** (1) CITE DRIFT, the first clause is STALE: `apply_passive_damage` is no longer
   /dps-scoped. RM-42 wired it into `rank_items` (`agents/daemon_slayer/rank.py:1001`, forwarded to
   BOTH `compute_dps` calls at `:1252` and `:1378`, rationale comment `:1184-1193`), and the server
@@ -1777,7 +1777,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   HTTP transport WIRED (OQ18) BUT no dashboard/modes caller POSTs a live build - this is a
   **code+eyeball slice, not a pure flip**. No DS restart on the flip itself.
   **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 123, 2026-11-09, S144-G-110; NOT a tick, NOT a
-  re-open; no game, read at `279bf6f16`, DS ENGINE 1.291.0, patch 16.22.1).** (1) THE ROW HOLDS: the
+  re-open; no game, read at `279bf6f16`, DS ENGINE 1.291.0 (since superseded), patch 16.22.1).** (1) THE ROW HOLDS: the
   producer is wired and the consumer is not. `compute_antitank_live`
   (`agents/daemon_slayer/antitank.py:823`) is reached only through `_route_antitank`
   (`agents/daemon_slayer/server.py:2696`; the live branch at `:2731-2738` runs when `item_ids` is
@@ -1840,7 +1840,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   safest to flip first. Full per-seam magnitudes + caveats: the live-flip ledger below.
 
   **AGE RE-CHECK + READY (lane 9 PREP s144 cycle 125, 2026-11-09, S144-G-112; NOT a tick, NOT a
-  re-open; no game, RC :8888 not answering, read at `d2d4840f1` + this lane, DS ENGINE 1.291.0,
+  re-open; no game, RC :8888 not answering, read at `d2d4840f1` + this lane, DS ENGINE 1.291.0 (since superseded),
   patch 16.22.1).** (1) DEFAULTS HOLD: all twelve are still default False. The eleven EHP flags are
   `compute_ehp` keyword defaults (`agents/daemon_slayer/ehp.py:1418` kaenic, `:1423` eclipse, `:1435`
   seraphs, `:1441` fimbulwinter, `:1464` omnivamp, `:1473` revive, `:1485` stasis, `:1496`
@@ -1905,7 +1905,7 @@ bounce DS mid-game. Each row's default-ON flip stays operator-gated after its ey
   The Arena mirror 444644 magnitude confirm is GATE 5 (G5-08). The "Draw Your Sword" Runaan's blind
   spot flagged at R108 is FIXED (LEDGER 856). SOURCE: LEDGER 855.
   **AGE CHECK (lane 9 PREP s144 cycle 129, S144-G-116; source read at local main `d2d4840f1`, DS
-  16.22.1 / ENGINE 1.291.0, no game up (RC :8888 refused at 2026-11-09T05:07); NOT a tick). The
+  16.22.1 / ENGINE 1.291.0 (since superseded), no game up (RC :8888 refused at 2026-11-09T05:07); NOT a tick). The
   mechanism half holds, the seam has NO live producer, and the live residual does NOT wait on one.**
   Holds: `_item_general_dr._GENERAL_DR_UPTIME` is still `0.4`; `_ITEM_GENERAL_DR` still maps `3869`
   to `(0.35, 0.25)` and `664644` to `(0.40, 0.40)`, with `444644` as the Arena mirror. At 16.22.1
@@ -3501,7 +3501,7 @@ survivability flips below cannot roll otherwise.
   **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 138, read at `65c451b5a`; NOT a tick).** The
   measurement and the REMAINS line hold; every chain cite moved. (1) RE-MEASURED in-process (compute
   half only, the same headless class as the 2026-07-18 close, not live evidence): DS snapshot
-  `16.22.1`, ENGINE `1.291.0`, `hybrid.rank_items_by_hybrid` at the row's own inputs (items
+  `16.22.1`, ENGINE `1.291.0 (since superseded)`, `hybrid.rank_items_by_hybrid` at the row's own inputs (items
   `[3078,3053,3742]`, L13, mode ARAM, top_n 200) returns **pool=111 exact** ON and OFF; Yasuo DIFFERS
   (ON floats `6665` + `3091`), Darius DIFFERS (`6631`, `6333`, `4401`), Udyr DIFFERS (`6665`, `3065`,
   `3075`); Garen / Sett / Illaoi / Aatrox / Olaf / Trundle byte-identical - the filed partition and
@@ -3537,7 +3537,7 @@ survivability flips below cannot roll otherwise.
   **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 139, read at `bcdee4eec`; NOT a tick).** The
   measurement and the REMAINS line hold. (1) RE-MEASURED in-process (compute half only, the same
   headless class as the 2026-07-18 close, not live evidence): DS snapshot `16.22.1`, ENGINE
-  `1.291.0`, `hps.rank_items_by_hps` at the row's own inputs (items `[3853,3504,6617]`, L13, mode
+  `1.291.0 (since superseded)`, `hps.rank_items_by_hps` at the row's own inputs (items `[3853,3504,6617]`, L13, mode
   ARAM, top_n 200) evaluates **pool=8 exact** OFF; Rakan DIFFERS (ON floats `2051` + `3083` + `3084`
   to ranks 1-3); Soraka / Janna / Lulu / Nami / Karma byte-identical. Depth `[]` evaluates pool=10
   with the identical partition and floated ids; Rakan's three floats also hold at L6 and L18; `3121`
@@ -3570,7 +3570,7 @@ survivability flips below cannot roll otherwise.
   REMAINS (not a gate): the operator-gated default-ON flip + DS `:8860` restart, per FOUR RULES rule 2.
   **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 140, read at `0a7552d7d`; NOT a tick).** The closing
   run and the REMAINS line hold. (1) RE-MEASURED in-process (compute half only, the same headless
-  class as the 2026-07-18 close, not live evidence): DS snapshot `16.22.1`, ENGINE `1.291.0`,
+  class as the 2026-07-18 close, not live evidence): DS snapshot `16.22.1`, ENGINE `1.291.0 (since superseded)`,
   `ehp.rank_items_by_ehp` at depth `[]`, L13, mode ARAM, top_n 200 evaluates **pool=121** OFF and ON
   for KSante, whose ON top-6 is `['6662','3075','3143','3083','6665','2504']` - byte-identical to the
   filed closing run, Iceborn Gauntlet 6662 AND Thornmail 3075; Rell floats `3121` Fimbulwinter to
@@ -3610,7 +3610,7 @@ survivability flips below cannot roll otherwise.
   NO LIVE RESIDUAL. Do NOT ship F2 expecting an effect, and do not record this row as a validated flip.
   **AGE RE-CHECK 2026-11-09 (lane 9 s144 cycle 141, S144-G-128; NOT a tick).** The verdict holds, but
   the row's DECISIVE CONTROL IS GONE and two cites drifted. (1) RE-MEASURED in-process (compute half
-  only): DS snapshot `16.22.1`, ENGINE `1.291.0`, call shape `rank_items_by_hybrid` /
+  only): DS snapshot `16.22.1`, ENGINE `1.291.0 (since superseded)`, call shape `rank_items_by_hybrid` /
   `rank_items_by_ehp`, `"Malphite"`, L13, `current_item_ids=[]`, `only_item_ids=[<id>]`, top_n 200.
   223069 is still 6000g, `purchasable: True`, `maps {'11':False,'12':True,'22':False,'30':True,
   '453':False}` (key `21` gone, `453` new) and still returns **0 rows in ARAM on both scorers**.
@@ -3658,7 +3658,7 @@ survivability flips below cannot roll otherwise.
   NEAR-MISS, not a plumbing: `core/build_planner/situational.py` `enemy_pen` (`:139`, set `:535-543`
   from an enemy pen-item count) feeds the build-plan counter chips (C4, row G4-16) and never calls
   `compute_ehp` (`:477`); it does not reach this seam. (3) SHAPE RE-MEASURED in-process (compute half
-  only), DS snapshot `16.22.1`, ENGINE `1.291.0`, call shape `compute_ehp(snap, "Aatrox", level=L)`
+  only), DS snapshot `16.22.1`, ENGINE `1.291.0 (since superseded)`, call shape `compute_ehp(snap, "Aatrox", level=L)`
   vs the same plus `enemy_lethality=20.0, enemy_armor_pen_pct=0.35` (no items, default mode, default
   shares): L11 physical 2972.6 -> 2179.7 (-26.7%), magical 2475.3 -> 2475.3 (+0.0%), blended
   2724.0 -> 2327.5 (-14.6%); L18 physical 5683.2 -> 4082.3 (-28.2%), magical +0.0%. Physical falls,
@@ -3703,7 +3703,7 @@ survivability flips below cannot roll otherwise.
   `detonation` in `agents/daemon_slayer/server.py` or `core/daemon_slayer_client.py`. The gap is now
   MACHINE-GUARDED: `tests/test_ds_parity_map.py` `_UNREACHABLE_OK` lists `assume_ally_detonation` under
   both `/burst` (`:88`) and `/dps` (`:89`) as a kwarg the route does NOT parse. A live game still
-  exercises nothing. (2) MATH REPRODUCES BYTE-EXACT at DS snapshot `16.22.1`, ENGINE `1.291.0`
+  exercises nothing. (2) MATH REPRODUCES BYTE-EXACT at DS snapshot `16.22.1`, ENGINE `1.291.0 (since superseded)`
   (`/health` agreed), compute half only, call shape `compute_burst_damage(snap, "Leona", L,
   item_ids=[3068, 3075], mode="ARAM")` vs the same plus `assume_ally_detonation=True` (default target
   resists): L1 123.500 -> 138.700 (+15.200), L6 435.765 -> 467.590 (+31.825), L13 708.415 ->
@@ -6152,7 +6152,7 @@ waits on the RM-875 wiring.)
 - **G5-10** `[HOLD 2026-06-20]` (was D8) Arena S2 augment level-up + crafting - trigger on the 26.09
   PBE (separate PBE install). ADR-010. NOT part of the current Arena sitting.
   **AGE RE-CHECK 2026-11-10 (lane 9 s144 cycle 146, S144-G-134, source read at `998ae3e1f`, DS patch
-  16.22.1, ENGINE_VERSION 1.291.0; no game up; NOT a tick; the HOLD tag is left for a human).** (1) THE
+  16.22.1, ENGINE_VERSION 1.291.0 (since superseded); no game up; NOT a tick; the HOLD tag is left for a human).** (1) THE
   HOLD TRIGGER FIRED BEFORE THE ADR WAS WRITTEN: the cdragon Arena snapshot DS committed for 16.9.1
   (added `c306f56d4` 2026-05-03, pruned `c95396fd4`; read it with
   `git show c306f56d4:data/daemon_slayer/16.9.1/arena_augments.json`) already carries the level-up and

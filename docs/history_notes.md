@@ -41,6 +41,17 @@
 ## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
 ---
 
+# 2026-11-17 - session 169: kit v31+v32 landed, 26 alerts worked, E-root move, GitHub guard (LEDGER 2113)
+
+- Landed (pushed 79d4e92a80..d5976ec80e): kit v31+v32 `ce1cb790a8`; CodeQL `ef79a22c13` / `408f3726c2`; minimatch `8fcc0e14ad`; README `cb3ae093ad`; flakes `f560075706`; PTH noqa `bb868f9bed`; scratch root `d5976ec80e`.
+- E-root (MAIN ORDER 2145): ROFL archive now under the RC sidecar Archive (env var repointed); strays moved; 2 stash bundles recycled. SendToRecycleBin did NOT recycle 9 tiny items (memory file filed).
+- Gated suite at bb868f9bed: only ruff-version ratchets (fixed by global ruff 0.17.3), PTH ratchets (fixed) and the CLI pin (local 2.1.327 vs 2.1.323; tools/repin_subagent_cli.py) red.
+- Operator: no status-board render unless asked; G3 branch protection approved; lanes stay halted until the operator says.
+- What's next: read the push ci / codeql / dispatch results, then the hand-off NEXT ACTION; CLI pin re-pin.
+- Do NOT redo: kit v31/v32 landing, the CodeQL / minimatch fixes, the E-root move.
+
+---
+
 # 2026-11-16 - session 168: CI red (a) fixed `b4f1195fc6`, (b) flake, (c) kit note_pause bug; kit v31 built, NOT landed (LEDGER 2112)
 
 - PIE807 in tests/test_rc_facts_health_pid_rm2107.py:88 fixed (`b4f1195fc6`, pushed at /done).
