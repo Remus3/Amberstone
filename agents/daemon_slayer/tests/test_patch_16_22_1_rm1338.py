@@ -28,6 +28,12 @@ Basics", "reset item stats before the no-items baseline") were runtime state
 leaks in lolmath's own calculator. DS does not model Back To Basics and builds
 every compute_dps from scratch, so the bug is NOT shared; the guards below pin
 that (they pass today and must keep passing).
+
+Since RM-2126 (16.22.1 -> 16.23.1, 2026-11-26) the data reads are pinned to
+the 16.22.1 snapshot directory (it stays on disk) instead of following
+current.txt, and the pointer test only asserts the live patch is AT OR PAST
+16.22.1: the deltas above are facts about the 16.22.1 snapshot, and the patch
+after it is pinned by its own batch test (test_patch_16_23_1_rm2126.py).
 """
 from __future__ import annotations
 
@@ -56,8 +62,12 @@ def _current_patch() -> str:
     return (_DS_DATA / "current.txt").read_text(encoding="utf-8").strip()
 
 
+def _patch_key(patch: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in patch.split("."))
+
+
 def _load_json(name: str) -> dict:
-    return json.loads((_DS_DATA / _current_patch() / name).read_text(encoding="utf-8"))
+    return json.loads((_DS_DATA / _PATCH / name).read_text(encoding="utf-8"))
 
 
 def _items() -> dict:
@@ -67,10 +77,10 @@ def _items() -> dict:
 
 class PatchPointer(unittest.TestCase):
     def test_current_patch(self) -> None:
-        self.assertEqual(_current_patch(), _PATCH)
+        self.assertGreaterEqual(_patch_key(_current_patch()), _patch_key(_PATCH))
 
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.291.0")
+        self.assertEqual(ENGINE_VERSION, "1.292.0")
 
     def test_feed_watch_high_water_acked(self) -> None:
         doc = json.loads((_DS_DATA / "ds_feed_watch.json").read_text(encoding="utf-8"))

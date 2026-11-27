@@ -18,7 +18,8 @@ mDataValues, measured 2026-10-24):
       DDragon 16.21.1 and the game describe the canister passive (pickup cuts
       the cooldown 15 s and restores 20% max HP; game 16.21 PickupCooldownRefund
       15, PickupHealthGain 0.20).  Engine: follows DDragon in the note; NOT
-      modeled (defensive_only, no proc).
+      modeled (defensive_only, no proc).  16.23.1 (RM-2126): DDragon and game
+      16.23 moved the heal to 16% (PickupHealthGain 0.16); refund still 15.
   * 6697 Hubris Eminence - Meraki 15 (+2 per stack) vs game 15 + 3 melee,
       x0.667 ranged: the engine follows the game data (RM-808 (a),
       test_hubris_eminence_cdragon_rm808a.py).
@@ -92,8 +93,10 @@ RECORD: dict[str, tuple[str, tuple[float, ...] | None, str, tuple[float, ...], t
         r"Supercharged: Removes all .*crowd control",
         None,
         r"reduces the Cooldown by (\d+) seconds and restores (\d+)% max Health",
-        (15.0, 20.0),
-        (15.0, 20.0),
+        # RM-2126: DDragon 16.23.1 and CommunityDragon 16.23 (PickupHealthGain
+        # 0.16) moved the heal 20% -> 16%; the refund stays 15 s.
+        (15.0, 16.0),
+        (15.0, 16.0),
     ),
 }
 
@@ -151,7 +154,7 @@ class PerItemRecordTests(unittest.TestCase):
         self.assertNotIn("12%", mirage.note)
         chem = ITEM_EFFECTS["443079"]
         self.assertIn("canister", chem.note)
-        self.assertIn("20% max HP", chem.note)
+        self.assertIn("16% max HP", chem.note)
         self.assertNotIn("Supercharged", chem.note)
         for eff in (mirage, chem):
             with self.subTest(item_id=eff.item_id):

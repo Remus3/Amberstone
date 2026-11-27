@@ -110,7 +110,7 @@ def _lerp_by_level(low: float, high: float, level: float) -> float:
 
 # Grievous Wounds healing-reduction fraction, 40%. Every Summoner's Rift item
 # whose DDragon item.json description applies it reads 40% in every vendored
-# snapshot 16.11.1..16.22.1, Mortal Reminder and Chempunk Chainsword included;
+# snapshot 16.11.1..16.23.1, Mortal Reminder and Chempunk Chainsword included;
 # no SR 50% tier exists to model (S144-D-403). Ignite's tooltip is templated, so
 # its 0.40 stays the LoL wiki value (summoners.py Ignite antiheal_pct=0.40).
 GRIEVOUS_WOUNDS_PCT = 0.40

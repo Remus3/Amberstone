@@ -63,7 +63,7 @@ actually do with it".
 
 GROUND TRUTH: ``data/daemon_slayer/16.14.1/champion_abilities.json`` -> data ->
 <Champion> -> P (patch 16.14.1; every fragment below re-read unchanged at
-16.22.1, S144-D-383 - the drift guard reads the ``current.txt`` patch), verbatim:
+16.23.1, S144-D-383 - the drift guard reads the ``current.txt`` patch), verbatim:
 
   Yasuo "Way of the Wanderer" effects_descriptions[0]:
     "Innate - Intent: Yasuo's total critical strike chance is doubled from all
@@ -89,7 +89,7 @@ The Jhin fragment is the whole reason ``crit_damage_multiplier`` multiplies
 term must read 1.75 x 0.86 = 1.505, and with a +0.40 crit-damage source
 2.15 x 0.86 = 1.849. (The note's "40" is a historical Infinity Edge value; the
 SHIPPED IE (``ITEM_EFFECTS["3031"]`` in ``_effects_data.py``) carries
-crit_damage_bonus=0.30, matching the live DDragon 16.22.1 line "30% Critical
+crit_damage_bonus=0.30, matching the live DDragon 16.23.1 line "30% Critical
 Strike Damage". The identity being pinned is the ORDER OF OPERATIONS, not
 IE's current number.)
 """

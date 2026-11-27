@@ -14,9 +14,9 @@ coefficient that disagreed with the live DDragon longDesc, the DDragon value
 WINS and the divergence is documented inline in the ``formula`` string so the
 provenance is auditable (Do NOT invent numbers).
 
-Re-checked at 16.22.1 (S144-D-397): the longDesc of every modeled rune
+Re-checked at 16.23.1 (S144-D-397): the longDesc of every modeled rune
 except Hail of Blades 9923 is identical in every vendored snapshot
-16.11.1..16.22.1, so its DDragon quote below is still the live text. Hail of
+16.11.1..16.23.1, so its DDragon quote below is still the live text. Hail of
 Blades 9923 changed at 16.16.1 (on-hit "2 - 20 (+0.12 bonus AD, +0.1 AP)");
 the closure still computes the 16.11.1 numbers, filed as S144-D-394 (Tier-2
 re-seed). The Fleet Footwork 8021 exclusion quote changed at 16.17.1; its

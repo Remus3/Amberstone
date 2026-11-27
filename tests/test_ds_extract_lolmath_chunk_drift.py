@@ -390,3 +390,77 @@ def test_discovery_crawls_for_a_lazily_loaded_scenario_table(monkeypatch):
     scen_url, data_url = dse.discover_chunks()
     assert scen_url == base + "lazyscen.js"
     assert data_url == base + "root1.js"
+
+
+# --- (4) 16.23.1: minified enum EXPORT names (RM-2126) --------------------------
+#
+# The DS 16.22.1 -> 16.23.1 refresh (RM-2126, 2026-11-26) found a fourth
+# shape: Turbopack now minifies the enum EXPORT name as well as the alias. A
+# champion key reads ``h.f.ahri`` where ``h=e.i(40535)`` imports the enum
+# module and ``f`` is its one-letter export; damage / target types read
+# ``b.j.magical`` / ``b.G.single`` and the lane list ``[t.f.top, ...]``. The
+# enum-NAME rule cannot see any of them, so every value fell to the dotted-ref
+# -> null rule and the extract produced ``scenarios=0`` and ``lanes=0`` (it
+# raised in ``check_lolmath_coverage``, nothing written).
+
+
+def _scen_minified(param: str, key: str) -> str:
+    return (
+        "," + param + '=>{"use strict";var y=' + param + ".i(24399),h="
+        + param + ".i(40535),b=" + param + ".i(87173);"
+        'let w=[{name:"default",settings:{championKey:h.f.' + key + ","
+        "abilities:{Q:{damageType:b.j.magical,targetType:b.G.single,"
+        "usage:b.V.proc}},extraAbilities:{[rI.f.qChargeMultiplier]:{ahDps:0}}},"
+        "statPreference:{offense:1}}];" + param + ".s([w])}"
+    )
+
+
+def _minified_bodies() -> dict[str, str]:
+    return {
+        "u/root_cd.js": (
+            _jp('{"Aatrox":{"Q":[4,4]},"Ahri":{"Q":[7,7]}}')
+            + _scen_minified("l", "aatrox")
+        ),
+        "u/root_meta.js": (
+            ',3,(a,i,e)=>{i.exports={Aatrox:["FIGHTER"],Ahri:["MAGE"]}}'
+            ',4,a=>{"use strict";var t=a.i(53709);let i={Aatrox:{ratings:'
+            "{healing:10,shielding:0}},Ahri:{ratings:{healing:4,shielding:0}}};"
+            "let u=[t.f.top,t.f.jungle,t.f.mid,t.f.adc,t.f.support];}"
+        ),
+        "u/lazy_scen.js": _scen_minified("e", "ahri"),
+    }
+
+
+def test_minified_export_enum_refs_resolve_to_their_leaf():
+    out = dse.extract_from_bodies(_minified_bodies(), preferred="u/lazy_scen.js")
+    assert set(out.scenarios) == {"aatrox", "ahri"}
+    rec = out.scenarios["ahri"][0]
+    assert rec["settings"]["championKey"] == "ahri"
+    assert rec["settings"]["abilities"]["Q"] == {
+        "damageType": "magical", "targetType": "single", "usage": "proc",
+    }
+    # A computed key keeps the existing computed-key rule (leaf as the key).
+    assert rec["settings"]["extraAbilities"] == {"qChargeMultiplier": {"ahDps": 0}}
+    assert out.lane_positions == ["top", "jungle", "mid", "adc", "support"]
+    assert dse.check_lolmath_coverage(out) == []
+
+
+def test_inline_only_touches_aliases_imported_in_that_body():
+    body = (
+        "var h=e.i(40535);let a={k:h.f.ahri,m:q.f.other,"
+        "n:l.statPreference.defense,c:h.f.call(1)}"
+    )
+    out = dse._inline_minified_enum_refs(body)
+    # h is an import alias with a one-letter export: inlined.
+    assert 'k:"ahri"' in out
+    # q is not imported here, and statPreference is not a minified export:
+    # both stay for the generic dotted-ref -> null rule.
+    assert "m:q.f.other" in out
+    assert "n:l.statPreference.defense" in out
+    # A call through the enum path is not a constant.
+    assert "c:h.f.call(1)" in out
+
+
+def test_inline_is_a_no_op_without_imports():
+    body = "let a={k:h.f.ahri}"
+    assert dse._inline_minified_enum_refs(body) == body

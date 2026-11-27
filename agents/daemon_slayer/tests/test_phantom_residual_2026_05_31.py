@@ -63,7 +63,7 @@ class PhantomResidualTests(unittest.TestCase):
                          "(block-index routes Mel R to block 2)")
 
     def test_engine_version(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.291.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.292.0")
 
     def test_module_is_ascii(self) -> None:
         with Path(__file__).open("rb") as fh:

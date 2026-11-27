@@ -5,7 +5,7 @@ lethality AND AP assassins on burst magic), but it ranks every purchasable,
 mode-legal item by raw burst-damage delta with no notion of which axis the
 champion's kit actually scales on. Measured on the live engine at 1.239.0 with
 the sweep-standard squishy target, Akali - 85.5 percent magical damage at
-that time (86.7 percent at 16.22.1), an
+that time (86.7 percent at 16.23.1), an
 assassin who builds ZERO AD in any source - was served Essence Reaver #4,
 Trinity Force #5, Blade of The Ruined King #7 and Infinity Edge #12, burying
 her dominant first item Hextech Gunblade at #11 underneath all of them. The
@@ -24,9 +24,9 @@ the narrowest matching set and widening only on test evidence:
   so the two agree by construction. It is NOT a curated champion list, so it
   cannot drift against a patch. A champion without a decisive split resolves
   to ``None`` and is never stripped. Shaco is the standing example: 0.521
-  magical / 0.347 physical at 16.10.1..16.18.1, 0.503 / 0.342 at 16.22.1 -
-  magical leads both times, but it is under the 0.55 dominance floor and
-  inside the 0.20 margin at every vendored patch (re-measured S144-D-382).
+  magical / 0.347 physical at 16.10.1..16.18.1, 0.503 / 0.342 at 16.22.1, 0.492 / 0.351 at 16.23.1 -
+  magical leads every time, but it is under the 0.55 dominance floor and
+  inside the 0.20 margin at every vendored patch (re-measured S144-D-382 and RM-2126).
   The DS package reads the field off the snapshot record rather than importing
   ``core`` - production imports run the other way.
 

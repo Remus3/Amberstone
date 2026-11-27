@@ -87,7 +87,7 @@ _STRIP = frozenset(_WALL_CLOCK + _PROSE + _STAMP)
 # drop this row and its KNOWN_STATIC_BODY row.
 KNOWN_STAMP_LAG: dict[str, str] = {
     "ability_staleness.json": (
-        "declares _patch 16.21.1 in the 16.22.1 dir: wiki consent absent "
+        "declares _patch 16.21.1 in the 16.23.1 dir: wiki consent absent "
         "(RM-1227), carried forward unregenerated, regen pending"
     ),
 }
@@ -215,10 +215,20 @@ KNOWN_STATIC_BODY: dict[str, tuple[str, str]] = {
     # that DOES stamp _generated_at - here the frozen vintage is a consent
     # block, not an upstream fact). enchanter_items.json stays: restamped
     # only - DDragon 16.22.1 changed 1086 and 2501, neither one of its 34 rows.
+    #
+    # Re-measured 2026-11-26 for the 16.22.1 -> 16.23.1 pair (RM-2126, s172).
+    # scenarios.json is DROPPED: its body MOVED (a FRESH daemon_slayer_extract
+    # run after the minified-export enum fix; lolmath changed Azir W onHit and
+    # Xerath's R casts), so it reads 'body-moved' and needs no exemption.
+    # cdragon_spell_stats.json stays: a FRESH run (cdragon=16.23, 171 champs,
+    # errors 0) returned an identical body. wiki_stats.json,
+    # wiki_ability_stats.json and ability_staleness.json stay as the same
+    # CONSENT-BLOCKED copy-forwards (RM-1227); ability_staleness keeps its true
+    # 16.21.1 vintage. enchanter_items.json stays: restamped only - DDragon
+    # 16.23.1 changed no item beyond the version string.
     "ability_staleness.json": ("upstream-static", "none"),
     "cdragon_spell_stats.json": ("pending-vintage", "tools/daemon_slayer_cdragon_spell_extract.py"),
     "enchanter_items.json": ("authored", "none"),
-    "scenarios.json": ("pending-vintage", "tools/daemon_slayer_extract.py"),
     "wiki_ability_stats.json": ("pending-vintage", "tools/daemon_slayer_wiki_ability_extract.py"),
     "wiki_stats.json": ("pending-vintage", "tools/daemon_slayer_wiki_stats_extract.py"),
 }

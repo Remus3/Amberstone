@@ -620,6 +620,32 @@ def _substitute(text: str) -> str:
     return text.replace("void 0", "null")
 
 
+# 16.23.1 (RM-2126): Turbopack minifies the enum EXPORT name as well as the
+# alias, so a champion key reads `h.f.ahri` (`h=e.i(40535)` imports the enum
+# module, `f` is its one-letter export), a damage type `b.j.magical` and the
+# lane list `[t.f.top, ...]`. The enum-NAME rule in _SUBS_PRECOMPILED cannot
+# see them and every value fell to the dotted-ref -> null rule (scenarios=0,
+# lanes=0). A factory body names its imports, so only a ref through an alias
+# that THIS body binds with `<alias>=<param>.i(<module id>)`, via a minified
+# (one- or two-character) export, is inlined as its leaf - the same leaf the
+# enum-name rule has always produced. A call (`h.f.x(`) and a computed key
+# (`[h.f.x]:`, kept for the computed-key rule) are left alone, and any other
+# dotted ref still collapses to null.
+_IMPORT_ALIAS_RE = re.compile(r"(?<![\w$.])([A-Za-z_$][\w$]*)=[A-Za-z_$][\w$]*\.i\(\d+\)")
+
+
+def _inline_minified_enum_refs(body: str) -> str:
+    aliases = set(_IMPORT_ALIAS_RE.findall(body))
+    if not aliases:
+        return body
+    alt = "|".join(re.escape(a) for a in sorted(aliases, key=len, reverse=True))
+    ref = re.compile(
+        r"(?<![\w$.])(?:" + alt + r")\.[A-Za-z_$][\w$]?\.([A-Za-z_$][\w$]*)"
+        r"(?![\w$.(])(?!\s*\]\s*:)"
+    )
+    return ref.sub(r'"\1"', body)
+
+
 def _resolve_text(rec_text: str,
                   name_to_text: dict[str, str],
                   name_to_parsed: dict[str, Any]) -> str:
@@ -791,7 +817,7 @@ def extract_from_bodies(bodies: dict[str, str], preferred: str) -> LolmathExtrac
         for body in _iter_use_strict_factory_bodies(chunk):
             if not any(m in body for m in _SCENARIO_FACTORY_MARKERS):
                 continue
-            bindings = _walk_top_level_bindings(body)
+            bindings = _walk_top_level_bindings(_inline_minified_enum_refs(body))
             parsed = _parse_top_level(bindings)
             log.info("use-strict factory in %s: parsed %d/%d bindings",
                      url.rsplit("/", 1)[-1], len(parsed), len(bindings))

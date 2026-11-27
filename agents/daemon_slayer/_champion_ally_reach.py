@@ -6,8 +6,8 @@ If it does, an item that shields or heals teammates lands on someone, so the
 for them. If it does not, the grant reaches nobody and the seam must stay inert.
 
 The signal is the ``affects`` field on each ability form in
-``champion_abilities.json``. Measured at 16.14.1 and re-measured at 16.22.1
-(S144-D-381; every vendored dir 16.10.1..16.22.1 agrees): 70 forms across 40
+``champion_abilities.json``. Measured at 16.14.1 and re-measured at 16.23.1
+(S144-D-381; every vendored dir 16.10.1..16.23.1 agrees): 70 forms across 40
 champions carry a strict ``allies`` token. 171 champions are keyed; Locke and
 Zaahen are in ``champions.json`` but have no abilities row, so the gate reads
 False for both until the abilities file gains them.
@@ -109,7 +109,7 @@ _ALLY_REACH_EXCLUDED = frozenset({"Ornn", "Sejuani"})
 # ``effects_descriptions`` for allied/allies/ally (whole words, any case) admits
 # 25 further champions, 24 once Leona is overridden (Akshan, Annie, Fiora, Jhin,
 # Kha'Zix, ...), almost all of them allied TURRET / MINION / wave references.
-# Re-measured at 16.22.1 (S144-D-381): every vendored dir 16.10.1..16.22.1
+# Re-measured at 16.23.1 (S144-D-381): every vendored dir 16.10.1..16.23.1
 # gives 25; the "27 at 16.14.1" first written here does not reproduce. A
 # four-name override is smaller, auditable, and reversible; a parser change is
 # none of those.

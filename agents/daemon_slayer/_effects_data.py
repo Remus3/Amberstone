@@ -3009,10 +3009,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # RM-808 (d): Meraki recorded STALE (pre-rework entry) - the game data
         # agrees with DDragon (CommunityDragon 16.21 PickupCooldownRefund 15,
         # PickupHealthGain 0.20); pinned in test_meraki_staleness_record_rm808d.py.
+        # RM-2126: DDragon 16.23.1 moved the heal 20% -> 16% max HP and the game
+        # data agrees (CommunityDragon 16.23 PickupHealthGain 0.16, was 0.20 at
+        # 16.22); refund stays 15 s. Not modeled, so only the note moves.
         note=(
             "Turbo Chemtank: CC-immunity canister mechanic - ignore next immobilize, "
-            "drop a canister; picking it up cuts the cooldown by 15 s and restores 20% "
-            "max HP (DDragon 16.21.1, was 4%). CC mitigation + heal, not modeled; no DPS proc"
+            "drop a canister; picking it up cuts the cooldown by 15 s and restores 16% "
+            "max HP (DDragon 16.23.1, was 20% at 16.21.1, 4% before). CC mitigation + "
+            "heal, not modeled; no DPS proc"
         ),
     ),
     "443080": ItemEffect(

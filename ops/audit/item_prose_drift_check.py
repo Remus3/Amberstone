@@ -72,6 +72,10 @@ REVIEWED: dict[str, dict[str, Optional[tuple[str, ...]]]] = {
     "16.22.1": {
         "2501": ("2.5", "10"),                  # Overlord's Bloodmail Retribution 12% -> 10% (modeled: missing_hp_ad_amp_max_pct 0.10)
     },
+    # 16.22.1 -> 16.23.1: the RM-2126 description diff (s172).
+    "16.23.1": {
+        "443079": ("15", "16"),                 # Turbo Chemtank (Arena) canister heal 20% -> 16% (CDragon 16.23 PickupHealthGain 0.16; not modeled; note synced)
+    },
 }
 
 _STATS_RE = re.compile(r"<stats>.*?</stats>", re.DOTALL | re.IGNORECASE)

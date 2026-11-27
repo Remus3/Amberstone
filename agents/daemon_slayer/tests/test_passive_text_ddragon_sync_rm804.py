@@ -75,9 +75,11 @@ _NUM = r"(\d+(?:\.\d+)?)"
 _DAWNCORE_PROSE = rf"and {_NUM} Ability Power per 100% Base Mana Regen"
 _DAWNCORE_NOTE = rf"{_NUM} AP per 100% base mana regen"
 REVIEWED: dict[str, tuple[str, tuple[float, ...], str | None]] = {
+    # Re-reviewed RM-2126: DDragon 16.23.1 moved the canister heal 20% -> 16%
+    # (CommunityDragon 16.23 PickupHealthGain 0.16 agrees); note synced.
     "443079": (
         rf"restores {_NUM}% max Health",
-        (20.0,),
+        (16.0,),
         rf"restor(?:es|ing) {_NUM}% max HP",
     ),
     "6621": (_DAWNCORE_PROSE, (15.0,), _DAWNCORE_NOTE),

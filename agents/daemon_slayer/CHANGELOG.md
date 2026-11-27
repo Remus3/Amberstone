@@ -1331,6 +1331,22 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.292.0 (2026-11-26) - RM-2126 patch 16.22.1 -> 16.23.1 + lolmath changelog
+(2026-11-08 .. 2026-11-19).
+- data: fresh extract at 16.23.1 (DDragon 173 champions / 699 items, Meraki
+  not forced, 25.15); the lolmath parser learned minified enum EXPORT names
+  (`h.f.ahri`), see tools/daemon_slayer_extract.py; CDragon 16.23 spell
+  stats + ability ratios re-extracted; cherry and Mayhem augments
+  refetched; wiki_stats / wiki_ability_stats / enchanter_items copied
+  forward and restamped, ability_staleness copied at its 16.21.1 vintage.
+- deltas: Azir attackrange 525 -> 550 (DDragon) and W onHit 0.5 -> 0.67
+  (lolmath scenario); Xerath scenario R casts; Syndra E cooldown 15 ->
+  17..15; Kalista ARAM modifiers 0.9 / 1.1 -> 1 / 1.05; skill orders 17
+  champions; damage_distribution drift 173; CDragon ratios moved for 11.
+- items: 699 -> 699, no <stats> change; one passive-prose move, Turbo
+  Chemtank (Arena) 443079 canister heal 20% -> 16% max HP (CommunityDragon
+  16.23 PickupHealthGain 0.16 agrees; not modeled, note synced).
+
 1.291.0 (2026-11-08) - RM-1338 patch 16.21.1 -> 16.22.1 + lolmath 26.21
 changelog (2026-10-27 .. 2026-11-04).
 - data: fresh extract at 16.22.1 (DDragon 173 champions / 699 items, lolmath

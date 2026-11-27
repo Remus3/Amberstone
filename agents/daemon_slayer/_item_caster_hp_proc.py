@@ -70,7 +70,7 @@ target. It is therefore DENIED BY ID in ``_DENIED_ITEM_IDS``, and the test suite
 pins that the deny is non-vacuous (the probe really would credit it).
 
 That lambda is what ``ITEM_EFFECTS["4017"]`` computes, and the live text points
-the OTHER way: DDragon 16.22.1 says the burn grows "based on how much more max
+the OTHER way: DDragon 16.23.1 says the burn grows "based on how much more max
 Health they have than you", with the bonus maximum "reached at 3000 health
 difference" (the engine caps at 2000). Filed as S144-D-377 (Tier-2 item-effect),
 not changed here. The deny holds under either reading - the wielder's health is
@@ -136,7 +136,7 @@ _REFERENCE_FIGHT_SECONDS = 10.0
 # legendary attacks faster than this; understating it understates the credit for
 # on-hit procs (Titanic, Reverberation) rather than overstating it.
 _ASSUMED_ATTACKS_PER_SECOND = 1.0
-# Defensive ceiling on the converted fraction. NON-BINDING at 16.22.1: the census
+# Defensive ceiling on the converted fraction. NON-BINDING at 16.23.1: the census
 # ceiling fires_per_fight * (max_hp_pct + bonus_hp_pct) / 100 tops out at
 # Reverberation 447114 (2% bonus health x 10 fires = 0.20), ahead of Arena
 # Heartsteel 223084 (6% x 10/3.5 fires, ~0.171) and Void Immolation 223069 (0.15);
@@ -150,7 +150,7 @@ _MAX_CONVERTED_FRACTION = 1.0
 # explicitly rather than by suffix, because mirror prefixes are irregular.
 #   * 4017 Hellfire Hatchet - Char reads (caster_max_hp - target_max_hp), a
 #     tankiness comparison (live text reads it the other way; S144-D-377). It is
-#     itself Arena-only (map 30) and has no other id at 16.22.1.
+#     itself Arena-only (map 30) and has no other id at 16.23.1.
 _DENIED_ITEM_IDS = frozenset({"4017"})
 
 # ---------------------------------------------------------------------------
@@ -187,7 +187,7 @@ class ItemCasterHpProcEntry:
 
     ``max_hp_pct`` / ``bonus_hp_pct`` are the percent of the WIELDER's maximum /
     bonus health the item's procs re-spend as damage per fire, differentiated out
-    of ``ITEM_EFFECTS``. Exactly one is non-zero for every shipped item at 16.22.1;
+    of ``ITEM_EFFECTS``. Exactly one is non-zero for every shipped item at 16.23.1;
     the guard test fails a future two-pool proc rather than averaging
     the two pools together.
 

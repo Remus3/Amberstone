@@ -68,6 +68,24 @@ ALLOWLIST = {
         "external reference L moved Kled 1.05 -> 1 at 16.19.1. Neither side "
         "is confirmed by patch notes, so neither is overwritten."
     ),
+    # RM-2126 (s172, measured 2026-11-26): lolmath's 16.23.1 table (the
+    # "26.22 & 26.23" deploy of 2026-11-19) moved Kalista dmg_dealt 1.1 -> 1.05
+    # and dmg_taken 0.9 -> 1. The wiki sidecar in the 16.23.1 dir is a
+    # CONSENT-BLOCKED copy-forward (RM-1227: no wiki request without a consent
+    # record), so it still carries the earlier wiki read and cannot be
+    # re-measured. Reverses if: a wiki consent record lands and a regen reads
+    # Kalista 1.05 / 1 (drop both rows), or reads 1.1 / 0.9 again (then the
+    # lolmath move is the outlier - re-adjudicate the ARAM source).
+    ("Kalista", "dmg_dealt"): (
+        "lolmath 16.23.1 moved Kalista ARAM dmg_dealt 1.1 -> 1.05; the wiki "
+        "sidecar is a consent-blocked copy-forward (RM-1227) that still reads "
+        "1.1, so the wiki side cannot be re-read this patch."
+    ),
+    ("Kalista", "dmg_taken"): (
+        "lolmath 16.23.1 moved Kalista ARAM dmg_taken 0.9 -> 1; the wiki "
+        "sidecar is a consent-blocked copy-forward (RM-1227) that still reads "
+        "0.9, so the wiki side cannot be re-read this patch."
+    ),
 }
 # ("Kled", "dmg_taken") left this list with RM-600: the extractor now strips Lua
 # comments and keeps the primary integer-id record per apiname, so the sidecar
